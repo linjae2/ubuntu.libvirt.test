@@ -1,0 +1,899 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="">
+  <title>Libvirt the virtualization API</title>
+</head>
+
+<body bgcolor="#ffffff">
+<h1 align="center">Libvirt the virtualization API</h1>
+
+<h1>Note: this is the flat content of the <a href="index.html">web
+site</a></h1>
+
+<h1 style="text-align: center">libvirt</h1>
+
+<h3>what is <span class="style1">libvirt?</span></h3>
+
+<p>Libvirt is a C toolkit to interract with the virtualization capabilities
+of recent versions of Linux (and other OSes). It is free software available
+under the <a href="http://www.opensource.org/licenses/lgpl-license.html">GNU
+Lesser General Public License</a>. Virtualization of the Linux Operating
+System means the ability to run multiple instances of Operating Systems
+concurently on a single hardware system where the basic resources are driven
+by a Linux instance. The library aim at providing long term stable C API
+initially for the <a
+href="http://www.cl.cam.ac.uk/Research/SRG/netos/xen/index.html">Xen
+paravirtualization</a> but should be able to integrate other virtualization
+mechanisms if needed.</p>
+
+<h2><a name="News">Releases</a></h2>
+
+<p>Here is the list of official releases, however since it is early on in the
+development of libvirt, it is preferable when possible to just use the <a
+href="downloads.html">CVS version or snapshot</a>, contact the mailing list
+and check the <a href="ChangeLog.html">ChangeLog</a> to gauge progresses.</p>
+
+<h3>0.1.8: Oct 16 2006</h3>
+<ul>
+  <li> Bug for system with page size != 4k</li>
+  <li> vcpu number initialization (Philippe Berthault)</li>
+  <li> don't label crashed domains as shut off (Peter Vetere)</li>
+  <li> fix virsh man page (Noriko Mizumoto)</li>
+  <li> blktapdd support for alternate drivers like blktap (Daniel Berrange)</li>
+  <li> memory leak fixes (xend interface and XML parsing) (Daniel Berrange)</li>
+  <li> compile fix</li>
+  <li> mlock/munlock size fixes (Daniel Berrange)</li>
+  <li> improve error reporting</li>
+</ul>
+<h3>0.1.7: Sep 29 2006</h3>
+<ul>
+  <li> fix a memory bug on getting vcpu informations from xend (Daniel Berrange)</li>
+  <li> fix another problem in the hypercalls change in Xen changeset
+       86d26e6ec89b when getting domain informations (Daniel Berrange)</li>
+</ul>
+<h3>0.1.6: Sep 22 2006</h3>
+<ul>
+  <li>Support for localization of strings using gettext (Daniel Berrange)</li>
+  <li>Support for new Xen-3.0.3 cdrom and disk configuration (Daniel Berrange)</li>
+  <li>Support for setting VNC port when creating domains with new
+      xend config files (Daniel Berrange) </li>
+  <li>Fix bug when running against xen-3.0.2 hypercalls (Jim Fehlig)</li>
+  <li>Fix reconnection problem when talking directly to http xend</li>
+</ul>
+<h3>0.1.5: Sep 5 2006</h3>
+<ul>
+  <li>Support for new hypercalls change in Xen changeset 86d26e6ec89b</li>
+  <li>bug fixes: virParseUUID() was wrong, netwoking for paravirt guestsi
+      (Daniel Berrange), virsh on non-existent domains (Daniel Berrange),
+      string cast bug when handling error in python (Pete Vetere), HTTP
+      500 xend error code handling (Pete Vetere and Daniel Berrange)</li>
+  <li>improvements: test suite for SEXPR &lt;-&gt; XML format conversions (Daniel
+      Berrange), virsh output regression suite (Daniel Berrange), new environ
+      variable VIRSH_DEFAULT_CONNECT_URI for the default URI when connecting
+      (Daniel Berrange), graphical console support for paravirt guests
+      (Jeremy Katz), parsing of simple Xen config files (with Daniel Berrange),
+      early work on defined (not running) domains (Daniel Berrange),
+      virsh output improvement (Daniel Berrange</li>
+</ul>
+
+<h3>0.1.4: Aug 16 2006</h3>
+<ul>
+  <li>bug fixes: spec file fix (Mark McLoughlin), error report problem (with
+    Hugh Brock), long integer in Python bindings (with Daniel Berrange), XML
+    generation bug for CDRom (Daniel Berrange), bug whem using number() XPath
+    function (Mark McLoughlin), fix python detection code, remove duplicate
+    initialization errors (Daniel Berrange)</li>
+  <li>improvements: UUID in XML description (Peter Vetere), proxy code
+    cleanup, virtual CPU and affinity support + virsh support (Michel
+    Ponceau, Philippe Berthault, Daniel Berrange), port and tty informations
+    for console in XML (Daniel Berrange), added XML dump to driver and proxy
+    support (Daniel Berrange), extention of boot options with support for
+    floppy and cdrom (Daniel Berrange), features block in XML to report/ask
+    PAE, ACPI, APIC for HVM domains (Daniel Berrange), fail saide-effect
+    operations when using read-only connection, large improvements to test
+    driver (Daniel Berrange) </li>
+  <li>documentation: spelling (Daniel Berrange), test driver examples.</li>
+</ul>
+
+<h3>0.1.3: Jul 11 2006</h3>
+<ul>
+  <li>bugfixes: build as non-root, fix xend access when root, handling of
+    empty XML elements (Mark McLoughlin), XML serialization and parsing fixes
+    (Mark McLoughlin), allow to create domains without disk (Mark
+  McLoughlin),</li>
+  <li>improvement: xenDaemonLookupByID from O(n^2) to O(n) (Daniel Berrange),
+    support for fully virtualized guest (Jim Fehlig, DV, Mark McLoughlin)</li>
+  <li>documentation: augmented to cover hvm domains</li>
+</ul>
+
+<h3>0.1.2: Jul 3 2006</h3>
+<ul>
+  <li>headers include paths fixup</li>
+  <li>proxy mechanism for unpriviledged read-only access by httpu</li>
+</ul>
+
+<h3>0.1.1: Jun 21 2006</h3>
+<ul>
+  <li>building fixes: ncurses fallback (Jim Fehlig), VPATH builds (Daniel P.
+    Berrange)</li>
+  <li>driver cleanups: new entry points, cleanup of libvirt.c (with Daniel P.
+    Berrange)</li>
+  <li>Cope with API change introduced in Xen changeset 10277</li>
+  <li>new test driver for regression checks (Daniel P. Berrange)</li>
+  <li>improvements: added UUID to XML serialization, buffer usage (Karel
+    Zak), --connect argument to virsh (Daniel P. Berrange),</li>
+  <li>bug fixes: uninitialized memory access in error reporting, S-Expr
+    parsing (Jim Fehlig, Jeremy Katz), virConnectOpen bug, remove a TODO in
+    xs_internal.c</li>
+  <li>documentation: Python examples (David Lutterkort), new Perl binding
+    URL, man page update (Karel Zak)</li>
+</ul>
+
+<h3>0.1.0: Apr 10 2006</h3>
+<ul>
+  <li>building fixes: --with-xen-distdir option (Ronald Aigner), out of tree
+    build and pkginfo cflag fix (Daniel Berrange)</li>
+  <li>enhancement and fixes of the XML description format (David Lutterkort
+    and Jim Fehlig)</li>
+  <li>new APIs: for Node information and Reboot</li>
+  <li>internal code cleanup: refactoring internals into a driver model, more
+    error handling, structure sharing, thread safety and ref counting</li>
+  <li>bug fixes: error message (Jim Meyering), error allocation in virsh (Jim
+    Meyering), virDomainLookupByID (Jim Fehlig),</li>
+  <li>documentation: updates on architecture, and format, typo fix (Jim
+    Meyering)</li>
+  <li>bindings: exception handling in examples (Jim Meyering), perl ones out
+    of tree (Daniel Berrange)</li>
+  <li>virsh: more options, create, nodeinfo (Karel Zak), renaming of some
+    options (Karel Zak), use stderr only for errors (Karel Zak), man page
+    (Andrew Puch)</li>
+</ul>
+
+<h3>0.0.6: Feb 28 2006</h3>
+<ul>
+  <li>add UUID lookup and extract API</li>
+  <li>add error handling APIs both synchronous and asynchronous</li>
+  <li>added minimal hook for error handling at the python level, improved the
+    python bindings</li>
+  <li>augment the documentation and tests to cover error handling</li>
+</ul>
+
+<h3>0.0.5: Feb 23 2006</h3>
+<ul>
+  <li>Added XML description parsing, dependance to libxml2, implemented the
+    creation API virDomainCreateLinux()</li>
+  <li>new APIs to lookup and name domain by UUID</li>
+  <li>fixed the XML dump when using the Xend access</li>
+  <li>Fixed a few more problem related to the name change</li>
+  <li>Adding regression tests in python and examples in C</li>
+  <li>web site improvement, extended the documentation to cover the XML
+    format and Python API</li>
+  <li>Added devhelp help for Gnome/Gtk programmers</li>
+</ul>
+
+<h3>0.0.4: Feb 10 2006</h3>
+<ul>
+  <li>Fix various bugs introduced in the name change</li>
+</ul>
+
+<h3>0.0.3: Feb 9 2006</h3>
+<ul>
+  <li>Switch name from from 'libvir' to libvirt</li>
+  <li>Starting infrastructure to add code examples</li>
+  <li>Update of python bindings for completeness</li>
+</ul>
+
+<h3>0.0.2: Jan 29 2006</h3>
+<ul>
+  <li>Update of the documentation, web site redesign (Diana Fong)</li>
+  <li>integration of HTTP xend RPC based on libxend by Anthony Liquori for
+    most operations</li>
+  <li>Adding Save and Restore APIs</li>
+  <li>extended the virsh command line tool (Karel Zak)</li>
+  <li>remove xenstore transactions (Anthony Liguori)</li>
+  <li>fix the Python bindings bug when domain and connections where freed</li>
+</ul>
+
+<h3>0.0.1: Dec 19 2005</h3>
+<ul>
+  <li>First release</li>
+  <li>Basic management of existing Xen domains</li>
+  <li>Minimal autogenerated Python bindings</li>
+</ul>
+
+<h2><a name="Introducti">Introduction</a></h2>
+
+<p>Libvirt is a C toolkit to interact with the virtualization capabilities of
+recent versions of Linux (and other OSes), but libvirt won't try to provide
+all possible interfaces for interacting with the virtualization features.</p>
+
+<p>To avoid ambiguity about the terms used here here are the definitions for
+some of the specific concepts used in libvirt documentation:</p>
+<ul>
+  <li>a <strong>node</strong> is a single physical machine</li>
+  <li>an <strong>hypervisor</strong> is a layer of software allowing to
+    virtualize a node in a set of virtual machines with possibly different
+    configurations than the node itself</li>
+  <li>a <strong>domain</strong> is an instance of an operating system running
+    on a virtualized machine provided by the hypervisor</li>
+</ul>
+
+<p style="text-align: center"><img
+alt="Hypervisor and domains running on a node" src="node.gif"></p>
+
+<p>Now we can define the goal of libvirt: to provide the lowest possible
+generic and stable layer to manage domains on a node.</p>
+
+<p>This implies the following:</p>
+<ul>
+  <li>the API should not be targetted to a single virtualization environment
+    though Xen is the current default, which also means that some very
+    specific capabilities which are not generic enough may not be provided as
+    libvirt APIs</li>
+  <li>the API should allow to do efficiently and cleanly all the operations
+    needed to manage domains on a node</li>
+  <li>the API will not try to provide hight level multi-nodes management
+    features like load balancing, though they could be implemented on top of
+    libvirt</li>
+  <li>stability of the API is a big concern, libvirt should isolate
+    applications from the frequent changes expected at the lower level of the
+    virtualization framework</li>
+</ul>
+
+<p>So libvirt should be a building block for higher level management tools
+and for applications focusing on virtualization of a single node (the only
+exception being domain migration between node capabilities which may need to
+be added at the libvirt level). Where possible libvirt should be extendable
+to be able to provide the same API for remote nodes, however this is not the
+case at the moment, the code currently handle only local node accesses.</p>
+
+<h2><a name="architecture">libvirt architecture</a></h2>
+
+<h3>This is in a large part Xen specific since this is the only hypervisor
+supported at the moment</h3>
+
+<p>When running in a Xen environment, programs using libvirt have to execute
+in "Domain 0", which is the primary Linux OS loaded on the machine. That OS
+kernel provides most if not all of the actual drivers used by the set of
+domains. It also runs the Xen Store, a database of informations shared by the
+hypervisor, the kernels, the drivers and the xen daemon. Xend. The xen daemon
+supervise the control and execution of the sets of domains. The hypervisor,
+drivers, kernels and daemons communicate though a shared system bus
+implemented in the hypervisor. The figure below tries to provide a view of
+this environment:</p>
+<img src="architecture.gif" alt="The Xen architecture">
+
+<p>The library can be initialized in 2 ways depending on the level of
+priviledge of the embedding program. If it runs with root access,
+virConnectOpen() can be used, it will use three different ways to connect to
+the Xen infrastructure:</p>
+<ul>
+  <li>a connection to the Xen Daemon though an HTTP RPC layer</li>
+  <li>a read/write connection to the Xen Store</li>
+  <li>use Xen Hypervisor calls</li>
+</ul>
+
+<p>The library will usually interract with the Xen daemon for any operation
+changing the state of the system, but for performance and accuracy reasons
+may talk directly to the hypervisor when gathering state informations at
+least when possible (i.e. when the running program using libvirt has root
+priviledge access).</p>
+
+<p>If it runs without root access virConnectOpenReadOnly() should be used to
+connect to initialize the library. It will try to open the read-only socket
+<code>/var/run/xenstored/socket_ro</code> to connect to the Xen Store and
+also try to use the RPC to the Xen daemon. In this case use of hypervisor
+calls and write to the Xen Store will not be possible, restraining the amount
+of APIs available and slowing down information gathering about domains.</p>
+
+<h3>Internal architecture</h3>
+
+<p>As the previous section explains, libvirt can communicate using different
+channels with the current hypervisor, and should also be able to use
+different kind of hypervisor. To simplify the internal design, code, ease
+maintainance and simplify the support of other virtualization engine the
+internals have been structured as one core component, the libvirt.c module
+acting as a front-end for the library API and a set of hypvisor drivers
+defining a common set of routines. That way the Xen Daemon accces, the Xen
+Store one, the Hypervisor hypercall are all isolated in separate C modules
+implementing at least a subset of the common operations defined by the
+drivers present in driver.h:</p>
+<ul>
+  <li>xend_internal: implements the driver functions though the Xen
+  Daemon</li>
+  <li>xs_internal: implements the subset of the driver availble though the
+    Xen Store</li>
+  <li>xen_internal: provide the implementation of the functions possible via
+    direct hypervisor access</li>
+</ul>
+
+<p>Note that a given driver may only implement a subset of those functions,
+for example saving a domain state to disk and restoring it is only possible
+though the Xen Daemon, on the other hand all interfaces allow to query the
+runtime state of a given domain.</p>
+
+<p></p>
+
+<h2><a name="Downloads">Downloads</a></h2>
+
+<p>The latest versions of libvirt can be found on the  <a
+href="ftp://libvirt.org/libvirt/">libvirt.org</a> server ( <a
+href="http://libvirt.org/sources/">HTTP</a>, <a
+href="ftp://libvirt.org/libvirt/">FTP</a>). You will find there the released
+versions as well as <a
+href="http://libvirt.org/sources/libvirt-cvs-snapshot.tar.gz">snapshot
+tarballs</a> updated from CVS head every hour</p>
+
+<p>Anonymous <a href="http://ximbiot.com/cvs/cvshome/docs/">CVS</a> is also
+available, first register onto the server:</p>
+
+<p><code>cvs -d :pserver:anoncvs@libvirt.org:2401/data/cvs login</code></p>
+
+<p>it will request a password, enter <strong>anoncvs</strong>. Then you can
+checkout the development tree with:</p>
+
+<p><code>cvs -d :pserver:anoncvs@libvirt.org:2401/data/cvs co
+libvirt</code></p>
+
+<p>Use ./autogen.sh to configure the local checkout, then <code>make</code>
+and <code>make install</code>, as usual. All normal cvs commands are now
+available except commiting to the base.</p>
+
+<h2><a name="Format">XML Format</a></h2>
+
+<p>This section describes the XML format used to represent domains, there are
+variations on the format based on the kind of domains run and the options
+used to launch them:</p>
+
+<p><a href="#Normal1">Normal paravirtualized Xen domains</a></p>
+
+<p><a href="#Fully1">Fully virtualized Xen domains</a></p>
+
+<p>The formats try as much as possible to follow the same structure and reuse
+elements and attributes where it makes sense.</p>
+
+<h3 id="Normal"><a name="Normal1" id="Normal1">Normal paravirtualized Xen
+guests</a>:</h3>
+
+<p>The library use an XML format to describe domains, as input to <a
+href="html/libvirt-libvirt.html#virDomainCreateLinux">virDomainCreateLinux()</a>
+and as the output of <a
+href="html/libvirt-libvirt.html#virDomainGetXMLDesc">virDomainGetXMLDesc()</a>,
+the following is an example of the format as returned by the shell command
+<code>virsh xmldump fc4</code> , where fc4 was one of the running domains:</p>
+<pre>&lt;domain type='xen' <span style="color: #0071FF; background-color: #FFFFFF">id='18'</span>&gt;
+  &lt;name&gt;fc4&lt;/name&gt;
+  <span style="color: #00B200; background-color: #FFFFFF">&lt;os&gt;
+    &lt;type&gt;linux&lt;/type&gt;
+    &lt;kernel&gt;/boot/vmlinuz-2.6.15-1.43_FC5guest&lt;/kernel&gt;
+    &lt;initrd&gt;/boot/initrd-2.6.15-1.43_FC5guest.img&lt;/initrd&gt;
+    &lt;root&gt;/dev/sda1&lt;/root&gt;
+    &lt;cmdline&gt; ro selinux=0 3&lt;/cmdline&gt;
+  &lt;/os&gt;</span>
+  &lt;memory&gt;131072&lt;/memory&gt;
+  &lt;vcpu&gt;1&lt;/vcpu&gt;
+  &lt;devices&gt;
+    <span style="color: #FF0080; background-color: #FFFFFF">&lt;disk type='file'&gt;
+      &lt;source file='/u/fc4.img'/&gt;
+      &lt;target dev='sda1'/&gt;
+    &lt;/disk&gt;</span>
+    <span style="color: #0000FF; background-color: #FFFFFF">&lt;interface type='bridge'&gt;
+      &lt;source bridge='xenbr0'/&gt;
+      &lt;mac address='</span><span style="color: #0000FF; background-color: #FFFFFF"></span><span style="color: #0000FF; background-color: #FFFFFF">aa:00:00:00:00:11'/&gt;
+      &lt;script path='/etc/xen/scripts/vif-bridge'/&gt;
+    &lt;/interface&gt;</span>
+    <span style="color: #FF8000; background-color: #FFFFFF">&lt;console tty='/dev/pts/5'/&gt;</span>
+  &lt;/devices&gt;
+&lt;/domain&gt;</pre>
+
+<p>The root element must be called <code>domain</code> with no namespace, the
+<code>type</code> attribute indicates the kind of hypervisor used, 'xen' is
+the default value. The <code>id</code> attribute gives the domain id at
+runtime (not however that this may change, for example if the domain is saved
+to disk and restored). The domain has a few children whose order is not
+significant:</p>
+<ul>
+  <li>name: the domain name, preferably ASCII based</li>
+  <li>memory: the maximum memory allocated to the domain in kilobytes</li>
+  <li>vcpu: the number of virtual cpu configured for the domain</li>
+  <li>os: a block describing the Operating System, its content will be
+    dependant on the OS type
+    <ul>
+      <li>type: indicate the OS type, always linux at this point</li>
+      <li>kernel: path to the kernel on the Domain 0 filesystem</li>
+      <li>initrd: an optional path for the init ramdisk on the Domain 0
+        filesystem</li>
+      <li>cmdline: optional command line to the kernel</li>
+      <li>root: the root filesystem from the guest viewpoint, it may be
+        passed as part of the cmdline content too</li>
+    </ul>
+  </li>
+  <li>devices: a list of <code>disk</code>, <code>interface</code> and
+    <code>console</code> descriptions in no special order</li>
+</ul>
+
+<p>The format of the devices and their type may grow over time, but the
+following should be sufficient for basic use:</p>
+
+<p>A <code>disk</code> device indicates a block device, it can have two
+values for the type attribute either 'file' or 'block' corresponding to the 2
+options availble at the Xen layer. It has two mandatory children, and one
+optional one in no specific order:</p>
+<ul>
+  <li>source with a file attribute containing the path in Domain 0 to the
+    file or a dev attribute if using a block device, containing the device
+    name ('hda5' or '/dev/hda5')</li>
+  <li>target indicates in a dev attribute the device where it is mapped in
+    the guest</li>
+  <li>readonly an optional empty element indicating the device is
+  read-only</li>
+</ul>
+
+<p>An <code>interface</code> element describes a network device mapped on the
+guest, it also has a type whose value is currently 'bridge', it also have a
+number of children in no specific order:</p>
+<ul>
+  <li>source: indicating the bridge name</li>
+  <li>mac: the optional mac address provided in the address attribute</li>
+  <li>ip: the optional IP address provided in the address attribute</li>
+  <li>script: the script used to bridge the interfcae in the Domain 0</li>
+  <li>target: and optional target indicating the device name.</li>
+</ul>
+
+<p>A <code>console</code> element describes a serial console connection to
+the guest. It has no children, and a single attribute <code>tty</code> which
+provides the path to the Pseudo TTY on which the guest console can be
+accessed</p>
+
+<p>Life cycle actions for the domain can also be expressed in the XML format,
+they drive what should be happening if the domain crashes, is rebooted or is
+poweroff. There is various actions possible when this happen:</p>
+<ul>
+  <li>destroy: The domain is cleaned up (that's the default normal processing
+    in Xen)</li>
+  <li>restart: A new domain is started in place of the old one with the same
+    configuration parameters</li>
+  <li>preserve: The domain will remain in memory until it is destroyed
+    manually, it won't be running but allows for post-mortem debugging</li>
+  <li>rename-restart: a variant of the previous one but where the old domain
+    is renamed before being saved to allow a restart</li>
+</ul>
+
+<p>The following could be used for a Xen production system:</p>
+<pre>&lt;domain&gt;
+  ...
+  &lt;on_reboot&gt;restart&lt;/on_reboot&gt;
+  &lt;on_poweroff&gt;destroy&lt;/on_poweroff&gt;
+  &lt;on_crash&gt;rename-restart&lt;/on_crash&gt;
+  ...
+&lt;/domain&gt;</pre>
+
+<p>While the format may be extended in various ways as support for more
+hypervisor types and features are added, it is expected that this core subset
+will remain functional in spite of the evolution of the library.</p>
+
+<h3 id="Fully"><a name="Fully1" id="Fully1">Fully virtualized guests</a>
+(added in 0.1.3):</h3>
+
+<p>Here is an example of a domain description used to start a fully
+virtualized (a.k.a. HVM) Xen domain. This requires hardware virtualization
+support at the processor level but allows to run unmodified operating
+systems:</p>
+<pre>&lt;domain type='xen' id='3'&gt;
+  &lt;name&gt;fv0&lt;/name&gt;
+  &lt;uuid&gt;4dea22b31d52d8f32516782e98ab3fa0&lt;/uuid&gt;
+  &lt;os&gt;
+    <span style="color: #0000E5; background-color: #FFFFFF">&lt;type&gt;hvm&lt;/type&gt;</span>
+    <span style="color: #0000E5; background-color: #FFFFFF">&lt;loader&gt;/usr/lib/xen/boot/hvmloader&lt;/loader&gt;</span>
+    <span style="color: #0000E5; background-color: #FFFFFF">&lt;boot dev='hd'/&gt;</span>
+  &lt;/os&gt;
+  &lt;memory&gt;524288&lt;/memory&gt;
+  &lt;vcpu&gt;1&lt;/vcpu&gt;
+  &lt;on_poweroff&gt;destroy&lt;/on_poweroff&gt;
+  &lt;on_reboot&gt;restart&lt;/on_reboot&gt;
+  &lt;on_crash&gt;restart&lt;/on_crash&gt;
+  &lt;features&gt;
+     <span style="color: #E50000; background-color: #FFFFFF">&lt;pae/&gt;
+     &lt;acpi/&gt;
+     &lt;apic/&gt;</span>
+  &lt;/features&gt;
+  &lt;devices&gt;
+    <span style="color: #0000E5; background-color: #FFFFFF">&lt;emulator&gt;/usr/lib/xen/bin/qemu-dm&lt;/emulator&gt;</span>
+    &lt;interface type='bridge'&gt;
+      &lt;source bridge='xenbr0'/&gt;
+      &lt;mac address='00:16:3e:5d:c7:9e'/&gt;
+      &lt;script path='vif-bridge'/&gt;
+    &lt;/interface&gt;
+    &lt;disk type='file'&gt;
+      &lt;source file='/root/fv0'/&gt;
+      &lt;target <span style="color: #0000E5; background-color: #FFFFFF">dev='hda'</span>/&gt;
+    &lt;/disk&gt;
+    &lt;disk type='file' <span style="color: #0000E5; background-color: #FFFFFF">device='cdrom'</span>&gt;
+      &lt;source file='/root/fc5-x86_64-boot.iso'/&gt;
+      &lt;target <span style="color: #0000E5; background-color: #FFFFFF">dev='hdc'</span>/&gt;
+      &lt;readonly/&gt;
+    &lt;/disk&gt;
+    &lt;disk type='file' <span style="color: #0000E5; background-color: #FFFFFF">device='floppy'</span>&gt;
+      &lt;source file='/root/fd.img'/&gt;
+      &lt;target <span style="color: #0000E5; background-color: #FFFFFF">dev='fda'</span>/&gt;
+    &lt;/disk&gt;
+    <span style="color: #0000E5; background-color: #FFFFFF">&lt;graphics type='vnc' port='5904'/&gt;</span>
+  &lt;/devices&gt;
+&lt;/domain&gt;</pre>
+
+<p>There is a few things to notice specifically for HVM domains:</p>
+<ul>
+  <li>the optional <code>&lt;features&gt;</code> block is used to enable
+    certain guest CPU / system features. For HVM guests the following
+    features are defined:
+    <ul>
+      <li><code>pae</code> - enable PAE memory addressing</li>
+      <li><code>apic</code> - enable IO APIC</li>
+      <li><code>acpi</code> - enable ACPI bios</li>
+    </ul>
+  </li>
+  <li>the <code>&lt;os&gt;</code> block description is very different, first
+    it indicates that the type is 'hvm' for hardware virtualization, then
+    instead of a kernel, boot and command line arguments, it points to an os
+    boot loader which will extract the boot informations from the boot device
+    specified in a separate boot element. The <code>dev</code> attribute on
+    the <code>boot</code> tag can be one of:
+    <ul>
+      <li><code>fd</code> - boot from first floppy device</li>
+      <li><code>hd</code> - boot from first harddisk device</li>
+      <li><code>cdrom</code> - boot from first cdrom device</li>
+    </ul>
+  </li>
+  <li>the <code>&lt;devices&gt;</code> section includes an emulator entry
+    pointing to an additional program in charge of emulating the devices</li>
+  <li>the disk entry indicates in the dev target section that the emulation
+    for the drive is the first IDE disk device hda. The list of device names
+    supported is dependant on the Hypervisor, but for Xen it can be any IDE
+    device <code>hda</code>-<code>hdd</code>, or a floppy device
+    <code>fda</code>, <code>fdb</code>. The <code>&lt;disk&gt;</code> element
+    also supports a 'device' attribute to indicate what kinda of hardware to
+    emulate. The following values are supported:
+    <ul>
+      <li><code>floppy</code> - a floppy disk controller</li>
+      <li><code>disk</code> - a generic hard drive (the default it
+      omitted)</li>
+      <li><code>cdrom</code> - a CDROM device</li>
+    </ul>
+    For Xen 3.0.2 and earlier a CDROM device can only be emulated on the
+    <code>hdc</code> channel, while for 3.0.3 and later, it can be emulated
+    on any IDE channel.</li>
+  <li>the <code>&lt;devices&gt;</code> section also include at least one
+    entry for the graphic device used to render the os. Currently there is
+    just 2 types possible 'vnc' or 'sdl'. If the type is 'vnc', then an
+    additional <code>port</code> attribute will be present indicating the TCP
+    port on which the VNC server is accepting client connections.</li>
+</ul>
+
+<p>It is likely that the HVM description gets additional optional elements
+and attributes as the support for fully virtualized domain expands,
+especially for the variety of devices emulated and the graphic support
+options offered.</p>
+
+<h2><a name="Python" id="Python">Binding for Python</a></h2>
+
+<p>Libvirt comes with direct support for the Python language (just make sure
+you installed the libvirt-python package if not compiling from sources). Also
+note that Daniel Berrange provides <a
+href="http://search.cpan.org/~danberr/Sys-Virt-0.1.0/">bindings for Perl</a>
+too.</p>
+
+<p>The Python binding should be complete and are mostly automatically
+generated from the formal description of the API in xml. The bindings are
+articulated around 2 classes <code>virConnect</code> and virDomain mapping to
+the C types. Functions in the C API taking either type as argument then
+becomes methods for the classes, their name is just stripped from the
+virConnect or virDomain(Get) prefix and the first letter gets converted to
+lower case, for example the C functions:</p>
+
+<p><code>int <a
+href="html/libvirt-libvirt.html#virConnectNumOfDomains">virConnectNumOfDomains</a>
+(virConnectPtr conn);</code></p>
+
+<p><code>int <a
+href="html/libvirt-libvirt.html#virDomainSetMaxMemory">virDomainSetMaxMemory</a>
+(virDomainPtr domain, unsigned long memory);</code></p>
+
+<p>become</p>
+
+<p><code>virConn::numOfDomains(self)</code></p>
+
+<p><code>virDomain::setMaxMemory(self, memory)</code></p>
+
+<p>This process is fully automated, you can get a summary of the conversion
+in the file libvirtclass.txt present in the python dir or in the docs.There
+is a couple of function who don't map directly to their C counterparts due to
+specificities in their argument conversions:</p>
+<ul>
+  <li><code><a
+    href="html/libvirt-libvirt.html#virConnectListDomains">virConnectListDomains</a></code>
+    is replaced by <code>virDomain::listDomainsID(self)</code> which returns
+    a list of the integer ID for the currently running domains</li>
+  <li><code><a
+    href="html/libvirt-libvirt.html#virDomainGetInfo">virDomainGetInfo</a></code>
+    is replaced by <code>virDomain::info()</code> which returns a list of
+    <ol>
+      <li>state: one of the state values (virDomainState)</li>
+      <li>maxMemory: the maximum memory used by the domain</li>
+      <li>memory: the current amount of memory used by the domain</li>
+      <li>nbVirtCPU: the number of virtual CPU</li>
+      <li>cpuTime: the time used by the domain in nanoseconds</li>
+    </ol>
+  </li>
+</ul>
+
+<p>So let's look at a simple example inspired from the <code>basic.py</code>
+test found in <code>python/tests/</code> in the source tree:</p>
+<pre>import <span style="color: #0071FF; background-color: #FFFFFF">libvirt</span>
+import sys
+
+conn = <span style="color: #0071FF; background-color: #FFFFFF">libvirt</span>.openReadOnly(None)
+if conn == None:
+    print 'Failed to open connection to the hypervisor'
+    sys.exit(1)
+
+try:
+    dom0 = conn.<span style="color: #007F00; background-color: #FFFFFF">lookupByName</span>("Domain-0")
+except:
+    print 'Failed to find the main domain'
+    sys.exit(1)
+
+print "Domain 0: id %d running %s" % (dom0.<span style="color: #FF0080; background-color: #FFFFFF">ID</span>(), dom0.<span style="color: #FF0080; background-color: #FFFFFF">OSType</span>())
+print dom0.<span style="color: #FF0080; background-color: #FFFFFF">info</span>()</pre>
+
+<p>There is not much to comment about it, it really is a straight mapping
+from the C API, the only points to notice are:</p>
+<ul>
+  <li>the import of the module called <code><span
+    style="color: #0071FF; background-color: #FFFFFF">libvirt</span></code></li>
+  <li>getting a connection to the hypervisor, in that case using the
+    openReadOnly function allows the code to execute as a normal user.</li>
+  <li>getting an object representing the Domain 0 using <span
+    style="color: #007F00; background-color: #FFFFFF">lookupByName</span></li>
+  <li>if the domain is not found a libvirtError exception will be raised</li>
+  <li>extracting and printing some informations about the domain using
+    various <span
+    style="color: #E50073; background-color: #FFFFFF">methods</span>
+    associated to the virDomain class.</li>
+</ul>
+
+<h2><a name="Errors" id="Errors">Handling of errors</a></h2>
+
+<p>The main goals of libvirt when it comes to error handling are:</p>
+<ul>
+  <li>provide as much detail as possible</li>
+  <li>provide the informations as soon as possible</li>
+  <li>dont force the library user into one style of error handling</li>
+</ul>
+
+<p>As result the library provide both synchronous, callback based and
+asynchronous error reporting. When an error happens in the library code the
+error is logged, allowing to retrieve it later and if the user registered an
+error callback it will be called synchronously. Once the call to libvirt ends
+the error can be detected by the return value and the full information for
+the last logged error can be retrieved.</p>
+
+<p>To avoid as much as prossible troubles with a global variable in a
+multithreaded environment, libvirt will associate when possible the errors to
+the current connection they are related to, that way the error is stored in a
+dynamic structure which can be made thread specific. Error callback can be
+set specifically to a connection with</p>
+
+<p>So error handling in the code is the following:</p>
+<ol>
+  <li>if the error can be associated to a connection for example when failing
+    to look up a domain
+    <ol>
+      <li>if there is a callback associated to the connection set with <a
+        href="html/libvirt-virterror.html#virConnSetErrorFunc">virConnSetErrorFunc</a>,
+        call it with the error informations</li>
+      <li>otherwise if there is a global callback set with <a
+        href="html/libvirt-virterror.html#virSetErrorFunc">virSetErrorFunc</a>,
+        call it with the error information</li>
+      <li>otherwise call <a
+        href="html/libvirt-virterror.html#virDefaultErrorFunc">virDefaultErrorFunc</a>
+        which is the default error function of the library issuing the error
+        on stderr</li>
+      <li>save the error in the connection for later retrieval with <a
+        href="html/libvirt-virterror.html#virConnGetLastError">virConnGetLastError</a></li>
+    </ol>
+  </li>
+  <li>otherwise like when failing to create an hypervisor connection:
+    <ol>
+      <li>if there is a global callback set with <a
+        href="html/libvirt-virterror.html#virSetErrorFunc">virSetErrorFunc</a>,
+        call it with the error information</li>
+      <li>otherwise call <a
+        href="html/libvirt-virterror.html#virDefaultErrorFunc">virDefaultErrorFunc</a>
+        which is the default error function of the library issuing the error
+        on stderr</li>
+      <li>save the error in the connection for later retrieval with <a
+        href="html/libvirt-virterror.html#virGetLastError">virGetLastError</a></li>
+    </ol>
+  </li>
+</ol>
+
+<p>In all cases the error informations are provided as a <a
+href="html/libvirt-virterror.html#virErrorPtr">virErrorPtr</a> pointer to
+read-only structure <a
+href="html/libvirt-virterror.html#virError">virError</a> containing the
+following fields:</p>
+<ul>
+  <li>code: an error number from the <a
+    href="html/libvirt-virterror.html#virErrorNumber">virErrorNumber</a>
+  enum</li>
+  <li>domain: an enum indicating which part of libvirt raised the error see
+    <a
+  href="html/libvirt-virterror.html#virErrorDomain">virErrorDomain</a></li>
+  <li>level: the error level, usually VIR_ERR_ERROR, though there is room for
+    warnings like VIR_ERR_WARNING</li>
+  <li>message: the full human-readable formatted string of the error</li>
+  <li>conn: if available a pointer to the <a
+    href="html/libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>
+    connection to the hypervisor where this happened</li>
+  <li>dom: if available a pointer to the <a
+    href="html/libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain
+    targetted in the operation</li>
+</ul>
+
+<p>and then extra raw informations about the error which may be initialized
+to 0 or NULL if unused</p>
+<ul>
+  <li>str1, str2, str3: string informations, usually str1 is the error
+    message format</li>
+  <li>int1, int2: integer informations</li>
+</ul>
+
+<p>So usually, setting up specific error handling with libvirt consist of
+registering an handler with with <a
+href="html/libvirt-virterror.html#virSetErrorFunc">virSetErrorFunc</a> or
+with <a
+href="html/libvirt-virterror.html#virConnSetErrorFunc">virConnSetErrorFunc</a>,
+chech the value of the code value, take appropriate action, if needed let
+libvirt print the error on stderr by calling <a
+href="html/libvirt-virterror.html#virDefaultErrorFunc">virDefaultErrorFunc</a>.
+For asynchronous error handing, set such a function doing nothing to avoid
+the error being reported on stderr, and call virConnGetLastError or
+virGetLastError when an API call returned an error value. It can be a good
+idea to use <a
+href="html/libvirt-virterror.html#virResetLastError">virResetError</a> or <a
+href="html/libvirt-virterror.html#virConnResetLastError">virConnResetLastError</a>
+once an error has been processed fully.</p>
+
+<p>At the python level, there only a global reporting callback function at
+this point, see the error.py example about it:</p>
+<pre>def handler(ctxt, err):
+    global errno
+
+    #print "handler(%s, %s)" % (ctxt, err)
+    errno = err
+
+libvirt.registerErrorHandler(handler, 'context') </pre>
+
+<p>the second argument to the registerErrorHandler function is passed as the
+fist argument of the callback like in the C version. The error is a tuple
+containing the same field as a virError in C, but cast to Python.</p>
+
+<h2><a name="FAQ" id="FAQ">FAQ</a></h2>
+
+<p>Table of Contents:</p>
+<ul>
+  <li><a href="FAQ.html#License">License(s)</a></li>
+  <li><a href="FAQ.html#Installati">Installation</a></li>
+  <li><a href="FAQ.html#Compilatio">Compilation</a></li>
+  <li><a href="FAQ.html#Developer">Developer corner</a></li>
+</ul>
+
+<h3><a name="License">License</a>(s)</h3>
+<ol>
+  <li><em>Licensing Terms for libvirt</em>
+    <p>libvirt is released under the <a
+    href="http://www.opensource.org/licenses/lgpl-license.html">GNU Lesser
+    General Public License</a>, see the file COPYING.LIB in the distribution
+    for the precise wording. The only library that libvirt depends upon is
+    the Xen store access library which is also licenced under the LGPL.</p>
+  </li>
+  <li><em>Can I embed libvirt in a proprietary application ?</em>
+    <p>Yes. The LGPL allows you to embed libvirt into a proprietary
+    application. It would be graceful to send-back bug fixes and improvements
+    as patches for possible incorporation in the main development tree. It
+    will decrease your maintainance costs anyway if you do so.</p>
+  </li>
+</ol>
+
+<h3><a name="Installati">Installation</a></h3>
+<ol>
+  <li><em>Where can I get libvirt</em> ?
+    <p>The original distribution comes from <a
+    href="ftp://libvirt.org/libvirt/">ftp://libvirt.org/libvirt/</a>.</p>
+  </li>
+  <li><em>I can't install the libvirt/libvirt-devel RPM packages due to
+    failed dependencies</em>
+    <p>The most generic solution is to re-fetch the latest src.rpm , and
+    rebuild it locally with</p>
+    <p><code>rpm --rebuild libvirt-xxx.src.rpm</code>.</p>
+    <p>If everything goes well it will generate two binary rpm packages (one
+    providing the shared libs and virsh, and the other one, the -devel
+    package, providing includes, static libraries and scripts needed to build
+    applications with libvirt that you can install locally.</p>
+    <p>One can also rebuild the RPMs from a tarball:</p>
+    <p><code>rpmbuild -ta libdir-xxx.tar.gz</code></p>
+    <p>Or from a configured tree with:</p>
+    <p><code>make rpm</code></p>
+  </li>
+  <li><em>Failure to use the API for non-root users</em>
+    <p>Large parts of the API may only be accessible with root priviledges,
+    however the read only access to the xenstore data doesnot have to be
+    forbidden to user, at least for monitoring purposes. If "virsh dominfo"
+    fails to run as an user, change the mode of the xenstore read-only socket
+    with:</p>
+    <p><code>chmod 666 /var/run/xenstored/socket_ro</code></p>
+    <p>and also make sure that the Xen Daemon is running correctly with local
+    HTTP server enabled, this is defined in
+    <code>/etc/xen/xend-config.sxp</code> which need the following line to be
+    enabled:</p>
+    <p><code>(xend-http-server yes)</code></p>
+    <p>If needed restart the xend daemon after making the change with the
+    following command run as root:</p>
+    <p><code>service xend restart</code></p>
+  </li>
+</ol>
+
+<h3><a name="Compilatio">Compilation</a></h3>
+<ol>
+  <li><em>What is the process to compile libvirt ?</em>
+    <p>As most UNIX libraries libvirt follows the "standard":</p>
+    <p><code>gunzip -c libvirt-xxx.tar.gz | tar xvf -</code></p>
+    <p><code>cd libvirt-xxxx</code></p>
+    <p><code>./configure --help</code></p>
+    <p>to see the options, then the compilation/installation proper</p>
+    <p><code>./configure [possible options]</code></p>
+    <p><code>make</code></p>
+    <p><code>make install</code></p>
+    <p>At that point you may have to rerun ldconfig or a similar utility to
+    update your list of installed shared libs.</p>
+  </li>
+  <li><em>What other libraries are needed to compile/install libvirt ?</em>
+    <p>Libvirt requires libxenstore, which is usually provided by the xen
+    packages as well as the public headers to compile against libxenstore.</p>
+  </li>
+  <li><em>I use the CVS version and there is no configure script</em>
+    <p>The configure script (and other Makefiles) are generated. Use the
+    autogen.sh script to regenerate the configure script and Makefiles,
+    like:</p>
+    <p><code>./autogen.sh --prefix=/usr --disable-shared</code></p>
+  </li>
+</ol>
+
+<h3><a name="Developer">Developer</a> corner</h3>
+<ol>
+  <li><em>Troubles compiling or linking programs using libvirt</em>
+    <p>To simplify the process of reusing the library, libvirt comes with
+    pkgconfig support, which can be used directly from autoconf support or
+    via the pkg-config command line tool, like:</p>
+    <p><code>pkg-config libvirt --libs</code></p>
+  </li>
+</ol>
+
+<h2><a name="Reporting">Reporting bugs and getting help</a></h2>
+
+<p>There is a mailing-list <a
+href="mailto:libvir-list@redhat.com">libvir-list@redhat.com</a> for libvirt,
+with an  <a href="https://www.redhat.com/archives/libvir-list/">on-line
+archive</a>. Please subscribe to this list before posting by visiting the <a
+href="https://www.redhat.com/mailman/listinfo/libvir-list">associated Web</a>
+page and follow the instructions. Patches with explanations and provided as
+attachments are really appreciated and will be discussed on the mailing list.
+If possible generate the patches by using cvs diff -u in a CVS checkout.</p>
+
+<p>We use Red Hat Bugzilla to track bugs to libvirt. If you want to report a
+bug, please check <a href="http://bugzilla.redhat.com/bugzilla/buglist.cgi?component=libvirt&amp;component=libvirt-devel&amp;component=libvirt-python&amp;bug_status=ASSIGNED&amp;bug_status=INVESTIGATE&amp;bug_status=NEW&amp;bug_status=REOPENED&amp;bug_status=VERIFIED&amp;short_desc_type=allwordssubstr&amp;short_desc=&amp;long_desc_type=allwordssubstr&amp;long_desc=&amp;Search=Search">the existing open bugs</a>, then if yours isn't a duplicate of
+an existing bug, <a href="http://bugzilla.redhat.com/bugzilla/enter_bug.cgi?product=Fedora%20Core&amp;component=libvirt">log a new bug</a>. It may be good
+to post to the <a href="mailto:libvir-list@redhat.com">mailing-list</a>
+too if the issue looks serious, thanks !</p>
+</body>
+</html>

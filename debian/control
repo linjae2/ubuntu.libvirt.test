@@ -1,0 +1,54 @@
+Source: libvirt
+Section: devel
+Priority: optional
+Maintainer: Andrew Mitchell <ajmitch@ubuntu.com>
+Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.37.2), libxen3.0-dev, libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, python-all-dev, python-central (>= 0.5.6)
+XS-Python-Version: 2.4
+Standards-Version: 3.7.2
+
+Package: libvirt-bin
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: the programs for the libvirt library
+ Libvirt is a C toolkit to interract with the virtualization capabilities
+ of recent versions of Linux (and other OSes). The library aim at providing
+ long term stable C API initially for the Xen paravirtualization but
+ should be able to integrate other virtualization mechanisms if needed.
+ .
+ This package contains the supporting binaries to use with libvirt
+
+Package: libvirt0
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: library for interfacing with Xen & other virtualization systems
+ Libvirt is a C toolkit to interract with the virtualization capabilities
+ of recent versions of Linux (and other OSes). The library aim at providing
+ long term stable C API initially for the Xen paravirtualization but
+ should be able to integrate other virtualization mechanisms if needed.
+
+Package: libvirt-dev
+Architecture: any
+Depends: libvirt0 (= ${Source-Version})
+Description: development files for the libvirt library
+ Libvirt is a C toolkit to interract with the virtualization capabilities
+ of recent versions of Linux (and other OSes). The library aim at providing
+ long term stable C API initially for the Xen paravirtualization but
+ should be able to integrate other virtualization mechanisms if needed.
+ .
+ This package contains the header files and static libraries which are
+ needed for developing the applications with libvirt.
+
+
+Package: python-libvirt
+Architecture: any
+Depends: ${shlibs:Depends}, ${python:Depends}
+Provides: ${python:Provides}
+XB-Python-Version: ${python:Versions}
+Description: libvirt python bindings
+ Libvirt is a C toolkit to interract with the virtualization capabilities
+ of recent versions of Linux (and other OSes). The library aim at providing
+ long term stable C API initially for the Xen paravirtualization but
+ should be able to integrate other virtualization mechanisms if needed.
+ .
+ This package contains python bindings for the libvirt library
+

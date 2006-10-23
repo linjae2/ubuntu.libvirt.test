@@ -1,0 +1,6 @@
+libvirt (0.1.8-0ubuntu1) feisty; urgency=low
+
+  * Initial release
+
+ -- Andrew Mitchell <ajmitch@ubuntu.com>  Mon, 23 Oct 2006 20:00:28 +1300
+

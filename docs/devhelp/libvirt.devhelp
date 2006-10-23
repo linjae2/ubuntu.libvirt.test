@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<book xmlns="http://www.devhelp.net/book" title="libvirt Reference Manual" link="index.html" author="" name="libvirt">
+  <chapters>
+    <sub name="API" link="general.html">
+      <sub name="libvirt" link="libvirt-libvirt.html"/>
+      <sub name="virterror" link="libvirt-virterror.html"/>
+    </sub>
+  </chapters>
+  <functions>
+    <function name="LIBVIR_VERSION_NUMBER" link="libvirt-libvirt.html#LIBVIR_VERSION_NUMBER"/>
+    <function name="VIR_COPY_CPUMAP" link="libvirt-libvirt.html#VIR_COPY_CPUMAP"/>
+    <function name="VIR_CPU_MAPLEN" link="libvirt-libvirt.html#VIR_CPU_MAPLEN"/>
+    <function name="VIR_CPU_USABLE" link="libvirt-libvirt.html#VIR_CPU_USABLE"/>
+    <function name="VIR_GET_CPUMAP" link="libvirt-libvirt.html#VIR_GET_CPUMAP"/>
+    <function name="VIR_NODEINFO_MAXCPUS" link="libvirt-libvirt.html#VIR_NODEINFO_MAXCPUS"/>
+    <function name="VIR_UNUSE_CPU" link="libvirt-libvirt.html#VIR_UNUSE_CPU"/>
+    <function name="VIR_USE_CPU" link="libvirt-libvirt.html#VIR_USE_CPU"/>
+    <function name="VIR_DEVICE_DEFAULT" link="libvirt-libvirt.html#VIR_DEVICE_DEFAULT"/>
+    <function name="VIR_DEVICE_RO" link="libvirt-libvirt.html#VIR_DEVICE_RO"/>
+    <function name="VIR_DEVICE_RW" link="libvirt-libvirt.html#VIR_DEVICE_RW"/>
+    <function name="VIR_DEVICE_RW_FORCE" link="libvirt-libvirt.html#VIR_DEVICE_RW_FORCE"/>
+    <function name="VIR_DOMAIN_BLOCKED" link="libvirt-libvirt.html#VIR_DOMAIN_BLOCKED"/>
+    <function name="VIR_DOMAIN_CRASHED" link="libvirt-libvirt.html#VIR_DOMAIN_CRASHED"/>
+    <function name="VIR_DOMAIN_DESTROY" link="libvirt-libvirt.html#VIR_DOMAIN_DESTROY"/>
+    <function name="VIR_DOMAIN_NONE" link="libvirt-libvirt.html#VIR_DOMAIN_NONE"/>
+    <function name="VIR_DOMAIN_NOSTATE" link="libvirt-libvirt.html#VIR_DOMAIN_NOSTATE"/>
+    <function name="VIR_DOMAIN_PAUSED" link="libvirt-libvirt.html#VIR_DOMAIN_PAUSED"/>
+    <function name="VIR_DOMAIN_PRESERVE" link="libvirt-libvirt.html#VIR_DOMAIN_PRESERVE"/>
+    <function name="VIR_DOMAIN_RENAME_RESTART" link="libvirt-libvirt.html#VIR_DOMAIN_RENAME_RESTART"/>
+    <function name="VIR_DOMAIN_RESTART" link="libvirt-libvirt.html#VIR_DOMAIN_RESTART"/>
+    <function name="VIR_DOMAIN_RUNNING" link="libvirt-libvirt.html#VIR_DOMAIN_RUNNING"/>
+    <function name="VIR_DOMAIN_SHUTDOWN" link="libvirt-libvirt.html#VIR_DOMAIN_SHUTDOWN"/>
+    <function name="VIR_DOMAIN_SHUTOFF" link="libvirt-libvirt.html#VIR_DOMAIN_SHUTOFF"/>
+    <function name="VIR_ERR_CALL_FAILED" link="libvirt-virterror.html#VIR_ERR_CALL_FAILED"/>
+    <function name="VIR_ERR_CONF_SYNTAX" link="libvirt-virterror.html#VIR_ERR_CONF_SYNTAX"/>
+    <function name="VIR_ERR_DOM_EXIST" link="libvirt-virterror.html#VIR_ERR_DOM_EXIST"/>
+    <function name="VIR_ERR_DRIVER_FULL" link="libvirt-virterror.html#VIR_ERR_DRIVER_FULL"/>
+    <function name="VIR_ERR_ERROR" link="libvirt-virterror.html#VIR_ERR_ERROR"/>
+    <function name="VIR_ERR_GET_FAILED" link="libvirt-virterror.html#VIR_ERR_GET_FAILED"/>
+    <function name="VIR_ERR_HTTP_ERROR" link="libvirt-virterror.html#VIR_ERR_HTTP_ERROR"/>
+    <function name="VIR_ERR_INTERNAL_ERROR" link="libvirt-virterror.html#VIR_ERR_INTERNAL_ERROR"/>
+    <function name="VIR_ERR_INVALID_ARG" link="libvirt-virterror.html#VIR_ERR_INVALID_ARG"/>
+    <function name="VIR_ERR_INVALID_CONN" link="libvirt-virterror.html#VIR_ERR_INVALID_CONN"/>
+    <function name="VIR_ERR_INVALID_DOMAIN" link="libvirt-virterror.html#VIR_ERR_INVALID_DOMAIN"/>
+    <function name="VIR_ERR_NONE" link="libvirt-virterror.html#VIR_ERR_NONE"/>
+    <function name="VIR_ERR_NO_CONNECT" link="libvirt-virterror.html#VIR_ERR_NO_CONNECT"/>
+    <function name="VIR_ERR_NO_DEVICE" link="libvirt-virterror.html#VIR_ERR_NO_DEVICE"/>
+    <function name="VIR_ERR_NO_KERNEL" link="libvirt-virterror.html#VIR_ERR_NO_KERNEL"/>
+    <function name="VIR_ERR_NO_MEMORY" link="libvirt-virterror.html#VIR_ERR_NO_MEMORY"/>
+    <function name="VIR_ERR_NO_NAME" link="libvirt-virterror.html#VIR_ERR_NO_NAME"/>
+    <function name="VIR_ERR_NO_OS" link="libvirt-virterror.html#VIR_ERR_NO_OS"/>
+    <function name="VIR_ERR_NO_ROOT" link="libvirt-virterror.html#VIR_ERR_NO_ROOT"/>
+    <function name="VIR_ERR_NO_SOURCE" link="libvirt-virterror.html#VIR_ERR_NO_SOURCE"/>
+    <function name="VIR_ERR_NO_SUPPORT" link="libvirt-virterror.html#VIR_ERR_NO_SUPPORT"/>
+    <function name="VIR_ERR_NO_TARGET" link="libvirt-virterror.html#VIR_ERR_NO_TARGET"/>
+    <function name="VIR_ERR_NO_XEN" link="libvirt-virterror.html#VIR_ERR_NO_XEN"/>
+    <function name="VIR_ERR_NO_XENSTORE" link="libvirt-virterror.html#VIR_ERR_NO_XENSTORE"/>
+    <function name="VIR_ERR_OK" link="libvirt-virterror.html#VIR_ERR_OK"/>
+    <function name="VIR_ERR_OPEN_FAILED" link="libvirt-virterror.html#VIR_ERR_OPEN_FAILED"/>
+    <function name="VIR_ERR_OPERATION_DENIED" link="libvirt-virterror.html#VIR_ERR_OPERATION_DENIED"/>
+    <function name="VIR_ERR_OPERATION_FAILED" link="libvirt-virterror.html#VIR_ERR_OPERATION_FAILED"/>
+    <function name="VIR_ERR_OS_TYPE" link="libvirt-virterror.html#VIR_ERR_OS_TYPE"/>
+    <function name="VIR_ERR_PARSE_FAILED" link="libvirt-virterror.html#VIR_ERR_PARSE_FAILED"/>
+    <function name="VIR_ERR_POST_FAILED" link="libvirt-virterror.html#VIR_ERR_POST_FAILED"/>
+    <function name="VIR_ERR_READ_FAILED" link="libvirt-virterror.html#VIR_ERR_READ_FAILED"/>
+    <function name="VIR_ERR_SEXPR_SERIAL" link="libvirt-virterror.html#VIR_ERR_SEXPR_SERIAL"/>
+    <function name="VIR_ERR_UNKNOWN_HOST" link="libvirt-virterror.html#VIR_ERR_UNKNOWN_HOST"/>
+    <function name="VIR_ERR_WARNING" link="libvirt-virterror.html#VIR_ERR_WARNING"/>
+    <function name="VIR_ERR_WRITE_FAILED" link="libvirt-virterror.html#VIR_ERR_WRITE_FAILED"/>
+    <function name="VIR_ERR_XEN_CALL" link="libvirt-virterror.html#VIR_ERR_XEN_CALL"/>
+    <function name="VIR_ERR_XML_ERROR" link="libvirt-virterror.html#VIR_ERR_XML_ERROR"/>
+    <function name="VIR_FROM_CONF" link="libvirt-virterror.html#VIR_FROM_CONF"/>
+    <function name="VIR_FROM_DOM" link="libvirt-virterror.html#VIR_FROM_DOM"/>
+    <function name="VIR_FROM_NONE" link="libvirt-virterror.html#VIR_FROM_NONE"/>
+    <function name="VIR_FROM_PROXY" link="libvirt-virterror.html#VIR_FROM_PROXY"/>
+    <function name="VIR_FROM_RPC" link="libvirt-virterror.html#VIR_FROM_RPC"/>
+    <function name="VIR_FROM_SEXPR" link="libvirt-virterror.html#VIR_FROM_SEXPR"/>
+    <function name="VIR_FROM_XEN" link="libvirt-virterror.html#VIR_FROM_XEN"/>
+    <function name="VIR_FROM_XEND" link="libvirt-virterror.html#VIR_FROM_XEND"/>
+    <function name="VIR_FROM_XENSTORE" link="libvirt-virterror.html#VIR_FROM_XENSTORE"/>
+    <function name="VIR_FROM_XML" link="libvirt-virterror.html#VIR_FROM_XML"/>
+    <function name="VIR_VCPU_BLOCKED" link="libvirt-libvirt.html#VIR_VCPU_BLOCKED"/>
+    <function name="VIR_VCPU_OFFLINE" link="libvirt-libvirt.html#VIR_VCPU_OFFLINE"/>
+    <function name="VIR_VCPU_RUNNING" link="libvirt-libvirt.html#VIR_VCPU_RUNNING"/>
+    <function name="virConnectPtr" link="libvirt-libvirt.html#virConnectPtr"/>
+    <function name="virDeviceMode" link="libvirt-libvirt.html#virDeviceMode"/>
+    <function name="virDomainCreateFlags" link="libvirt-libvirt.html#virDomainCreateFlags"/>
+    <function name="virDomainInfoPtr" link="libvirt-libvirt.html#virDomainInfoPtr"/>
+    <function name="virDomainKernelPtr" link="libvirt-libvirt.html#virDomainKernelPtr"/>
+    <function name="virDomainPtr" link="libvirt-libvirt.html#virDomainPtr"/>
+    <function name="virDomainRestart" link="libvirt-libvirt.html#virDomainRestart"/>
+    <function name="virDomainState" link="libvirt-libvirt.html#virDomainState"/>
+    <function name="virErrorDomain" link="libvirt-virterror.html#virErrorDomain"/>
+    <function name="virErrorLevel" link="libvirt-virterror.html#virErrorLevel"/>
+    <function name="virErrorNumber" link="libvirt-virterror.html#virErrorNumber"/>
+    <function name="virErrorPtr" link="libvirt-virterror.html#virErrorPtr"/>
+    <function name="virNodeInfoPtr" link="libvirt-libvirt.html#virNodeInfoPtr"/>
+    <function name="virVcpuInfoPtr" link="libvirt-libvirt.html#virVcpuInfoPtr"/>
+    <function name="virVcpuState" link="libvirt-libvirt.html#virVcpuState"/>
+    <function name="virConnect" link="libvirt-libvirt.html#virConnect"/>
+    <function name="virDomain" link="libvirt-libvirt.html#virDomain"/>
+    <function name="virDomainInfo" link="libvirt-libvirt.html#virDomainInfo"/>
+    <function name="virDomainKernel" link="libvirt-libvirt.html#virDomainKernel"/>
+    <function name="virError" link="libvirt-virterror.html#virError"/>
+    <function name="virNodeInfo" link="libvirt-libvirt.html#virNodeInfo"/>
+    <function name="virVcpuInfo" link="libvirt-libvirt.html#virVcpuInfo"/>
+    <function name="virErrorFunc" link="libvirt-virterror.html#virErrorFunc"/>
+    <function name="virConnCopyLastError ()" link="libvirt-virterror.html#virConnCopyLastError"/>
+    <function name="virConnGetLastError ()" link="libvirt-virterror.html#virConnGetLastError"/>
+    <function name="virConnResetLastError ()" link="libvirt-virterror.html#virConnResetLastError"/>
+    <function name="virConnSetErrorFunc ()" link="libvirt-virterror.html#virConnSetErrorFunc"/>
+    <function name="virConnectClose ()" link="libvirt-libvirt.html#virConnectClose"/>
+    <function name="virConnectGetType ()" link="libvirt-libvirt.html#virConnectGetType"/>
+    <function name="virConnectGetVersion ()" link="libvirt-libvirt.html#virConnectGetVersion"/>
+    <function name="virConnectListDefinedDomains ()" link="libvirt-libvirt.html#virConnectListDefinedDomains"/>
+    <function name="virConnectListDomains ()" link="libvirt-libvirt.html#virConnectListDomains"/>
+    <function name="virConnectNumOfDefinedDomains ()" link="libvirt-libvirt.html#virConnectNumOfDefinedDomains"/>
+    <function name="virConnectNumOfDomains ()" link="libvirt-libvirt.html#virConnectNumOfDomains"/>
+    <function name="virConnectOpen ()" link="libvirt-libvirt.html#virConnectOpen"/>
+    <function name="virConnectOpenReadOnly ()" link="libvirt-libvirt.html#virConnectOpenReadOnly"/>
+    <function name="virCopyLastError ()" link="libvirt-virterror.html#virCopyLastError"/>
+    <function name="virDefaultErrorFunc ()" link="libvirt-virterror.html#virDefaultErrorFunc"/>
+    <function name="virDomainCreate ()" link="libvirt-libvirt.html#virDomainCreate"/>
+    <function name="virDomainCreateLinux ()" link="libvirt-libvirt.html#virDomainCreateLinux"/>
+    <function name="virDomainDefineXML ()" link="libvirt-libvirt.html#virDomainDefineXML"/>
+    <function name="virDomainDestroy ()" link="libvirt-libvirt.html#virDomainDestroy"/>
+    <function name="virDomainFree ()" link="libvirt-libvirt.html#virDomainFree"/>
+    <function name="virDomainGetID ()" link="libvirt-libvirt.html#virDomainGetID"/>
+    <function name="virDomainGetInfo ()" link="libvirt-libvirt.html#virDomainGetInfo"/>
+    <function name="virDomainGetMaxMemory ()" link="libvirt-libvirt.html#virDomainGetMaxMemory"/>
+    <function name="virDomainGetName ()" link="libvirt-libvirt.html#virDomainGetName"/>
+    <function name="virDomainGetOSType ()" link="libvirt-libvirt.html#virDomainGetOSType"/>
+    <function name="virDomainGetUUID ()" link="libvirt-libvirt.html#virDomainGetUUID"/>
+    <function name="virDomainGetUUIDString ()" link="libvirt-libvirt.html#virDomainGetUUIDString"/>
+    <function name="virDomainGetVcpus ()" link="libvirt-libvirt.html#virDomainGetVcpus"/>
+    <function name="virDomainGetXMLDesc ()" link="libvirt-libvirt.html#virDomainGetXMLDesc"/>
+    <function name="virDomainLookupByID ()" link="libvirt-libvirt.html#virDomainLookupByID"/>
+    <function name="virDomainLookupByName ()" link="libvirt-libvirt.html#virDomainLookupByName"/>
+    <function name="virDomainLookupByUUID ()" link="libvirt-libvirt.html#virDomainLookupByUUID"/>
+    <function name="virDomainLookupByUUIDString ()" link="libvirt-libvirt.html#virDomainLookupByUUIDString"/>
+    <function name="virDomainPinVcpu ()" link="libvirt-libvirt.html#virDomainPinVcpu"/>
+    <function name="virDomainReboot ()" link="libvirt-libvirt.html#virDomainReboot"/>
+    <function name="virDomainRestore ()" link="libvirt-libvirt.html#virDomainRestore"/>
+    <function name="virDomainResume ()" link="libvirt-libvirt.html#virDomainResume"/>
+    <function name="virDomainSave ()" link="libvirt-libvirt.html#virDomainSave"/>
+    <function name="virDomainSetMaxMemory ()" link="libvirt-libvirt.html#virDomainSetMaxMemory"/>
+    <function name="virDomainSetMemory ()" link="libvirt-libvirt.html#virDomainSetMemory"/>
+    <function name="virDomainSetVcpus ()" link="libvirt-libvirt.html#virDomainSetVcpus"/>
+    <function name="virDomainShutdown ()" link="libvirt-libvirt.html#virDomainShutdown"/>
+    <function name="virDomainSuspend ()" link="libvirt-libvirt.html#virDomainSuspend"/>
+    <function name="virDomainUndefine ()" link="libvirt-libvirt.html#virDomainUndefine"/>
+    <function name="virGetLastError ()" link="libvirt-virterror.html#virGetLastError"/>
+    <function name="virGetVersion ()" link="libvirt-libvirt.html#virGetVersion"/>
+    <function name="virInitialize ()" link="libvirt-libvirt.html#virInitialize"/>
+    <function name="virNodeGetInfo ()" link="libvirt-libvirt.html#virNodeGetInfo"/>
+    <function name="virResetError ()" link="libvirt-virterror.html#virResetError"/>
+    <function name="virResetLastError ()" link="libvirt-virterror.html#virResetLastError"/>
+    <function name="virSetErrorFunc ()" link="libvirt-virterror.html#virSetErrorFunc"/>
+  </functions>
+</book>
