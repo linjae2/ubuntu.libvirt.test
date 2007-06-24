@@ -29,8 +29,14 @@ ignored_files = {
   "proxy_internal.c": "internal code",
   "xen_internal.h": "internal includes and defines",
   "xen_internal.c": "internal code",
+  "xen_unified.h": "internal includes and defines",
+  "xen_unified.c": "internal code",
   "xs_internal.h": "internal includes and defines",
   "xs_internal.c": "internal code",
+  "xm_internal.h": "internal code",
+  "xm_internal.c": "internal code",
+  "qemu_internal.h": "internal code",
+  "qemu_internal.c": "internal code",
   "sexpr.h": "internal includes and defines",
   "sexpr.c": "internal code",
   "xml.h": "internal includes and defines",
@@ -41,6 +47,8 @@ ignored_files = {
   "test.c": "test driver",
   "conf.h": "internal code",
   "conf.c": "internal code",
+  "console.h": "internal code",
+  "console.c": "internal code",
 }
 
 ignored_words = {

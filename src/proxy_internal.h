@@ -36,6 +36,7 @@ typedef enum {
 	VIR_PROXY_MAX_MEMORY = 8,
 	VIR_PROXY_DOMAIN_INFO = 9,
 	VIR_PROXY_DOMAIN_XML = 10,
+	VIR_PROXY_DOMAIN_OSTYPE = 11
 } virProxyCommand;
 
 /*
@@ -77,18 +78,31 @@ struct _virProxyFullPacket {
     union {
         char       str[4080];   /* extra char array */
         int        arg[1020];   /* extra int array */
-	virDomainInfo dinfo;	/* domain information */
-	virNodeInfo   ninfo;	/* node information */
+        virDomainInfo dinfo;	/* domain information */
+        virNodeInfo   ninfo;	/* node information */
     } extra;
 };
 typedef struct _virProxyFullPacket virProxyFullPacket;
 typedef  virProxyFullPacket *virProxyFullPacketPtr;
-/*
- * Functions callable from libvirt library
- */
-void xenProxyRegister(void);
+
+extern virDriver xenProxyDriver;
+int xenProxyInit (void);
 
 #ifdef __cplusplus
 }
 #endif                          /* __cplusplus */
 #endif /* __LIBVIR_PROXY_H__ */
+
+/*
+ * vim: set tabstop=4:
+ * vim: set shiftwidth=4:
+ * vim: set expandtab:
+ */
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

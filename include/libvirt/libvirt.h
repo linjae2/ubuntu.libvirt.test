@@ -1,4 +1,4 @@
-/*
+/* -*- c -*-
  * libvirt.h:
  * Summary: core interfaces for the libvirt library
  * Description: Provides the interfaces of the libvirt library to handle
@@ -187,6 +187,24 @@ struct _virNodeInfo {
 
 typedef virNodeInfo *virNodeInfoPtr;
 
+/**
+ * VIR_UUID_BUFLEN:
+ *
+ * This macro provides the length of the buffer required
+ * for virDomainGetUUID()
+ */
+
+#define VIR_UUID_BUFLEN (16)
+
+/**
+ * VIR_UUID_STRING_BUFLEN:
+ *
+ * This macro provides the length of the buffer required
+ * for virDomainGetUUIDString()
+ */
+
+#define VIR_UUID_STRING_BUFLEN (36+1)
+
 /* library versionning */
 
 /**
@@ -196,7 +214,7 @@ typedef virNodeInfo *virNodeInfoPtr;
  * version * 1,000,000 + minor * 1000 + micro
  */
 
-#define LIBVIR_VERSION_NUMBER 1008
+#define LIBVIR_VERSION_NUMBER 2002
 
 int			virGetVersion		(unsigned long *libVer,
 						 const char *type,
@@ -213,8 +231,15 @@ int			virConnectClose		(virConnectPtr conn);
 const char *		virConnectGetType	(virConnectPtr conn);
 int			virConnectGetVersion	(virConnectPtr conn,
 						 unsigned long *hvVer);
+/*
+ * Capabilities of the connection / driver.
+ */
+
+int                     virConnectGetMaxVcpus   (virConnectPtr conn,
+						 const char *type);
 int			virNodeGetInfo		(virConnectPtr conn,
 						 virNodeInfoPtr info);
+char *                  virConnectGetCapabilities (virConnectPtr conn);
 
 /*
  * Gather list of running domains
@@ -265,6 +290,13 @@ int			virDomainRestore	(virConnectPtr conn,
 						 const char *from);
 
 /*
+ * Domain core dump
+ */
+int			virDomainCoreDump	(virDomainPtr domain,
+						 const char *to,
+						 int flags);
+
+/*
  * Domain runtime informations
  */
 int			virDomainGetInfo	(virDomainPtr domain,
@@ -285,6 +317,8 @@ int			virDomainSetMaxMemory	(virDomainPtr domain,
 						 unsigned long memory);
 int			virDomainSetMemory	(virDomainPtr domain,
 						 unsigned long memory);
+int			virDomainGetMaxVcpus	(virDomainPtr domain);
+
 /*
  * XML domain description
  */
@@ -299,9 +333,14 @@ virDomainPtr		virDomainDefineXML	(virConnectPtr conn,
 int			virDomainUndefine	(virDomainPtr domain);
 int                     virConnectNumOfDefinedDomains  (virConnectPtr conn);
 int			virConnectListDefinedDomains (virConnectPtr conn,
-						 const char **names,
+						 char **const names,
 						 int maxnames);
 int			virDomainCreate		(virDomainPtr domain);
+
+int			virDomainGetAutostart	(virDomainPtr domain,
+						 int *autostart);
+int			virDomainSetAutostart	(virDomainPtr domain,
+						 int autostart);
 
 /**
  * virVcpuInfo: structure for information about a virtual CPU in a domain.
@@ -415,6 +454,98 @@ int			virDomainGetVcpus	(virDomainPtr domain,
  */
 #define VIR_GET_CPUMAP(cpumaps,maplen,vcpu)	&(cpumaps[(vcpu)*(maplen)])
 
+int virDomainAttachDevice(virDomainPtr domain, char *xml);
+int virDomainDetachDevice(virDomainPtr domain, char *xml);
+
+/*
+ * Virtual Networks API
+ */
+
+/**
+ * virNetwork:
+ *
+ * a virNetwork is a private structure representing a virtual network.
+ */
+typedef struct _virNetwork virNetwork;
+
+/**
+ * virNetworkPtr:
+ *
+ * a virNetworkPtr is pointer to a virNetwork private structure, this is the
+ * type used to reference a virtual network in the API.
+ */
+typedef virNetwork *virNetworkPtr;
+
+/*
+ * List active networks
+ */
+int			virConnectNumOfNetworks	(virConnectPtr conn);
+int			virConnectListNetworks	(virConnectPtr conn,
+						 char **const names,
+						 int maxnames);
+
+/*
+ * List inactive networks
+ */
+int			virConnectNumOfDefinedNetworks	(virConnectPtr conn);
+int			virConnectListDefinedNetworks	(virConnectPtr conn,
+							 char **const names,
+							 int maxnames);
+
+/*
+ * Lookup network by name or uuid
+ */
+virNetworkPtr		virNetworkLookupByName		(virConnectPtr conn,
+							 const char *name);
+virNetworkPtr 		virNetworkLookupByUUID		(virConnectPtr conn,
+							 const unsigned char *uuid);
+virNetworkPtr		virNetworkLookupByUUIDString	(virConnectPtr conn,
+							 const char *uuid);
+
+/*
+ * Create active transient network
+ */
+virNetworkPtr		virNetworkCreateXML	(virConnectPtr conn,
+						 const char *xmlDesc);
+
+/*
+ * Define inactive persistent network
+ */
+virNetworkPtr		virNetworkDefineXML	(virConnectPtr conn,
+						 const char *xmlDesc);
+
+/*
+ * Delete persistent network
+ */
+int			virNetworkUndefine	(virNetworkPtr network);
+
+/*
+ * Activate persistent network
+ */
+int			virNetworkCreate	(virNetworkPtr network);
+
+/*
+ * Network destroy/free
+ */
+int			virNetworkDestroy	(virNetworkPtr network);
+int			virNetworkFree		(virNetworkPtr network);
+
+/*
+ * Network informations
+ */
+const char*		virNetworkGetName	(virNetworkPtr network);
+int			virNetworkGetUUID	(virNetworkPtr network,
+						 unsigned char *uuid);
+int			virNetworkGetUUIDString	(virNetworkPtr network,
+						 char *buf);
+char *			virNetworkGetXMLDesc	(virNetworkPtr network,
+						 int flags);
+char *			virNetworkGetBridgeName (virNetworkPtr network);
+
+int			virNetworkGetAutostart	(virNetworkPtr network,
+						 int *autostart);
+int			virNetworkSetAutostart	(virNetworkPtr network,
+						 int autostart);
 
 #ifdef __cplusplus
 }

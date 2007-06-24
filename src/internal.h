@@ -26,33 +26,33 @@ extern "C" {
 #define _N(str) dgettext(GETTEXT_PACKAGE, (str))
 #define gettext_noop(str) (str)
 
+#ifdef __GNUC__
+#ifdef HAVE_ANSIDECL_H
+#include <ansidecl.h>
+#endif
+
 /**
  * ATTRIBUTE_UNUSED:
  *
  * Macro to flag conciously unused parameters to functions
  */
-#ifdef __GNUC__
-#ifdef HAVE_ANSIDECL_H
-#include <ansidecl.h>
-#endif
 #ifndef ATTRIBUTE_UNUSED
-#define ATTRIBUTE_UNUSED __attribute__((unused))
-#endif
-#else
-#define ATTRIBUTE_UNUSED
+#define ATTRIBUTE_UNUSED __attribute__((__unused__))
 #endif
 
-#ifndef __attribute__
-/* This feature is available in gcc versions 2.5 and later.  */
-# if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 5)
-#  define __attribute__(Spec) /* empty */
-# endif
-/* The __-protected variants of `format' and `printf' attributes
-   are accepted by gcc versions 2.6.4 (effectively 2.7) and later.  */
-# if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 7)
-#  define __format__ format
-#  define __printf__ printf
-# endif
+/**
+ * ATTRIBUTE_FORMAT
+ *
+ * Macro used to check printf/scanf-like functions, if compiling
+ * with gcc.
+ */
+#ifndef ATTRIBUTE_FORMAT
+#define ATTRIBUTE_FORMAT(args...) __attribute__((__format__ (args)))
+#endif
+
+#else
+#define ATTRIBUTE_UNUSED
+#define ATTRIBUTE_FORMAT(...)
 #endif
 
 /**
@@ -84,7 +84,21 @@ extern "C" {
 #define VIR_IS_DOMAIN(obj)		((obj) && (obj)->magic==VIR_DOMAIN_MAGIC)
 #define VIR_IS_CONNECTED_DOMAIN(obj)	(VIR_IS_DOMAIN(obj) && VIR_IS_CONNECT((obj)->conn))
 
-#define MAX_DRIVERS 5
+/**
+ * VIR_NETWORK_MAGIC:
+ *
+ * magic value used to protect the API when pointers to network structures
+ * are passed down by the uers.
+ */
+#define VIR_NETWORK_MAGIC		0xDEAD1234
+#define VIR_IS_NETWORK(obj)		((obj) && (obj)->magic==VIR_NETWORK_MAGIC)
+#define VIR_IS_CONNECTED_NETWORK(obj)	(VIR_IS_NETWORK(obj) && VIR_IS_CONNECT((obj)->conn))
+
+/*
+ * arbitrary limitations
+ */
+#define MAX_DRIVERS 10
+#define MIN_XEN_GUEST_SIZE 64  /* 64 megabytes */
 
 /*
  * Flags for Xen connections
@@ -100,30 +114,27 @@ struct _virConnect {
     unsigned int magic;     /* specific value to check */
 
     int uses;               /* reference count */
-    /* the list of available drivers for that connection */
-    virDriverPtr      drivers[MAX_DRIVERS];
-    int               nb_drivers;
 
-    /* extra data needed by drivers */
-    int handle;             /* internal handle used for hypercall */
-    struct xs_handle *xshandle;/* handle to talk to the xenstore */
-    int proxy;              /* file descriptor if using the proxy */
+    /* The underlying hypervisor driver and network driver. */
+    virDriverPtr      driver;
+    virNetworkDriverPtr networkDriver;
 
-    /* connection to xend */
-    int type;               /* PF_UNIX or PF_INET */
-    int len;                /* lenght of addr */
-    struct sockaddr *addr;  /* type of address used */
-    struct sockaddr_un addr_un;     /* the unix address */
-    struct sockaddr_in addr_in;     /* the inet address */
+    /* Private data pointer which can be used by driver and
+     * network driver as they wish.
+     * NB: 'private' is a reserved word in C++.
+     */
+    void *            privateData;
+    void *            networkPrivateData;
 
-    /* error stuff */
+    /* Per-connection error. */
     virError err;           /* the last error */
     virErrorFunc handler;   /* associated handlet */
     void *userData;         /* the user data */
 
     /* misc */
-    xmlMutexPtr domains_mux;/* a mutex to protect the domain hash table */
+    xmlMutexPtr hashes_mux;/* a mutex to protect the domain and networks hash tables */
     virHashTablePtr domains;/* hash table for known domains */
+    virHashTablePtr networks;/* hash table for known domains */
     int flags;              /* a set of connection flags */
 };
 
@@ -133,10 +144,10 @@ struct _virConnect {
 * a set of special flag values associated to the domain
 */
 
-enum {
+enum virDomainFlags {
     DOMAIN_IS_SHUTDOWN = (1 << 0),  /* the domain is being shutdown */
     DOMAIN_IS_DEFINED  = (1 << 1)   /* the domain is defined not running */
-} virDomainFlags;
+};
 
 /**
 * _virDomain:
@@ -144,15 +155,28 @@ enum {
 * Internal structure associated to a domain
 */
 struct _virDomain {
-    unsigned int magic;     /* specific value to check */
-    int uses;               /* reference count */
-    virConnectPtr conn;     /* pointer back to the connection */
-    char *name;             /* the domain external name */
-    char *path;             /* the domain internal path */
-    int handle;             /* internal handle for the domnain ID */
-    int flags;              /* extra flags */
-    unsigned char uuid[16]; /* the domain unique identifier */
-    char *xml;              /* the XML description for defined domains */
+    unsigned int magic;                  /* specific value to check */
+    int uses;                            /* reference count */
+    virConnectPtr conn;                  /* pointer back to the connection */
+    char *name;                          /* the domain external name */
+    char *path;                          /* the domain internal path */
+    int id;                              /* the domain ID */
+    int flags;                           /* extra flags */
+    unsigned char uuid[VIR_UUID_BUFLEN]; /* the domain unique identifier */
+    char *xml;                           /* the XML description for defined domains */
+};
+
+/**
+* _virNetwork:
+*
+* Internal structure associated to a domain
+*/
+struct _virNetwork {
+    unsigned int magic;                  /* specific value to check */
+    int uses;                            /* reference count */
+    virConnectPtr conn;                  /* pointer back to the connection */
+    char *name;                          /* the network external name */
+    unsigned char uuid[VIR_UUID_BUFLEN]; /* the network unique identifier */
 };
 
 /*
@@ -169,13 +193,15 @@ char *virDomainGetVMInfo(virDomainPtr domain,
  ************************************************************************/
 void __virRaiseError(virConnectPtr conn,
 		     virDomainPtr dom,
+		     virNetworkPtr net,
 		     int domain,
 		     int code,
 		     virErrorLevel level,
 		     const char *str1,
 		     const char *str2,
 		     const char *str3,
-		     int int1, int int2, const char *msg, ...);
+		     int int1, int int2, const char *msg, ...)
+  ATTRIBUTE_FORMAT(printf, 12, 13);
 const char *__virErrorMsg(virErrorNumber error, const char *info);
 
 /************************************************************************
@@ -193,8 +219,27 @@ int		virFreeDomain	(virConnectPtr conn,
 				 virDomainPtr domain);
 virDomainPtr	virGetDomainByID(virConnectPtr conn,
 				 int id);
+virNetworkPtr	virGetNetwork	(virConnectPtr conn,
+				 const char *name,
+				 const unsigned char *uuid);
+int		virFreeNetwork	(virConnectPtr conn,
+				 virNetworkPtr domain);
 
 #ifdef __cplusplus
 }
 #endif                          /* __cplusplus */
 #endif                          /* __VIR_INTERNAL_H__ */
+
+/*
+ * vim: set tabstop=4:
+ * vim: set shiftwidth=4:
+ * vim: set expandtab:
+ */
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

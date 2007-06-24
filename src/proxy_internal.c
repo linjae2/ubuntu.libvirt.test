@@ -21,6 +21,7 @@
 #include "internal.h"
 #include "driver.h"
 #include "proxy_internal.h"
+#include "xen_unified.h"
 
 #define STANDALONE
 
@@ -40,17 +41,19 @@ static virDomainPtr xenProxyDomainLookupByName(virConnectPtr conn,
 static unsigned long xenProxyDomainGetMaxMemory(virDomainPtr domain);
 static int xenProxyDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info);
 static char *xenProxyDomainDumpXML(virDomainPtr domain, int flags);
+static char *xenProxyDomainGetOSType(virDomainPtr domain);
 
-static virDriver xenProxyDriver = {
-    VIR_DRV_XEN_PROXY,
+virDriver xenProxyDriver = {
+    -1,
     "XenProxy",
     0,
-    NULL, /* init */
     xenProxyOpen, /* open */
     xenProxyClose, /* close */
     NULL, /* type */
     xenProxyGetVersion, /* version */
+    NULL, /* getMaxVcpus */
     xenProxyNodeGetInfo, /* nodeGetInfo */
+    NULL, /* getCapabilities */
     xenProxyListDomains, /* listDomains */
     xenProxyNumOfDomains, /* numOfDomains */
     NULL, /* domainCreateLinux */
@@ -62,37 +65,41 @@ static virDriver xenProxyDriver = {
     NULL, /* domainShutdown */
     NULL, /* domainReboot */
     NULL, /* domainDestroy */
-    NULL, /* domainFree */
-    NULL, /* domainGetName */
-    NULL, /* domainGetID */
-    NULL, /* domainGetUUID */
-    NULL, /* domainGetOSType */
+    xenProxyDomainGetOSType, /* domainGetOSType */
     xenProxyDomainGetMaxMemory, /* domainGetMaxMemory */
     NULL, /* domainSetMaxMemory */
     NULL, /* domainSetMemory */
     xenProxyDomainGetInfo, /* domainGetInfo */
     NULL, /* domainSave */
     NULL, /* domainRestore */
+    NULL, /* domainCoreDump */
     NULL, /* domainSetVcpus */
     NULL, /* domainPinVcpu */
     NULL, /* domainGetVcpus */
+    NULL, /* domainGetMaxVcpus */
     xenProxyDomainDumpXML, /* domainDumpXML */
     NULL, /* listDefinedDomains */
     NULL, /* numOfDefinedDomains */
     NULL, /* domainCreate */
     NULL, /* domainDefineXML */
     NULL, /* domainUndefine */
+    NULL, /* domainAttachDevice */
+    NULL, /* domainDetachDevice */
+    NULL, /* domainGetAutostart */
+    NULL, /* domainSetAutostart */
 };
 
 /**
- * xenProxyRegister:
+ * xenProxyInit:
  *
- * Registers the xenHypervisor driver
+ * Initialise the xen proxy driver.
  */
-void xenProxyRegister(void)
+int
+xenProxyInit (void)
 {
-    virRegisterDriver(&xenProxyDriver);
+    return 0;
 }
+
 /************************************************************************
  *									*
  *			Error handling					*
@@ -116,7 +123,7 @@ virProxyError(virConnectPtr conn, virErrorNumber error, const char *info)
         return;
 
     errmsg = __virErrorMsg(error, info);
-    __virRaiseError(conn, NULL, VIR_FROM_PROXY, error, VIR_ERR_ERROR,
+    __virRaiseError(conn, NULL, NULL, VIR_FROM_PROXY, error, VIR_ERR_ERROR,
                     errmsg, info, NULL, 0, 0, errmsg, info);
 }
 
@@ -374,12 +381,29 @@ retry:
  * Shutdown the Xen proxy communication layer
  */
 static int
-xenProxyClose(virConnectPtr conn) {
-    if ((conn == NULL) || (conn->proxy < 0))
-        return(-1);
-    virProxyCloseClientSocket(conn->proxy);
-    conn->proxy = -1;
-    return (0);
+xenProxyClose(virConnectPtr conn)
+{
+    xenUnifiedPrivatePtr priv;
+
+    if (conn == NULL) {
+        virProxyError (NULL, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return -1;
+    }
+
+    priv = (xenUnifiedPrivatePtr) conn->privateData;
+    if (!priv) {
+        virProxyError (NULL, VIR_ERR_INTERNAL_ERROR, __FUNCTION__);
+        return -1;
+    }
+
+    /* Fail silently. */
+    if (priv->proxy == -1)
+        return -1;
+
+    virProxyCloseClientSocket (priv->proxy);
+    priv->proxy = -1;
+
+    return 0;
 }
 
 static int 
@@ -388,9 +412,22 @@ xenProxyCommand(virConnectPtr conn, virProxyPacketPtr request,
     static int serial = 0;
     int ret;
     virProxyPacketPtr res = NULL;
+    xenUnifiedPrivatePtr priv;
 
-    if ((conn == NULL) || (conn->proxy < 0))
-        return(-1);
+    if (conn == NULL) {
+        virProxyError (NULL, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return -1;
+    }
+
+    priv = (xenUnifiedPrivatePtr) conn->privateData;
+    if (!priv) {
+        virProxyError (NULL, VIR_ERR_INTERNAL_ERROR, __FUNCTION__);
+        return -1;
+    }
+
+    /* Fail silently. */
+    if (priv->proxy == -1)
+        return -1;
 
     /*
      * normal communication serial numbers are in 0..4095
@@ -400,14 +437,14 @@ xenProxyCommand(virConnectPtr conn, virProxyPacketPtr request,
         serial = 0;
     request->version = PROXY_PROTO_VERSION;
     request->serial = serial;
-    ret  = virProxyWriteClientSocket(conn->proxy, (const char *) request,
+    ret  = virProxyWriteClientSocket(priv->proxy, (const char *) request,
                                      request->len);
     if (ret < 0)
         return(-1);
 retry:
     if (answer == NULL) {
         /* read in situ */
-	ret  = virProxyReadClientSocket(conn->proxy, (char *) request,
+	ret  = virProxyReadClientSocket(priv->proxy, (char *) request,
 	                                sizeof(virProxyPacket), quiet);
 	if (ret < 0)
 	    return(-1);
@@ -428,7 +465,7 @@ retry:
 	}
     } else {
         /* read in packet provided */
-        ret  = virProxyReadClientSocket(conn->proxy, (char *) answer,
+        ret  = virProxyReadClientSocket(priv->proxy, (char *) answer,
 	                                sizeof(virProxyPacket), quiet);
 	if (ret < 0)
 	    return(-1);
@@ -449,7 +486,7 @@ retry:
 	    return(-1);
 	}
 	if (res->len > sizeof(virProxyPacket)) {
-	    ret  = virProxyReadClientSocket(conn->proxy,
+	    ret  = virProxyReadClientSocket(priv->proxy,
 	                           (char *) &(answer->extra.arg[0]),
 	                                    res->len - ret, quiet);
 	    if (ret != (int) (res->len - sizeof(virProxyPacket))) {
@@ -491,25 +528,26 @@ retry:
  * Returns 0 in case of success, and -1 in case of failure
  */
 int
-xenProxyOpen(virConnectPtr conn, const char *name, int flags)
+xenProxyOpen(virConnectPtr conn, const char *name ATTRIBUTE_UNUSED, int flags)
 {
     virProxyPacket req;
     int ret;
     int fd;
+    xenUnifiedPrivatePtr priv;
     
-    if ((name != NULL) && (strcasecmp(name, "xen")))
-        return(-1);
     if (!(flags & VIR_DRV_OPEN_RO))
         return(-1);
-        
-    conn->proxy = -1;
+
+    priv = (xenUnifiedPrivatePtr) conn->privateData;
+    priv->proxy = -1;
+
     fd = virProxyOpenClientSocket(PROXY_SOCKET_PATH);
     if (fd < 0) {
         if (!(flags & VIR_DRV_OPEN_QUIET))
 	    virProxyError(conn, VIR_ERR_NO_XEN, PROXY_SOCKET_PATH);
-	return(-1);
+        return(-1);
     }
-    conn->proxy = fd;
+    priv->proxy = fd;
 
     memset(&req, 0, sizeof(req));
     req.command = VIR_PROXY_NONE;
@@ -662,7 +700,7 @@ xenProxyDomainGetDomMaxMemory(virConnectPtr conn, int id)
 
     if (!VIR_IS_CONNECT(conn)) {
         virProxyError(conn, VIR_ERR_INVALID_CONN, __FUNCTION__);
-        return (-1);
+        return (0);
     }
     memset(&req, 0, sizeof(req));
     req.command = VIR_PROXY_MAX_MEMORY;
@@ -671,7 +709,7 @@ xenProxyDomainGetDomMaxMemory(virConnectPtr conn, int id)
     ret = xenProxyCommand(conn, &req, NULL, 0);
     if (ret < 0) {
         xenProxyClose(conn);
-	return(-1);
+        return(0);
     }
     return(req.data.larg);
 }
@@ -694,7 +732,9 @@ xenProxyDomainGetMaxMemory(virDomainPtr domain)
 	    virProxyError(domain->conn, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
         return (0);
     }
-    return(xenProxyDomainGetDomMaxMemory(domain->conn, domain->handle));
+    if (domain->id < 0)
+        return (0);
+    return(xenProxyDomainGetDomMaxMemory(domain->conn, domain->id));
 }
 
 /**
@@ -715,28 +755,30 @@ xenProxyDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
     int ret;
 
     if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
-	if (domain == NULL)
-	    virProxyError(NULL, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
-	else
-	    virProxyError(domain->conn, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
-        return (0);
+        if (domain == NULL)
+            virProxyError(NULL, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        else
+            virProxyError(domain->conn, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        return (-1);
     }
+    if (domain->id < 0)
+        return (-1);
     if (info == NULL) {
         virProxyError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-	return (-1);
+        return (-1);
     }
     memset(&req, 0, sizeof(req));
     req.command = VIR_PROXY_DOMAIN_INFO;
-    req.data.arg = domain->handle;
+    req.data.arg = domain->id;
     req.len = sizeof(req);
     ret = xenProxyCommand(domain->conn, &req, &ans, 0);
     if (ret < 0) {
         xenProxyClose(domain->conn);
-	return(-1);
+        return(-1);
     }
     if (ans.len != sizeof(virProxyPacket) + sizeof(virDomainInfo)) {
         virProxyError(domain->conn, VIR_ERR_OPERATION_FAILED, __FUNCTION__);
-	return (-1);
+        return (-1);
     }
     memmove(info, &ans.extra.dinfo, sizeof(virDomainInfo));
 
@@ -757,7 +799,7 @@ xenProxyLookupByID(virConnectPtr conn, int id)
 {
     virProxyPacket req;
     virProxyFullPacket ans;
-    unsigned char uuid[16];
+    unsigned char uuid[VIR_UUID_BUFLEN];
     const char *name;
     int ret;
     virDomainPtr res;
@@ -782,14 +824,14 @@ xenProxyLookupByID(virConnectPtr conn, int id)
     if (ans.data.arg == -1) {
 	return(NULL);
     }
-    memcpy(uuid, &ans.extra.str[0], 16);
-    name = &ans.extra.str[16];
+    memcpy(uuid, &ans.extra.str[0], VIR_UUID_BUFLEN);
+    name = &ans.extra.str[VIR_UUID_BUFLEN];
     res = virGetDomain(conn, name, uuid);
 
     if (res == NULL)
         virProxyError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
     else
-	res->handle = id;
+	res->id = id;
     
     return(res);
 }
@@ -821,7 +863,7 @@ xenProxyLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     }
     memset(&req, 0, sizeof(virProxyPacket));
     req.command = VIR_PROXY_LOOKUP_UUID;
-    req.len = sizeof(virProxyPacket) + 16;
+    req.len = sizeof(virProxyPacket) + VIR_UUID_BUFLEN;
     ret = xenProxyCommand(conn, (virProxyPacketPtr) &req, &req, 0);
     if (ret < 0) {
         xenProxyClose(conn);
@@ -836,7 +878,7 @@ xenProxyLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     if (res == NULL)
         virProxyError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
     else
-	res->handle = req.data.arg;
+	res->id = req.data.arg;
     
     return(res);
 }
@@ -887,7 +929,7 @@ xenProxyDomainLookupByName(virConnectPtr conn, const char *name)
     if (res == NULL)
         virProxyError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
     else
-	res->handle = req.data.arg;
+	res->id = req.data.arg;
     
     return(res);
 }
@@ -959,9 +1001,11 @@ xenProxyDomainDumpXML(virDomainPtr domain, int flags ATTRIBUTE_UNUSED)
 	    virProxyError(domain->conn, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
         return (NULL);
     }
+    if (domain->id < 0)
+        return (NULL);
     memset(&req, 0, sizeof(req));
     req.command = VIR_PROXY_DOMAIN_XML;
-    req.data.arg = domain->handle;
+    req.data.arg = domain->id;
     req.len = sizeof(req);
     ret = xenProxyCommand(domain->conn, &req, &ans, 0);
     if (ret < 0) {
@@ -974,10 +1018,78 @@ xenProxyDomainDumpXML(virDomainPtr domain, int flags ATTRIBUTE_UNUSED)
     }
     xmllen = ans.len - sizeof(virProxyPacket);
     if (!(xml = malloc(xmllen+1))) {
-      return NULL;
+	virProxyError(domain->conn, VIR_ERR_NO_MEMORY, __FUNCTION__);
+        return NULL;
     }
     memmove(xml, &ans.extra.dinfo, xmllen);
     xml[xmllen] = '\0';
 
     return(xml);
 }
+
+/**
+ * xenProxyDomainGetOSType:
+ * @domain: a domain object
+ *
+ * Get the type of domain operation system.
+ *
+ * Returns the new string or NULL in case of error, the string must be
+ *         freed by the caller.
+ */
+static char *
+xenProxyDomainGetOSType(virDomainPtr domain)
+{
+    virProxyPacket req;
+    virProxyFullPacket ans;
+    int ret;
+    int oslen;
+    char *ostype;
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+	if (domain == NULL)
+	    virProxyError(NULL, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+	else
+	    virProxyError(domain->conn, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        return (NULL);
+    }
+    memset(&req, 0, sizeof(req));
+    req.command = VIR_PROXY_DOMAIN_OSTYPE;
+    req.data.arg = domain->id;
+    req.len = sizeof(req);
+    ret = xenProxyCommand(domain->conn, &req, &ans, 0);
+    if (ret < 0) {
+        xenProxyClose(domain->conn);
+	return(NULL);
+    }
+    if ((ans.len == sizeof(virProxyPacket)) && (ans.data.arg < 0)) {
+	return(NULL);
+    }
+
+    if (ans.len <= sizeof(virProxyPacket)) {
+        virProxyError(domain->conn, VIR_ERR_OPERATION_FAILED, __FUNCTION__);
+	return (NULL);
+    }
+    oslen = ans.len - sizeof(virProxyPacket);
+    if (!(ostype = malloc(oslen+1))) {
+	virProxyError(domain->conn, VIR_ERR_NO_MEMORY, __FUNCTION__);
+        return NULL;
+    }
+    memmove(ostype, &ans.extra.dinfo, oslen);
+    ostype[oslen] = '\0';
+
+    return(ostype);
+}
+
+/*
+ * vim: set tabstop=4:
+ * vim: set shiftwidth=4:
+ * vim: set expandtab:
+ */
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

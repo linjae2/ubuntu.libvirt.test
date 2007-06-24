@@ -17,11 +17,15 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <locale.h>
 #include "internal.h"
+
+#ifdef WITH_XEN
 #include "proxy_internal.h"
 #include "xen_internal.h"
 #include "xend_internal.h"
 #include "xs_internal.h"
+#include "xen_unified.h"
 
 static int fdServer = -1;
 static int debug = 0;
@@ -55,6 +59,23 @@ static int
 proxyInitXen(void) {
     int ret;
     unsigned long xenVersion2;
+    xenUnifiedPrivatePtr priv;
+
+    /* Allocate per-connection private data. */
+    priv = malloc (sizeof *priv);
+    if (!priv) {
+        fprintf(stderr, "Failed to allocate private data\n");
+        return(-1);
+    }
+    conn->privateData = priv;
+
+    priv->handle = -1;
+    priv->xendConfigVersion = -1;
+    priv->type = -1;
+    priv->len = -1;
+    priv->addr = NULL;
+    priv->xshandle = NULL;
+    priv->proxy = -1;
 
     ret = xenHypervisorOpen(conn, NULL, VIR_DRV_OPEN_QUIET);
     if (ret < 0) {
@@ -337,7 +358,7 @@ proxyReadClientSocket(int nr) {
     virProxyFullPacket request;
     virProxyPacketPtr req = (virProxyPacketPtr) &request;
     int ret;
-    char *xml;
+    char *xml, *ostype;
 
 retry:
     ret = read(pollInfos[nr].fd, req, sizeof(virProxyPacket));
@@ -462,7 +483,7 @@ retry2:
 	    break;
 	case VIR_PROXY_LOOKUP_ID: {
 	    char *name = NULL;
-	    unsigned char uuid[16];
+	    unsigned char uuid[VIR_UUID_BUFLEN];
 	    int len;
 
 	    if (req->len != sizeof(virProxyPacket))
@@ -476,9 +497,9 @@ retry2:
 		    len = 1000;
 		    name[1000] = 0;
 		}
-	        req->len += 16 + len + 1;
-		memcpy(&request.extra.str[0], uuid, 16);
-		strcpy(&request.extra.str[16], name);
+	        req->len += VIR_UUID_BUFLEN + len + 1;
+		memcpy(&request.extra.str[0], uuid, VIR_UUID_BUFLEN);
+		strcpy(&request.extra.str[VIR_UUID_BUFLEN], name);
 	    }
 	    if (name)
 	        free(name);
@@ -489,9 +510,9 @@ retry2:
 	    char **tmp;
 	    int ident, len;
 	    char *name = NULL;
-	    unsigned char uuid[16];
+	    unsigned char uuid[VIR_UUID_BUFLEN];
 
-	    if (req->len != sizeof(virProxyPacket) + 16)
+	    if (req->len != sizeof(virProxyPacket) + VIR_UUID_BUFLEN)
 	        goto comm_error;
 
 	    /*
@@ -504,7 +525,7 @@ retry2:
 	    if (names != NULL) {
 	       while (*tmp != NULL) {
 		  ident = xenDaemonDomainLookupByName_ids(conn, *tmp, &uuid[0]);
-		  if (!memcmp(uuid, &request.extra.str[0], 16)) {
+		  if (!memcmp(uuid, &request.extra.str[0], VIR_UUID_BUFLEN)) {
 		     name = *tmp;
 		     break;
 		  }
@@ -530,7 +551,7 @@ retry2:
 	}
 	case VIR_PROXY_LOOKUP_NAME: {
 	    int ident;
-	    unsigned char uuid[16];
+	    unsigned char uuid[VIR_UUID_BUFLEN];
 
 	    if (req->len > sizeof(virProxyPacket) + 1000)
 	        goto comm_error;
@@ -542,8 +563,8 @@ retry2:
                 req->data.arg = -1;
 		req->len = sizeof(virProxyPacket);
 	    } else {
-	        req->len = sizeof(virProxyPacket) + 16;
-		memcpy(&request.extra.str[0], uuid, 16);
+	        req->len = sizeof(virProxyPacket) + VIR_UUID_BUFLEN;
+		memcpy(&request.extra.str[0], uuid, VIR_UUID_BUFLEN);
 		req->data.arg = ident;
 	    }
 	    break;
@@ -585,6 +606,27 @@ retry2:
                     req->len = sizeof(virProxyPacket) + xmllen;
                 }
                 free(xml);
+	    }
+	    break;
+	case VIR_PROXY_DOMAIN_OSTYPE:
+	    if (req->len != sizeof(virProxyPacket))
+	        goto comm_error;
+
+	    ostype = xenStoreDomainGetOSTypeID(conn, request.data.arg);
+            if (!ostype) {
+                req->data.arg = -1;
+                req->len = sizeof(virProxyPacket);
+	    } else {
+                int ostypelen = strlen(ostype);
+                if (ostypelen > (int) sizeof(request.extra.str)) {
+                    req->data.arg = -2;
+                    req->len = sizeof(virProxyPacket);
+                } else {
+                    req->data.arg = 0;
+                    memmove(&request.extra.str[0], ostype, ostypelen);
+                    req->len = sizeof(virProxyPacket) + ostypelen;
+                }
+                free(ostype);
 	    }
 	    break;
 	default:
@@ -764,3 +806,24 @@ int main(int argc, char **argv) {
     proxyCloseUnixSocket();
     exit(0);
 }
+
+#else /* WITHOUT_XEN */
+int main(void) {
+    fprintf(stderr, "libvirt was compiled without Xen support\n");
+    exit(1);
+}
+#endif /* WITH_XEN */
+
+/*
+ * vim: set tabstop=4:
+ * vim: set shiftwidth=4:
+ * vim: set expandtab:
+ */
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

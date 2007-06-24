@@ -28,6 +28,7 @@
 	virDomainRestore;
 	virDomainResume;
 	virDomainSave;
+	virDomainCoreDump;
         virDomainSetMemory;
 	virDomainSetMaxMemory;
 	virDomainShutdown;
@@ -35,7 +36,10 @@
 	virDomainSuspend;
 	virConnectListDefinedDomains;
 	virConnectNumOfDefinedDomains;
+	virConnectGetMaxVcpus;
 	virDomainUndefine;
+	virDomainGetAutostart;
+	virDomainSetAutostart;
 	virGetVersion;
 	virCopyLastError;
 	virConnSetErrorFunc;
@@ -49,9 +53,45 @@
 	virConnResetLastError;
 	virDefaultErrorFunc;
 	virNodeGetInfo;
+	virConnectGetCapabilities;
 
 	virDomainSetVcpus;
 	virDomainPinVcpu;
 	virDomainGetVcpus;
+	virDomainGetMaxVcpus;
+
+	virDomainAttachDevice;
+	virDomainDetachDevice;
+
+	virConnectNumOfNetworks;
+	virConnectListNetworks;
+	virConnectNumOfDefinedNetworks;
+	virConnectListDefinedNetworks;
+	virNetworkLookupByName;
+	virNetworkLookupByUUID;
+	virNetworkLookupByUUIDString;
+	virNetworkCreateXML;
+	virNetworkDefineXML;
+	virNetworkUndefine;
+	virNetworkCreate;
+	virNetworkDestroy;
+	virNetworkFree;
+	virNetworkGetName;
+	virNetworkGetUUID;
+	virNetworkGetUUIDString;
+	virNetworkGetXMLDesc;
+	virNetworkGetBridgeName;
+	virNetworkGetAutostart;
+	virNetworkSetAutostart;
+
+	__virConfNew;
+	__virConfReadFile;
+	__virConfReadMem;
+	__virConfFree;
+	__virConfGetValue;
+	__virConfSetValue;
+	__virConfWriteFile;
+	__virConfWriteMem;
+
     local: *;
 };

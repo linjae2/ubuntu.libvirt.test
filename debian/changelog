@@ -1,3 +1,10 @@
+libvirt (0.2.2-0ubuntu0) gutsy; urgency=low
+
+  * New upstream version.
+  * Updated libvirt-bin.install, thanks to Marcelo Boveto Shima.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Sun, 24 Jun 2007 09:54:54 -0400
+
 libvirt (0.1.8-0ubuntu2) feisty; urgency=low
 
   * Rebuild for python2.5 as the default python version.

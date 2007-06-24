@@ -46,7 +46,9 @@ typedef enum {
     VIR_FROM_DOM,	/* Error when operating on a domain */
     VIR_FROM_RPC,	/* Error in the XML-RPC code */
     VIR_FROM_PROXY,	/* Error in the proxy code */
-    VIR_FROM_CONF	/* Error in the configuration file handling */
+    VIR_FROM_CONF,	/* Error in the configuration file handling */
+    VIR_FROM_QEMU,      /* Error at the QEMU daemon */
+    VIR_FROM_NET,       /* Error when operating on a network */
 } virErrorDomain;
 
 
@@ -70,6 +72,7 @@ struct _virError {
     char       *str3;	/* extra string information */
     int		int1;	/* extra number information */
     int		int2;	/* extra number information */
+    virNetworkPtr net;	/* the network if available */
 };
 
 /**
@@ -112,7 +115,11 @@ typedef enum {
     VIR_ERR_READ_FAILED, /* failed to read a conf file */
     VIR_ERR_PARSE_FAILED, /* failed to parse a conf file */
     VIR_ERR_CONF_SYNTAX, /* failed to parse the syntax of a conf file */
-    VIR_ERR_WRITE_FAILED /* failed to write a conf file */
+    VIR_ERR_WRITE_FAILED, /* failed to write a conf file */
+    VIR_ERR_XML_DETAIL, /* detail of an XML error */
+    VIR_ERR_INVALID_NETWORK, /* invalid network object */
+    VIR_ERR_NETWORK_EXIST, /* the network already exist */
+    VIR_ERR_SYSTEM_ERROR, /* general system call failure */
 } virErrorNumber;
 
 /**
@@ -127,7 +134,7 @@ typedef void (*virErrorFunc) (void *userData, virErrorPtr error);
 /*
  * Errors can be handled as asynchronous callbacks or after the routine
  * failed. They can also be handled globally at the library level, or
- * at the connection level (which then has priority
+ * at the connection level (which then has priority).
  */
 
 virErrorPtr		virGetLastError		(void);
