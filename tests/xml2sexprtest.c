@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <fcntl.h>
+
 #include "xml.h"
 #include "testutils.h"
 #include "internal.h"
@@ -24,18 +27,21 @@ static int testCompareFiles(const char *xml, const char *sexpr, const char *name
   if (virtTestLoadFile(sexpr, &sexprPtr, MAX_FILE) < 0)
     goto fail;
 
-  if (!(gotsexpr = virDomainParseXMLDesc(xmlData, &gotname, xendConfigVersion)))
+  if (!(gotsexpr = virDomainParseXMLDesc(NULL, xmlData, &gotname, xendConfigVersion)))
     goto fail;
 
   if (getenv("DEBUG_TESTS")) {
       printf("Expect %d '%s'\n", (int)strlen(sexprData), sexprData);
       printf("Actual %d '%s'\n", (int)strlen(gotsexpr), gotsexpr);
   }
-  if (strcmp(sexprData, gotsexpr))
-    goto fail;
+  if (strcmp(sexprData, gotsexpr)) {
+      goto fail;
+  }
 
-  if (strcmp(name, gotname))
-    goto fail;
+  if (strcmp(name, gotname)) {
+      printf("Got wrong name: expected %s, got %s\n", name, gotname);
+      goto fail;
+  }
 
   ret = 0;
 
@@ -80,6 +86,21 @@ static int testCompareFVversion2VNC(void *data ATTRIBUTE_UNUSED) {
 			  "xml2sexprdata/xml2sexpr-fv-vncunused.sexpr",
 			  "fvtest",
 			  2);
+}
+
+static int testComparePVOrigVFB(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("xml2sexprdata/xml2sexpr-pv-vfb-orig.xml",
+                          "xml2sexprdata/xml2sexpr-pv-vfb-orig.sexpr",
+			  "pvtest",
+                          2);
+}
+
+
+static int testComparePVNewVFB(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("xml2sexprdata/xml2sexpr-pv-vfb-new.xml",
+                          "xml2sexprdata/xml2sexpr-pv-vfb-new.sexpr",
+			  "pvtest",
+                          3);
 }
 
 static int testCompareDiskFile(void *data ATTRIBUTE_UNUSED) {
@@ -131,6 +152,35 @@ static int testCompareDiskDrvBlktapRaw(void *data ATTRIBUTE_UNUSED) {
 			  2);
 }
 
+static int testCompareMemoryResize(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("xml2sexprdata/xml2sexpr-curmem.xml",
+			  "xml2sexprdata/xml2sexpr-curmem.sexpr",
+			  "rhel5",
+			  2);
+}
+
+static int testCompareNetRouted(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("xml2sexprdata/xml2sexpr-net-routed.xml",
+			  "xml2sexprdata/xml2sexpr-net-routed.sexpr",
+			  "pvtest",
+			  2);
+}
+
+static int testCompareNetBridged(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("xml2sexprdata/xml2sexpr-net-bridged.xml",
+			  "xml2sexprdata/xml2sexpr-net-bridged.sexpr",
+			  "pvtest",
+			  2);
+}
+
+static int testCompareNoSourceCDRom(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("xml2sexprdata/xml2sexpr-no-source-cdrom.xml",
+			  "xml2sexprdata/xml2sexpr-no-source-cdrom.sexpr",
+			  "test",
+			  2);
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -163,6 +213,14 @@ main(int argc, char **argv)
 		    1, testCompareFVversion2VNC, NULL) != 0)
 	ret = -1;
 
+    if (virtTestRun("XML-2-SEXPR PV config (Orig VFB)",
+                    1, testComparePVOrigVFB, NULL) != 0)
+        ret = -1;
+
+    if (virtTestRun("XML-2-SEXPR PV config (New VFB)",
+                    1, testComparePVNewVFB, NULL) != 0)
+        ret = -1;
+
     if (virtTestRun("XML-2-SEXPR Disk File",
 		    1, testCompareDiskFile, NULL) != 0)
 	ret = -1;
@@ -191,6 +249,21 @@ main(int argc, char **argv)
 		    1, testCompareDiskDrvBlktapRaw, NULL) != 0)
 	ret = -1;
 
+    if (virtTestRun("XML-2-SEXPR Memory Resize",
+		    1, testCompareMemoryResize, NULL) != 0)
+	ret = -1;
+
+    if (virtTestRun("XML-2-SEXPR Net Routed",
+		    1, testCompareNetRouted, NULL) != 0)
+	ret = -1;
+
+    if (virtTestRun("XML-2-SEXPR Net Bridged",
+		    1, testCompareNetBridged, NULL) != 0)
+	ret = -1;
+
+    if (virtTestRun("XML-2-SEXPR No Source CDRom",
+		    1, testCompareNoSourceCDRom, NULL) != 0)
+	ret = -1;
 
     exit(ret==0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }

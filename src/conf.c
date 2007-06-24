@@ -95,7 +95,7 @@ virConfError(virConfPtr conf ATTRIBUTE_UNUSED,
         return;
 
     errmsg = __virErrorMsg(error, info);
-    __virRaiseError(NULL, NULL, VIR_FROM_CONF, error, VIR_ERR_ERROR,
+    __virRaiseError(NULL, NULL, NULL, VIR_FROM_CONF, error, VIR_ERR_ERROR,
                     errmsg, info, NULL, line, 0, errmsg, info, line);
 }
 
@@ -120,9 +120,9 @@ virConfFreeList(virConfValuePtr list)
 
     while (list != NULL) {
         next = list->next;
-	list->next = NULL;
-	virConfFreeValue(list);
-	list = next;
+        list->next = NULL;
+        virConfFreeValue(list);
+        list = next;
     }
 }
 
@@ -137,11 +137,28 @@ virConfFreeValue(virConfValuePtr val)
 {
     if (val == NULL)
         return;
-    if (val->str != NULL)
+    if (val->type == VIR_CONF_STRING &&
+        val->str != NULL)
         free(val->str);
-    if (val->list != NULL)
+    if (val->type == VIR_CONF_LIST &&
+        val->list != NULL)
         virConfFreeList(val->list);
     free(val);
+}
+
+virConfPtr
+__virConfNew(void)
+{
+    virConfPtr ret;
+
+    ret = (virConfPtr) calloc(1, sizeof(virConf));
+    if (ret == NULL) {
+        virConfError(NULL, VIR_ERR_NO_MEMORY, _("allocating configuration"), 0);
+        return(NULL);
+    }
+    ret->filename = NULL;
+
+    return(ret);
 }
 
 /**
@@ -155,17 +172,9 @@ virConfFreeValue(virConfValuePtr val)
 static virConfPtr
 virConfCreate(const char *filename)
 {
-    virConfPtr ret;
-
-    ret = (virConfPtr) malloc(sizeof(virConf));
-    if (ret == NULL) {
-        virConfError(NULL, VIR_ERR_NO_MEMORY, _("allocating configuration"), 0);
-        return(NULL);
-    }
-    memset(ret, 0, sizeof(virConf));
-
-    ret->filename = filename;
-
+    virConfPtr ret = virConfNew();
+    if (ret)
+        ret->filename = filename;
     return(ret);
 }
 
@@ -191,12 +200,12 @@ virConfAddEntry(virConfPtr conf, char *name, virConfValuePtr value, char *comm)
     if ((comm == NULL) && (name == NULL))
         return(NULL);
     
-    ret = (virConfEntryPtr) malloc(sizeof(virConfEntry));
+    ret = (virConfEntryPtr) calloc(1, sizeof(virConfEntry));
     if (ret == NULL) {
         virConfError(NULL, VIR_ERR_NO_MEMORY, _("allocating configuration"), 0);
         return(NULL);
     }
-    memset(ret, 0, sizeof(virConfEntry));
+
     ret->name = name;
     ret->value = value;
     ret->comment = comm;
@@ -474,19 +483,17 @@ virConfParseValue(virConfParserCtxtPtr ctxt)
 	             ctxt->line);
 	return(NULL);
     }
-    ret = (virConfValuePtr) malloc(sizeof(virConfValue));
+    ret = (virConfValuePtr) calloc(1, sizeof(virConfValue));
     if (ret == NULL) {
         virConfError(NULL, VIR_ERR_NO_MEMORY, _("allocating configuration"), 0);
 	if (str != NULL)
 	    free(str);
         return(NULL);
     }
-    memset(ret, 0, sizeof(virConfValue));
     ret->type = type;
     ret->l = l;
     ret->str = str;
     ret->list = lst;
-
     return(ret);
 }
 
@@ -684,7 +691,7 @@ error:
  ************************************************************************/
 
 /**
- * virConfReadFile:
+ * __virConfReadFile:
  * @filename: the path to the configuration file.
  *
  * Reads a configuration file.
@@ -693,7 +700,7 @@ error:
  *         read or parse the file, use virConfFree() to free the data.
  */
 virConfPtr
-virConfReadFile(const char *filename)
+__virConfReadFile(const char *filename)
 {
     char content[4096];
     int fd;
@@ -718,7 +725,7 @@ virConfReadFile(const char *filename)
 }
 
 /**
- * virConfReadMem:
+ * __virConfReadMem:
  * @memory: pointer to the content of the configuration file
  * @len: lenght in byte
  *
@@ -729,7 +736,7 @@ virConfReadFile(const char *filename)
  *         parse the content, use virConfFree() to free the data.
  */
 virConfPtr
-virConfReadMem(const char *memory, int len)
+__virConfReadMem(const char *memory, int len)
 {
     if ((memory == NULL) || (len < 0)) {
         virConfError(NULL, VIR_ERR_INVALID_ARG, __FUNCTION__, 0);
@@ -742,7 +749,7 @@ virConfReadMem(const char *memory, int len)
 }
 
 /**
- * virConfFree:
+ * __virConfFree:
  * @conf: a configuration file handle
  *
  * Frees all data associated to the handle
@@ -750,18 +757,31 @@ virConfReadMem(const char *memory, int len)
  * Returns 0 in case of success, -1 in case of error.
  */
 int
-virConfFree(virConfPtr conf)
+__virConfFree(virConfPtr conf)
 {
+    virConfEntryPtr tmp;
     if (conf == NULL) {
         virConfError(NULL, VIR_ERR_INVALID_ARG, __FUNCTION__, 0);
-	return(-1);
+        return(-1);
+    }
+
+    tmp = conf->entries;
+    while (tmp) {
+        virConfEntryPtr next;
+        free(tmp->name);
+        virConfFreeValue(tmp->value);
+        if (tmp->comment)
+            free(tmp->comment);
+        next = tmp->next;
+        free(tmp);
+        tmp = next;
     }
     free(conf);
     return(0);
 }
 
 /**
- * virConfGetValue:
+ * __virConfGetValue:
  * @conf: a configuration file handle
  * @entry: the name of the entry
  *
@@ -771,7 +791,7 @@ virConfFree(virConfPtr conf)
  *         associated will be freed when virConfFree() is called
  */
 virConfValuePtr
-virConfGetValue(virConfPtr conf, const char *setting)
+__virConfGetValue(virConfPtr conf, const char *setting)
 {
     virConfEntryPtr cur;
 
@@ -785,7 +805,65 @@ virConfGetValue(virConfPtr conf, const char *setting)
 }
 
 /**
- * virConfWriteFile:
+ * __virConfSetValue:
+ * @conf: a configuration file handle
+ * @entry: the name of the entry
+ * @value: the new configuration value
+ *
+ * Set (or replace) the value associated to this entry in the configuration
+ * file. The passed in 'value' will be owned by the conf object upon return
+ * of this method, even in case of error. It should not be referenced again
+ * by the caller.
+ *
+ * Returns 0 on success, or -1 on failure.
+ */
+int
+__virConfSetValue (virConfPtr conf,
+                  const char *setting,
+                  virConfValuePtr value)
+{
+    virConfEntryPtr cur, prev = NULL;
+
+    cur = conf->entries;
+    while (cur != NULL) {
+        if ((cur->name != NULL) && (!strcmp(cur->name, setting))) {
+            break;
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+
+    if (!cur) {
+        if (!(cur = malloc(sizeof(virConfEntry)))) {
+            virConfFreeValue(value);
+            return (-1);
+        }
+        cur->comment = NULL;
+        if (!(cur->name = strdup(setting))) {
+            virConfFreeValue(value);
+            free(cur);
+            return (-1);
+        }
+        cur->value = value;
+        if (prev) {
+            cur->next = prev->next;
+            prev->next = cur;
+        } else {
+            cur->next = conf->entries;
+            conf->entries = cur;
+        }
+    } else {
+        if (cur->value) {
+            virConfFreeValue(cur->value);
+        }
+        cur->value = value;
+    }
+    return (0);
+}
+
+
+/**
+ * __virConfWriteFile:
  * @filename: the path to the configuration file.
  * @conf: the conf
  *
@@ -794,7 +872,7 @@ virConfGetValue(virConfPtr conf, const char *setting)
  * Returns the number of bytes written or -1 in case of error.
  */
 int
-virConfWriteFile(const char *filename, virConfPtr conf)
+__virConfWriteFile(const char *filename, virConfPtr conf)
 {
     virBufferPtr buf;
     virConfEntryPtr cur;
@@ -834,7 +912,7 @@ error:
 }
 
 /**
- * virConfWriteMem:
+ * __virConfWriteMem:
  * @memory: pointer to the memory to store the config file
  * @len: pointer to the lenght in byte of the store, on output the size
  * @conf: the conf
@@ -847,7 +925,7 @@ error:
  * Returns the number of bytes written or -1 in case of error.
  */
 int
-virConfWriteMem(char *memory, int *len, virConfPtr conf)
+__virConfWriteMem(char *memory, int *len, virConfPtr conf)
 {
     virBufferPtr buf;
     virConfEntryPtr cur;
@@ -863,18 +941,28 @@ virConfWriteMem(char *memory, int *len, virConfPtr conf)
     cur = conf->entries;
     while (cur != NULL) {
         virConfSaveEntry(buf, cur);
-	cur = cur->next;
+        cur = cur->next;
     }
     
     if ((int) buf->use >= *len) {
         *len = buf->use;
-	ret = -1;
-	goto error;
+        ret = -1;
+        goto error;
     }
     memcpy(memory, buf->content, buf->use);
     ret = buf->use;
-
+    *len = buf->use;
 error:
     virBufferFree(buf);
     return(ret);
 }
+
+
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

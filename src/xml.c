@@ -14,18 +14,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#ifdef WITH_XEN
 #include <xs.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
+#endif
 #include <math.h> /* for isnan() */
 #include "internal.h"
 #include "hash.h"
 #include "sexpr.h"
 #include "xml.h"
+#include "xs_internal.h" /* for xenStoreDomainGetNetworkID */
 
+/**
+ * virXMLError:
+ * @conn: a connection if any
+ * @error: the error number
+ * @info: information/format string
+ * @value: extra integer parameter for the error string
+ *
+ * Report an error coming from the XML module.
+ */
 static void
-virXMLError(virErrorNumber error, const char *info, int value)
+virXMLError(virConnectPtr conn, virErrorNumber error, const char *info, int value)
 {
     const char *errmsg;
 
@@ -33,16 +42,238 @@ virXMLError(virErrorNumber error, const char *info, int value)
         return;
 
     errmsg = __virErrorMsg(error, info);
-    __virRaiseError(NULL, NULL, VIR_FROM_XML, error, VIR_ERR_ERROR,
+    __virRaiseError(conn, NULL, NULL, VIR_FROM_XML, error, VIR_ERR_ERROR,
                     errmsg, info, NULL, value, 0, errmsg, info, value);
 }
+
+#ifndef PROXY
+/**
+ * virXPathString:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ *
+ * Convenience function to evaluate an XPath string
+ *
+ * Returns a new string which must be deallocated by the caller or NULL
+ *         if the evaluation failed.
+ */
+char *
+virXPathString(const char *xpath, xmlXPathContextPtr ctxt) {
+    xmlXPathObjectPtr obj;
+    char *ret;
+
+    if ((ctxt == NULL) || (xpath == NULL)) {
+        virXMLError(NULL, VIR_ERR_INTERNAL_ERROR, 
+	            "Invalid parameter to virXPathString()", 0);
+        return(NULL);
+    }
+    obj = xmlXPathEval(BAD_CAST xpath, ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_STRING) ||
+        (obj->stringval == NULL) || (obj->stringval[0] == 0))
+        return(NULL);
+    ret = strdup((char *) obj->stringval);
+    xmlXPathFreeObject(obj);
+    if (ret == NULL) {
+        virXMLError(NULL, VIR_ERR_NO_MEMORY, "strdup", 0);
+    }
+    return(ret);
+}
+
+/**
+ * virXPathNumber:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ * @value: the returned double value
+ *
+ * Convenience function to evaluate an XPath number
+ *
+ * Returns 0 in case of success in which case @value is set,
+ *         or -1 if the evaluation failed.
+ */
+int
+virXPathNumber(const char *xpath, xmlXPathContextPtr ctxt, double *value) {
+    xmlXPathObjectPtr obj;
+
+    if ((ctxt == NULL) || (xpath == NULL) || (value == NULL)) {
+        virXMLError(NULL, VIR_ERR_INTERNAL_ERROR, 
+	            "Invalid parameter to virXPathNumber()", 0);
+        return(-1);
+    }
+    obj = xmlXPathEval(BAD_CAST xpath, ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_NUMBER) ||
+        (isnan(obj->floatval))) {
+	xmlXPathFreeObject(obj);
+	return(-1);
+    }
+    
+    *value = obj->floatval;
+    xmlXPathFreeObject(obj);
+    return(0);
+}
+
+/**
+ * virXPathLong:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ * @value: the returned long value
+ *
+ * Convenience function to evaluate an XPath number
+ *
+ * Returns 0 in case of success in which case @value is set,
+ *         or -1 if the XPath evaluation failed or -2 if the
+ *         value doesn't have a long format.
+ */
+int
+virXPathLong(const char *xpath, xmlXPathContextPtr ctxt, long *value) {
+    xmlXPathObjectPtr obj;
+    int ret = 0;
+
+    if ((ctxt == NULL) || (xpath == NULL) || (value == NULL)) {
+        virXMLError(NULL, VIR_ERR_INTERNAL_ERROR, 
+	            "Invalid parameter to virXPathNumber()", 0);
+        return(-1);
+    }
+    obj = xmlXPathEval(BAD_CAST xpath, ctxt);
+    if ((obj != NULL) && (obj->type == XPATH_STRING) &&
+        (obj->stringval != NULL) && (obj->stringval[0] != 0)) {
+        char *conv = NULL;
+	long val;
+
+        val = strtol((const char*)obj->stringval, &conv, 10);
+        if (conv == (const char*)obj->stringval) {
+            ret = -2;
+        } else {
+	    *value = val;
+	}
+    } else if ((obj != NULL) && (obj->type == XPATH_NUMBER) &&
+               (!(isnan(obj->floatval)))) {
+	*value = (long) obj->floatval;
+	if (*value != obj->floatval) {
+	    ret = -2;
+	}
+    } else {
+	ret = -1;
+    }
+    
+    xmlXPathFreeObject(obj);
+    return(ret);
+}
+
+/**
+ * virXPathBoolean:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ *
+ * Convenience function to evaluate an XPath boolean
+ *
+ * Returns 0 if false, 1 if true, or -1 if the evaluation failed.
+ */
+int
+virXPathBoolean(const char *xpath, xmlXPathContextPtr ctxt) {
+    xmlXPathObjectPtr obj;
+    int ret;
+
+    if ((ctxt == NULL) || (xpath == NULL)) {
+        virXMLError(NULL, VIR_ERR_INTERNAL_ERROR, 
+	            "Invalid parameter to virXPathBoolean()", 0);
+        return(-1);
+    }
+    obj = xmlXPathEval(BAD_CAST xpath, ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_BOOLEAN) ||
+        (obj->boolval < 0) || (obj->boolval > 1)) {
+	xmlXPathFreeObject(obj);
+	return(-1);
+    }
+    ret = obj->boolval;
+    
+    xmlXPathFreeObject(obj);
+    return(ret);
+}
+
+/**
+ * virXPathNode:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ *
+ * Convenience function to evaluate an XPath node set and returning
+ * only one node, the first one in the set if any
+ *
+ * Returns a pointer to the node or NULL if the evaluation failed.
+ */
+xmlNodePtr
+virXPathNode(const char *xpath, xmlXPathContextPtr ctxt) {
+    xmlXPathObjectPtr obj;
+    xmlNodePtr ret;
+
+    if ((ctxt == NULL) || (xpath == NULL)) {
+        virXMLError(NULL, VIR_ERR_INTERNAL_ERROR, 
+	            "Invalid parameter to virXPathNode()", 0);
+        return(NULL);
+    }
+    obj = xmlXPathEval(BAD_CAST xpath, ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_NODESET) ||
+        (obj->nodesetval == NULL) || (obj->nodesetval->nodeNr <= 0) ||
+	(obj->nodesetval->nodeTab == NULL)) {
+	xmlXPathFreeObject(obj);
+	return(NULL);
+    }
+    
+    ret = obj->nodesetval->nodeTab[0];
+    xmlXPathFreeObject(obj);
+    return(ret);
+}
+/**
+ * virXPathNodeSet:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ * @list: the returned list of nodes (or NULL if only count matters)
+ *
+ * Convenience function to evaluate an XPath node set
+ *
+ * Returns the number of nodes found in which case @list is set (and
+ *         must be freed) or -1 if the evaluation failed.
+ */
+int
+virXPathNodeSet(const char *xpath, xmlXPathContextPtr ctxt, xmlNodePtr **list) {
+    xmlXPathObjectPtr obj;
+    int ret;
+
+    if ((ctxt == NULL) || (xpath == NULL)) {
+        virXMLError(NULL, VIR_ERR_INTERNAL_ERROR, 
+	            "Invalid parameter to virXPathNodeSet()", 0);
+        return(-1);
+    }
+    obj = xmlXPathEval(BAD_CAST xpath, ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_NODESET) ||
+        (obj->nodesetval == NULL) || (obj->nodesetval->nodeNr <= 0) ||
+	(obj->nodesetval->nodeTab == NULL)) {
+	xmlXPathFreeObject(obj);
+	if (list != NULL)
+	    *list = NULL;
+	return(-1);
+    }
+    
+    ret = obj->nodesetval->nodeNr;
+    if (list != NULL) {
+	*list = malloc(ret * sizeof(xmlNodePtr));
+	if (*list == NULL) {
+	    virXMLError(NULL, VIR_ERR_NO_MEMORY, 
+	                _("allocate string array"), ret * sizeof(xmlNodePtr));
+	} else {
+	    memcpy(*list, obj->nodesetval->nodeTab, ret * sizeof(xmlNodePtr));
+	}
+    }
+    xmlXPathFreeObject(obj);
+    return(ret);
+}
+#endif /* !PROXY */
 
 /**
  * virBufferGrow:
  * @buf:  the buffer
- * @len:  the minimum free size to allocate
+ * @len:  the minimum free size to allocate on top of existing used space
  *
- * Grow the available space of an XML buffer.
+ * Grow the available space of an XML buffer to at least @len bytes.
  *
  * Returns the new available space or -1 in case of error
  */
@@ -61,7 +292,7 @@ virBufferGrow(virBufferPtr buf, unsigned int len)
 
     newbuf = (char *) realloc(buf->content, size);
     if (newbuf == NULL) {
-        virXMLError(VIR_ERR_NO_MEMORY, _("growing buffer"), size);
+        virXMLError(NULL, VIR_ERR_NO_MEMORY, _("growing buffer"), size);
         return (-1);
     }
     buf->content = newbuf;
@@ -96,7 +327,7 @@ virBufferAdd(virBufferPtr buf, const char *str, int len)
 
     needSize = buf->use + len + 2;
     if (needSize > buf->size) {
-        if (!virBufferGrow(buf, needSize)) {
+        if (!virBufferGrow(buf, needSize - buf->use)) {
             return (-1);
         }
     }
@@ -113,11 +344,11 @@ virBufferNew(unsigned int size)
     virBufferPtr buf;
 
     if (!(buf = malloc(sizeof(*buf)))) {
-        virXMLError(VIR_ERR_NO_MEMORY, _("allocate new buffer"), sizeof(*buf));
+        virXMLError(NULL, VIR_ERR_NO_MEMORY, _("allocate new buffer"), sizeof(*buf));
         return NULL;
     }
     if (size && (buf->content = malloc(size))==NULL) {
-        virXMLError(VIR_ERR_NO_MEMORY, _("allocate buffer content"), size);
+        virXMLError(NULL, VIR_ERR_NO_MEMORY, _("allocate buffer content"), size);
         free(buf);
         return NULL;
     }
@@ -126,14 +357,14 @@ virBufferNew(unsigned int size)
 
     return buf;
 }
-	
+
 void
 virBufferFree(virBufferPtr buf)
 {
     if (buf) {
         if (buf->content)
-	   free(buf->content);
-       	free(buf);
+            free(buf->content);
+        free(buf);
     }
 }
 
@@ -189,17 +420,17 @@ virBufferStrcat(virBufferPtr buf, ...)
 {
     va_list ap;
     char *str;
-    
+
     va_start(ap, buf);
-    
+
     while ((str = va_arg(ap, char *)) != NULL) {
         unsigned int len = strlen(str);
         unsigned int needSize = buf->use + len + 2;
 
         if (needSize > buf->size) {
-           if (!virBufferGrow(buf, needSize))
-              return -1;
-	}
+            if (!virBufferGrow(buf, needSize - buf->use))
+                return -1;
+        }
         memcpy(&buf->content[buf->use], str, len);
         buf->use += len;
         buf->content[buf->use] = 0;
@@ -208,382 +439,23 @@ virBufferStrcat(virBufferPtr buf, ...)
     return 0;
 }
 
-#if 0
-
-/*
- * This block of function are now implemented by a xend poll in
- * xend_internal.c instead of querying the Xen store, code is kept
- * for reference of in case Xend may not be available in the future ...
- */
-
-/**
- * virDomainGetXMLDevice:
- * @domain: a domain object
- * @sub: the xenstore subsection 'vbd', 'vif', ...
- * @dev: the xenstrore internal device number
- * @name: the value's name
- *
- * Extract one information the device used by the domain from xensttore
- *
- * Returns the new string or NULL in case of error
- */
-static char *
-virDomainGetXMLDeviceInfo(virDomainPtr domain, const char *sub,
-                          long dev, const char *name)
-{
-    char s[256];
-    unsigned int len = 0;
-
-    snprintf(s, 255, "/local/domain/0/backend/%s/%d/%ld/%s",
-             sub, domain->handle, dev, name);
-    s[255] = 0;
-
-    return xs_read(domain->conn->xshandle, 0, &s[0], &len);
-}
-
-/**
- * virDomainGetXMLDevice:
- * @domain: a domain object
- * @buf: the output buffer object
- * @dev: the xenstrore internal device number
- *
- * Extract and dump in the buffer information on the device used by the domain
- *
- * Returns 0 in case of success, -1 in case of failure
- */
-static int
-virDomainGetXMLDevice(virDomainPtr domain, virBufferPtr buf, long dev)
-{
-    char *type, *val;
-
-    type = virDomainGetXMLDeviceInfo(domain, "vbd", dev, "type");
-    if (type == NULL)
-        return (-1);
-    if (!strcmp(type, "file")) {
-        virBufferVSprintf(buf, "    <disk type='file'>\n");
-        val = virDomainGetXMLDeviceInfo(domain, "vbd", dev, "params");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <source file='%s'/>\n", val);
-            free(val);
-        }
-        val = virDomainGetXMLDeviceInfo(domain, "vbd", dev, "dev");
-        if (val != NULL) {
-            char *tmp = val;
-            if (!strncmp(tmp, "ioemu:", 6))
-                tmp += 6;
-            virBufferVSprintf(buf, "      <target dev='%s'/>\n", tmp);
-            free(val);
-        }
-        val = virDomainGetXMLDeviceInfo(domain, "vbd", dev, "read-only");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <readonly/>\n", val);
-            free(val);
-        }
-        virBufferAdd(buf, "    </disk>\n", 12);
-    } else if (!strcmp(type, "phy")) {
-        virBufferVSprintf(buf, "    <disk type='device'>\n");
-        val = virDomainGetXMLDeviceInfo(domain, "vbd", dev, "params");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <source device='%s'/>\n", val);
-            free(val);
-        }
-        val = virDomainGetXMLDeviceInfo(domain, "vbd", dev, "dev");
-        if (val != NULL) {
-            char *tmp = val;
-            if (!strncmp(tmp, "ioemu:", 6))
-                tmp += 6;
-            virBufferVSprintf(buf, "      <target dev='%s'/>\n", tmp);
-            free(val);
-        }
-        val = virDomainGetXMLDeviceInfo(domain, "vbd", dev, "read-only");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <readonly/>\n", val);
-            free(val);
-        }
-        virBufferAdd(buf, "    </disk>\n", 12);
-    } else {
-        TODO fprintf(stderr, "Don't know how to handle device type %s\n",
-                     type);
-    }
-    free(type);
-
-    return (0);
-}
-
-/**
- * virDomainGetXMLDevices:
- * @domain: a domain object
- * @buf: the output buffer object
- *
- * Extract the devices used by the domain and dumps then in the buffer
- *
- * Returns 0 in case of success, -1 in case of failure
- */
-static int
-virDomainGetXMLDevices(virDomainPtr domain, virBufferPtr buf)
-{
-    int ret = -1;
-    unsigned int num, i;
-    long id;
-    char **list = NULL, *endptr;
-    char backend[200];
-    virConnectPtr conn;
-
-    if (!VIR_IS_CONNECTED_DOMAIN(domain))
-        return (-1);
-
-    conn = domain->conn;
-
-    snprintf(backend, 199, "/local/domain/0/backend/vbd/%d",
-             virDomainGetID(domain));
-    backend[199] = 0;
-    list = xs_directory(conn->xshandle, 0, backend, &num);
-    ret = 0;
-    if (list == NULL)
-        goto done;
-
-    for (i = 0; i < num; i++) {
-        id = strtol(list[i], &endptr, 10);
-        if ((endptr == list[i]) || (*endptr != 0)) {
-            ret = -1;
-            goto done;
-        }
-        virDomainGetXMLDevice(domain, buf, id);
-    }
-
-  done:
-    if (list != NULL)
-        free(list);
-
-    return (ret);
-}
-
-/**
- * virDomainGetXMLInterface:
- * @domain: a domain object
- * @buf: the output buffer object
- * @dev: the xenstrore internal device number
- *
- * Extract and dump in the buffer information on the interface used by
- * the domain
- *
- * Returns 0 in case of success, -1 in case of failure
- */
-static int
-virDomainGetXMLInterface(virDomainPtr domain, virBufferPtr buf, long dev)
-{
-    char *type, *val;
-
-    type = virDomainGetXMLDeviceInfo(domain, "vif", dev, "bridge");
-    if (type == NULL) {
-        virBufferVSprintf(buf, "    <interface type='default'>\n");
-        val = virDomainGetXMLDeviceInfo(domain, "vif", dev, "mac");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <mac address='%s'/>\n", val);
-            free(val);
-        }
-        val = virDomainGetXMLDeviceInfo(domain, "vif", dev, "script");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <script path='%s'/>\n", val);
-            free(val);
-        }
-        virBufferAdd(buf, "    </interface>\n", 17);
-    } else {
-        virBufferVSprintf(buf, "    <interface type='bridge'>\n");
-        virBufferVSprintf(buf, "      <source bridge='%s'/>\n", type);
-        val = virDomainGetXMLDeviceInfo(domain, "vif", dev, "mac");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <mac address='%s'/>\n", val);
-            free(val);
-        }
-        val = virDomainGetXMLDeviceInfo(domain, "vif", dev, "script");
-        if (val != NULL) {
-            virBufferVSprintf(buf, "      <script path='%s'/>\n", val);
-            free(val);
-        }
-        virBufferAdd(buf, "    </interface>\n", 17);
-    }
-    free(type);
-
-    return (0);
-}
-
-/**
- * virDomainGetXMLInterfaces:
- * @domain: a domain object
- * @buf: the output buffer object
- *
- * Extract the interfaces used by the domain and dumps then in the buffer
- *
- * Returns 0 in case of success, -1 in case of failure
- */
-static int
-virDomainGetXMLInterfaces(virDomainPtr domain, virBufferPtr buf)
-{
-    int ret = -1;
-    unsigned int num, i;
-    long id;
-    char **list = NULL, *endptr;
-    char backend[200];
-    virConnectPtr conn;
-
-    if (!VIR_IS_CONNECTED_DOMAIN(domain))
-        return (-1);
-
-    conn = domain->conn;
-
-    snprintf(backend, 199, "/local/domain/0/backend/vif/%d",
-             virDomainGetID(domain));
-    backend[199] = 0;
-    list = xs_directory(conn->xshandle, 0, backend, &num);
-    ret = 0;
-    if (list == NULL)
-        goto done;
-
-    for (i = 0; i < num; i++) {
-        id = strtol(list[i], &endptr, 10);
-        if ((endptr == list[i]) || (*endptr != 0)) {
-            ret = -1;
-            goto done;
-        }
-        virDomainGetXMLInterface(domain, buf, id);
-    }
-
-  done:
-    if (list != NULL)
-        free(list);
-
-    return (ret);
-}
-
-
-
-
-/**
- * virDomainGetXMLBoot:
- * @domain: a domain object
- * @buf: the output buffer object
- *
- * Extract the boot information used to start that domain
- *
- * Returns 0 in case of success, -1 in case of failure
- */
-static int
-virDomainGetXMLBoot(virDomainPtr domain, virBufferPtr buf)
-{
-    char *vm, *str;
-
-    if (!VIR_IS_DOMAIN(domain))
-        return (-1);
-
-    vm = virDomainGetVM(domain);
-    if (vm == NULL)
-        return (-1);
-
-    virBufferAdd(buf, "  <os>\n", 7);
-    str = virDomainGetVMInfo(domain, vm, "image/ostype");
-    if (str != NULL) {
-        virBufferVSprintf(buf, "    <type>%s</type>\n", str);
-        free(str);
-    }
-    str = virDomainGetVMInfo(domain, vm, "image/kernel");
-    if (str != NULL) {
-        virBufferVSprintf(buf, "    <kernel>%s</kernel>\n", str);
-        free(str);
-    }
-    str = virDomainGetVMInfo(domain, vm, "image/ramdisk");
-    if (str != NULL) {
-        if (str[0] != 0)
-            virBufferVSprintf(buf, "    <initrd>%s</initrd>\n", str);
-        free(str);
-    }
-    str = virDomainGetVMInfo(domain, vm, "image/cmdline");
-    if (str != NULL) {
-        if (str[0] != 0)
-            virBufferVSprintf(buf, "    <cmdline>%s</cmdline>\n", str);
-        free(str);
-    }
-    virBufferAdd(buf, "  </os>\n", 8);
-
-    free(vm);
-    return (0);
-}
-
-/**
- * virDomainGetXMLDesc:
- * @domain: a domain object
- * @flags: and OR'ed set of extraction flags, not used yet
- *
- * Provide an XML description of the domain. NOTE: this API is subject
- * to changes.
- *
- * Returns a 0 terminated UTF-8 encoded XML instance, or NULL in case of error.
- *         the caller must free() the returned value.
- */
-char *
-virDomainGetXMLDesc(virDomainPtr domain, int flags)
-{
-    char *ret = NULL;
-    unsigned char uuid[16];
-    virBuffer buf;
-    virDomainInfo info;
-
-    if (!VIR_IS_DOMAIN(domain))
-        return (NULL);
-    if (flags != 0)
-        return (NULL);
-    if (virDomainGetInfo(domain, &info) < 0)
-        return (NULL);
-
-    ret = malloc(1000);
-    if (ret == NULL)
-        return (NULL);
-    buf.content = ret;
-    buf.size = 1000;
-    buf.use = 0;
-
-    virBufferVSprintf(&buf, "<domain type='xen' id='%d'>\n",
-                      virDomainGetID(domain));
-    virBufferVSprintf(&buf, "  <name>%s</name>\n",
-                      virDomainGetName(domain));
-    if (virDomainGetUUID(domain, &uuid[0]) == 0) {
-    virBufferVSprintf(&buf,
-"  <uuid>%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x</uuid>\n",
-                      uuid[0], uuid[1], uuid[2], uuid[3],
-                      uuid[4], uuid[5], uuid[6], uuid[7],
-                      uuid[8], uuid[9], uuid[10], uuid[11],
-                      uuid[12], uuid[13], uuid[14], uuid[15]);
-    }
-    virDomainGetXMLBoot(domain, &buf);
-    virBufferVSprintf(&buf, "  <memory>%lu</memory>\n", info.maxMem);
-    virBufferVSprintf(&buf, "  <vcpu>%d</vcpu>\n", (int) info.nrVirtCpu);
-    virBufferAdd(&buf, "  <devices>\n", 12);
-    virDomainGetXMLDevices(domain, &buf);
-    virDomainGetXMLInterfaces(domain, &buf);
-    virBufferAdd(&buf, "  </devices>\n", 13);
-    virBufferAdd(&buf, "</domain>\n", 10);
-
-    buf.content[buf.use] = 0;
-    return (ret);
-}
-
-#endif /* 0 - UNUSED */
 
 #ifndef PROXY
 /**
- * virtDomainParseXMLGraphicsDesc:
+ * virtDomainParseXMLGraphicsDescImage:
+ * @conn: pointer to the hypervisor connection
  * @node: node containing graphics description
  * @buf: a buffer for the result S-Expr
  * @xendConfigVersion: xend configuration file format
  *
- * Parse the graphics part of the XML description and add it to the S-Expr 
- * in buf.  This is a temporary interface as the S-Expr interface will be 
- * replaced by XML-RPC in the future. However the XML format should stay 
+ * Parse the graphics part of the XML description and add it to the S-Expr
+ * in buf.  This is a temporary interface as the S-Expr interface will be
+ * replaced by XML-RPC in the future. However the XML format should stay
  * valid over time.
  *
  * Returns 0 in case of success, -1 in case of error
  */
-static int virDomainParseXMLGraphicsDesc(xmlNodePtr node, virBufferPtr buf, int xendConfigVersion)
+static int virDomainParseXMLGraphicsDescImage(virConnectPtr conn ATTRIBUTE_UNUSED, xmlNodePtr node, virBufferPtr buf, int xendConfigVersion)
 {
     xmlChar *graphics_type = NULL;
 
@@ -591,23 +463,39 @@ static int virDomainParseXMLGraphicsDesc(xmlNodePtr node, virBufferPtr buf, int 
     if (graphics_type != NULL) {
         if (xmlStrEqual(graphics_type, BAD_CAST "sdl")) {
             virBufferAdd(buf, "(sdl 1)", 7);
-            // TODO:
-            // Need to understand sdl options
-            //
-            //virBufferAdd(buf, "(display localhost:10.0)", 24);
-            //virBufferAdd(buf, "(xauthority /root/.Xauthority)", 30);
+            /* TODO:
+             * Need to understand sdl options
+             *
+             *virBufferAdd(buf, "(display localhost:10.0)", 24);
+             *virBufferAdd(buf, "(xauthority /root/.Xauthority)", 30);
+             */
         }
         else if (xmlStrEqual(graphics_type, BAD_CAST "vnc")) {
             virBufferAdd(buf, "(vnc 1)", 7);
             if (xendConfigVersion >= 2) {
                 xmlChar *vncport = xmlGetProp(node, BAD_CAST "port");
+                xmlChar *vnclisten = xmlGetProp(node, BAD_CAST "listen");
+                xmlChar *vncpasswd = xmlGetProp(node, BAD_CAST "passwd");
+                xmlChar *keymap = xmlGetProp(node, BAD_CAST "keymap");
                 if (vncport != NULL) {
                     long port = strtol((const char *)vncport, NULL, 10);
                     if (port == -1)
                         virBufferAdd(buf, "(vncunused 1)", 13);
-                    else if (port > 5900)
-                        virBufferVSprintf(buf, "(vncdisplay %d)", port - 5900);
+                    else if (port >= 5900)
+                        virBufferVSprintf(buf, "(vncdisplay %ld)", port - 5900);
                     xmlFree(vncport);
+                }
+                if (vnclisten != NULL) {
+                    virBufferVSprintf(buf, "(vnclisten %s)", vnclisten);
+                    xmlFree(vnclisten);
+                }
+                if (vncpasswd != NULL) {
+                    virBufferVSprintf(buf, "(vncpasswd %s)", vncpasswd);
+                    xmlFree(vncpasswd);
+                }
+                if (keymap != NULL) {
+                    virBufferVSprintf(buf, "(keymap %s)", keymap);
+                    xmlFree(keymap);
                 }
             }
         }
@@ -618,10 +506,76 @@ static int virDomainParseXMLGraphicsDesc(xmlNodePtr node, virBufferPtr buf, int 
 
 
 /**
+ * virtDomainParseXMLGraphicsDescVFB:
+ * @conn: pointer to the hypervisor connection
+ * @node: node containing graphics description
+ * @buf: a buffer for the result S-Expr
+ *
+ * Parse the graphics part of the XML description and add it to the S-Expr
+ * in buf.  This is a temporary interface as the S-Expr interface will be
+ * replaced by XML-RPC in the future. However the XML format should stay
+ * valid over time.
+ *
+ * Returns 0 in case of success, -1 in case of error
+ */
+static int virDomainParseXMLGraphicsDescVFB(virConnectPtr conn ATTRIBUTE_UNUSED, xmlNodePtr node, virBufferPtr buf)
+{
+    xmlChar *graphics_type = NULL;
+
+    graphics_type = xmlGetProp(node, BAD_CAST "type");
+    if (graphics_type != NULL) {
+        virBufferAdd(buf, "(device (vkbd))", 15);
+        virBufferAdd(buf, "(device (vfb ", 13);
+        if (xmlStrEqual(graphics_type, BAD_CAST "sdl")) {
+            virBufferAdd(buf, "(type sdl)", 10);
+            /* TODO:
+             * Need to understand sdl options
+             *
+             *virBufferAdd(buf, "(display localhost:10.0)", 24);
+             *virBufferAdd(buf, "(xauthority /root/.Xauthority)", 30);
+             */
+        }
+        else if (xmlStrEqual(graphics_type, BAD_CAST "vnc")) {
+            virBufferAdd(buf, "(type vnc)", 10);
+            xmlChar *vncport = xmlGetProp(node, BAD_CAST "port");
+            xmlChar *vnclisten = xmlGetProp(node, BAD_CAST "listen");
+            xmlChar *vncpasswd = xmlGetProp(node, BAD_CAST "passwd");
+            xmlChar *keymap = xmlGetProp(node, BAD_CAST "keymap");
+            if (vncport != NULL) {
+                long port = strtol((const char *)vncport, NULL, 10);
+                if (port == -1)
+                    virBufferAdd(buf, "(vncunused 1)", 13);
+                else if (port >= 5900)
+                    virBufferVSprintf(buf, "(vncdisplay %ld)", port - 5900);
+                xmlFree(vncport);
+            }
+            if (vnclisten != NULL) {
+                virBufferVSprintf(buf, "(vnclisten %s)", vnclisten);
+                xmlFree(vnclisten);
+            }
+            if (vncpasswd != NULL) {
+                virBufferVSprintf(buf, "(vncpasswd %s)", vncpasswd);
+                xmlFree(vncpasswd);
+            }
+            if (keymap != NULL) {
+                virBufferVSprintf(buf, "(keymap %s)", keymap);
+                xmlFree(keymap);
+            }
+        }
+        virBufferAdd(buf, "))", 2);
+        xmlFree(graphics_type);
+    }
+    return 0;
+}
+
+
+/**
  * virDomainParseXMLOSDescHVM:
+ * @conn: pointer to the hypervisor connection
  * @node: node containing HVM OS description
  * @buf: a buffer for the result S-Expr
  * @ctxt: a path context representing the XML description
+ * @vcpus: number of virtual CPUs to configure
  * @xendConfigVersion: xend configuration file format
  *
  * Parse the OS part of the XML description for an HVM domain and add it to
@@ -632,14 +586,15 @@ static int virDomainParseXMLGraphicsDesc(xmlNodePtr node, virBufferPtr buf, int 
  * Returns 0 in case of success, -1 in case of error.
  */
 static int
-virDomainParseXMLOSDescHVM(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr ctxt, int xendConfigVersion)
+virDomainParseXMLOSDescHVM(virConnectPtr conn, xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr ctxt, int vcpus, int xendConfigVersion)
 {
-    xmlXPathObjectPtr obj = NULL;
     xmlNodePtr cur, txt;
     xmlChar *type = NULL;
     xmlChar *loader = NULL;
-    xmlChar *boot_dev = NULL;
+    char bootorder[5];
+    int nbootorder = 0;
     int res;
+    char *str;
 
     cur = node->children;
     while (cur != NULL) {
@@ -648,172 +603,149 @@ virDomainParseXMLOSDescHVM(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr
                 && (xmlStrEqual(cur->name, BAD_CAST "type"))) {
                 txt = cur->children;
                 if ((txt != NULL) && (txt->type == XML_TEXT_NODE) &&
-		    (txt->next == NULL))
+                    (txt->next == NULL))
                     type = txt->content;
             } else if ((loader == NULL) &&
                        (xmlStrEqual(cur->name, BAD_CAST "loader"))) {
                 txt = cur->children;
                 if ((txt != NULL) && (txt->type == XML_TEXT_NODE) &&
-		    (txt->next == NULL))
+                    (txt->next == NULL))
                     loader = txt->content;
-            } else if ((boot_dev == NULL) &&
-                       (xmlStrEqual(cur->name, BAD_CAST "boot"))) {
-                boot_dev = xmlGetProp(cur, BAD_CAST "dev");
+            } else if ((xmlStrEqual(cur->name, BAD_CAST "boot"))) {
+                xmlChar *boot_dev = xmlGetProp(cur, BAD_CAST "dev");
+                if (nbootorder == ((sizeof(bootorder)/sizeof(bootorder[0]))-1)) {
+                    virXMLError(conn, VIR_ERR_XML_ERROR, "too many boot devices", 0);
+                    return (-1);
+                }
+                if (xmlStrEqual(boot_dev, BAD_CAST "fd")) {
+                    bootorder[nbootorder++] = 'a';
+                } else if (xmlStrEqual(boot_dev, BAD_CAST "cdrom")) {
+                    bootorder[nbootorder++] = 'd';
+                } else if (xmlStrEqual(boot_dev, BAD_CAST "network")) {
+                    bootorder[nbootorder++] = 'n';
+                } else if (xmlStrEqual(boot_dev, BAD_CAST "hd")) {
+                    bootorder[nbootorder++] = 'c';
+                } else {
+                    xmlFree(boot_dev);
+                    /* Any other type of boot dev is unsupported right now */
+                    virXMLError(conn, VIR_ERR_XML_ERROR, NULL, 0);
+                    return (-1);
+                }
+                xmlFree(boot_dev);
             }
         }
         cur = cur->next;
     }
+    bootorder[nbootorder] = '\0';
     if ((type == NULL) || (!xmlStrEqual(type, BAD_CAST "hvm"))) {
         /* VIR_ERR_OS_TYPE */
-        virXMLError(VIR_ERR_OS_TYPE, (const char *) type, 0);
+        virXMLError(conn, VIR_ERR_OS_TYPE, (const char *) type, 0);
         return (-1);
     }
     virBufferAdd(buf, "(image (hvm ", 12);
     if (loader == NULL) {
-       virXMLError(VIR_ERR_NO_KERNEL, NULL, 0);
-       goto error;
+        virXMLError(conn, VIR_ERR_NO_KERNEL, NULL, 0);
+        goto error;
     } else {
-       virBufferVSprintf(buf, "(kernel '%s')", (const char *) loader);
+        virBufferVSprintf(buf, "(kernel '%s')", (const char *) loader);
     }
 
     /* get the device emulation model */
-    obj = xmlXPathEval(BAD_CAST "string(/domain/devices/emulator[1])", ctxt);
-    if ((obj == NULL) || (obj->type != XPATH_STRING) ||
-        (obj->stringval == NULL) || (obj->stringval[0] == 0)) {
-        virXMLError(VIR_ERR_NO_KERNEL, NULL, 0); /* TODO: error */
+    str = virXPathString("string(/domain/devices/emulator[1])", ctxt);
+    if (str == NULL) {
+        virXMLError(conn, VIR_ERR_NO_KERNEL, NULL, 0); /* TODO: error */
         goto error;
     }
-    virBufferVSprintf(buf, "(device_model '%s')",
-                      (const char *) obj->stringval);
-    xmlXPathFreeObject(obj);
-    obj = NULL;
+    virBufferVSprintf(buf, "(device_model '%s')", str);
+    xmlFree(str);
 
-    if (boot_dev) {
-       if (xmlStrEqual(boot_dev, BAD_CAST "fd")) {
-          virBufferVSprintf(buf, "(boot a)", (const char *) boot_dev);
-       } else if (xmlStrEqual(boot_dev, BAD_CAST "cdrom")) {
-          virBufferVSprintf(buf, "(boot d)", (const char *) boot_dev);
-       } else if (xmlStrEqual(boot_dev, BAD_CAST "hd")) {
-          virBufferVSprintf(buf, "(boot c)", (const char *) boot_dev);
-       } else {
-         /* Any other type of boot dev is unsupported right now */
-         virXMLError(VIR_ERR_XML_ERROR, NULL, 0);
-       }
+    virBufferVSprintf(buf, "(vcpus %d)", vcpus);
 
-       /* get the 1st floppy device file */
-       obj = xmlXPathEval(BAD_CAST "/domain/devices/disk[@device='floppy' and target/@dev='fda']/source", ctxt);
-       if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-           (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr == 1)) {
-           cur = obj->nodesetval->nodeTab[0];
-           virBufferVSprintf(buf, "(fda '%s')",
-                             (const char *) xmlGetProp(cur, BAD_CAST "file"));
-           cur = NULL;
-       }
-       if (obj) {
-           xmlXPathFreeObject(obj);
-           obj = NULL;
-       }
+    if (nbootorder)
+        virBufferVSprintf(buf, "(boot %s)", bootorder);
 
-       /* get the 2nd floppy device file */
-       obj = xmlXPathEval(BAD_CAST "/domain/devices/disk[@device='floppy' and target/@dev='fdb']/source", ctxt);
-       if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-           (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr == 1)) {
-           xmlChar *fdfile = NULL;
-           cur = obj->nodesetval->nodeTab[0];
-           fdfile = xmlGetProp(cur, BAD_CAST "file");
-           virBufferVSprintf(buf, "(fdb '%s')",
-                             (const char *) fdfile);
-           xmlFree(fdfile);
-           cur = NULL;
-       }
-       if (obj) {
-           xmlXPathFreeObject(obj);
-           obj = NULL;
-       }
-
-
-       /* get the cdrom device file */
-       /* Only XenD <= 3.0.2 wants cdrom config here */
-       if (xendConfigVersion == 1) {
-           obj = xmlXPathEval(BAD_CAST "/domain/devices/disk[@device='cdrom' and target/@dev='hdc']/source", ctxt);
-           if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-               (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr == 1)) {
-               xmlChar *cdfile = NULL;
-               cur = obj->nodesetval->nodeTab[0];
-               cdfile = xmlGetProp(cur, BAD_CAST "file");
-               virBufferVSprintf(buf, "(cdrom '%s')",
-                                 (const char *)cdfile);
-               xmlFree(cdfile);
-               cur = NULL;
-           }
-           if (obj) {
-               xmlXPathFreeObject(obj);
-               obj = NULL;
-           }
-       }
-
-       obj = xmlXPathEval(BAD_CAST "/domain/features/acpi", ctxt);
-       if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-           (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr == 1)) {
-           virBufferAdd(buf, "(acpi 1)", 8);
-       }
-       if (obj)
-           xmlXPathFreeObject(obj);
-       obj = xmlXPathEval(BAD_CAST "/domain/features/apic", ctxt);
-       if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-           (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr == 1)) {
-           virBufferAdd(buf, "(apic 1)", 8);
-       }
-       if (obj)
-           xmlXPathFreeObject(obj);
-       obj = xmlXPathEval(BAD_CAST "/domain/features/pae", ctxt);
-       if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-           (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr == 1)) {
-           virBufferAdd(buf, "(pae 1)", 7);
-       }
-       if (obj)
-           xmlXPathFreeObject(obj);
-       obj = NULL;
+    /* get the 1st floppy device file */
+	cur = virXPathNode("/domain/devices/disk[@device='floppy' and target/@dev='fda']/source",
+                       ctxt);
+	if (cur != NULL) {
+        xmlChar *fdfile;
+        fdfile = xmlGetProp(cur, BAD_CAST "file");
+	    if (fdfile != NULL) {
+            virBufferVSprintf(buf, "(fda '%s')", fdfile);
+            free(fdfile);
+	    }
     }
 
-    obj = xmlXPathEval(BAD_CAST "count(domain/devices/console) > 0", ctxt);
-    if ((obj == NULL) || (obj->type != XPATH_BOOLEAN)) {
-      virXMLError(VIR_ERR_XML_ERROR, NULL, 0);
-      goto error;
+    /* get the 2nd floppy device file */
+	cur = virXPathNode("/domain/devices/disk[@device='floppy' and target/@dev='fdb']/source",
+                       ctxt);
+	if (cur != NULL) {
+        xmlChar *fdfile;
+        fdfile = xmlGetProp(cur, BAD_CAST "file");
+	    if (fdfile != NULL) {
+            virBufferVSprintf(buf, "(fdb '%s')", fdfile);
+            free(fdfile);
+	    }
     }
-    if (obj->boolval) {
-      virBufferAdd(buf, "(serial pty)", 12);
-    }
-    xmlXPathFreeObject(obj);
-    obj = NULL;
-    
-    /* Is a graphics device specified? */
-    obj = xmlXPathEval(BAD_CAST "/domain/devices/graphics[1]", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-        (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr > 0)) {
-        res = virDomainParseXMLGraphicsDesc(obj->nodesetval->nodeTab[0], buf, xendConfigVersion);
-        if (res != 0) {
-            goto error;
+
+
+    /* get the cdrom device file */
+    /* Only XenD <= 3.0.2 wants cdrom config here */
+    if (xendConfigVersion == 1) {
+	    cur = virXPathNode("/domain/devices/disk[@device='cdrom' and target/@dev='hdc']/source",
+	                       ctxt);
+	    if (cur != NULL) {
+            xmlChar *cdfile;
+
+            cdfile = xmlGetProp(cur, BAD_CAST "file");
+            if (cdfile != NULL) {
+                virBufferVSprintf(buf, "(cdrom '%s')",
+                                  (const char *)cdfile);
+                xmlFree(cdfile);
+            }
         }
     }
-    xmlXPathFreeObject(obj);
+
+    if (virXPathNode("/domain/features/acpi", ctxt) != NULL)
+        virBufferAdd(buf, "(acpi 1)", 8);
+    if (virXPathNode("/domain/features/apic", ctxt) != NULL)
+        virBufferAdd(buf, "(apic 1)", 8);
+    if (virXPathNode("/domain/features/pae", ctxt) != NULL)
+        virBufferAdd(buf, "(pae 1)", 7);
+
+    res = virXPathBoolean("count(domain/devices/console) > 0", ctxt);
+    if (res < 0) {
+        virXMLError(conn, VIR_ERR_XML_ERROR, NULL, 0);
+        goto error;
+    }
+    if (res) {
+        virBufferAdd(buf, "(serial pty)", 12);
+    }
+
+    /* HVM graphics for xen <= 3.0.5 */
+    if (xendConfigVersion < 4) {
+        /* Is a graphics device specified? */
+        cur = virXPathNode("/domain/devices/graphics[1]", ctxt);
+        if (cur != NULL) {
+            res = virDomainParseXMLGraphicsDescImage(conn, cur, buf,
+                                                     xendConfigVersion);
+            if (res != 0) {
+                goto error;
+            }
+        }
+    }
 
     virBufferAdd(buf, "))", 2);
 
-    if (boot_dev)
-        xmlFree(boot_dev);
-
     return (0);
-error:
-    if (boot_dev)
-        xmlFree(boot_dev);
-    if (obj != NULL)
-        xmlXPathFreeObject(obj);
+
+ error:
     return(-1);
 }
 
 /**
  * virDomainParseXMLOSDescPV:
+ * @conn: pointer to the hypervisor connection
  * @node: node containing PV OS description
  * @buf: a buffer for the result S-Expr
  * @ctxt: a path context representing the XML description
@@ -827,10 +759,9 @@ error:
  * Returns 0 in case of success, -1 in case of error.
  */
 static int
-virDomainParseXMLOSDescPV(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr ctxt, int xendConfigVersion)
+virDomainParseXMLOSDescPV(virConnectPtr conn, xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr ctxt, int xendConfigVersion)
 {
     xmlNodePtr cur, txt;
-    xmlXPathObjectPtr obj = NULL;
     const xmlChar *type = NULL;
     const xmlChar *root = NULL;
     const xmlChar *kernel = NULL;
@@ -845,31 +776,31 @@ virDomainParseXMLOSDescPV(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr 
                 && (xmlStrEqual(cur->name, BAD_CAST "type"))) {
                 txt = cur->children;
                 if ((txt != NULL) && (txt->type == XML_TEXT_NODE) &&
-		    (txt->next == NULL))
+                    (txt->next == NULL))
                     type = txt->content;
             } else if ((kernel == NULL) &&
                        (xmlStrEqual(cur->name, BAD_CAST "kernel"))) {
                 txt = cur->children;
                 if ((txt != NULL) && (txt->type == XML_TEXT_NODE) &&
-		    (txt->next == NULL))
+                    (txt->next == NULL))
                     kernel = txt->content;
             } else if ((root == NULL) &&
                        (xmlStrEqual(cur->name, BAD_CAST "root"))) {
                 txt = cur->children;
                 if ((txt != NULL) && (txt->type == XML_TEXT_NODE) &&
-		    (txt->next == NULL))
+                    (txt->next == NULL))
                     root = txt->content;
             } else if ((initrd == NULL) &&
                        (xmlStrEqual(cur->name, BAD_CAST "initrd"))) {
                 txt = cur->children;
                 if ((txt != NULL) && (txt->type == XML_TEXT_NODE) &&
-		    (txt->next == NULL))
+                    (txt->next == NULL))
                     initrd = txt->content;
             } else if ((cmdline == NULL) &&
                        (xmlStrEqual(cur->name, BAD_CAST "cmdline"))) {
                 txt = cur->children;
                 if ((txt != NULL) && (txt->type == XML_TEXT_NODE) &&
-		    (txt->next == NULL))
+                    (txt->next == NULL))
                     cmdline = txt->content;
             }
         }
@@ -877,15 +808,15 @@ virDomainParseXMLOSDescPV(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr 
     }
     if ((type != NULL) && (!xmlStrEqual(type, BAD_CAST "linux"))) {
         /* VIR_ERR_OS_TYPE */
-        virXMLError(VIR_ERR_OS_TYPE, (const char *) type, 0);
+        virXMLError(conn, VIR_ERR_OS_TYPE, (const char *) type, 0);
         return (-1);
     }
     virBufferAdd(buf, "(image (linux ", 14);
     if (kernel == NULL) {
-      	virXMLError(VIR_ERR_NO_KERNEL, NULL, 0);
-	return (-1);
+        virXMLError(conn, VIR_ERR_NO_KERNEL, NULL, 0);
+        return (-1);
     } else {
-	virBufferVSprintf(buf, "(kernel '%s')", (const char *) kernel);
+        virBufferVSprintf(buf, "(kernel '%s')", (const char *) kernel);
     }
     if (initrd != NULL)
         virBufferVSprintf(buf, "(ramdisk '%s')", (const char *) initrd);
@@ -894,16 +825,17 @@ virDomainParseXMLOSDescPV(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr 
     if (cmdline != NULL)
         virBufferVSprintf(buf, "(args '%s')", (const char *) cmdline);
 
-    /* Is a graphics device specified? */
-    obj = xmlXPathEval(BAD_CAST "/domain/devices/graphics[1]", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-        (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr > 0)) {
-        res = virDomainParseXMLGraphicsDesc(obj->nodesetval->nodeTab[0], buf, xendConfigVersion);
-        if (res != 0) {
-            goto error;
+    /* PV graphics for xen <= 3.0.4 */
+    if (xendConfigVersion < 3) {
+        cur = virXPathNode("/domain/devices/graphics[1]", ctxt);
+        if (cur != NULL) {
+            res = virDomainParseXMLGraphicsDescImage(conn, cur, buf,
+                                                     xendConfigVersion);
+            if (res != 0) {
+                goto error;
+            }
         }
     }
-    xmlXPathFreeObject(obj);
 
  error:
     virBufferAdd(buf, "))", 2);
@@ -911,8 +843,30 @@ virDomainParseXMLOSDescPV(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr 
 }
 
 /**
+ * virCatchXMLParseError:
+ * @ctx: the context
+ * @msg: the error message
+ * @...: extra arguments
+ *
+ * SAX callback on parsing errors, act as a gate for libvirt own
+ * error reporting.
+ */
+static void
+virCatchXMLParseError(void *ctx, const char *msg ATTRIBUTE_UNUSED, ...) {
+    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr) ctx;
+
+    if ((ctxt != NULL) &&
+        (ctxt->lastError.level == XML_ERR_FATAL) &&
+        (ctxt->lastError.message != NULL)) {
+        virXMLError(NULL, VIR_ERR_XML_DETAIL, ctxt->lastError.message,
+                    ctxt->lastError.line);
+    }
+}
+
+/**
  * virDomainParseXMLDiskDesc:
  * @node: node containing disk description
+ * @conn: pointer to the hypervisor connection
  * @buf: a buffer for the result S-Expr
  * @xendConfigVersion: xend configuration file format
  *
@@ -924,7 +878,7 @@ virDomainParseXMLOSDescPV(xmlNodePtr node, virBufferPtr buf, xmlXPathContextPtr 
  * Returns 0 in case of success, -1 in case of error.
  */
 static int
-virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendConfigVersion)
+virDomainParseXMLDiskDesc(virConnectPtr conn, xmlNodePtr node, virBufferPtr buf, int hvm, int xendConfigVersion)
 {
     xmlNodePtr cur;
     xmlChar *type = NULL;
@@ -934,8 +888,10 @@ virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendCo
     xmlChar *drvName = NULL;
     xmlChar *drvType = NULL;
     int ro = 0;
+    int shareable = 0;
     int typ = 0;
     int cdrom = 0;
+    int isNoSrcCdrom = 0;
 
     type = xmlGetProp(node, BAD_CAST "type");
     if (type != NULL) {
@@ -967,22 +923,34 @@ virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendCo
                     drvType = xmlGetProp(cur, BAD_CAST "type");
             } else if (xmlStrEqual(cur->name, BAD_CAST "readonly")) {
                 ro = 1;
+            } else if (xmlStrEqual(cur->name, BAD_CAST "shareable")) {
+                shareable = 1;
             }
         }
         cur = cur->next;
     }
 
     if (source == NULL) {
-        virXMLError(VIR_ERR_NO_SOURCE, (const char *) target, 0);
+        /* There is a case without the source
+         * to the CD-ROM device
+         */
+        if (hvm &&
+            device &&
+            !strcmp((const char *)device, "cdrom")) {
+            isNoSrcCdrom = 1;
+        }
+        if (!isNoSrcCdrom) {
+            virXMLError(conn, VIR_ERR_NO_SOURCE, (const char *) target, 0);
 
-        if (target != NULL)
-            xmlFree(target);
-        if (device != NULL)
-            xmlFree(device);
-        return (-1);
+            if (target != NULL)
+                xmlFree(target);
+            if (device != NULL)
+                xmlFree(device);
+            return (-1);
+        }
     }
     if (target == NULL) {
-        virXMLError(VIR_ERR_NO_TARGET, (const char *) source, 0);
+        virXMLError(conn, VIR_ERR_NO_TARGET, (const char *) source, 0);
         if (source != NULL)
             xmlFree(source);
         if (device != NULL)
@@ -1034,7 +1002,7 @@ virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendCo
     } else
         virBufferVSprintf(buf, "(dev '%s')", (const char *)target);
 
-    if (drvName) {
+    if (drvName && !isNoSrcCdrom) {
         if (!strcmp((const char *)drvName, "tap")) {
             virBufferVSprintf(buf, "(uname '%s:%s:%s')",
                               (const char *)drvName,
@@ -1045,7 +1013,7 @@ virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendCo
                               (const char *)drvName,
                               (const char *)source);
         }
-    } else {
+    } else if (!isNoSrcCdrom) {
         if (typ == 0)
             virBufferVSprintf(buf, "(uname 'file:%s')", source);
         else if (typ == 1) {
@@ -1055,10 +1023,12 @@ virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendCo
                 virBufferVSprintf(buf, "(uname 'phy:/dev/%s')", source);
         }
     }
-    if (ro == 0)
-        virBufferVSprintf(buf, "(mode 'w')");
-    else if (ro == 1)
+    if (ro == 1)
         virBufferVSprintf(buf, "(mode 'r')");
+    else if (shareable == 1)
+        virBufferVSprintf(buf, "(mode 'w!')");
+    else
+        virBufferVSprintf(buf, "(mode 'w')");
 
     virBufferAdd(buf, ")", 1);
     virBufferAdd(buf, ")", 1);
@@ -1074,6 +1044,7 @@ virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendCo
 
 /**
  * virDomainParseXMLIfDesc:
+ * @conn: pointer to the hypervisor connection
  * @node: node containing the interface description
  * @buf: a buffer for the result S-Expr
  *
@@ -1085,14 +1056,16 @@ virDomainParseXMLDiskDesc(xmlNodePtr node, virBufferPtr buf, int hvm, int xendCo
  * Returns 0 in case of success, -1 in case of error.
  */
 static int
-virDomainParseXMLIfDesc(xmlNodePtr node, virBufferPtr buf, int hvm)
+virDomainParseXMLIfDesc(virConnectPtr conn ATTRIBUTE_UNUSED, xmlNodePtr node, virBufferPtr buf, int hvm)
 {
     xmlNodePtr cur;
     xmlChar *type = NULL;
     xmlChar *source = NULL;
     xmlChar *mac = NULL;
     xmlChar *script = NULL;
+    xmlChar *ip = NULL;
     int typ = 0;
+    int ret = -1;
 
     type = xmlGetProp(node, BAD_CAST "type");
     if (type != NULL) {
@@ -1100,6 +1073,8 @@ virDomainParseXMLIfDesc(xmlNodePtr node, virBufferPtr buf, int hvm)
             typ = 0;
         else if (xmlStrEqual(type, BAD_CAST "ethernet"))
             typ = 1;
+        else if (xmlStrEqual(type, BAD_CAST "network"))
+            typ = 2;
         xmlFree(type);
     }
     cur = node->children;
@@ -1107,17 +1082,25 @@ virDomainParseXMLIfDesc(xmlNodePtr node, virBufferPtr buf, int hvm)
         if (cur->type == XML_ELEMENT_NODE) {
             if ((source == NULL) &&
                 (xmlStrEqual(cur->name, BAD_CAST "source"))) {
-
                 if (typ == 0)
                     source = xmlGetProp(cur, BAD_CAST "bridge");
-                else
+                else if (typ == 1)
                     source = xmlGetProp(cur, BAD_CAST "dev");
+                else
+                    source = xmlGetProp(cur, BAD_CAST "network");
             } else if ((mac == NULL) &&
                        (xmlStrEqual(cur->name, BAD_CAST "mac"))) {
                 mac = xmlGetProp(cur, BAD_CAST "address");
             } else if ((script == NULL) &&
                        (xmlStrEqual(cur->name, BAD_CAST "script"))) {
                 script = xmlGetProp(cur, BAD_CAST "path");
+            } else if ((ip == NULL) &&
+                       (xmlStrEqual(cur->name, BAD_CAST "ip"))) {
+                /* XXX in future expect to need to have > 1 ip
+                   address element - eg ipv4 & ipv6. For now
+                   xen only supports a single address though
+                   so lets ignore that complication */
+                ip = xmlGetProp(cur, BAD_CAST "address");
             }
         }
         cur = cur->next;
@@ -1129,26 +1112,43 @@ virDomainParseXMLIfDesc(xmlNodePtr node, virBufferPtr buf, int hvm)
     if (source != NULL) {
         if (typ == 0)
             virBufferVSprintf(buf, "(bridge '%s')", (const char *) source);
-        else                    /* TODO does that work like that ? */
+        else if (typ == 1)      /* TODO does that work like that ? */
             virBufferVSprintf(buf, "(dev '%s')", (const char *) source);
+        else {
+            virNetworkPtr network = virNetworkLookupByName(conn, (const char *) source);
+            char *bridge;
+            if (!network || !(bridge = virNetworkGetBridgeName(network))) {
+                virXMLError(conn, VIR_ERR_NO_SOURCE, (const char *) source, 0);
+                goto error;
+            }
+            virBufferVSprintf(buf, "(bridge '%s')", bridge);
+            free(bridge);
+        }
     }
     if (script != NULL)
         virBufferVSprintf(buf, "(script '%s')", script);
+    if (ip != NULL)
+        virBufferVSprintf(buf, "(ip '%s')", ip);
     if (hvm)
         virBufferAdd(buf, "(type ioemu)", 12);
 
     virBufferAdd(buf, ")", 1);
+    ret = 0;
+ error:
     if (mac != NULL)
         xmlFree(mac);
     if (source != NULL)
         xmlFree(source);
     if (script != NULL)
         xmlFree(script);
-    return (0);
+    if (ip != NULL)
+        xmlFree(ip);
+    return (ret);
 }
 
 /**
  * virDomainParseXMLDesc:
+ * @conn: pointer to the hypervisor connection
  * @xmldesc: string with the XML description
  * @xendConfigVersion: xend configuration file format
  *
@@ -1161,19 +1161,24 @@ virDomainParseXMLIfDesc(xmlNodePtr node, virBufferPtr buf, int hvm)
  *         the caller must free() the returned value.
  */
 char *
-virDomainParseXMLDesc(const char *xmldesc, char **name, int xendConfigVersion)
+virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int xendConfigVersion)
 {
     xmlDocPtr xml = NULL;
     xmlNodePtr node;
     char *ret = NULL, *nam = NULL;
     virBuffer buf;
     xmlChar *prop;
-    xmlXPathObjectPtr obj = NULL;
-    xmlXPathObjectPtr tmpobj = NULL;
+    xmlParserCtxtPtr pctxt;
     xmlXPathContextPtr ctxt = NULL;
     int i, res;
     int bootloader = 0;
     int hvm = 0;
+    unsigned int vcpus = 1;
+    unsigned long mem = 0, max_mem = 0;
+    char *str;
+    double f;
+    xmlNodePtr *nodes;
+    int nb_nodes;
 
     if (name != NULL)
         *name = NULL;
@@ -1184,9 +1189,19 @@ virDomainParseXMLDesc(const char *xmldesc, char **name, int xendConfigVersion)
     buf.size = 1000;
     buf.use = 0;
 
-    xml = xmlReadDoc((const xmlChar *) xmldesc, "domain.xml", NULL,
-                     XML_PARSE_NOENT | XML_PARSE_NONET |
-                     XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
+    pctxt = xmlNewParserCtxt();
+    if ((pctxt == NULL) || (pctxt->sax == NULL)) {
+        goto error;
+    }
+
+    /* TODO pass the connection point to the error handler:
+     *   pctxt->userData = virConnectPtr;
+     */
+    pctxt->sax->error = virCatchXMLParseError;
+
+    xml = xmlCtxtReadDoc(pctxt, (const xmlChar *) xmldesc, "domain.xml", NULL,
+                         XML_PARSE_NOENT | XML_PARSE_NONET |
+                         XML_PARSE_NOWARNING);
     if (xml == NULL) {
         goto error;
     }
@@ -1210,134 +1225,143 @@ virDomainParseXMLDesc(const char *xmldesc, char **name, int xendConfigVersion)
     /*
      * extract some of the basics, name, memory, cpus ...
      */
-    obj = xmlXPathEval(BAD_CAST "string(/domain/name[1])", ctxt);
-    if ((obj == NULL) || (obj->type != XPATH_STRING) ||
-        (obj->stringval == NULL) || (obj->stringval[0] == 0)) {
-        virXMLError(VIR_ERR_NO_NAME, xmldesc, 0);
-        goto error;
-    }
-    virBufferVSprintf(&buf, "(name '%s')", obj->stringval);
-    nam = strdup((const char *) obj->stringval);
+    nam = virXPathString("string(/domain/name[1])", ctxt);
     if (nam == NULL) {
-        virXMLError(VIR_ERR_NO_MEMORY, "copying name", 0);
+        virXMLError(conn, VIR_ERR_NO_NAME, xmldesc, 0);
         goto error;
     }
-    xmlXPathFreeObject(obj);
+    virBufferVSprintf(&buf, "(name '%s')", nam);
 
-    obj = xmlXPathEval(BAD_CAST "number(/domain/memory[1])", ctxt);
-    if ((obj == NULL) || (obj->type != XPATH_NUMBER) ||
-        (isnan(obj->floatval)) || (obj->floatval < 64000)) {
-        virBufferVSprintf(&buf, "(memory 128)(maxmem 128)");
+    if ((virXPathNumber("number(/domain/memory[1])", ctxt, &f) < 0) ||
+        (f < MIN_XEN_GUEST_SIZE * 1024)) {
+        max_mem = 128;
     } else {
-        unsigned long mem = (obj->floatval / 1024);
-
-        virBufferVSprintf(&buf, "(memory %lu)(maxmem %lu)", mem, mem);
+        max_mem = (f / 1024);
     }
-    xmlXPathFreeObject(obj);
 
-    obj = xmlXPathEval(BAD_CAST "number(/domain/vcpu[1])", ctxt);
-    if ((obj == NULL) || (obj->type != XPATH_NUMBER) ||
-        (isnan(obj->floatval)) || (obj->floatval <= 0)) {
-        virBufferVSprintf(&buf, "(vcpus 1)");
+    if ((virXPathNumber("number(/domain/currentMemory[1])", ctxt, &f) < 0) ||
+        (f < MIN_XEN_GUEST_SIZE * 1024)) {
+        mem = max_mem;
     } else {
-        unsigned int cpu = (unsigned int) obj->floatval;
-
-        virBufferVSprintf(&buf, "(vcpus %u)", cpu);
+        mem = (f / 1024);
+        if (mem > max_mem) {
+            max_mem = mem;
+        }
     }
-    xmlXPathFreeObject(obj);
+    virBufferVSprintf(&buf, "(memory %lu)(maxmem %lu)", mem, max_mem);
 
-    obj = xmlXPathEval(BAD_CAST "string(/domain/uuid[1])", ctxt);
-    if ((obj == NULL) || ((obj->type == XPATH_STRING) &&
-        (obj->stringval != NULL) && (obj->stringval[0] != 0))) {
-        virBufferVSprintf(&buf, "(uuid '%s')", obj->stringval);
+    if ((virXPathNumber("number(/domain/vcpu[1])", ctxt, &f) == 0) &&
+        (f > 0)) {
+        vcpus = (unsigned int) f;
     }
-    xmlXPathFreeObject(obj);
+    virBufferVSprintf(&buf, "(vcpus %u)", vcpus);
 
-    obj = xmlXPathEval(BAD_CAST "string(/domain/bootloader[1])", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_STRING) &&
-        (obj->stringval != NULL) && (obj->stringval[0] != 0)) {
-	virBufferVSprintf(&buf, "(bootloader '%s')", obj->stringval);
-	bootloader = 1;
+    str = virXPathString("string(/domain/uuid[1])", ctxt);
+    if (str != NULL) {
+        virBufferVSprintf(&buf, "(uuid '%s')", str);
+	free(str);
     }
-    xmlXPathFreeObject(obj);
 
-    obj = xmlXPathEval(BAD_CAST "string(/domain/on_poweroff[1])", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_STRING) &&
-        (obj->stringval != NULL) && (obj->stringval[0] != 0)) {
-	virBufferVSprintf(&buf, "(on_poweroff '%s')", obj->stringval);
+    str = virXPathString("string(/domain/bootloader[1])", ctxt);
+    if (str != NULL) {
+        virBufferVSprintf(&buf, "(bootloader '%s')", str);
+        /*
+         * if using pygrub, the kernel and initrd strings are not
+         * significant and should be discarded
+         */
+        if (strstr(str, "pygrub"))
+            bootloader = 2;
+        else
+            bootloader = 1;
+	free(str);
     }
-    xmlXPathFreeObject(obj);
 
-    obj = xmlXPathEval(BAD_CAST "string(/domain/on_reboot[1])", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_STRING) &&
-        (obj->stringval != NULL) && (obj->stringval[0] != 0)) {
-	virBufferVSprintf(&buf, "(on_reboot '%s')", obj->stringval);
+    str = virXPathString("string(/domain/on_poweroff[1])", ctxt);
+    if (str != NULL) {
+        virBufferVSprintf(&buf, "(on_poweroff '%s')", str);
+	free(str);
     }
-    xmlXPathFreeObject(obj);
 
-    obj = xmlXPathEval(BAD_CAST "string(/domain/on_crash[1])", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_STRING) &&
-        (obj->stringval != NULL) && (obj->stringval[0] != 0)) {
-	virBufferVSprintf(&buf, "(on_crash '%s')", obj->stringval);
+    str = virXPathString("string(/domain/on_reboot[1])", ctxt);
+    if (str != NULL) {
+        virBufferVSprintf(&buf, "(on_reboot '%s')", str);
+	free(str);
     }
-    xmlXPathFreeObject(obj);
 
-    obj = xmlXPathEval(BAD_CAST "/domain/os[1]", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-        (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr == 1)) {
-	/* Analyze of the os description, based on HVM or PV. */
-	tmpobj = xmlXPathEval(BAD_CAST "string(/domain/os/type[1])", ctxt);
-	if ((tmpobj != NULL) &&
-	    ((tmpobj->type != XPATH_STRING) || (tmpobj->stringval == NULL) ||
-	     (tmpobj->stringval[0] == 0))) {
-	    xmlXPathFreeObject(tmpobj);
-	    virXMLError(VIR_ERR_OS_TYPE, nam, 0);
-	    goto error;
-	}
-
-	if ((tmpobj == NULL) || !xmlStrEqual(tmpobj->stringval, BAD_CAST "hvm")) {
-	    res = virDomainParseXMLOSDescPV(obj->nodesetval->nodeTab[0], &buf, ctxt, xendConfigVersion);
-	} else {
-	    hvm = 1;
-	    res = virDomainParseXMLOSDescHVM(obj->nodesetval->nodeTab[0], &buf, ctxt, xendConfigVersion);
-	}
-
-	xmlXPathFreeObject(tmpobj);
-
-	if (res != 0)
-	    goto error;
-    } else if (bootloader == 0) {
-	virXMLError(VIR_ERR_NO_OS, nam, 0);
-	goto error;
+    str = virXPathString("string(/domain/on_crash[1])", ctxt);
+    if (str != NULL) {
+        virBufferVSprintf(&buf, "(on_crash '%s')", str);
+	free(str);
     }
-    xmlXPathFreeObject(obj);
+
+    if (bootloader != 2) {
+        if ((node = virXPathNode("/domain/os[1]", ctxt)) != NULL) {
+            /* Analyze of the os description, based on HVM or PV. */
+	    str = virXPathString("string(/domain/os/type[1])", ctxt);
+
+            if ((str == NULL) || (strcmp(str, "hvm"))) {
+                res = virDomainParseXMLOSDescPV(conn, node,
+                                                &buf, ctxt, xendConfigVersion);
+            } else {
+                hvm = 1;
+                res = virDomainParseXMLOSDescHVM(conn, node, &buf, ctxt,
+		                                 vcpus, xendConfigVersion);
+            }
+
+            if (str != NULL) free(str);
+
+            if (res != 0)
+                goto error;
+        } else if (bootloader == 0) {
+            virXMLError(conn, VIR_ERR_NO_OS, nam, 0);
+            goto error;
+        }
+    }
 
     /* analyze of the devices */
-    obj = xmlXPathEval(BAD_CAST "/domain/devices/disk", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-        (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr >= 0)) {
-	for (i = 0; i < obj->nodesetval->nodeNr; i++) {
-	  res = virDomainParseXMLDiskDesc(obj->nodesetval->nodeTab[i], &buf, hvm, xendConfigVersion);
-	    if (res != 0) {
-		goto error;
-	    }
-	}
-    }
-    xmlXPathFreeObject(obj);
-
-    obj = xmlXPathEval(BAD_CAST "/domain/devices/interface", ctxt);
-    if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
-        (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr >= 0)) {
-        for (i = 0; i < obj->nodesetval->nodeNr; i++) {
-            virBufferAdd(&buf, "(device ", 8);
-            res = virDomainParseXMLIfDesc(obj->nodesetval->nodeTab[i], &buf, hvm);
+    nb_nodes = virXPathNodeSet("/domain/devices/disk", ctxt, &nodes);
+    if (nb_nodes > 0) {
+        for (i = 0; i < nb_nodes; i++) {
+            res = virDomainParseXMLDiskDesc(conn, nodes[i], &buf,
+	                                    hvm, xendConfigVersion);
             if (res != 0) {
+	        free(nodes);
+                goto error;
+            }
+        }
+        free(nodes);
+    }
+
+    nb_nodes = virXPathNodeSet("/domain/devices/interface", ctxt, &nodes);
+    if (nb_nodes > 0) {
+        for (i = 0; i < nb_nodes; i++) {
+            virBufferAdd(&buf, "(device ", 8);
+            res = virDomainParseXMLIfDesc(conn, nodes[i], &buf, hvm);
+            if (res != 0) {
+	        free(nodes);
                 goto error;
             }
             virBufferAdd(&buf, ")", 1);
         }
+        free(nodes);
     }
-    xmlXPathFreeObject(obj);
+
+    /* New style PV graphics config xen >= 3.0.4,
+     * or HVM graphics config xen >= 3.0.5 */
+    if ((xendConfigVersion >= 3 && !hvm) ||
+        (xendConfigVersion >= 4 && hvm)) {
+        nb_nodes = virXPathNodeSet("/domain/devices/graphics", ctxt, &nodes);
+        if (nb_nodes > 0) {
+            for (i = 0; i < nb_nodes; i++) {
+                res = virDomainParseXMLGraphicsDescVFB(conn, nodes[i], &buf);
+                if (res != 0) {
+                    free(nodes);
+                    goto error;
+                }
+            }
+            free(nodes);
+        }
+    }
 
 
     virBufferAdd(&buf, ")", 1); /* closes (vm */
@@ -1345,6 +1369,7 @@ virDomainParseXMLDesc(const char *xmldesc, char **name, int xendConfigVersion)
 
     xmlXPathFreeContext(ctxt);
     xmlFreeDoc(xml);
+    xmlFreeParserCtxt(pctxt);
 
     if (name != NULL)
         *name = nam;
@@ -1353,17 +1378,17 @@ virDomainParseXMLDesc(const char *xmldesc, char **name, int xendConfigVersion)
 
     return (ret);
 
-  error:
+ error:
     if (nam != NULL)
         free(nam);
     if (name != NULL)
         *name = NULL;
-    if (obj != NULL)
-        xmlXPathFreeObject(obj);
     if (ctxt != NULL)
         xmlXPathFreeContext(ctxt);
     if (xml != NULL)
         xmlFreeDoc(xml);
+    if (pctxt != NULL)
+        xmlFreeParserCtxt(pctxt);
     if (ret != NULL)
         free(ret);
     return (NULL);
@@ -1374,7 +1399,7 @@ virDomainParseXMLDesc(const char *xmldesc, char **name, int xendConfigVersion)
 
 
 unsigned char *virParseUUID(char **ptr, const char *uuid) {
-    int rawuuid[16];
+    int rawuuid[VIR_UUID_BUFLEN];
     const char *cur;
     unsigned char *dst_uuid = NULL;
     int i;
@@ -1387,47 +1412,183 @@ unsigned char *virParseUUID(char **ptr, const char *uuid) {
      * pairs as long as there is 32 of them in the end.
      */
     cur = uuid;
-    for (i = 0;i < 16;) {
+    for (i = 0;i < VIR_UUID_BUFLEN;) {
         rawuuid[i] = 0;
         if (*cur == 0)
-	    goto error;
-	if ((*cur == '-') || (*cur == ' ')) {
-	    cur++;
-	    continue;
-	}
-	if ((*cur >= '0') && (*cur <= '9'))
-	    rawuuid[i] = *cur - '0';
-	else if ((*cur >= 'a') && (*cur <= 'f'))
-	    rawuuid[i] = *cur - 'a' + 10;
-	else if ((*cur >= 'A') && (*cur <= 'F'))
-	    rawuuid[i] = *cur - 'A' + 10;
-	else
-	    goto error;
-	rawuuid[i] *= 16;
-	cur++;
+            goto error;
+        if ((*cur == '-') || (*cur == ' ')) {
+            cur++;
+            continue;
+        }
+        if ((*cur >= '0') && (*cur <= '9'))
+            rawuuid[i] = *cur - '0';
+        else if ((*cur >= 'a') && (*cur <= 'f'))
+            rawuuid[i] = *cur - 'a' + 10;
+        else if ((*cur >= 'A') && (*cur <= 'F'))
+            rawuuid[i] = *cur - 'A' + 10;
+        else
+            goto error;
+        rawuuid[i] *= 16;
+        cur++;
         if (*cur == 0)
-	    goto error;
-	if ((*cur >= '0') && (*cur <= '9'))
-	    rawuuid[i] += *cur - '0';
-	else if ((*cur >= 'a') && (*cur <= 'f'))
-	    rawuuid[i] += *cur - 'a' + 10;
-	else if ((*cur >= 'A') && (*cur <= 'F'))
-	    rawuuid[i] += *cur - 'A' + 10;
-	else
-	    goto error;
+            goto error;
+        if ((*cur >= '0') && (*cur <= '9'))
+            rawuuid[i] += *cur - '0';
+        else if ((*cur >= 'a') && (*cur <= 'f'))
+            rawuuid[i] += *cur - 'a' + 10;
+        else if ((*cur >= 'A') && (*cur <= 'F'))
+            rawuuid[i] += *cur - 'A' + 10;
+        else
+            goto error;
         i++;
-	cur++;
+        cur++;
     }
 
     dst_uuid = (unsigned char *) *ptr;
     *ptr += 16;
 
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < VIR_UUID_BUFLEN; i++)
         dst_uuid[i] = rawuuid[i] & 0xFF;
 
-error:
+ error:
     return(dst_uuid);
 }
+
+#ifndef PROXY
+/**
+ * virParseXMLDevice:
+ * @conn: pointer to the hypervisor connection
+ * @xmldesc: string with the XML description
+ * @hvm: 1 for fully virtualized guest, 0 for paravirtualized
+ * @xendConfigVersion: xend configuration file format
+ *
+ * Parse the XML description and turn it into the xend sexp needed to
+ * create the device. This is a temporary interface as the S-Expr interface
+ * will be replaced by XML-RPC in the future. However the XML format should
+ * stay valid over time.
+ *
+ * Returns the 0-terminated S-Expr string, or NULL in case of error.
+ *         the caller must free() the returned value.
+ */
+char *
+virParseXMLDevice(virConnectPtr conn, char *xmldesc, int hvm, int xendConfigVersion)
+{
+    xmlDocPtr xml = NULL;
+    xmlNodePtr node;
+    virBuffer buf;
+
+    buf.content = malloc(1000);
+    if (buf.content == NULL)
+        return (NULL);
+    buf.size = 1000;
+    buf.use = 0;
+    xml = xmlReadDoc((const xmlChar *) xmldesc, "domain.xml", NULL,
+                     XML_PARSE_NOENT | XML_PARSE_NONET |
+                     XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
+    if (xml == NULL)
+        goto error;
+    node = xmlDocGetRootElement(xml);
+    if (node == NULL)
+        goto error;
+    if (xmlStrEqual(node->name, BAD_CAST "disk")) {
+        if (virDomainParseXMLDiskDesc(conn, node, &buf, hvm, xendConfigVersion) != 0)
+            goto error;
+    }
+    else if (xmlStrEqual(node->name, BAD_CAST "interface")) {
+        if (virDomainParseXMLIfDesc(conn, node, &buf, hvm) != 0)
+            goto error;
+    }
+ cleanup:
+    if (xml != NULL)
+        xmlFreeDoc(xml);
+    return buf.content;
+ error:
+    free(buf.content);
+    buf.content = NULL;
+    goto cleanup;
+}
+
+/**
+ * virDomainXMLDevID:
+ * @domain: pointer to domain object
+ * @xmldesc: string with the XML description
+ * @class: Xen device class "vbd" or "vif" (OUT)
+ * @ref: Xen device reference (OUT)
+ *
+ * Set class according to XML root, and:
+ *  - if disk, copy in ref the target name from description
+ *  - if network, get MAC address from description, scan XenStore and
+ *    copy in ref the corresponding vif number.
+ *
+ * Returns 0 in case of success, -1 in case of failure.
+ */
+int
+virDomainXMLDevID(virDomainPtr domain, char *xmldesc, char *class, char *ref)
+{
+    xmlDocPtr xml = NULL;
+    xmlNodePtr node, cur;
+    xmlChar *attr = NULL;
+#ifdef WITH_XEN
+    char *xref;
+#endif /* WITH_XEN */
+    int ret = 0;
+
+    xml = xmlReadDoc((const xmlChar *) xmldesc, "domain.xml", NULL,
+                     XML_PARSE_NOENT | XML_PARSE_NONET |
+                     XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
+    if (xml == NULL)
+        goto error;
+    node = xmlDocGetRootElement(xml);
+    if (node == NULL)
+        goto error;
+    if (xmlStrEqual(node->name, BAD_CAST "disk")) {
+        strcpy(class, "vbd");
+        for (cur = node->children; cur != NULL; cur = cur->next) {
+            if ((cur->type != XML_ELEMENT_NODE) ||
+                (!xmlStrEqual(cur->name, BAD_CAST "target"))) continue;
+            attr = xmlGetProp(cur, BAD_CAST "dev");
+            if (attr == NULL)
+                goto error;
+            strcpy(ref, (char *)attr);
+            goto cleanup;
+        }
+    }
+    else if (xmlStrEqual(node->name, BAD_CAST "interface")) {
+        strcpy(class, "vif");
+        for (cur = node->children; cur != NULL; cur = cur->next) {
+            if ((cur->type != XML_ELEMENT_NODE) ||
+                (!xmlStrEqual(cur->name, BAD_CAST "mac"))) continue;
+            attr = xmlGetProp(cur, BAD_CAST "address");
+            if (attr == NULL)
+                goto error;
+
+#ifdef WITH_XEN
+            xref = xenStoreDomainGetNetworkID(domain->conn, domain->id,
+                                              (char *) attr);
+            if (xref != NULL) {
+                strcpy(ref, xref);
+                free(xref);
+                goto cleanup;
+            }
+#else /* without xen */
+            /* hack to avoid the warning that domain is unused */
+            if (domain->id < 0)
+	        ret = -1;
+#endif /* WITH_XEN */
+
+            goto error;
+        }
+    }
+ error:
+    ret = -1;
+ cleanup:
+    if (xml != NULL)
+        xmlFreeDoc(xml);
+    if (attr != NULL)
+        xmlFree(attr);
+    return ret;
+}
+#endif /* !PROXY */
 
 /*
  * Local variables:

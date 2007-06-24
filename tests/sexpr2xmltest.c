@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef WITH_XEN
 #include "xml.h"
 #include "xend_internal.h"
 #include "testutils.h"
@@ -60,6 +61,20 @@ static int testComparePVversion2(void *data ATTRIBUTE_UNUSED) {
 			  2);
 }
 
+static int testComparePVOrigVFB(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("sexpr2xmldata/sexpr2xml-pv-vfb-orig.xml",
+                          "sexpr2xmldata/sexpr2xml-pv-vfb-orig.sexpr",
+                          2);
+}
+
+
+static int testComparePVNewVFB(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("sexpr2xmldata/sexpr2xml-pv-vfb-new.xml",
+                          "sexpr2xmldata/sexpr2xml-pv-vfb-new.sexpr",
+                          3);
+}
+
+
 static int testCompareFVversion2(void *data ATTRIBUTE_UNUSED) {
   return testCompareFiles("sexpr2xmldata/sexpr2xml-fv-v2.xml",
 			  "sexpr2xmldata/sexpr2xml-fv-v2.sexpr",
@@ -90,6 +105,31 @@ static int testCompareDiskDrvBlktapRaw(void *data ATTRIBUTE_UNUSED) {
 			  1);
 }
 
+static int testCompareResizedMemory(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("sexpr2xmldata/sexpr2xml-curmem.xml",
+			  "sexpr2xmldata/sexpr2xml-curmem.sexpr",
+			  1);
+}
+
+
+static int testCompareNetRouted(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("sexpr2xmldata/sexpr2xml-net-routed.xml",
+			  "sexpr2xmldata/sexpr2xml-net-routed.sexpr",
+			  1);
+}
+
+static int testCompareNetBridged(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("sexpr2xmldata/sexpr2xml-net-bridged.xml",
+			  "sexpr2xmldata/sexpr2xml-net-bridged.sexpr",
+			  1);
+}
+
+static int testCompareNoSourceCDRom(void *data ATTRIBUTE_UNUSED) {
+  return testCompareFiles("sexpr2xmldata/sexpr2xml-no-source-cdrom.xml",
+			  "sexpr2xmldata/sexpr2xml-no-source-cdrom.sexpr",
+			  1);
+}
+
 
 int
 main(int argc, char **argv)
@@ -115,7 +155,15 @@ main(int argc, char **argv)
 		    1, testComparePVversion2, NULL) != 0)
 	ret = -1;
 
-    if (virtTestRun("SEXPR-2-XML FV config  (version 2)",
+    if (virtTestRun("SEXPR-2-XML PV config (Orig VFB)",
+                    1, testComparePVOrigVFB, NULL) != 0)
+        ret = -1;
+
+    if (virtTestRun("SEXPR-2-XML PV config (New VFB)",
+                    1, testComparePVNewVFB, NULL) != 0)
+        ret = -1;
+
+    if (virtTestRun("SEXPR-2-XML FV config (version 2)",
 		    1, testCompareFVversion2, NULL) != 0)
 	ret = -1;
 
@@ -135,5 +183,37 @@ main(int argc, char **argv)
 		    1, testCompareDiskDrvBlktapRaw, NULL) != 0)
 	ret = -1;
 
+    if (virtTestRun("SEXPR-2-XML Resized memory config",
+		    1, testCompareResizedMemory, NULL) != 0)
+	ret = -1;
+
+    if (virtTestRun("SEXPR-2-XML net routed",
+		    1, testCompareNetRouted, NULL) != 0)
+	ret = -1;
+
+    if (virtTestRun("SEXPR-2-XML net bridged",
+		    1, testCompareNetBridged, NULL) != 0)
+	ret = -1;
+
+    if (virtTestRun("SEXPR-2-XML no source CDRom",
+		    1, testCompareNoSourceCDRom, NULL) != 0)
+	ret = -1;
+
     exit(ret==0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
+#else /* WITHOUT_XEN */
+int
+main(void)
+{
+    fprintf(stderr, "libvirt compiled without Xen support\n");
+    return(0);
+}
+#endif /* WITH_XEN */
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

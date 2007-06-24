@@ -40,11 +40,16 @@ DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(srcdir)/libvirt.pc.in $(srcdir)/libvirt.spec.in \
 	$(top_srcdir)/configure ABOUT-NLS AUTHORS COPYING COPYING.LIB \
-	ChangeLog INSTALL NEWS TODO config.guess config.rpath \
+	ChangeLog INSTALL NEWS TODO compile config.guess config.rpath \
 	config.sub depcomp install-sh ltmain.sh missing mkinstalldirs
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4/compiler-flags.m4 \
+	$(top_srcdir)/m4/gettext.m4 $(top_srcdir)/m4/iconv.m4 \
+	$(top_srcdir)/m4/lib-ld.m4 $(top_srcdir)/m4/lib-link.m4 \
+	$(top_srcdir)/m4/lib-prefix.m4 $(top_srcdir)/m4/nls.m4 \
+	$(top_srcdir)/m4/po.m4 $(top_srcdir)/m4/progtest.m4 \
+	$(top_srcdir)/acinclude.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
@@ -98,6 +103,9 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
+COMPILER_FLAGS = @COMPILER_FLAGS@
+COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
+COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
@@ -112,6 +120,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_XEN_TESTS_FALSE = @ENABLE_XEN_TESTS_FALSE@
+ENABLE_XEN_TESTS_TRUE = @ENABLE_XEN_TESTS_TRUE@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
@@ -122,13 +132,16 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
-INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+IPTABLES_PATH = @IPTABLES_PATH@
 LDFLAGS = @LDFLAGS@
 LIBICONV = @LIBICONV@
 LIBINTL = @LIBINTL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIBVIRT_FEATURES = @LIBVIRT_FEATURES@
+LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE = @LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE@
+LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE = @LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@
 LIBVIRT_MAJOR_VERSION = @LIBVIRT_MAJOR_VERSION@
 LIBVIRT_MICRO_VERSION = @LIBVIRT_MICRO_VERSION@
 LIBVIRT_MINOR_VERSION = @LIBVIRT_MINOR_VERSION@
@@ -164,19 +177,24 @@ PYTHON_INCLUDES = @PYTHON_INCLUDES@
 PYTHON_SITE_PACKAGES = @PYTHON_SITE_PACKAGES@
 PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
+QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
 RM = @RM@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
+SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 VIRSH_LIBS = @VIRSH_LIBS@
+WARN_CFLAGS = @WARN_CFLAGS@
 WITH_PYTHON_FALSE = @WITH_PYTHON_FALSE@
 WITH_PYTHON_TRUE = @WITH_PYTHON_TRUE@
+WITH_XEN = @WITH_XEN@
 XGETTEXT = @XGETTEXT@
 XMLLINT = @XMLLINT@
 XSLTPROC = @XSLTPROC@
@@ -225,11 +243,11 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-SUBDIRS = src include docs @PYTHON_SUBDIR@ tests proxy po
+SUBDIRS = src qemud proxy include docs @PYTHON_SUBDIR@ tests po m4 scripts
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = libvirt.spec.in libvirt.spec COPYING.LIB \
              libvirt.pc.in libvirt.pc TODO AUTHORS ChangeLog \
-	     NEWS README $(man_MANS)
+	     NEWS README $(man_MANS) autobuild.sh
 
 man_MANS = virsh.1
 pkgconfigdir = $(libdir)/pkgconfig
@@ -500,7 +518,7 @@ distclean-tags:
 distdir: $(DISTFILES)
 	$(am__remove_distdir)
 	mkdir $(distdir)
-	$(mkdir_p) $(distdir)/. $(distdir)/include/libvirt $(distdir)/po
+	$(mkdir_p) $(distdir)/. $(distdir)/include/libvirt $(distdir)/m4 $(distdir)/po
 	@srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's|.|.|g'`; \
 	list='$(DISTFILES)'; for file in $$list; do \
@@ -752,7 +770,26 @@ check-local: all tests
 tests:
 	@(cd docs/examples ; $(MAKE) MAKEFLAGS+=--silent tests)
 	@(if [ "@PYTHON_SUBDIR@" != "" ] ; then cd python ; \
-	  $(MAKE) MAKEFLAGS+=--silent tests ; fi)	
+	  $(MAKE) MAKEFLAGS+=--silent tests ; fi)
+
+cov: cov-recursive cov-am
+
+clean-cov:
+	rm -rf $(top_builddir)/coverage
+	cd src && $(MAKE) $(AM_MAKEFLAGS) clean-cov
+
+cov-recursive:
+	cd src && $(MAKE) $(AM_MAKEFLAGS) cov
+
+cov-am:
+	rm -rf $(top_builddir)/coverage
+	mkdir $(top_builddir)/coverage
+	perl $(srcdir)/scripts/coverage-report.pl src/*.cov > $(top_builddir)/coverage/index.xml
+	xsltproc $(srcdir)/scripts/coverage-report.xsl \
+	  $(top_builddir)/coverage/index.xml \
+	  > $(top_builddir)/coverage/index.html
+	for i in $(top_builddir)/src/*.gcov ; do o=`echo $$i | sed -e 's,$(top_builddir)/src,coverage,'` ; \
+	  perl $(srcdir)/scripts/coverage-report-entry.pl $$i > $$o.html ; done
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

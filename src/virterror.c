@@ -17,7 +17,7 @@
 #include "internal.h"
 
 static virError lastErr =       /* the last error */
-{ 0, 0, NULL, VIR_ERR_NONE, NULL, NULL, NULL, NULL, NULL, 0, 0 };
+{ 0, 0, NULL, VIR_ERR_NONE, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL };
 static virErrorFunc virErrorHandler = NULL;     /* global error handlet */
 static void *virUserData = NULL;        /* associated data */
 
@@ -230,7 +230,7 @@ virConnSetErrorFunc(virConnectPtr conn, void *userData,
 void
 virDefaultErrorFunc(virErrorPtr err)
 {
-    const char *lvl = "", *dom = "", *domain = "";
+    const char *lvl = "", *dom = "", *domain = "", *network = "";
     int len;
 
     if ((err == NULL) || (err->code == VIR_ERR_OK))
@@ -253,6 +253,9 @@ virDefaultErrorFunc(virErrorPtr err)
         case VIR_FROM_XEN:
             dom = "Xen ";
             break;
+        case VIR_FROM_XML:
+            dom = "XML ";
+            break;
         case VIR_FROM_XEND:
             dom = "Xen Daemon ";
             break;
@@ -265,23 +268,36 @@ virDefaultErrorFunc(virErrorPtr err)
         case VIR_FROM_RPC:
             dom = "XML-RPC ";
             break;
+        case VIR_FROM_QEMU:
+            dom = "QEMU ";
+            break;
+        case VIR_FROM_NET:
+            dom = "Network ";
+            break;
     }
     if ((err->dom != NULL) && (err->code != VIR_ERR_INVALID_DOMAIN)) {
         domain = err->dom->name;
+    } else if ((err->net != NULL) && (err->code != VIR_ERR_INVALID_NETWORK)) {
+        network = err->net->name;
     }
     len = strlen(err->message);
-    if ((len == 0) || (err->message[len - 1] != '\n'))
-        fprintf(stderr, "libvir: %s%s %s: %s\n",
-                dom, lvl, domain, err->message);
+    if ((err->domain == VIR_FROM_XML) && (err->code == VIR_ERR_XML_DETAIL) &&
+        (err->int1 != 0))
+        fprintf(stderr, "libvir: %s%s %s%s: line %d: %s",
+                dom, lvl, domain, network, err->int1, err->message);
+    else if ((len == 0) || (err->message[len - 1] != '\n'))
+        fprintf(stderr, "libvir: %s%s %s%s: %s\n",
+                dom, lvl, domain, network, err->message);
     else
-        fprintf(stderr, "libvir: %s%s %s: %s",
-                dom, lvl, domain, err->message);
+        fprintf(stderr, "libvir: %s%s %s%s: %s",
+                dom, lvl, domain, network, err->message);
 }
 
 /**
  * __virRaiseError:
  * @conn: the connection to the hypervisor if available
  * @dom: the domain if available
+ * @net: the network if available
  * @domain: the virErrorDomain indicating where it's coming from
  * @code: the virErrorNumber code for the error
  * @level: the virErrorLevel for the error
@@ -297,7 +313,7 @@ virDefaultErrorFunc(virErrorPtr err)
  * immediately if a callback is found and store it for later handling.
  */
 void
-__virRaiseError(virConnectPtr conn, virDomainPtr dom,
+__virRaiseError(virConnectPtr conn, virDomainPtr dom, virNetworkPtr net,
                 int domain, int code, virErrorLevel level,
                 const char *str1, const char *str2, const char *str3,
                 int int1, int int2, const char *msg, ...)
@@ -336,6 +352,7 @@ __virRaiseError(virConnectPtr conn, virDomainPtr dom,
     virResetError(to);
     to->conn = conn;
     to->dom = dom;
+    to->net = net;
     to->domain = domain;
     to->code = code;
     to->message = str;
@@ -569,6 +586,44 @@ __virErrorMsg(virErrorNumber error, const char *info)
 	    else
 	        errmsg = _("failed to write configuration file: %s");
             break;
+	case VIR_ERR_XML_DETAIL:
+	    if (info == NULL)
+	        errmsg = _("parser error");
+	    else
+	        errmsg = "%s";
+            break;
+        case VIR_ERR_INVALID_NETWORK:
+            if (info == NULL)
+		errmsg = _("invalid network pointer in");
+	    else
+	        errmsg = _("invalid network pointer in %s");
+            break;
+	case VIR_ERR_NETWORK_EXIST:
+	    if (info == NULL)
+	        errmsg = _("this network exists already");
+	    else
+	        errmsg = _("network %s exists already");
+            break;
+    case VIR_ERR_SYSTEM_ERROR:
+        if (info == NULL)
+            errmsg = _("system call error");
+        else
+            errmsg = "%s";
+        break;
     }
     return (errmsg);
 }
+
+/*
+ * vim: set tabstop=4:
+ * vim: set shiftwidth=4:
+ * vim: set expandtab:
+ */
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */
