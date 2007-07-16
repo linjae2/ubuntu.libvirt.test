@@ -7,7 +7,7 @@
  *
  * Karel Zak <kzak@redhat.com>
  *
- * $Id: xmlrpctest.c,v 1.3 2006/06/26 15:02:19 veillard Exp $
+ * $Id: xmlrpctest.c,v 1.4 2007/06/26 22:33:22 berrange Exp $
  */
 
 #include <stdio.h>
@@ -20,7 +20,7 @@
 #include <libxml/xpath.h>
 
 #include "libvirt/libvirt.h"
-#include "xml.h"
+#include "buf.h"
 #include "xmlrpc.h"
 
 #include "testutils.h"

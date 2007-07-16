@@ -22,8 +22,10 @@
 #include "hash.h"
 #include "sexpr.h"
 #include "xml.h"
+#include "buf.h"
 #include "xs_internal.h" /* for xenStoreDomainGetNetworkID */
 
+#ifndef PROXY
 /**
  * virXMLError:
  * @conn: a connection if any
@@ -46,7 +48,6 @@ virXMLError(virConnectPtr conn, virErrorNumber error, const char *info, int valu
                     errmsg, info, NULL, value, 0, errmsg, info, value);
 }
 
-#ifndef PROXY
 /**
  * virXPathString:
  * @xpath: the XPath string to evaluate
@@ -266,181 +267,7 @@ virXPathNodeSet(const char *xpath, xmlXPathContextPtr ctxt, xmlNodePtr **list) {
     xmlXPathFreeObject(obj);
     return(ret);
 }
-#endif /* !PROXY */
 
-/**
- * virBufferGrow:
- * @buf:  the buffer
- * @len:  the minimum free size to allocate on top of existing used space
- *
- * Grow the available space of an XML buffer to at least @len bytes.
- *
- * Returns the new available space or -1 in case of error
- */
-static int
-virBufferGrow(virBufferPtr buf, unsigned int len)
-{
-    int size;
-    char *newbuf;
-
-    if (buf == NULL)
-        return (-1);
-    if (len + buf->use < buf->size)
-        return (0);
-
-    size = buf->use + len + 1000;
-
-    newbuf = (char *) realloc(buf->content, size);
-    if (newbuf == NULL) {
-        virXMLError(NULL, VIR_ERR_NO_MEMORY, _("growing buffer"), size);
-        return (-1);
-    }
-    buf->content = newbuf;
-    buf->size = size;
-    return (buf->size - buf->use);
-}
-
-/**
- * virBufferAdd:
- * @buf:  the buffer to dump
- * @str:  the string
- * @len:  the number of bytes to add
- *
- * Add a string range to an XML buffer. if len == -1, the length of
- * str is recomputed to the full string.
- *
- * Returns 0 successful, -1 in case of internal or API error.
- */
-int
-virBufferAdd(virBufferPtr buf, const char *str, int len)
-{
-    unsigned int needSize;
-
-    if ((str == NULL) || (buf == NULL)) {
-        return -1;
-    }
-    if (len == 0)
-        return 0;
-
-    if (len < 0)
-        len = strlen(str);
-
-    needSize = buf->use + len + 2;
-    if (needSize > buf->size) {
-        if (!virBufferGrow(buf, needSize - buf->use)) {
-            return (-1);
-        }
-    }
-    /* XXX: memmove() is 2x slower than memcpy(), do we really need it? */
-    memmove(&buf->content[buf->use], str, len);
-    buf->use += len;
-    buf->content[buf->use] = 0;
-    return (0);
-}
-
-virBufferPtr
-virBufferNew(unsigned int size)
-{
-    virBufferPtr buf;
-
-    if (!(buf = malloc(sizeof(*buf)))) {
-        virXMLError(NULL, VIR_ERR_NO_MEMORY, _("allocate new buffer"), sizeof(*buf));
-        return NULL;
-    }
-    if (size && (buf->content = malloc(size))==NULL) {
-        virXMLError(NULL, VIR_ERR_NO_MEMORY, _("allocate buffer content"), size);
-        free(buf);
-        return NULL;
-    }
-    buf->size = size;
-    buf->use = 0;
-
-    return buf;
-}
-
-void
-virBufferFree(virBufferPtr buf)
-{
-    if (buf) {
-        if (buf->content)
-            free(buf->content);
-        free(buf);
-    }
-}
-
-/**
- * virBufferVSprintf:
- * @buf:  the buffer to dump
- * @format:  the format
- * @argptr:  the variable list of arguments
- *
- * Do a formatted print to an XML buffer.
- *
- * Returns 0 successful, -1 in case of internal or API error.
- */
-int
-virBufferVSprintf(virBufferPtr buf, const char *format, ...)
-{
-    int size, count;
-    va_list locarg, argptr;
-
-    if ((format == NULL) || (buf == NULL)) {
-        return (-1);
-    }
-    size = buf->size - buf->use - 1;
-    va_start(argptr, format);
-    va_copy(locarg, argptr);
-    while (((count = vsnprintf(&buf->content[buf->use], size, format,
-                               locarg)) < 0) || (count >= size - 1)) {
-        buf->content[buf->use] = 0;
-        va_end(locarg);
-        if (virBufferGrow(buf, 1000) < 0) {
-            return (-1);
-        }
-        size = buf->size - buf->use - 1;
-        va_copy(locarg, argptr);
-    }
-    va_end(locarg);
-    buf->use += count;
-    buf->content[buf->use] = 0;
-    return (0);
-}
-
-/**
- * virBufferStrcat:
- * @buf:  the buffer to dump
- * @argptr:  the variable list of strings, the last argument must be NULL
- *
- * Concatenate strings to an XML buffer.
- *
- * Returns 0 successful, -1 in case of internal or API error.
- */
-int
-virBufferStrcat(virBufferPtr buf, ...)
-{
-    va_list ap;
-    char *str;
-
-    va_start(ap, buf);
-
-    while ((str = va_arg(ap, char *)) != NULL) {
-        unsigned int len = strlen(str);
-        unsigned int needSize = buf->use + len + 2;
-
-        if (needSize > buf->size) {
-            if (!virBufferGrow(buf, needSize - buf->use))
-                return -1;
-        }
-        memcpy(&buf->content[buf->use], str, len);
-        buf->use += len;
-        buf->content[buf->use] = 0;
-    }
-    va_end(ap);
-    return 0;
-}
-
-
-#ifndef PROXY
 /**
  * virtDomainParseXMLGraphicsDescImage:
  * @conn: pointer to the hypervisor connection
@@ -1047,6 +874,7 @@ virDomainParseXMLDiskDesc(virConnectPtr conn, xmlNodePtr node, virBufferPtr buf,
  * @conn: pointer to the hypervisor connection
  * @node: node containing the interface description
  * @buf: a buffer for the result S-Expr
+ * @xendConfigVersion: xend configuration file format
  *
  * Parse the one interface the XML description and add it to the S-Expr in buf
  * This is a temporary interface as the S-Expr interface
@@ -1056,7 +884,7 @@ virDomainParseXMLDiskDesc(virConnectPtr conn, xmlNodePtr node, virBufferPtr buf,
  * Returns 0 in case of success, -1 in case of error.
  */
 static int
-virDomainParseXMLIfDesc(virConnectPtr conn ATTRIBUTE_UNUSED, xmlNodePtr node, virBufferPtr buf, int hvm)
+virDomainParseXMLIfDesc(virConnectPtr conn ATTRIBUTE_UNUSED, xmlNodePtr node, virBufferPtr buf, int hvm, int xendConfigVersion)
 {
     xmlNodePtr cur;
     xmlChar *type = NULL;
@@ -1129,7 +957,11 @@ virDomainParseXMLIfDesc(virConnectPtr conn ATTRIBUTE_UNUSED, xmlNodePtr node, vi
         virBufferVSprintf(buf, "(script '%s')", script);
     if (ip != NULL)
         virBufferVSprintf(buf, "(ip '%s')", ip);
-    if (hvm)
+    /*
+     * apparently (type ioemu) breaks paravirt drivers on HVM so skip this
+     * from Xen 3.1.0
+     */
+    if ((hvm) && (xendConfigVersion < 4))
         virBufferAdd(buf, "(type ioemu)", 12);
 
     virBufferAdd(buf, ")", 1);
@@ -1165,7 +997,7 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
 {
     xmlDocPtr xml = NULL;
     xmlNodePtr node;
-    char *ret = NULL, *nam = NULL;
+    char *nam = NULL;
     virBuffer buf;
     xmlChar *prop;
     xmlParserCtxtPtr pctxt;
@@ -1182,10 +1014,9 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
 
     if (name != NULL)
         *name = NULL;
-    ret = malloc(1000);
-    if (ret == NULL)
+    buf.content = malloc(1000);
+    if (buf.content == NULL)
         return (NULL);
-    buf.content = ret;
     buf.size = 1000;
     buf.use = 0;
 
@@ -1266,13 +1097,19 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
     if (str != NULL) {
         virBufferVSprintf(&buf, "(bootloader '%s')", str);
         /*
-         * if using pygrub, the kernel and initrd strings are not
+         * if using a bootloader, the kernel and initrd strings are not
          * significant and should be discarded
          */
-        if (strstr(str, "pygrub"))
-            bootloader = 2;
-        else
-            bootloader = 1;
+        bootloader = 1;
+	free(str);
+    }
+
+    str = virXPathString("string(/domain/bootloader_args[1])", ctxt);
+    if (str != NULL && bootloader) {
+        /*
+         * ignore the bootloader_args value unless a bootloader was specified
+         */
+        virBufferVSprintf(&buf, "(bootloader_args '%s')", str);
 	free(str);
     }
 
@@ -1294,10 +1131,10 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
 	free(str);
     }
 
-    if (bootloader != 2) {
+    if (!bootloader) {
         if ((node = virXPathNode("/domain/os[1]", ctxt)) != NULL) {
             /* Analyze of the os description, based on HVM or PV. */
-	    str = virXPathString("string(/domain/os/type[1])", ctxt);
+            str = virXPathString("string(/domain/os/type[1])", ctxt);
 
             if ((str == NULL) || (strcmp(str, "hvm"))) {
                 res = virDomainParseXMLOSDescPV(conn, node,
@@ -1312,7 +1149,7 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
 
             if (res != 0)
                 goto error;
-        } else if (bootloader == 0) {
+        } else {
             virXMLError(conn, VIR_ERR_NO_OS, nam, 0);
             goto error;
         }
@@ -1336,7 +1173,7 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
     if (nb_nodes > 0) {
         for (i = 0; i < nb_nodes; i++) {
             virBufferAdd(&buf, "(device ", 8);
-            res = virDomainParseXMLIfDesc(conn, nodes[i], &buf, hvm);
+            res = virDomainParseXMLIfDesc(conn, nodes[i], &buf, hvm, xendConfigVersion);
             if (res != 0) {
 	        free(nodes);
                 goto error;
@@ -1376,7 +1213,7 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
     else
         free(nam);
 
-    return (ret);
+    return (buf.content);
 
  error:
     if (nam != NULL)
@@ -1389,8 +1226,8 @@ virDomainParseXMLDesc(virConnectPtr conn, const char *xmldesc, char **name, int 
         xmlFreeDoc(xml);
     if (pctxt != NULL)
         xmlFreeParserCtxt(pctxt);
-    if (ret != NULL)
-        free(ret);
+    if (buf.content != NULL)
+        free(buf.content);
     return (NULL);
 }
 
@@ -1482,6 +1319,7 @@ virParseXMLDevice(virConnectPtr conn, char *xmldesc, int hvm, int xendConfigVers
         return (NULL);
     buf.size = 1000;
     buf.use = 0;
+    buf.content[0] = 0;
     xml = xmlReadDoc((const xmlChar *) xmldesc, "domain.xml", NULL,
                      XML_PARSE_NOENT | XML_PARSE_NONET |
                      XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
@@ -1493,9 +1331,12 @@ virParseXMLDevice(virConnectPtr conn, char *xmldesc, int hvm, int xendConfigVers
     if (xmlStrEqual(node->name, BAD_CAST "disk")) {
         if (virDomainParseXMLDiskDesc(conn, node, &buf, hvm, xendConfigVersion) != 0)
             goto error;
+        /* SXP is not created when device is "floppy". */
+       else if (buf.use == 0)
+           goto error;
     }
     else if (xmlStrEqual(node->name, BAD_CAST "interface")) {
-        if (virDomainParseXMLIfDesc(conn, node, &buf, hvm) != 0)
+        if (virDomainParseXMLIfDesc(conn, node, &buf, hvm, xendConfigVersion) != 0)
             goto error;
     }
  cleanup:

@@ -1,3 +1,9 @@
+libvirt (0.3.0-0ubuntu1) gutsy; urgency=low
+
+  * Import new upstram release that can actually build on xen-3.1.
+
+ -- Fabio M. Di Nitto <fabbione@ubuntu.com>  Mon, 16 Jul 2007 10:23:04 +0200
+
 libvirt (0.2.2-0ubuntu1) gutsy; urgency=low
 
   * Depends on libxen3.1-dev.

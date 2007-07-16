@@ -32,12 +32,13 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "protocol.h"
 #include "internal.h"
 
+#define qemudLog(level, msg...) fprintf(stderr, msg)
+
 static int
-qemudGenerateRandomBytes(unsigned char *buf,
-                         int buflen)
+virUUIDGenerateRandomBytes(unsigned char *buf,
+                           int buflen)
 {
     int fd;
 
@@ -64,8 +65,8 @@ qemudGenerateRandomBytes(unsigned char *buf,
 }
 
 static int
-qemudGeneratePseudoRandomBytes(unsigned char *buf,
-                               int buflen)
+virUUIDGeneratePseudoRandomBytes(unsigned char *buf,
+                                 int buflen)
 {
     srand(time(NULL));
     while (buflen > 0) {
@@ -76,23 +77,47 @@ qemudGeneratePseudoRandomBytes(unsigned char *buf,
     return 0;
 }
 
+/**
+ * virUUIDGenerate:
+ * @uuid: array of VIR_UUID_RAW_LEN bytes to store the new UUID
+ *
+ * Generates a randomized unique identifier.
+ *
+ * Returns 0 in case of success and -1 in case of failure
+ */
 int
-qemudGenerateUUID(unsigned char *uuid)
+virUUIDGenerate(unsigned char *uuid)
 {
     int err;
 
-    if ((err = qemudGenerateRandomBytes(uuid, QEMUD_UUID_RAW_LEN)))
+    if (uuid == NULL)
+        return(-1);
+
+    if ((err = virUUIDGenerateRandomBytes(uuid, VIR_UUID_RAW_LEN)))
         qemudLog(QEMUD_WARN,
                  "Falling back to pseudorandom UUID, "
                  "failed to generate random bytes: %s", strerror(err));
 
-    return qemudGeneratePseudoRandomBytes(uuid, QEMUD_UUID_RAW_LEN);
+    return virUUIDGeneratePseudoRandomBytes(uuid, VIR_UUID_RAW_LEN);
 }
 
+/**
+ * virUUIDParse:
+ * @uuid: zero terminated string representation of the UUID
+ * @rawuuid: array of VIR_UUID_RAW_LEN bytes to store the raw UUID
+ *
+ * Parses the external string representation, allowing spaces and '-'
+ * character in the sequence, and storing the result as a raw UUID
+ *
+ * Returns 0 in case of success and -1 in case of error.
+ */
 int
-qemudParseUUID(const char *uuid, unsigned char *rawuuid) {
+virUUIDParse(const char *uuid, unsigned char *rawuuid) {
     const char *cur;
     int i;
+
+    if ((uuid == NULL) || (rawuuid == NULL))
+        return(-1);
 
     /*
      * do a liberal scan allowing '-' and ' ' anywhere between character

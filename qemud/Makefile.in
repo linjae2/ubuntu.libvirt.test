@@ -14,7 +14,6 @@
 
 @SET_MAKE@
 
-
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -37,7 +36,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-sbin_PROGRAMS = libvirt_qemud$(EXEEXT)
+sbin_PROGRAMS = libvirtd$(EXEEXT)
 subdir = qemud
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -52,18 +51,13 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
-am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(initdir)"
+am__installdirs = "$(DESTDIR)$(sbindir)"
 sbinPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(sbin_PROGRAMS)
-am_libvirt_qemud_OBJECTS = libvirt_qemud-qemud.$(OBJEXT) \
-	libvirt_qemud-driver.$(OBJEXT) \
-	libvirt_qemud-dispatch.$(OBJEXT) libvirt_qemud-conf.$(OBJEXT) \
-	libvirt_qemud-bridge.$(OBJEXT) \
-	libvirt_qemud-iptables.$(OBJEXT) libvirt_qemud-uuid.$(OBJEXT) \
-	libvirt_qemud-buf.$(OBJEXT)
-libvirt_qemud_OBJECTS = $(am_libvirt_qemud_OBJECTS)
-initSCRIPT_INSTALL = $(INSTALL_SCRIPT)
-SCRIPTS = $(init_SCRIPTS)
+am_libvirtd_OBJECTS = libvirtd-qemud.$(OBJEXT) \
+	libvirtd-protocol.$(OBJEXT) libvirtd-remote_protocol.$(OBJEXT) \
+	libvirtd-remote.$(OBJEXT) libvirtd-event.$(OBJEXT)
+libvirtd_OBJECTS = $(am_libvirtd_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -75,8 +69,8 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libvirt_qemud_SOURCES)
-DIST_SOURCES = $(libvirt_qemud_SOURCES)
+SOURCES = $(libvirtd_SOURCES)
+DIST_SOURCES = $(libvirtd_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -168,13 +162,13 @@ PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
 QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
+REMOTE_PID_FILE = @REMOTE_PID_FILE@
 RM = @RM@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
-SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
@@ -234,33 +228,42 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 INCLUDES = @LIBXML_CFLAGS@
 UUID = $(shell uuidgen)
-libvirt_qemud_SOURCES = qemud.c internal.h protocol.h \
-                driver.c driver.h \
-                dispatch.c dispatch.h \
-                conf.c conf.h \
-                bridge.c bridge.h \
-                iptables.c iptables.h \
-                uuid.c uuid.h \
-		buf.c buf.h
+libvirtd_SOURCES = \
+		qemud.c internal.h \
+		protocol.h protocol.c \
+		remote_protocol.h remote_protocol.c \
+		remote.c \
+                event.c event.h
 
 #-D_XOPEN_SOURCE=600 -D_XOPEN_SOURCE_EXTENDED=1 -D_POSIX_C_SOURCE=199506L
-libvirt_qemud_CFLAGS = \
+libvirtd_CFLAGS = \
         -I$(top_srcdir)/include -I$(top_builddir)/include $(LIBXML_CFLAGS) \
         $(WARN_CFLAGS) -DLOCAL_STATE_DIR="\"$(localstatedir)\"" \
         -DSYSCONF_DIR="\"$(sysconfdir)\"" \
-	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\""
+	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\"" \
+	-DREMOTE_PID_FILE="\"$(REMOTE_PID_FILE)\"" \
+        -DGETTEXT_PACKAGE=\"$(PACKAGE)\"
 
-libvirt_qemud_LDFLAGS = $(LIBXML_LIBS) $(SYSFS_LIBS)
-libvirt_qemud_DEPENDENCIES = 
-libvirt_qemud_LDADD = 
-EXTRA_DIST = libvirtd.in default-network.xml
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@initdir = $(sysconfdir)/rc.d/init.d
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@init_SCRIPTS = libvirtd
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@CLEANFILES = libvirtd
+libvirtd_LDFLAGS = $(WARN_CFLAGS) $(LIBXML_LIBS)
+libvirtd_DEPENDENCIES = ../src/libvirt.la
+libvirtd_LDADD = ../src/libvirt.la
+
+# Distribute the generated files so that rpcgen isn't required on the
+# target machine (although almost any Unix machine will have it).
+EXTRA_DIST = libvirtd.init.in libvirtd.sysconf default-network.xml \
+	protocol.x remote_protocol.x \
+	protocol.c protocol.h \
+	remote_protocol.c remote_protocol.h \
+	remote_generate_stubs.pl rpcgen_fix.pl \
+	remote_dispatch_prototypes.h \
+	remote_dispatch_localvars.h \
+	remote_dispatch_proc_switch.h
+
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@CLEANFILES = libvirtd.init
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .o .obj
+.SUFFIXES: .c .h .lo .o .obj .x
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -318,28 +321,9 @@ clean-sbinPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-libvirt_qemud$(EXEEXT): $(libvirt_qemud_OBJECTS) $(libvirt_qemud_DEPENDENCIES) 
-	@rm -f libvirt_qemud$(EXEEXT)
-	$(LINK) $(libvirt_qemud_LDFLAGS) $(libvirt_qemud_OBJECTS) $(libvirt_qemud_LDADD) $(LIBS)
-install-initSCRIPTS: $(init_SCRIPTS)
-	@$(NORMAL_INSTALL)
-	test -z "$(initdir)" || $(mkdir_p) "$(DESTDIR)$(initdir)"
-	@list='$(init_SCRIPTS)'; for p in $$list; do \
-	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	  if test -f $$d$$p; then \
-	    f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
-	    echo " $(initSCRIPT_INSTALL) '$$d$$p' '$(DESTDIR)$(initdir)/$$f'"; \
-	    $(initSCRIPT_INSTALL) "$$d$$p" "$(DESTDIR)$(initdir)/$$f"; \
-	  else :; fi; \
-	done
-
-uninstall-initSCRIPTS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(init_SCRIPTS)'; for p in $$list; do \
-	  f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
-	  echo " rm -f '$(DESTDIR)$(initdir)/$$f'"; \
-	  rm -f "$(DESTDIR)$(initdir)/$$f"; \
-	done
+libvirtd$(EXEEXT): $(libvirtd_OBJECTS) $(libvirtd_DEPENDENCIES) 
+	@rm -f libvirtd$(EXEEXT)
+	$(LINK) $(libvirtd_LDFLAGS) $(libvirtd_OBJECTS) $(libvirtd_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -347,14 +331,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-bridge.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-buf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-conf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-dispatch.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-driver.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-iptables.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-qemud.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_qemud-uuid.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtd-event.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtd-protocol.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtd-qemud.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtd-remote.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtd-remote_protocol.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -377,117 +358,75 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
-libvirt_qemud-qemud.o: qemud.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-qemud.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-qemud.Tpo" -c -o libvirt_qemud-qemud.o `test -f 'qemud.c' || echo '$(srcdir)/'`qemud.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-qemud.Tpo" "$(DEPDIR)/libvirt_qemud-qemud.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-qemud.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qemud.c' object='libvirt_qemud-qemud.o' libtool=no @AMDEPBACKSLASH@
+libvirtd-qemud.o: qemud.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-qemud.o -MD -MP -MF "$(DEPDIR)/libvirtd-qemud.Tpo" -c -o libvirtd-qemud.o `test -f 'qemud.c' || echo '$(srcdir)/'`qemud.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-qemud.Tpo" "$(DEPDIR)/libvirtd-qemud.Po"; else rm -f "$(DEPDIR)/libvirtd-qemud.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qemud.c' object='libvirtd-qemud.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-qemud.o `test -f 'qemud.c' || echo '$(srcdir)/'`qemud.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-qemud.o `test -f 'qemud.c' || echo '$(srcdir)/'`qemud.c
 
-libvirt_qemud-qemud.obj: qemud.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-qemud.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-qemud.Tpo" -c -o libvirt_qemud-qemud.obj `if test -f 'qemud.c'; then $(CYGPATH_W) 'qemud.c'; else $(CYGPATH_W) '$(srcdir)/qemud.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-qemud.Tpo" "$(DEPDIR)/libvirt_qemud-qemud.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-qemud.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qemud.c' object='libvirt_qemud-qemud.obj' libtool=no @AMDEPBACKSLASH@
+libvirtd-qemud.obj: qemud.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-qemud.obj -MD -MP -MF "$(DEPDIR)/libvirtd-qemud.Tpo" -c -o libvirtd-qemud.obj `if test -f 'qemud.c'; then $(CYGPATH_W) 'qemud.c'; else $(CYGPATH_W) '$(srcdir)/qemud.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-qemud.Tpo" "$(DEPDIR)/libvirtd-qemud.Po"; else rm -f "$(DEPDIR)/libvirtd-qemud.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qemud.c' object='libvirtd-qemud.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-qemud.obj `if test -f 'qemud.c'; then $(CYGPATH_W) 'qemud.c'; else $(CYGPATH_W) '$(srcdir)/qemud.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-qemud.obj `if test -f 'qemud.c'; then $(CYGPATH_W) 'qemud.c'; else $(CYGPATH_W) '$(srcdir)/qemud.c'; fi`
 
-libvirt_qemud-driver.o: driver.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-driver.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-driver.Tpo" -c -o libvirt_qemud-driver.o `test -f 'driver.c' || echo '$(srcdir)/'`driver.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-driver.Tpo" "$(DEPDIR)/libvirt_qemud-driver.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-driver.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='driver.c' object='libvirt_qemud-driver.o' libtool=no @AMDEPBACKSLASH@
+libvirtd-protocol.o: protocol.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-protocol.o -MD -MP -MF "$(DEPDIR)/libvirtd-protocol.Tpo" -c -o libvirtd-protocol.o `test -f 'protocol.c' || echo '$(srcdir)/'`protocol.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-protocol.Tpo" "$(DEPDIR)/libvirtd-protocol.Po"; else rm -f "$(DEPDIR)/libvirtd-protocol.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='protocol.c' object='libvirtd-protocol.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-driver.o `test -f 'driver.c' || echo '$(srcdir)/'`driver.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-protocol.o `test -f 'protocol.c' || echo '$(srcdir)/'`protocol.c
 
-libvirt_qemud-driver.obj: driver.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-driver.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-driver.Tpo" -c -o libvirt_qemud-driver.obj `if test -f 'driver.c'; then $(CYGPATH_W) 'driver.c'; else $(CYGPATH_W) '$(srcdir)/driver.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-driver.Tpo" "$(DEPDIR)/libvirt_qemud-driver.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-driver.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='driver.c' object='libvirt_qemud-driver.obj' libtool=no @AMDEPBACKSLASH@
+libvirtd-protocol.obj: protocol.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-protocol.obj -MD -MP -MF "$(DEPDIR)/libvirtd-protocol.Tpo" -c -o libvirtd-protocol.obj `if test -f 'protocol.c'; then $(CYGPATH_W) 'protocol.c'; else $(CYGPATH_W) '$(srcdir)/protocol.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-protocol.Tpo" "$(DEPDIR)/libvirtd-protocol.Po"; else rm -f "$(DEPDIR)/libvirtd-protocol.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='protocol.c' object='libvirtd-protocol.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-driver.obj `if test -f 'driver.c'; then $(CYGPATH_W) 'driver.c'; else $(CYGPATH_W) '$(srcdir)/driver.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-protocol.obj `if test -f 'protocol.c'; then $(CYGPATH_W) 'protocol.c'; else $(CYGPATH_W) '$(srcdir)/protocol.c'; fi`
 
-libvirt_qemud-dispatch.o: dispatch.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-dispatch.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-dispatch.Tpo" -c -o libvirt_qemud-dispatch.o `test -f 'dispatch.c' || echo '$(srcdir)/'`dispatch.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-dispatch.Tpo" "$(DEPDIR)/libvirt_qemud-dispatch.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-dispatch.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dispatch.c' object='libvirt_qemud-dispatch.o' libtool=no @AMDEPBACKSLASH@
+libvirtd-remote_protocol.o: remote_protocol.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-remote_protocol.o -MD -MP -MF "$(DEPDIR)/libvirtd-remote_protocol.Tpo" -c -o libvirtd-remote_protocol.o `test -f 'remote_protocol.c' || echo '$(srcdir)/'`remote_protocol.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-remote_protocol.Tpo" "$(DEPDIR)/libvirtd-remote_protocol.Po"; else rm -f "$(DEPDIR)/libvirtd-remote_protocol.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='remote_protocol.c' object='libvirtd-remote_protocol.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-dispatch.o `test -f 'dispatch.c' || echo '$(srcdir)/'`dispatch.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-remote_protocol.o `test -f 'remote_protocol.c' || echo '$(srcdir)/'`remote_protocol.c
 
-libvirt_qemud-dispatch.obj: dispatch.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-dispatch.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-dispatch.Tpo" -c -o libvirt_qemud-dispatch.obj `if test -f 'dispatch.c'; then $(CYGPATH_W) 'dispatch.c'; else $(CYGPATH_W) '$(srcdir)/dispatch.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-dispatch.Tpo" "$(DEPDIR)/libvirt_qemud-dispatch.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-dispatch.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dispatch.c' object='libvirt_qemud-dispatch.obj' libtool=no @AMDEPBACKSLASH@
+libvirtd-remote_protocol.obj: remote_protocol.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-remote_protocol.obj -MD -MP -MF "$(DEPDIR)/libvirtd-remote_protocol.Tpo" -c -o libvirtd-remote_protocol.obj `if test -f 'remote_protocol.c'; then $(CYGPATH_W) 'remote_protocol.c'; else $(CYGPATH_W) '$(srcdir)/remote_protocol.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-remote_protocol.Tpo" "$(DEPDIR)/libvirtd-remote_protocol.Po"; else rm -f "$(DEPDIR)/libvirtd-remote_protocol.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='remote_protocol.c' object='libvirtd-remote_protocol.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-dispatch.obj `if test -f 'dispatch.c'; then $(CYGPATH_W) 'dispatch.c'; else $(CYGPATH_W) '$(srcdir)/dispatch.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-remote_protocol.obj `if test -f 'remote_protocol.c'; then $(CYGPATH_W) 'remote_protocol.c'; else $(CYGPATH_W) '$(srcdir)/remote_protocol.c'; fi`
 
-libvirt_qemud-conf.o: conf.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-conf.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-conf.Tpo" -c -o libvirt_qemud-conf.o `test -f 'conf.c' || echo '$(srcdir)/'`conf.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-conf.Tpo" "$(DEPDIR)/libvirt_qemud-conf.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-conf.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='conf.c' object='libvirt_qemud-conf.o' libtool=no @AMDEPBACKSLASH@
+libvirtd-remote.o: remote.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-remote.o -MD -MP -MF "$(DEPDIR)/libvirtd-remote.Tpo" -c -o libvirtd-remote.o `test -f 'remote.c' || echo '$(srcdir)/'`remote.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-remote.Tpo" "$(DEPDIR)/libvirtd-remote.Po"; else rm -f "$(DEPDIR)/libvirtd-remote.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='remote.c' object='libvirtd-remote.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-conf.o `test -f 'conf.c' || echo '$(srcdir)/'`conf.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-remote.o `test -f 'remote.c' || echo '$(srcdir)/'`remote.c
 
-libvirt_qemud-conf.obj: conf.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-conf.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-conf.Tpo" -c -o libvirt_qemud-conf.obj `if test -f 'conf.c'; then $(CYGPATH_W) 'conf.c'; else $(CYGPATH_W) '$(srcdir)/conf.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-conf.Tpo" "$(DEPDIR)/libvirt_qemud-conf.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-conf.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='conf.c' object='libvirt_qemud-conf.obj' libtool=no @AMDEPBACKSLASH@
+libvirtd-remote.obj: remote.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-remote.obj -MD -MP -MF "$(DEPDIR)/libvirtd-remote.Tpo" -c -o libvirtd-remote.obj `if test -f 'remote.c'; then $(CYGPATH_W) 'remote.c'; else $(CYGPATH_W) '$(srcdir)/remote.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-remote.Tpo" "$(DEPDIR)/libvirtd-remote.Po"; else rm -f "$(DEPDIR)/libvirtd-remote.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='remote.c' object='libvirtd-remote.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-conf.obj `if test -f 'conf.c'; then $(CYGPATH_W) 'conf.c'; else $(CYGPATH_W) '$(srcdir)/conf.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-remote.obj `if test -f 'remote.c'; then $(CYGPATH_W) 'remote.c'; else $(CYGPATH_W) '$(srcdir)/remote.c'; fi`
 
-libvirt_qemud-bridge.o: bridge.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-bridge.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-bridge.Tpo" -c -o libvirt_qemud-bridge.o `test -f 'bridge.c' || echo '$(srcdir)/'`bridge.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-bridge.Tpo" "$(DEPDIR)/libvirt_qemud-bridge.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-bridge.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bridge.c' object='libvirt_qemud-bridge.o' libtool=no @AMDEPBACKSLASH@
+libvirtd-event.o: event.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-event.o -MD -MP -MF "$(DEPDIR)/libvirtd-event.Tpo" -c -o libvirtd-event.o `test -f 'event.c' || echo '$(srcdir)/'`event.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-event.Tpo" "$(DEPDIR)/libvirtd-event.Po"; else rm -f "$(DEPDIR)/libvirtd-event.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='event.c' object='libvirtd-event.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-bridge.o `test -f 'bridge.c' || echo '$(srcdir)/'`bridge.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-event.o `test -f 'event.c' || echo '$(srcdir)/'`event.c
 
-libvirt_qemud-bridge.obj: bridge.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-bridge.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-bridge.Tpo" -c -o libvirt_qemud-bridge.obj `if test -f 'bridge.c'; then $(CYGPATH_W) 'bridge.c'; else $(CYGPATH_W) '$(srcdir)/bridge.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-bridge.Tpo" "$(DEPDIR)/libvirt_qemud-bridge.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-bridge.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bridge.c' object='libvirt_qemud-bridge.obj' libtool=no @AMDEPBACKSLASH@
+libvirtd-event.obj: event.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -MT libvirtd-event.obj -MD -MP -MF "$(DEPDIR)/libvirtd-event.Tpo" -c -o libvirtd-event.obj `if test -f 'event.c'; then $(CYGPATH_W) 'event.c'; else $(CYGPATH_W) '$(srcdir)/event.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtd-event.Tpo" "$(DEPDIR)/libvirtd-event.Po"; else rm -f "$(DEPDIR)/libvirtd-event.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='event.c' object='libvirtd-event.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-bridge.obj `if test -f 'bridge.c'; then $(CYGPATH_W) 'bridge.c'; else $(CYGPATH_W) '$(srcdir)/bridge.c'; fi`
-
-libvirt_qemud-iptables.o: iptables.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-iptables.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-iptables.Tpo" -c -o libvirt_qemud-iptables.o `test -f 'iptables.c' || echo '$(srcdir)/'`iptables.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-iptables.Tpo" "$(DEPDIR)/libvirt_qemud-iptables.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-iptables.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='iptables.c' object='libvirt_qemud-iptables.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-iptables.o `test -f 'iptables.c' || echo '$(srcdir)/'`iptables.c
-
-libvirt_qemud-iptables.obj: iptables.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-iptables.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-iptables.Tpo" -c -o libvirt_qemud-iptables.obj `if test -f 'iptables.c'; then $(CYGPATH_W) 'iptables.c'; else $(CYGPATH_W) '$(srcdir)/iptables.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-iptables.Tpo" "$(DEPDIR)/libvirt_qemud-iptables.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-iptables.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='iptables.c' object='libvirt_qemud-iptables.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-iptables.obj `if test -f 'iptables.c'; then $(CYGPATH_W) 'iptables.c'; else $(CYGPATH_W) '$(srcdir)/iptables.c'; fi`
-
-libvirt_qemud-uuid.o: uuid.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-uuid.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-uuid.Tpo" -c -o libvirt_qemud-uuid.o `test -f 'uuid.c' || echo '$(srcdir)/'`uuid.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-uuid.Tpo" "$(DEPDIR)/libvirt_qemud-uuid.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-uuid.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='uuid.c' object='libvirt_qemud-uuid.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-uuid.o `test -f 'uuid.c' || echo '$(srcdir)/'`uuid.c
-
-libvirt_qemud-uuid.obj: uuid.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-uuid.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-uuid.Tpo" -c -o libvirt_qemud-uuid.obj `if test -f 'uuid.c'; then $(CYGPATH_W) 'uuid.c'; else $(CYGPATH_W) '$(srcdir)/uuid.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-uuid.Tpo" "$(DEPDIR)/libvirt_qemud-uuid.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-uuid.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='uuid.c' object='libvirt_qemud-uuid.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-uuid.obj `if test -f 'uuid.c'; then $(CYGPATH_W) 'uuid.c'; else $(CYGPATH_W) '$(srcdir)/uuid.c'; fi`
-
-libvirt_qemud-buf.o: buf.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-buf.o -MD -MP -MF "$(DEPDIR)/libvirt_qemud-buf.Tpo" -c -o libvirt_qemud-buf.o `test -f 'buf.c' || echo '$(srcdir)/'`buf.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-buf.Tpo" "$(DEPDIR)/libvirt_qemud-buf.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-buf.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='buf.c' object='libvirt_qemud-buf.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-buf.o `test -f 'buf.c' || echo '$(srcdir)/'`buf.c
-
-libvirt_qemud-buf.obj: buf.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -MT libvirt_qemud-buf.obj -MD -MP -MF "$(DEPDIR)/libvirt_qemud-buf.Tpo" -c -o libvirt_qemud-buf.obj `if test -f 'buf.c'; then $(CYGPATH_W) 'buf.c'; else $(CYGPATH_W) '$(srcdir)/buf.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_qemud-buf.Tpo" "$(DEPDIR)/libvirt_qemud-buf.Po"; else rm -f "$(DEPDIR)/libvirt_qemud-buf.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='buf.c' object='libvirt_qemud-buf.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_qemud_CFLAGS) $(CFLAGS) -c -o libvirt_qemud-buf.obj `if test -f 'buf.c'; then $(CYGPATH_W) 'buf.c'; else $(CYGPATH_W) '$(srcdir)/buf.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtd_CFLAGS) $(CFLAGS) -c -o libvirtd-event.obj `if test -f 'event.c'; then $(CYGPATH_W) 'event.c'; else $(CYGPATH_W) '$(srcdir)/event.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -576,9 +515,9 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS) $(SCRIPTS)
+all-am: Makefile $(PROGRAMS)
 installdirs:
-	for dir in "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(initdir)"; do \
+	for dir in "$(DESTDIR)$(sbindir)"; do \
 	  test -z "$$dir" || $(mkdir_p) "$$dir"; \
 	done
 install: install-am
@@ -627,7 +566,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-data-local install-initSCRIPTS
+install-data-am: install-data-local
 
 install-exec-am: install-sbinPROGRAMS
 
@@ -655,8 +594,7 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-info-am uninstall-initSCRIPTS uninstall-local \
-	uninstall-sbinPROGRAMS
+uninstall-am: uninstall-info-am uninstall-local uninstall-sbinPROGRAMS
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
 	clean-libtool clean-sbinPROGRAMS ctags distclean \
@@ -664,38 +602,77 @@ uninstall-am: uninstall-info-am uninstall-initSCRIPTS uninstall-local \
 	distclean-tags distdir dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am \
 	install-data-local install-exec install-exec-am install-info \
-	install-info-am install-initSCRIPTS install-man \
-	install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-info-am install-man install-sbinPROGRAMS install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-info-am \
-	uninstall-initSCRIPTS uninstall-local uninstall-sbinPROGRAMS
+	tags uninstall uninstall-am uninstall-info-am uninstall-local \
+	uninstall-sbinPROGRAMS
 
 
-install-data-local:
+install-data-local: install-init
 	mkdir -p $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart
 	$(INSTALL_DATA) $(srcdir)/default-network.xml $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml
 	sed -i -e "s,</name>,</name>\n  <uuid>$(UUID)</uuid>," $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml
 	test -e $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml || \
            ln -s ../default.xml $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml
+	mkdir -p $(DESTDIR)$(localstatedir)/log/libvirt/qemu
 	mkdir -p $(DESTDIR)$(localstatedir)/run/libvirt
 	mkdir -p $(DESTDIR)$(localstatedir)/lib/libvirt
 
-uninstall-local:
+uninstall-local: uninstall-init
 	rm -f $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml
 	rm -f $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml
 	rmdir $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart || :
+	rmdir $(DESTDIR)$(localstatedir)/log/libvirt/qemu || :
 	rmdir $(DESTDIR)$(localstatedir)/run/libvirt || :
 	rmdir $(DESTDIR)$(localstatedir)/lib/libvirt || :
 
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@libvirtd: libvirtd.in
+.x.c:
+	rm -f $@
+	rpcgen -c -o $@ $<
+	mv $@ $@.bak
+	perl -w rpcgen_fix.pl < $@.bak > $@
+
+.x.h:
+	rm -f $@
+	rpcgen -h -o $@ $<
+
+protocol.c: protocol.h
+remote_protocol.c: remote_protocol.h
+
+remote.c: remote_dispatch_prototypes.h \
+	  remote_dispatch_localvars.h \
+	  remote_dispatch_proc_switch.h
+
+remote_dispatch_prototypes.h: remote_generate_stubs.pl remote_protocol.x
+	perl -w remote_generate_stubs.pl -i remote_protocol.x > $@
+
+remote_dispatch_localvars.h: remote_generate_stubs.pl remote_protocol.x
+	perl -w remote_generate_stubs.pl -v remote_protocol.x > $@
+
+remote_dispatch_proc_switch.h: remote_generate_stubs.pl remote_protocol.x
+	perl -w remote_generate_stubs.pl -w remote_protocol.x > $@
+
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@install-init: libvirtd.init
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	mkdir -p $(DESTDIR)$(sysconfdir)/rc.d/init.d
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	$(INSTALL_SCRIPT) $(srcdir)/libvirtd.init $(DESTDIR)$(sysconfdir)/rc.d/init.d/libvirtd
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	mkdir -p $(DESTDIR)$(sysconfdir)/sysconfig
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	$(INSTALL_SCRIPT) $(srcdir)/libvirtd.sysconf $(DESTDIR)$(sysconfdir)/sysconfig/libvirtd
+
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@uninstall-init:
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	rm -f $(DESTDIR)$(sysconfdir)/rc.d/init.d/libvirtd
+
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@libvirtd.init: libvirtd.init.in
 @LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	sed						\
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	    -e s!\@localstatedir\@!@localstatedir@!	\
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	    -e s!\@sbindir\@!@sbindir@!			\
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	    -e s!\@sysconfdir\@!@sysconfdir@!		\
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	    -e s!\@localstatedir\@!@localstatedir@!g	\
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	    -e s!\@sbindir\@!@sbindir@!g		\
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	    -e s!\@sysconfdir\@!@sysconfdir@!g		\
 @LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	    < $< > $@
-@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	chmod a+x libvirtd
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@	chmod a+x libvirtd.init
+
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE@install-init:
+@LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE@uninstall-init:
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

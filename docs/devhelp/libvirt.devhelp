@@ -11,6 +11,7 @@
     <function name="VIR_COPY_CPUMAP" link="libvirt-libvirt.html#VIR_COPY_CPUMAP"/>
     <function name="VIR_CPU_MAPLEN" link="libvirt-libvirt.html#VIR_CPU_MAPLEN"/>
     <function name="VIR_CPU_USABLE" link="libvirt-libvirt.html#VIR_CPU_USABLE"/>
+    <function name="VIR_DOMAIN_SCHED_FIELD_LENGTH" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_LENGTH"/>
     <function name="VIR_GET_CPUMAP" link="libvirt-libvirt.html#VIR_GET_CPUMAP"/>
     <function name="VIR_NODEINFO_MAXCPUS" link="libvirt-libvirt.html#VIR_NODEINFO_MAXCPUS"/>
     <function name="VIR_UNUSE_CPU" link="libvirt-libvirt.html#VIR_UNUSE_CPU"/>
@@ -31,6 +32,12 @@
     <function name="VIR_DOMAIN_RENAME_RESTART" link="libvirt-libvirt.html#VIR_DOMAIN_RENAME_RESTART"/>
     <function name="VIR_DOMAIN_RESTART" link="libvirt-libvirt.html#VIR_DOMAIN_RESTART"/>
     <function name="VIR_DOMAIN_RUNNING" link="libvirt-libvirt.html#VIR_DOMAIN_RUNNING"/>
+    <function name="VIR_DOMAIN_SCHED_FIELD_BOOLEAN" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_BOOLEAN"/>
+    <function name="VIR_DOMAIN_SCHED_FIELD_DOUBLE" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_DOUBLE"/>
+    <function name="VIR_DOMAIN_SCHED_FIELD_INT" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_INT"/>
+    <function name="VIR_DOMAIN_SCHED_FIELD_LLONG" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_LLONG"/>
+    <function name="VIR_DOMAIN_SCHED_FIELD_UINT" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_UINT"/>
+    <function name="VIR_DOMAIN_SCHED_FIELD_ULLONG" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_ULLONG"/>
     <function name="VIR_DOMAIN_SHUTDOWN" link="libvirt-libvirt.html#VIR_DOMAIN_SHUTDOWN"/>
     <function name="VIR_DOMAIN_SHUTOFF" link="libvirt-libvirt.html#VIR_DOMAIN_SHUTOFF"/>
     <function name="VIR_ERR_CALL_FAILED" link="libvirt-virterror.html#VIR_ERR_CALL_FAILED"/>
@@ -39,6 +46,7 @@
     <function name="VIR_ERR_DRIVER_FULL" link="libvirt-virterror.html#VIR_ERR_DRIVER_FULL"/>
     <function name="VIR_ERR_ERROR" link="libvirt-virterror.html#VIR_ERR_ERROR"/>
     <function name="VIR_ERR_GET_FAILED" link="libvirt-virterror.html#VIR_ERR_GET_FAILED"/>
+    <function name="VIR_ERR_GNUTLS_ERROR" link="libvirt-virterror.html#VIR_ERR_GNUTLS_ERROR"/>
     <function name="VIR_ERR_HTTP_ERROR" link="libvirt-virterror.html#VIR_ERR_HTTP_ERROR"/>
     <function name="VIR_ERR_INTERNAL_ERROR" link="libvirt-virterror.html#VIR_ERR_INTERNAL_ERROR"/>
     <function name="VIR_ERR_INVALID_ARG" link="libvirt-virterror.html#VIR_ERR_INVALID_ARG"/>
@@ -49,9 +57,11 @@
     <function name="VIR_ERR_NONE" link="libvirt-virterror.html#VIR_ERR_NONE"/>
     <function name="VIR_ERR_NO_CONNECT" link="libvirt-virterror.html#VIR_ERR_NO_CONNECT"/>
     <function name="VIR_ERR_NO_DEVICE" link="libvirt-virterror.html#VIR_ERR_NO_DEVICE"/>
+    <function name="VIR_ERR_NO_DOMAIN" link="libvirt-virterror.html#VIR_ERR_NO_DOMAIN"/>
     <function name="VIR_ERR_NO_KERNEL" link="libvirt-virterror.html#VIR_ERR_NO_KERNEL"/>
     <function name="VIR_ERR_NO_MEMORY" link="libvirt-virterror.html#VIR_ERR_NO_MEMORY"/>
     <function name="VIR_ERR_NO_NAME" link="libvirt-virterror.html#VIR_ERR_NO_NAME"/>
+    <function name="VIR_ERR_NO_NETWORK" link="libvirt-virterror.html#VIR_ERR_NO_NETWORK"/>
     <function name="VIR_ERR_NO_OS" link="libvirt-virterror.html#VIR_ERR_NO_OS"/>
     <function name="VIR_ERR_NO_ROOT" link="libvirt-virterror.html#VIR_ERR_NO_ROOT"/>
     <function name="VIR_ERR_NO_SOURCE" link="libvirt-virterror.html#VIR_ERR_NO_SOURCE"/>
@@ -67,6 +77,7 @@
     <function name="VIR_ERR_PARSE_FAILED" link="libvirt-virterror.html#VIR_ERR_PARSE_FAILED"/>
     <function name="VIR_ERR_POST_FAILED" link="libvirt-virterror.html#VIR_ERR_POST_FAILED"/>
     <function name="VIR_ERR_READ_FAILED" link="libvirt-virterror.html#VIR_ERR_READ_FAILED"/>
+    <function name="VIR_ERR_RPC" link="libvirt-virterror.html#VIR_ERR_RPC"/>
     <function name="VIR_ERR_SEXPR_SERIAL" link="libvirt-virterror.html#VIR_ERR_SEXPR_SERIAL"/>
     <function name="VIR_ERR_SYSTEM_ERROR" link="libvirt-virterror.html#VIR_ERR_SYSTEM_ERROR"/>
     <function name="VIR_ERR_UNKNOWN_HOST" link="libvirt-virterror.html#VIR_ERR_UNKNOWN_HOST"/>
@@ -81,8 +92,10 @@
     <function name="VIR_FROM_NONE" link="libvirt-virterror.html#VIR_FROM_NONE"/>
     <function name="VIR_FROM_PROXY" link="libvirt-virterror.html#VIR_FROM_PROXY"/>
     <function name="VIR_FROM_QEMU" link="libvirt-virterror.html#VIR_FROM_QEMU"/>
+    <function name="VIR_FROM_REMOTE" link="libvirt-virterror.html#VIR_FROM_REMOTE"/>
     <function name="VIR_FROM_RPC" link="libvirt-virterror.html#VIR_FROM_RPC"/>
     <function name="VIR_FROM_SEXPR" link="libvirt-virterror.html#VIR_FROM_SEXPR"/>
+    <function name="VIR_FROM_TEST" link="libvirt-virterror.html#VIR_FROM_TEST"/>
     <function name="VIR_FROM_XEN" link="libvirt-virterror.html#VIR_FROM_XEN"/>
     <function name="VIR_FROM_XEND" link="libvirt-virterror.html#VIR_FROM_XEND"/>
     <function name="VIR_FROM_XENSTORE" link="libvirt-virterror.html#VIR_FROM_XENSTORE"/>
@@ -90,11 +103,11 @@
     <function name="VIR_VCPU_BLOCKED" link="libvirt-libvirt.html#VIR_VCPU_BLOCKED"/>
     <function name="VIR_VCPU_OFFLINE" link="libvirt-libvirt.html#VIR_VCPU_OFFLINE"/>
     <function name="VIR_VCPU_RUNNING" link="libvirt-libvirt.html#VIR_VCPU_RUNNING"/>
+    <function name="VIR_WAR_NO_NETWORK" link="libvirt-virterror.html#VIR_WAR_NO_NETWORK"/>
     <function name="virConnectPtr" link="libvirt-libvirt.html#virConnectPtr"/>
     <function name="virDeviceMode" link="libvirt-libvirt.html#virDeviceMode"/>
     <function name="virDomainCreateFlags" link="libvirt-libvirt.html#virDomainCreateFlags"/>
     <function name="virDomainInfoPtr" link="libvirt-libvirt.html#virDomainInfoPtr"/>
-    <function name="virDomainKernelPtr" link="libvirt-libvirt.html#virDomainKernelPtr"/>
     <function name="virDomainPtr" link="libvirt-libvirt.html#virDomainPtr"/>
     <function name="virDomainRestart" link="libvirt-libvirt.html#virDomainRestart"/>
     <function name="virDomainState" link="libvirt-libvirt.html#virDomainState"/>
@@ -104,15 +117,17 @@
     <function name="virErrorPtr" link="libvirt-virterror.html#virErrorPtr"/>
     <function name="virNetworkPtr" link="libvirt-libvirt.html#virNetworkPtr"/>
     <function name="virNodeInfoPtr" link="libvirt-libvirt.html#virNodeInfoPtr"/>
+    <function name="virSchedParameterPtr" link="libvirt-libvirt.html#virSchedParameterPtr"/>
+    <function name="virSchedParameterType" link="libvirt-libvirt.html#virSchedParameterType"/>
     <function name="virVcpuInfoPtr" link="libvirt-libvirt.html#virVcpuInfoPtr"/>
     <function name="virVcpuState" link="libvirt-libvirt.html#virVcpuState"/>
     <function name="virConnect" link="libvirt-libvirt.html#virConnect"/>
     <function name="virDomain" link="libvirt-libvirt.html#virDomain"/>
     <function name="virDomainInfo" link="libvirt-libvirt.html#virDomainInfo"/>
-    <function name="virDomainKernel" link="libvirt-libvirt.html#virDomainKernel"/>
     <function name="virError" link="libvirt-virterror.html#virError"/>
     <function name="virNetwork" link="libvirt-libvirt.html#virNetwork"/>
     <function name="virNodeInfo" link="libvirt-libvirt.html#virNodeInfo"/>
+    <function name="virSchedParameter" link="libvirt-libvirt.html#virSchedParameter"/>
     <function name="virVcpuInfo" link="libvirt-libvirt.html#virVcpuInfo"/>
     <function name="virErrorFunc" link="libvirt-virterror.html#virErrorFunc"/>
     <function name="virConnCopyLastError ()" link="libvirt-virterror.html#virConnCopyLastError"/>
@@ -121,8 +136,10 @@
     <function name="virConnSetErrorFunc ()" link="libvirt-virterror.html#virConnSetErrorFunc"/>
     <function name="virConnectClose ()" link="libvirt-libvirt.html#virConnectClose"/>
     <function name="virConnectGetCapabilities ()" link="libvirt-libvirt.html#virConnectGetCapabilities"/>
+    <function name="virConnectGetHostname ()" link="libvirt-libvirt.html#virConnectGetHostname"/>
     <function name="virConnectGetMaxVcpus ()" link="libvirt-libvirt.html#virConnectGetMaxVcpus"/>
     <function name="virConnectGetType ()" link="libvirt-libvirt.html#virConnectGetType"/>
+    <function name="virConnectGetURI ()" link="libvirt-libvirt.html#virConnectGetURI"/>
     <function name="virConnectGetVersion ()" link="libvirt-libvirt.html#virConnectGetVersion"/>
     <function name="virConnectListDefinedDomains ()" link="libvirt-libvirt.html#virConnectListDefinedDomains"/>
     <function name="virConnectListDefinedNetworks ()" link="libvirt-libvirt.html#virConnectListDefinedNetworks"/>
@@ -145,12 +162,15 @@
     <function name="virDomainDetachDevice ()" link="libvirt-libvirt.html#virDomainDetachDevice"/>
     <function name="virDomainFree ()" link="libvirt-libvirt.html#virDomainFree"/>
     <function name="virDomainGetAutostart ()" link="libvirt-libvirt.html#virDomainGetAutostart"/>
+    <function name="virDomainGetConnect ()" link="libvirt-libvirt.html#virDomainGetConnect"/>
     <function name="virDomainGetID ()" link="libvirt-libvirt.html#virDomainGetID"/>
     <function name="virDomainGetInfo ()" link="libvirt-libvirt.html#virDomainGetInfo"/>
     <function name="virDomainGetMaxMemory ()" link="libvirt-libvirt.html#virDomainGetMaxMemory"/>
     <function name="virDomainGetMaxVcpus ()" link="libvirt-libvirt.html#virDomainGetMaxVcpus"/>
     <function name="virDomainGetName ()" link="libvirt-libvirt.html#virDomainGetName"/>
     <function name="virDomainGetOSType ()" link="libvirt-libvirt.html#virDomainGetOSType"/>
+    <function name="virDomainGetSchedulerParameters ()" link="libvirt-libvirt.html#virDomainGetSchedulerParameters"/>
+    <function name="virDomainGetSchedulerType ()" link="libvirt-libvirt.html#virDomainGetSchedulerType"/>
     <function name="virDomainGetUUID ()" link="libvirt-libvirt.html#virDomainGetUUID"/>
     <function name="virDomainGetUUIDString ()" link="libvirt-libvirt.html#virDomainGetUUIDString"/>
     <function name="virDomainGetVcpus ()" link="libvirt-libvirt.html#virDomainGetVcpus"/>
@@ -167,6 +187,7 @@
     <function name="virDomainSetAutostart ()" link="libvirt-libvirt.html#virDomainSetAutostart"/>
     <function name="virDomainSetMaxMemory ()" link="libvirt-libvirt.html#virDomainSetMaxMemory"/>
     <function name="virDomainSetMemory ()" link="libvirt-libvirt.html#virDomainSetMemory"/>
+    <function name="virDomainSetSchedulerParameters ()" link="libvirt-libvirt.html#virDomainSetSchedulerParameters"/>
     <function name="virDomainSetVcpus ()" link="libvirt-libvirt.html#virDomainSetVcpus"/>
     <function name="virDomainShutdown ()" link="libvirt-libvirt.html#virDomainShutdown"/>
     <function name="virDomainSuspend ()" link="libvirt-libvirt.html#virDomainSuspend"/>
@@ -181,6 +202,7 @@
     <function name="virNetworkFree ()" link="libvirt-libvirt.html#virNetworkFree"/>
     <function name="virNetworkGetAutostart ()" link="libvirt-libvirt.html#virNetworkGetAutostart"/>
     <function name="virNetworkGetBridgeName ()" link="libvirt-libvirt.html#virNetworkGetBridgeName"/>
+    <function name="virNetworkGetConnect ()" link="libvirt-libvirt.html#virNetworkGetConnect"/>
     <function name="virNetworkGetName ()" link="libvirt-libvirt.html#virNetworkGetName"/>
     <function name="virNetworkGetUUID ()" link="libvirt-libvirt.html#virNetworkGetUUID"/>
     <function name="virNetworkGetUUIDString ()" link="libvirt-libvirt.html#virNetworkGetUUIDString"/>

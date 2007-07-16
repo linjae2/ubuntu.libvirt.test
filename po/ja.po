@@ -3,21 +3,23 @@
 # This file is distributed under the same license as the PACKAGE package.
 # Noriko Mizumoto <noriko@redhat.com>, 2006.
 # Kiyoto James Hashida <khashida@redhat.com>, 2006.
+# Hyu_gabaru Ryu_ich <hyu_gabaru@yahoo.co.jp>, 2007.
+# Saori Fukuta <fukuta.saori@jp.fujitsu.com>. 2007.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: ja\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2007-04-17 11:31+0200\n"
-"PO-Revision-Date: 2006-12-15 10:32\n"
-"Last-Translator: Kiyoto James Hashida <khashida@redhat.com>\n"
+"POT-Creation-Date: 2007-07-09 14:14+0200\n"
+"PO-Revision-Date: 2007-06-30 15:24+0900\n"
+"Last-Translator: Hyu_gabaru Ryu_ichi <hyu_gabaru@yahoo.co.jp>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: KBabel 1.9.1\n"
 
-#: src/libvirt.c:278 src/hash.c:664
+#: src/libvirt.c:389 src/hash.c:664
 msgid "allocating connection"
 msgstr "接続を割り当て中"
 
@@ -29,327 +31,361 @@ msgstr "警告"
 msgid "error"
 msgstr "エラー"
 
-#: src/virterror.c:344
+#: src/virterror.c:350
 msgid "No error message provided"
 msgstr "エラーメッセージはありませんでした"
 
-#: src/virterror.c:399
+#: src/virterror.c:405
 #, c-format
 msgid "internal error %s"
 msgstr "内部エラー %s"
 
-#: src/virterror.c:401
+#: src/virterror.c:407
 msgid "internal error"
 msgstr "内部エラー"
 
-#: src/virterror.c:404
+#: src/virterror.c:410
 msgid "out of memory"
 msgstr "メモリ不足"
 
-#: src/virterror.c:408
-msgid "no support for hypervisor"
-msgstr "ハイパーバイザーのサポートがありません"
-
-#: src/virterror.c:410
-#, c-format
-msgid "no support for hypervisor %s"
-msgstr "ハイパーバイザー %s のサポートがありません"
-
 #: src/virterror.c:414
+msgid "this function is not supported by the hypervisor"
+msgstr "この機能はハイパーバイザーがサポートしていません"
+
+#: src/virterror.c:416
+#, c-format
+msgid "this function is not supported by the hypervisor: %s"
+msgstr "この機能はハイパーバイザーがサポートしていません: %s"
+
+#: src/virterror.c:420
 msgid "could not connect to hypervisor"
 msgstr "ハイパーバイザーに接続できませんでした"
 
-#: src/virterror.c:416
+#: src/virterror.c:422
 #, c-format
 msgid "could not connect to %s"
 msgstr "%s に接続できませんでした"
 
-#: src/virterror.c:420
-msgid "invalid connection pointer in"
-msgstr "無効な接続ポインタ"
-
-#: src/virterror.c:422
-#, c-format
-msgid "invalid connection pointer in %s"
-msgstr "%s で無効な接続ポインタです"
-
 #: src/virterror.c:426
-msgid "invalid domain pointer in"
-msgstr "無効なドメインポインタ"
+msgid "invalid connection pointer in"
+msgstr "無効な接続ポインター"
 
 #: src/virterror.c:428
 #, c-format
-msgid "invalid domain pointer in %s"
-msgstr "%s で無効なドメインポインタです"
+msgid "invalid connection pointer in %s"
+msgstr "%s で無効な接続ポインターです"
 
 #: src/virterror.c:432
+msgid "invalid domain pointer in"
+msgstr "無効なドメインポインター"
+
+#: src/virterror.c:434
+#, c-format
+msgid "invalid domain pointer in %s"
+msgstr "%s で無効なドメインポインターです"
+
+#: src/virterror.c:438
 msgid "invalid argument in"
 msgstr "無効な引数"
 
-#: src/virterror.c:434
+#: src/virterror.c:440
 #, c-format
 msgid "invalid argument in %s"
 msgstr "%s で無効な引数です"
 
-#: src/virterror.c:438
-#, c-format
-msgid "operation failed: %s"
-msgstr "動作は失敗しました: %s"
-
-#: src/virterror.c:440
-msgid "operation failed"
-msgstr "動作は失敗しました"
-
 #: src/virterror.c:444
 #, c-format
-msgid "GET operation failed: %s"
-msgstr "GET 動作は失敗しました: %s"
+msgid "operation failed: %s"
+msgstr "操作は失敗しました: %s"
 
 #: src/virterror.c:446
-msgid "GET operation failed"
-msgstr "GET 動作は失敗しました"
+msgid "operation failed"
+msgstr "操作は失敗しました"
 
 #: src/virterror.c:450
 #, c-format
-msgid "POST operation failed: %s"
-msgstr "POST 動作は失敗しました: %s"
+msgid "GET operation failed: %s"
+msgstr "GET 操作は失敗しました: %s"
 
 #: src/virterror.c:452
-msgid "POST operation failed"
-msgstr "POST 動作は失敗しました"
+msgid "GET operation failed"
+msgstr "GET 操作は失敗しました"
 
-#: src/virterror.c:455
+#: src/virterror.c:456
+#, c-format
+msgid "POST operation failed: %s"
+msgstr "POST 操作は失敗しました: %s"
+
+#: src/virterror.c:458
+msgid "POST operation failed"
+msgstr "POST 操作は失敗しました"
+
+#: src/virterror.c:461
 #, c-format
 msgid "got unknown HTTP error code %d"
 msgstr "不明な HTTP エラーコード %d を取得しました"
 
-#: src/virterror.c:459
+#: src/virterror.c:465
 #, c-format
 msgid "unknown host %s"
 msgstr "不明なホスト %s"
 
-#: src/virterror.c:461
+#: src/virterror.c:467
 msgid "unknown host"
 msgstr "不明なホスト"
 
-#: src/virterror.c:465
+#: src/virterror.c:471
 #, c-format
 msgid "failed to serialize S-Expr: %s"
-msgstr "S-Expr の連続化に失敗しました: %s"
+msgstr "S 式のシリアライズに失敗しました: %s"
 
-#: src/virterror.c:467
+#: src/virterror.c:473
 msgid "failed to serialize S-Expr"
-msgstr "S-Expr の連続化に失敗しました"
+msgstr "S 式のシリアライズに失敗しました"
 
-#: src/virterror.c:471
+#: src/virterror.c:477
 msgid "could not use Xen hypervisor entry"
 msgstr "Xen ハイパーバイザーエントリを使用できませんでした"
 
-#: src/virterror.c:473
+#: src/virterror.c:479
 #, c-format
 msgid "could not use Xen hypervisor entry %s"
 msgstr "Xen ハイパーバイザーエントリ %s を使用できませんでした"
 
-#: src/virterror.c:477
+#: src/virterror.c:483
 msgid "could not connect to Xen Store"
 msgstr "Xen ストアに接続できませんでした"
 
-#: src/virterror.c:479
+#: src/virterror.c:485
 #, c-format
 msgid "could not connect to Xen Store %s"
 msgstr "Xen ストア %s に接続できませんでした"
 
-#: src/virterror.c:482
+#: src/virterror.c:488
 #, c-format
 msgid "failed Xen syscall %s %d"
 msgstr "Xen syscall %s %d に失敗"
 
-#: src/virterror.c:486
+#: src/virterror.c:492
 msgid "unknown OS type"
 msgstr "不明な OS タイプ"
 
-#: src/virterror.c:488
+#: src/virterror.c:494
 #, c-format
 msgid "unknown OS type %s"
 msgstr "不明な OS タイプ %s"
 
-#: src/virterror.c:491
+#: src/virterror.c:497
 msgid "missing kernel information"
 msgstr "カーネル情報が不足しています"
 
-#: src/virterror.c:495
+#: src/virterror.c:501
 msgid "missing root device information"
 msgstr "root デバイス情報が不足しています"
 
-#: src/virterror.c:497
+#: src/virterror.c:503
 #, c-format
 msgid "missing root device information in %s"
 msgstr "%s の root デバイス情報が不足しています"
 
-#: src/virterror.c:501
+#: src/virterror.c:507
 msgid "missing source information for device"
 msgstr "デバイスのソース情報が不足しています"
 
-#: src/virterror.c:503
+#: src/virterror.c:509
 #, c-format
 msgid "missing source information for device %s"
 msgstr "デバイス %s のソース情報が不足しています"
 
-#: src/virterror.c:507
+#: src/virterror.c:513
 msgid "missing target information for device"
 msgstr "デバイスのターゲット情報が不足しています"
 
-#: src/virterror.c:509
+#: src/virterror.c:515
 #, c-format
 msgid "missing target information for device %s"
 msgstr "デバイス %s のターゲット情報が不足しています"
 
-#: src/virterror.c:513
+#: src/virterror.c:519
 msgid "missing domain name information"
 msgstr "ドメイン名情報が不足しています"
 
-#: src/virterror.c:515
+#: src/virterror.c:521
 #, c-format
 msgid "missing domain name information in %s"
 msgstr "%s のドメイン名情報が不足しています"
 
-#: src/virterror.c:519
+#: src/virterror.c:525
 msgid "missing operating system information"
 msgstr "オペレーティングシステム情報が不足しています"
 
-#: src/virterror.c:521
+#: src/virterror.c:527
 #, c-format
 msgid "missing operating system information for %s"
 msgstr "%s のオペレーティングシステム情報が不足しています"
 
-#: src/virterror.c:525
+#: src/virterror.c:531
 msgid "missing devices information"
 msgstr "デバイス情報が不足しています"
 
-#: src/virterror.c:527
+#: src/virterror.c:533
 #, c-format
 msgid "missing devices information for %s"
 msgstr "%s のデバイス情報が不足しています"
 
-#: src/virterror.c:531
+#: src/virterror.c:537
 msgid "too many drivers registered"
-msgstr "登録しているドライバが多すぎます"
+msgstr "登録しているドライバーが多すぎます"
 
-#: src/virterror.c:533
+#: src/virterror.c:539
 #, c-format
 msgid "too many drivers registered in %s"
-msgstr "%s に登録しているドライバが多すぎます"
+msgstr "%s に登録しているドライバーが多すぎます"
 
-#: src/virterror.c:537
+#: src/virterror.c:543
 msgid "library call failed, possibly not supported"
 msgstr "ライブラリコールが失敗しました、サポートされていない可能性があります"
 
-#: src/virterror.c:539
+#: src/virterror.c:545
 #, c-format
 msgid "library call %s failed, possibly not supported"
 msgstr ""
 "ライブラリコール %s が失敗しました、サポートされていない可能性があります"
 
-#: src/virterror.c:543
+#: src/virterror.c:549
 msgid "XML description not well formed or invalid"
 msgstr "XML 記述が正しく構成されていないか無効です"
 
-#: src/virterror.c:545
+#: src/virterror.c:551
 #, c-format
 msgid "XML description for %s is not well formed or invalid"
 msgstr "%s の XML 記述が正しく構成されていないか無効です"
 
-#: src/virterror.c:549
+#: src/virterror.c:555
 msgid "this domain exists already"
 msgstr "このドメインはすでに存在しています"
 
-#: src/virterror.c:551
+#: src/virterror.c:557
 #, c-format
 msgid "domain %s exists already"
 msgstr "ドメイン %s はすでに存在しています"
 
-#: src/virterror.c:555
+#: src/virterror.c:561
 msgid "operation forbidden for read only access"
-msgstr "読み込み専用アクセスに対して動作は禁止されています"
+msgstr "読み込み専用アクセスに対して操作は禁止されています"
 
-#: src/virterror.c:557
+#: src/virterror.c:563
 #, c-format
 msgid "operation %s forbidden for read only access"
-msgstr "読み込み専用アクセスに対して動作 %s は禁止されています"
+msgstr "読み込み専用アクセスに対して操作 %s は禁止されています"
 
-#: src/virterror.c:561
+#: src/virterror.c:567
 msgid "failed to open configuration file for reading"
 msgstr "読み込みのため設定ファイルを開くのに失敗しました"
 
-#: src/virterror.c:563
+#: src/virterror.c:569
 #, c-format
 msgid "failed to open %s for reading"
 msgstr "読み込みのため %s を開くのに失敗しました"
 
-#: src/virterror.c:567
+#: src/virterror.c:573
 msgid "failed to read configuration file"
 msgstr "設定ファイルの読み込みに失敗しました"
 
-#: src/virterror.c:569
+#: src/virterror.c:575
 #, c-format
 msgid "failed to read configuration file %s"
 msgstr "設定ファイル %s の読み込みに失敗しました"
 
-#: src/virterror.c:573
+#: src/virterror.c:579
 msgid "failed to parse configuration file"
 msgstr "設定ファイルの解析に失敗しました"
 
-#: src/virterror.c:575
+#: src/virterror.c:581
 #, c-format
 msgid "failed to parse configuration file %s"
 msgstr "設定ファイル %s の解析に失敗しました"
 
-#: src/virterror.c:579
+#: src/virterror.c:585
 msgid "configuration file syntax error"
 msgstr "設定ファイルの構文エラー"
 
-#: src/virterror.c:581
+#: src/virterror.c:587
 #, c-format
 msgid "configuration file syntax error: %s"
 msgstr "設定ファイルの構文エラー: %s"
 
-#: src/virterror.c:585
+#: src/virterror.c:591
 msgid "failed to write configuration file"
 msgstr "設定ファイルの書き込みに失敗しました"
 
-#: src/virterror.c:587
+#: src/virterror.c:593
 #, c-format
 msgid "failed to write configuration file: %s"
 msgstr "設定ファイルの書き込みに失敗しました: %s"
 
-#: src/virterror.c:591
+#: src/virterror.c:597
 msgid "parser error"
 msgstr "構文解析エラー"
 
-#: src/virterror.c:597
-#, fuzzy
-msgid "invalid network pointer in"
-msgstr "無効な接続ポインタ"
-
-#: src/virterror.c:599
-#, fuzzy, c-format
-msgid "invalid network pointer in %s"
-msgstr "%s で無効な接続ポインタです"
-
 #: src/virterror.c:603
-#, fuzzy
-msgid "this network exists already"
-msgstr "このドメインはすでに存在しています"
+msgid "invalid network pointer in"
+msgstr "無効なネットワークポインター"
 
 #: src/virterror.c:605
-#, fuzzy, c-format
-msgid "network %s exists already"
-msgstr "ドメイン %s はすでに存在しています"
+#, c-format
+msgid "invalid network pointer in %s"
+msgstr "%s で無効なネットワークポインターです"
 
 #: src/virterror.c:609
-#, fuzzy
+msgid "this network exists already"
+msgstr "このネットワークはすでに存在しています"
+
+#: src/virterror.c:611
+#, c-format
+msgid "network %s exists already"
+msgstr "ネットワーク %s はすでに存在しています"
+
+#: src/virterror.c:615
 msgid "system call error"
-msgstr "内部エラー"
+msgstr "システムコールエラー"
+
+#: src/virterror.c:621
+msgid "RPC error"
+msgstr "RPC エラー"
+
+#: src/virterror.c:627
+msgid "GNUTLS call error"
+msgstr "GNUTLS 呼び出しエラー"
+
+#: src/virterror.c:633
+msgid "Failed to find the network"
+msgstr "ネットワークを見つけられませんでした"
+
+#: src/virterror.c:635
+#, c-format
+msgid "Failed to find the network: %s"
+msgstr "ネットワーク %s を見つけられませんでした"
+
+#: src/virterror.c:639
+#, fuzzy
+msgid "Domain not found"
+msgstr "ドメインの情報"
+
+#: src/virterror.c:641
+#, fuzzy, c-format
+msgid "Domain not found: %s"
+msgstr "ドメインは %s から復元されました\n"
+
+#: src/virterror.c:645
+#, fuzzy
+msgid "Network not found"
+msgstr "ネットワーク名または uuid"
+
+#: src/virterror.c:647
+#, fuzzy, c-format
+msgid "Network not found: %s"
+msgstr "ネットワーク %s が %s から作成されました\n"
 
 #: src/xmlrpc.c:63
 msgid "copying node content"
@@ -361,11 +397,11 @@ msgstr "value array の割り当て"
 
 #: src/xmlrpc.c:196
 msgid "unexpected dict node"
-msgstr "予期しない dict node"
+msgstr "予期しない dict ノード"
 
 #: src/xmlrpc.c:268
 msgid "unexpected value node"
-msgstr "予期しない alue node"
+msgstr "予期しない value ノード"
 
 #: src/xmlrpc.c:431
 msgid "send request"
@@ -373,7 +409,7 @@ msgstr "要求の送信"
 
 #: src/xmlrpc.c:437
 msgid "unexpected mime type"
-msgstr "予期しない mime type"
+msgstr "予期しない mime タイプ"
 
 #: src/xmlrpc.c:444
 msgid "allocate response"
@@ -383,7 +419,7 @@ msgstr "応答の割り当て"
 msgid "read response"
 msgstr "応答の読み込み"
 
-#: src/xmlrpc.c:484 src/xml.c:261
+#: src/xmlrpc.c:484 src/xml.c:262
 msgid "allocate string array"
 msgstr "string array の割り当て"
 
@@ -395,10 +431,7 @@ msgstr "サーバー応答の解析に失敗しました"
 msgid "allocate new context"
 msgstr "新しいコンテキストの割り当て"
 
-#: src/hash.c:770 src/hash.c:775 src/test.c:896 src/test.c:926 src/test.c:950
-#: src/test.c:975 src/xend_internal.c:1863 src/xend_internal.c:2709
-#: src/xend_internal.c:2958 src/xs_internal.c:648 src/proxy_internal.c:832
-#: src/proxy_internal.c:879 src/proxy_internal.c:930
+#: src/hash.c:770 src/hash.c:775
 msgid "allocating domain"
 msgstr "ドメインを割り当て中"
 
@@ -410,151 +443,146 @@ msgstr "接続ハッシュテーブルへのドメインの追加に失敗しま
 msgid "domain missing from connection hash table"
 msgstr "接続ハッシュテーブルにないドメインです"
 
-#: src/hash.c:952 src/hash.c:957
-#, fuzzy
+#: src/hash.c:903 src/hash.c:908
 msgid "allocating network"
-msgstr "ノードの割り当て中"
+msgstr "ネットワークの割り当て中"
 
-#: src/hash.c:967
-#, fuzzy
+#: src/hash.c:918
 msgid "failed to add network to connection hash table"
-msgstr "接続ハッシュテーブルへのドメインの追加に失敗しました"
+msgstr "接続ハッシュテーブルへのネットワークの追加に失敗しました"
 
-#: src/hash.c:1019
-#, fuzzy
+#: src/hash.c:970
 msgid "network missing from connection hash table"
-msgstr "接続ハッシュテーブルにないドメインです"
+msgstr "接続ハッシュテーブルにないネットワークです"
 
-#: src/test.c:281 src/test.c:468 src/test.c:1099 src/test.c:1133
-#: src/test.c:1187
+#: src/test.c:293 src/test.c:480 src/test.c:1165 src/test.c:1199
+#: src/test.c:1253
 msgid "getting time of day"
 msgstr "現在の時刻を取得中"
 
-#: src/test.c:287 src/test.c:422 src/test.c:447 src/test.c:1393
+#: src/test.c:299 src/test.c:434 src/test.c:459 src/test.c:1460
 msgid "domain"
 msgstr "ドメイン"
 
-#: src/test.c:293 src/test.c:551
+#: src/test.c:305 src/test.c:563
 msgid "creating xpath context"
 msgstr "xpath コンテキストを作成中"
 
-#: src/test.c:299
+#: src/test.c:311
 msgid "domain name"
 msgstr "ドメイン名"
 
-#: src/test.c:305 src/test.c:310
+#: src/test.c:317 src/test.c:322
 msgid "domain uuid"
 msgstr "ドメイン uuid"
 
-#: src/test.c:318
+#: src/test.c:330
 msgid "domain memory"
 msgstr "ドメインメモリ"
 
-#: src/test.c:327
-#, fuzzy
+#: src/test.c:339
 msgid "domain current memory"
-msgstr "ドメインメモリ"
+msgstr "現在のドメインメモリ"
 
-#: src/test.c:337
+#: src/test.c:349
 msgid "domain vcpus"
 msgstr "ドメイン vcpus"
 
-#: src/test.c:346
+#: src/test.c:358
 msgid "domain reboot behaviour"
 msgstr "ドメインの再起動動作"
 
-#: src/test.c:356
+#: src/test.c:368
 msgid "domain poweroff behaviour"
 msgstr "ドメインの電源オフ動作"
 
-#: src/test.c:366
+#: src/test.c:378
 msgid "domain crash behaviour"
 msgstr "ドメインのクラッシュ動作"
 
-#: src/test.c:440
+#: src/test.c:452
 msgid "load domain definition file"
 msgstr "ドメインの定義ファイルをロード"
 
-#: src/test.c:530
+#: src/test.c:542
 msgid "loading host definition file"
 msgstr "ホストの定義ファイルをロード中"
 
-#: src/test.c:537
+#: src/test.c:549
 msgid "host"
 msgstr "ホスト"
 
-#: src/test.c:545
+#: src/test.c:557
 msgid "node"
 msgstr "ノード"
 
-#: src/test.c:565
+#: src/test.c:577
 msgid "node cpu numa nodes"
 msgstr "node cpu numa nodes"
 
-#: src/test.c:573
+#: src/test.c:585
 msgid "node cpu sockets"
 msgstr "node cpu sockets"
 
-#: src/test.c:581
+#: src/test.c:593
 msgid "node cpu cores"
 msgstr "node cpu cores"
 
-#: src/test.c:589
+#: src/test.c:601
 msgid "node cpu threads"
 msgstr "node cpu threads"
 
-#: src/test.c:600
+#: src/test.c:612
 msgid "node active cpu"
 msgstr "node active cpu"
 
-#: src/test.c:607
+#: src/test.c:619
 msgid "node cpu mhz"
 msgstr "node cpu mhz"
 
-#: src/test.c:622
+#: src/test.c:634
 msgid "node memory"
 msgstr "ノードメモリ"
 
-#: src/test.c:628
+#: src/test.c:640
 msgid "node domain list"
 msgstr "ノードドメイン一覧"
 
-#: src/test.c:638
+#: src/test.c:650
 msgid "resolving domain filename"
 msgstr "ドメインファイル名を解決中"
 
-#: src/test.c:676
+#: src/test.c:688
 msgid "allocating node"
 msgstr "ノードの割り当て中"
 
-#: src/test.c:734
+#: src/test.c:756
+msgid "testOpen: supply a path or use test:///default"
+msgstr "testOpen: パスを指定するか、test:を使用する///省略値"
+
+#: src/test.c:761
 msgid "too many connections"
 msgstr "接続が多すぎます"
 
-#: src/test.c:881
+#: src/test.c:768
+msgid "allocating private data"
+msgstr "固有データの割り当て"
+
+#: src/test.c:774
+msgid "allocating path"
+msgstr "パスを割り当て中"
+
+#: src/test.c:946
 msgid "too many domains"
 msgstr "ドメインが多すぎます"
 
-#: src/test.c:1425
-#, fuzzy
+#: src/test.c:1492
 msgid "Domain is already running"
-msgstr "ドメインはすでにアクティブになっています"
+msgstr "ドメインはすでに実行中です"
 
-#: src/test.c:1452
+#: src/test.c:1519
 msgid "Domain is still running"
-msgstr ""
-
-#: src/xml.c:295
-msgid "growing buffer"
-msgstr "バッファを増大中"
-
-#: src/xml.c:347 src/xend_internal.c:1508 src/xend_internal.c:1527
-msgid "allocate new buffer"
-msgstr "新しいバッファを割り当て"
-
-#: src/xml.c:351
-msgid "allocate buffer content"
-msgstr "バッファの内容を割り当て"
+msgstr "ドメインはまだ実行中です"
 
 #: src/sexpr.c:59
 msgid "failed to allocate a node"
@@ -564,74 +592,81 @@ msgstr "ノードの割り当てに失敗しました"
 msgid "failed to copy a string"
 msgstr "文字列のコピーに失敗しました"
 
-#: src/xend_internal.c:282 src/xend_internal.c:285
+#: src/xend_internal.c:277 src/xend_internal.c:280
 msgid "failed to read from Xen Daemon"
-msgstr "Xen Daemon からの読み込みに失敗しました"
+msgstr "Xen デーモンからの読み込みに失敗しました"
 
-#: src/xend_internal.c:1006
+#: src/xend_internal.c:591 src/xend_internal.c:807 src/xend_internal.c:1523
+#: src/xend_internal.c:1542
+msgid "allocate new buffer"
+msgstr "新しいバッファを割り当て"
+
+#: src/xend_internal.c:1014
 msgid "failed to urlencode the create S-Expr"
-msgstr "ドメインの作成に使用した記述のエンコード化に失敗しました"
+msgstr "S 式の生成で url のコード化に失敗しました"
 
-#: src/xend_internal.c:1047
+#: src/xend_internal.c:1055
 msgid "domain information incomplete, missing domid"
 msgstr "ドメイン情報が不完全です、domid が不足しています"
 
-#: src/xend_internal.c:1053
+#: src/xend_internal.c:1061
 msgid "domain information incorrect domid not numeric"
 msgstr "ドメイン情報が正しくありません、domid は数値ではありません"
 
-#: src/xend_internal.c:1061 src/xend_internal.c:1110
+#: src/xend_internal.c:1069 src/xend_internal.c:1118
 msgid "domain information incomplete, missing uuid"
 msgstr "ドメイン情報が不完全です、uuid が不足しています"
 
-#: src/xend_internal.c:1101 src/xend_internal.c:1376
+#: src/xend_internal.c:1109 src/xend_internal.c:1384
 msgid "domain information incomplete, missing name"
 msgstr "ドメイン情報が不完全です、name が不足しています"
 
-#: src/xend_internal.c:1276 src/xend_internal.c:1307
-#, fuzzy
+#: src/xend_internal.c:1284 src/xend_internal.c:1315
 msgid "domain information incomplete, missing kernel & bootloader"
-msgstr "ドメイン情報が不完全です、カーネルが不足してます"
+msgstr "ドメイン情報が不完全です、カーネルとブートローダーが不足してます"
 
-#: src/xend_internal.c:1364
-#, fuzzy
+#: src/xend_internal.c:1372
 msgid "domain information incomplete, missing id"
-msgstr "ドメイン情報が不完全です、uuid が不足しています"
+msgstr "ドメイン情報が不完全です、id が不足しています"
 
-#: src/xend_internal.c:1477
+#: src/xend_internal.c:1492
 msgid "domain information incomplete, vbd has no dev"
 msgstr "ドメイン情報が不完全です、vbd に dev がありません"
 
-#: src/xend_internal.c:1492
+#: src/xend_internal.c:1507
 msgid "domain information incomplete, vbd has no src"
 msgstr "ドメイン情報が不完全です、vbd に src がありません"
 
-#: src/xend_internal.c:1501
+#: src/xend_internal.c:1516
 msgid "cannot parse vbd filename, missing driver name"
-msgstr "vbd のファイル名を構文解析できません。ドライバ名欠如"
+msgstr "vbd のファイル名を構文解析できません。ドライバー名欠如"
 
-#: src/xend_internal.c:1520
+#: src/xend_internal.c:1535
 msgid "cannot parse vbd filename, missing driver type"
-msgstr "vbd のファイル名を構文解析できません。ドライバタイプ欠如"
+msgstr "vbd のファイル名を構文解析できません。ドライバータイプ欠如"
 
-#: src/xend_internal.c:1882
+#: src/xend_internal.c:1898
 msgid "failed to parse Xend domain information"
 msgstr "Xend ドメイン情報の解析に失敗しました"
 
-#: src/xend_internal.c:3145
+#: src/xend_internal.c:3164
 #, c-format
 msgid "Failed to create inactive domain %s\n"
 msgstr "停止中のドメイン %s の作成に失敗しました\n"
 
-#: src/virsh.c:269
+#: src/virsh.c:307
 msgid "print help"
-msgstr "ヘルプを出力"
+msgstr "ヘルプの表示"
 
-#: src/virsh.c:270
+#: src/virsh.c:308
 msgid "Prints global help or command specific help."
-msgstr "グローバルヘルプまたはコマンド固有のヘルプを出力します。"
+msgstr "グローバルヘルプまたはコマンド固有のヘルプを表示します。"
 
-#: src/virsh.c:288
+#: src/virsh.c:314
+msgid "name of command"
+msgstr "コマンド名"
+
+#: src/virsh.c:326
 msgid ""
 "Commands:\n"
 "\n"
@@ -639,918 +674,1132 @@ msgstr ""
 "コマンド:\n"
 "\n"
 
-#: src/virsh.c:302
-#, fuzzy
+#: src/virsh.c:340
 msgid "autostart a domain"
-msgstr "ドメインを起動します。"
+msgstr "ドメインの自動起動"
 
-#: src/virsh.c:304
+#: src/virsh.c:342
 msgid "Configure a domain to be automatically started at boot."
-msgstr ""
+msgstr "起動時にドメインを自動で起動するように設定します。"
 
-#: src/virsh.c:309 src/virsh.c:409 src/virsh.c:595 src/virsh.c:633
-#: src/virsh.c:864 src/virsh.c:946 src/virsh.c:991 src/virsh.c:1030
-#: src/virsh.c:1069 src/virsh.c:1108 src/virsh.c:1147 src/virsh.c:1224
-#: src/virsh.c:1307 src/virsh.c:1397 src/virsh.c:1453 src/virsh.c:1497
-#: src/virsh.c:1602 src/virsh.c:2338
+#: src/virsh.c:347 src/virsh.c:448 src/virsh.c:634 src/virsh.c:672
+#: src/virsh.c:952 src/virsh.c:996 src/virsh.c:1168 src/virsh.c:1213
+#: src/virsh.c:1252 src/virsh.c:1291 src/virsh.c:1330 src/virsh.c:1369
+#: src/virsh.c:1446 src/virsh.c:1533 src/virsh.c:1661 src/virsh.c:1718
+#: src/virsh.c:1775 src/virsh.c:1896 src/virsh.c:2674 src/virsh.c:2753
+#: src/virsh.c:2807 src/virsh.c:2861 src/virsh.c:2977 src/virsh.c:3098
+#: src/virsh.c:3263
 msgid "domain name, id or uuid"
 msgstr "ドメイン名、id または uuid"
 
-#: src/virsh.c:310 src/virsh.c:1743
+#: src/virsh.c:348 src/virsh.c:2037
 msgid "disable autostarting"
-msgstr ""
+msgstr "自動起動の設定を解除"
 
-#: src/virsh.c:331
-#, fuzzy, c-format
+#: src/virsh.c:369
+#, c-format
 msgid "Failed to mark domain %s as autostarted"
-msgstr "ドメイン %s の %s への保存に失敗しました"
+msgstr "ドメイン %s を自動起動に設定するのに失敗しました"
 
-#: src/virsh.c:334
-#, fuzzy, c-format
+#: src/virsh.c:372
+#, c-format
 msgid "Failed to unmark domain %s as autostarted"
-msgstr "ドメイン %s の %s への保存に失敗しました"
+msgstr "ドメイン %s の自動起動設定の解除に失敗しました"
 
-#: src/virsh.c:341
-#, fuzzy, c-format
+#: src/virsh.c:379
+#, c-format
 msgid "Domain %s marked as autostarted\n"
-msgstr "ドメイン %s が起動されました\n"
+msgstr "ドメイン %s が自動起動に設定されました\n"
 
-#: src/virsh.c:343
-#, fuzzy, c-format
+#: src/virsh.c:381
+#, c-format
 msgid "Domain %s unmarked as autostarted\n"
-msgstr "ドメイン %s が起動されました\n"
+msgstr "ドメイン %s の自動起動設定が解除されました\n"
 
-#: src/virsh.c:353
+#: src/virsh.c:392
 msgid "(re)connect to hypervisor"
-msgstr "ハイパーバイザーに(再)接続"
+msgstr "ハイパーバイザに(再)接続"
 
-#: src/virsh.c:355
+#: src/virsh.c:394
 msgid ""
 "Connect to local hypervisor. This is built-in command after shell start up."
 msgstr ""
 "ローカルハイパーバイザーに接続します。これはシェル起動後のビルトインコマンド"
-"になります。"
+"です。"
 
-#: src/virsh.c:360
+#: src/virsh.c:399
 msgid "hypervisor connection URI"
-msgstr "ハイパーバイザー接続 URI"
+msgstr "接続するハイパーバイザーのURI"
 
-#: src/virsh.c:361
+#: src/virsh.c:400
 msgid "read-only connection"
-msgstr "読み込み専用接続"
+msgstr "読み込み専用で接続"
 
-#: src/virsh.c:373
+#: src/virsh.c:412
 msgid "Failed to disconnect from the hypervisor"
 msgstr "ハイパーバイザーの切断に失敗しました"
 
-#: src/virsh.c:392
+#: src/virsh.c:431
 msgid "Failed to connect to the hypervisor"
 msgstr "ハイパーバイザーへの接続に失敗しました"
 
-#: src/virsh.c:402
+#: src/virsh.c:441
 msgid "connect to the guest console"
-msgstr ""
+msgstr "ゲストのコンソールに接続"
 
-#: src/virsh.c:404
+#: src/virsh.c:443
 msgid "Connect the virtual serial console for the guest"
-msgstr ""
+msgstr "ゲストのシリアルコンソールに接続します。"
 
-#: src/virsh.c:449
+#: src/virsh.c:488
 msgid "No console available for domain\n"
-msgstr ""
+msgstr "ドメインで利用可能なコンソールがない\n"
 
-#: src/virsh.c:467
+#: src/virsh.c:506
 msgid "list domains"
-msgstr "ドメインの一覧表示"
+msgstr "ドメインの一覧を表示"
 
-#: src/virsh.c:468
+#: src/virsh.c:507
 msgid "Returns list of domains."
-msgstr "ドメイン一覧に戻ります。"
+msgstr "ドメインの一覧を表示します。"
 
-#: src/virsh.c:473
+#: src/virsh.c:512
 msgid "list inactive domains"
-msgstr "非アクティブなドメインの一覧表示"
+msgstr "停止状態のドメインの一覧を表示"
 
-#: src/virsh.c:474
+#: src/virsh.c:513
 msgid "list inactive & active domains"
-msgstr "非アクティブ及びアクティブなドメインの一覧表示"
+msgstr "停止状態および動作中のドメインの一覧を表示"
 
-#: src/virsh.c:496 src/virsh.c:503
+#: src/virsh.c:535 src/virsh.c:542
 msgid "Failed to list active domains"
-msgstr "アクティブなドメインの一覧表示に失敗しました"
+msgstr "動作中のドメインの一覧表示に失敗しました"
 
-#: src/virsh.c:514 src/virsh.c:523
+#: src/virsh.c:553 src/virsh.c:562
 msgid "Failed to list inactive domains"
-msgstr "非アクティブなドメインの一覧表示に失敗しました"
+msgstr "停止状態のドメインの一覧表示に失敗しました"
 
-#: src/virsh.c:533
+#: src/virsh.c:572
 msgid "Id"
 msgstr "Id"
 
-#: src/virsh.c:533 src/virsh.c:2044
+#: src/virsh.c:572 src/virsh.c:2322
 msgid "Name"
 msgstr "名前"
 
-#: src/virsh.c:533 src/virsh.c:2044
+#: src/virsh.c:572 src/virsh.c:2322
 msgid "State"
 msgstr "状態"
 
-#: src/virsh.c:546 src/virsh.c:568 src/virsh.c:3063 src/virsh.c:3079
+#: src/virsh.c:585 src/virsh.c:607 src/virsh.c:4032 src/virsh.c:4048
 msgid "no state"
 msgstr "状態なし"
 
-#: src/virsh.c:589
+#: src/virsh.c:628
 msgid "domain state"
 msgstr "ドメインの状態"
 
-#: src/virsh.c:590
+#: src/virsh.c:629
 msgid "Returns state about a running domain."
-msgstr "実行中ドメインに関する状態に戻ります。"
+msgstr "実行中のドメインの状態を表示します。"
 
-#: src/virsh.c:627
+#: src/virsh.c:666
 msgid "suspend a domain"
 msgstr "ドメインの一時停止"
 
-#: src/virsh.c:628
+#: src/virsh.c:667
 msgid "Suspend a running domain."
-msgstr "実行中ドメインを一時停止します。"
+msgstr "実行中のドメインを一時停止状態にします。"
 
-#: src/virsh.c:651
+#: src/virsh.c:690
 #, c-format
 msgid "Domain %s suspended\n"
 msgstr "ドメイン %s は一時停止されました\n"
 
-#: src/virsh.c:653
+#: src/virsh.c:692
 #, c-format
 msgid "Failed to suspend domain %s"
 msgstr "ドメイン %s の一時停止に失敗しました"
 
-#: src/virsh.c:666
+#: src/virsh.c:705
 msgid "create a domain from an XML file"
-msgstr "XML ファイルからドメインを作成"
+msgstr "XML ファイルからドメインの作成"
 
-#: src/virsh.c:667
+#: src/virsh.c:706
 msgid "Create a domain."
 msgstr "ドメインを作成します。"
 
-#: src/virsh.c:672
-msgid "file conatining an XML domain description"
-msgstr "XML ドメイン記述を含むファイル"
+#: src/virsh.c:711 src/virsh.c:819
+msgid "file containing an XML domain description"
+msgstr "XML ドメイン記述のファイル"
 
-#: src/virsh.c:695 src/virsh.c:700 src/virsh.c:750 src/virsh.c:755
-#: src/virsh.c:1815 src/virsh.c:1820 src/virsh.c:1871 src/virsh.c:1876
+#: src/virsh.c:726
 #, c-format
-msgid "Failed to read description file %s"
-msgstr "記述ファイル %s の読み込みに失敗しました"
+msgid "Failed to open '%s': %s"
+msgstr "'%s' を開くのに失敗: %s"
 
-#: src/virsh.c:707
+#: src/virsh.c:746
+#, c-format
+msgid "Failed to open '%s': read: %s"
+msgstr "'%s' を開くのに失敗: 読み込み: %s"
+
+#: src/virsh.c:764
+#, c-format
+msgid "Error allocating memory: %s"
+msgstr "メモリーの割り当てでエラー: %s"
+
+#: src/virsh.c:798
 #, c-format
 msgid "Domain %s created from %s\n"
 msgstr "ドメイン %s が %s から作成されました\n"
 
-#: src/virsh.c:710
+#: src/virsh.c:802
 #, c-format
 msgid "Failed to create domain from %s"
 msgstr "%s からのドメイン作成に失敗しました"
 
-#: src/virsh.c:721
+#: src/virsh.c:813
 msgid "define (but don't start) a domain from an XML file"
-msgstr "XML ファイルからドメインを定義(ただし起動しない)"
+msgstr "XML ファイルからドメインを登録(ただし起動しない)"
 
-#: src/virsh.c:722
+#: src/virsh.c:814
 msgid "Define a domain."
-msgstr "ドメインを定義します。"
+msgstr "ドメインを登録します。"
 
-#: src/virsh.c:727
-#, fuzzy
-msgid "file containing an XML domain description"
-msgstr "XML ドメイン記述を含むファイル"
-
-#: src/virsh.c:762
+#: src/virsh.c:846
 #, c-format
 msgid "Domain %s defined from %s\n"
 msgstr "ドメイン %s が %s から定義されました\n"
 
-#: src/virsh.c:765
+#: src/virsh.c:850
 #, c-format
 msgid "Failed to define domain from %s"
 msgstr "%s からのドメイン定義に失敗しました"
 
-#: src/virsh.c:776
+#: src/virsh.c:861
 msgid "undefine an inactive domain"
-msgstr "非アクティブなドメインの定義を削除する"
+msgstr "停止状態のドメインの削除"
 
-#: src/virsh.c:777
+#: src/virsh.c:862
 msgid "Undefine the configuration for an inactive domain."
-msgstr "非アクティブなドメイン設定の定義を削除します。"
+msgstr "登録されている停止状態のドメインを削除します。"
 
-#: src/virsh.c:782 src/virsh.c:1671
+#: src/virsh.c:867 src/virsh.c:1965
 msgid "domain name or uuid"
 msgstr "ドメイン名または uuid"
 
-#: src/virsh.c:800
+#: src/virsh.c:885
 #, c-format
 msgid "Domain %s has been undefined\n"
 msgstr "ドメイン %s の定義は削除されています\n"
 
-#: src/virsh.c:802
+#: src/virsh.c:887
 #, c-format
 msgid "Failed to undefine domain %s"
 msgstr "ドメイン %s の定義の削除に失敗しました"
 
-#: src/virsh.c:815
+#: src/virsh.c:901
 msgid "start a (previously defined) inactive domain"
-msgstr "(以前に定義した)非アクティブなドメインの起動"
+msgstr "(以前に定義した)停止状態のドメインの起動"
 
-#: src/virsh.c:816
+#: src/virsh.c:902
 msgid "Start a domain."
 msgstr "ドメインを起動します。"
 
-#: src/virsh.c:821
+#: src/virsh.c:907
 msgid "name of the inactive domain"
-msgstr "非アクティブなドメインの名前"
+msgstr "停止状態のドメイン名"
 
-#: src/virsh.c:838
+#: src/virsh.c:924
 msgid "Domain is already active"
 msgstr "ドメインはすでにアクティブになっています"
 
-#: src/virsh.c:843
+#: src/virsh.c:930
 #, c-format
 msgid "Domain %s started\n"
 msgstr "ドメイン %s が起動されました\n"
 
-#: src/virsh.c:846
+#: src/virsh.c:933
 #, c-format
 msgid "Failed to start domain %s"
 msgstr "ドメイン %s の起動に失敗しました"
 
-#: src/virsh.c:858
+#: src/virsh.c:946
 msgid "save a domain state to a file"
 msgstr "ドメインの状態をファイルに保存"
 
-#: src/virsh.c:859
+#: src/virsh.c:947
 msgid "Save a running domain."
-msgstr "実行中のドメインを保存します。"
+msgstr "実行中のドメインの状態をファイルに保存します。"
 
-#: src/virsh.c:865
+#: src/virsh.c:953
 msgid "where to save the data"
-msgstr "データを保存する場所"
+msgstr "データの保存場所"
 
-#: src/virsh.c:887
+#: src/virsh.c:975
 #, c-format
 msgid "Domain %s saved to %s\n"
 msgstr "ドメイン %s は %s に保存されました\n"
 
-#: src/virsh.c:889
+#: src/virsh.c:977
 #, c-format
 msgid "Failed to save domain %s to %s"
 msgstr "ドメイン %s の %s への保存に失敗しました"
 
-#: src/virsh.c:902
-msgid "restore a domain from a saved state in a file"
-msgstr "ドメインをファイルに保存した状態から復元する"
+#: src/virsh.c:990
+msgid "show/set scheduler parameters"
+msgstr "スケジューラーパラメーターを見る/設定する"
 
-#: src/virsh.c:903
+#: src/virsh.c:991
+msgid "Show/Set scheduler parameters."
+msgstr "スケジューラーパラメーターを見る/設定する。"
+
+#: src/virsh.c:997
+msgid "weight for XEN_CREDIT"
+msgstr "XEN_CREDIT への重み付け"
+
+#: src/virsh.c:998
+msgid "cap for XEN_CREDIT"
+msgstr "XEN_CREDIT への上限値"
+
+#: src/virsh.c:1068 src/virsh.c:1072
+msgid "Scheduler"
+msgstr "スケジューラー"
+
+#: src/virsh.c:1072
+msgid "Unknown"
+msgstr "不明"
+
+#: src/virsh.c:1124
+msgid "restore a domain from a saved state in a file"
+msgstr "ファイルに保存している状態からドメインを復元"
+
+#: src/virsh.c:1125
 msgid "Restore a domain."
 msgstr "ドメインを復元します。"
 
-#: src/virsh.c:908
+#: src/virsh.c:1130
 msgid "the state to restore"
 msgstr "復元する状態"
 
-#: src/virsh.c:927
+#: src/virsh.c:1149
 #, c-format
 msgid "Domain restored from %s\n"
 msgstr "ドメインは %s から復元されました\n"
 
-#: src/virsh.c:929
+#: src/virsh.c:1151
 #, c-format
 msgid "Failed to restore domain from %s"
 msgstr "ドメインの %s からの復元に失敗しました"
 
-#: src/virsh.c:940
+#: src/virsh.c:1162
 msgid "dump the core of a domain to a file for analysis"
-msgstr "ドメインのコアを解析の為にファイルにダンプします"
+msgstr "解析のためにドメインのコアをファイルにダンプします"
 
-#: src/virsh.c:941
+#: src/virsh.c:1163
 msgid "Core dump a domain."
-msgstr "ドメインのコアダンプ"
+msgstr "ドメインのコアダンプ。"
 
-#: src/virsh.c:947
+#: src/virsh.c:1169
 msgid "where to dump the core"
 msgstr "コアをダンプする場所"
 
-#: src/virsh.c:969
+#: src/virsh.c:1191
 #, c-format
 msgid "Domain %s dumpd to %s\n"
 msgstr "ドメイン %s は %s にダンプ\n"
 
-#: src/virsh.c:971
+#: src/virsh.c:1193
 #, c-format
 msgid "Failed to core dump domain %s to %s"
-msgstr "ドメイン %s の %s へのダンプ失敗です"
+msgstr "ドメイン %s の %s へのダンプは失敗しました"
 
-#: src/virsh.c:985
+#: src/virsh.c:1207
 msgid "resume a domain"
 msgstr "ドメインの再開"
 
-#: src/virsh.c:986
+#: src/virsh.c:1208
 msgid "Resume a previously suspended domain."
-msgstr "一時停止していたドメインを再開します。"
+msgstr "一時停止状態のドメインを再開します。"
 
-#: src/virsh.c:1009
+#: src/virsh.c:1231
 #, c-format
 msgid "Domain %s resumed\n"
 msgstr "ドメイン %s が再開されました\n"
 
-#: src/virsh.c:1011
+#: src/virsh.c:1233
 #, c-format
 msgid "Failed to resume domain %s"
 msgstr "ドメイン %s の再開に失敗しました"
 
-#: src/virsh.c:1024
+#: src/virsh.c:1246
 msgid "gracefully shutdown a domain"
-msgstr "ドメインを緩やかにシャットダウン"
+msgstr "ドメインを穏やかに停止"
 
-#: src/virsh.c:1025
+#: src/virsh.c:1247
 msgid "Run shutdown in the target domain."
-msgstr "目的のドメインでシャットダウンを実行します。"
+msgstr "指定したドメインで shutdown を実行します。"
 
-#: src/virsh.c:1048
+#: src/virsh.c:1270
 #, c-format
 msgid "Domain %s is being shutdown\n"
 msgstr "ドメイン %s をシャットダウンしています\n"
 
-#: src/virsh.c:1050
+#: src/virsh.c:1272
 #, c-format
 msgid "Failed to shutdown domain %s"
 msgstr "ドメイン %s のシャットダウンに失敗しました"
 
-#: src/virsh.c:1063
+#: src/virsh.c:1285
 msgid "reboot a domain"
 msgstr "ドメインの再起動"
 
-#: src/virsh.c:1064
+#: src/virsh.c:1286
 msgid "Run a reboot command in the target domain."
-msgstr "目的のドメインで再起動コマンドを実行します。"
+msgstr "指定したドメインで reboot コマンドを実行します。"
 
-#: src/virsh.c:1087
+#: src/virsh.c:1309
 #, c-format
 msgid "Domain %s is being rebooted\n"
 msgstr "ドメイン %s を再起動しています\n"
 
-#: src/virsh.c:1089
+#: src/virsh.c:1311
 #, c-format
 msgid "Failed to reboot domain %s"
 msgstr "ドメイン %s の再起動に失敗しました"
 
-#: src/virsh.c:1102
+#: src/virsh.c:1324
 msgid "destroy a domain"
-msgstr "ドメインの破棄"
+msgstr "ドメインの強制停止"
 
-#: src/virsh.c:1103
+#: src/virsh.c:1325
 msgid "Destroy a given domain."
-msgstr "特定のドメインを破棄します。"
+msgstr "ドメインを強制停止します。"
 
-#: src/virsh.c:1126
+#: src/virsh.c:1348
 #, c-format
 msgid "Domain %s destroyed\n"
-msgstr "ドメイン %s は破棄されました\n"
+msgstr "ドメイン %s は強制停止されました\n"
 
-#: src/virsh.c:1128
+#: src/virsh.c:1350
 #, c-format
 msgid "Failed to destroy domain %s"
-msgstr "ドメイン %s の破棄に失敗しました"
+msgstr "ドメイン %s の強制停止に失敗しました"
 
-#: src/virsh.c:1141
+#: src/virsh.c:1363
 msgid "domain information"
-msgstr "ドメイン情報"
+msgstr "ドメインの情報"
 
-#: src/virsh.c:1142
+#: src/virsh.c:1364
 msgid "Returns basic information about the domain."
-msgstr "ドメインに関する基本情報に戻ります。"
+msgstr "ドメインの基本情報を表示します。"
 
-#: src/virsh.c:1168 src/virsh.c:1170
+#: src/virsh.c:1390 src/virsh.c:1392
 msgid "Id:"
 msgstr "Id:"
 
-#: src/virsh.c:1171
+#: src/virsh.c:1393
 msgid "Name:"
 msgstr "名前:"
 
-#: src/virsh.c:1174
+#: src/virsh.c:1396
 msgid "UUID:"
 msgstr "UUID:"
 
-#: src/virsh.c:1177
+#: src/virsh.c:1399
 msgid "OS Type:"
 msgstr "OS タイプ:"
 
-#: src/virsh.c:1182 src/virsh.c:1268
+#: src/virsh.c:1404 src/virsh.c:1490
 msgid "State:"
 msgstr "状態:"
 
-#: src/virsh.c:1185 src/virsh.c:1553
+#: src/virsh.c:1407 src/virsh.c:1847
 msgid "CPU(s):"
 msgstr "CPU:"
 
-#: src/virsh.c:1192 src/virsh.c:1275
+#: src/virsh.c:1414 src/virsh.c:1497
 msgid "CPU time:"
 msgstr "CPU 時間:"
 
-#: src/virsh.c:1196 src/virsh.c:1199
+#: src/virsh.c:1418 src/virsh.c:1421
 msgid "Max memory:"
 msgstr "最大メモリ:"
 
-#: src/virsh.c:1200
+#: src/virsh.c:1422
 msgid "no limit"
-msgstr ""
+msgstr "制限なし"
 
-#: src/virsh.c:1202
+#: src/virsh.c:1424
 msgid "Used memory:"
 msgstr "使用メモリ:"
 
-#: src/virsh.c:1218
+#: src/virsh.c:1440
 msgid "domain vcpu information"
 msgstr "ドメインの vcpu 情報"
 
-#: src/virsh.c:1219
+#: src/virsh.c:1441
 msgid "Returns basic information about the domain virtual CPUs."
-msgstr "ドメインの仮想 CPU に関する基本情報に戻ります。"
+msgstr "ドメインの仮想 CPU の基本情報を表示します。"
 
-#: src/virsh.c:1266
+#: src/virsh.c:1488
 msgid "VCPU:"
 msgstr "VCPU:"
 
-#: src/virsh.c:1267
+#: src/virsh.c:1489
 msgid "CPU:"
 msgstr "CPU:"
 
-#: src/virsh.c:1277
+#: src/virsh.c:1499
 msgid "CPU Affinity:"
 msgstr "CPU アフィニティ:"
 
-#: src/virsh.c:1301
+#: src/virsh.c:1511
+msgid "Domain shut off, virtual CPUs not present."
+msgstr "ドメインは停止しており、仮想 CPU はありません。"
+
+#: src/virsh.c:1527
 msgid "control domain vcpu affinity"
-msgstr "ドメインの vcpu アフィニティを制御"
+msgstr "仮想 CPU アフィニティの設定"
 
-#: src/virsh.c:1302
+#: src/virsh.c:1528
 msgid "Pin domain VCPUs to host physical CPUs."
-msgstr "ドメインの VCPU をホストの物理 に pin します。"
+msgstr "ドメインの仮想 CPU をホストの物理 CPU に割り当てます。"
 
-#: src/virsh.c:1308
+#: src/virsh.c:1534
 msgid "vcpu number"
-msgstr "vcpu 番号"
+msgstr "仮想 CPU 番号"
 
-#: src/virsh.c:1309
+#: src/virsh.c:1535
 msgid "host cpu number(s) (comma separated)"
-msgstr "ホストの cpu 番号(コンマで区切る)"
+msgstr "ホストの CPU 番号(コンマで区切る)"
 
-#: src/virsh.c:1367
-#, fuzzy, c-format
+#: src/virsh.c:1590
+msgid "cpulist: Invalid format. Empty string."
+msgstr "cpulist: 不当な形式。文字列が空。"
+
+#: src/virsh.c:1600
+#, c-format
+msgid ""
+"cpulist: %s: Invalid format. Expecting digit at position %d (near '%c')."
+msgstr "cpulist: %s: 不当な形式。%d ('%c' の近く) に数字を期待。"
+
+#: src/virsh.c:1610
+#, c-format
+msgid ""
+"cpulist: %s: Invalid format. Expecting digit or comma at position %d (near '%"
+"c')."
+msgstr "cpulist: %s: 不当な形式。%d ('%c' の近く) に数字か、コンマを期待。"
+
+#: src/virsh.c:1617
+#, c-format
+msgid "cpulist: %s: Invalid format. Trailing comma at position %d."
+msgstr "cpulist: %s: 不当な形式。%d にコンマが続いている。"
+
+#: src/virsh.c:1631
+#, c-format
 msgid "Physical CPU %d doesn't exist."
-msgstr "コマンド '%s' は存在していません"
+msgstr "物理 CPU '%d' は存在していません"
 
-#: src/virsh.c:1391
+#: src/virsh.c:1655
 msgid "change number of virtual CPUs"
 msgstr "仮想 CPU 数の変更"
 
-#: src/virsh.c:1392
+#: src/virsh.c:1656
 msgid "Change the number of virtual CPUs active in the guest domain."
-msgstr "ゲストドメイン内でアクティブな仮想 CPU の数を変更します。"
+msgstr "ゲストドメインで動作中の仮想 CPU 数を変更します。"
 
-#: src/virsh.c:1398
+#: src/virsh.c:1662
 msgid "number of virtual CPUs"
-msgstr "仮想 CPU の番号"
+msgstr "仮想 CPU 数"
 
-#: src/virsh.c:1429
-#, fuzzy
-msgid "Too many virtual CPU's."
-msgstr "仮想 CPU の番号"
+#: src/virsh.c:1682
+msgid "Invalid number of virtual CPUs."
+msgstr "仮想 CPU 数が不当"
 
-#: src/virsh.c:1447
+#: src/virsh.c:1694
+msgid "Too many virtual CPUs."
+msgstr "仮想 CPU が多すぎます。"
+
+#: src/virsh.c:1712
 msgid "change memory allocation"
-msgstr "メモリ割り当ての変更"
+msgstr "メモリサイズの変更"
 
-#: src/virsh.c:1448
+#: src/virsh.c:1713
 msgid "Change the current memory allocation in the guest domain."
-msgstr "ゲストドメイン内の現在のメモリ割り当てを変更します。"
+msgstr "ゲストドメインの現在のメモリサイズを変更します。"
 
-#: src/virsh.c:1454
-#, fuzzy
+#: src/virsh.c:1719
 msgid "number of kilobytes of memory"
-msgstr "メモリのバイト数"
+msgstr "メモリサイズ(キロバイト指定)"
 
-#: src/virsh.c:1474 src/virsh.c:1518
+#: src/virsh.c:1740 src/virsh.c:1752 src/virsh.c:1797
 #, c-format
 msgid "Invalid value of %d for memory size"
-msgstr ""
+msgstr "%d はメモリサイズとしては不当な値"
 
-#: src/virsh.c:1491
+#: src/virsh.c:1746
+msgid "Unable to verify MaxMemorySize"
+msgstr "最大メモリサイズを確認できません"
+
+#: src/virsh.c:1769
 msgid "change maximum memory limit"
-msgstr "最大メモリの制限を変更"
+msgstr "最大メモリサイズの変更"
 
-#: src/virsh.c:1492
+#: src/virsh.c:1770
 msgid "Change the maximum memory allocation limit in the guest domain."
-msgstr "ゲストドメイン内の最大メモリ割り当ての制限を変更します。"
+msgstr "ゲストドメインの最大メモリサイズを変更します。"
 
-#: src/virsh.c:1498
-#, fuzzy
+#: src/virsh.c:1776
 msgid "maximum memory limit in kilobytes"
-msgstr "バイト単位による最大メモリ制限"
+msgstr "最大メモリサイズ(キロバイト指定)"
 
-#: src/virsh.c:1535
+#: src/virsh.c:1803
+msgid "Unable to verify current MemorySize"
+msgstr "現在のメモリサイズを確認できません"
+
+#: src/virsh.c:1810
+msgid "Unable to shrink current MemorySize"
+msgstr "現在のメモリサイズを縮小できません"
+
+#: src/virsh.c:1816
+msgid "Unable to change MaxMemorySize"
+msgstr "最大メモリサイズを変更できません"
+
+#: src/virsh.c:1829
 msgid "node information"
 msgstr "ノード情報"
 
-#: src/virsh.c:1536
+#: src/virsh.c:1830
 msgid "Returns basic information about the node."
-msgstr "ノードに関する基本情報に戻ります。"
+msgstr "ノードの基本情報を表示します。"
 
-#: src/virsh.c:1549
+#: src/virsh.c:1843
 msgid "failed to get node information"
 msgstr "ノード情報の取得に失敗しました"
 
-#: src/virsh.c:1552
+#: src/virsh.c:1846
 msgid "CPU model:"
 msgstr "CPU モデル:"
 
-#: src/virsh.c:1554
+#: src/virsh.c:1848
 msgid "CPU frequency:"
 msgstr "CPU 周波数:"
 
-#: src/virsh.c:1555
+#: src/virsh.c:1849
 msgid "CPU socket(s):"
 msgstr "CPU ソケット:"
 
-#: src/virsh.c:1556
+#: src/virsh.c:1850
 msgid "Core(s) per socket:"
-msgstr "ソケットごとのコア:"
+msgstr "ソケットあたりのコア数:"
 
-#: src/virsh.c:1557
+#: src/virsh.c:1851
 msgid "Thread(s) per core:"
-msgstr "コアごとのスレッド:"
+msgstr "コアあたりのスレッド数:"
 
-#: src/virsh.c:1558
+#: src/virsh.c:1852
 msgid "NUMA cell(s):"
 msgstr "NUMA セル:"
 
-#: src/virsh.c:1559
+#: src/virsh.c:1853
 msgid "Memory size:"
 msgstr "メモリサイズ:"
 
-#: src/virsh.c:1569
+#: src/virsh.c:1863
 msgid "capabilities"
-msgstr ""
+msgstr "能力情報"
 
-#: src/virsh.c:1570
+#: src/virsh.c:1864
 msgid "Returns capabilities of hypervisor/driver."
-msgstr ""
+msgstr "ハイパーバイザー/ドライバーの能力情報を表示します。"
 
-#: src/virsh.c:1583
-#, fuzzy
+#: src/virsh.c:1877
 msgid "failed to get capabilities"
-msgstr "ファイルを開くのに失敗しました"
+msgstr "能力情報を得るのに失敗しました"
 
-#: src/virsh.c:1596
+#: src/virsh.c:1890
 msgid "domain information in XML"
-msgstr "XML によるドメイン情報"
+msgstr "XML 形式のドメイン情報"
 
-#: src/virsh.c:1597
-#, fuzzy
+#: src/virsh.c:1891
 msgid "Output the domain information as an XML dump to stdout."
-msgstr "ドメイン情報を XML ダンプとして標準出力に出力します。"
+msgstr "ドメインの情報を XML ダンプ形式で stdout に出力します。"
 
-#: src/virsh.c:1636
+#: src/virsh.c:1930
 msgid "convert a domain id or UUID to domain name"
 msgstr "ドメイン id または UUID をドメイン名に変換"
 
-#: src/virsh.c:1641
+#: src/virsh.c:1935
 msgid "domain id or uuid"
 msgstr "ドメイン id または uuid"
 
-#: src/virsh.c:1666
+#: src/virsh.c:1960
 msgid "convert a domain name or UUID to domain id"
 msgstr "ドメイン名または UUID をドメイン id に変換"
 
-#: src/virsh.c:1701
+#: src/virsh.c:1995
 msgid "convert a domain name or id to domain UUID"
 msgstr "ドメイン名または id をドメイン UUID に変換"
 
-#: src/virsh.c:1706
+#: src/virsh.c:2000
 msgid "domain id or name"
 msgstr "ドメイン名または id"
 
-#: src/virsh.c:1725
+#: src/virsh.c:2019
 msgid "failed to get domain UUID"
 msgstr "ドメイン UUID の取得に失敗しました"
 
-#: src/virsh.c:1735
-#, fuzzy
+#: src/virsh.c:2029
 msgid "autostart a network"
-msgstr "ドメインを起動します。"
+msgstr "ネットワークの自動起動"
 
-#: src/virsh.c:1737
+#: src/virsh.c:2031
 msgid "Configure a network to be automatically started at boot."
-msgstr ""
+msgstr "ブート時にネットワークを自動で作成し、起動するように設定します。"
 
-#: src/virsh.c:1742 src/virsh.c:2183
-#, fuzzy
+#: src/virsh.c:2036 src/virsh.c:2461
 msgid "network name or uuid"
-msgstr "ドメイン名または uuid"
+msgstr "ネットワーク名または uuid"
 
-#: src/virsh.c:1764
-#, fuzzy, c-format
+#: src/virsh.c:2058
+#, c-format
 msgid "failed to mark network %s as autostarted"
-msgstr "ドメイン %s の起動に失敗しました"
+msgstr "ネットワーク %s を自動起動に設定するのに失敗しました"
 
-#: src/virsh.c:1767
-#, fuzzy, c-format
+#: src/virsh.c:2061
+#, c-format
 msgid "failed to unmark network %s as autostarted"
-msgstr "ドメイン %s の起動に失敗しました"
+msgstr "ネットワーク %s の自動起動設定の解除に失敗しました"
 
-#: src/virsh.c:1774
-#, fuzzy, c-format
+#: src/virsh.c:2068
+#, c-format
 msgid "Network %s marked as autostarted\n"
-msgstr "ドメイン %s が起動されました\n"
+msgstr "ネットワーク %s が自動起動に設定されました\n"
 
-#: src/virsh.c:1776
-#, fuzzy, c-format
+#: src/virsh.c:2070
+#, c-format
 msgid "Network %s unmarked as autostarted\n"
-msgstr "ドメイン %s が起動されました\n"
+msgstr "ネットワーク %s の自動起動設定が解除されました\n"
 
-#: src/virsh.c:1786
-#, fuzzy
+#: src/virsh.c:2080
 msgid "create a network from an XML file"
-msgstr "XML ファイルからドメインを作成"
+msgstr "XML ファイルからネットワークの作成"
 
-#: src/virsh.c:1787
-#, fuzzy
+#: src/virsh.c:2081
 msgid "Create a network."
-msgstr "ドメインを作成します。"
+msgstr "ネットワークを作成します。"
 
-#: src/virsh.c:1792 src/virsh.c:1848
-#, fuzzy
+#: src/virsh.c:2086 src/virsh.c:2134
 msgid "file containing an XML network description"
-msgstr "XML ドメイン記述を含むファイル"
+msgstr "XML 形式でネットワークの構成を記述したファイル"
 
-#: src/virsh.c:1827
-#, fuzzy, c-format
+#: src/virsh.c:2113
+#, c-format
 msgid "Network %s created from %s\n"
-msgstr "ドメイン %s が %s から作成されました\n"
+msgstr "ネットワーク %s が %s から作成されました\n"
 
-#: src/virsh.c:1830
-#, fuzzy, c-format
+#: src/virsh.c:2116
+#, c-format
 msgid "Failed to create network from %s"
-msgstr "%s からのドメイン作成に失敗しました"
+msgstr "%s からのネットワーク作成に失敗しました"
 
-#: src/virsh.c:1842
-#, fuzzy
+#: src/virsh.c:2128
 msgid "define (but don't start) a network from an XML file"
-msgstr "XML ファイルからドメインを定義(ただし起動しない)"
+msgstr "XML ファイルからネットワークを登録(起動はしない)"
 
-#: src/virsh.c:1843
-#, fuzzy
+#: src/virsh.c:2129
 msgid "Define a network."
-msgstr "ドメインを定義します。"
-
-#: src/virsh.c:1883
-#, fuzzy, c-format
-msgid "Network %s defined from %s\n"
-msgstr "ドメイン %s が %s から定義されました\n"
-
-#: src/virsh.c:1886
-#, fuzzy, c-format
-msgid "Failed to define network from %s"
-msgstr "%s からのドメイン定義に失敗しました"
-
-#: src/virsh.c:1898
-#, fuzzy
-msgid "destroy a network"
-msgstr "ドメインの破棄"
-
-#: src/virsh.c:1899
-#, fuzzy
-msgid "Destroy a given network."
-msgstr "特定のドメインを破棄します。"
-
-#: src/virsh.c:1904 src/virsh.c:1944
-#, fuzzy
-msgid "network name, id or uuid"
-msgstr "ドメイン名、id または uuid"
-
-#: src/virsh.c:1922
-#, fuzzy, c-format
-msgid "Network %s destroyed\n"
-msgstr "ドメイン %s は破棄されました\n"
-
-#: src/virsh.c:1924
-#, fuzzy, c-format
-msgid "Failed to destroy network %s"
-msgstr "ドメイン %s の破棄に失敗しました"
-
-#: src/virsh.c:1938
-#, fuzzy
-msgid "network information in XML"
-msgstr "XML によるドメイン情報"
-
-#: src/virsh.c:1939
-#, fuzzy
-msgid "Output the network information as an XML dump to stdout."
-msgstr "ドメイン情報を XML ダンプとして標準出力に出力します。"
-
-#: src/virsh.c:1979
-msgid "list networks"
-msgstr ""
-
-#: src/virsh.c:1980
-#, fuzzy
-msgid "Returns list of networks."
-msgstr "ドメイン一覧に戻ります。"
-
-#: src/virsh.c:1985
-#, fuzzy
-msgid "list inactive networks"
-msgstr "非アクティブなドメインの一覧表示"
-
-#: src/virsh.c:1986
-#, fuzzy
-msgid "list inactive & active networks"
-msgstr "非アクティブ及びアクティブなドメインの一覧表示"
-
-#: src/virsh.c:2006 src/virsh.c:2014
-#, fuzzy
-msgid "Failed to list active networks"
-msgstr "アクティブなドメインの一覧表示に失敗しました"
-
-#: src/virsh.c:2025 src/virsh.c:2034
-#, fuzzy
-msgid "Failed to list inactive networks"
-msgstr "非アクティブなドメインの一覧表示に失敗しました"
-
-#: src/virsh.c:2044
-msgid "Autostart"
-msgstr ""
-
-#: src/virsh.c:2059 src/virsh.c:2082
-#, fuzzy
-msgid "no autostart"
-msgstr "状態なし"
-
-#: src/virsh.c:2065
-msgid "active"
-msgstr ""
-
-#: src/virsh.c:2088
-#, fuzzy
-msgid "inactive"
-msgstr "node active cpu"
-
-#: src/virsh.c:2107
-#, fuzzy
-msgid "convert a network UUID to network name"
-msgstr "ドメイン id または UUID をドメイン名に変換"
-
-#: src/virsh.c:2112
-msgid "network uuid"
-msgstr ""
-
-#: src/virsh.c:2138
-#, fuzzy
-msgid "start a (previously defined) inactive network"
-msgstr "(以前に定義した)非アクティブなドメインの起動"
-
-#: src/virsh.c:2139
-#, fuzzy
-msgid "Start a network."
-msgstr "ドメインを起動します。"
-
-#: src/virsh.c:2144
-#, fuzzy
-msgid "name of the inactive network"
-msgstr "非アクティブなドメインの名前"
+msgstr "ネットワークを登録します。"
 
 #: src/virsh.c:2161
-#, fuzzy, c-format
-msgid "Network %s started\n"
-msgstr "ドメイン %s が起動されました\n"
+#, c-format
+msgid "Network %s defined from %s\n"
+msgstr "ネットワーク %s が %s から定義されました\n"
 
 #: src/virsh.c:2164
-#, fuzzy, c-format
-msgid "Failed to start network %s"
-msgstr "ドメイン %s の起動に失敗しました"
+#, c-format
+msgid "Failed to define network from %s"
+msgstr "%s からのネットワーク定義に失敗しました"
+
+#: src/virsh.c:2176
+msgid "destroy a network"
+msgstr "ネットワークの停止"
 
 #: src/virsh.c:2177
-#, fuzzy
-msgid "undefine an inactive network"
-msgstr "非アクティブなドメインの定義を削除する"
+msgid "Destroy a given network."
+msgstr "ネットワークを停止します。"
 
-#: src/virsh.c:2178
-#, fuzzy
-msgid "Undefine the configuration for an inactive network."
-msgstr "非アクティブなドメイン設定の定義を削除します。"
+#: src/virsh.c:2182 src/virsh.c:2222
+msgid "network name, id or uuid"
+msgstr "ネットワーク名、id または uuid"
 
-#: src/virsh.c:2201
-#, fuzzy, c-format
-msgid "Network %s has been undefined\n"
-msgstr "ドメイン %s の定義は削除されています\n"
+#: src/virsh.c:2200
+#, c-format
+msgid "Network %s destroyed\n"
+msgstr "ネットワーク %s は停止されました\n"
 
-#: src/virsh.c:2203
-#, fuzzy, c-format
-msgid "Failed to undefine network %s"
-msgstr "ドメイン %s の定義の削除に失敗しました"
+#: src/virsh.c:2202
+#, c-format
+msgid "Failed to destroy network %s"
+msgstr "ネットワーク %s の停止に失敗しました"
 
 #: src/virsh.c:2216
-#, fuzzy
+msgid "network information in XML"
+msgstr "ネットワークの情報を XML 形式で表示"
+
+#: src/virsh.c:2217
+msgid "Output the network information as an XML dump to stdout."
+msgstr "ネットワークの構成情報を XML 形式で表示します。"
+
+#: src/virsh.c:2257
+msgid "list networks"
+msgstr "ネットワークの一覧を表示"
+
+#: src/virsh.c:2258
+msgid "Returns list of networks."
+msgstr "ネットワークの一覧を表示します。"
+
+#: src/virsh.c:2263
+msgid "list inactive networks"
+msgstr "停止状態のネットワークの一覧を表示"
+
+#: src/virsh.c:2264
+msgid "list inactive & active networks"
+msgstr "停止状態および動作中のネットワークの一覧を表示"
+
+#: src/virsh.c:2284 src/virsh.c:2292
+msgid "Failed to list active networks"
+msgstr "動作中のネットワークの一覧表示に失敗しました"
+
+#: src/virsh.c:2303 src/virsh.c:2312
+msgid "Failed to list inactive networks"
+msgstr "停止状態のネットワークの一覧表示に失敗しました"
+
+#: src/virsh.c:2322
+msgid "Autostart"
+msgstr "自動起動"
+
+#: src/virsh.c:2337 src/virsh.c:2360
+msgid "no autostart"
+msgstr "自動起動なし"
+
+#: src/virsh.c:2343
+msgid "active"
+msgstr "動作中"
+
+#: src/virsh.c:2366
+msgid "inactive"
+msgstr "停止状態"
+
+#: src/virsh.c:2385
+msgid "convert a network UUID to network name"
+msgstr "ネットワーク UUID をネットワーク名に変換"
+
+#: src/virsh.c:2390
+msgid "network uuid"
+msgstr "ネットワーク uuid"
+
+#: src/virsh.c:2416
+msgid "start a (previously defined) inactive network"
+msgstr "(事前に登録した)停止状態のネットワークの起動"
+
+#: src/virsh.c:2417
+msgid "Start a network."
+msgstr "ネットワークを起動します。"
+
+#: src/virsh.c:2422
+msgid "name of the inactive network"
+msgstr "停止状態のネットワーク名"
+
+#: src/virsh.c:2439
+#, c-format
+msgid "Network %s started\n"
+msgstr "ネットワーク %s が起動されました\n"
+
+#: src/virsh.c:2442
+#, c-format
+msgid "Failed to start network %s"
+msgstr "ネットワーク %s の起動に失敗しました"
+
+#: src/virsh.c:2455
+msgid "undefine an inactive network"
+msgstr "停止状態のネットワークの登録削除"
+
+#: src/virsh.c:2456
+msgid "Undefine the configuration for an inactive network."
+msgstr "登録されている停止状態のネットワークを削除します。"
+
+#: src/virsh.c:2479
+#, c-format
+msgid "Network %s has been undefined\n"
+msgstr "ネットワーク %s の定義は削除されています\n"
+
+#: src/virsh.c:2481
+#, c-format
+msgid "Failed to undefine network %s"
+msgstr "ネットワーク %s の定義の削除に失敗しました"
+
+#: src/virsh.c:2494
 msgid "convert a network name to network UUID"
-msgstr "ドメイン名または id をドメイン UUID に変換"
+msgstr "ネットワーク名をネットワーク UUID に変換"
 
-#: src/virsh.c:2221
+#: src/virsh.c:2499
 msgid "network name"
-msgstr ""
+msgstr "ネットワーク名"
 
-#: src/virsh.c:2241
-#, fuzzy
+#: src/virsh.c:2519
 msgid "failed to get network UUID"
-msgstr "ドメイン UUID の取得に失敗しました"
+msgstr "ネットワーク UUID の取得に失敗しました"
 
-#: src/virsh.c:2252
+#: src/virsh.c:2530
 msgid "show version"
 msgstr "バージョンの表示"
 
-#: src/virsh.c:2253
+#: src/virsh.c:2531
 msgid "Display the system version information."
 msgstr "システムのバージョン情報を表示します。"
 
-#: src/virsh.c:2276
+#: src/virsh.c:2554
 msgid "failed to get hypervisor type"
 msgstr "ハイパーバイザータイプの取得に失敗しました"
 
-#: src/virsh.c:2285
+#: src/virsh.c:2563
 #, c-format
 msgid "Compiled against library: libvir %d.%d.%d\n"
-msgstr "ライブラリに対してコンパイルしました: libvir %d.%d.%d\n"
+msgstr "コンパイル時に使用したライブラリ: libvir %d.%d.%d\n"
 
-#: src/virsh.c:2290
+#: src/virsh.c:2568
 msgid "failed to get the library version"
-msgstr "ライブラリバージョンの取得に失敗しました"
+msgstr "ライブラリのバージョンの取得に失敗しました"
 
-#: src/virsh.c:2297
+#: src/virsh.c:2575
 #, c-format
 msgid "Using library: libvir %d.%d.%d\n"
-msgstr "ライブラリを使用中: libvir %d.%d.%d\n"
+msgstr "使用中のライブラリ: libvir %d.%d.%d\n"
 
-#: src/virsh.c:2304
+#: src/virsh.c:2582
 #, c-format
 msgid "Using API: %s %d.%d.%d\n"
-msgstr "API を使用中: %s %d.%d.%d\n"
+msgstr "使用中の API: %s %d.%d.%d\n"
 
-#: src/virsh.c:2309
+#: src/virsh.c:2587
 msgid "failed to get the hypervisor version"
-msgstr "ハイパーバイザーバージョンの取得に失敗しました"
+msgstr "ハイパーバイザーのバージョンの取得に失敗しました"
 
-#: src/virsh.c:2314
+#: src/virsh.c:2592
 #, c-format
 msgid "Cannot extract running %s hypervisor version\n"
-msgstr "実行中の %s ハイパーバイザーバージョンを抽出できません\n"
+msgstr "実行中の %s ハイパーバイザーのバージョンを抽出できません\n"
 
-#: src/virsh.c:2321
+#: src/virsh.c:2599
 #, c-format
 msgid "Running hypervisor: %s %d.%d.%d\n"
-msgstr "ハイパーバイザーを実行中: %s %d.%d.%d\n"
+msgstr "実行中のハイパーバイザー: %s %d.%d.%d\n"
 
-#: src/virsh.c:2332
+#: src/virsh.c:2610
+msgid "print the hypervisor hostname"
+msgstr "ハイパーバイザーのホスト名を表示します"
+
+#: src/virsh.c:2624
+msgid "failed to get hostname"
+msgstr "ホスト名の取得に失敗しました"
+
+#: src/virsh.c:2639
+msgid "print the hypervisor canonical URI"
+msgstr "ハイパーバイザーの標準的な URI を表示します"
+
+#: src/virsh.c:2653
+msgid "failed to get URI"
+msgstr "URI の取得に失敗しました"
+
+#: src/virsh.c:2668
 msgid "vnc display"
-msgstr ""
+msgstr "vnc 表示"
 
-#: src/virsh.c:2333
+#: src/virsh.c:2669
 msgid "Output the IP address and port number for the VNC display."
-msgstr ""
+msgstr "VNC 表示のための IP アドレスとポート番号を出力します。"
 
-#: src/virsh.c:2412
+#: src/virsh.c:2747
+msgid "attach device from an XML file"
+msgstr "XML ファイルからデバイスを追加"
+
+#: src/virsh.c:2748
+msgid "Attach device from an XML <file>."
+msgstr "XML <ファイル>からデバイスを追加"
+
+#: src/virsh.c:2754 src/virsh.c:2808
+msgid "XML file"
+msgstr "XML ファイル"
+
+#: src/virsh.c:2786
+#, c-format
+msgid "Failed to attach device from %s"
+msgstr "%s からデバイスの追加に失敗しました"
+
+#: src/virsh.c:2801
+msgid "detach device from an XML file"
+msgstr "XML ファイルからデバイスを削除"
+
+#: src/virsh.c:2802
+msgid "Detach device from an XML <file>"
+msgstr "XML <ファイル>からデバイスを削除"
+
+#: src/virsh.c:2840
+#, c-format
+msgid "Failed to detach device from %s"
+msgstr "%s からデバイスの削除に失敗しました"
+
+#: src/virsh.c:2855
+msgid "attach network interface"
+msgstr "ネットワークインターフェースを接続します"
+
+#: src/virsh.c:2856
+msgid "Attach new network interface."
+msgstr "新しいネットワークインターフェースを接続します。"
+
+#: src/virsh.c:2862 src/virsh.c:2978
+msgid "network interface type"
+msgstr "ネットワークインターフェースタイプ"
+
+#: src/virsh.c:2863
+msgid "source of network interface"
+msgstr "ネットワークインターフェースのソース"
+
+#: src/virsh.c:2864
+msgid "target network name"
+msgstr "ターゲットネットワーク名"
+
+#: src/virsh.c:2865 src/virsh.c:2979
+msgid "MAC adress"
+msgstr "MAC アドレス"
+
+#: src/virsh.c:2866
+msgid "script used to bridge network interface"
+msgstr "ネットワークインターフェースを接続するのに使われるスクリプト"
+
+#: src/virsh.c:2898
+#, c-format
+msgid "No support %s in command 'attach-interface'"
+msgstr "'attach-interface' コマンドでは %s をサポートしていません"
+
+#: src/virsh.c:2971
+msgid "detach network interface"
+msgstr "ネットワークインターフェースの削除"
+
+#: src/virsh.c:2972
+msgid "Detach network interface."
+msgstr "ネットワークインターフェースの削除。"
+
+#: src/virsh.c:3017 src/virsh.c:3022
+msgid "Failed to get interface information"
+msgstr "インターフェース情報の取得に失敗しました"
+
+#: src/virsh.c:3030
+#, c-format
+msgid "No found interface whose type is %s"
+msgstr "%s というタイプのインターフェースは見つかりませんでした"
+
+#: src/virsh.c:3052
+#, c-format
+msgid "No found interface whose MAC address is %s"
+msgstr "%s という MAC アドレスのインターフェースは見つかりませんでした"
+
+#: src/virsh.c:3058 src/virsh.c:3336
+msgid "Failed to allocate memory"
+msgstr "メモリの割り当てに失敗しました"
+
+#: src/virsh.c:3063 src/virsh.c:3341
+msgid "Failed to create XML"
+msgstr "XML の作成に失敗しました"
+
+#: src/virsh.c:3092
+msgid "attach disk device"
+msgstr "ディスク装置の接続"
+
+#: src/virsh.c:3093
+msgid "Attach new disk device."
+msgstr "新しいディスク装置の接続。"
+
+#: src/virsh.c:3099
+msgid "source of disk device"
+msgstr "ディスク装置のソース"
+
+#: src/virsh.c:3100 src/virsh.c:3264
+msgid "target of disk device"
+msgstr "ディスク装置のターゲット"
+
+#: src/virsh.c:3101
+msgid "driver of disk device"
+msgstr "ディスク装置のドライバー"
+
+#: src/virsh.c:3102
+msgid "subdriver of disk device"
+msgstr "ディスク装置のサブドライバー"
+
+#: src/virsh.c:3103
+msgid "target device type"
+msgstr "ターゲット装置タイプ"
+
+#: src/virsh.c:3104
+msgid "mode of device reading and writing"
+msgstr "装置の読み書きモード"
+
+#: src/virsh.c:3135 src/virsh.c:3144 src/virsh.c:3151
+#, c-format
+msgid "No support %s in command 'attach-disk'"
+msgstr "'attach-disk' コマンドでは %s をサポートしていません"
+
+#: src/virsh.c:3257
+msgid "detach disk device"
+msgstr "ディスク装置の削除"
+
+#: src/virsh.c:3258
+msgid "Detach disk device."
+msgstr "ディスク装置の削除。"
+
+#: src/virsh.c:3299 src/virsh.c:3304 src/virsh.c:3311
+msgid "Failed to get disk information"
+msgstr "ディスク情報の取得に失敗しました"
+
+#: src/virsh.c:3330
+#, c-format
+msgid "No found disk whose target is %s"
+msgstr "ターゲットが %s であるディスクは見つかりませんでした"
+
+#: src/virsh.c:3370
 msgid "quit this interactive terminal"
-msgstr "この対話式ターミナルを終了"
+msgstr "対話式ターミナルの終了"
 
-#: src/virsh.c:2539
+#: src/virsh.c:3506
 #, c-format
 msgid "command '%s' requires <%s> option"
 msgstr "コマンド '%s' には <%s> オプションが必要です"
 
-#: src/virsh.c:2540
+#: src/virsh.c:3507
 #, c-format
 msgid "command '%s' requires --%s option"
 msgstr "コマンド '%s' には --%s オプションが必要です"
 
-#: src/virsh.c:2567
+#: src/virsh.c:3534
 #, c-format
 msgid "command '%s' doesn't exist"
 msgstr "コマンド '%s' は存在していません"
 
-#: src/virsh.c:2575
+#: src/virsh.c:3542
 msgid "  NAME\n"
 msgstr "  名前\n"
 
-#: src/virsh.c:2586
+#: src/virsh.c:3546
+msgid ""
+"\n"
+"  SYNOPSIS\n"
+msgstr ""
+"\n"
+"  形式\n"
+
+#: src/virsh.c:3553
 msgid ""
 "\n"
 "  DESCRIPTION\n"
@@ -1558,7 +1807,7 @@ msgstr ""
 "\n"
 "  詳細\n"
 
-#: src/virsh.c:2590
+#: src/virsh.c:3557
 msgid ""
 "\n"
 "  OPTIONS\n"
@@ -1566,36 +1815,35 @@ msgstr ""
 "\n"
 "  オプション\n"
 
-#: src/virsh.c:2597
+#: src/virsh.c:3564
 #, c-format
 msgid "--%s <number>"
 msgstr "--%s <number>"
 
-#: src/virsh.c:2599
+#: src/virsh.c:3566
 #, c-format
 msgid "--%s <string>"
 msgstr "--%s <string>"
 
-#: src/virsh.c:2712
+#: src/virsh.c:3679
 msgid "undefined domain name or id"
 msgstr "未定義のドメイン名または id です"
 
-#: src/virsh.c:2745
+#: src/virsh.c:3712
 #, c-format
 msgid "failed to get domain '%s'"
 msgstr "ドメイン '%s' の取得に失敗しました"
 
-#: src/virsh.c:2758
-#, fuzzy
+#: src/virsh.c:3725
 msgid "undefined network name"
-msgstr "未定義のドメイン名または id です"
+msgstr "未定義のネットワーク名です"
 
-#: src/virsh.c:2782
-#, fuzzy, c-format
+#: src/virsh.c:3749
+#, c-format
 msgid "failed to get network '%s'"
-msgstr "ドメイン '%s' の取得に失敗しました"
+msgstr "ネットワーク '%s' の取得に失敗しました"
 
-#: src/virsh.c:2810
+#: src/virsh.c:3777
 #, c-format
 msgid ""
 "\n"
@@ -1606,108 +1854,124 @@ msgstr ""
 "(時間: %.3f ms)\n"
 "\n"
 
-#: src/virsh.c:2884
+#: src/virsh.c:3851
 msgid "missing \""
 msgstr "不足 \""
 
-#: src/virsh.c:2945
+#: src/virsh.c:3912
 #, c-format
 msgid "unexpected token (command name): '%s'"
 msgstr "予期しないトークン(コマンド名): '%s'"
 
-#: src/virsh.c:2950
+#: src/virsh.c:3917
 #, c-format
 msgid "unknown command: '%s'"
 msgstr "不明なコマンド: '%s'"
 
-#: src/virsh.c:2957
+#: src/virsh.c:3924
 #, c-format
 msgid "command '%s' doesn't support option --%s"
 msgstr "コマンド '%s' はオプション --%s をサポートしていません"
 
-#: src/virsh.c:2972
+#: src/virsh.c:3939
 #, c-format
 msgid "expected syntax: --%s <%s>"
 msgstr "予期される構文: --%s <%s>"
 
-#: src/virsh.c:2975
+#: src/virsh.c:3942
 msgid "number"
 msgstr "番号"
 
-#: src/virsh.c:2975
+#: src/virsh.c:3942
 msgid "string"
 msgstr "文字列"
 
-#: src/virsh.c:2981
+#: src/virsh.c:3948
 #, c-format
 msgid "unexpected data '%s'"
 msgstr "予期しないデータ '%s'"
 
-#: src/virsh.c:3003
+#: src/virsh.c:3970
 msgid "OPTION"
 msgstr "オプション"
 
-#: src/virsh.c:3003
+#: src/virsh.c:3970
 msgid "DATA"
 msgstr "データ"
 
-#: src/virsh.c:3051 src/virsh.c:3077
+#: src/virsh.c:4020 src/virsh.c:4046
 msgid "running"
 msgstr "実行中"
 
-#: src/virsh.c:3053 src/virsh.c:3075
+#: src/virsh.c:4022 src/virsh.c:4044
 msgid "blocked"
-msgstr "ブロックされました"
+msgstr "ブロックされています"
 
-#: src/virsh.c:3055
+#: src/virsh.c:4024
 msgid "paused"
-msgstr "中止されました"
+msgstr "中断中"
 
-#: src/virsh.c:3057
+#: src/virsh.c:4026
 msgid "in shutdown"
-msgstr "シャットダウン状態"
+msgstr "シャットダウン中"
 
-#: src/virsh.c:3059
+#: src/virsh.c:4028
 msgid "shut off"
 msgstr "シャットオフ"
 
-#: src/virsh.c:3061
+#: src/virsh.c:4030
 msgid "crashed"
 msgstr "クラッシュしました"
 
-#: src/virsh.c:3073
+#: src/virsh.c:4042
 msgid "offline"
 msgstr "オフライン"
 
-#: src/virsh.c:3092
+#: src/virsh.c:4061
 msgid "no valid connection"
 msgstr "有効な接続ではありません"
 
-#: src/virsh.c:3131
+#: src/virsh.c:4108
 #, c-format
 msgid "%s: error: "
 msgstr "%s: エラー: "
 
-#: src/virsh.c:3133
+#: src/virsh.c:4110
 msgid "error: "
 msgstr "エラー: "
 
-#: src/virsh.c:3155 src/virsh.c:3167
+#: src/virsh.c:4132 src/virsh.c:4144 src/virsh.c:4157
 #, c-format
 msgid "%s: %d: failed to allocate %d bytes"
 msgstr "%s: %d: %d バイトを割り当てるのに失敗しました"
 
-#: src/virsh.c:3179
-#, fuzzy, c-format
+#: src/virsh.c:4171
+#, c-format
 msgid "%s: %d: failed to allocate %lu bytes"
-msgstr "%s: %d: %d バイトを割り当てるのに失敗しました"
+msgstr "%s: %d: %lu バイトを割り当てるのに失敗しました"
 
-#: src/virsh.c:3209
+#: src/virsh.c:4207
 msgid "failed to connect to the hypervisor"
-msgstr "ハイパーバイザーの接続に失敗しました"
+msgstr "ハイパーバイザーへの接続に失敗しました"
 
-#: src/virsh.c:3357
-#, fuzzy, c-format
+#: src/virsh.c:4231
+msgid "failed to get the log file information"
+msgstr "ログファイル情報の取得に失敗しました"
+
+#: src/virsh.c:4236
+msgid "the log path is not a file"
+msgstr "ログパスがファイルではありません"
+
+#: src/virsh.c:4242
+msgid "failed to open the log file. check the log file path"
+msgstr "ログファイルを開けません。ログファイルのパスを確認してください"
+
+#: src/virsh.c:4310
+msgid "failed to write the log file"
+msgstr "ログファイルの書き込みに失敗しました"
+
+#: src/virsh.c:4479
+#, c-format
 msgid ""
 "\n"
 "%s [options] [commands]\n"
@@ -1719,6 +1983,7 @@ msgid ""
 "    -h | --help             this help\n"
 "    -q | --quiet            quiet mode\n"
 "    -t | --timing           print timing information\n"
+"    -l | --log <file>       output logging to file\n"
 "    -v | --version          program version\n"
 "\n"
 "  commands (non interactive mode):\n"
@@ -1728,31 +1993,33 @@ msgstr ""
 "\n"
 "  オプション:\n"
 "    -c | --connect <uri>    ハイパーバイザー接続 URI\n"
+"    -r | --readonly         読み込みのみで接続\n"
 "    -d | --debug <num>      デバッグレベル [0-5]\n"
 "    -h | --help             本ヘルプ\n"
-"    -q | --quiet            無音モード\n"
+"    -q | --quiet            抑止モード\n"
 "    -t | --timing           タイミング情報を出力\n"
+"    -l | --log <file>       ログをファイルへ書き込み\n"
 "    -v | --version          プログラムバージョン\n"
 "\n"
 "  コマンド (非対話式モード):\n"
 
-#: src/virsh.c:3374
-#, c-format
+#: src/virsh.c:4497
+#, fuzzy, c-format
 msgid ""
 "\n"
-"  (specify --help <command> for details about the command)\n"
+"  (specify help <command> for details about the command)\n"
 "\n"
 msgstr ""
 "\n"
 "  (コマンドに関する詳細は、 --help <command> を指定します)\n"
 "\n"
 
-#: src/virsh.c:3466
+#: src/virsh.c:4593
 #, c-format
 msgid "unsupported option '-%c'. See --help."
 msgstr "サポートされていないオプション '-%c' です。--help を参照してください。"
 
-#: src/virsh.c:3547
+#: src/virsh.c:4675
 #, c-format
 msgid ""
 "Welcome to %s, the virtualization interactive terminal.\n"
@@ -1761,14 +2028,14 @@ msgstr ""
 "%s にようこそ、仮想化対話式ターミナルです。\n"
 "\n"
 
-#: src/virsh.c:3550
+#: src/virsh.c:4678
 msgid ""
 "Type:  'help' for help with commands\n"
 "       'quit' to quit\n"
 "\n"
 msgstr ""
-"入力します:  コマンドに関するヘルプは、'help' です\n"
-"       'quit' と入力すると終了します\n"
+"入力方法: 'help' コマンドに関するヘルプ\n"
+"          'quit' 終了します\n"
 "\n"
 
 #: src/conf.c:156 src/conf.c:205 src/conf.c:488 src/conf.c:525 src/conf.c:553
@@ -1790,7 +2057,7 @@ msgstr "値を予期しています"
 
 #: src/conf.c:449
 msgid "expecting a separator in list"
-msgstr "一覧にセパレータを予期しています"
+msgstr "一覧にセパレーターを予期しています"
 
 #: src/conf.c:472
 msgid "list is not closed with ] "
@@ -1802,86 +2069,96 @@ msgstr "名前を予期しています"
 
 #: src/conf.c:581
 msgid "expecting a separator"
-msgstr "セパレータを予期しています"
+msgstr "セパレーターを予期しています"
 
 #: src/conf.c:613
 msgid "expecting an assignment"
 msgstr "割り当てを予期しています"
 
-#: src/conf.c:897
+#: src/conf.c:887 src/conf.c:941
+#, fuzzy
+msgid "failed to allocate buffer"
+msgstr "ノードの割り当てに失敗しました"
+
+#: src/conf.c:899
 msgid "failed to open file"
 msgstr "ファイルを開くのに失敗しました"
 
-#: src/conf.c:905
+#: src/conf.c:907
 msgid "failed to save content"
 msgstr "内容の保存に失敗しました"
 
-#: src/xs_internal.c:344
+#: src/xs_internal.c:340
 msgid "failed to connect to Xen Store"
 msgstr "Xen Store への接続に失敗しました"
 
-#: src/proxy_internal.c:200
+#: src/proxy_internal.c:195
 #, c-format
 msgid "failed to exec %s\n"
 msgstr "%s の実行に失敗しました\n"
 
-#: src/proxy_internal.c:294
+#: src/proxy_internal.c:289
 #, c-format
 msgid "Failed to close socket %d\n"
 msgstr "ソケット %d を閉じるのに失敗しました\n"
 
-#: src/proxy_internal.c:327
+#: src/proxy_internal.c:322
 #, c-format
 msgid "Failed to read socket %d\n"
 msgstr "ソケット %d の読み込みに失敗しました\n"
 
-#: src/proxy_internal.c:361
+#: src/proxy_internal.c:356
 #, c-format
 msgid "Failed to write to socket %d\n"
 msgstr "ソケット %d の書き込みに失敗しました\n"
 
-#: src/proxy_internal.c:453 src/proxy_internal.c:474 src/proxy_internal.c:494
+#: src/proxy_internal.c:448 src/proxy_internal.c:469 src/proxy_internal.c:489
 #, c-format
 msgid "Communication error with proxy: got %d bytes of %d\n"
 msgstr "プロキシで通信エラー: %d バイト、%d から取得\n"
 
-#: src/proxy_internal.c:461
+#: src/proxy_internal.c:456
 #, c-format
 msgid "Communication error with proxy: expected %d bytes got %d\n"
 msgstr "プロキシで通信エラー: %d バイトを予期していました、%d バイトを取得\n"
 
-#: src/proxy_internal.c:483
+#: src/proxy_internal.c:478
 #, c-format
 msgid "Communication error with proxy: got %d bytes packet\n"
 msgstr "プロキシで通信エラー: %d バイトのパケットを取得\n"
 
-#: src/proxy_internal.c:507
+#: src/proxy_internal.c:502
 #, c-format
 msgid "Communication error with proxy: malformed packet\n"
 msgstr "プロキシで通信エラー: 不良パケット\n"
 
-#: src/proxy_internal.c:513
+#: src/proxy_internal.c:508
 #, c-format
 msgid "got asynchronous packet number %d\n"
 msgstr "非同期パケット番号 %d を取得しました\n"
 
-#: src/xen_internal.c:1937
+#: src/xen_internal.c:2301
 #, c-format
 msgid "allocating %d domain info"
 msgstr "%d ドメイン情報を割り当て中"
 
+#~ msgid "growing buffer"
+#~ msgstr "バッファを増大中"
+
+#~ msgid "allocate buffer content"
+#~ msgstr "バッファの内容を割り当て"
+
+#~ msgid "file conatining an XML domain description"
+#~ msgstr "XML ドメイン記述のファイル"
+
+#~ msgid "Failed to read description file %s"
+#~ msgstr "記述ファイル %s の読み込みに失敗しました"
+
 #~ msgid "Xen Daemon or Xen Store"
 #~ msgstr "Xen Daemon または Xen Store"
 
-#, fuzzy
 #~ msgid "file conatining an XML network description"
-#~ msgstr "XML ドメイン記述を含むファイル"
-
-#~ msgid "Failed to create domain %s\n"
-#~ msgstr "ドメイン %s の作成に失敗しました\n"
-
-#~ msgid "Failed to get devices for domain %s\n"
-#~ msgstr "ドメイン %s のデバイス取得に失敗しました\n"
+#~ msgstr "XML ネットワーク記述を含むファイル"
 
 #~ msgid "Failed to resume new domain %s\n"
 #~ msgstr "新しいドメイン %s の再開に失敗しました\n"

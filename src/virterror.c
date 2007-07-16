@@ -274,6 +274,12 @@ virDefaultErrorFunc(virErrorPtr err)
         case VIR_FROM_NET:
             dom = "Network ";
             break;
+        case VIR_FROM_TEST:
+            dom = "Test ";
+            break;
+        case VIR_FROM_REMOTE:
+            dom = "Remote ";
+            break;
     }
     if ((err->dom != NULL) && (err->code != VIR_ERR_INVALID_DOMAIN)) {
         domain = err->dom->name;
@@ -404,10 +410,10 @@ __virErrorMsg(virErrorNumber error, const char *info)
             errmsg = _("out of memory");
             break;
         case VIR_ERR_NO_SUPPORT:
-            if (info != NULL)
-		errmsg = _("no support for hypervisor");
+            if (info == NULL)
+		errmsg = _("this function is not supported by the hypervisor");
 	    else
-		errmsg = _("no support for hypervisor %s");
+		errmsg = _("this function is not supported by the hypervisor: %s");
             break;
         case VIR_ERR_NO_CONNECT:
             if (info == NULL)
@@ -532,7 +538,7 @@ __virErrorMsg(virErrorNumber error, const char *info)
             else
                 errmsg = _("too many drivers registered in %s");
             break;
-        case VIR_ERR_CALL_FAILED:
+        case VIR_ERR_CALL_FAILED: /* DEPRECATED, use VIR_ERR_NO_SUPPORT */
             if (info == NULL)
                 errmsg = _("library call failed, possibly not supported");
             else
@@ -604,12 +610,42 @@ __virErrorMsg(virErrorNumber error, const char *info)
 	    else
 	        errmsg = _("network %s exists already");
             break;
-    case VIR_ERR_SYSTEM_ERROR:
-        if (info == NULL)
-            errmsg = _("system call error");
-        else
-            errmsg = "%s";
-        break;
+	case VIR_ERR_SYSTEM_ERROR:
+	    if (info == NULL)
+		errmsg = _("system call error");
+	    else
+		errmsg = "%s";
+	    break;
+	case VIR_ERR_RPC:
+	    if (info == NULL)
+		errmsg = _("RPC error");
+	    else
+		errmsg = "%s";
+	    break;
+	case VIR_ERR_GNUTLS_ERROR:
+	    if (info == NULL)
+		errmsg = _("GNUTLS call error");
+	    else
+		errmsg = "%s";
+	    break;
+	case VIR_WAR_NO_NETWORK:
+	    if (info == NULL)
+		errmsg = _("Failed to find the network");
+	    else
+		errmsg = _("Failed to find the network: %s");
+	    break;
+	case VIR_ERR_NO_DOMAIN:
+	    if (info == NULL)
+		errmsg = _("Domain not found");
+	    else
+		errmsg = _("Domain not found: %s");
+	    break;
+	case VIR_ERR_NO_NETWORK:
+	    if (info == NULL)
+		errmsg = _("Network not found");
+	    else
+		errmsg = _("Network not found: %s");
+	    break;
     }
     return (errmsg);
 }

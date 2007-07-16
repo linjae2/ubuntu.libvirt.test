@@ -77,7 +77,7 @@ proxyInitXen(void) {
     priv->xshandle = NULL;
     priv->proxy = -1;
 
-    ret = xenHypervisorOpen(conn, NULL, VIR_DRV_OPEN_QUIET);
+    ret = xenHypervisorOpen(conn, NULL, 0);
     if (ret < 0) {
         fprintf(stderr, "Failed to open Xen hypervisor\n");
         return(-1);
@@ -93,7 +93,7 @@ proxyInitXen(void) {
         fprintf(stderr, "Failed to connect to Xen daemon\n");
         return(-1);
     }
-    ret = xenStoreOpen(conn, NULL, VIR_DRV_OPEN_QUIET | VIR_DRV_OPEN_RO);
+    ret = xenStoreOpen(conn, NULL, VIR_DRV_OPEN_RO);
     if (ret < 0) {
         fprintf(stderr, "Failed to open XenStore connection");
         return (-1);
@@ -587,6 +587,29 @@ retry2:
 		req->len = sizeof(virProxyPacket) + sizeof(virNodeInfo);
 	    }
 	    break;
+
+	case VIR_PROXY_GET_CAPABILITIES:
+	    if (req->len != sizeof(virProxyPacket))
+	        goto comm_error;
+
+        xml = xenHypervisorGetCapabilities (conn);
+        if (!xml) {
+            req->data.arg = -1;
+            req->len = sizeof (virProxyPacket);
+        } else {
+            int xmllen = strlen (xml);
+            if (xmllen > (int) sizeof (request.extra.str)) {
+                req->data.arg = -2;
+                req->len = sizeof (virProxyPacket);
+            } else {
+                req->data.arg = 0;
+                memmove (request.extra.str, xml, xmllen);
+                req->len = sizeof (virProxyPacket) + xmllen;
+            }
+            free (xml);
+        }
+        break;
+
 	case VIR_PROXY_DOMAIN_XML:
 	    if (req->len != sizeof(virProxyPacket))
 	        goto comm_error;

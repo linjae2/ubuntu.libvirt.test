@@ -20,11 +20,12 @@ typedef enum {
     VIR_DRV_XEN_UNIFIED = 1,
     VIR_DRV_TEST = 2,
     VIR_DRV_QEMU = 3,
+    VIR_DRV_REMOTE = 4,
 } virDrvNo;
 
 
 typedef enum {
-    VIR_DRV_OPEN_QUIET = 1,
+    /* VIR_DRV_OPEN_QUIET = 1 - removed by RWMJ */
     VIR_DRV_OPEN_RO = 2
 } virDrvOpenFlag;
 
@@ -43,9 +44,9 @@ typedef enum {
 } virDrvOpenStatus;
 
 typedef virDrvOpenStatus
-    (*virDrvOpen)			(virConnectPtr conn,
-                             const char *name,
-                             int flags);
+	(*virDrvOpen)			(virConnectPtr conn,
+					 const char *name,
+					 int flags);
 typedef int
 	(*virDrvClose)			(virConnectPtr conn);
 typedef const char *
@@ -53,8 +54,13 @@ typedef const char *
 typedef int
 	(*virDrvGetVersion)		(virConnectPtr conn,
 					 unsigned long *hvVer);
+typedef char *
+    (*virDrvGetHostname)    (virConnectPtr conn);
+typedef char *
+    (*virDrvGetURI)         (virConnectPtr conn);
 typedef int
-    (*virDrvGetMaxVcpus)		(virConnectPtr conn, const char *type);
+	(*virDrvGetMaxVcpus)		(virConnectPtr conn,
+					 const char *type);
 typedef int
 	(*virDrvNodeGetInfo)		(virConnectPtr conn,
 					 virNodeInfoPtr info);
@@ -123,11 +129,12 @@ typedef int
 typedef int
 	(*virDrvNumOfDefinedDomains)	(virConnectPtr conn);
 typedef int
-	(*virDrvDomainCreate)	(virDomainPtr dom);
+	(*virDrvDomainCreate)		(virDomainPtr dom);
 typedef virDomainPtr
-	(*virDrvDomainDefineXML)(virConnectPtr conn, const char *xml);
+	(*virDrvDomainDefineXML)	(virConnectPtr conn,
+					 const char *xml);
 typedef int
-	(*virDrvDomainUndefine) (virDomainPtr dom);
+	(*virDrvDomainUndefine)		(virDomainPtr dom);
 typedef int
 	(*virDrvDomainSetVcpus)		(virDomainPtr domain,
 					 unsigned int nvcpus);
@@ -157,6 +164,22 @@ typedef int
 	(*virDrvDomainSetAutostart)	(virDomainPtr domain,
 					 int autostart);
 
+typedef char *
+	(*virDrvDomainGetSchedulerType)	(virDomainPtr domain,
+					 int *nparams);
+
+typedef int 
+	(*virDrvDomainGetSchedulerParameters)
+					(virDomainPtr domain,
+					 virSchedParameterPtr params,
+					 int *nparams);
+
+typedef int
+	(*virDrvDomainSetSchedulerParameters)
+					(virDomainPtr domain,
+					 virSchedParameterPtr params,
+					 int nparams);
+
 typedef struct _virDriver virDriver;
 typedef virDriver *virDriverPtr;
 
@@ -180,9 +203,11 @@ struct _virDriver {
 	virDrvClose			close;
 	virDrvGetType			type;
 	virDrvGetVersion		version;
+    virDrvGetHostname       getHostname;
+    virDrvGetURI            getURI;
 	virDrvGetMaxVcpus		getMaxVcpus;
 	virDrvNodeGetInfo		nodeGetInfo;
-    virDrvGetCapabilities   getCapabilities;
+	virDrvGetCapabilities		getCapabilities;
 	virDrvListDomains		listDomains;
 	virDrvNumOfDomains		numOfDomains;
 	virDrvDomainCreateLinux		domainCreateLinux;
@@ -216,6 +241,9 @@ struct _virDriver {
 	virDrvDomainDetachDevice	domainDetachDevice;
 	virDrvDomainGetAutostart	domainGetAutostart;
 	virDrvDomainSetAutostart	domainSetAutostart;
+	virDrvDomainGetSchedulerType	domainGetSchedulerType;
+	virDrvDomainGetSchedulerParameters domainGetSchedulerParameters;
+	virDrvDomainSetSchedulerParameters domainSetSchedulerParameters;
 };
 
 typedef int
@@ -240,7 +268,8 @@ typedef virNetworkPtr
 	(*virDrvNetworkCreateXML)	(virConnectPtr conn,
 					 const char *xmlDesc);
 typedef virNetworkPtr
-	(*virDrvNetworkDefineXML)	(virConnectPtr conn, const char *xml);
+	(*virDrvNetworkDefineXML)	(virConnectPtr conn,
+					 const char *xml);
 typedef int
 	(*virDrvNetworkUndefine)	(virNetworkPtr network);
 typedef int
@@ -293,6 +322,20 @@ struct _virNetworkDriver {
 	virDrvNetworkSetAutostart	networkSetAutostart;
 };
 
+typedef int (*virDrvStateInitialize) (void);
+typedef int (*virDrvStateCleanup) (void);
+typedef int (*virDrvStateReload) (void);
+typedef int (*virDrvStateActive) (void);
+
+typedef struct _virStateDriver virStateDriver;
+typedef virStateDriver *virStateDriverPtr;
+
+struct _virStateDriver {
+    virDrvStateInitialize  initialize;
+    virDrvStateCleanup     cleanup;
+    virDrvStateReload      reload;
+    virDrvStateActive      active;
+};
 
 /*
  * Registration
@@ -301,6 +344,7 @@ struct _virNetworkDriver {
  */
 int virRegisterDriver(virDriverPtr);
 int virRegisterNetworkDriver(virNetworkDriverPtr);
+int virRegisterStateDriver(virStateDriverPtr);
 
 #ifdef __cplusplus
 }

@@ -33,6 +33,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <paths.h>
+#include <sys/wait.h>
 
 #include <linux/param.h>     /* HZ                 */
 #include <linux/sockios.h>   /* SIOCBRADDBR etc.   */
@@ -43,6 +45,7 @@
 
 #define MAX_BRIDGE_ID 256
 
+#define BRCTL_PATH "/usr/sbin/brctl"
 #define JIFFIES_TO_MS(j) (((j)*1000)/HZ)
 #define MS_TO_JIFFIES(ms) (((ms)*HZ)/1000)
 
@@ -50,6 +53,15 @@ struct _brControl {
     int fd;
 };
 
+/**
+ * brInit:
+ * @ctlp: pointer to bridge control return value
+ *
+ * Initialize a new bridge layer. In case of success
+ * @ctlp will contain a pointer to the new bridge structure.
+ *
+ * Returns 0 in case of success, an error code otherwise.
+ */
 int
 brInit(brControl **ctlp)
 {
@@ -71,14 +83,22 @@ brInit(brControl **ctlp)
     }
 
     *ctlp = (brControl *)malloc(sizeof(struct _brControl));
-    if (!*ctlp)
+    if (!*ctlp) {
+        close(fd);
         return ENOMEM;
+    }
 
     (*ctlp)->fd = fd;
 
     return 0;
 }
 
+/**
+ * brShutdown:
+ * @ctl: pointer to a bridge control
+ *
+ * Shutdown the bridge layer and deallocate the associated structures
+ */
 void
 brShutdown(brControl *ctl)
 {
@@ -91,6 +111,19 @@ brShutdown(brControl *ctl)
     free(ctl);
 }
 
+/**
+ * brAddBridge:
+ * @ctl: bridge control pointer
+ * @nameOrFmt: the bridge name (or name template)
+ * @name: pointer to @maxlen bytes to store the bridge name
+ * @maxlen: size of @name array
+ *
+ * This function register a new bridge, @nameOrFmt can be either
+ * a fixed name or a name template with '%d' for dynamic name allocation.
+ * in either case the final name for the bridge will be stored in @name.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
 brAddBridge(brControl *ctl,
             const char *nameOrFmt,
@@ -138,6 +171,15 @@ brAddBridge(brControl *ctl,
     return errno;
 }
 
+/**
+ * brDeleteBridge:
+ * @ctl: bridge control pointer
+ * @name: the bridge name
+ *
+ * Remove a bridge from the layer.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
 brDeleteBridge(brControl *ctl,
                const char *name)
@@ -174,6 +216,16 @@ brAddDelInterface(brControl *ctl,
     return ioctl(ctl->fd, cmd, &ifr) == 0 ? 0 : errno;
 }
 
+/**
+ * brAddInterface:
+ * @ctl: bridge control pointer
+ * @bridge: the bridge name
+ * @iface: the network interface name
+ * 
+ * Adds an interface to a bridge
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
 brAddInterface(brControl *ctl,
                const char *bridge,
@@ -182,6 +234,16 @@ brAddInterface(brControl *ctl,
     return brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface);
 }
 
+/**
+ * brDeleteInterface:
+ * @ctl: bridge control pointer
+ * @bridge: the bridge name
+ * @iface: the network interface name
+ * 
+ * Removes an interface from a bridge
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
 brDeleteInterface(brControl *ctl,
                   const char *bridge,
@@ -191,6 +253,21 @@ brDeleteInterface(brControl *ctl,
 }
 
 
+/**
+ * brAddTap:
+ * @ctl: bridge control pointer
+ * @bridge: the bridge name
+ * @ifname: the interface name (or name template)
+ * @maxlen: size of @ifname array
+ * @tapfd: file descriptor return value for the new tap device
+ *
+ * This function reates a new tap device on a bridge. @ifname can be either
+ * a fixed name or a name template with '%d' for dynamic name allocation.
+ * in either case the final name for the bridge will be stored in @ifname
+ * and the associated file descriptor in @tapfd.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
 brAddTap(brControl *ctl,
          const char *bridge,
@@ -256,6 +333,16 @@ brAddTap(brControl *ctl,
     return errno;
 }
 
+/**
+ * brSetInterfaceUp:
+ * @ctl: bridge control pointer
+ * @ifname: the interface name
+ * @up: 1 for up, 0 for down
+ *
+ * Function to control if an interface is activated (up, 1) or not (down, 0)
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
 brSetInterfaceUp(brControl *ctl,
                  const char *ifname,
@@ -291,6 +378,16 @@ brSetInterfaceUp(brControl *ctl,
     return 0;
 }
 
+/**
+ * brGetInterfaceUp:
+ * @ctl: bridge control pointer
+ * @ifname: the interface name
+ * @up: where to store the status
+ *
+ * Function to query if an interface is activated (1) or not (0)
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
 brGetInterfaceUp(brControl *ctl,
                  const char *ifname,
@@ -299,7 +396,7 @@ brGetInterfaceUp(brControl *ctl,
     struct ifreq ifr;
     int len;
 
-    if (!ctl || !ifname)
+    if (!ctl || !ifname || !up)
         return EINVAL;
 
     if ((len = strlen(ifname)) >= BR_IFNAME_MAXLEN)
@@ -389,6 +486,19 @@ brGetInetAddr(brControl *ctl,
     return 0;
 }
 
+/**
+ * brSetInetAddress:
+ * @ctl: bridge control pointer
+ * @ifname: the interface name
+ * @addr: the string representation of the IP adress
+ *
+ * Function to bind the interface to an IP address, it should handle
+ * IPV4 and IPv6. The string for addr would be of the form
+ * "ddd.ddd.ddd.ddd" assuming the common IPv4 format.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
+
 int
 brSetInetAddress(brControl *ctl,
                  const char *ifname,
@@ -396,6 +506,20 @@ brSetInetAddress(brControl *ctl,
 {
     return brSetInetAddr(ctl, ifname, SIOCSIFADDR, addr);
 }
+
+/**
+ * brGetInetAddress:
+ * @ctl: bridge control pointer
+ * @ifname: the interface name
+ * @addr: the array for the string representation of the IP adress
+ * @maxlen: size of @addr in bytes
+ *
+ * Function to get the IP address of an interface, it should handle
+ * IPV4 and IPv6. The returned string for addr would be of the form
+ * "ddd.ddd.ddd.ddd" assuming the common IPv4 format.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 
 int
 brGetInetAddress(brControl *ctl,
@@ -406,6 +530,19 @@ brGetInetAddress(brControl *ctl,
     return brGetInetAddr(ctl, ifname, SIOCGIFADDR, addr, maxlen);
 }
 
+/**
+ * brSetInetNetmask:
+ * @ctl: bridge control pointer
+ * @ifname: the interface name
+ * @addr: the string representation of the netmask
+ *
+ * Function to set the netmask of an interface, it should handle
+ * IPV4 and IPv6 forms. The string for addr would be of the form
+ * "ddd.ddd.ddd.ddd" assuming the common IPv4 format.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
+
 int
 brSetInetNetmask(brControl *ctl,
                  const char *ifname,
@@ -413,6 +550,20 @@ brSetInetNetmask(brControl *ctl,
 {
     return brSetInetAddr(ctl, ifname, SIOCSIFNETMASK, addr);
 }
+
+/**
+ * brGetInetNetmask:
+ * @ctl: bridge control pointer
+ * @ifname: the interface name
+ * @addr: the array for the string representation of the netmask
+ * @maxlen: size of @addr in bytes
+ *
+ * Function to get the netmask of an interface, it should handle
+ * IPV4 and IPv6. The returned string for addr would be of the form
+ * "ddd.ddd.ddd.ddd" assuming the common IPv4 format.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 
 int
 brGetInetNetmask(brControl *ctl,
@@ -423,184 +574,159 @@ brGetInetNetmask(brControl *ctl,
     return brGetInetAddr(ctl, ifname, SIOCGIFNETMASK, addr, maxlen);
 }
 
-#ifdef ENABLE_BRIDGE_PARAMS
-
-#include <sysfs/libsysfs.h>
-
 static int
-brSysfsPrep(struct sysfs_class_device **dev,
-            struct sysfs_attribute **attr,
-            const char *bridge,
-            const char *attrname)
+brctlSpawn(char * const *argv)
 {
-    *dev = NULL;
-    *attr = NULL;
+    pid_t pid, ret;
+    int status;
+    int null = -1;
 
-    if (!(*dev = sysfs_open_class_device("net", bridge)))
+    if ((null = open(_PATH_DEVNULL, O_RDONLY)) < 0)
         return errno;
 
-    if (!(*attr = sysfs_get_classdev_attr(*dev, attrname))) {
-        int err = errno;
-
-        sysfs_close_class_device(*dev);
-        *dev = NULL;
-
-        return err;
+    pid = fork();
+    if (pid == -1) {
+        int saved_errno = errno;
+        close(null);
+        return saved_errno;
     }
 
-    return 0;
+    if (pid == 0) { /* child */
+        dup2(null, STDIN_FILENO);
+        dup2(null, STDOUT_FILENO);
+        dup2(null, STDERR_FILENO);
+        close(null);
+
+        execvp(argv[0], argv);
+
+        _exit (1);
+    }
+
+    close(null);
+
+    while ((ret = waitpid(pid, &status, 0) == -1) && errno == EINTR);
+    if (ret == -1)
+        return errno;
+
+    return (WIFEXITED(status) && WEXITSTATUS(status) == 0) ? 0 : EINVAL;
 }
 
-static int
-brSysfsWriteInt(struct sysfs_attribute *attr,
-                int value)
-{
-    char buf[32];
-    int len;
-
-    len = snprintf(buf, sizeof(buf), "%d\n", value);
-
-    if (len > (int)sizeof(buf))
-        len = sizeof(buf); /* paranoia, shouldn't happen */
-
-    return sysfs_write_attribute(attr, buf, len) == 0 ? 0 : errno;
-}
-
+/**
+ * brSetForwardDelay:
+ * @ctl: bridge control pointer
+ * @bridge: the bridge name
+ * @delay: delay in seconds
+ *
+ * Set the bridge forward delay
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
+ 
 int
-brSetForwardDelay(brControl *ctl,
+brSetForwardDelay(brControl *ctl ATTRIBUTE_UNUSED,
                   const char *bridge,
                   int delay)
 {
-    struct sysfs_class_device *dev;
-    struct sysfs_attribute *attr;
-    int err = 0;
+    char **argv;
+    int retval = ENOMEM;
+    int n;
+    char delayStr[30];
 
-    if (!ctl || !bridge)
-        return EINVAL;
+    n = 1 + /* brctl */
+        1 + /* setfd */
+        1 + /* brige name */
+        1; /* value */
 
-    if ((err = brSysfsPrep(&dev, &attr, bridge, SYSFS_BRIDGE_ATTR "/forward_delay")))
-        return err;
+    snprintf(delayStr, sizeof(delayStr), "%d", delay);
 
-    err = brSysfsWriteInt(attr, MS_TO_JIFFIES(delay));
+    if (!(argv = (char **)calloc(n + 1, sizeof(char *))))
+        goto error;
 
-    sysfs_close_class_device(dev);
+    n = 0;
 
-    return err;
-}
+    if (!(argv[n++] = strdup(BRCTL_PATH)))
+        goto error;
 
-int
-brGetForwardDelay(brControl *ctl,
-                  const char *bridge,
-                  int *delayp)
-{
-    struct sysfs_class_device *dev;
-    struct sysfs_attribute *attr;
-    int err = 0;
+    if (!(argv[n++] = strdup("setfd")))
+        goto error;
 
-    if (!ctl || !bridge || !delayp)
-        return EINVAL;
+    if (!(argv[n++] = strdup(bridge)))
+        goto error;
 
-    if ((err = brSysfsPrep(&dev, &attr, bridge, SYSFS_BRIDGE_ATTR "/forward_delay")))
-        return err;
+    if (!(argv[n++] = strdup(delayStr)))
+        goto error;
 
-    *delayp = strtoul(attr->value, NULL, 0);
+    argv[n++] = NULL;
 
-    if (errno != ERANGE) {
-        *delayp = JIFFIES_TO_MS(*delayp);
-    } else {
-        err = errno;
+    retval = brctlSpawn(argv);
+
+ error:
+    if (argv) {
+        n = 0;
+        while (argv[n])
+            free(argv[n++]);
+        free(argv);
     }
 
-    sysfs_close_class_device(dev);
-
-    return err;
+    return retval;
 }
 
+/**
+ * brSetEnableSTP:
+ * @ctl: bridge control pointer
+ * @bridge: the bridge name
+ * @enable: 1 to enable, 0 to disable
+ *
+ * Control whether the bridge participates in the spanning tree protocol,
+ * in general don't disable it without good reasons.
+ *
+ * Returns 0 in case of success or an errno code in case of failure.
+ */
 int
-brSetEnableSTP(brControl *ctl,
+brSetEnableSTP(brControl *ctl ATTRIBUTE_UNUSED,
                const char *bridge,
                int enable)
 {
-    struct sysfs_class_device *dev;
-    struct sysfs_attribute *attr;
-    int err = 0;
+    char **argv;
+    int retval = ENOMEM;
+    int n;
 
-    if (!ctl || !bridge)
-        return EINVAL;
+    n = 1 + /* brctl */
+        1 + /* setfd */
+        1 + /* brige name */
+        1;  /* value */
 
-    if ((err = brSysfsPrep(&dev, &attr, bridge, SYSFS_BRIDGE_ATTR "/stp_state")))
-        return err;
+    if (!(argv = (char **)calloc(n + 1, sizeof(char *))))
+        goto error;
 
-    err = brSysfsWriteInt(attr, (enable == 0) ? 0 : 1);
+    n = 0;
 
-    sysfs_close_class_device(dev);
+    if (!(argv[n++] = strdup(BRCTL_PATH)))
+        goto error;
 
-    return err;
-}
+    if (!(argv[n++] = strdup("stp")))
+        goto error;
 
-int
-brGetEnableSTP(brControl *ctl,
-               const char *bridge,
-               int *enablep)
-{
-    struct sysfs_class_device *dev;
-    struct sysfs_attribute *attr;
-    int err = 0;
+    if (!(argv[n++] = strdup(bridge)))
+        goto error;
 
-    if (!ctl || !bridge || !enablep)
-        return EINVAL;
+    if (!(argv[n++] = strdup(enable ? "on" : "off")))
+        goto error;
 
-    if ((err = brSysfsPrep(&dev, &attr, bridge, SYSFS_BRIDGE_ATTR "/stp_state")))
-        return err;
+    argv[n++] = NULL;
 
-    *enablep = strtoul(attr->value, NULL, 0);
+    retval = brctlSpawn(argv);
 
-    if (errno != ERANGE) {
-        *enablep = (*enablep == 0) ? 0 : 1;
-    } else {
-        err = errno;
+ error:
+    if (argv) {
+        n = 0;
+        while (argv[n])
+            free(argv[n++]);
+        free(argv);
     }
 
-    sysfs_close_class_device(dev);
-
-    return err;
+    return retval;
 }
-
-#else /* ENABLE_BRIDGE_PARAMS */
-
-int
-brSetForwardDelay(brControl *ctl ATTRIBUTE_UNUSED,
-                  const char *bridge ATTRIBUTE_UNUSED,
-                  int delay ATTRIBUTE_UNUSED)
-{
-    return 0;
-}
-
-int
-brGetForwardDelay(brControl *ctl ATTRIBUTE_UNUSED,
-                  const char *bridge ATTRIBUTE_UNUSED,
-                  int *delay ATTRIBUTE_UNUSED)
-{
-    return 0;
-}
-
-int
-brSetEnableSTP(brControl *ctl ATTRIBUTE_UNUSED,
-               const char *bridge ATTRIBUTE_UNUSED,
-               int enable ATTRIBUTE_UNUSED)
-{
-    return 0;
-}
-
-int
-brGetEnableSTP(brControl *ctl ATTRIBUTE_UNUSED,
-               const char *bridge ATTRIBUTE_UNUSED,
-               int *enable ATTRIBUTE_UNUSED)
-{
-    return 0;
-}
-
-#endif /* ENABLE_BRIDGE_PARAMS */
 
 /*
  * Local variables:
