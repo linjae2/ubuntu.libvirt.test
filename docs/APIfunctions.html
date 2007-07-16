@@ -7,6 +7,8 @@
 <a href="html/libvirt-libvirt.html#virNetworkLookupByUUID">virNetworkLookupByUUID</a><br />
 </p><h2>Type int *:</h2><p><a href="html/libvirt-libvirt.html#virConnectListDomains">virConnectListDomains</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetAutostart">virDomainGetAutostart</a><br />
+<a href="html/libvirt-libvirt.html#virDomainGetSchedulerParameters">virDomainGetSchedulerParameters</a><br />
+<a href="html/libvirt-libvirt.html#virDomainGetSchedulerType">virDomainGetSchedulerType</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkGetAutostart">virNetworkGetAutostart</a><br />
 </p><h2>Type unsigned char *:</h2><p><a href="html/libvirt-libvirt.html#virDomainGetUUID">virDomainGetUUID</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetVcpus">virDomainGetVcpus</a><br />
@@ -26,8 +28,10 @@
 <a href="html/libvirt-virterror.html#virConnSetErrorFunc">virConnSetErrorFunc</a><br />
 <a href="html/libvirt-libvirt.html#virConnectClose">virConnectClose</a><br />
 <a href="html/libvirt-libvirt.html#virConnectGetCapabilities">virConnectGetCapabilities</a><br />
+<a href="html/libvirt-libvirt.html#virConnectGetHostname">virConnectGetHostname</a><br />
 <a href="html/libvirt-libvirt.html#virConnectGetMaxVcpus">virConnectGetMaxVcpus</a><br />
 <a href="html/libvirt-libvirt.html#virConnectGetType">virConnectGetType</a><br />
+<a href="html/libvirt-libvirt.html#virConnectGetURI">virConnectGetURI</a><br />
 <a href="html/libvirt-libvirt.html#virConnectGetVersion">virConnectGetVersion</a><br />
 <a href="html/libvirt-libvirt.html#virConnectListDefinedDomains">virConnectListDefinedDomains</a><br />
 <a href="html/libvirt-libvirt.html#virConnectListDefinedNetworks">virConnectListDefinedNetworks</a><br />
@@ -58,12 +62,15 @@
 <a href="html/libvirt-libvirt.html#virDomainDetachDevice">virDomainDetachDevice</a><br />
 <a href="html/libvirt-libvirt.html#virDomainFree">virDomainFree</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetAutostart">virDomainGetAutostart</a><br />
+<a href="html/libvirt-libvirt.html#virDomainGetConnect">virDomainGetConnect</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetID">virDomainGetID</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetInfo">virDomainGetInfo</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetMaxMemory">virDomainGetMaxMemory</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetMaxVcpus">virDomainGetMaxVcpus</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetName">virDomainGetName</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetOSType">virDomainGetOSType</a><br />
+<a href="html/libvirt-libvirt.html#virDomainGetSchedulerParameters">virDomainGetSchedulerParameters</a><br />
+<a href="html/libvirt-libvirt.html#virDomainGetSchedulerType">virDomainGetSchedulerType</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetUUID">virDomainGetUUID</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetUUIDString">virDomainGetUUIDString</a><br />
 <a href="html/libvirt-libvirt.html#virDomainGetVcpus">virDomainGetVcpus</a><br />
@@ -75,6 +82,7 @@
 <a href="html/libvirt-libvirt.html#virDomainSetAutostart">virDomainSetAutostart</a><br />
 <a href="html/libvirt-libvirt.html#virDomainSetMaxMemory">virDomainSetMaxMemory</a><br />
 <a href="html/libvirt-libvirt.html#virDomainSetMemory">virDomainSetMemory</a><br />
+<a href="html/libvirt-libvirt.html#virDomainSetSchedulerParameters">virDomainSetSchedulerParameters</a><br />
 <a href="html/libvirt-libvirt.html#virDomainSetVcpus">virDomainSetVcpus</a><br />
 <a href="html/libvirt-libvirt.html#virDomainShutdown">virDomainShutdown</a><br />
 <a href="html/libvirt-libvirt.html#virDomainSuspend">virDomainSuspend</a><br />
@@ -91,6 +99,7 @@
 <a href="html/libvirt-libvirt.html#virNetworkFree">virNetworkFree</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkGetAutostart">virNetworkGetAutostart</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkGetBridgeName">virNetworkGetBridgeName</a><br />
+<a href="html/libvirt-libvirt.html#virNetworkGetConnect">virNetworkGetConnect</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkGetName">virNetworkGetName</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkGetUUID">virNetworkGetUUID</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkGetUUIDString">virNetworkGetUUIDString</a><br />
@@ -98,8 +107,10 @@
 <a href="html/libvirt-libvirt.html#virNetworkSetAutostart">virNetworkSetAutostart</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkUndefine">virNetworkUndefine</a><br />
 </p><h2>Type virNodeInfoPtr:</h2><p><a href="html/libvirt-libvirt.html#virNodeGetInfo">virNodeGetInfo</a><br />
+</p><h2>Type virSchedParameterPtr:</h2><p><a href="html/libvirt-libvirt.html#virDomainGetSchedulerParameters">virDomainGetSchedulerParameters</a><br />
+<a href="html/libvirt-libvirt.html#virDomainSetSchedulerParameters">virDomainSetSchedulerParameters</a><br />
 </p><h2>Type virVcpuInfoPtr:</h2><p><a href="html/libvirt-libvirt.html#virDomainGetVcpus">virDomainGetVcpus</a><br />
 </p><h2>Type void *:</h2><p><a href="html/libvirt-virterror.html#virConnSetErrorFunc">virConnSetErrorFunc</a><br />
 <a href="html/libvirt-virterror.html#virErrorFunc">virErrorFunc</a><br />
 <a href="html/libvirt-virterror.html#virSetErrorFunc">virSetErrorFunc</a><br />
-</p></div></div><div class="linkList2"><div class="llinks2"><h3 class="links2"><span>main menu</span></h3><ul><li><a href="index.html">Home</a></li><li><a href="html/index.html">API Menu</a></li><li><a href="examples/index.html">C code examples</a></li><li><a href="ChangeLog.html">Recent Changes</a></li></ul></div><div class="llinks2"><h3 class="links2"><span>related links</span></h3><ul><li><a href="https://www.redhat.com/archives/libvir-list/">Mail archive</a></li><li><a href="https://bugzilla.redhat.com/bugzilla/buglist.cgi?product=Fedora+Core&amp;component=libvirt&amp;bug_status=NEW&amp;bug_status=ASSIGNED&amp;bug_status=REOPENED&amp;bug_status=MODIFIED&amp;short_desc_type=allwordssubstr&amp;short_desc=&amp;long_desc_type=allwordssubstr">Open bugs</a></li><li><a href="http://virt-manager.et.redhat.com/">virt-manager</a></li><li><a href="http://search.cpan.org/~danberr/Sys-Virt-0.1.0/">Perl bindings</a></li><li><a href="http://www.cl.cam.ac.uk/Research/SRG/netos/xen/index.html">Xen project</a></li><li><form action="search.php" enctype="application/x-www-form-urlencoded" method="get"><input name="query" type="text" size="12" value="Search..." /><input name="submit" type="submit" value="Go" /></form></li><li><a href="http://xmlsoft.org/"><img src="Libxml2-Logo-90x34.gif" alt="Made with Libxml2 Logo" /></a></li></ul><p class="credits">Graphics and design by <a href="mail:dfong@redhat.com">Diana Fong</a></p></div></div><div id="bottom"><p class="p1"></p></div></div></body></html>
+</p></div></div><div class="linkList2"><div class="llinks2"><h3 class="links2"><span>main menu</span></h3><ul><li><a href="index.html">Home</a></li><li><a href="html/index.html">API Menu</a></li><li><a href="examples/index.html">C code examples</a></li><li><a href="ChangeLog.html">Recent Changes</a></li></ul></div><div class="llinks2"><h3 class="links2"><span>related links</span></h3><ul><li><a href="https://www.redhat.com/archives/libvir-list/">Mail archive</a></li><li><a href="https://bugzilla.redhat.com/bugzilla/buglist.cgi?product=Fedora+Core&amp;component=libvirt&amp;bug_status=NEW&amp;bug_status=ASSIGNED&amp;bug_status=REOPENED&amp;bug_status=MODIFIED&amp;short_desc_type=allwordssubstr&amp;short_desc=&amp;long_desc_type=allwordssubstr">Open bugs</a></li><li><a href="http://virt-manager.et.redhat.com/">virt-manager</a></li><li><a href="http://search.cpan.org/~danberr/Sys-Virt-0.1.0/">Perl bindings</a></li><li><a href="http://et.redhat.com/~rjones/ocaml-libvirt/">OCaml bindings</a></li><li><a href="http://www.cl.cam.ac.uk/Research/SRG/netos/xen/index.html">Xen project</a></li><li><form action="search.php" enctype="application/x-www-form-urlencoded" method="get"><input name="query" type="text" size="12" value="Search..." /><input name="submit" type="submit" value="Go" /></form></li><li><a href="http://xmlsoft.org/"><img src="Libxml2-Logo-90x34.gif" alt="Made with Libxml2 Logo" /></a></li></ul><p class="credits">Graphics and design by <a href="mail:dfong@redhat.com">Diana Fong</a></p></div></div><div id="bottom"><p class="p1"></p></div></div></body></html>

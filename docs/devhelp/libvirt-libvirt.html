@@ -45,28 +45,30 @@
 #define <a href="#VIR_UUID_BUFLEN">VIR_UUID_BUFLEN</a>;
 #define <a href="#VIR_CPU_USABLE">VIR_CPU_USABLE</a>(cpumaps, maplen, vcpu, cpu);
 #define <a href="#VIR_COPY_CPUMAP">VIR_COPY_CPUMAP</a>(cpumaps, maplen, vcpu, cpumap);
+#define <a href="#VIR_DOMAIN_SCHED_FIELD_LENGTH">VIR_DOMAIN_SCHED_FIELD_LENGTH</a>;
 #define <a href="#VIR_UUID_STRING_BUFLEN">VIR_UUID_STRING_BUFLEN</a>;
 #define <a href="#VIR_GET_CPUMAP">VIR_GET_CPUMAP</a>(cpumaps, maplen, vcpu);
 #define <a href="#VIR_UNUSE_CPU">VIR_UNUSE_CPU</a>(cpumap, cpu);
 typedef <a href="libvirt-libvirt.html#virNodeInfo">virNodeInfo</a> * <a href="#virNodeInfoPtr">virNodeInfoPtr</a>;
 typedef <a href="libvirt-libvirt.html#virNetwork">virNetwork</a> * <a href="#virNetworkPtr">virNetworkPtr</a>;
 typedef <a href="libvirt-libvirt.html#virDomainInfo">virDomainInfo</a> * <a href="#virDomainInfoPtr">virDomainInfoPtr</a>;
-typedef <a href="libvirt-libvirt.html#virDomainKernel">virDomainKernel</a> * <a href="#virDomainKernelPtr">virDomainKernelPtr</a>;
 typedef <a href="libvirt-libvirt.html#virConnect">virConnect</a> * <a href="#virConnectPtr">virConnectPtr</a>;
-typedef struct _virDomainKernel <a href="#virDomainKernel">virDomainKernel</a>;
+typedef <a href="libvirt-libvirt.html#virVcpuInfo">virVcpuInfo</a> * <a href="#virVcpuInfoPtr">virVcpuInfoPtr</a>;
 typedef struct _virNodeInfo <a href="#virNodeInfo">virNodeInfo</a>;
 typedef struct _virNetwork <a href="#virNetwork">virNetwork</a>;
 typedef enum <a href="#virDomainState">virDomainState</a>;
 typedef enum <a href="#virDeviceMode">virDeviceMode</a>;
 typedef struct _virDomain <a href="#virDomain">virDomain</a>;
 typedef <a href="libvirt-libvirt.html#virDomain">virDomain</a> * <a href="#virDomainPtr">virDomainPtr</a>;
-typedef struct _virVcpuInfo <a href="#virVcpuInfo">virVcpuInfo</a>;
-typedef <a href="libvirt-libvirt.html#virVcpuInfo">virVcpuInfo</a> * <a href="#virVcpuInfoPtr">virVcpuInfoPtr</a>;
+typedef struct _virSchedParameter <a href="#virSchedParameter">virSchedParameter</a>;
+typedef enum <a href="#virSchedParameterType">virSchedParameterType</a>;
 typedef enum <a href="#virDomainRestart">virDomainRestart</a>;
 typedef struct _virConnect <a href="#virConnect">virConnect</a>;
 typedef enum <a href="#virDomainCreateFlags">virDomainCreateFlags</a>;
+typedef <a href="libvirt-libvirt.html#virSchedParameter">virSchedParameter</a> * <a href="#virSchedParameterPtr">virSchedParameterPtr</a>;
 typedef struct _virDomainInfo <a href="#virDomainInfo">virDomainInfo</a>;
 typedef enum <a href="#virVcpuState">virVcpuState</a>;
+typedef struct _virVcpuInfo <a href="#virVcpuInfo">virVcpuInfo</a>;
 int	<a href="#virDomainGetInfo">virDomainGetInfo</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt.html#virDomainInfoPtr">virDomainInfoPtr</a> info);
 int	<a href="#virNetworkFree">virNetworkFree</a>			(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network);
 const char *	<a href="#virNetworkGetName">virNetworkGetName</a>	(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network);
@@ -78,14 +80,15 @@ int	<a href="#virNetworkUndefine">virNetworkUndefine</a>		(<a href="libvirt-libv
 int	<a href="#virGetVersion">virGetVersion</a>			(unsigned long * libVer, <br/>					 const char * type, <br/>					 unsigned long * typeVer);
 int	<a href="#virConnectListDefinedDomains">virConnectListDefinedDomains</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 char ** const names, <br/>					 int maxnames);
 char *	<a href="#virConnectGetCapabilities">virConnectGetCapabilities</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
-int	<a href="#virNetworkGetUUID">virNetworkGetUUID</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network, <br/>					 unsigned char * uuid);
+<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>	<a href="#virNetworkGetConnect">virNetworkGetConnect</a>	(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> net);
 <a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	<a href="#virDomainLookupByName">virDomainLookupByName</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * name);
 <a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	<a href="#virNetworkLookupByUUID">virNetworkLookupByUUID</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const unsigned char * uuid);
 char *	<a href="#virNetworkGetBridgeName">virNetworkGetBridgeName</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network);
+char *	<a href="#virNetworkGetXMLDesc">virNetworkGetXMLDesc</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network, <br/>					 int flags);
 int	<a href="#virDomainPinVcpu">virDomainPinVcpu</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned int vcpu, <br/>					 unsigned char * cpumap, <br/>					 int maplen);
 int	<a href="#virDomainRestore">virDomainRestore</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * from);
 const char *	<a href="#virConnectGetType">virConnectGetType</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
-int	<a href="#virDomainSave">virDomainSave</a>			(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 const char * to);
+int	<a href="#virDomainGetSchedulerParameters">virDomainGetSchedulerParameters</a>	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt.html#virSchedParameterPtr">virSchedParameterPtr</a> params, <br/>					 int * nparams);
 int	<a href="#virDomainCreate">virDomainCreate</a>			(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain);
 int	<a href="#virConnectListDomains">virConnectListDomains</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 int * ids, <br/>					 int maxids);
 <a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	<a href="#virNetworkLookupByUUIDString">virNetworkLookupByUUIDString</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>						 const char * uuidstr);
@@ -98,10 +101,11 @@ char *	<a href="#virDomainGetOSType">virDomainGetOSType</a>		(<a href="libvirt-l
 int	<a href="#virConnectListDefinedNetworks">virConnectListDefinedNetworks</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 char ** const names, <br/>					 int maxnames);
 int	<a href="#virNodeGetInfo">virNodeGetInfo</a>			(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 <a href="libvirt-libvirt.html#virNodeInfoPtr">virNodeInfoPtr</a> info);
 int	<a href="#virDomainGetUUID">virDomainGetUUID</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned char * uuid);
-<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	<a href="#virNetworkCreateXML">virNetworkCreateXML</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * xmlDesc);
+int	<a href="#virDomainSetMemory">virDomainSetMemory</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned long memory);
 int	<a href="#virNetworkSetAutostart">virNetworkSetAutostart</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network, <br/>					 int autostart);
 int	<a href="#virConnectNumOfDomains">virConnectNumOfDomains</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
 int	<a href="#virDomainGetUUIDString">virDomainGetUUIDString</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 char * buf);
+<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>	<a href="#virDomainGetConnect">virDomainGetConnect</a>	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> dom);
 unsigned long	<a href="#virDomainGetMaxMemory">virDomainGetMaxMemory</a>	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain);
 int	<a href="#virDomainAttachDevice">virDomainAttachDevice</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 char * xml);
 int	<a href="#virDomainGetMaxVcpus">virDomainGetMaxVcpus</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain);
@@ -113,28 +117,33 @@ int	<a href="#virConnectGetMaxVcpus">virConnectGetMaxVcpus</a>		(<a href="libvir
 int	<a href="#virConnectNumOfDefinedDomains">virConnectNumOfDefinedDomains</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
 <a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	<a href="#virNetworkDefineXML">virNetworkDefineXML</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * xml);
 int	<a href="#virNetworkCreate">virNetworkCreate</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network);
+int	<a href="#virDomainSetSchedulerParameters">virDomainSetSchedulerParameters</a>	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt.html#virSchedParameterPtr">virSchedParameterPtr</a> params, <br/>					 int nparams);
 int	<a href="#virConnectClose">virConnectClose</a>			(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
 int	<a href="#virDomainReboot">virDomainReboot</a>			(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned int flags);
 int	<a href="#virInitialize">virInitialize</a>			(void);
 int	<a href="#virDomainSetVcpus">virDomainSetVcpus</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned int nvcpus);
+<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	<a href="#virDomainLookupByID">virDomainLookupByID</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 int id);
 int	<a href="#virNetworkGetUUIDString">virNetworkGetUUIDString</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network, <br/>					 char * buf);
 <a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	<a href="#virNetworkLookupByName">virNetworkLookupByName</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * name);
-char *	<a href="#virNetworkGetXMLDesc">virNetworkGetXMLDesc</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network, <br/>					 int flags);
+<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	<a href="#virNetworkCreateXML">virNetworkCreateXML</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * xmlDesc);
 unsigned int	<a href="#virDomainGetID">virDomainGetID</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain);
 int	<a href="#virDomainResume">virDomainResume</a>			(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain);
 <a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	<a href="#virDomainCreateLinux">virDomainCreateLinux</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * xmlDesc, <br/>					 unsigned int flags);
-int	<a href="#virDomainSetMemory">virDomainSetMemory</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned long memory);
+char *	<a href="#virDomainGetSchedulerType">virDomainGetSchedulerType</a>	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 int * nparams);
 int	<a href="#virNetworkDestroy">virNetworkDestroy</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network);
 int	<a href="#virDomainDestroy">virDomainDestroy</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain);
 int	<a href="#virConnectNumOfNetworks">virConnectNumOfNetworks</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
 int	<a href="#virDomainDetachDevice">virDomainDetachDevice</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 char * xml);
 int	<a href="#virDomainGetAutostart">virDomainGetAutostart</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 int * autostart);
 int	<a href="#virDomainGetVcpus">virDomainGetVcpus</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt.html#virVcpuInfoPtr">virVcpuInfoPtr</a> info, <br/>					 int maxinfo, <br/>					 unsigned char * cpumaps, <br/>					 int maplen);
+int	<a href="#virNetworkGetUUID">virNetworkGetUUID</a>		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network, <br/>					 unsigned char * uuid);
+char *	<a href="#virConnectGetHostname">virConnectGetHostname</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
 char *	<a href="#virDomainGetXMLDesc">virDomainGetXMLDesc</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 int flags);
 int	<a href="#virDomainSetMaxMemory">virDomainSetMaxMemory</a>		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned long memory);
 int	<a href="#virConnectGetVersion">virConnectGetVersion</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 unsigned long * hvVer);
 int	<a href="#virConnectListNetworks">virConnectListNetworks</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 char ** const names, <br/>					 int maxnames);
-<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	<a href="#virDomainLookupByID">virDomainLookupByID</a>	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 int id);
+char *	<a href="#virConnectGetURI">virConnectGetURI</a>		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn);
+int	<a href="#virDomainSave">virDomainSave</a>			(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 const char * to);
 <a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>	<a href="#virConnectOpenReadOnly">virConnectOpenReadOnly</a>	(const char * name);
 </pre>
     </div>
@@ -158,6 +167,10 @@ int	<a href="#virConnectListNetworks">virConnectListNetworks</a>		(<a href="libv
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="VIR_CPU_USABLE">Macro </a>VIR_CPU_USABLE</h3><pre class="programlisting">#define <a href="#VIR_CPU_USABLE">VIR_CPU_USABLE</a>(cpumaps, maplen, vcpu, cpu);
 </pre><p>This macro is to be used in conjonction with virDomainGetVcpus() API. <a href="libvirt-libvirt.html#VIR_CPU_USABLE">VIR_CPU_USABLE</a> macro returns a non zero value (true) if the cpu is usable by the vcpu, and 0 otherwise.</p><div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>cpumaps</tt></i>:</span></td><td>pointer to an array of cpumap (in 8-bit bytes) (IN)</td></tr><tr><td><span class="term"><i><tt>maplen</tt></i>:</span></td><td>the length (in bytes) of one cpumap</td></tr><tr><td><span class="term"><i><tt>vcpu</tt></i>:</span></td><td>the virtual CPU number</td></tr><tr><td><span class="term"><i><tt>cpu</tt></i>:</span></td><td>the physical CPU number</td></tr></tbody></table></div>
+</div>
+        <hr/>
+        <div class="refsect2" lang="en"><h3><a name="VIR_DOMAIN_SCHED_FIELD_LENGTH">Macro </a>VIR_DOMAIN_SCHED_FIELD_LENGTH</h3><pre class="programlisting">#define <a href="#VIR_DOMAIN_SCHED_FIELD_LENGTH">VIR_DOMAIN_SCHED_FIELD_LENGTH</a>;
+</pre><p>Macro providing the field length of <a href="libvirt-libvirt.html#virSchedParameter">virSchedParameter</a></p>
 </div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="VIR_GET_CPUMAP">Macro </a>VIR_GET_CPUMAP</h3><pre class="programlisting">#define <a href="#VIR_GET_CPUMAP">VIR_GET_CPUMAP</a>(cpumaps, maplen, vcpu);
@@ -229,19 +242,6 @@ The content of this structure is not made public by the API.
 </pre><p>a <a href="libvirt-libvirt.html#virDomainInfoPtr">virDomainInfoPtr</a> is a pointer to a <a href="libvirt-libvirt.html#virDomainInfo">virDomainInfo</a> structure.</p>
 </div>
         <hr/>
-        <div class="refsect2" lang="en"><h3><a name="virDomainKernel">Structure </a>virDomainKernel</h3><pre class="programlisting">struct _virDomainKernel {
-    const char *	kernel	: filename pointing to the kernel image
-    const char *	ramdisk	: an optional init ramdisk
-    const char *	root	: an optional root block device
-    const char *	extra	: optional kernel command line parameters
-} virDomainKernel;
-</pre><p/>
-</div>
-        <hr/>
-        <div class="refsect2" lang="en"><h3><a name="virDomainKernelPtr">Typedef </a>virDomainKernelPtr</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virDomainKernel">virDomainKernel</a> * virDomainKernelPtr;
-</pre><p>a <a href="libvirt-libvirt.html#virDomainKernelPtr">virDomainKernelPtr</a> is a pointer to a <a href="libvirt-libvirt.html#virDomainKernel">virDomainKernel</a> structure.</p>
-</div>
-        <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainPtr">Typedef </a>virDomainPtr</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virDomain">virDomain</a> * virDomainPtr;
 </pre><p>a <a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> is pointer to a <a href="libvirt-libvirt.html#virDomain">virDomain</a> private structure, this is the type used to reference a Xen domain in the API.</p>
 </div>
@@ -294,6 +294,28 @@ The content of this structure is not made public by the API.
 </pre><p>a <a href="libvirt-libvirt.html#virNodeInfoPtr">virNodeInfoPtr</a> is a pointer to a <a href="libvirt-libvirt.html#virNodeInfo">virNodeInfo</a> structure.</p>
 </div>
         <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virSchedParameter">Structure </a>virSchedParameter</h3><pre class="programlisting">struct _virSchedParameter {
+    charfield[VIR_DOMAIN_SCHED_FIELD_LENGTH]	field	: parameter name
+    int	type	: parameter type
+} virSchedParameter;
+</pre><p/>
+</div>
+        <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virSchedParameterPtr">Typedef </a>virSchedParameterPtr</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virSchedParameter">virSchedParameter</a> * virSchedParameterPtr;
+</pre><p>a <a href="libvirt-libvirt.html#virSchedParameterPtr">virSchedParameterPtr</a> is a pointer to a <a href="libvirt-libvirt.html#virSchedParameter">virSchedParameter</a> structure.</p>
+</div>
+        <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virSchedParameterType">Enum </a>virSchedParameterType</h3><pre class="programlisting">enum <a href="#virSchedParameterType">virSchedParameterType</a> {
+    <a name="VIR_DOMAIN_SCHED_FIELD_INT">VIR_DOMAIN_SCHED_FIELD_INT</a> = 1 /* integer case */
+    <a name="VIR_DOMAIN_SCHED_FIELD_UINT">VIR_DOMAIN_SCHED_FIELD_UINT</a> = 2 /* unsigned integer case */
+    <a name="VIR_DOMAIN_SCHED_FIELD_LLONG">VIR_DOMAIN_SCHED_FIELD_LLONG</a> = 3 /* long long case */
+    <a name="VIR_DOMAIN_SCHED_FIELD_ULLONG">VIR_DOMAIN_SCHED_FIELD_ULLONG</a> = 4 /* unsigned long long case */
+    <a name="VIR_DOMAIN_SCHED_FIELD_DOUBLE">VIR_DOMAIN_SCHED_FIELD_DOUBLE</a> = 5 /* double case */
+    <a name="VIR_DOMAIN_SCHED_FIELD_BOOLEAN">VIR_DOMAIN_SCHED_FIELD_BOOLEAN</a> = 6 /*  boolean(character) case */
+};
+</pre><p/>
+</div>
+        <hr/>
         <div class="refsect2" lang="en"><h3><a name="virVcpuInfo">Structure </a>virVcpuInfo</h3><pre class="programlisting">struct _virVcpuInfo {
     unsigned int	number	: virtual CPU number
     int	state	: value from <a href="libvirt-libvirt.html#virVcpuState">virVcpuState</a>
@@ -323,13 +345,21 @@ The content of this structure is not made public by the API.
 </pre><p>Provides capabilities of the hypervisor / driver.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>NULL in case of error, or a pointer to an opaque virCapabilities structure (virCapabilitiesPtr). The client must free the returned string after use.</td></tr></tbody></table></div></div>
         <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virConnectGetHostname"/>virConnectGetHostname ()</h3><pre class="programlisting">char *	virConnectGetHostname		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn)<br/>
+</pre><p>This returns the system hostname on which the hypervisor is running (the result of the gethostname(2) system call). If we are connected to a remote system, then this returns the hostname of the remote system.</p>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to a hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the hostname which must be freed by the caller, or NULL if there was an error.</td></tr></tbody></table></div></div>
+        <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectGetMaxVcpus"/>virConnectGetMaxVcpus ()</h3><pre class="programlisting">int	virConnectGetMaxVcpus		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * type)<br/>
 </pre><p>Provides the maximum number of virtual CPUs supported for a guest VM of a specific type. The 'type' parameter here corresponds to the 'type' attribute in the &lt;domain&gt; element of the XML.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>type</tt></i>:</span></td><td>value of the 'type' attribute in the &lt;domain&gt; element</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the maximum of virtual CPU or -1 in case of error.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectGetType"/>virConnectGetType ()</h3><pre class="programlisting">const char *	virConnectGetType	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn)<br/>
 </pre><p>Get the name of the Hypervisor software used.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>NULL in case of error, a static zero terminated string otherwise.</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>NULL in case of error, a static zero terminated string otherwise. See also: http://www.redhat.com/archives/libvir-list/2007-February/msg00096.html</td></tr></tbody></table></div></div>
+        <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virConnectGetURI"/>virConnectGetURI ()</h3><pre class="programlisting">char *	virConnectGetURI		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn)<br/>
+</pre><p>This returns the URI (name) of the hypervisor connection. Normally this is the same as or similar to the string passed to the virConnectOpen/virConnectOpenReadOnly call, but the driver may make the URI canonical. If name == NULL was passed to virConnectOpen, then the driver will return a non-NULL URI which can be used to connect to the same hypervisor later.</p>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to a hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the URI string which must be freed by the caller, or NULL if there was an error.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectGetVersion"/>virConnectGetVersion ()</h3><pre class="programlisting">int	virConnectGetVersion		(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 unsigned long * hvVer)<br/>
 </pre><p>Get the version level of the Hypervisor running. This may work only with hypervisor call, i.e. with priviledged access to the hypervisor, not with a Read-Only connection.</p>
@@ -352,7 +382,7 @@ The content of this structure is not made public by the API.
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>names</tt></i>:</span></td><td>array to collect the list of names of active networks</td></tr><tr><td><span class="term"><i><tt>maxnames</tt></i>:</span></td><td>size of @names</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the number of networks found or -1 in case of error</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectNumOfDefinedDomains"/>virConnectNumOfDefinedDomains ()</h3><pre class="programlisting">int	virConnectNumOfDefinedDomains	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn)<br/>
-</pre><p>Provides the number of active domains.</p>
+</pre><p>Provides the number of inactive domains.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the number of domain found or -1 in case of error</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectNumOfDefinedNetworks"/>virConnectNumOfDefinedNetworks ()</h3><pre class="programlisting">int	virConnectNumOfDefinedNetworks	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn)<br/>
@@ -369,11 +399,11 @@ The content of this structure is not made public by the API.
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectOpen"/>virConnectOpen ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>	virConnectOpen		(const char * name)<br/>
 </pre><p>This function should be called first to get a connection to the Hypervisor and xen store</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>optional argument currently unused, pass NULL</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a pointer to the hypervisor connection or NULL in case of error</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>URI of the hypervisor</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a pointer to the hypervisor connection or NULL in case of error URIs are documented at http://libvirt.org/uri.html</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectOpenReadOnly"/>virConnectOpenReadOnly ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>	virConnectOpenReadOnly	(const char * name)<br/>
 </pre><p>This function should be called first to get a restricted connection to the libbrary functionalities. The set of APIs usable are then restricted on the available methods to control the domains.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>optional argument currently unused, pass NULL</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a pointer to the hypervisor connection or NULL in case of error</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>URI of the hypervisor</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a pointer to the hypervisor connection or NULL in case of error URIs are documented at http://libvirt.org/uri.html</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainAttachDevice"/>virDomainAttachDevice ()</h3><pre class="programlisting">int	virDomainAttachDevice		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 char * xml)<br/>
 </pre><p>Create a virtual device attachment to backend.</p>
@@ -411,6 +441,10 @@ The content of this structure is not made public by the API.
 </pre><p>Provides a boolean value indicating whether the domain configured to be automatically started when the host machine boots.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>a domain object</td></tr><tr><td><span class="term"><i><tt>autostart</tt></i>:</span></td><td>the value returned</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>-1 in case of error, 0 in case of success</td></tr></tbody></table></div></div>
         <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virDomainGetConnect"/>virDomainGetConnect ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>	virDomainGetConnect	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> dom)<br/>
+</pre><p>Provides the connection pointer associated with a domain. The reference counter on the connection is not increased by this call.</p>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>dom</tt></i>:</span></td><td>pointer to a domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the <a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> or NULL in case of failure.</td></tr></tbody></table></div></div>
+        <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainGetID"/>virDomainGetID ()</h3><pre class="programlisting">unsigned int	virDomainGetID		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain)<br/>
 </pre><p>Get the hypervisor ID number for the domain</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>a domain object</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the domain ID number or (unsigned int) -1 in case of error</td></tr></tbody></table></div></div>
@@ -435,6 +469,14 @@ The content of this structure is not made public by the API.
 </pre><p>Get the type of domain operation system.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>a domain object</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the new string or NULL in case of error, the string must be freed by the caller.</td></tr></tbody></table></div></div>
         <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virDomainGetSchedulerParameters"/>virDomainGetSchedulerParameters ()</h3><pre class="programlisting">int	virDomainGetSchedulerParameters	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt.html#virSchedParameterPtr">virSchedParameterPtr</a> params, <br/>					 int * nparams)<br/>
+</pre><p>Get the scheduler parameters, the @params array will be filled with the values.</p>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>pointer to domain object</td></tr><tr><td><span class="term"><i><tt>params</tt></i>:</span></td><td>pointer to scheduler parameter object (return value)</td></tr><tr><td><span class="term"><i><tt>nparams</tt></i>:</span></td><td>pointer to number of scheduler parameter (this value should be same than the returned value nparams of virDomainGetSchedulerType)</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>-1 in case of error, 0 in case of success.</td></tr></tbody></table></div></div>
+        <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virDomainGetSchedulerType"/>virDomainGetSchedulerType ()</h3><pre class="programlisting">char *	virDomainGetSchedulerType	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 int * nparams)<br/>
+</pre><p>Get the scheduler type.</p>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>pointer to domain object</td></tr><tr><td><span class="term"><i><tt>nparams</tt></i>:</span></td><td>number of scheduler parameters(return value)</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>NULL in case of error. The caller must free the returned string.</td></tr></tbody></table></div></div>
+        <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainGetUUID"/>virDomainGetUUID ()</h3><pre class="programlisting">int	virDomainGetUUID		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned char * uuid)<br/>
 </pre><p>Get the UUID for a domain</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>a domain object</td></tr><tr><td><span class="term"><i><tt>uuid</tt></i>:</span></td><td>pointer to a <a href="libvirt-libvirt.html#VIR_UUID_BUFLEN">VIR_UUID_BUFLEN</a> bytes array</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>-1 in case of error, 0 in case of success</td></tr></tbody></table></div></div>
@@ -453,19 +495,19 @@ The content of this structure is not made public by the API.
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainLookupByID"/>virDomainLookupByID ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	virDomainLookupByID	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 int id)<br/>
 </pre><p>Try to find a domain based on the hypervisor ID number</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>id</tt></i>:</span></td><td>the domain ID number</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>id</tt></i>:</span></td><td>the domain ID number</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure. If the domain cannot be found, then <a href="libvirt-virterror.html#VIR_ERR_NO_DOMAIN">VIR_ERR_NO_DOMAIN</a> error is raised.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainLookupByName"/>virDomainLookupByName ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	virDomainLookupByName	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * name)<br/>
 </pre><p>Try to lookup a domain on the given hypervisor based on its name.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>name for the domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>name for the domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure. If the domain cannot be found, then <a href="libvirt-virterror.html#VIR_ERR_NO_DOMAIN">VIR_ERR_NO_DOMAIN</a> error is raised.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainLookupByUUID"/>virDomainLookupByUUID ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	virDomainLookupByUUID	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const unsigned char * uuid)<br/>
 </pre><p>Try to lookup a domain on the given hypervisor based on its UUID.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuid</tt></i>:</span></td><td>the raw UUID for the domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuid</tt></i>:</span></td><td>the raw UUID for the domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure. If the domain cannot be found, then <a href="libvirt-virterror.html#VIR_ERR_NO_DOMAIN">VIR_ERR_NO_DOMAIN</a> error is raised.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainLookupByUUIDString"/>virDomainLookupByUUIDString ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a>	virDomainLookupByUUIDString	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>						 const char * uuidstr)<br/>
 </pre><p>Try to lookup a domain on the given hypervisor based on its UUID.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuidstr</tt></i>:</span></td><td>the string UUID for the domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuidstr</tt></i>:</span></td><td>the string UUID for the domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new domain object or NULL in case of failure. If the domain cannot be found, then <a href="libvirt-virterror.html#VIR_ERR_NO_DOMAIN">VIR_ERR_NO_DOMAIN</a> error is raised.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainPinVcpu"/>virDomainPinVcpu ()</h3><pre class="programlisting">int	virDomainPinVcpu		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned int vcpu, <br/>					 unsigned char * cpumap, <br/>					 int maplen)<br/>
 </pre><p>Dynamically change the real CPUs which can be allocated to a virtual CPU. This function requires priviledged access to the hypervisor.</p>
@@ -498,6 +540,10 @@ The content of this structure is not made public by the API.
         <div class="refsect2" lang="en"><h3><a name="virDomainSetMemory"/>virDomainSetMemory ()</h3><pre class="programlisting">int	virDomainSetMemory		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned long memory)<br/>
 </pre><p>Dynamically change the target amount of physical memory allocated to a domain. If domain is NULL, then this change the amount of memory reserved to Domain0 i.e. the domain where the application runs. This function may requires priviledged access to the hypervisor.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>a domain object or NULL</td></tr><tr><td><span class="term"><i><tt>memory</tt></i>:</span></td><td>the memory size in kilobytes</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>0 in case of success and -1 in case of failure.</td></tr></tbody></table></div></div>
+        <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virDomainSetSchedulerParameters"/>virDomainSetSchedulerParameters ()</h3><pre class="programlisting">int	virDomainSetSchedulerParameters	(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt.html#virSchedParameterPtr">virSchedParameterPtr</a> params, <br/>					 int nparams)<br/>
+</pre><p>Change the scheduler parameters</p>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>pointer to domain object</td></tr><tr><td><span class="term"><i><tt>params</tt></i>:</span></td><td>pointer to scheduler parameter objects</td></tr><tr><td><span class="term"><i><tt>nparams</tt></i>:</span></td><td>number of scheduler parameter (this value should be same or less than the returned value nparams of virDomainGetSchedulerType)</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>-1 in case of error, 0 in case of success.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainSetVcpus"/>virDomainSetVcpus ()</h3><pre class="programlisting">int	virDomainSetVcpus		(<a href="libvirt-libvirt.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned int nvcpus)<br/>
 </pre><p>Dynamically change the number of virtual CPUs used by the domain. Note that this call may fail if the underlying virtualization hypervisor does not support it or if growing the number is arbitrary limited. This function requires priviledged access to the hypervisor.</p>
@@ -551,6 +597,10 @@ The content of this structure is not made public by the API.
 </pre><p>Provides a bridge interface name to which a domain may connect a network interface in order to join the network.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>network</tt></i>:</span></td><td>a network object</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a 0 terminated interface name, or NULL in case of error. the caller must free() the returned value.</td></tr></tbody></table></div></div>
         <hr/>
+        <div class="refsect2" lang="en"><h3><a name="virNetworkGetConnect"/>virNetworkGetConnect ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a>	virNetworkGetConnect	(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> net)<br/>
+</pre><p>Provides the connection pointer associated with a network. The reference counter on the connection is not increased by this call.</p>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>net</tt></i>:</span></td><td>pointer to a network</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the <a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> or NULL in case of failure.</td></tr></tbody></table></div></div>
+        <hr/>
         <div class="refsect2" lang="en"><h3><a name="virNetworkGetName"/>virNetworkGetName ()</h3><pre class="programlisting">const char *	virNetworkGetName	(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network)<br/>
 </pre><p>Get the public name for that network</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>network</tt></i>:</span></td><td>a network object</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a pointer to the name or NULL, the string need not be deallocated its lifetime will be the same as the network object.</td></tr></tbody></table></div></div>
@@ -569,15 +619,15 @@ The content of this structure is not made public by the API.
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virNetworkLookupByName"/>virNetworkLookupByName ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	virNetworkLookupByName	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const char * name)<br/>
 </pre><p>Try to lookup a network on the given hypervisor based on its name.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>name for the network</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new network object or NULL in case of failure</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>name</tt></i>:</span></td><td>name for the network</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new network object or NULL in case of failure. If the network cannot be found, then <a href="libvirt-virterror.html#VIR_ERR_NO_NETWORK">VIR_ERR_NO_NETWORK</a> error is raised.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virNetworkLookupByUUID"/>virNetworkLookupByUUID ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	virNetworkLookupByUUID	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>					 const unsigned char * uuid)<br/>
 </pre><p>Try to lookup a network on the given hypervisor based on its UUID.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuid</tt></i>:</span></td><td>the raw UUID for the network</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new network object or NULL in case of failure</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuid</tt></i>:</span></td><td>the raw UUID for the network</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new network object or NULL in case of failure. If the network cannot be found, then <a href="libvirt-virterror.html#VIR_ERR_NO_NETWORK">VIR_ERR_NO_NETWORK</a> error is raised.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virNetworkLookupByUUIDString"/>virNetworkLookupByUUIDString ()</h3><pre class="programlisting"><a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a>	virNetworkLookupByUUIDString	(<a href="libvirt-libvirt.html#virConnectPtr">virConnectPtr</a> conn, <br/>						 const char * uuidstr)<br/>
 </pre><p>Try to lookup a network on the given hypervisor based on its UUID.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuidstr</tt></i>:</span></td><td>the string UUID for the network</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new network object or NULL in case of failure</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>uuidstr</tt></i>:</span></td><td>the string UUID for the network</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a new network object or NULL in case of failure. If the network cannot be found, then <a href="libvirt-virterror.html#VIR_ERR_NO_NETWORK">VIR_ERR_NO_NETWORK</a> error is raised.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virNetworkSetAutostart"/>virNetworkSetAutostart ()</h3><pre class="programlisting">int	virNetworkSetAutostart		(<a href="libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a> network, <br/>					 int autostart)<br/>
 </pre><p>Configure the network to be automatically started when the host machine boots.</p>

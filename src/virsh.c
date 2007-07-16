@@ -10,10 +10,8 @@
  * Daniel P. Berrange <berrange@redhat.com>
  *
  *
- * $Id: virsh.c,v 1.73 2007/04/13 08:04:08 veillard Exp $
+ * $Id: virsh.c,v 1.92 2007/07/06 15:05:19 veillard Exp $
  */
-
-#define _GNU_SOURCE             /* isblank() */
 
 #include "libvirt/libvirt.h"
 #include "libvirt/virterror.h"
@@ -22,12 +20,17 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <errno.h>
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <locale.h>
+#include <limits.h>
+#include <assert.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -54,6 +57,33 @@ static char *progname;
 #define DIFF_MSEC(T, U) \
         ((((int) ((T)->tv_sec - (U)->tv_sec)) * 1000000.0 + \
           ((int) ((T)->tv_usec - (U)->tv_usec))) / 1000.0)
+
+/**
+ * The log configuration
+ */
+#define MSG_BUFFER    4096
+#define SIGN_NAME     "virsh"
+#define DIR_MODE      (S_IWUSR | S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)  /* 0755 */
+#define FILE_MODE     (S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH)                                /* 0644 */
+#define LOCK_MODE     (S_IWUSR | S_IRUSR)                                                    /* 0600 */
+#define LVL_DEBUG     "DEBUG"
+#define LVL_INFO      "INFO"
+#define LVL_NOTICE    "NOTICE"
+#define LVL_WARNING   "WARNING"
+#define LVL_ERROR     "ERROR"
+
+/**
+ * vshErrorLevel:
+ *
+ * Indicates the level of an log message
+ */
+typedef enum {
+    VSH_ERR_DEBUG = 0,
+    VSH_ERR_INFO,
+    VSH_ERR_NOTICE,
+    VSH_ERR_WARNING,
+    VSH_ERR_ERROR
+} vshErrorLevel;
 
 /*
  * The error handler for virtsh
@@ -163,7 +193,7 @@ typedef struct __vshCmd {
  */
 typedef struct __vshControl {
     char *name;                 /* connection name */
-    virConnectPtr conn;         /* connection to hypervisor */
+    virConnectPtr conn;         /* connection to hypervisor (MAY BE NULL) */
     vshCmd *cmd;                /* the current command */
     char *cmdstr;               /* string with command */
     uid_t uid;                  /* process owner */
@@ -174,6 +204,8 @@ typedef struct __vshControl {
     int readonly;               /* connect readonly (first time only, not
                                  * during explicit connect command)
                                  */
+    char *logfile;              /* log file name */
+    int log_fd;                 /* log file descriptor */
 } __vshControl;
 
 
@@ -184,6 +216,9 @@ static void vshError(vshControl * ctl, int doexit, const char *format, ...)
 static int vshInit(vshControl * ctl);
 static int vshDeinit(vshControl * ctl);
 static void vshUsage(vshControl * ctl, const char *cmdname);
+static void vshOpenLogFile(vshControl *ctl);
+static void vshOutputLogFile(vshControl *ctl, int log_level, const char *format, va_list ap);
+static void vshCloseLogFile(vshControl *ctl);
 
 static int vshParseArgv(vshControl * ctl, int argc, char **argv);
 
@@ -234,6 +269,9 @@ static void *_vshMalloc(vshControl * ctl, size_t sz, const char *filename, int l
 static void *_vshCalloc(vshControl * ctl, size_t nmemb, size_t sz, const char *filename, int line);
 #define vshCalloc(_ctl, _nmemb, _sz)    _vshCalloc(_ctl, _nmemb, _sz, __FILE__, __LINE__)
 
+static void *_vshRealloc(vshControl * ctl, void *ptr, size_t sz, const char *filename, int line);
+#define vshRealloc(_ctl, _ptr, _sz)    _vshRealloc(_ctl, _ptr, _sz, __FILE__, __LINE__)
+
 static char *_vshStrdup(vshControl * ctl, const char *s, const char *filename, int line);
 #define vshStrdup(_ctl, _s)    _vshStrdup(_ctl, _s, __FILE__, __LINE__)
 
@@ -273,7 +311,7 @@ static vshCmdInfo info_help[] = {
 };
 
 static vshCmdOptDef opts_help[] = {
-    {"command", VSH_OT_DATA, 0, "name of command"},
+    {"command", VSH_OT_DATA, 0, gettext_noop("name of command")},
     {NULL, 0, 0, NULL}
 };
 
@@ -288,7 +326,7 @@ cmdHelp(vshControl * ctl, vshCmd * cmd)
         vshPrint(ctl, _("Commands:\n\n"));
         for (def = commands; def->name; def++)
             vshPrint(ctl, "    %-15s %s\n", def->name,
-                     _N(vshCmddefGetInfo(def, "help")));
+                     N_(vshCmddefGetInfo(def, "help")));
         return TRUE;
     }
     return vshCmddefHelp(ctl, cmdname, FALSE);
@@ -342,6 +380,7 @@ cmdAutostart(vshControl * ctl, vshCmd * cmd)
     else
 	vshPrint(ctl, _("Domain %s unmarked as autostarted\n"), name);
 
+    virDomainFree(dom);
     return TRUE;
 }
 
@@ -545,7 +584,7 @@ cmdList(vshControl * ctl, vshCmd * cmd ATTRIBUTE_UNUSED)
         if (virDomainGetInfo(dom, &info) < 0)
             state = _("no state");
         else
-            state = _N(vshDomainStateToString(info.state));
+            state = N_(vshDomainStateToString(info.state));
 
         vshPrint(ctl, "%3d %-20s %s\n",
                  virDomainGetID(dom),
@@ -567,7 +606,7 @@ cmdList(vshControl * ctl, vshCmd * cmd ATTRIBUTE_UNUSED)
         if (virDomainGetInfo(dom, &info) < 0)
             state = _("no state");
         else
-            state = _N(vshDomainStateToString(info.state));
+            state = N_(vshDomainStateToString(info.state));
 
         vshPrint(ctl, "%3s %-20s %s\n", "-", names[i], state);
 
@@ -611,7 +650,7 @@ cmdDomstate(vshControl * ctl, vshCmd * cmd)
 
     if (virDomainGetInfo(dom, &info) == 0)
         vshPrint(ctl, "%s\n",
-                 _N(vshDomainStateToString(info.state)));
+                 N_(vshDomainStateToString(info.state)));
     else
         ret = FALSE;
 
@@ -669,9 +708,69 @@ static vshCmdInfo info_create[] = {
 };
 
 static vshCmdOptDef opts_create[] = {
-    {"file", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("file conatining an XML domain description")},
+    {"file", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("file containing an XML domain description")},
     {NULL, 0, 0, NULL}
 };
+
+/* Read in a whole file and return it as a string.
+ * If it fails, it logs an error and returns NULL.
+ * String must be freed by caller.
+ */
+static char *
+readFile (vshControl *ctl, const char *filename)
+{
+    char *retval;
+    int len = 0, fd;
+
+    if ((fd = open(filename, O_RDONLY)) == -1) {
+        vshError (ctl, FALSE, _("Failed to open '%s': %s"),
+                  filename, strerror (errno));
+        return NULL;
+    }
+
+    if (!(retval = malloc(len + 1)))
+        goto out_of_memory;
+
+    while (1) {
+        char buffer[1024];
+        char *new;
+        int ret;
+
+        if ((ret = read(fd, buffer, sizeof(buffer))) == 0)
+            break;
+
+        if (ret == -1) {
+            if (errno == EINTR)
+                continue;
+
+            vshError (ctl, FALSE, _("Failed to open '%s': read: %s"),
+                      filename, strerror (errno));
+            goto error;
+        }
+
+        if (!(new = realloc(retval, len + ret + 1)))
+            goto out_of_memory;
+
+        retval = new;
+
+        memcpy(retval + len, buffer, ret);
+        len += ret;
+   }
+
+   retval[len] = '\0';
+   return retval;
+
+ out_of_memory:
+   vshError (ctl, FALSE, _("Error allocating memory: %s"),
+             strerror(errno));
+
+ error:
+   if (retval)
+     free(retval);
+   close(fd);
+
+   return NULL;
+}
 
 static int
 cmdCreate(vshControl * ctl, vshCmd * cmd)
@@ -680,8 +779,7 @@ cmdCreate(vshControl * ctl, vshCmd * cmd)
     char *from;
     int found;
     int ret = TRUE;
-    char buffer[BUFSIZ];
-    int fd, l;
+    char *buffer;
 
     if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
         return FALSE;
@@ -690,22 +788,16 @@ cmdCreate(vshControl * ctl, vshCmd * cmd)
     if (!found)
         return FALSE;
 
-    fd = open(from, O_RDONLY);
-    if (fd < 0) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        return(FALSE);
-    }
-    l = read(fd, &buffer[0], sizeof(buffer));
-    if ((l <= 0) || (l >= (int) sizeof(buffer))) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        close(fd);
-        return(FALSE);
-    }
-    buffer[l] = 0;
-    dom = virDomainCreateLinux(ctl->conn, &buffer[0], 0);
+    buffer = readFile (ctl, from);
+    if (buffer == NULL) return FALSE;
+
+    dom = virDomainCreateLinux(ctl->conn, buffer, 0);
+    free (buffer);
+
     if (dom != NULL) {
         vshPrint(ctl, _("Domain %s created from %s\n"),
                  virDomainGetName(dom), from);
+	virDomainFree(dom);
     } else {
         vshError(ctl, FALSE, _("Failed to create domain from %s"), from);
         ret = FALSE;
@@ -735,8 +827,7 @@ cmdDefine(vshControl * ctl, vshCmd * cmd)
     char *from;
     int found;
     int ret = TRUE;
-    char buffer[BUFSIZ];
-    int fd, l;
+    char *buffer;
 
     if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
         return FALSE;
@@ -745,22 +836,16 @@ cmdDefine(vshControl * ctl, vshCmd * cmd)
     if (!found)
         return FALSE;
 
-    fd = open(from, O_RDONLY);
-    if (fd < 0) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        return(FALSE);
-    }
-    l = read(fd, &buffer[0], sizeof(buffer));
-    if ((l <= 0) || (l >= (int) sizeof(buffer))) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        close(fd);
-        return(FALSE);
-    }
-    buffer[l] = 0;
-    dom = virDomainDefineXML(ctl->conn, &buffer[0]);
+    buffer = readFile (ctl, from);
+    if (buffer == NULL) return FALSE;
+
+    dom = virDomainDefineXML(ctl->conn, buffer);
+    free (buffer);
+
     if (dom != NULL) {
         vshPrint(ctl, _("Domain %s defined from %s\n"),
                  virDomainGetName(dom), from);
+        virDomainFree(dom);
     } else {
         vshError(ctl, FALSE, _("Failed to define domain from %s"), from);
         ret = FALSE;
@@ -803,6 +888,7 @@ cmdUndefine(vshControl * ctl, vshCmd * cmd)
         ret = FALSE;
     }
 
+    virDomainFree(dom);
     return ret;
 }
 
@@ -836,6 +922,7 @@ cmdStart(vshControl * ctl, vshCmd * cmd)
 
     if (virDomainGetID(dom) != (unsigned int)-1) {
         vshError(ctl, FALSE, _("Domain is already active"));
+	virDomainFree(dom);
         return FALSE;
     }
 
@@ -847,6 +934,7 @@ cmdStart(vshControl * ctl, vshCmd * cmd)
                  virDomainGetName(dom));
         ret = FALSE;
     }
+    virDomainFree(dom);
     return ret;
 }
 
@@ -892,6 +980,140 @@ cmdSave(vshControl * ctl, vshCmd * cmd)
 
     virDomainFree(dom);
     return ret;
+}
+
+/*
+ * "schedinfo" command
+ */
+static vshCmdInfo info_schedinfo[] = {
+    {"syntax", "sched <domain>"},
+    {"help", gettext_noop("show/set scheduler parameters")},
+    {"desc", gettext_noop("Show/Set scheduler parameters.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_schedinfo[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"weight", VSH_OT_INT, VSH_OFLAG_NONE, gettext_noop("weight for XEN_CREDIT")},
+    {"cap", VSH_OT_INT, VSH_OFLAG_NONE, gettext_noop("cap for XEN_CREDIT")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdSchedinfo(vshControl * ctl, vshCmd * cmd)
+{
+    char *schedulertype;
+    virDomainPtr dom;
+    virSchedParameterPtr params;
+    int i, ret;
+    int nparams = 0;
+    int nr_inputparams = 0;
+    int inputparams = 0;
+    int weightfound = 0;
+    int weight;
+    int capfound = 0;
+    int cap;
+    char str_weight[] = "weight";
+    char str_cap[]    = "cap";
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        return FALSE;
+
+    /* Currently supports Xen Credit only */
+    weight = vshCommandOptInt(cmd, "weight", &weightfound);
+    if (weightfound) nr_inputparams++;
+            
+    cap    = vshCommandOptInt(cmd, "cap", &capfound);
+    if (capfound) nr_inputparams++;
+
+    params = vshMalloc(ctl, sizeof (virSchedParameter) * nr_inputparams);
+    if (params == NULL) {
+	virDomainFree(dom);
+        return FALSE;
+    }
+
+    if (weightfound) {
+         strncpy(params[inputparams].field,str_weight,sizeof(str_weight));
+         params[inputparams].type = VIR_DOMAIN_SCHED_FIELD_UINT;
+         params[inputparams].value.ui = weight;
+         inputparams++; 
+    }
+
+    if (capfound) {
+         strncpy(params[inputparams].field,str_cap,sizeof(str_cap));
+         params[inputparams].type = VIR_DOMAIN_SCHED_FIELD_UINT;
+         params[inputparams].value.ui = cap;
+         inputparams++;
+    }
+    /* End Currently supports Xen Credit only */
+
+    assert (inputparams == nr_inputparams);
+
+    /* Set SchedulerParameters */
+    if (inputparams > 0) {
+        ret = virDomainSetSchedulerParameters(dom, params, inputparams);
+        if (ret == -1) {
+	    virDomainFree(dom);
+	    return FALSE;
+	}
+    }
+    free(params);
+
+    /* Print SchedulerType */
+    schedulertype = virDomainGetSchedulerType(dom, &nparams);
+    if (schedulertype!= NULL){
+        vshPrint(ctl, "%-15s: %s\n", _("Scheduler"),
+             schedulertype);
+        free(schedulertype);
+    } else {
+        vshPrint(ctl, "%-15s: %s\n", _("Scheduler"), _("Unknown"));
+	virDomainFree(dom);
+        return FALSE;
+    }
+
+    /* Get SchedulerParameters */
+    params = vshMalloc(ctl, sizeof(virSchedParameter)* nparams);
+    for (i = 0; i < nparams; i++){
+        params[i].type = 0;
+        memset (params[i].field, 0, sizeof params[i].field);
+    }
+    ret = virDomainGetSchedulerParameters(dom, params, &nparams);
+    if (ret == -1) {
+        virDomainFree(dom);
+        return FALSE;
+    }
+    if(nparams){
+        for (i = 0; i < nparams; i++){
+            switch (params[i].type) {
+            case VIR_DOMAIN_SCHED_FIELD_INT:
+                 printf("%-15s: %d\n",  params[i].field, params[i].value.i);
+                 break;
+            case VIR_DOMAIN_SCHED_FIELD_UINT:
+                 printf("%-15s: %u\n",  params[i].field, params[i].value.ui);
+                 break;
+            case VIR_DOMAIN_SCHED_FIELD_LLONG:
+                 printf("%-15s: %Ld\n",  params[i].field, params[i].value.l);
+                 break;
+            case VIR_DOMAIN_SCHED_FIELD_ULLONG:
+                 printf("%-15s: %Lu\n",  params[i].field, params[i].value.ul);
+                 break;
+            case VIR_DOMAIN_SCHED_FIELD_DOUBLE:
+                 printf("%-15s: %f\n",  params[i].field, params[i].value.d);
+                 break;
+            case VIR_DOMAIN_SCHED_FIELD_BOOLEAN:
+                 printf("%-15s: %d\n",  params[i].field, params[i].value.b);
+                 break;
+            default:
+                 printf("not implemented scheduler parameter type\n");
+            }
+        }
+    }
+    free(params);
+    virDomainFree(dom);
+    return TRUE;
 }
 
 /*
@@ -1180,7 +1402,7 @@ cmdDominfo(vshControl * ctl, vshCmd * cmd)
 
     if (virDomainGetInfo(dom, &info) == 0) {
         vshPrint(ctl, "%-15s %s\n", _("State:"),
-                 _N(vshDomainStateToString(info.state)));
+                 N_(vshDomainStateToString(info.state)));
 
         vshPrint(ctl, "%-15s %d\n", _("CPU(s):"), info.nrVirtCpu);
 
@@ -1266,7 +1488,7 @@ cmdVcpuinfo(vshControl * ctl, vshCmd * cmd)
             vshPrint(ctl, "%-15s %d\n", _("VCPU:"), n);
             vshPrint(ctl, "%-15s %d\n", _("CPU:"), cpuinfo[n].cpu);
             vshPrint(ctl, "%-15s %s\n", _("State:"),
-                     _N(vshDomainVcpuStateToString(cpuinfo[n].state)));
+                     N_(vshDomainVcpuStateToString(cpuinfo[n].state)));
             if (cpuinfo[n].cpuTime != 0) {
                 double cpuUsed = cpuinfo[n].cpuTime;
 
@@ -1284,6 +1506,10 @@ cmdVcpuinfo(vshControl * ctl, vshCmd * cmd)
             }
         }
     } else {
+        if (info.state == VIR_DOMAIN_SHUTOFF) {
+            vshError(ctl, FALSE,
+                 _("Domain shut off, virtual CPUs not present."));
+        }
         ret = FALSE;
     }
 
@@ -1297,7 +1523,7 @@ cmdVcpuinfo(vshControl * ctl, vshCmd * cmd)
  * "vcpupin" command
  */
 static vshCmdInfo info_vcpupin[] = {
-    {"syntax", "vcpupin <domain>"},
+    {"syntax", "vcpupin <domain> <vcpu> <cpulist>"},
     {"help", gettext_noop("control domain vcpu affinity")},
     {"desc", gettext_noop("Pin domain VCPUs to host physical CPUs.")},
     {NULL, NULL}
@@ -1322,6 +1548,8 @@ cmdVcpupin(vshControl * ctl, vshCmd * cmd)
     int vcpufound = 0;
     unsigned char *cpumap;
     int cpumaplen;
+    int i;
+    enum { expect_num, expect_num_or_comma } state;
 
     if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
         return FALSE;
@@ -1355,6 +1583,42 @@ cmdVcpupin(vshControl * ctl, vshCmd * cmd)
         return FALSE;
     }
 
+    /* Check that the cpulist parameter is a comma-separated list of
+     * numbers and give an intelligent error message if not.
+     */
+    if (cpulist[0] == '\0') {
+        vshError(ctl, FALSE, _("cpulist: Invalid format. Empty string."));
+        virDomainFree (dom);
+        return FALSE;
+    }
+
+    state = expect_num;
+    for (i = 0; cpulist[i]; i++) {
+        switch (state) {
+        case expect_num:
+            if (!isdigit (cpulist[i])) {
+                vshError( ctl, FALSE, _("cpulist: %s: Invalid format. Expecting digit at position %d (near '%c')."), cpulist, i, cpulist[i]);
+                virDomainFree (dom);
+                return FALSE;
+            }
+            state = expect_num_or_comma;
+            break;
+        case expect_num_or_comma:
+            if (cpulist[i] == ',')
+                state = expect_num;
+            else if (!isdigit (cpulist[i])) {
+                vshError(ctl, FALSE, _("cpulist: %s: Invalid format. Expecting digit or comma at position %d (near '%c')."), cpulist, i, cpulist[i]);
+                virDomainFree (dom);
+                return FALSE;
+            }
+        }
+    }
+    if (state == expect_num) {
+        vshError(ctl, FALSE, _("cpulist: %s: Invalid format. Trailing comma at position %d."), cpulist, i);
+        virDomainFree (dom);
+        return FALSE;
+    }
+
     cpumaplen = VIR_CPU_MAPLEN(VIR_NODEINFO_MAXCPUS(nodeinfo));
     cpumap = vshCalloc(ctl, 1, cpumaplen);
 
@@ -1369,7 +1633,7 @@ cmdVcpupin(vshControl * ctl, vshCmd * cmd)
             virDomainFree(dom);
             return FALSE;
         }
-        cpulist = index(cpulist, ',');
+        cpulist = strchr(cpulist, ',');
         if (cpulist)
             cpulist++;
     } while (cpulist);
@@ -1415,6 +1679,7 @@ cmdSetvcpus(vshControl * ctl, vshCmd * cmd)
 
     count = vshCommandOptInt(cmd, "count", &count);
     if (!count) {
+        vshError(ctl, FALSE, _("Invalid number of virtual CPUs."));
         virDomainFree(dom);
         return FALSE;
     }
@@ -1426,7 +1691,7 @@ cmdSetvcpus(vshControl * ctl, vshCmd * cmd)
     }
 
     if (count > maxcpu) {
-        vshError(ctl, FALSE, _("Too many virtual CPU's."));
+        vshError(ctl, FALSE, _("Too many virtual CPUs."));
         virDomainFree(dom);
         return FALSE;
     }
@@ -1459,6 +1724,7 @@ static int
 cmdSetmem(vshControl * ctl, vshCmd * cmd)
 {
     virDomainPtr dom;
+    virDomainInfo info;
     int kilobytes;
     int ret = TRUE;
 
@@ -1470,6 +1736,18 @@ cmdSetmem(vshControl * ctl, vshCmd * cmd)
 
     kilobytes = vshCommandOptInt(cmd, "kilobytes", &kilobytes);
     if (kilobytes <= 0) {
+        virDomainFree(dom);
+        vshError(ctl, FALSE, _("Invalid value of %d for memory size"), kilobytes);
+        return FALSE;
+    }
+
+    if (virDomainGetInfo(dom, &info) != 0) {
+        virDomainFree(dom);
+        vshError(ctl, FALSE, _("Unable to verify MaxMemorySize"));
+        return FALSE;
+    }
+
+    if (kilobytes > info.maxMem) {
         virDomainFree(dom);
         vshError(ctl, FALSE, _("Invalid value of %d for memory size"), kilobytes);
         return FALSE;
@@ -1503,6 +1781,7 @@ static int
 cmdSetmaxmem(vshControl * ctl, vshCmd * cmd)
 {
     virDomainPtr dom;
+    virDomainInfo info;
     int kilobytes;
     int ret = TRUE;
 
@@ -1519,7 +1798,22 @@ cmdSetmaxmem(vshControl * ctl, vshCmd * cmd)
         return FALSE;
     }
 
+    if (virDomainGetInfo(dom, &info) != 0) {
+        virDomainFree(dom);
+        vshError(ctl, FALSE, _("Unable to verify current MemorySize"));
+        return FALSE;
+    }
+
+    if (kilobytes < info.memory) {
+        if (virDomainSetMemory(dom, kilobytes) != 0) {
+            virDomainFree(dom);
+            vshError(ctl, FALSE, _("Unable to shrink current MemorySize"));
+            return FALSE;
+        }
+    }
+
     if (virDomainSetMaxMemory(dom, kilobytes) != 0) {
+        vshError(ctl, FALSE, _("Unable to change MaxMemorySize"));
         ret = FALSE;
     }
 
@@ -1592,7 +1886,7 @@ cmdCapabilities (vshControl * ctl, vshCmd * cmd ATTRIBUTE_UNUSED)
  * "dumpxml" command
  */
 static vshCmdInfo info_dumpxml[] = {
-    {"syntax", "dumpxml <name>"},
+    {"syntax", "dumpxml <domain>"},
     {"help", gettext_noop("domain information in XML")},
     {"desc", gettext_noop("Output the domain information as an XML dump to stdout.")},
     {NULL, NULL}
@@ -1800,8 +2094,7 @@ cmdNetworkCreate(vshControl * ctl, vshCmd * cmd)
     char *from;
     int found;
     int ret = TRUE;
-    char buffer[BUFSIZ];
-    int fd, l;
+    char *buffer;
 
     if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
         return FALSE;
@@ -1810,19 +2103,12 @@ cmdNetworkCreate(vshControl * ctl, vshCmd * cmd)
     if (!found)
         return FALSE;
 
-    fd = open(from, O_RDONLY);
-    if (fd < 0) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        return(FALSE);
-    }
-    l = read(fd, &buffer[0], sizeof(buffer));
-    if ((l <= 0) || (l >= (int) sizeof(buffer))) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        close(fd);
-        return(FALSE);
-    }
-    buffer[l] = 0;
-    network = virNetworkCreateXML(ctl->conn, &buffer[0]);
+    buffer = readFile (ctl, from);
+    if (buffer == NULL) return FALSE;
+
+    network = virNetworkCreateXML(ctl->conn, buffer);
+    free (buffer);
+
     if (network != NULL) {
         vshPrint(ctl, _("Network %s created from %s\n"),
                  virNetworkGetName(network), from);
@@ -1856,8 +2142,7 @@ cmdNetworkDefine(vshControl * ctl, vshCmd * cmd)
     char *from;
     int found;
     int ret = TRUE;
-    char buffer[BUFSIZ];
-    int fd, l;
+    char *buffer;
 
     if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
         return FALSE;
@@ -1866,19 +2151,12 @@ cmdNetworkDefine(vshControl * ctl, vshCmd * cmd)
     if (!found)
         return FALSE;
 
-    fd = open(from, O_RDONLY);
-    if (fd < 0) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        return(FALSE);
-    }
-    l = read(fd, &buffer[0], sizeof(buffer));
-    if ((l <= 0) || (l >= (int) sizeof(buffer))) {
-        vshError(ctl, FALSE, _("Failed to read description file %s"), from);
-        close(fd);
-        return(FALSE);
-    }
-    buffer[l] = 0;
-    network = virNetworkDefineXML(ctl->conn, &buffer[0]);
+    buffer = readFile (ctl, from);
+    if (buffer == NULL) return FALSE;
+
+    network = virNetworkDefineXML(ctl->conn, buffer);
+    free (buffer);
+
     if (network != NULL) {
         vshPrint(ctl, _("Network %s defined from %s\n"),
                  virNetworkGetName(network), from);
@@ -1934,7 +2212,7 @@ cmdNetworkDestroy(vshControl * ctl, vshCmd * cmd)
  * "net-dumpxml" command
  */
 static vshCmdInfo info_network_dumpxml[] = {
-    {"syntax", "net-dumpxml <name>"},
+    {"syntax", "net-dumpxml <network>"},
     {"help", gettext_noop("network information in XML")},
     {"desc", gettext_noop("Output the network information as an XML dump to stdout.")},
     {NULL, NULL}
@@ -2325,7 +2603,65 @@ cmdVersion(vshControl * ctl, vshCmd * cmd ATTRIBUTE_UNUSED)
 }
 
 /*
- * "dumpxml" command
+ * "hostname" command
+ */
+static vshCmdInfo info_hostname[] = {
+    {"syntax", "hostname"},
+    {"help", gettext_noop("print the hypervisor hostname")},
+    {NULL, NULL}
+};
+
+static int
+cmdHostname (vshControl *ctl, vshCmd *cmd ATTRIBUTE_UNUSED)
+{
+    char *hostname;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    hostname = virConnectGetHostname (ctl->conn);
+    if (hostname == NULL) {
+        vshError(ctl, FALSE, _("failed to get hostname"));
+        return FALSE;
+    }
+
+    vshPrint (ctl, "%s\n", hostname);
+    free (hostname);
+
+    return TRUE;
+}
+
+/*
+ * "uri" command
+ */
+static vshCmdInfo info_uri[] = {
+    {"syntax", "uri"},
+    {"help", gettext_noop("print the hypervisor canonical URI")},
+    {NULL, NULL}
+};
+
+static int
+cmdURI (vshControl *ctl, vshCmd *cmd ATTRIBUTE_UNUSED)
+{
+    char *uri;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    uri = virConnectGetURI (ctl->conn);
+    if (uri == NULL) {
+        vshError(ctl, FALSE, _("failed to get URI"));
+        return FALSE;
+    }
+
+    vshPrint (ctl, "%s\n", uri);
+    free (uri);
+
+    return TRUE;
+}
+
+/*
+ * "vncdisplay" command
  */
 static vshCmdInfo info_vncdisplay[] = {
     {"syntax", "vncdisplay <domain>"},
@@ -2403,6 +2739,628 @@ cmdVNCDisplay(vshControl * ctl, vshCmd * cmd)
     return ret;
 }
 
+/*
+ * "attach-device" command
+ */
+static vshCmdInfo info_attach_device[] = {
+    {"syntax", "attach-device <domain> <file> "},
+    {"help", gettext_noop("attach device from an XML file")},
+    {"desc", gettext_noop("Attach device from an XML <file>.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_attach_device[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"file",   VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("XML file")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdAttachDevice(vshControl * ctl, vshCmd * cmd)
+{
+    virDomainPtr dom;
+    char *from;
+    char *buffer;
+    int ret = TRUE;
+    int found;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        return FALSE;
+
+    from = vshCommandOptString(cmd, "file", &found);
+    if (!found) {
+        virDomainFree(dom);
+        return FALSE;
+    }
+
+    buffer = readFile (ctl, from);
+    if (buffer == NULL) return FALSE;
+
+    ret = virDomainAttachDevice(dom, buffer);
+    free (buffer);
+
+    if (ret < 0) {
+        vshError(ctl, FALSE, _("Failed to attach device from %s"), from);
+        virDomainFree(dom);
+        return FALSE;
+    }
+
+    virDomainFree(dom);
+    return TRUE;
+}
+
+
+/*
+ * "detach-device" command
+ */
+static vshCmdInfo info_detach_device[] = {
+    {"syntax", "detach-device <domain> <file> "},
+    {"help", gettext_noop("detach device from an XML file")},
+    {"desc", gettext_noop("Detach device from an XML <file>")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_detach_device[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"file",   VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("XML file")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdDetachDevice(vshControl * ctl, vshCmd * cmd)
+{
+    virDomainPtr dom;
+    char *from;
+    char *buffer;
+    int ret = TRUE;
+    int found;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        return FALSE;
+
+    from = vshCommandOptString(cmd, "file", &found);
+    if (!found) {
+        virDomainFree(dom);
+        return FALSE;
+    }
+
+    buffer = readFile (ctl, from);
+    if (buffer == NULL) return FALSE;
+
+    ret = virDomainDetachDevice(dom, buffer);
+    free (buffer);
+
+    if (ret < 0) {
+        vshError(ctl, FALSE, _("Failed to detach device from %s"), from);
+        virDomainFree(dom);
+        return FALSE;
+    }
+
+    virDomainFree(dom);
+    return TRUE;
+}
+
+
+/*
+ * "attach-interface" command
+ */
+static vshCmdInfo info_attach_interface[] = {
+    {"syntax", "attach-interface <domain> <type> <source> [--target <target>] [--mac <mac>] [--script <script>] "},
+    {"help", gettext_noop("attach network interface")},
+    {"desc", gettext_noop("Attach new network interface.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_attach_interface[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"type",   VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("network interface type")},
+    {"source", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("source of network interface")},
+    {"target", VSH_OT_DATA, 0, gettext_noop("target network name")},
+    {"mac",    VSH_OT_DATA, 0, gettext_noop("MAC adress")},
+    {"script", VSH_OT_DATA, 0, gettext_noop("script used to bridge network interface")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdAttachInterface(vshControl * ctl, vshCmd * cmd)
+{
+    virDomainPtr dom = NULL;
+    char *mac, *target, *script, *type, *source;
+    int typ, ret = FALSE;
+    char *buf = NULL, *tmp = NULL;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        goto cleanup;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        goto cleanup;
+
+    if (!(type = vshCommandOptString(cmd, "type", NULL)))
+        goto cleanup;
+
+    source = vshCommandOptString(cmd, "source", NULL);
+    target = vshCommandOptString(cmd, "target", NULL);
+    mac = vshCommandOptString(cmd, "mac", NULL);
+    script = vshCommandOptString(cmd, "script", NULL);
+
+    /* check interface type */
+    if (strcmp(type, "network") == 0) {
+        typ = 1;
+    } else if (strcmp(type, "bridge") == 0) {
+        typ = 2;
+    } else {
+        vshError(ctl, FALSE, _("No support %s in command 'attach-interface'"), type);
+        goto cleanup;
+    }
+
+    /* Make XML of interface */
+    tmp = vshMalloc(ctl, 1);
+    if (!tmp) goto cleanup;
+    buf = vshMalloc(ctl, strlen(type) + 25);
+    if (!buf) goto cleanup;
+    sprintf(buf, "    <interface type='%s'>\n" , type);
+
+    tmp = vshRealloc(ctl, tmp, strlen(source) + 28);
+    if (!tmp) goto cleanup;
+    if (typ == 1) {
+        sprintf(tmp, "      <source network='%s'/>\n", source);
+    } else if (typ == 2) {
+        sprintf(tmp, "      <source bridge='%s'/>\n", source);
+    }
+    buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+    if (!buf) goto cleanup;
+    strcat(buf, tmp);
+
+    if (target != NULL) {
+        tmp = vshRealloc(ctl, tmp, strlen(target) + 24);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, "      <target dev='%s'/>\n", target);
+        buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+        if (!buf) goto cleanup;
+        strcat(buf, tmp);
+    }
+
+    if (mac != NULL) {
+        tmp = vshRealloc(ctl, tmp, strlen(mac) + 25);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, "      <mac address='%s'/>\n", mac);
+        buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+        if (!buf) goto cleanup;
+        strcat(buf, tmp);
+    }
+
+    if (script != NULL) {
+        tmp = vshRealloc(ctl, tmp, strlen(script) + 25);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, "      <script path='%s'/>\n", script);
+        buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+        if (!buf) goto cleanup;
+        strcat(buf, tmp);
+    }
+
+    buf = vshRealloc(ctl, buf, strlen(buf) + 19);
+    if (!buf) goto cleanup;
+    strcat(buf, "    </interface>\n");
+
+    if (virDomainAttachDevice(dom, buf))
+        goto cleanup;
+
+    ret = TRUE;
+
+ cleanup:
+    if (dom)
+        virDomainFree(dom);
+    if (buf)
+        free(buf);
+    if (tmp)
+        free(tmp);
+    return ret;
+}
+
+/*
+ * "detach-interface" command
+ */
+static vshCmdInfo info_detach_interface[] = {
+    {"syntax", "detach-interface <domain> <type> [--mac <mac>] "},
+    {"help", gettext_noop("detach network interface")},
+    {"desc", gettext_noop("Detach network interface.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_detach_interface[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"type",   VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("network interface type")},
+    {"mac",    VSH_OT_DATA, 0, gettext_noop("MAC adress")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdDetachInterface(vshControl * ctl, vshCmd * cmd)
+{
+    virDomainPtr dom = NULL;
+    xmlDocPtr xml = NULL;
+    xmlXPathObjectPtr obj=NULL;
+    xmlXPathContextPtr ctxt = NULL;
+    xmlNodePtr cur = NULL;
+    xmlChar *tmp_mac = NULL;
+    xmlBufferPtr xml_buf = NULL;
+    char *doc, *mac =NULL, *type;
+    char buf[64];
+    int i = 0, diff_mac, ret = FALSE;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        goto cleanup;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        goto cleanup;
+
+    if (!(type = vshCommandOptString(cmd, "type", NULL)))
+        goto cleanup;
+
+    mac = vshCommandOptString(cmd, "mac", NULL);
+
+    doc = virDomainGetXMLDesc(dom, 0);
+    if (!doc)
+        goto cleanup;
+
+    xml = xmlReadDoc((const xmlChar *) doc, "domain.xml", NULL,
+                     XML_PARSE_NOENT | XML_PARSE_NONET |
+                     XML_PARSE_NOWARNING);
+    free(doc);
+    if (!xml) {
+        vshError(ctl, FALSE, _("Failed to get interface information"));
+        goto cleanup;
+    }
+    ctxt = xmlXPathNewContext(xml);
+    if (!ctxt) {
+        vshError(ctl, FALSE, _("Failed to get interface information"));
+        goto cleanup;
+    }
+
+    sprintf(buf, "/domain/devices/interface[@type='%s']", type);
+    obj = xmlXPathEval(BAD_CAST buf, ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_NODESET) ||
+        (obj->nodesetval == NULL) || (obj->nodesetval->nodeNr == 0)) {
+        vshError(ctl, FALSE, _("No found interface whose type is %s"), type);
+        goto cleanup;
+    }
+
+    if (!mac)
+        goto hit;
+
+    /* search mac */
+    for (; i < obj->nodesetval->nodeNr; i++) {
+        cur = obj->nodesetval->nodeTab[i]->children;
+        while (cur != NULL) {
+            if (cur->type == XML_ELEMENT_NODE && xmlStrEqual(cur->name, BAD_CAST "mac")) {
+                tmp_mac = xmlGetProp(cur, BAD_CAST "address");
+                diff_mac = xmlStrcasecmp(tmp_mac, BAD_CAST mac);
+                xmlFree(tmp_mac);
+                if (!diff_mac) {
+                    goto hit;
+                }
+            }
+            cur = cur->next;
+        }
+    }
+    vshError(ctl, FALSE, _("No found interface whose MAC address is %s"), mac);
+    goto cleanup;
+
+ hit:
+    xml_buf = xmlBufferCreate();
+    if (!xml_buf) {
+        vshError(ctl, FALSE, _("Failed to allocate memory"));
+        goto cleanup;
+    }
+
+    if(xmlNodeDump(xml_buf, xml, obj->nodesetval->nodeTab[i], 0, 0) < 0){
+        vshError(ctl, FALSE, _("Failed to create XML"));
+        goto cleanup;
+    }
+
+    ret = virDomainDetachDevice(dom, (char *)xmlBufferContent(xml_buf));
+    if (ret != 0)
+        ret = FALSE;
+    else
+        ret = TRUE;
+
+ cleanup:
+    if (dom)
+        virDomainFree(dom);
+    if (obj)
+        xmlXPathFreeObject(obj);
+    if (ctxt)
+        xmlXPathFreeContext(ctxt);
+    if (xml)
+        xmlFreeDoc(xml);
+    if (xml_buf)
+        xmlBufferFree(xml_buf);
+    return ret;
+}
+
+/*
+ * "attach-disk" command
+ */
+static vshCmdInfo info_attach_disk[] = {
+    {"syntax", "attach-disk <domain> <source> <target> [--driver <driver>] [--subdriver <subdriver>] [--type <type>] [--mode <mode>] "},
+    {"help", gettext_noop("attach disk device")},
+    {"desc", gettext_noop("Attach new disk device.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_attach_disk[] = {
+    {"domain",  VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"source",  VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("source of disk device")},
+    {"target",  VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("target of disk device")},
+    {"driver",    VSH_OT_DATA, 0, gettext_noop("driver of disk device")},
+    {"subdriver", VSH_OT_DATA, 0, gettext_noop("subdriver of disk device")},
+    {"type",    VSH_OT_DATA, 0, gettext_noop("target device type")},
+    {"mode",    VSH_OT_DATA, 0, gettext_noop("mode of device reading and writing")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdAttachDisk(vshControl * ctl, vshCmd * cmd)
+{
+    virDomainPtr dom = NULL;
+    char *source, *target, *driver, *subdriver, *type, *mode;
+    int isFile = 0, ret = FALSE;
+    char *buf = NULL, *tmp = NULL;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        goto cleanup;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        goto cleanup;
+
+    if (!(source = vshCommandOptString(cmd, "source", NULL)))
+        goto cleanup;
+
+    if (!(target = vshCommandOptString(cmd, "target", NULL)))
+        goto cleanup;
+
+    driver = vshCommandOptString(cmd, "driver", NULL);
+    subdriver = vshCommandOptString(cmd, "subdriver", NULL);
+    type = vshCommandOptString(cmd, "type", NULL);
+    mode = vshCommandOptString(cmd, "mode", NULL);
+
+    if (type) {
+        if (strcmp(type, "cdrom") && strcmp(type, "disk")) {
+            vshError(ctl, FALSE, _("No support %s in command 'attach-disk'"), type);
+            goto cleanup;
+        }
+    }
+
+    if (driver) {
+        if (!strcmp(driver, "file") || !strcmp(driver, "tap")) {
+            isFile = 1;
+        } else if (strcmp(driver, "phy")) {
+            vshError(ctl, FALSE, _("No support %s in command 'attach-disk'"), driver);
+            goto cleanup;
+        }
+    }
+
+    if (mode) {
+        if (strcmp(mode, "readonly") && strcmp(mode, "shareable")) {
+            vshError(ctl, FALSE, _("No support %s in command 'attach-disk'"), mode);
+            goto cleanup;
+        }
+    }
+
+    /* Make XML of disk */
+    tmp = vshMalloc(ctl, 1);
+    if (!tmp) goto cleanup;
+    buf = vshMalloc(ctl, 23);
+    if (!buf) goto cleanup;
+    if (isFile) {
+        sprintf(buf, "    <disk type='file'");
+    } else {
+        sprintf(buf, "    <disk type='block'");
+    }
+
+    if (type) {
+        tmp = vshRealloc(ctl, tmp, strlen(type) + 13);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, " device='%s'>\n", type);
+    } else {
+        tmp = vshRealloc(ctl, tmp, 3);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, ">\n");
+    }
+    buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+    if (!buf) goto cleanup;
+    strcat(buf, tmp);
+
+    if (driver) {
+        tmp = vshRealloc(ctl, tmp, strlen(driver) + 22);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, "      <driver name='%s'", driver);
+    } else {
+        tmp = vshRealloc(ctl, tmp, 25);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, "      <driver name='phy'");
+    }
+    buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+    if (!buf) goto cleanup;
+    strcat(buf, tmp);
+
+    if (subdriver) {
+        tmp = vshRealloc(ctl, tmp, strlen(subdriver) + 12);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, " type='%s'/>\n", subdriver);
+    } else {
+        tmp = vshRealloc(ctl, tmp, 4);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, "/>\n");
+    }
+    buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+    if (!buf) goto cleanup;
+    strcat(buf, tmp);
+
+    tmp = vshRealloc(ctl, tmp, strlen(source) + 25);
+    if (!tmp) goto cleanup;
+    if (isFile) {
+        sprintf(tmp, "      <source file='%s'/>\n", source);
+    } else {
+        sprintf(tmp, "      <source dev='%s'/>\n", source);
+    }
+    buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+    if (!buf) goto cleanup;
+    strcat(buf, tmp);
+
+    tmp = vshRealloc(ctl, tmp, strlen(target) + 24);
+    if (!tmp) goto cleanup;
+    sprintf(tmp, "      <target dev='%s'/>\n", target);
+    buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+    if (!buf) goto cleanup;
+    strcat(buf, tmp);
+
+    if (mode != NULL) {
+        tmp = vshRealloc(ctl, tmp, strlen(mode) + 11);
+        if (!tmp) goto cleanup;
+        sprintf(tmp, "      <%s/>\n", mode);
+        buf = vshRealloc(ctl, buf, strlen(buf) + strlen(tmp) + 1);
+        if (!buf) goto cleanup;
+        strcat(buf, tmp);
+    }
+
+    buf = vshRealloc(ctl, buf, strlen(buf) + 13);
+    if (!buf) goto cleanup;
+    strcat(buf, "    </disk>\n");
+
+    if (virDomainAttachDevice(dom, buf))
+        goto cleanup;
+
+    ret = TRUE;
+
+ cleanup:
+    if (dom)
+        virDomainFree(dom);
+    if (buf)
+        free(buf);
+    if (tmp)
+        free(tmp);
+    return ret;
+}
+
+/*
+ * "detach-disk" command
+ */
+static vshCmdInfo info_detach_disk[] = {
+    {"syntax", "detach-disk <domain> <target> "},
+    {"help", gettext_noop("detach disk device")},
+    {"desc", gettext_noop("Detach disk device.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_detach_disk[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"target", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("target of disk device")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdDetachDisk(vshControl * ctl, vshCmd * cmd)
+{
+    xmlDocPtr xml = NULL;
+    xmlXPathObjectPtr obj=NULL;
+    xmlXPathContextPtr ctxt = NULL;
+    xmlNodePtr cur = NULL;
+    xmlChar *tmp_tgt = NULL;
+    xmlBufferPtr xml_buf = NULL;
+    virDomainPtr dom = NULL;
+    char *doc, *target;
+    int i = 0, diff_tgt, ret = FALSE;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        goto cleanup;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        goto cleanup;
+
+    if (!(target = vshCommandOptString(cmd, "target", NULL)))
+        goto cleanup;
+
+    doc = virDomainGetXMLDesc(dom, 0);
+    if (!doc)
+        goto cleanup;
+
+    xml = xmlReadDoc((const xmlChar *) doc, "domain.xml", NULL,
+                     XML_PARSE_NOENT | XML_PARSE_NONET |
+                     XML_PARSE_NOWARNING);
+    free(doc);
+    if (!xml) {
+        vshError(ctl, FALSE, _("Failed to get disk information"));
+        goto cleanup;
+    }
+    ctxt = xmlXPathNewContext(xml);
+    if (!ctxt) {
+        vshError(ctl, FALSE, _("Failed to get disk information"));
+        goto cleanup;
+    }
+
+    obj = xmlXPathEval(BAD_CAST "/domain/devices/disk", ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_NODESET) ||
+        (obj->nodesetval == NULL) || (obj->nodesetval->nodeNr == 0)) {
+        vshError(ctl, FALSE, _("Failed to get disk information"));
+        goto cleanup;
+    }
+
+    /* search target */
+    for (; i < obj->nodesetval->nodeNr; i++) {
+        cur = obj->nodesetval->nodeTab[i]->children;
+        while (cur != NULL) {
+            if (cur->type == XML_ELEMENT_NODE && xmlStrEqual(cur->name, BAD_CAST "target")) {
+                tmp_tgt = xmlGetProp(cur, BAD_CAST "dev");
+                diff_tgt = xmlStrEqual(tmp_tgt, BAD_CAST target);
+                xmlFree(tmp_tgt);
+                if (diff_tgt) {
+                    goto hit;
+                }
+            }
+            cur = cur->next;
+        }
+    }
+    vshError(ctl, FALSE, _("No found disk whose target is %s"), target);
+    goto cleanup;
+
+ hit:
+    xml_buf = xmlBufferCreate();
+    if (!xml_buf) {
+        vshError(ctl, FALSE, _("Failed to allocate memory"));
+        goto cleanup;
+    }
+
+    if(xmlNodeDump(xml_buf, xml, obj->nodesetval->nodeTab[i], 0, 0) < 0){
+        vshError(ctl, FALSE, _("Failed to create XML"));
+        goto cleanup;
+    }
+
+    ret = virDomainDetachDevice(dom, (char *)xmlBufferContent(xml_buf));
+    if (ret != 0)
+        ret = FALSE;
+    else
+        ret = TRUE;
+
+ cleanup:
+    if (obj)
+        xmlXPathFreeObject(obj);
+    if (ctxt)
+        xmlXPathFreeContext(ctxt);
+    if (xml)
+        xmlFreeDoc(xml);
+    if (xml_buf)
+        xmlBufferFree(xml_buf);
+    if (dom)
+        virDomainFree(dom);
+    return ret;
+}
 
 /*
  * "quit" command
@@ -2424,6 +3382,10 @@ cmdQuit(vshControl * ctl, vshCmd * cmd ATTRIBUTE_UNUSED)
  * Commands
  */
 static vshCmdDef commands[] = {
+    {"help", cmdHelp, opts_help, info_help},
+    {"attach-device", cmdAttachDevice, opts_attach_device, info_attach_device},
+    {"attach-disk", cmdAttachDisk, opts_attach_disk, info_attach_disk},
+    {"attach-interface", cmdAttachInterface, opts_attach_interface, info_attach_interface},
     {"autostart", cmdAutostart, opts_autostart, info_autostart},
     {"capabilities", cmdCapabilities, NULL, info_capabilities},
     {"connect", cmdConnect, opts_connect, info_connect},
@@ -2431,6 +3393,9 @@ static vshCmdDef commands[] = {
     {"create", cmdCreate, opts_create, info_create},
     {"start", cmdStart, opts_start, info_start},
     {"destroy", cmdDestroy, opts_destroy, info_destroy},
+    {"detach-device", cmdDetachDevice, opts_detach_device, info_detach_device},
+    {"detach-disk", cmdDetachDisk, opts_detach_disk, info_detach_disk},
+    {"detach-interface", cmdDetachInterface, opts_detach_interface, info_detach_interface},
     {"define", cmdDefine, opts_define, info_define},
     {"domid", cmdDomid, opts_domid, info_domid},
     {"domuuid", cmdDomuuid, opts_domuuid, info_domuuid},
@@ -2438,7 +3403,7 @@ static vshCmdDef commands[] = {
     {"domname", cmdDomname, opts_domname, info_domname},
     {"domstate", cmdDomstate, opts_domstate, info_domstate},
     {"dumpxml", cmdDumpXML, opts_dumpxml, info_dumpxml},
-    {"help", cmdHelp, opts_help, info_help},
+    {"hostname", cmdHostname, NULL, info_hostname},
     {"list", cmdList, opts_list, info_list},
     {"net-autostart", cmdNetworkAutostart, opts_network_autostart, info_network_autostart},
     {"net-create", cmdNetworkCreate, opts_network_create, info_network_create},
@@ -2456,6 +3421,7 @@ static vshCmdDef commands[] = {
     {"restore", cmdRestore, opts_restore, info_restore},
     {"resume", cmdResume, opts_resume, info_resume},
     {"save", cmdSave, opts_save, info_save},
+    {"schedinfo", cmdSchedinfo, opts_schedinfo, info_schedinfo},
     {"dump", cmdDump, opts_dump, info_dump},
     {"shutdown", cmdShutdown, opts_shutdown, info_shutdown},
     {"setmem", cmdSetmem, opts_setmem, info_setmem},
@@ -2463,6 +3429,7 @@ static vshCmdDef commands[] = {
     {"setvcpus", cmdSetvcpus, opts_setvcpus, info_setvcpus},
     {"suspend", cmdSuspend, opts_suspend, info_suspend},
     {"undefine", cmdUndefine, opts_undefine, info_undefine},
+    {"uri", cmdURI, NULL, info_uri},
     {"vcpuinfo", cmdVcpuinfo, opts_vcpuinfo, info_vcpuinfo},
     {"vcpupin", cmdVcpupin, opts_vcpupin, info_vcpupin},
     {"version", cmdVersion, NULL, info_version},
@@ -2568,15 +3535,15 @@ vshCmddefHelp(vshControl * ctl, const char *cmdname, int withprog)
         return FALSE;
     } else {
         vshCmdOptDef *opt;
-        const char *desc = _N(vshCmddefGetInfo(def, "desc"));
-        const char *help = _N(vshCmddefGetInfo(def, "help"));
+        const char *desc = N_(vshCmddefGetInfo(def, "desc"));
+        const char *help = N_(vshCmddefGetInfo(def, "help"));
         const char *syntax = vshCmddefGetInfo(def, "syntax");
 
         fputs(_("  NAME\n"), stdout);
         fprintf(stdout, "    %s - %s\n", def->name, help);
 
         if (syntax) {
-            fputs(("\n  SYNOPSIS\n"), stdout);
+            fputs(_("\n  SYNOPSIS\n"), stdout);
             if (!withprog)
                 fprintf(stdout, "    %s\n", syntax);
             else
@@ -2600,7 +3567,7 @@ vshCmddefHelp(vshControl * ctl, const char *cmdname, int withprog)
                 else if (opt->type == VSH_OT_DATA)
                     snprintf(buf, sizeof(buf), "<%s>", opt->name);
 
-                fprintf(stdout, "    %-15s  %s\n", buf, opt->help);
+                fprintf(stdout, "    %-15s  %s\n", buf, N_(opt->help));
             }
         }
         fputc('\n', stdout);
@@ -2837,7 +3804,7 @@ vshCommandGetToken(vshControl * ctl, char *str, char **end, char **res)
 
     *end = NULL;
 
-    while (p && *p && isblank((unsigned char) *p))
+    while (p && *p && (*p == ' ' || *p == '\t'))
         p++;
 
     if (p == NULL || *p == '\0')
@@ -2848,7 +3815,7 @@ vshCommandGetToken(vshControl * ctl, char *str, char **end, char **res)
     }
     while (*p) {
         /* end of token is blank space or ';' */
-        if ((quote == FALSE && isblank((unsigned char) *p)) || *p == ';')
+        if ((quote == FALSE && (*p == ' ' || *p == '\t')) || *p == ';')
             break;
 
         /* end of option name could be '=' */
@@ -3015,8 +3982,10 @@ vshCommandParse(vshControl * ctl, char *cmdstr)
             c->def = cmd;
             c->next = NULL;
 
-            if (!vshCommandCheckOpts(ctl, c))
+            if (!vshCommandCheckOpts(ctl, c)) {
+                if(c) free(c);
                 goto syntaxError;
+            }
 
             if (!ctl->cmd)
                 ctl->cmd = c;
@@ -3100,6 +4069,10 @@ vshDebug(vshControl * ctl, int level, const char *format, ...)
 {
     va_list ap;
 
+    va_start(ap, format);
+    vshOutputLogFile(ctl, VSH_ERR_DEBUG, format, ap);
+    va_end(ap);
+
     if (level > ctl->debug)
         return;
 
@@ -3126,6 +4099,10 @@ static void
 vshError(vshControl * ctl, int doexit, const char *format, ...)
 {
     va_list ap;
+
+    va_start(ap, format);
+    vshOutputLogFile(ctl, VSH_ERR_ERROR, format, ap);
+    va_end(ap);
 
     if (doexit)
         fprintf(stderr, _("%s: error: "), progname);
@@ -3169,11 +4146,26 @@ _vshCalloc(vshControl * ctl, size_t nmemb, size_t size, const char *filename, in
     return NULL;
 }
 
+static void *
+_vshRealloc(vshControl * ctl, void *ptr, size_t size, const char *filename, int line)
+{
+    void *x;
+
+    if ((x = realloc(ptr, size)))
+        return x;
+    free(ptr);
+    vshError(ctl, TRUE, _("%s: %d: failed to allocate %d bytes"),
+             filename, line, (int) size);
+    return NULL;
+}
+
 static char *
 _vshStrdup(vshControl * ctl, const char *s, const char *filename, int line)
 {
     char *x;
 
+    if (s == NULL)
+        return(NULL);
     if ((x = strdup(s)))
         return x;
     vshError(ctl, TRUE, _("%s: %d: failed to allocate %lu bytes"),
@@ -3182,7 +4174,7 @@ _vshStrdup(vshControl * ctl, const char *s, const char *filename, int line)
 }
 
 /*
- * Initialize vistsh
+ * Initialize connection.
  */
 static int
 vshInit(vshControl * ctl)
@@ -3191,6 +4183,8 @@ vshInit(vshControl * ctl)
         return FALSE;
 
     ctl->uid = getuid();
+
+    vshOpenLogFile(ctl);
 
     /* set up the library error handler */
     virSetErrorFunc(NULL, virshErrorHandler);
@@ -3205,10 +4199,136 @@ vshInit(vshControl * ctl)
     else
         ctl->conn = virConnectOpenReadOnly(ctl->name);
 
+    /* This is not necessarily fatal.  All the individual commands check
+     * vshConnectionUsability, except ones which don't need a connection
+     * such as "help".
+     */
     if (!ctl->conn)
-        vshError(ctl, TRUE, _("failed to connect to the hypervisor"));
+        vshError(ctl, FALSE, _("failed to connect to the hypervisor"));
 
     return TRUE;
+}
+
+/**
+ * vshOpenLogFile:
+ *
+ * Open log file.
+ */
+static void
+vshOpenLogFile(vshControl *ctl)
+{
+    struct stat st;
+
+    if (ctl->logfile == NULL)
+        return;
+
+    /* check log file */
+    if (stat(ctl->logfile, &st) == -1) {
+        switch (errno) {
+            case ENOENT:
+                break;
+            default:
+                vshError(ctl, TRUE, _("failed to get the log file information"));
+                break;
+        }
+    } else {
+        if (!S_ISREG(st.st_mode)) {
+            vshError(ctl, TRUE, _("the log path is not a file"));
+        }
+    }
+
+    /* log file open */
+    if ((ctl->log_fd = open(ctl->logfile, O_WRONLY | O_APPEND | O_CREAT | O_SYNC, FILE_MODE)) < 0) {
+        vshError(ctl, TRUE, _("failed to open the log file. check the log file path"));
+    }
+}
+
+/**
+ * vshOutputLogFile:
+ *
+ * Outputting an error to log file.
+ */
+static void
+vshOutputLogFile(vshControl *ctl, int log_level, const char *msg_format, va_list ap)
+{
+    char msg_buf[MSG_BUFFER];
+    const char *lvl = "";
+    struct timeval stTimeval;
+    struct tm *stTm;
+
+    if (ctl->log_fd == -1)
+        return;
+
+    /**
+     * create log format
+     *
+     * [YYYY.MM.DD HH:MM:SS SIGNATURE PID] LOG_LEVEL message
+    */
+    gettimeofday(&stTimeval, NULL);
+    stTm = localtime(&stTimeval.tv_sec);
+    snprintf(msg_buf, sizeof(msg_buf),
+             "[%d.%02d.%02d %02d:%02d:%02d ",
+             (1900 + stTm->tm_year),
+             (1 + stTm->tm_mon),
+             (stTm->tm_mday),
+             (stTm->tm_hour),
+             (stTm->tm_min),
+             (stTm->tm_sec));
+    snprintf(msg_buf + strlen(msg_buf), sizeof(msg_buf) - strlen(msg_buf),
+             "%s] ", SIGN_NAME);
+    switch (log_level) {
+        case VSH_ERR_DEBUG:
+            lvl = LVL_DEBUG;
+            break;
+        case VSH_ERR_INFO:
+            lvl = LVL_INFO;
+            break;
+        case VSH_ERR_NOTICE:
+            lvl = LVL_INFO;
+            break;
+        case VSH_ERR_WARNING:
+            lvl = LVL_WARNING;
+            break;
+        case VSH_ERR_ERROR:
+            lvl = LVL_ERROR;
+            break;
+        default:
+            lvl = LVL_DEBUG;
+            break;
+    }
+    snprintf(msg_buf + strlen(msg_buf), sizeof(msg_buf) - strlen(msg_buf),
+             "%s ", lvl);
+    vsnprintf(msg_buf + strlen(msg_buf), sizeof(msg_buf) - strlen(msg_buf),
+              msg_format, ap);
+
+    if (msg_buf[strlen(msg_buf) - 1] != '\n')
+        snprintf(msg_buf + strlen(msg_buf), sizeof(msg_buf) - strlen(msg_buf), "\n");
+
+    /* write log */
+    if (write(ctl->log_fd, msg_buf, strlen(msg_buf)) == -1) {
+        vshCloseLogFile(ctl);
+        vshError(ctl, FALSE, _("failed to write the log file"));
+    }
+}
+
+/**
+ * vshCloseLogFile:
+ *
+ * Close log file.
+ */
+static void
+vshCloseLogFile(vshControl *ctl)
+{
+    /* log file close */
+    if (ctl->log_fd >= 0) {
+        close(ctl->log_fd);
+        ctl->log_fd = -1;
+    }
+
+    if (ctl->logfile) {
+        free(ctl->logfile);
+        ctl->logfile = NULL;
+    }
 }
 
 /* -----------------
@@ -3334,6 +4454,8 @@ vshReadlineInit(void)
 static int
 vshDeinit(vshControl * ctl)
 {
+    vshCloseLogFile(ctl);
+
     if (ctl->conn) {
         if (virConnectClose(ctl->conn) != 0) {
             ctl->conn = NULL;   /* prevent recursive call from vshError() */
@@ -3362,16 +4484,17 @@ vshUsage(vshControl * ctl, const char *cmdname)
                           "    -h | --help             this help\n"
                           "    -q | --quiet            quiet mode\n"
                           "    -t | --timing           print timing information\n"
+                          "    -l | --log <file>       output logging to file\n"
                           "    -v | --version          program version\n\n"
                           "  commands (non interactive mode):\n"), progname);
 
         for (cmd = commands; cmd->name; cmd++)
             fprintf(stdout,
-                    "    %-15s %s\n", cmd->name, _N(vshCmddefGetInfo(cmd,
+                    "    %-15s %s\n", cmd->name, N_(vshCmddefGetInfo(cmd,
                                                                      "help")));
 
         fprintf(stdout,
-                _("\n  (specify --help <command> for details about the command)\n\n"));
+                _("\n  (specify help <command> for details about the command)\n\n"));
         return;
     }
     if (!vshCmddefHelp(ctl, cmdname, TRUE))
@@ -3396,6 +4519,7 @@ vshParseArgv(vshControl * ctl, int argc, char **argv)
         {"version", 0, 0, 'v'},
         {"connect", 1, 0, 'c'},
         {"readonly", 0, 0, 'r'},
+        {"log", 1, 0, 'l'},
         {0, 0, 0, 0}
     };
 
@@ -3438,7 +4562,7 @@ vshParseArgv(vshControl * ctl, int argc, char **argv)
     end = end ? : argc;
 
     /* standard (non-command) options */
-    while ((arg = getopt_long(end, argv, "d:hqtc:vr", opt, &idx)) != -1) {
+    while ((arg = getopt_long(end, argv, "d:hqtc:vrl:", opt, &idx)) != -1) {
         switch (arg) {
         case 'd':
             ctl->debug = atoi(optarg);
@@ -3460,6 +4584,9 @@ vshParseArgv(vshControl * ctl, int argc, char **argv)
             exit(EXIT_SUCCESS);
         case 'r':
             ctl->readonly = TRUE;
+            break;
+        case 'l':
+            ctl->logfile = vshStrdup(ctl, optarg);
             break;
         default:
             vshError(ctl, TRUE,
@@ -3527,6 +4654,7 @@ main(int argc, char **argv)
 
     memset(ctl, 0, sizeof(vshControl));
     ctl->imode = TRUE;          /* default is interactive mode */
+    ctl->log_fd = -1;           /* Initialize log file descriptor */
 
     if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
         ctl->name = strdup(defaultConn);

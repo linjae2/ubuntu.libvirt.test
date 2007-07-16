@@ -23,13 +23,19 @@ extern "C" {
 #endif
 
 #define _(str) dgettext(GETTEXT_PACKAGE, (str))
-#define _N(str) dgettext(GETTEXT_PACKAGE, (str))
+#define N_(str) dgettext(GETTEXT_PACKAGE, (str))
 #define gettext_noop(str) (str)
 
 #ifdef __GNUC__
 #ifdef HAVE_ANSIDECL_H
 #include <ansidecl.h>
 #endif
+
+/* String equality tests, suggested by Jim Meyering. */
+#define STREQ(a,b) (strcmp((a),(b)) == 0)
+#define STRCASEEQ(a,b) (strcasecmp((a),(b)) == 0)
+#define STRNEQ(a,b) (strcmp((a),(b)) != 0)
+#define STRCASENEQ(a,b) (strcasecmp((a),(b)) != 0)
 
 /**
  * ATTRIBUTE_UNUSED:
@@ -139,17 +145,6 @@ struct _virConnect {
 };
 
 /**
-* virDomainFlags:
-*
-* a set of special flag values associated to the domain
-*/
-
-enum virDomainFlags {
-    DOMAIN_IS_SHUTDOWN = (1 << 0),  /* the domain is being shutdown */
-    DOMAIN_IS_DEFINED  = (1 << 1)   /* the domain is defined not running */
-};
-
-/**
 * _virDomain:
 *
 * Internal structure associated to a domain
@@ -159,11 +154,8 @@ struct _virDomain {
     int uses;                            /* reference count */
     virConnectPtr conn;                  /* pointer back to the connection */
     char *name;                          /* the domain external name */
-    char *path;                          /* the domain internal path */
     int id;                              /* the domain ID */
-    int flags;                           /* extra flags */
     unsigned char uuid[VIR_UUID_BUFLEN]; /* the domain unique identifier */
-    char *xml;                           /* the XML description for defined domains */
 };
 
 /**
@@ -212,18 +204,28 @@ const char *__virErrorMsg(virErrorNumber error, const char *info);
 
 virConnectPtr	virGetConnect	(void);
 int		virFreeConnect	(virConnectPtr conn);
-virDomainPtr	virGetDomain	(virConnectPtr conn,
+virDomainPtr	__virGetDomain	(virConnectPtr conn,
 				 const char *name,
 				 const unsigned char *uuid);
 int		virFreeDomain	(virConnectPtr conn,
 				 virDomainPtr domain);
-virDomainPtr	virGetDomainByID(virConnectPtr conn,
-				 int id);
-virNetworkPtr	virGetNetwork	(virConnectPtr conn,
+virNetworkPtr	__virGetNetwork	(virConnectPtr conn,
 				 const char *name,
 				 const unsigned char *uuid);
 int		virFreeNetwork	(virConnectPtr conn,
 				 virNetworkPtr domain);
+
+#define virGetDomain(c,n,u) __virGetDomain((c),(n),(u))
+#define virGetNetwork(c,n,u) __virGetNetwork((c),(n),(u))
+
+int __virStateInitialize(void);
+int __virStateCleanup(void);
+int __virStateReload(void);
+int __virStateActive(void);
+#define virStateInitialize() __virStateInitialize()
+#define virStateCleanup() __virStateCleanup()
+#define virStateReload() __virStateReload()
+#define virStateActive() __virStateActive()
 
 #ifdef __cplusplus
 }

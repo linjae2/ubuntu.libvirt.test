@@ -13,3 +13,4 @@ DEB_CONFIGURE_EXTRA_FLAGS := --disable-rpath
 
 binary-install/python-libvirt::
 	dh_pycentral -ppython-libvirt
+

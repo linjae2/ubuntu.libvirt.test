@@ -7,7 +7,7 @@
  *
  * Karel Zak <kzak@redhat.com>
  *
- * $Id: testutils.c,v 1.5 2007/01/19 20:30:05 berrange Exp $
+ * $Id: testutils.c,v 1.6 2007/06/15 15:24:20 rjones Exp $
  */
 
 #include <stdio.h>
@@ -19,8 +19,15 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <paths.h>
 #include "testutils.h"
+
+#ifdef HAVE_PATHS_H
+#include <paths.h>
+#endif
+
+#ifndef _PATH_DEVNULL
+#define	_PATH_DEVNULL	"/dev/null"
+#endif
 
 #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
 #define DIFF_MSEC(T, U)                                 \

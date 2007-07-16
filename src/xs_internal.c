@@ -36,25 +36,18 @@
 #ifndef PROXY
 static char *xenStoreDomainGetOSType(virDomainPtr domain);
 
-virDriver xenStoreDriver = {
-    -1,
-    "XenStore",
-    (DOM0_INTERFACE_VERSION >> 24) * 1000000 +
-    ((DOM0_INTERFACE_VERSION >> 16) & 0xFF) * 1000 +
-    (DOM0_INTERFACE_VERSION & 0xFFFF),
+struct xenUnifiedDriver xenStoreDriver = {
     xenStoreOpen, /* open */
     xenStoreClose, /* close */
     NULL, /* type */
     NULL, /* version */
-    NULL, /* getMaxVcpus */
+    NULL, /* hostname */
+    NULL, /* URI */
     NULL, /* nodeGetInfo */
     NULL, /* getCapabilities */
     xenStoreListDomains, /* listDomains */
     NULL, /* numOfDomains */
     NULL, /* domainCreateLinux */
-    NULL, /* domainLookupByID */
-    NULL, /* domainLookupByUUID */
-    xenStoreDomainLookupByName, /* domainLookupByName */
     NULL, /* domainSuspend */
     NULL, /* domainResume */
     xenStoreDomainShutdown, /* domainShutdown */
@@ -82,6 +75,9 @@ virDriver xenStoreDriver = {
     NULL, /* domainDetachDevice */
     NULL, /* domainGetAutostart */
     NULL, /* domainSetAutostart */
+    NULL, /* domainGetSchedulerType */
+    NULL, /* domainGetSchedulerParameters */
+    NULL, /* domainSetSchedulerParameters */
 };
 
 /**
@@ -325,7 +321,8 @@ virConnectCheckStoreID(virConnectPtr conn, int id)
  */
 int
 xenStoreOpen(virConnectPtr conn,
-             const char *name ATTRIBUTE_UNUSED, int flags)
+             const char *name ATTRIBUTE_UNUSED,
+             int flags ATTRIBUTE_UNUSED)
 {
     xenUnifiedPrivatePtr priv = (xenUnifiedPrivatePtr) conn->privateData;
 
@@ -339,8 +336,7 @@ xenStoreOpen(virConnectPtr conn,
 #endif /* ! PROXY */
 
     if (priv->xshandle == NULL) {
-        if (!(flags & VIR_DRV_OPEN_QUIET))
-            virXenStoreError(conn, VIR_ERR_NO_XEN, 
+        virXenStoreError(NULL, VIR_ERR_NO_XEN, 
 	                     _("failed to connect to Xen Store"));
         return (-1);
     }
@@ -586,7 +582,7 @@ xenStoreListDomains(virConnectPtr conn, int *ids, int maxids)
 }
 
 /**
- * xenStoreDomainLookupByName:
+ * xenStoreLookupByName:
  * @conn: A xend instance
  * @name: The name of the domain
  *
@@ -595,7 +591,7 @@ xenStoreListDomains(virConnectPtr conn, int *ids, int maxids)
  * Returns a new domain object or NULL in case of failure
  */
 virDomainPtr
-xenStoreDomainLookupByName(virConnectPtr conn, const char *name)
+xenStoreLookupByName(virConnectPtr conn, const char *name)
 {
     virDomainPtr ret = NULL;
     unsigned int num, i, len;
@@ -620,23 +616,23 @@ xenStoreDomainLookupByName(virConnectPtr conn, const char *name)
 	goto done;
 
     for (i = 0; i < num; i++) {
-	id = strtol(idlist[i], &endptr, 10);
-	if ((endptr == idlist[i]) || (*endptr != 0)) {
-	    goto done;
-	}
+        id = strtol(idlist[i], &endptr, 10);
+        if ((endptr == idlist[i]) || (*endptr != 0)) {
+            goto done;
+        }
 #if 0
-	if (virConnectCheckStoreID(conn, (int) id) < 0)
-	    continue;
+        if (virConnectCheckStoreID(conn, (int) id) < 0)
+            continue;
 #endif
-	snprintf(prop, 199, "/local/domain/%s/name", idlist[i]);
-	prop[199] = 0;
-	tmp = xs_read(priv->xshandle, 0, prop, &len);
-	if (tmp != NULL) {
-	    found = !strcmp(name, tmp);
-	    free(tmp);
-	    if (found)
-		break;
-	}
+        snprintf(prop, 199, "/local/domain/%s/name", idlist[i]);
+        prop[199] = 0;
+        tmp = xs_read(priv->xshandle, 0, prop, &len);
+        if (tmp != NULL) {
+            found = STREQ (name, tmp);
+            free(tmp);
+            if (found)
+                break;
+        }
     }
     path = xs_get_domain_path(priv->xshandle, (unsigned int) id);
 
@@ -645,13 +641,10 @@ xenStoreDomainLookupByName(virConnectPtr conn, const char *name)
 
     ret = virGetDomain(conn, name, NULL);
     if (ret == NULL) {
-        virXenStoreError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
-	if (path != NULL)
-	    free(path);
-	goto done;
+        if (path != NULL) free(path);
+        goto done;
     }
     ret->id = id;
-    ret->path = path;
 
 done:
     if (xenddomain != NULL)

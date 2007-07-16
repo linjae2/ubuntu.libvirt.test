@@ -1,1598 +1,1882 @@
-# English translations for libvirt package.
-# Copyright (C) 2006 Free Software Foundation, Inc.
-# This file is distributed under the same license as the libvirt package.
-# Automatically generated, 2006.
+# translation of libvirt.po to Bulgarian
+# translation of libvirt.pot to Bulgarian
+# Copyright (C) 2007 Free Software Foundation, Inc.
+# This file is distributed under the same license as the PACKAGE package.
 #
+# Doncho N. Gunchev <gunchev@gmail.com>, 2007.
+# Miroslav Ivanov <kiro.kopeleto@gmail.com>, 2007.
 msgid ""
 msgstr ""
 "Project-Id-Version: libvirt\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2007-04-17 11:31+0200\n"
-"PO-Revision-Date: 2006-11-27 16:59+0100\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"POT-Creation-Date: 2007-07-09 14:14+0200\n"
+"PO-Revision-Date: 2007-04-21 14:55+0300\n"
+"Last-Translator: Doncho N. Gunchev <gunchev@gmail.com>\n"
+"Language-Team: Bulgarian <dict@fsa-bg.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: KBabel 1.11.4\n"
 
-#: src/libvirt.c:278 src/hash.c:664
+#: src/libvirt.c:389 src/hash.c:664
 msgid "allocating connection"
-msgstr "allocating connection"
+msgstr "заделяне на връзки"
 
 #: src/virterror.c:243
 msgid "warning"
-msgstr "warning"
+msgstr "предупреждение"
 
 #: src/virterror.c:246
 msgid "error"
-msgstr "error"
+msgstr "грешка"
 
-#: src/virterror.c:344
+#: src/virterror.c:350
 msgid "No error message provided"
-msgstr "No error message provided"
+msgstr "Няма зададено съобщение за грешка"
 
-#: src/virterror.c:399
+#: src/virterror.c:405
 #, c-format
 msgid "internal error %s"
-msgstr "internal error %s"
+msgstr "вътрешна грешка %s"
 
-#: src/virterror.c:401
+#: src/virterror.c:407
 msgid "internal error"
-msgstr "internal error"
-
-#: src/virterror.c:404
-msgid "out of memory"
-msgstr "out of memory"
-
-#: src/virterror.c:408
-msgid "no support for hypervisor"
-msgstr "no support for hypervisor"
+msgstr "вътрешна грешка"
 
 #: src/virterror.c:410
-#, c-format
-msgid "no support for hypervisor %s"
-msgstr "no support for hypervisor %s"
+msgid "out of memory"
+msgstr "свърши паметта"
 
 #: src/virterror.c:414
-msgid "could not connect to hypervisor"
-msgstr "could not connect to hypervisor"
+#, fuzzy
+msgid "this function is not supported by the hypervisor"
+msgstr "няма поддръжка за хипервайзор"
 
 #: src/virterror.c:416
-#, c-format
-msgid "could not connect to %s"
-msgstr "could not connect to %s"
+#, fuzzy, c-format
+msgid "this function is not supported by the hypervisor: %s"
+msgstr "няма поддръжка за хипервайзор %s"
 
 #: src/virterror.c:420
-msgid "invalid connection pointer in"
-msgstr "invalid connection pointer in"
+msgid "could not connect to hypervisor"
+msgstr "не може да се осъществи връзка с хипервайзора"
 
 #: src/virterror.c:422
 #, c-format
-msgid "invalid connection pointer in %s"
-msgstr "invalid connection pointer in %s"
+msgid "could not connect to %s"
+msgstr "не може да се осъществи връзка с %s"
 
 #: src/virterror.c:426
-msgid "invalid domain pointer in"
-msgstr "invalid domain pointer in"
+msgid "invalid connection pointer in"
+msgstr "невалиден указател за връзка в"
 
 #: src/virterror.c:428
 #, c-format
-msgid "invalid domain pointer in %s"
-msgstr "invalid domain pointer in %s"
+msgid "invalid connection pointer in %s"
+msgstr "невалиден указател за връзка в %s"
 
 #: src/virterror.c:432
-msgid "invalid argument in"
-msgstr "invalid argument in"
+msgid "invalid domain pointer in"
+msgstr "невалиден указател за домейн в"
 
 #: src/virterror.c:434
 #, c-format
-msgid "invalid argument in %s"
-msgstr "invalid argument in %s"
+msgid "invalid domain pointer in %s"
+msgstr "невалиден указател за домейн в %s"
 
 #: src/virterror.c:438
-#, c-format
-msgid "operation failed: %s"
-msgstr "operation failed: %s"
+msgid "invalid argument in"
+msgstr "невалиден аргумент в"
 
 #: src/virterror.c:440
-msgid "operation failed"
-msgstr "operation failed"
+#, c-format
+msgid "invalid argument in %s"
+msgstr "невалиден аргумент в %s"
 
 #: src/virterror.c:444
 #, c-format
-msgid "GET operation failed: %s"
-msgstr "GET operation failed: %s"
+msgid "operation failed: %s"
+msgstr "грешка при операция: %s"
 
 #: src/virterror.c:446
-msgid "GET operation failed"
-msgstr "GET operation failed"
+msgid "operation failed"
+msgstr "грешка при операцията"
 
 #: src/virterror.c:450
 #, c-format
-msgid "POST operation failed: %s"
-msgstr "POST operation failed: %s"
+msgid "GET operation failed: %s"
+msgstr "грешка при GET операция: %s"
 
 #: src/virterror.c:452
+msgid "GET operation failed"
+msgstr "грешка при GET операцията"
+
+#: src/virterror.c:456
+#, c-format
+msgid "POST operation failed: %s"
+msgstr "грешка при POST операция: %s"
+
+#: src/virterror.c:458
 msgid "POST operation failed"
-msgstr "POST operation failed"
-
-#: src/virterror.c:455
-#, c-format
-msgid "got unknown HTTP error code %d"
-msgstr "got unknown HTTP error code %d"
-
-#: src/virterror.c:459
-#, c-format
-msgid "unknown host %s"
-msgstr "unknown host %s"
+msgstr "грешка при POST операцията"
 
 #: src/virterror.c:461
-msgid "unknown host"
-msgstr "unknown host"
+#, c-format
+msgid "got unknown HTTP error code %d"
+msgstr "получен бе непознат HTTP код на грешка %d"
 
 #: src/virterror.c:465
 #, c-format
-msgid "failed to serialize S-Expr: %s"
-msgstr "failed to serialize S-Expr: %s"
+msgid "unknown host %s"
+msgstr "непозната машина %s"
 
 #: src/virterror.c:467
-msgid "failed to serialize S-Expr"
-msgstr "failed to serialize S-Expr"
+msgid "unknown host"
+msgstr "непозната машина"
 
 #: src/virterror.c:471
-msgid "could not use Xen hypervisor entry"
-msgstr "could not use Xen hypervisor entry"
+#, c-format
+msgid "failed to serialize S-Expr: %s"
+msgstr "неуспешно сериализиране на S-Expr: %s"
 
 #: src/virterror.c:473
-#, c-format
-msgid "could not use Xen hypervisor entry %s"
-msgstr "could not use Xen hypervisor entry %s"
+msgid "failed to serialize S-Expr"
+msgstr "неуспешно сериализиране на S-Expr"
 
 #: src/virterror.c:477
-msgid "could not connect to Xen Store"
-msgstr "could not connect to Xen Store"
+msgid "could not use Xen hypervisor entry"
+msgstr "не може да се ползва елемент от Xen хипервайзора"
 
 #: src/virterror.c:479
 #, c-format
-msgid "could not connect to Xen Store %s"
-msgstr "could not connect to Xen Store %s"
+msgid "could not use Xen hypervisor entry %s"
+msgstr "не може да се ползва елемент %s от Xen хипервайзора"
 
-#: src/virterror.c:482
+#: src/virterror.c:483
+msgid "could not connect to Xen Store"
+msgstr "не може да се осъществи връзка с Xen хранилище"
+
+#: src/virterror.c:485
 #, c-format
-msgid "failed Xen syscall %s %d"
-msgstr "failed Xen syscall %s %d"
-
-#: src/virterror.c:486
-msgid "unknown OS type"
-msgstr "unknown OS type"
+msgid "could not connect to Xen Store %s"
+msgstr "не може да се осъществи връзка с Xen хранилище %s"
 
 #: src/virterror.c:488
 #, c-format
+msgid "failed Xen syscall %s %d"
+msgstr "неуспешно Xen системно извикване %s %d"
+
+#: src/virterror.c:492
+msgid "unknown OS type"
+msgstr "непознат тип ОС"
+
+#: src/virterror.c:494
+#, c-format
 msgid "unknown OS type %s"
-msgstr "unknown OS type %s"
-
-#: src/virterror.c:491
-msgid "missing kernel information"
-msgstr "missing kernel information"
-
-#: src/virterror.c:495
-msgid "missing root device information"
-msgstr "missing root device information"
+msgstr "непознат тип ОС %s"
 
 #: src/virterror.c:497
-#, c-format
-msgid "missing root device information in %s"
-msgstr "missing root device information in %s"
+msgid "missing kernel information"
+msgstr "липсва информация за ядрото"
 
 #: src/virterror.c:501
-msgid "missing source information for device"
-msgstr "missing source information for device"
+msgid "missing root device information"
+msgstr "липсва информация за главното устройство"
 
 #: src/virterror.c:503
 #, c-format
-msgid "missing source information for device %s"
-msgstr "missing source information for device %s"
+msgid "missing root device information in %s"
+msgstr "липсва информация за главното устройство в %s"
 
 #: src/virterror.c:507
-msgid "missing target information for device"
-msgstr "missing target information for device"
+msgid "missing source information for device"
+msgstr "липсва информация за източника на устройство"
 
 #: src/virterror.c:509
 #, c-format
-msgid "missing target information for device %s"
-msgstr "missing target information for device %s"
+msgid "missing source information for device %s"
+msgstr "липсва информация за източника на устройство %s"
 
 #: src/virterror.c:513
-msgid "missing domain name information"
-msgstr "missing domain name information"
+msgid "missing target information for device"
+msgstr "липсва информация за целта на устройство"
 
 #: src/virterror.c:515
 #, c-format
-msgid "missing domain name information in %s"
-msgstr "missing domain name information in %s"
+msgid "missing target information for device %s"
+msgstr "липсва информация за целта на устройство %s"
 
 #: src/virterror.c:519
-msgid "missing operating system information"
-msgstr "missing operating system information"
+msgid "missing domain name information"
+msgstr "липсва информация за име на домейн"
 
 #: src/virterror.c:521
 #, c-format
-msgid "missing operating system information for %s"
-msgstr "missing operating system information for %s"
+msgid "missing domain name information in %s"
+msgstr "липсва информация за име на домейн в %s"
 
 #: src/virterror.c:525
-msgid "missing devices information"
-msgstr "missing devices information"
+msgid "missing operating system information"
+msgstr "липсва информация за операционна система"
 
 #: src/virterror.c:527
 #, c-format
-msgid "missing devices information for %s"
-msgstr "missing devices information for %s"
+msgid "missing operating system information for %s"
+msgstr "липсва информация за операционна система за %s"
 
 #: src/virterror.c:531
-msgid "too many drivers registered"
-msgstr "too many drivers registered"
+msgid "missing devices information"
+msgstr "липсва информация за устройство"
 
 #: src/virterror.c:533
 #, c-format
-msgid "too many drivers registered in %s"
-msgstr "too many drivers registered in %s"
+msgid "missing devices information for %s"
+msgstr "липсва информация за устройство за %s"
 
 #: src/virterror.c:537
-msgid "library call failed, possibly not supported"
-msgstr "library call failed, possibly not supported"
+msgid "too many drivers registered"
+msgstr "регистрирани са твърде много устройства"
 
 #: src/virterror.c:539
 #, c-format
-msgid "library call %s failed, possibly not supported"
-msgstr "library call %s failed, possibly not supported"
+msgid "too many drivers registered in %s"
+msgstr "регистрирани са твърде много устройства в %s"
 
 #: src/virterror.c:543
-msgid "XML description not well formed or invalid"
-msgstr "XML description not well formed or invalid"
+msgid "library call failed, possibly not supported"
+msgstr "неуспешно извикване на библиотечна функция, може би не се поддържа"
 
 #: src/virterror.c:545
 #, c-format
-msgid "XML description for %s is not well formed or invalid"
-msgstr "XML description for %s is not well formed or invalid"
+msgid "library call %s failed, possibly not supported"
+msgstr ""
+"неуспешно извикване на библиотечната функция %s, може би не се поддържа"
 
 #: src/virterror.c:549
-msgid "this domain exists already"
-msgstr "this domain exists already"
+msgid "XML description not well formed or invalid"
+msgstr "XML описанието не е добре форматирано или е невалидно"
 
 #: src/virterror.c:551
 #, c-format
-msgid "domain %s exists already"
-msgstr "domain %s exists already"
+msgid "XML description for %s is not well formed or invalid"
+msgstr "XML описанието за %s не е добре форматирано или е невалидно"
 
 #: src/virterror.c:555
-msgid "operation forbidden for read only access"
-msgstr "operation forbidden for read only access"
+msgid "this domain exists already"
+msgstr "този домейн вече съществува"
 
 #: src/virterror.c:557
 #, c-format
-msgid "operation %s forbidden for read only access"
-msgstr "operation %s forbidden for read only access"
+msgid "domain %s exists already"
+msgstr "домейна %s вече съществува"
 
 #: src/virterror.c:561
-msgid "failed to open configuration file for reading"
-msgstr "failed to open configuration file for reading"
+msgid "operation forbidden for read only access"
+msgstr "операцията е забранена при достъп само за четене"
 
 #: src/virterror.c:563
 #, c-format
-msgid "failed to open %s for reading"
-msgstr "failed to open %s for reading"
+msgid "operation %s forbidden for read only access"
+msgstr "операцията %s е забранена при достъп само за четене"
 
 #: src/virterror.c:567
-msgid "failed to read configuration file"
-msgstr "failed to read configuration file"
+msgid "failed to open configuration file for reading"
+msgstr "грешка при отваряне на конфигурационния файл за четене"
 
 #: src/virterror.c:569
 #, c-format
-msgid "failed to read configuration file %s"
-msgstr "failed to read configuration file %s"
+msgid "failed to open %s for reading"
+msgstr "грешка при отваряне на конфигурационен файл %s за четене"
 
 #: src/virterror.c:573
-msgid "failed to parse configuration file"
-msgstr "failed to parse configuration file"
+msgid "failed to read configuration file"
+msgstr "грешка при четене на конфигурационния файл"
 
 #: src/virterror.c:575
 #, c-format
-msgid "failed to parse configuration file %s"
-msgstr "failed to parse configuration file %s"
+msgid "failed to read configuration file %s"
+msgstr "грешка при четене на конфигурационния файл %s"
 
 #: src/virterror.c:579
-msgid "configuration file syntax error"
-msgstr "configuration file syntax error"
+msgid "failed to parse configuration file"
+msgstr "грешка при разбор на конфигурационния файл"
 
 #: src/virterror.c:581
 #, c-format
-msgid "configuration file syntax error: %s"
-msgstr "configuration file syntax error: %s"
+msgid "failed to parse configuration file %s"
+msgstr "грешка при разбор на конфигурационния файл %s"
 
 #: src/virterror.c:585
-msgid "failed to write configuration file"
-msgstr "failed to write configuration file"
+msgid "configuration file syntax error"
+msgstr "синтактична грешка в конфигурационния файл"
 
 #: src/virterror.c:587
 #, c-format
-msgid "failed to write configuration file: %s"
-msgstr "failed to write configuration file: %s"
+msgid "configuration file syntax error: %s"
+msgstr "синтактична грешка в конфигурационния файл: %s"
 
 #: src/virterror.c:591
-msgid "parser error"
-msgstr "parser error"
+msgid "failed to write configuration file"
+msgstr "грешка при запис на конфигурационния файл"
+
+#: src/virterror.c:593
+#, c-format
+msgid "failed to write configuration file: %s"
+msgstr "грешка при запис на конфигурационния файл: %s"
 
 #: src/virterror.c:597
-#, fuzzy
-msgid "invalid network pointer in"
-msgstr "invalid connection pointer in"
-
-#: src/virterror.c:599
-#, fuzzy, c-format
-msgid "invalid network pointer in %s"
-msgstr "invalid connection pointer in %s"
+msgid "parser error"
+msgstr "грешка при разбора"
 
 #: src/virterror.c:603
-#, fuzzy
-msgid "this network exists already"
-msgstr "this domain exists already"
+msgid "invalid network pointer in"
+msgstr "невалиден мрежов указател за връзка в"
 
 #: src/virterror.c:605
-#, fuzzy, c-format
-msgid "network %s exists already"
-msgstr "domain %s exists already"
+#, c-format
+msgid "invalid network pointer in %s"
+msgstr "невалиден мрежов указател за връзка в %s"
 
 #: src/virterror.c:609
-#, fuzzy
+msgid "this network exists already"
+msgstr "тази мрежа вече съществува"
+
+#: src/virterror.c:611
+#, c-format
+msgid "network %s exists already"
+msgstr "мрежата %s вече съществува"
+
+#: src/virterror.c:615
 msgid "system call error"
-msgstr "internal error"
+msgstr "грешка в системно извикване"
+
+#: src/virterror.c:621
+#, fuzzy
+msgid "RPC error"
+msgstr "грешка"
+
+#: src/virterror.c:627
+#, fuzzy
+msgid "GNUTLS call error"
+msgstr "грешка в системно извикване"
+
+#: src/virterror.c:633
+#, fuzzy
+msgid "Failed to find the network"
+msgstr "Неуспешно премахване дефиницията на мрежа %s"
+
+#: src/virterror.c:635
+#, fuzzy, c-format
+msgid "Failed to find the network: %s"
+msgstr "Неуспешно премахване дефиницията на мрежа %s"
+
+#: src/virterror.c:639
+#, fuzzy
+msgid "Domain not found"
+msgstr "информация за домейн"
+
+#: src/virterror.c:641
+#, fuzzy, c-format
+msgid "Domain not found: %s"
+msgstr "Домейна бе възстановен от %s\n"
+
+#: src/virterror.c:645
+#, fuzzy
+msgid "Network not found"
+msgstr "име на мрежата или uuid"
+
+#: src/virterror.c:647
+#, fuzzy, c-format
+msgid "Network not found: %s"
+msgstr "Мрежа %s бе създадена от %s\n"
 
 #: src/xmlrpc.c:63
 msgid "copying node content"
-msgstr "copying node content"
+msgstr "копиране съдържанието на възел"
 
 #: src/xmlrpc.c:163
 msgid "allocate value array"
-msgstr "allocate value array"
+msgstr "заделяне масив за стойности"
 
 #: src/xmlrpc.c:196
 msgid "unexpected dict node"
-msgstr "unexpected dict node"
+msgstr "неочакван възел речник"
 
 #: src/xmlrpc.c:268
 msgid "unexpected value node"
-msgstr "unexpected value node"
+msgstr "неочакван възел стойност"
 
 #: src/xmlrpc.c:431
 msgid "send request"
-msgstr "send request"
+msgstr "изпращане на заявка"
 
 #: src/xmlrpc.c:437
 msgid "unexpected mime type"
-msgstr "unexpected mime type"
+msgstr "неочакван mime тип"
 
 #: src/xmlrpc.c:444
 msgid "allocate response"
-msgstr "allocate response"
+msgstr "заделяне на отговор"
 
 #: src/xmlrpc.c:452 src/xmlrpc.c:514
 msgid "read response"
-msgstr "read response"
+msgstr "четене на отговор"
 
-#: src/xmlrpc.c:484 src/xml.c:261
+#: src/xmlrpc.c:484 src/xml.c:262
 msgid "allocate string array"
-msgstr "allocate string array"
+msgstr "заделяне на низов масив"
 
 #: src/xmlrpc.c:606
 msgid "parse server response failed"
-msgstr "parse server response failed"
+msgstr "неуспешен разбор на отговора на сървъра"
 
 #: src/xmlrpc.c:670
 msgid "allocate new context"
-msgstr "allocate new context"
+msgstr "заделяне на нов контекст"
 
-#: src/hash.c:770 src/hash.c:775 src/test.c:896 src/test.c:926 src/test.c:950
-#: src/test.c:975 src/xend_internal.c:1863 src/xend_internal.c:2709
-#: src/xend_internal.c:2958 src/xs_internal.c:648 src/proxy_internal.c:832
-#: src/proxy_internal.c:879 src/proxy_internal.c:930
+#: src/hash.c:770 src/hash.c:775
 msgid "allocating domain"
-msgstr "allocating domain"
+msgstr "заделяне на домейн"
 
 #: src/hash.c:786
 msgid "failed to add domain to connection hash table"
-msgstr "failed to add domain to connection hash table"
+msgstr "грешка при добавяне на домейна към хеш-таблицата с връзки"
 
 #: src/hash.c:838
 msgid "domain missing from connection hash table"
-msgstr "domain missing from connection hash table"
+msgstr "домейна липсва от хеш-таблицата с връзки"
 
-#: src/hash.c:952 src/hash.c:957
-#, fuzzy
+#: src/hash.c:903 src/hash.c:908
 msgid "allocating network"
-msgstr "allocating node"
+msgstr "заделяне на мрежа"
 
-#: src/hash.c:967
-#, fuzzy
+#: src/hash.c:918
 msgid "failed to add network to connection hash table"
-msgstr "failed to add domain to connection hash table"
+msgstr "грешка при добавяне на мрежата към хеш-таблицата"
 
-#: src/hash.c:1019
-#, fuzzy
+#: src/hash.c:970
 msgid "network missing from connection hash table"
-msgstr "domain missing from connection hash table"
+msgstr "мрежата липсва от хеш-таблицата"
 
-#: src/test.c:281 src/test.c:468 src/test.c:1099 src/test.c:1133
-#: src/test.c:1187
+#: src/test.c:293 src/test.c:480 src/test.c:1165 src/test.c:1199
+#: src/test.c:1253
 msgid "getting time of day"
-msgstr "getting time of day"
+msgstr "получаване на времето"
 
-#: src/test.c:287 src/test.c:422 src/test.c:447 src/test.c:1393
+#: src/test.c:299 src/test.c:434 src/test.c:459 src/test.c:1460
 msgid "domain"
-msgstr "domain"
+msgstr "домейн"
 
-#: src/test.c:293 src/test.c:551
+#: src/test.c:305 src/test.c:563
 msgid "creating xpath context"
-msgstr "creating xpath context"
+msgstr "създаване на xpath контекст"
 
-#: src/test.c:299
+#: src/test.c:311
 msgid "domain name"
-msgstr "domain name"
+msgstr "име на домейна"
 
-#: src/test.c:305 src/test.c:310
+#: src/test.c:317 src/test.c:322
 msgid "domain uuid"
-msgstr "domain uuid"
+msgstr "uuid на домейна"
 
-#: src/test.c:318
+#: src/test.c:330
 msgid "domain memory"
-msgstr "domain memory"
+msgstr "памет на домейна"
 
-#: src/test.c:327
-#, fuzzy
+#: src/test.c:339
 msgid "domain current memory"
-msgstr "domain memory"
+msgstr "настояща памет на домейна"
 
-#: src/test.c:337
+#: src/test.c:349
 msgid "domain vcpus"
-msgstr "domain vcpus"
+msgstr "ВЦП на домейна"
 
-#: src/test.c:346
+#: src/test.c:358
 msgid "domain reboot behaviour"
-msgstr "domain reboot behaviour"
+msgstr "поведение на домейна при рестарт"
 
-#: src/test.c:356
+#: src/test.c:368
 msgid "domain poweroff behaviour"
-msgstr "domain poweroff behaviour"
+msgstr "поведение на домейна при изключване"
 
-#: src/test.c:366
+#: src/test.c:378
 msgid "domain crash behaviour"
-msgstr "domain crash behaviour"
+msgstr "поведение на домейна при авария"
 
-#: src/test.c:440
+#: src/test.c:452
 msgid "load domain definition file"
-msgstr "load domain definition file"
+msgstr "зареждане на файл с дефиниции на домейни"
 
-#: src/test.c:530
+#: src/test.c:542
 msgid "loading host definition file"
-msgstr "loading host definition file"
+msgstr "зареждане на файл с дефиниции на машини"
 
-#: src/test.c:537
+#: src/test.c:549
 msgid "host"
-msgstr "host"
+msgstr "машина"
 
-#: src/test.c:545
+#: src/test.c:557
 msgid "node"
-msgstr "node"
+msgstr "възел"
 
-#: src/test.c:565
+#: src/test.c:577
 msgid "node cpu numa nodes"
-msgstr "node cpu numa nodes"
+msgstr "ЦП numa възли на възела"
 
-#: src/test.c:573
+#: src/test.c:585
 msgid "node cpu sockets"
-msgstr "node cpu sockets"
+msgstr "ЦП портове на възела"
 
-#: src/test.c:581
+#: src/test.c:593
 msgid "node cpu cores"
-msgstr "node cpu cores"
+msgstr "ядра на ЦП на възела"
 
-#: src/test.c:589
+#: src/test.c:601
 msgid "node cpu threads"
-msgstr "node cpu threads"
+msgstr "нишки на ЦП на възела"
 
-#: src/test.c:600
+#: src/test.c:612
 msgid "node active cpu"
-msgstr "node active cpu"
+msgstr "активни ЦП на възела"
 
-#: src/test.c:607
+#: src/test.c:619
 msgid "node cpu mhz"
-msgstr "node cpu mhz"
+msgstr "ЦП mhz на възела"
 
-#: src/test.c:622
+#: src/test.c:634
 msgid "node memory"
-msgstr "node memory"
+msgstr "памет на възела"
 
-#: src/test.c:628
+#: src/test.c:640
 msgid "node domain list"
-msgstr "node domain list"
+msgstr "списък домейни на възела"
 
-#: src/test.c:638
+#: src/test.c:650
 msgid "resolving domain filename"
-msgstr "resolving domain filename"
+msgstr "откриване името на файла с домейни"
 
-#: src/test.c:676
+#: src/test.c:688
 msgid "allocating node"
-msgstr "allocating node"
+msgstr "заделяне на възел"
 
-#: src/test.c:734
-msgid "too many connections"
-msgstr "too many connections"
-
-#: src/test.c:881
-msgid "too many domains"
-msgstr "too many domains"
-
-#: src/test.c:1425
-#, fuzzy
-msgid "Domain is already running"
-msgstr "Domain is already active"
-
-#: src/test.c:1452
-msgid "Domain is still running"
+#: src/test.c:756
+msgid "testOpen: supply a path or use test:///default"
 msgstr ""
 
-#: src/xml.c:295
-msgid "growing buffer"
-msgstr "growing buffer"
+#: src/test.c:761
+msgid "too many connections"
+msgstr "твърде много връзки"
 
-#: src/xml.c:347 src/xend_internal.c:1508 src/xend_internal.c:1527
-msgid "allocate new buffer"
-msgstr "allocate new buffer"
+#: src/test.c:768
+#, fuzzy
+msgid "allocating private data"
+msgstr "заделяне масив за стойности"
 
-#: src/xml.c:351
-msgid "allocate buffer content"
-msgstr "allocate buffer content"
+#: src/test.c:774
+#, fuzzy
+msgid "allocating path"
+msgstr "заделяне на домейн"
+
+#: src/test.c:946
+msgid "too many domains"
+msgstr "твърде много домейни"
+
+#: src/test.c:1492
+msgid "Domain is already running"
+msgstr "Домейнът вече е активен"
+
+#: src/test.c:1519
+msgid "Domain is still running"
+msgstr "Домейнът е все още активен"
 
 #: src/sexpr.c:59
 msgid "failed to allocate a node"
-msgstr "failed to allocate a node"
+msgstr "неуспешно заделяне на възел"
 
 #: src/sexpr.c:352 src/sexpr.c:367
 msgid "failed to copy a string"
-msgstr "failed to copy a string"
+msgstr "неуспешно копиране на низ"
 
-#: src/xend_internal.c:282 src/xend_internal.c:285
+#: src/xend_internal.c:277 src/xend_internal.c:280
 msgid "failed to read from Xen Daemon"
-msgstr "failed to read from Xen Daemon"
+msgstr "неуспешно четене от xen демона"
 
-#: src/xend_internal.c:1006
+#: src/xend_internal.c:591 src/xend_internal.c:807 src/xend_internal.c:1523
+#: src/xend_internal.c:1542
+msgid "allocate new buffer"
+msgstr "заделяне на нов буфер"
+
+#: src/xend_internal.c:1014
 msgid "failed to urlencode the create S-Expr"
-msgstr "failed to urlencode the create S-Expr"
+msgstr "неуспех при urlencode на S-Expr за създаване"
 
-#: src/xend_internal.c:1047
+#: src/xend_internal.c:1055
 msgid "domain information incomplete, missing domid"
-msgstr "domain information incomplete, missing domid"
+msgstr "информацията за домейна е непълна, липсва domid"
 
-#: src/xend_internal.c:1053
+#: src/xend_internal.c:1061
 msgid "domain information incorrect domid not numeric"
-msgstr "domain information incorrect domid not numeric"
+msgstr "информацията за домейна е невярна, domid не е число"
 
-#: src/xend_internal.c:1061 src/xend_internal.c:1110
+#: src/xend_internal.c:1069 src/xend_internal.c:1118
 msgid "domain information incomplete, missing uuid"
-msgstr "domain information incomplete, missing uuid"
+msgstr "информацията за домейна е непълна, липсва uuid"
 
-#: src/xend_internal.c:1101 src/xend_internal.c:1376
+#: src/xend_internal.c:1109 src/xend_internal.c:1384
 msgid "domain information incomplete, missing name"
-msgstr "domain information incomplete, missing name"
+msgstr "информацията за домейна е непълна, липсва име"
 
-#: src/xend_internal.c:1276 src/xend_internal.c:1307
-#, fuzzy
+#: src/xend_internal.c:1284 src/xend_internal.c:1315
 msgid "domain information incomplete, missing kernel & bootloader"
-msgstr "domain information incomplete, missing kernel"
+msgstr ""
+"информацията за домейна е непълна, липсва ядро и програма за начално "
+"зареждане"
 
-#: src/xend_internal.c:1364
-#, fuzzy
+#: src/xend_internal.c:1372
 msgid "domain information incomplete, missing id"
-msgstr "domain information incomplete, missing uuid"
-
-#: src/xend_internal.c:1477
-msgid "domain information incomplete, vbd has no dev"
-msgstr "domain information incomplete, vbd has no dev"
+msgstr "информацията за домейна е непълна, липсва id"
 
 #: src/xend_internal.c:1492
+msgid "domain information incomplete, vbd has no dev"
+msgstr "информацията за домейна е непълна, vbd няма dev"
+
+#: src/xend_internal.c:1507
 msgid "domain information incomplete, vbd has no src"
-msgstr "domain information incomplete, vbd has no src"
+msgstr "информацията за домейна е непълна, vbd няма src"
 
-#: src/xend_internal.c:1501
+#: src/xend_internal.c:1516
 msgid "cannot parse vbd filename, missing driver name"
-msgstr "cannot parse vbd filename, missing driver name"
+msgstr "грешка при разбор името на файла на vbd, липсва име на драйвер"
 
-#: src/xend_internal.c:1520
+#: src/xend_internal.c:1535
 msgid "cannot parse vbd filename, missing driver type"
-msgstr "cannot parse vbd filename, missing driver type"
+msgstr "грешка при разбор името на файла на vbd, липсва тип на драйвер"
 
-#: src/xend_internal.c:1882
+#: src/xend_internal.c:1898
 msgid "failed to parse Xend domain information"
-msgstr "failed to parse Xend domain information"
+msgstr "неуспешен разбор на информацията за Xend домейн"
 
-#: src/xend_internal.c:3145
-#, fuzzy, c-format
+#: src/xend_internal.c:3164
+#, c-format
 msgid "Failed to create inactive domain %s\n"
-msgstr "Failed to create domain %s\n"
+msgstr "Грешка при създаване на неактивен домейн %s\n"
 
-#: src/virsh.c:269
+#: src/virsh.c:307
 msgid "print help"
-msgstr "print help"
+msgstr "печат на помощ"
 
-#: src/virsh.c:270
+#: src/virsh.c:308
 msgid "Prints global help or command specific help."
-msgstr "Prints global help or command specific help."
-
-#: src/virsh.c:288
-msgid ""
-"Commands:\n"
-"\n"
 msgstr ""
-"Commands:\n"
-"\n"
+"Печат на глобалната или специфична за дадена команда помощна информация."
 
-#: src/virsh.c:302
+#: src/virsh.c:314
 #, fuzzy
-msgid "autostart a domain"
-msgstr "Start a domain."
+msgid "name of command"
+msgstr "име на неактивния домейн"
 
-#: src/virsh.c:304
-msgid "Configure a domain to be automatically started at boot."
-msgstr ""
-
-#: src/virsh.c:309 src/virsh.c:409 src/virsh.c:595 src/virsh.c:633
-#: src/virsh.c:864 src/virsh.c:946 src/virsh.c:991 src/virsh.c:1030
-#: src/virsh.c:1069 src/virsh.c:1108 src/virsh.c:1147 src/virsh.c:1224
-#: src/virsh.c:1307 src/virsh.c:1397 src/virsh.c:1453 src/virsh.c:1497
-#: src/virsh.c:1602 src/virsh.c:2338
-msgid "domain name, id or uuid"
-msgstr "domain name, id or uuid"
-
-#: src/virsh.c:310 src/virsh.c:1743
-msgid "disable autostarting"
-msgstr ""
-
-#: src/virsh.c:331
-#, fuzzy, c-format
-msgid "Failed to mark domain %s as autostarted"
-msgstr "Failed to save domain %s to %s"
-
-#: src/virsh.c:334
-#, fuzzy, c-format
-msgid "Failed to unmark domain %s as autostarted"
-msgstr "Failed to save domain %s to %s"
-
-#: src/virsh.c:341
-#, fuzzy, c-format
-msgid "Domain %s marked as autostarted\n"
-msgstr "Domain %s started\n"
-
-#: src/virsh.c:343
-#, fuzzy, c-format
-msgid "Domain %s unmarked as autostarted\n"
-msgstr "Domain %s started\n"
-
-#: src/virsh.c:353
-msgid "(re)connect to hypervisor"
-msgstr "(re)connect to hypervisor"
-
-#: src/virsh.c:355
+#: src/virsh.c:326
 msgid ""
-"Connect to local hypervisor. This is built-in command after shell start up."
+"Commands:\n"
+"\n"
 msgstr ""
-"Connect to local hypervisor. This is built-in command after shell start up."
+"Команди:\n"
+"\n"
 
-#: src/virsh.c:360
-msgid "hypervisor connection URI"
-msgstr "hypervisor connection URI"
+#: src/virsh.c:340
+msgid "autostart a domain"
+msgstr "автоматично стартиране на домейн"
 
-#: src/virsh.c:361
-msgid "read-only connection"
-msgstr "read-only connection"
+#: src/virsh.c:342
+msgid "Configure a domain to be automatically started at boot."
+msgstr "Настройване на домейна за автоматично стартиране при зареждане."
 
-#: src/virsh.c:373
-msgid "Failed to disconnect from the hypervisor"
-msgstr "Failed to disconnect from the hypervisor"
+#: src/virsh.c:347 src/virsh.c:448 src/virsh.c:634 src/virsh.c:672
+#: src/virsh.c:952 src/virsh.c:996 src/virsh.c:1168 src/virsh.c:1213
+#: src/virsh.c:1252 src/virsh.c:1291 src/virsh.c:1330 src/virsh.c:1369
+#: src/virsh.c:1446 src/virsh.c:1533 src/virsh.c:1661 src/virsh.c:1718
+#: src/virsh.c:1775 src/virsh.c:1896 src/virsh.c:2674 src/virsh.c:2753
+#: src/virsh.c:2807 src/virsh.c:2861 src/virsh.c:2977 src/virsh.c:3098
+#: src/virsh.c:3263
+msgid "domain name, id or uuid"
+msgstr "име на домейн, id или uuid"
+
+#: src/virsh.c:348 src/virsh.c:2037
+msgid "disable autostarting"
+msgstr "деактивиране на автостартирането"
+
+#: src/virsh.c:369
+#, c-format
+msgid "Failed to mark domain %s as autostarted"
+msgstr "Неуспешно маркиране на домейна %s като авто-стартиращ се"
+
+#: src/virsh.c:372
+#, c-format
+msgid "Failed to unmark domain %s as autostarted"
+msgstr "Неуспешно размаркиране на домейна %s като авто-стартиращ се"
+
+#: src/virsh.c:379
+#, c-format
+msgid "Domain %s marked as autostarted\n"
+msgstr "Домейна %s е маркиран като авто-стартиращ се\n"
+
+#: src/virsh.c:381
+#, c-format
+msgid "Domain %s unmarked as autostarted\n"
+msgstr "Домейна %s е размаркиран като авто-стартиращ се\n"
 
 #: src/virsh.c:392
+msgid "(re)connect to hypervisor"
+msgstr "(повторно) свързване към хипервайзор"
+
+#: src/virsh.c:394
+msgid ""
+"Connect to local hypervisor. This is built-in command after shell start up."
+msgstr ""
+"Свързване с локален хипервайзор. Това е вградената команда след стартиране "
+"на обвивката."
+
+#: src/virsh.c:399
+msgid "hypervisor connection URI"
+msgstr "URI за връзка с хипервайзора"
+
+#: src/virsh.c:400
+msgid "read-only connection"
+msgstr "връзка само за четене"
+
+#: src/virsh.c:412
+msgid "Failed to disconnect from the hypervisor"
+msgstr "Неуспешно откачане от хипервайзор"
+
+#: src/virsh.c:431
 msgid "Failed to connect to the hypervisor"
-msgstr "Failed to connect to the hypervisor"
+msgstr "Неуспешно закачане към хипервайзор"
 
-#: src/virsh.c:402
+#: src/virsh.c:441
 msgid "connect to the guest console"
-msgstr ""
+msgstr "закачане към конзолата за гости"
 
-#: src/virsh.c:404
+#: src/virsh.c:443
 msgid "Connect the virtual serial console for the guest"
-msgstr ""
+msgstr "Свързване към виртуалната серийна конзола за госта"
 
-#: src/virsh.c:449
+#: src/virsh.c:488
 msgid "No console available for domain\n"
-msgstr ""
+msgstr "Няма достъпна конзола за домейна\n"
 
-#: src/virsh.c:467
+#: src/virsh.c:506
 msgid "list domains"
-msgstr "list domains"
+msgstr "показване на домейните"
 
-#: src/virsh.c:468
+#: src/virsh.c:507
 msgid "Returns list of domains."
-msgstr "Returns list of domains."
+msgstr "Връща списък с домейните."
 
-#: src/virsh.c:473
+#: src/virsh.c:512
 msgid "list inactive domains"
-msgstr "list inactive domains"
+msgstr "показване на неактивните домейни"
 
-#: src/virsh.c:474
+#: src/virsh.c:513
 msgid "list inactive & active domains"
-msgstr "list inactive & active domains"
+msgstr "списък на активни и неактивни домейни"
 
-#: src/virsh.c:496 src/virsh.c:503
+#: src/virsh.c:535 src/virsh.c:542
 msgid "Failed to list active domains"
-msgstr "Failed to list active domains"
+msgstr "Грешка при извеждане на списък с активните домейни"
 
-#: src/virsh.c:514 src/virsh.c:523
+#: src/virsh.c:553 src/virsh.c:562
 msgid "Failed to list inactive domains"
-msgstr "Failed to list inactive domains"
+msgstr "Грешка при извеждане на списък с неактивните домейни"
 
-#: src/virsh.c:533
+#: src/virsh.c:572
 msgid "Id"
 msgstr "Id"
 
-#: src/virsh.c:533 src/virsh.c:2044
+#: src/virsh.c:572 src/virsh.c:2322
 msgid "Name"
-msgstr "Name"
+msgstr "Име"
 
-#: src/virsh.c:533 src/virsh.c:2044
+#: src/virsh.c:572 src/virsh.c:2322
 msgid "State"
-msgstr "State"
+msgstr "Състояние"
 
-#: src/virsh.c:546 src/virsh.c:568 src/virsh.c:3063 src/virsh.c:3079
+#: src/virsh.c:585 src/virsh.c:607 src/virsh.c:4032 src/virsh.c:4048
 msgid "no state"
-msgstr "no state"
-
-#: src/virsh.c:589
-msgid "domain state"
-msgstr "domain state"
-
-#: src/virsh.c:590
-msgid "Returns state about a running domain."
-msgstr "Returns state about a running domain."
-
-#: src/virsh.c:627
-msgid "suspend a domain"
-msgstr "suspend a domain"
+msgstr "без състояние"
 
 #: src/virsh.c:628
-msgid "Suspend a running domain."
-msgstr "Suspend a running domain."
+msgid "domain state"
+msgstr "състояние на домейна"
 
-#: src/virsh.c:651
-#, c-format
-msgid "Domain %s suspended\n"
-msgstr "Domain %s suspended\n"
-
-#: src/virsh.c:653
-#, c-format
-msgid "Failed to suspend domain %s"
-msgstr "Failed to suspend domain %s"
+#: src/virsh.c:629
+msgid "Returns state about a running domain."
+msgstr "Връща информация за работещ домейн."
 
 #: src/virsh.c:666
-msgid "create a domain from an XML file"
-msgstr "create a domain from an XML file"
+msgid "suspend a domain"
+msgstr "приспиване на домейн"
 
 #: src/virsh.c:667
-msgid "Create a domain."
-msgstr "Create a domain."
+msgid "Suspend a running domain."
+msgstr "Приспива работещ домейн."
 
-#: src/virsh.c:672
-msgid "file conatining an XML domain description"
-msgstr "file conatining an XML domain description"
-
-#: src/virsh.c:695 src/virsh.c:700 src/virsh.c:750 src/virsh.c:755
-#: src/virsh.c:1815 src/virsh.c:1820 src/virsh.c:1871 src/virsh.c:1876
+#: src/virsh.c:690
 #, c-format
-msgid "Failed to read description file %s"
-msgstr "Failed to read description file %s"
+msgid "Domain %s suspended\n"
+msgstr "Домейна %s приспан\n"
 
-#: src/virsh.c:707
+#: src/virsh.c:692
+#, c-format
+msgid "Failed to suspend domain %s"
+msgstr "Неуспешно приспиване на домейн %s"
+
+#: src/virsh.c:705
+msgid "create a domain from an XML file"
+msgstr "създаване на домейн от XML файл"
+
+#: src/virsh.c:706
+msgid "Create a domain."
+msgstr "Създаване на домейн."
+
+#: src/virsh.c:711 src/virsh.c:819
+msgid "file containing an XML domain description"
+msgstr "съдържащ XML описание на домейн файл"
+
+#: src/virsh.c:726
+#, fuzzy, c-format
+msgid "Failed to open '%s': %s"
+msgstr "Неуспешно приспиване на домейн %s"
+
+#: src/virsh.c:746
+#, fuzzy, c-format
+msgid "Failed to open '%s': read: %s"
+msgstr "грешка при отваряне на конфигурационен файл %s за четене"
+
+#: src/virsh.c:764
+#, fuzzy, c-format
+msgid "Error allocating memory: %s"
+msgstr "заделяне на мрежа"
+
+#: src/virsh.c:798
 #, c-format
 msgid "Domain %s created from %s\n"
-msgstr "Domain %s created from %s\n"
-
-#: src/virsh.c:710
-#, c-format
-msgid "Failed to create domain from %s"
-msgstr "Failed to create domain from %s"
-
-#: src/virsh.c:721
-msgid "define (but don't start) a domain from an XML file"
-msgstr "define (but don't start) a domain from an XML file"
-
-#: src/virsh.c:722
-msgid "Define a domain."
-msgstr "Define a domain."
-
-#: src/virsh.c:727
-#, fuzzy
-msgid "file containing an XML domain description"
-msgstr "file conatining an XML domain description"
-
-#: src/virsh.c:762
-#, c-format
-msgid "Domain %s defined from %s\n"
-msgstr "Domain %s defined from %s\n"
-
-#: src/virsh.c:765
-#, c-format
-msgid "Failed to define domain from %s"
-msgstr "Failed to define domain from %s"
-
-#: src/virsh.c:776
-msgid "undefine an inactive domain"
-msgstr "undefine an inactive domain"
-
-#: src/virsh.c:777
-msgid "Undefine the configuration for an inactive domain."
-msgstr "Undefine the configuration for an inactive domain."
-
-#: src/virsh.c:782 src/virsh.c:1671
-msgid "domain name or uuid"
-msgstr "domain name or uuid"
-
-#: src/virsh.c:800
-#, c-format
-msgid "Domain %s has been undefined\n"
-msgstr "Domain %s has been undefined\n"
+msgstr "Домейн %s бе създаден от %s\n"
 
 #: src/virsh.c:802
 #, c-format
-msgid "Failed to undefine domain %s"
-msgstr "Failed to undefine domain %s"
+msgid "Failed to create domain from %s"
+msgstr "Неуспех при създаване на домейн от %s"
 
-#: src/virsh.c:815
-msgid "start a (previously defined) inactive domain"
-msgstr "start a (previously defined) inactive domain"
+#: src/virsh.c:813
+msgid "define (but don't start) a domain from an XML file"
+msgstr "дефиниране (но не и стартиране) на домейн от XML файл"
 
-#: src/virsh.c:816
-msgid "Start a domain."
-msgstr "Start a domain."
-
-#: src/virsh.c:821
-msgid "name of the inactive domain"
-msgstr "name of the inactive domain"
-
-#: src/virsh.c:838
-msgid "Domain is already active"
-msgstr "Domain is already active"
-
-#: src/virsh.c:843
-#, c-format
-msgid "Domain %s started\n"
-msgstr "Domain %s started\n"
+#: src/virsh.c:814
+msgid "Define a domain."
+msgstr "Дефиниране на домейн."
 
 #: src/virsh.c:846
 #, c-format
-msgid "Failed to start domain %s"
-msgstr "Failed to start domain %s"
+msgid "Domain %s defined from %s\n"
+msgstr "Домейн %s дефиниран от %s\n"
 
-#: src/virsh.c:858
-msgid "save a domain state to a file"
-msgstr "save a domain state to a file"
+#: src/virsh.c:850
+#, c-format
+msgid "Failed to define domain from %s"
+msgstr "Неуспешно дефиниране на домейн от %s"
 
-#: src/virsh.c:859
-msgid "Save a running domain."
-msgstr "Save a running domain."
+#: src/virsh.c:861
+msgid "undefine an inactive domain"
+msgstr "премахване дефиницията на неактивен домейн"
 
-#: src/virsh.c:865
-msgid "where to save the data"
-msgstr "where to save the data"
+#: src/virsh.c:862
+msgid "Undefine the configuration for an inactive domain."
+msgstr "Премахване дефиницията на неактивен домейн."
+
+#: src/virsh.c:867 src/virsh.c:1965
+msgid "domain name or uuid"
+msgstr "име на домейн или uuid"
+
+#: src/virsh.c:885
+#, c-format
+msgid "Domain %s has been undefined\n"
+msgstr "Дефиницията на домейн %s бе премахната\n"
 
 #: src/virsh.c:887
 #, c-format
-msgid "Domain %s saved to %s\n"
-msgstr "Domain %s saved to %s\n"
+msgid "Failed to undefine domain %s"
+msgstr "Неуспешно премахване дефиницията на домейн %s"
 
-#: src/virsh.c:889
-#, c-format
-msgid "Failed to save domain %s to %s"
-msgstr "Failed to save domain %s to %s"
+#: src/virsh.c:901
+msgid "start a (previously defined) inactive domain"
+msgstr "стартиране на (предварително дефиниран) неактивен домейн"
 
 #: src/virsh.c:902
-msgid "restore a domain from a saved state in a file"
-msgstr "restore a domain from a saved state in a file"
+msgid "Start a domain."
+msgstr "Стартиране на домейн."
 
-#: src/virsh.c:903
-msgid "Restore a domain."
-msgstr "Restore a domain."
+#: src/virsh.c:907
+msgid "name of the inactive domain"
+msgstr "име на неактивния домейн"
 
-#: src/virsh.c:908
-msgid "the state to restore"
-msgstr "the state to restore"
+#: src/virsh.c:924
+msgid "Domain is already active"
+msgstr "Домейна вече е активен"
 
-#: src/virsh.c:927
+#: src/virsh.c:930
 #, c-format
-msgid "Domain restored from %s\n"
-msgstr "Domain restored from %s\n"
+msgid "Domain %s started\n"
+msgstr "Домейна %s бе стартиран\n"
 
-#: src/virsh.c:929
+#: src/virsh.c:933
 #, c-format
-msgid "Failed to restore domain from %s"
-msgstr "Failed to restore domain from %s"
+msgid "Failed to start domain %s"
+msgstr "Неуспешно стартиране на домейн %s"
 
-#: src/virsh.c:940
-msgid "dump the core of a domain to a file for analysis"
-msgstr "dump the core of a domain to a file for analysis"
-
-#: src/virsh.c:941
-msgid "Core dump a domain."
-msgstr "Core dump a domain."
+#: src/virsh.c:946
+msgid "save a domain state to a file"
+msgstr "запис състоянието на домейн във файл"
 
 #: src/virsh.c:947
-msgid "where to dump the core"
-msgstr "where to dump the core"
+msgid "Save a running domain."
+msgstr "Запис на работещ домейн."
 
-#: src/virsh.c:969
+#: src/virsh.c:953
+msgid "where to save the data"
+msgstr "къде да се запишат данните"
+
+#: src/virsh.c:975
+#, c-format
+msgid "Domain %s saved to %s\n"
+msgstr "Домейн %s бе записан в %s\n"
+
+#: src/virsh.c:977
+#, c-format
+msgid "Failed to save domain %s to %s"
+msgstr "Неуспешно записване на домейн %s в %s"
+
+#: src/virsh.c:990
+msgid "show/set scheduler parameters"
+msgstr ""
+
+#: src/virsh.c:991
+msgid "Show/Set scheduler parameters."
+msgstr ""
+
+#: src/virsh.c:997
+msgid "weight for XEN_CREDIT"
+msgstr ""
+
+#: src/virsh.c:998
+msgid "cap for XEN_CREDIT"
+msgstr ""
+
+#: src/virsh.c:1068 src/virsh.c:1072
+msgid "Scheduler"
+msgstr ""
+
+#: src/virsh.c:1072
+#, fuzzy
+msgid "Unknown"
+msgstr "непозната машина"
+
+#: src/virsh.c:1124
+msgid "restore a domain from a saved state in a file"
+msgstr "възстановяване на домейн към запазено във файл състояние"
+
+#: src/virsh.c:1125
+msgid "Restore a domain."
+msgstr "Възстановяване на домейн."
+
+#: src/virsh.c:1130
+msgid "the state to restore"
+msgstr "състояние за възстановяване"
+
+#: src/virsh.c:1149
+#, c-format
+msgid "Domain restored from %s\n"
+msgstr "Домейна бе възстановен от %s\n"
+
+#: src/virsh.c:1151
+#, c-format
+msgid "Failed to restore domain from %s"
+msgstr "Неуспех при възстановяване на домейн от %s"
+
+#: src/virsh.c:1162
+msgid "dump the core of a domain to a file for analysis"
+msgstr "запис ядрото на домейн във файл за анализ"
+
+#: src/virsh.c:1163
+msgid "Core dump a domain."
+msgstr "Запис ядрото на домейн."
+
+#: src/virsh.c:1169
+msgid "where to dump the core"
+msgstr "къде да се запише ядрото"
+
+#: src/virsh.c:1191
 #, c-format
 msgid "Domain %s dumpd to %s\n"
-msgstr "Domain %s dumpd to %s\n"
+msgstr "Ядрото на домейн %s бе записано в %s\n"
 
-#: src/virsh.c:971
+#: src/virsh.c:1193
 #, c-format
 msgid "Failed to core dump domain %s to %s"
-msgstr "Failed to core dump domain %s to %s"
+msgstr "Неуспешен запис на ядрото на домейн %s в %s"
 
-#: src/virsh.c:985
+#: src/virsh.c:1207
 msgid "resume a domain"
-msgstr "resume a domain"
+msgstr "събуждане на домейн"
 
-#: src/virsh.c:986
+#: src/virsh.c:1208
 msgid "Resume a previously suspended domain."
-msgstr "Resume a previously suspended domain."
+msgstr "Събуждане на преди това приспан домейн."
 
-#: src/virsh.c:1009
+#: src/virsh.c:1231
 #, c-format
 msgid "Domain %s resumed\n"
-msgstr "Domain %s resumed\n"
+msgstr "Домейн %s бе събуден\n"
 
-#: src/virsh.c:1011
+#: src/virsh.c:1233
 #, c-format
 msgid "Failed to resume domain %s"
-msgstr "Failed to resume domain %s"
+msgstr "Неуспешно събуждане на домейн %s"
 
-#: src/virsh.c:1024
+#: src/virsh.c:1246
 msgid "gracefully shutdown a domain"
-msgstr "gracefully shutdown a domain"
+msgstr "внимателно изключване на домейн"
 
-#: src/virsh.c:1025
+#: src/virsh.c:1247
 msgid "Run shutdown in the target domain."
-msgstr "Run shutdown in the target domain."
+msgstr "Изпълнение на команда за изключване в избрания домейна."
 
-#: src/virsh.c:1048
+#: src/virsh.c:1270
 #, c-format
 msgid "Domain %s is being shutdown\n"
-msgstr "Domain %s is being shutdown\n"
+msgstr "Домейн %s се изключва\n"
 
-#: src/virsh.c:1050
+#: src/virsh.c:1272
 #, c-format
 msgid "Failed to shutdown domain %s"
-msgstr "Failed to shutdown domain %s"
+msgstr "Неуспешно изключване на домейн %s"
 
-#: src/virsh.c:1063
+#: src/virsh.c:1285
 msgid "reboot a domain"
-msgstr "reboot a domain"
+msgstr "рестартиране на домейн"
 
-#: src/virsh.c:1064
+#: src/virsh.c:1286
 msgid "Run a reboot command in the target domain."
-msgstr "Run a reboot command in the target domain."
+msgstr "Изпълнение на команда за рестартиране в избрания домейн."
 
-#: src/virsh.c:1087
+#: src/virsh.c:1309
 #, c-format
 msgid "Domain %s is being rebooted\n"
-msgstr "Domain %s is being rebooted\n"
+msgstr "Домейн %s се рестартира\n"
 
-#: src/virsh.c:1089
+#: src/virsh.c:1311
 #, c-format
 msgid "Failed to reboot domain %s"
-msgstr "Failed to reboot domain %s"
+msgstr "Неуспешно рестартиране на домейн %s"
 
-#: src/virsh.c:1102
+#: src/virsh.c:1324
 msgid "destroy a domain"
-msgstr "destroy a domain"
+msgstr "унищожаване на домейн"
 
-#: src/virsh.c:1103
+#: src/virsh.c:1325
 msgid "Destroy a given domain."
-msgstr "Destroy a given domain."
+msgstr "Унищожаване на даден домейн."
 
-#: src/virsh.c:1126
+#: src/virsh.c:1348
 #, c-format
 msgid "Domain %s destroyed\n"
-msgstr "Domain %s destroyed\n"
+msgstr "Домейна %s бе унищожен\n"
 
-#: src/virsh.c:1128
+#: src/virsh.c:1350
 #, c-format
 msgid "Failed to destroy domain %s"
-msgstr "Failed to destroy domain %s"
+msgstr "Неуспешно унищожаване на домейн %s"
 
-#: src/virsh.c:1141
+#: src/virsh.c:1363
 msgid "domain information"
-msgstr "domain information"
+msgstr "информация за домейн"
 
-#: src/virsh.c:1142
+#: src/virsh.c:1364
 msgid "Returns basic information about the domain."
-msgstr "Returns basic information about the domain."
+msgstr "Връща основна информация за домейна."
 
-#: src/virsh.c:1168 src/virsh.c:1170
+#: src/virsh.c:1390 src/virsh.c:1392
 msgid "Id:"
 msgstr "Id:"
 
-#: src/virsh.c:1171
+#: src/virsh.c:1393
 msgid "Name:"
-msgstr "Name:"
+msgstr "Име:"
 
-#: src/virsh.c:1174
+#: src/virsh.c:1396
 msgid "UUID:"
 msgstr "UUID:"
 
-#: src/virsh.c:1177
+#: src/virsh.c:1399
 msgid "OS Type:"
-msgstr "OS Type:"
+msgstr "Тип ОС:"
 
-#: src/virsh.c:1182 src/virsh.c:1268
+#: src/virsh.c:1404 src/virsh.c:1490
 msgid "State:"
-msgstr "State:"
+msgstr "Състояние:"
 
-#: src/virsh.c:1185 src/virsh.c:1553
+#: src/virsh.c:1407 src/virsh.c:1847
 msgid "CPU(s):"
-msgstr "CPU(s):"
+msgstr "Процесори:"
 
-#: src/virsh.c:1192 src/virsh.c:1275
+#: src/virsh.c:1414 src/virsh.c:1497
 msgid "CPU time:"
-msgstr "CPU time:"
+msgstr "Процесорно време:"
 
-#: src/virsh.c:1196 src/virsh.c:1199
+#: src/virsh.c:1418 src/virsh.c:1421
 msgid "Max memory:"
-msgstr "Max memory:"
+msgstr "Максимална памет:"
 
-#: src/virsh.c:1200
+#: src/virsh.c:1422
 msgid "no limit"
-msgstr ""
+msgstr "без лимит"
 
-#: src/virsh.c:1202
+#: src/virsh.c:1424
 msgid "Used memory:"
-msgstr "Used memory:"
+msgstr "Ползвана памет:"
 
-#: src/virsh.c:1218
+#: src/virsh.c:1440
 msgid "domain vcpu information"
-msgstr "domain vcpu information"
+msgstr "информация за ВЦП на домейна"
 
-#: src/virsh.c:1219
+#: src/virsh.c:1441
 msgid "Returns basic information about the domain virtual CPUs."
-msgstr "Returns basic information about the domain virtual CPUs."
+msgstr ""
+"Връща основна информация за виртуалните централни процесори на домейна."
 
-#: src/virsh.c:1266
+#: src/virsh.c:1488
 msgid "VCPU:"
-msgstr "VCPU:"
+msgstr "ВЦП:"
 
-#: src/virsh.c:1267
+#: src/virsh.c:1489
 msgid "CPU:"
-msgstr "CPU:"
+msgstr "ЦП:"
 
-#: src/virsh.c:1277
+#: src/virsh.c:1499
 msgid "CPU Affinity:"
-msgstr "CPU Affinity:"
+msgstr "Афинитет на ЦП:"
 
-#: src/virsh.c:1301
-msgid "control domain vcpu affinity"
-msgstr "control domain vcpu affinity"
-
-#: src/virsh.c:1302
-msgid "Pin domain VCPUs to host physical CPUs."
-msgstr "Pin domain VCPUs to host physical CPUs."
-
-#: src/virsh.c:1308
-msgid "vcpu number"
-msgstr "vcpu number"
-
-#: src/virsh.c:1309
-msgid "host cpu number(s) (comma separated)"
-msgstr "host cpu number(s) (comma separated)"
-
-#: src/virsh.c:1367
-#, fuzzy, c-format
-msgid "Physical CPU %d doesn't exist."
-msgstr "command '%s' doesn't exist"
-
-#: src/virsh.c:1391
-msgid "change number of virtual CPUs"
-msgstr "change number of virtual CPUs"
-
-#: src/virsh.c:1392
-msgid "Change the number of virtual CPUs active in the guest domain."
-msgstr "Change the number of virtual CPUs active in the guest domain."
-
-#: src/virsh.c:1398
-msgid "number of virtual CPUs"
-msgstr "number of virtual CPUs"
-
-#: src/virsh.c:1429
-#, fuzzy
-msgid "Too many virtual CPU's."
-msgstr "number of virtual CPUs"
-
-#: src/virsh.c:1447
-msgid "change memory allocation"
-msgstr "change memory allocation"
-
-#: src/virsh.c:1448
-msgid "Change the current memory allocation in the guest domain."
-msgstr "Change the current memory allocation in the guest domain."
-
-#: src/virsh.c:1454
-#, fuzzy
-msgid "number of kilobytes of memory"
-msgstr "number of bytes of memory"
-
-#: src/virsh.c:1474 src/virsh.c:1518
-#, c-format
-msgid "Invalid value of %d for memory size"
+#: src/virsh.c:1511
+msgid "Domain shut off, virtual CPUs not present."
 msgstr ""
 
-#: src/virsh.c:1491
-msgid "change maximum memory limit"
-msgstr "change maximum memory limit"
+#: src/virsh.c:1527
+msgid "control domain vcpu affinity"
+msgstr "контрол афинитета на ВЦП на домейна"
 
-#: src/virsh.c:1492
-msgid "Change the maximum memory allocation limit in the guest domain."
-msgstr "Change the maximum memory allocation limit in the guest domain."
+#: src/virsh.c:1528
+msgid "Pin domain VCPUs to host physical CPUs."
+msgstr "Ограничаване виртуалните централни процесори към физически такива."
 
-#: src/virsh.c:1498
-#, fuzzy
-msgid "maximum memory limit in kilobytes"
-msgstr "maxmimum memory limit in bytes"
+#: src/virsh.c:1534
+msgid "vcpu number"
+msgstr "номер на ВЦП"
 
 #: src/virsh.c:1535
-msgid "node information"
-msgstr "node information"
+msgid "host cpu number(s) (comma separated)"
+msgstr "номера на физически процесори (разделени със запетаи)"
 
-#: src/virsh.c:1536
-msgid "Returns basic information about the node."
-msgstr "Returns basic information about the node."
-
-#: src/virsh.c:1549
-msgid "failed to get node information"
-msgstr "failed to get node information"
-
-#: src/virsh.c:1552
-msgid "CPU model:"
-msgstr "CPU model:"
-
-#: src/virsh.c:1554
-msgid "CPU frequency:"
-msgstr "CPU frequency:"
-
-#: src/virsh.c:1555
-msgid "CPU socket(s):"
-msgstr "CPU socket(s):"
-
-#: src/virsh.c:1556
-msgid "Core(s) per socket:"
-msgstr "Core(s) per socket:"
-
-#: src/virsh.c:1557
-msgid "Thread(s) per core:"
-msgstr "Thread(s) per core:"
-
-#: src/virsh.c:1558
-msgid "NUMA cell(s):"
-msgstr "NUMA cell(s):"
-
-#: src/virsh.c:1559
-msgid "Memory size:"
-msgstr "Memory size:"
-
-#: src/virsh.c:1569
-msgid "capabilities"
+#: src/virsh.c:1590
+msgid "cpulist: Invalid format. Empty string."
 msgstr ""
 
-#: src/virsh.c:1570
-msgid "Returns capabilities of hypervisor/driver."
+#: src/virsh.c:1600
+#, c-format
+msgid ""
+"cpulist: %s: Invalid format. Expecting digit at position %d (near '%c')."
 msgstr ""
 
-#: src/virsh.c:1583
-#, fuzzy
-msgid "failed to get capabilities"
-msgstr "failed to open file"
-
-#: src/virsh.c:1596
-msgid "domain information in XML"
-msgstr "domain information in XML"
-
-#: src/virsh.c:1597
-#, fuzzy
-msgid "Output the domain information as an XML dump to stdout."
-msgstr "Ouput the domain information as an XML dump to stdout."
-
-#: src/virsh.c:1636
-msgid "convert a domain id or UUID to domain name"
-msgstr "convert a domain id or UUID to domain name"
-
-#: src/virsh.c:1641
-msgid "domain id or uuid"
-msgstr "domain id or uuid"
-
-#: src/virsh.c:1666
-msgid "convert a domain name or UUID to domain id"
-msgstr "convert a domain name or UUID to domain id"
-
-#: src/virsh.c:1701
-msgid "convert a domain name or id to domain UUID"
-msgstr "convert a domain name or id to domain UUID"
-
-#: src/virsh.c:1706
-msgid "domain id or name"
-msgstr "domain id or name"
-
-#: src/virsh.c:1725
-msgid "failed to get domain UUID"
-msgstr "failed to get domain UUID"
-
-#: src/virsh.c:1735
-#, fuzzy
-msgid "autostart a network"
-msgstr "Start a domain."
-
-#: src/virsh.c:1737
-msgid "Configure a network to be automatically started at boot."
+#: src/virsh.c:1610
+#, c-format
+msgid ""
+"cpulist: %s: Invalid format. Expecting digit or comma at position %d (near '%"
+"c')."
 msgstr ""
 
-#: src/virsh.c:1742 src/virsh.c:2183
+#: src/virsh.c:1617
+#, c-format
+msgid "cpulist: %s: Invalid format. Trailing comma at position %d."
+msgstr ""
+
+#: src/virsh.c:1631
+#, c-format
+msgid "Physical CPU %d doesn't exist."
+msgstr "Физическия процесор %d не съществува."
+
+#: src/virsh.c:1655
+msgid "change number of virtual CPUs"
+msgstr "промяна броя виртуални ЦП"
+
+#: src/virsh.c:1656
+msgid "Change the number of virtual CPUs active in the guest domain."
+msgstr ""
+"Промяна броя на виртуалните централни процесори активни в домейна гост."
+
+#: src/virsh.c:1662
+msgid "number of virtual CPUs"
+msgstr "брой виртуални ЦП"
+
+#: src/virsh.c:1682
 #, fuzzy
-msgid "network name or uuid"
-msgstr "domain name or uuid"
+msgid "Invalid number of virtual CPUs."
+msgstr "брой виртуални ЦП"
 
-#: src/virsh.c:1764
-#, fuzzy, c-format
-msgid "failed to mark network %s as autostarted"
-msgstr "Failed to start domain %s"
+#: src/virsh.c:1694
+#, fuzzy
+msgid "Too many virtual CPUs."
+msgstr "Твърде много виртуални процесори."
 
-#: src/virsh.c:1767
-#, fuzzy, c-format
-msgid "failed to unmark network %s as autostarted"
-msgstr "Failed to start domain %s"
+#: src/virsh.c:1712
+msgid "change memory allocation"
+msgstr "промяна заделянето на памет"
 
-#: src/virsh.c:1774
-#, fuzzy, c-format
-msgid "Network %s marked as autostarted\n"
-msgstr "Domain %s started\n"
+#: src/virsh.c:1713
+msgid "Change the current memory allocation in the guest domain."
+msgstr "Промяна на текущото заделяне на памет в домейна гост."
+
+#: src/virsh.c:1719
+msgid "number of kilobytes of memory"
+msgstr "килобайта памет"
+
+#: src/virsh.c:1740 src/virsh.c:1752 src/virsh.c:1797
+#, c-format
+msgid "Invalid value of %d for memory size"
+msgstr "Невалидна стойност %d за размера на паметта"
+
+#: src/virsh.c:1746
+msgid "Unable to verify MaxMemorySize"
+msgstr ""
+
+#: src/virsh.c:1769
+msgid "change maximum memory limit"
+msgstr "промяна горната граница на паметта"
+
+#: src/virsh.c:1770
+msgid "Change the maximum memory allocation limit in the guest domain."
+msgstr "Промяна на максималния обем заделена памет за домейна гост."
 
 #: src/virsh.c:1776
-#, fuzzy, c-format
-msgid "Network %s unmarked as autostarted\n"
-msgstr "Domain %s started\n"
+msgid "maximum memory limit in kilobytes"
+msgstr "максимално памет в килобайтове"
 
-#: src/virsh.c:1786
+#: src/virsh.c:1803
+msgid "Unable to verify current MemorySize"
+msgstr ""
+
+#: src/virsh.c:1810
 #, fuzzy
-msgid "create a network from an XML file"
-msgstr "create a domain from an XML file"
+msgid "Unable to shrink current MemorySize"
+msgstr "настояща памет на домейна"
 
-#: src/virsh.c:1787
-#, fuzzy
-msgid "Create a network."
-msgstr "Create a domain."
+#: src/virsh.c:1816
+msgid "Unable to change MaxMemorySize"
+msgstr ""
 
-#: src/virsh.c:1792 src/virsh.c:1848
-#, fuzzy
-msgid "file containing an XML network description"
-msgstr "file conatining an XML domain description"
-
-#: src/virsh.c:1827
-#, fuzzy, c-format
-msgid "Network %s created from %s\n"
-msgstr "Domain %s created from %s\n"
+#: src/virsh.c:1829
+msgid "node information"
+msgstr "информация за възела"
 
 #: src/virsh.c:1830
-#, fuzzy, c-format
-msgid "Failed to create network from %s"
-msgstr "Failed to create domain from %s"
-
-#: src/virsh.c:1842
-#, fuzzy
-msgid "define (but don't start) a network from an XML file"
-msgstr "define (but don't start) a domain from an XML file"
+msgid "Returns basic information about the node."
+msgstr "Връща основна информация за възела."
 
 #: src/virsh.c:1843
-#, fuzzy
+msgid "failed to get node information"
+msgstr "неуспешно получаване на информация за възела"
+
+#: src/virsh.c:1846
+msgid "CPU model:"
+msgstr "ЦП модел:"
+
+#: src/virsh.c:1848
+msgid "CPU frequency:"
+msgstr "ЦП честота:"
+
+#: src/virsh.c:1849
+msgid "CPU socket(s):"
+msgstr "ЦП порт(ове):"
+
+#: src/virsh.c:1850
+msgid "Core(s) per socket:"
+msgstr "Ядра на порт:"
+
+#: src/virsh.c:1851
+msgid "Thread(s) per core:"
+msgstr "Нишки на ядро:"
+
+#: src/virsh.c:1852
+msgid "NUMA cell(s):"
+msgstr "NUMA клетки:"
+
+#: src/virsh.c:1853
+msgid "Memory size:"
+msgstr "Обем на паметта:"
+
+#: src/virsh.c:1863
+msgid "capabilities"
+msgstr "възможности"
+
+#: src/virsh.c:1864
+msgid "Returns capabilities of hypervisor/driver."
+msgstr "Връща възможностите на хипервизор/драйвер."
+
+#: src/virsh.c:1877
+msgid "failed to get capabilities"
+msgstr "неуспешно получаване на възможностите"
+
+#: src/virsh.c:1890
+msgid "domain information in XML"
+msgstr "информация за домейн в XML"
+
+#: src/virsh.c:1891
+msgid "Output the domain information as an XML dump to stdout."
+msgstr "Запис на информацията за домейна като XML на стандартния изход."
+
+#: src/virsh.c:1930
+msgid "convert a domain id or UUID to domain name"
+msgstr "конвертиране на id или UUID на домейн до име"
+
+#: src/virsh.c:1935
+msgid "domain id or uuid"
+msgstr "id или uuid на домейн"
+
+#: src/virsh.c:1960
+msgid "convert a domain name or UUID to domain id"
+msgstr "конвертиране на име или UUID на домейн до id"
+
+#: src/virsh.c:1995
+msgid "convert a domain name or id to domain UUID"
+msgstr "конвертиране на име или id на домейн до UUID"
+
+#: src/virsh.c:2000
+msgid "domain id or name"
+msgstr "id или име на домейн"
+
+#: src/virsh.c:2019
+msgid "failed to get domain UUID"
+msgstr "неуспешно получаване на UUID на домейн"
+
+#: src/virsh.c:2029
+msgid "autostart a network"
+msgstr "автоматично стартиране на мрежа"
+
+#: src/virsh.c:2031
+msgid "Configure a network to be automatically started at boot."
+msgstr "Настройване на мрежата за автоматично стартиране при зареждане."
+
+#: src/virsh.c:2036 src/virsh.c:2461
+msgid "network name or uuid"
+msgstr "име на мрежата или uuid"
+
+#: src/virsh.c:2058
+#, c-format
+msgid "failed to mark network %s as autostarted"
+msgstr "Неуспешно маркиране на мрежата %s като авто-стартирана"
+
+#: src/virsh.c:2061
+#, c-format
+msgid "failed to unmark network %s as autostarted"
+msgstr "Неуспешно размаркиране на мрежата %s като авто-стартирана"
+
+#: src/virsh.c:2068
+#, c-format
+msgid "Network %s marked as autostarted\n"
+msgstr "Мрежа %s e маркирана като авто-стартирана\n"
+
+#: src/virsh.c:2070
+#, c-format
+msgid "Network %s unmarked as autostarted\n"
+msgstr "Мрежа %s e размаркирана като авто-стартирана\n"
+
+#: src/virsh.c:2080
+msgid "create a network from an XML file"
+msgstr "създаване на мрежа от XML файл"
+
+#: src/virsh.c:2081
+msgid "Create a network."
+msgstr "Създаване на мрежа."
+
+#: src/virsh.c:2086 src/virsh.c:2134
+msgid "file containing an XML network description"
+msgstr "файл, съдържащ XML описание на мрежата"
+
+#: src/virsh.c:2113
+#, c-format
+msgid "Network %s created from %s\n"
+msgstr "Мрежа %s бе създадена от %s\n"
+
+#: src/virsh.c:2116
+#, c-format
+msgid "Failed to create network from %s"
+msgstr "Неуспех при създаване на мрежа от %s"
+
+#: src/virsh.c:2128
+msgid "define (but don't start) a network from an XML file"
+msgstr "дефиниране (но не и стартиране) на мрежа от XML файл"
+
+#: src/virsh.c:2129
 msgid "Define a network."
-msgstr "Define a domain."
-
-#: src/virsh.c:1883
-#, fuzzy, c-format
-msgid "Network %s defined from %s\n"
-msgstr "Domain %s defined from %s\n"
-
-#: src/virsh.c:1886
-#, fuzzy, c-format
-msgid "Failed to define network from %s"
-msgstr "Failed to define domain from %s"
-
-#: src/virsh.c:1898
-#, fuzzy
-msgid "destroy a network"
-msgstr "destroy a domain"
-
-#: src/virsh.c:1899
-#, fuzzy
-msgid "Destroy a given network."
-msgstr "Destroy a given domain."
-
-#: src/virsh.c:1904 src/virsh.c:1944
-#, fuzzy
-msgid "network name, id or uuid"
-msgstr "domain name, id or uuid"
-
-#: src/virsh.c:1922
-#, fuzzy, c-format
-msgid "Network %s destroyed\n"
-msgstr "Domain %s destroyed\n"
-
-#: src/virsh.c:1924
-#, fuzzy, c-format
-msgid "Failed to destroy network %s"
-msgstr "Failed to destroy domain %s"
-
-#: src/virsh.c:1938
-#, fuzzy
-msgid "network information in XML"
-msgstr "domain information in XML"
-
-#: src/virsh.c:1939
-#, fuzzy
-msgid "Output the network information as an XML dump to stdout."
-msgstr "Ouput the domain information as an XML dump to stdout."
-
-#: src/virsh.c:1979
-msgid "list networks"
-msgstr ""
-
-#: src/virsh.c:1980
-#, fuzzy
-msgid "Returns list of networks."
-msgstr "Returns list of domains."
-
-#: src/virsh.c:1985
-#, fuzzy
-msgid "list inactive networks"
-msgstr "list inactive domains"
-
-#: src/virsh.c:1986
-#, fuzzy
-msgid "list inactive & active networks"
-msgstr "list inactive & active domains"
-
-#: src/virsh.c:2006 src/virsh.c:2014
-#, fuzzy
-msgid "Failed to list active networks"
-msgstr "Failed to list active domains"
-
-#: src/virsh.c:2025 src/virsh.c:2034
-#, fuzzy
-msgid "Failed to list inactive networks"
-msgstr "Failed to list inactive domains"
-
-#: src/virsh.c:2044
-msgid "Autostart"
-msgstr ""
-
-#: src/virsh.c:2059 src/virsh.c:2082
-#, fuzzy
-msgid "no autostart"
-msgstr "no state"
-
-#: src/virsh.c:2065
-msgid "active"
-msgstr ""
-
-#: src/virsh.c:2088
-#, fuzzy
-msgid "inactive"
-msgstr "node active cpu"
-
-#: src/virsh.c:2107
-#, fuzzy
-msgid "convert a network UUID to network name"
-msgstr "convert a domain id or UUID to domain name"
-
-#: src/virsh.c:2112
-msgid "network uuid"
-msgstr ""
-
-#: src/virsh.c:2138
-#, fuzzy
-msgid "start a (previously defined) inactive network"
-msgstr "start a (previously defined) inactive domain"
-
-#: src/virsh.c:2139
-#, fuzzy
-msgid "Start a network."
-msgstr "Start a domain."
-
-#: src/virsh.c:2144
-#, fuzzy
-msgid "name of the inactive network"
-msgstr "name of the inactive domain"
+msgstr "Дефиниране на мрежа."
 
 #: src/virsh.c:2161
-#, fuzzy, c-format
-msgid "Network %s started\n"
-msgstr "Domain %s started\n"
+#, c-format
+msgid "Network %s defined from %s\n"
+msgstr "Мрежа %s дефинирана от %s\n"
 
 #: src/virsh.c:2164
-#, fuzzy, c-format
-msgid "Failed to start network %s"
-msgstr "Failed to start domain %s"
+#, c-format
+msgid "Failed to define network from %s"
+msgstr "Неуспешно дефиниране на мрежа от %s"
+
+#: src/virsh.c:2176
+msgid "destroy a network"
+msgstr "унищожаване на мрежа"
 
 #: src/virsh.c:2177
-#, fuzzy
-msgid "undefine an inactive network"
-msgstr "undefine an inactive domain"
+msgid "Destroy a given network."
+msgstr "Унищожаване на дадена мрежа."
 
-#: src/virsh.c:2178
-#, fuzzy
-msgid "Undefine the configuration for an inactive network."
-msgstr "Undefine the configuration for an inactive domain."
+#: src/virsh.c:2182 src/virsh.c:2222
+msgid "network name, id or uuid"
+msgstr "име на мрежа, id или uuid"
 
-#: src/virsh.c:2201
-#, fuzzy, c-format
-msgid "Network %s has been undefined\n"
-msgstr "Domain %s has been undefined\n"
+#: src/virsh.c:2200
+#, c-format
+msgid "Network %s destroyed\n"
+msgstr "Мрежата %s бе унищожена\n"
 
-#: src/virsh.c:2203
-#, fuzzy, c-format
-msgid "Failed to undefine network %s"
-msgstr "Failed to undefine domain %s"
+#: src/virsh.c:2202
+#, c-format
+msgid "Failed to destroy network %s"
+msgstr "Неуспешно унищожаване на мрежа %s"
 
 #: src/virsh.c:2216
-#, fuzzy
+msgid "network information in XML"
+msgstr "информация за мрежа в XML"
+
+#: src/virsh.c:2217
+msgid "Output the network information as an XML dump to stdout."
+msgstr "Запис на информацията за мрежата като XML на стандартния изход."
+
+#: src/virsh.c:2257
+msgid "list networks"
+msgstr "списък с мрежите"
+
+#: src/virsh.c:2258
+msgid "Returns list of networks."
+msgstr "Връща списък с мрежите."
+
+#: src/virsh.c:2263
+msgid "list inactive networks"
+msgstr "показване на неактивните мрежи"
+
+#: src/virsh.c:2264
+msgid "list inactive & active networks"
+msgstr "списък на активни и неактивни мрежи"
+
+#: src/virsh.c:2284 src/virsh.c:2292
+msgid "Failed to list active networks"
+msgstr "Грешка при извеждане на списък с активните мрежи"
+
+#: src/virsh.c:2303 src/virsh.c:2312
+msgid "Failed to list inactive networks"
+msgstr "Грешка при извеждане на списък с неактивните мрежи"
+
+#: src/virsh.c:2322
+msgid "Autostart"
+msgstr "Автостартиране"
+
+#: src/virsh.c:2337 src/virsh.c:2360
+msgid "no autostart"
+msgstr "без автостартиране"
+
+#: src/virsh.c:2343
+msgid "active"
+msgstr "активност"
+
+#: src/virsh.c:2366
+msgid "inactive"
+msgstr "неактивност"
+
+#: src/virsh.c:2385
+msgid "convert a network UUID to network name"
+msgstr "конвертиране на UUID на мрежа до име на мрежа"
+
+#: src/virsh.c:2390
+msgid "network uuid"
+msgstr "uuid на мрежа"
+
+#: src/virsh.c:2416
+msgid "start a (previously defined) inactive network"
+msgstr "стартиране на (предварително дефинирана) неактивена мрежа"
+
+#: src/virsh.c:2417
+msgid "Start a network."
+msgstr "Стартиране на мрежа."
+
+#: src/virsh.c:2422
+msgid "name of the inactive network"
+msgstr "име на неактивната мрежа"
+
+#: src/virsh.c:2439
+#, c-format
+msgid "Network %s started\n"
+msgstr "Мрежа %s бе стартирана\n"
+
+#: src/virsh.c:2442
+#, c-format
+msgid "Failed to start network %s"
+msgstr "Неуспешно стартиране на мрежа %s"
+
+#: src/virsh.c:2455
+msgid "undefine an inactive network"
+msgstr "премахване дефиницията на неактивна мрежа"
+
+#: src/virsh.c:2456
+msgid "Undefine the configuration for an inactive network."
+msgstr "Премахване дефиницията на неактивна мрежа."
+
+#: src/virsh.c:2479
+#, c-format
+msgid "Network %s has been undefined\n"
+msgstr "Дефиницията на мрежа %s бе премахната\n"
+
+#: src/virsh.c:2481
+#, c-format
+msgid "Failed to undefine network %s"
+msgstr "Неуспешно премахване дефиницията на мрежа %s"
+
+#: src/virsh.c:2494
 msgid "convert a network name to network UUID"
-msgstr "convert a domain name or id to domain UUID"
+msgstr "конвертиране на име на мрежа до UUID"
 
-#: src/virsh.c:2221
+#: src/virsh.c:2499
 msgid "network name"
-msgstr ""
+msgstr "име на мрежа"
 
-#: src/virsh.c:2241
-#, fuzzy
+#: src/virsh.c:2519
 msgid "failed to get network UUID"
-msgstr "failed to get domain UUID"
+msgstr "неуспешно получаване на UUID на мрежата"
 
-#: src/virsh.c:2252
+#: src/virsh.c:2530
 msgid "show version"
-msgstr "show version"
+msgstr "показване на версия"
 
-#: src/virsh.c:2253
+#: src/virsh.c:2531
 msgid "Display the system version information."
-msgstr "Display the system version information."
+msgstr "Показва информацията за версия на системата."
 
-#: src/virsh.c:2276
+#: src/virsh.c:2554
 msgid "failed to get hypervisor type"
-msgstr "failed to get hypervisor type"
+msgstr "неуспешно получаване типа на хипервайзора"
 
-#: src/virsh.c:2285
+#: src/virsh.c:2563
 #, c-format
 msgid "Compiled against library: libvir %d.%d.%d\n"
-msgstr "Compiled against library: libvir %d.%d.%d\n"
+msgstr "Компилирано за библиотека: libvir %d.%d.%d\n"
 
-#: src/virsh.c:2290
+#: src/virsh.c:2568
 msgid "failed to get the library version"
-msgstr "failed to get the library version"
-
-#: src/virsh.c:2297
-#, c-format
-msgid "Using library: libvir %d.%d.%d\n"
-msgstr "Using library: libvir %d.%d.%d\n"
-
-#: src/virsh.c:2304
-#, c-format
-msgid "Using API: %s %d.%d.%d\n"
-msgstr "Using API: %s %d.%d.%d\n"
-
-#: src/virsh.c:2309
-msgid "failed to get the hypervisor version"
-msgstr "failed to get the hypervisor version"
-
-#: src/virsh.c:2314
-#, c-format
-msgid "Cannot extract running %s hypervisor version\n"
-msgstr "Cannot extract running %s hypervisor version\n"
-
-#: src/virsh.c:2321
-#, c-format
-msgid "Running hypervisor: %s %d.%d.%d\n"
-msgstr "Running hypervisor: %s %d.%d.%d\n"
-
-#: src/virsh.c:2332
-msgid "vnc display"
-msgstr ""
-
-#: src/virsh.c:2333
-msgid "Output the IP address and port number for the VNC display."
-msgstr ""
-
-#: src/virsh.c:2412
-msgid "quit this interactive terminal"
-msgstr "quit this interactive terminal"
-
-#: src/virsh.c:2539
-#, c-format
-msgid "command '%s' requires <%s> option"
-msgstr "command '%s' requires <%s> option"
-
-#: src/virsh.c:2540
-#, c-format
-msgid "command '%s' requires --%s option"
-msgstr "command '%s' requires --%s option"
-
-#: src/virsh.c:2567
-#, c-format
-msgid "command '%s' doesn't exist"
-msgstr "command '%s' doesn't exist"
+msgstr "неуспешно получаване версията на библиотеката"
 
 #: src/virsh.c:2575
-msgid "  NAME\n"
-msgstr "  NAME\n"
-
-#: src/virsh.c:2586
-msgid ""
-"\n"
-"  DESCRIPTION\n"
-msgstr ""
-"\n"
-"  DESCRIPTION\n"
-
-#: src/virsh.c:2590
-msgid ""
-"\n"
-"  OPTIONS\n"
-msgstr ""
-"\n"
-"  OPTIONS\n"
-
-#: src/virsh.c:2597
 #, c-format
-msgid "--%s <number>"
-msgstr "--%s <number>"
+msgid "Using library: libvir %d.%d.%d\n"
+msgstr "Ползва се библиотека: libvir %d.%d.%d\n"
+
+#: src/virsh.c:2582
+#, c-format
+msgid "Using API: %s %d.%d.%d\n"
+msgstr "Ползва се API: %s %d.%d.%d\n"
+
+#: src/virsh.c:2587
+msgid "failed to get the hypervisor version"
+msgstr "неуспешно получаване на версията на хипервайзора"
+
+#: src/virsh.c:2592
+#, c-format
+msgid "Cannot extract running %s hypervisor version\n"
+msgstr "Не може да се извлече версията на работещия %s хипервайзор\n"
 
 #: src/virsh.c:2599
 #, c-format
+msgid "Running hypervisor: %s %d.%d.%d\n"
+msgstr "Работещ хипервайзор: %s %d.%d.%d\n"
+
+#: src/virsh.c:2610
+#, fuzzy
+msgid "print the hypervisor hostname"
+msgstr "неуспешно получаване типа на хипервайзора"
+
+#: src/virsh.c:2624
+#, fuzzy
+msgid "failed to get hostname"
+msgstr "неуспешно получаване типа на хипервайзора"
+
+#: src/virsh.c:2639
+#, fuzzy
+msgid "print the hypervisor canonical URI"
+msgstr "URI за връзка с хипервайзора"
+
+#: src/virsh.c:2653
+#, fuzzy
+msgid "failed to get URI"
+msgstr "неуспешно получаване на UUID на домейн"
+
+#: src/virsh.c:2668
+msgid "vnc display"
+msgstr "vnc дисплей"
+
+#: src/virsh.c:2669
+msgid "Output the IP address and port number for the VNC display."
+msgstr "Извеждане на IP адрес и номер на порт за VNC дисплея."
+
+#: src/virsh.c:2747
+#, fuzzy
+msgid "attach device from an XML file"
+msgstr "създаване на домейн от XML файл"
+
+#: src/virsh.c:2748
+#, fuzzy
+msgid "Attach device from an XML <file>."
+msgstr "създаване на домейн от XML файл"
+
+#: src/virsh.c:2754 src/virsh.c:2808
+msgid "XML file"
+msgstr ""
+
+#: src/virsh.c:2786
+#, fuzzy, c-format
+msgid "Failed to attach device from %s"
+msgstr "Неуспех при създаване на домейн от %s"
+
+#: src/virsh.c:2801
+#, fuzzy
+msgid "detach device from an XML file"
+msgstr "създаване на домейн от XML файл"
+
+#: src/virsh.c:2802
+#, fuzzy
+msgid "Detach device from an XML <file>"
+msgstr "създаване на домейн от XML файл"
+
+#: src/virsh.c:2840
+#, fuzzy, c-format
+msgid "Failed to detach device from %s"
+msgstr "Неуспех при създаване на домейн от %s"
+
+#: src/virsh.c:2855
+#, fuzzy
+msgid "attach network interface"
+msgstr "име на мрежа"
+
+#: src/virsh.c:2856
+msgid "Attach new network interface."
+msgstr ""
+
+#: src/virsh.c:2862 src/virsh.c:2978
+#, fuzzy
+msgid "network interface type"
+msgstr "име на мрежа"
+
+#: src/virsh.c:2863
+#, fuzzy
+msgid "source of network interface"
+msgstr "недефинирано име на мрежа"
+
+#: src/virsh.c:2864
+#, fuzzy
+msgid "target network name"
+msgstr "име на мрежа"
+
+#: src/virsh.c:2865 src/virsh.c:2979
+msgid "MAC adress"
+msgstr ""
+
+#: src/virsh.c:2866
+msgid "script used to bridge network interface"
+msgstr ""
+
+#: src/virsh.c:2898
+#, c-format
+msgid "No support %s in command 'attach-interface'"
+msgstr ""
+
+#: src/virsh.c:2971
+#, fuzzy
+msgid "detach network interface"
+msgstr "име на мрежа"
+
+#: src/virsh.c:2972
+msgid "Detach network interface."
+msgstr ""
+
+#: src/virsh.c:3017 src/virsh.c:3022
+#, fuzzy
+msgid "Failed to get interface information"
+msgstr "неуспешно получаване на информация за възела"
+
+#: src/virsh.c:3030
+#, c-format
+msgid "No found interface whose type is %s"
+msgstr ""
+
+#: src/virsh.c:3052
+#, c-format
+msgid "No found interface whose MAC address is %s"
+msgstr ""
+
+#: src/virsh.c:3058 src/virsh.c:3336
+#, fuzzy
+msgid "Failed to allocate memory"
+msgstr "неуспешно заделяне на възел"
+
+#: src/virsh.c:3063 src/virsh.c:3341
+#, fuzzy
+msgid "Failed to create XML"
+msgstr "Неуспешно четене от порт %d\n"
+
+#: src/virsh.c:3092
+msgid "attach disk device"
+msgstr ""
+
+#: src/virsh.c:3093
+msgid "Attach new disk device."
+msgstr ""
+
+#: src/virsh.c:3099
+msgid "source of disk device"
+msgstr ""
+
+#: src/virsh.c:3100 src/virsh.c:3264
+msgid "target of disk device"
+msgstr ""
+
+#: src/virsh.c:3101
+msgid "driver of disk device"
+msgstr ""
+
+#: src/virsh.c:3102
+msgid "subdriver of disk device"
+msgstr ""
+
+#: src/virsh.c:3103
+msgid "target device type"
+msgstr ""
+
+#: src/virsh.c:3104
+msgid "mode of device reading and writing"
+msgstr ""
+
+#: src/virsh.c:3135 src/virsh.c:3144 src/virsh.c:3151
+#, c-format
+msgid "No support %s in command 'attach-disk'"
+msgstr ""
+
+#: src/virsh.c:3257
+msgid "detach disk device"
+msgstr ""
+
+#: src/virsh.c:3258
+msgid "Detach disk device."
+msgstr ""
+
+#: src/virsh.c:3299 src/virsh.c:3304 src/virsh.c:3311
+#, fuzzy
+msgid "Failed to get disk information"
+msgstr "неуспешно получаване на информация за възела"
+
+#: src/virsh.c:3330
+#, c-format
+msgid "No found disk whose target is %s"
+msgstr ""
+
+#: src/virsh.c:3370
+msgid "quit this interactive terminal"
+msgstr "изход от този интерактивен терминал"
+
+#: src/virsh.c:3506
+#, c-format
+msgid "command '%s' requires <%s> option"
+msgstr "команда '%s' изисква опция <%s>"
+
+#: src/virsh.c:3507
+#, c-format
+msgid "command '%s' requires --%s option"
+msgstr "команда '%s' изисква опция --%s"
+
+#: src/virsh.c:3534
+#, c-format
+msgid "command '%s' doesn't exist"
+msgstr "команда '%s' не съществува"
+
+#: src/virsh.c:3542
+msgid "  NAME\n"
+msgstr "  ИМЕ\n"
+
+#: src/virsh.c:3546
+#, fuzzy
+msgid ""
+"\n"
+"  SYNOPSIS\n"
+msgstr ""
+"\n"
+"  ОПЦИИ\n"
+
+#: src/virsh.c:3553
+msgid ""
+"\n"
+"  DESCRIPTION\n"
+msgstr ""
+"\n"
+"  ОПИСАНИЕ\n"
+
+#: src/virsh.c:3557
+msgid ""
+"\n"
+"  OPTIONS\n"
+msgstr ""
+"\n"
+"  ОПЦИИ\n"
+
+#: src/virsh.c:3564
+#, c-format
+msgid "--%s <number>"
+msgstr "--%s <число>"
+
+#: src/virsh.c:3566
+#, c-format
 msgid "--%s <string>"
-msgstr "--%s <string>"
+msgstr "--%s <низ>"
 
-#: src/virsh.c:2712
+#: src/virsh.c:3679
 msgid "undefined domain name or id"
-msgstr "undefined domain name or id"
+msgstr "недефинирано име или id на домейн"
 
-#: src/virsh.c:2745
+#: src/virsh.c:3712
 #, c-format
 msgid "failed to get domain '%s'"
-msgstr "failed to get domain '%s'"
+msgstr "неуспешно получаване на домейн '%s'"
 
-#: src/virsh.c:2758
-#, fuzzy
+#: src/virsh.c:3725
 msgid "undefined network name"
-msgstr "undefined domain name or id"
+msgstr "недефинирано име на мрежа"
 
-#: src/virsh.c:2782
-#, fuzzy, c-format
+#: src/virsh.c:3749
+#, c-format
 msgid "failed to get network '%s'"
-msgstr "failed to get domain '%s'"
+msgstr "неуспешно получаване на мрежа '%s'"
 
-#: src/virsh.c:2810
+#: src/virsh.c:3777
 #, c-format
 msgid ""
 "\n"
@@ -1600,110 +1884,128 @@ msgid ""
 "\n"
 msgstr ""
 "\n"
-"(Time: %.3f ms)\n"
+"(Време: %.3f мили секунди)\n"
 "\n"
 
-#: src/virsh.c:2884
+#: src/virsh.c:3851
 msgid "missing \""
-msgstr "missing \""
+msgstr "липсва \""
 
-#: src/virsh.c:2945
+#: src/virsh.c:3912
 #, c-format
 msgid "unexpected token (command name): '%s'"
-msgstr "unexpected token (command name): '%s'"
+msgstr "неочакван елемент (име на команда): '%s'"
 
-#: src/virsh.c:2950
+#: src/virsh.c:3917
 #, c-format
 msgid "unknown command: '%s'"
-msgstr "unknown command: '%s'"
+msgstr "непозната команда: '%s'"
 
-#: src/virsh.c:2957
+#: src/virsh.c:3924
 #, c-format
 msgid "command '%s' doesn't support option --%s"
-msgstr "command '%s' doesn't support option --%s"
+msgstr "команда '%s' не поддържа опция --%s"
 
-#: src/virsh.c:2972
+#: src/virsh.c:3939
 #, c-format
 msgid "expected syntax: --%s <%s>"
-msgstr "expected syntax: --%s <%s>"
+msgstr "очакван синтаксис: --%s <%s>"
 
-#: src/virsh.c:2975
+#: src/virsh.c:3942
 msgid "number"
-msgstr "number"
+msgstr "число"
 
-#: src/virsh.c:2975
+#: src/virsh.c:3942
 msgid "string"
-msgstr "string"
+msgstr "низ"
 
-#: src/virsh.c:2981
+#: src/virsh.c:3948
 #, c-format
 msgid "unexpected data '%s'"
-msgstr "unexpected data '%s'"
+msgstr "неочаквани данни '%s'"
 
-#: src/virsh.c:3003
+#: src/virsh.c:3970
 msgid "OPTION"
-msgstr "OPTION"
+msgstr "ОПЦИЯ"
 
-#: src/virsh.c:3003
+#: src/virsh.c:3970
 msgid "DATA"
-msgstr "DATA"
+msgstr "ДАННИ"
 
-#: src/virsh.c:3051 src/virsh.c:3077
+#: src/virsh.c:4020 src/virsh.c:4046
 msgid "running"
-msgstr "running"
+msgstr "работи"
 
-#: src/virsh.c:3053 src/virsh.c:3075
+#: src/virsh.c:4022 src/virsh.c:4044
 msgid "blocked"
-msgstr "blocked"
+msgstr "блокиран"
 
-#: src/virsh.c:3055
+#: src/virsh.c:4024
 msgid "paused"
-msgstr "paused"
+msgstr "в пауза"
 
-#: src/virsh.c:3057
+#: src/virsh.c:4026
 msgid "in shutdown"
-msgstr "in shutdown"
+msgstr "изключва се"
 
-#: src/virsh.c:3059
+#: src/virsh.c:4028
 msgid "shut off"
-msgstr "shut off"
+msgstr "спиране"
 
-#: src/virsh.c:3061
+#: src/virsh.c:4030
 msgid "crashed"
-msgstr "crashed"
+msgstr "аварирал"
 
-#: src/virsh.c:3073
+#: src/virsh.c:4042
 msgid "offline"
-msgstr "offline"
+msgstr "изключен"
 
-#: src/virsh.c:3092
+#: src/virsh.c:4061
 msgid "no valid connection"
-msgstr "no valid connection"
+msgstr "няма валидна връзка"
 
-#: src/virsh.c:3131
+#: src/virsh.c:4108
 #, c-format
 msgid "%s: error: "
-msgstr "%s: error: "
+msgstr "%s: грешка: "
 
-#: src/virsh.c:3133
+#: src/virsh.c:4110
 msgid "error: "
-msgstr "error: "
+msgstr "грешка: "
 
-#: src/virsh.c:3155 src/virsh.c:3167
+#: src/virsh.c:4132 src/virsh.c:4144 src/virsh.c:4157
 #, c-format
 msgid "%s: %d: failed to allocate %d bytes"
-msgstr "%s: %d: failed to allocate %d bytes"
+msgstr "%s: %d: неуспешно заделяне на %d байта"
 
-#: src/virsh.c:3179
-#, fuzzy, c-format
+#: src/virsh.c:4171
+#, c-format
 msgid "%s: %d: failed to allocate %lu bytes"
-msgstr "%s: %d: failed to allocate %d bytes"
+msgstr "%s: %d: неуспешно заделяне на %lu байта"
 
-#: src/virsh.c:3209
+#: src/virsh.c:4207
 msgid "failed to connect to the hypervisor"
-msgstr "failed to connect to the hypervisor"
+msgstr "неуспех при свързване с хипервайзора"
 
-#: src/virsh.c:3357
+#: src/virsh.c:4231
+#, fuzzy
+msgid "failed to get the log file information"
+msgstr "неуспешно получаване на информация за възела"
+
+#: src/virsh.c:4236
+msgid "the log path is not a file"
+msgstr ""
+
+#: src/virsh.c:4242
+msgid "failed to open the log file. check the log file path"
+msgstr ""
+
+#: src/virsh.c:4310
+#, fuzzy
+msgid "failed to write the log file"
+msgstr "грешка при запис на конфигурационния файл"
+
+#: src/virsh.c:4479
 #, fuzzy, c-format
 msgid ""
 "\n"
@@ -1716,169 +2018,172 @@ msgid ""
 "    -h | --help             this help\n"
 "    -q | --quiet            quiet mode\n"
 "    -t | --timing           print timing information\n"
+"    -l | --log <file>       output logging to file\n"
 "    -v | --version          program version\n"
 "\n"
 "  commands (non interactive mode):\n"
 msgstr ""
 "\n"
-"%s [options] [commands]\n"
+"%s [опции] [команди]\n"
 "\n"
-"  options:\n"
-"    -c | --connect <uri>    hypervisor connection URI\n"
-"    -d | --debug <num>      debug level [0-5]\n"
-"    -h | --help             this help\n"
-"    -q | --quiet            quiet mode\n"
-"    -t | --timing           print timing information\n"
-"    -v | --version          program version\n"
+"  опции:\n"
+"    -c | --connect <uri>    URI за връзка с хипервайзор\n"
+"    -r | --readonly         връзка само за гледане\n"
+"    -d | --debug <num>      ниво на дебъг [0-5]\n"
+"    -h | --help             тази помощна информация\n"
+"    -q | --quiet            тих режим\n"
+"    -t | --timing           извеждане информация за времена\n"
+"    -v | --version          версия на програмата\n"
 "\n"
-"  commands (non interactive mode):\n"
+"  команди (в не интерактивен режим):\n"
 
-#: src/virsh.c:3374
-#, c-format
+#: src/virsh.c:4497
+#, fuzzy, c-format
 msgid ""
 "\n"
-"  (specify --help <command> for details about the command)\n"
+"  (specify help <command> for details about the command)\n"
 "\n"
 msgstr ""
 "\n"
-"  (specify --help <command> for details about the command)\n"
+"  (укажете --help <команда> за детайли за тази команда)\n"
 "\n"
 
-#: src/virsh.c:3466
+#: src/virsh.c:4593
 #, c-format
 msgid "unsupported option '-%c'. See --help."
-msgstr "unsupported option '-%c'. See --help."
+msgstr "неподдържана опция '-%c'. Вижте --help."
 
-#: src/virsh.c:3547
+#: src/virsh.c:4675
 #, c-format
 msgid ""
 "Welcome to %s, the virtualization interactive terminal.\n"
 "\n"
 msgstr ""
-"Welcome to %s, the virtualization interactive terminal.\n"
+"Добре дошли в %s, интерактивния терминал за виртуализация.\n"
 "\n"
 
-#: src/virsh.c:3550
+#: src/virsh.c:4678
 msgid ""
 "Type:  'help' for help with commands\n"
 "       'quit' to quit\n"
 "\n"
 msgstr ""
-"Type:  'help' for help with commands\n"
-"       'quit' to quit\n"
+"Напишете:  'help' за помощна информация за командите\n"
+"       'quit' за изход\n"
 "\n"
 
 #: src/conf.c:156 src/conf.c:205 src/conf.c:488 src/conf.c:525 src/conf.c:553
 #: src/conf.c:631
 msgid "allocating configuration"
-msgstr "allocating configuration"
+msgstr "заделяне на конфигурация"
 
 #: src/conf.c:340
 msgid "unterminated number"
-msgstr "unterminated number"
+msgstr "незавършено число"
 
 #: src/conf.c:372 src/conf.c:389 src/conf.c:401
 msgid "unterminated string"
-msgstr "unterminated string"
+msgstr "незавършен низ"
 
 #: src/conf.c:429 src/conf.c:482
 msgid "expecting a value"
-msgstr "expecting a value"
+msgstr "очаква се стойност"
 
 #: src/conf.c:449
 msgid "expecting a separator in list"
-msgstr "expecting a separator in list"
+msgstr "очаква се разделител в списъка"
 
 #: src/conf.c:472
 msgid "list is not closed with ] "
-msgstr "list is not closed with ] "
+msgstr "списъка не е затворен с ] "
 
 #: src/conf.c:518
 msgid "expecting a name"
-msgstr "expecting a name"
+msgstr "очаква се име"
 
 #: src/conf.c:581
 msgid "expecting a separator"
-msgstr "expecting a separator"
+msgstr "очаква се разделител"
 
 #: src/conf.c:613
 msgid "expecting an assignment"
-msgstr "expecting an assignment"
+msgstr "очаква се присвояване"
 
-#: src/conf.c:897
+#: src/conf.c:887 src/conf.c:941
+#, fuzzy
+msgid "failed to allocate buffer"
+msgstr "неуспешно заделяне на възел"
+
+#: src/conf.c:899
 msgid "failed to open file"
-msgstr "failed to open file"
+msgstr "неуспешно отваряне на файл"
 
-#: src/conf.c:905
+#: src/conf.c:907
 msgid "failed to save content"
-msgstr "failed to save content"
+msgstr "неуспешен запис на файл"
 
-#: src/xs_internal.c:344
+#: src/xs_internal.c:340
 msgid "failed to connect to Xen Store"
-msgstr "failed to connect to Xen Store"
+msgstr "неуспешно свързване към xen хранилище"
 
-#: src/proxy_internal.c:200
+#: src/proxy_internal.c:195
 #, c-format
 msgid "failed to exec %s\n"
-msgstr "failed to exec %s\n"
+msgstr "неуспешно изпълнение на %s\n"
 
-#: src/proxy_internal.c:294
+#: src/proxy_internal.c:289
 #, c-format
 msgid "Failed to close socket %d\n"
-msgstr "Failed to close socket %d\n"
+msgstr "Неуспешно затваряне на порт %d\n"
 
-#: src/proxy_internal.c:327
+#: src/proxy_internal.c:322
 #, c-format
 msgid "Failed to read socket %d\n"
-msgstr "Failed to read socket %d\n"
+msgstr "Неуспешно четене от порт %d\n"
 
-#: src/proxy_internal.c:361
+#: src/proxy_internal.c:356
 #, c-format
 msgid "Failed to write to socket %d\n"
-msgstr "Failed to write to socket %d\n"
+msgstr "Неуспешен запис в порт %d\n"
 
-#: src/proxy_internal.c:453 src/proxy_internal.c:474 src/proxy_internal.c:494
+#: src/proxy_internal.c:448 src/proxy_internal.c:469 src/proxy_internal.c:489
 #, c-format
 msgid "Communication error with proxy: got %d bytes of %d\n"
-msgstr "Communication error with proxy: got %d bytes of %d\n"
+msgstr "Комуникационна грешка с проксито: получени %d от %d байта\n"
 
-#: src/proxy_internal.c:461
+#: src/proxy_internal.c:456
 #, c-format
 msgid "Communication error with proxy: expected %d bytes got %d\n"
-msgstr "Communication error with proxy: expected %d bytes got %d\n"
+msgstr "Комуникационна грешка с проксито: очаквани %d байта, получени %d\n"
 
-#: src/proxy_internal.c:483
+#: src/proxy_internal.c:478
 #, c-format
 msgid "Communication error with proxy: got %d bytes packet\n"
-msgstr "Communication error with proxy: got %d bytes packet\n"
+msgstr "Комуникационна грешка с проксито: получен %d байтов пакет\n"
 
-#: src/proxy_internal.c:507
+#: src/proxy_internal.c:502
 #, c-format
 msgid "Communication error with proxy: malformed packet\n"
-msgstr "Communication error with proxy: malformed packet\n"
+msgstr "Комуникационна грешка с проксито: повреден пакет\n"
 
-#: src/proxy_internal.c:513
+#: src/proxy_internal.c:508
 #, c-format
 msgid "got asynchronous packet number %d\n"
-msgstr "got asynchronous packet number %d\n"
+msgstr "получен асинхронен пакет номер %d\n"
 
-#: src/xen_internal.c:1937
+#: src/xen_internal.c:2301
 #, c-format
 msgid "allocating %d domain info"
-msgstr "allocating %d domain info"
+msgstr "заделяне информация за домейн %d"
 
-#~ msgid "Xen Daemon or Xen Store"
-#~ msgstr "Xen Daemon or Xen Store"
+#~ msgid "growing buffer"
+#~ msgstr "нарастващ буфер"
 
-#, fuzzy
-#~ msgid "file conatining an XML network description"
-#~ msgstr "file conatining an XML domain description"
+#~ msgid "allocate buffer content"
+#~ msgstr "заделяне контекст на буфер"
 
-#~ msgid "Failed to create domain %s\n"
-#~ msgstr "Failed to create domain %s\n"
+#~ msgid "file conatining an XML domain description"
+#~ msgstr "файл, съдържащ XML описание на домейн"
 
-#~ msgid "Failed to get devices for domain %s\n"
-#~ msgstr "Failed to get devices for domain %s\n"
-
-#~ msgid "Failed to resume new domain %s\n"
-#~ msgstr "Failed to resume new domain %s\n"
+#~ msgid "Failed to read description file %s"
+#~ msgstr "Неуспешно четене на файл с описание %s"
