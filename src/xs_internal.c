@@ -31,7 +31,13 @@
 #include "xs_internal.h"
 #include "xen_internal.h" /* for xenHypervisorCheckID */
 
+#ifdef __linux__
 #define XEN_HYPERVISOR_SOCKET "/proc/xen/privcmd"
+#elif define(__sun__)
+#define XEN_HYPERVISOR_SOCKET "/dev/xen/privcmd"
+#else
+#error "unsupported platform"
+#endif
 
 #ifndef PROXY
 static char *xenStoreDomainGetOSType(virDomainPtr domain);
@@ -578,6 +584,7 @@ xenStoreListDomains(virConnectPtr conn, int *ids, int maxids)
 #endif
 	ids[ret++] = (int) id;
     }
+    free(idlist);
     return(ret);
 }
 
@@ -597,7 +604,7 @@ xenStoreLookupByName(virConnectPtr conn, const char *name)
     unsigned int num, i, len;
     long id = -1;
     char **idlist = NULL, *endptr;
-    char prop[200], *tmp, *path = NULL;
+    char prop[200], *tmp;
     int found = 0;
     struct xend_domain *xenddomain = NULL;
     xenUnifiedPrivatePtr priv;
@@ -634,16 +641,13 @@ xenStoreLookupByName(virConnectPtr conn, const char *name)
                 break;
         }
     }
-    path = xs_get_domain_path(priv->xshandle, (unsigned int) id);
-
     if (!found)
-        return(NULL);
+        goto done;
 
     ret = virGetDomain(conn, name, NULL);
-    if (ret == NULL) {
-        if (path != NULL) free(path);
+    if (ret == NULL)
         goto done;
-    }
+
     ret->id = id;
 
 done:
@@ -874,6 +878,22 @@ xenStoreDomainGetNetworkID(virConnectPtr conn, int id, const char *mac) {
     free(list);
     return(ret);
 }
+
+char *xenStoreDomainGetName(virConnectPtr conn,
+                            int id) {
+    char prop[200];
+    xenUnifiedPrivatePtr priv;
+    unsigned int len;
+
+    priv = (xenUnifiedPrivatePtr) conn->privateData;
+    if (priv->xshandle == NULL)
+        return(NULL);
+
+    snprintf(prop, 199, "/local/domain/%d/name", id);
+    prop[199] = 0;
+    return xs_read(priv->xshandle, 0, prop, &len);
+}
+
 
 #endif /* WITH_XEN */
 /*

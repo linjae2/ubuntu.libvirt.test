@@ -1,11 +1,23 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
+/* Location or name of the brctl program (see bridge-utils) */
+#undef BRCTL
+
+/* Location or name of the dnsmasq program */
+#undef DNSMASQ
+
 /* whether debugging is enabled */
 #undef ENABLE_DEBUG
 
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */
 #undef ENABLE_NLS
+
+/* enable GnuTLS 1.0 compatibility macros */
+#undef GNUTLS_1_0_COMPAT
+
+/* whether Avahi is used to broadcast server presense */
+#undef HAVE_AVAHI
 
 /* Define if the GNU dcgettext() function is already present or preinstalled.
    */
@@ -67,6 +79,21 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the <xen/dom0_ops.h> header file. */
+#undef HAVE_XEN_DOM0_OPS_H
+
+/* Define to 1 if you have the <xen/linux/privcmd.h> header file. */
+#undef HAVE_XEN_LINUX_PRIVCMD_H
+
+/* Define to 1 if you have the <xen/sys/privcmd.h> header file. */
+#undef HAVE_XEN_SYS_PRIVCMD_H
+
+/* Define to 1 if you have the <xen/version.h> header file. */
+#undef HAVE_XEN_VERSION_H
+
+/* Define to 1 if you have the <xen/xen.h> header file. */
+#undef HAVE_XEN_XEN_H
 
 /* Have query_raw field in libxml2 xmlURI structure */
 #undef HAVE_XMLURI_QUERY_RAW

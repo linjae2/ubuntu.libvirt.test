@@ -20,6 +20,7 @@
 	virDomainGetUUID;
 	virDomainGetUUIDString;
 	virDomainGetInfo;
+	virNodeGetCellsFreeMemory;
 	virDomainGetMaxMemory;
 	virDomainGetName;
 	virDomainGetOSType;
@@ -57,6 +58,8 @@
 	virDefaultErrorFunc;
 	virNodeGetInfo;
 	virConnectGetCapabilities;
+	virNodeGetCellsFreeMemory;
+	virNodeGetFreeMemory;
 
 	virDomainSetVcpus;
 	virDomainPinVcpu;
@@ -65,9 +68,12 @@
 	virDomainGetSchedulerType;
 	virDomainGetSchedulerParameters;
 	virDomainSetSchedulerParameters;
-
+	virDomainBlockStats;
+	virDomainInterfaceStats;
 	virDomainAttachDevice;
 	virDomainDetachDevice;
+
+	virDomainMigrate;
 
 	virNetworkGetConnect;
 	virConnectNumOfNetworks;
@@ -115,6 +121,12 @@
  	__virStateCleanup;
  	__virStateReload;
  	__virStateActive;
+
+	__virDrvSupportsFeature;
+
+	__virDomainMigratePrepare;
+	__virDomainMigratePerform;
+	__virDomainMigrateFinish;
 
     local: *;
 };

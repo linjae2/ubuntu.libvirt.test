@@ -1,6 +1,6 @@
 <domain type='xen' id='5'>
   <name>rhel5</name>
-  <uuid>4f77abd2301958e83bab6fbf2118f880</uuid>
+  <uuid>4f77abd2-3019-58e8-3bab-6fbf2118f880</uuid>
   <bootloader>/usr/bin/pygrub</bootloader>
   <os>
     <type>linux</type>
@@ -17,6 +17,7 @@
   <devices>
     <interface type='bridge'>
       <source bridge='xenbr0'/>
+      <target dev='vif5.0'/>
       <mac address='00:16:3e:1d:06:15'/>
       <script path='vif-bridge'/>
     </interface>
@@ -25,6 +26,7 @@
       <source file='/xen/rhel5.img'/>
       <target dev='xvda:disk'/>
     </disk>
+    <input type='mouse' bus='xen'/>
     <graphics type='vnc' port='5905'/>
   </devices>
 </domain>

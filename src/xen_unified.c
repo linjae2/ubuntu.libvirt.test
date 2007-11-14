@@ -148,9 +148,17 @@ xenUnifiedOpen (virConnectPtr conn, const char *name, int flags)
         if (i == XEN_UNIFIED_PROXY_OFFSET && getuid() == 0)
             continue;
 
-        if (drivers[i]->open &&
-            drivers[i]->open (conn, name, flags) == VIR_DRV_OPEN_SUCCESS)
-            priv->opened[i] = 1;
+        if (drivers[i]->open) {
+#ifdef ENABLE_DEBUG
+            fprintf (stderr, "libvirt: xenUnifiedOpen: trying Xen sub-driver %d\n", i);
+#endif
+            if (drivers[i]->open (conn, name, flags) == VIR_DRV_OPEN_SUCCESS)
+                priv->opened[i] = 1;
+#ifdef ENABLE_DEBUG
+            fprintf (stderr, "libvirt: xenUnifiedOpen: Xen sub-driver %d open %s\n",
+                     i, priv->opened[i] ? "ok" : "failed");
+#endif
+        }
 
         /* If as root, then all drivers must succeed.
            If non-root, then only proxy must succeed */
@@ -204,6 +212,16 @@ xenUnifiedType (virConnectPtr conn)
         }
 
     return NULL;
+}
+
+/* Which features are supported by this driver? */
+static int
+xenUnifiedSupportsFeature (virConnectPtr conn ATTRIBUTE_UNUSED, int feature)
+{
+    switch (feature) {
+    case VIR_DRV_FEATURE_MIGRATION_V1: return 1;
+    default: return 0;
+    }
 }
 
 static int
@@ -369,6 +387,13 @@ xenUnifiedDomainLookupByID (virConnectPtr conn, int id)
      */
     virConnResetLastError (conn);
 
+    /* Try hypervisor/xenstore combo. */
+    if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET]) {
+        ret = xenHypervisorLookupDomainByID (conn, id);
+        if (ret || conn->err.code != VIR_ERR_OK)
+            return ret;
+    }
+
     /* Try proxy. */
     if (priv->opened[XEN_UNIFIED_PROXY_OFFSET]) {
         ret = xenProxyLookupByID (conn, id);
@@ -399,6 +424,13 @@ xenUnifiedDomainLookupByUUID (virConnectPtr conn,
      * there is one hanging around from a previous call.
      */
     virConnResetLastError (conn);
+
+    /* Try hypervisor/xenstore combo. */
+    if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET]) {
+        ret = xenHypervisorLookupDomainByUUID (conn, uuid);
+        if (ret || conn->err.code != VIR_ERR_OK)
+            return ret;
+    }
 
     /* Try proxy. */
     if (priv->opened[XEN_UNIFIED_PROXY_OFFSET]) {
@@ -780,7 +812,62 @@ xenUnifiedDomainDumpXML (virDomainPtr dom, int flags)
             if (ret) return ret;
         }
 
+    /* XXX May need to return an error here if sub-drivers didn't
+     * set one.  We really should change these to direct calls to
+     * the sub-drivers at a later date.
+     */
     return NULL;
+}
+
+static int
+xenUnifiedDomainMigratePrepare (virConnectPtr dconn,
+                                char **cookie,
+                                int *cookielen,
+                                const char *uri_in,
+                                char **uri_out,
+                                unsigned long flags,
+                                const char *dname,
+                                unsigned long resource)
+{
+    GET_PRIVATE(dconn);
+
+    if (priv->opened[XEN_UNIFIED_XEND_OFFSET])
+        return xenDaemonDomainMigratePrepare (dconn, cookie, cookielen,
+                                              uri_in, uri_out,
+                                              flags, dname, resource);
+
+    xenUnifiedError (dconn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return -1;
+}
+
+static int
+xenUnifiedDomainMigratePerform (virDomainPtr dom,
+                                const char *cookie,
+                                int cookielen,
+                                const char *uri,
+                                unsigned long flags,
+                                const char *dname,
+                                unsigned long resource)
+{
+    GET_PRIVATE(dom->conn);
+
+    if (priv->opened[XEN_UNIFIED_XEND_OFFSET])
+        return xenDaemonDomainMigratePerform (dom, cookie, cookielen, uri,
+                                              flags, dname, resource);
+
+    xenUnifiedError (dom->conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return -1;
+}
+
+static virDomainPtr
+xenUnifiedDomainMigrateFinish (virConnectPtr dconn,
+                               const char *dname,
+                               const char *cookie ATTRIBUTE_UNUSED,
+                               int cookielen ATTRIBUTE_UNUSED,
+                               const char *uri ATTRIBUTE_UNUSED,
+                               unsigned long flags ATTRIBUTE_UNUSED)
+{
+    return xenUnifiedDomainLookupByName (dconn, dname);
 }
 
 static int
@@ -940,6 +1027,65 @@ xenUnifiedDomainSetSchedulerParameters (virDomainPtr dom,
     return(-1);
 }
 
+static int
+xenUnifiedDomainBlockStats (virDomainPtr dom, const char *path,
+                            struct _virDomainBlockStats *stats)
+{
+    GET_PRIVATE (dom->conn);
+
+    if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET])
+        return xenHypervisorDomainBlockStats (dom, path, stats);
+
+    xenUnifiedError (dom->conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return -1;
+}
+
+static int
+xenUnifiedDomainInterfaceStats (virDomainPtr dom, const char *path,
+                                struct _virDomainInterfaceStats *stats)
+{
+    GET_PRIVATE (dom->conn);
+
+    if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET])
+        return xenHypervisorDomainInterfaceStats (dom, path, stats);
+
+    xenUnifiedError (dom->conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return -1;
+}
+
+static int
+xenUnifiedNodeGetCellsFreeMemory (virConnectPtr conn, unsigned long long *freeMems,
+                                  int startCell, int maxCells)
+{
+    GET_PRIVATE (conn);
+
+    if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET])
+        return xenHypervisorNodeGetCellsFreeMemory (conn, freeMems, 
+                                                    startCell, maxCells);
+
+    xenUnifiedError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return -1;
+}
+
+static unsigned long long
+xenUnifiedNodeGetFreeMemory (virConnectPtr conn)
+{
+    unsigned long long freeMem = 0;
+    int ret;
+    GET_PRIVATE (conn);
+
+    if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET]) {
+        ret = xenHypervisorNodeGetCellsFreeMemory (conn, &freeMem, 
+                                                    -1, 1);
+	if (ret != 1)
+	    return (0);
+	return(freeMem);
+    }
+
+    xenUnifiedError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return(0);
+}
+
 /*----- Register with libvirt.c, and initialise Xen drivers. -----*/
 
 #define VERSION ((DOM0_INTERFACE_VERSION >> 24) * 1000000 +         \
@@ -953,6 +1099,7 @@ static virDriver xenUnifiedDriver = {
     .ver = VERSION,
     .open 			= xenUnifiedOpen,
     .close 			= xenUnifiedClose,
+    .supports_feature   = xenUnifiedSupportsFeature,
     .type 			= xenUnifiedType,
     .version 			= xenUnifiedVersion,
     .getHostname    = xenUnifiedGetHostname,
@@ -994,6 +1141,13 @@ static virDriver xenUnifiedDriver = {
     .domainGetSchedulerType	= xenUnifiedDomainGetSchedulerType,
     .domainGetSchedulerParameters	= xenUnifiedDomainGetSchedulerParameters,
     .domainSetSchedulerParameters	= xenUnifiedDomainSetSchedulerParameters,
+    .domainMigratePrepare		= xenUnifiedDomainMigratePrepare,
+    .domainMigratePerform		= xenUnifiedDomainMigratePerform,
+    .domainMigrateFinish		= xenUnifiedDomainMigrateFinish,
+    .domainBlockStats	= xenUnifiedDomainBlockStats,
+    .domainInterfaceStats = xenUnifiedDomainInterfaceStats,
+    .nodeGetCellsFreeMemory = xenUnifiedNodeGetCellsFreeMemory,
+    .getFreeMemory = xenUnifiedNodeGetFreeMemory,
 };
 
 /**

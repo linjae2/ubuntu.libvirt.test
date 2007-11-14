@@ -72,6 +72,9 @@ const REMOTE_VCPUINFO_MAX = 2048;
 /* Upper limit on cpumaps (bytes) passed to virDomainGetVcpus. */
 const REMOTE_CPUMAPS_MAX = 16384;
 
+/* Upper limit on migrate cookie. */
+const REMOTE_MIGRATE_COOKIE_MAX = 256;
+
 /* Upper limit on lists of network names. */
 const REMOTE_NETWORK_NAME_LIST_MAX = 256;
 
@@ -170,6 +173,14 @@ struct remote_open_args {
     int flags;
 };
 
+struct remote_supports_feature_args {
+    int feature;
+};
+
+struct remote_supports_feature_ret {
+    int supported;
+};
+
 struct remote_get_type_ret {
     remote_nonnull_string type;
 };
@@ -231,6 +242,35 @@ struct remote_domain_set_scheduler_parameters_args {
     remote_sched_param params<REMOTE_DOMAIN_SCHEDULER_PARAMETERS_MAX>;
 };
 
+struct remote_domain_block_stats_args {
+    remote_nonnull_domain dom;
+    remote_nonnull_string path;
+};
+
+struct remote_domain_block_stats_ret {
+    hyper rd_req;
+    hyper rd_bytes;
+    hyper wr_req;
+    hyper wr_bytes;
+    hyper errs;
+};
+
+struct remote_domain_interface_stats_args {
+    remote_nonnull_domain dom;
+    remote_nonnull_string path;
+};
+
+struct remote_domain_interface_stats_ret {
+    hyper rx_bytes;
+    hyper rx_packets;
+    hyper rx_errs;
+    hyper rx_drop;
+    hyper tx_bytes;
+    hyper tx_packets;
+    hyper tx_errs;
+    hyper tx_drop;
+};
+
 struct remote_list_domains_args {
     int maxids;
 };
@@ -257,7 +297,6 @@ struct remote_domain_lookup_by_id_args {
 };
 
 struct remote_domain_lookup_by_id_ret {
-    /* XXX "Not found" semantic is ill-defined. */
     remote_nonnull_domain dom;
 };
 
@@ -266,7 +305,6 @@ struct remote_domain_lookup_by_uuid_args {
 };
 
 struct remote_domain_lookup_by_uuid_ret {
-    /* XXX "Not found" semantic is ill-defined. */
     remote_nonnull_domain dom;
 };
 
@@ -275,7 +313,6 @@ struct remote_domain_lookup_by_name_args {
 };
 
 struct remote_domain_lookup_by_name_ret {
-    /* XXX "Not found" semantic is ill-defined. */
     remote_nonnull_domain dom;
 };
 
@@ -360,6 +397,38 @@ struct remote_domain_dump_xml_args {
 
 struct remote_domain_dump_xml_ret {
     remote_nonnull_string xml;
+};
+
+struct remote_domain_migrate_prepare_args {
+    remote_string uri_in;
+    unsigned hyper flags;
+    remote_string dname;
+    unsigned hyper resource;
+};
+
+struct remote_domain_migrate_prepare_ret {
+    opaque cookie<REMOTE_MIGRATE_COOKIE_MAX>;
+    remote_string uri_out;
+};
+
+struct remote_domain_migrate_perform_args {
+    remote_nonnull_domain dom;
+    opaque cookie<REMOTE_MIGRATE_COOKIE_MAX>;
+    remote_nonnull_string uri;
+    unsigned hyper flags;
+    remote_string dname;
+    unsigned hyper resource;
+};
+
+struct remote_domain_migrate_finish_args {
+    remote_nonnull_string dname;
+    opaque cookie<REMOTE_MIGRATE_COOKIE_MAX>;
+    remote_nonnull_string uri;
+    unsigned hyper flags;
+};
+
+struct remote_domain_migrate_finish_ret {
+    remote_nonnull_domain ddom;
 };
 
 struct remote_list_defined_domains_args {
@@ -474,7 +543,6 @@ struct remote_network_lookup_by_uuid_args {
 };
 
 struct remote_network_lookup_by_uuid_ret {
-    /* XXX "Not found" semantic is ill-defined. */
     remote_nonnull_network net;
 };
 
@@ -483,7 +551,6 @@ struct remote_network_lookup_by_name_args {
 };
 
 struct remote_network_lookup_by_name_ret {
-    /* XXX "Not found" semantic is ill-defined. */
     remote_nonnull_network net;
 };
 
@@ -610,7 +677,13 @@ enum remote_procedure {
     REMOTE_PROC_DOMAIN_GET_SCHEDULER_TYPE = 56,
     REMOTE_PROC_DOMAIN_GET_SCHEDULER_PARAMETERS = 57,
     REMOTE_PROC_DOMAIN_SET_SCHEDULER_PARAMETERS = 58,
-    REMOTE_PROC_GET_HOSTNAME = 59
+    REMOTE_PROC_GET_HOSTNAME = 59,
+    REMOTE_PROC_SUPPORTS_FEATURE = 60,
+    REMOTE_PROC_DOMAIN_MIGRATE_PREPARE = 61,
+    REMOTE_PROC_DOMAIN_MIGRATE_PERFORM = 62,
+    REMOTE_PROC_DOMAIN_MIGRATE_FINISH = 63,
+    REMOTE_PROC_DOMAIN_BLOCK_STATS = 64,
+    REMOTE_PROC_DOMAIN_INTERFACE_STATS = 65
 };
 
 /* Custom RPC structure. */

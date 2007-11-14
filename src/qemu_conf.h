@@ -78,7 +78,6 @@ enum qemud_vm_net_type {
     QEMUD_NET_BRIDGE,
 };
 
-#define QEMUD_UUID_RAW_LEN 16
 #define QEMUD_MAX_NAME_LEN 50
 #define QEMUD_MAX_XML_LEN 4096
 #define QEMUD_MAX_ERROR_LEN 1024
@@ -109,6 +108,23 @@ struct qemud_vm_net_def {
     struct qemud_vm_net_def *next;
 };
 
+
+enum qemu_vm_input_type {
+    QEMU_INPUT_TYPE_MOUSE,
+    QEMU_INPUT_TYPE_TABLET,
+};
+
+enum qemu_vm_input_bus {
+    QEMU_INPUT_BUS_PS2,
+    QEMU_INPUT_BUS_USB,
+};
+
+struct qemud_vm_input_def {
+    int type;
+    int bus;
+    struct qemud_vm_input_def *next;
+};
+
 #define QEMUD_MAX_BOOT_DEVS 4
 
 /* 3 possible boot devices */
@@ -119,7 +135,7 @@ enum qemud_vm_boot_order {
     QEMUD_BOOT_NET,
 };
 /* 3 possible graphics console modes */
-enum qemud_vm_grapics_type {
+enum qemud_vm_graphics_type {
     QEMUD_GRAPHICS_NONE,
     QEMUD_GRAPHICS_SDL,
     QEMUD_GRAPHICS_VNC,
@@ -153,7 +169,7 @@ struct qemud_vm_os_def {
 /* Guest VM main configuration */
 struct qemud_vm_def {
     int virtType;
-    unsigned char uuid[QEMUD_UUID_RAW_LEN];
+    unsigned char uuid[VIR_UUID_BUFLEN];
     char name[QEMUD_MAX_NAME_LEN];
 
     int memory;
@@ -164,20 +180,26 @@ struct qemud_vm_def {
 
     struct qemud_vm_os_def os;
 
+    int localtime;
     int features;
     int graphicsType;
     int vncPort;
     int vncActivePort;
+    char vncListen[BR_INET_ADDR_MAXLEN];
 
     int ndisks;
     struct qemud_vm_disk_def *disks;
 
     int nnets;
     struct qemud_vm_net_def *nets;
+
+    int ninputs;
+    struct qemud_vm_input_def *inputs;
 };
 
 /* Guest VM runtime state */
 struct qemud_vm {
+    int stdin;
     int stdout;
     int stderr;
     int monitor;
@@ -189,8 +211,12 @@ struct qemud_vm {
     int *tapfds;
     int ntapfds;
 
+    int qemuVersion;
+    int qemuCmdFlags; /* values from enum qemud_cmd_flags */
+
     char configFile[PATH_MAX];
     char autostartLink[PATH_MAX];
+    char migrateFrom[PATH_MAX];
 
     struct qemud_vm_def *def; /* The current definition */
     struct qemud_vm_def *newDef; /* New definition to activate at shutdown */
@@ -210,7 +236,7 @@ struct qemud_dhcp_range_def {
 
 /* Virtual Network main configuration */
 struct qemud_network_def {
-    unsigned char uuid[QEMUD_UUID_RAW_LEN];
+    unsigned char uuid[VIR_UUID_BUFLEN];
     char name[QEMUD_MAX_NAME_LEN];
 
     char bridge[BR_IFNAME_MAXLEN];
@@ -249,7 +275,6 @@ struct qemud_network {
 /* Main driver state */
 struct qemud_driver {
     int qemuVersion;
-    int qemuCmdFlags; /* values from enum qemud_cmd_flags */
     int nactivevms;
     int ninactivevms;
     struct qemud_vm *vms;
@@ -299,13 +324,16 @@ struct qemud_network *qemudFindNetworkByUUID(const struct qemud_driver *driver,
 struct qemud_network *qemudFindNetworkByName(const struct qemud_driver *driver,
                                              const char *name);
 
-int         qemudExtractVersion         (struct qemud_driver *driver);
-int         qemudBuildCommandLine       (struct qemud_driver *driver,
+int         qemudExtractVersion         (virConnectPtr conn,
+                                         struct qemud_driver *driver);
+int         qemudBuildCommandLine       (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          struct qemud_vm *vm,
                                          char ***argv);
 
 int         qemudScanConfigs            (struct qemud_driver *driver);
-int         qemudDeleteConfig           (struct qemud_driver *driver,
+int         qemudDeleteConfig           (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          const char *configFile,
                                          const char *name);
 int         qemudEnsureDir              (const char *path);
@@ -314,19 +342,23 @@ void        qemudFreeVMDef              (struct qemud_vm_def *vm);
 void        qemudFreeVM                 (struct qemud_vm *vm);
 
 struct qemud_vm *
-            qemudAssignVMDef            (struct qemud_driver *driver,
+            qemudAssignVMDef            (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          struct qemud_vm_def *def);
 void        qemudRemoveInactiveVM       (struct qemud_driver *driver,
                                          struct qemud_vm *vm);
 
 struct qemud_vm_def *
-            qemudParseVMDef             (struct qemud_driver *driver,
+            qemudParseVMDef             (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          const char *xmlStr,
                                          const char *displayName);
-int         qemudSaveVMDef              (struct qemud_driver *driver,
+int         qemudSaveVMDef              (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          struct qemud_vm *vm,
                                          struct qemud_vm_def *def);
-char *      qemudGenerateXML            (struct qemud_driver *driver,
+char *      qemudGenerateXML            (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          struct qemud_vm *vm,
                                          struct qemud_vm_def *def,
                                          int live);
@@ -335,27 +367,38 @@ void        qemudFreeNetworkDef         (struct qemud_network_def *def);
 void        qemudFreeNetwork            (struct qemud_network *network);
 
 struct qemud_network *
-            qemudAssignNetworkDef       (struct qemud_driver *driver,
+            qemudAssignNetworkDef       (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          struct qemud_network_def *def);
 void        qemudRemoveInactiveNetwork  (struct qemud_driver *driver,
                                          struct qemud_network *network);
 
 struct qemud_network_def *
-            qemudParseNetworkDef        (struct qemud_driver *driver,
+            qemudParseNetworkDef        (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          const char *xmlStr,
                                          const char *displayName);
-int         qemudSaveNetworkDef         (struct qemud_driver *driver,
+int         qemudSaveNetworkDef         (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          struct qemud_network *network,
                                          struct qemud_network_def *def);
-char *      qemudGenerateNetworkXML     (struct qemud_driver *driver,
+char *      qemudGenerateNetworkXML     (virConnectPtr conn,
+                                         struct qemud_driver *driver,
                                          struct qemud_network *network,
                                          struct qemud_network_def *def);
+
+struct qemu_feature_flags {
+    const char *name;
+    const int default_on;
+    const int toggle;
+};
 
 struct qemu_arch_info {
     const char *arch;
     int wordsize;
     const char **machines;
     const char *binary;
+    const struct qemu_feature_flags *fflags;
 };
 extern struct qemu_arch_info qemudArchs[];
 

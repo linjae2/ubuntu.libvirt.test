@@ -1,6 +1,6 @@
 <domain type='xen' id='6'>
   <name>test</name>
-  <uuid>cc2315e7d26a307a438c6d188ec4c09c</uuid>
+  <uuid>cc2315e7-d26a-307a-438c-6d188ec4c09c</uuid>
   <os>
     <type>hvm</type>
     <loader>/usr/lib/xen/boot/hvmloader</loader>
@@ -17,10 +17,12 @@
     <apic/>
     <pae/>
   </features>
+  <clock offset='utc'/>
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <interface type='bridge'>
       <source bridge='xenbr0'/>
+      <target dev='vif6.0'/>
       <mac address='00:16:3e:0a:7b:39'/>
     </interface>
     <disk type='block' device='disk'>
@@ -32,6 +34,7 @@
       <target dev='hdc'/>
       <readonly/>
     </disk>
+    <input type='mouse' bus='ps2'/>
     <graphics type='vnc' port='5906'/>
   </devices>
 </domain>

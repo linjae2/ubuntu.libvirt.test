@@ -6,6 +6,12 @@
         <vmx/>
       </features>
     </cpu>
+    <migration_features>
+      <live/>
+      <uri_transports>
+        <uri_transport>xenmigr</uri_transport>
+      </uri_transports>
+    </migration_features>
   </host>
 
   <guest>
@@ -32,6 +38,8 @@
     <features>
       <pae/>
       <nonpae/>
+      <acpi default='on' toggle='yes'/>
+      <apic default='on' toggle='yes'/>
     </features>
   </guest>
 </capabilities>
