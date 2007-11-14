@@ -4,10 +4,6 @@
 </p><h2>Letter V:</h2><p><a href="html/libvirt-libvirt.html#VIR_COPY_CPUMAP">VIR_COPY_CPUMAP</a><br />
 <a href="html/libvirt-libvirt.html#VIR_CPU_MAPLEN">VIR_CPU_MAPLEN</a><br />
 <a href="html/libvirt-libvirt.html#VIR_CPU_USABLE">VIR_CPU_USABLE</a><br />
-<a href="html/libvirt-libvirt.html#VIR_DEVICE_DEFAULT">VIR_DEVICE_DEFAULT</a><br />
-<a href="html/libvirt-libvirt.html#VIR_DEVICE_RO">VIR_DEVICE_RO</a><br />
-<a href="html/libvirt-libvirt.html#VIR_DEVICE_RW">VIR_DEVICE_RW</a><br />
-<a href="html/libvirt-libvirt.html#VIR_DEVICE_RW_FORCE">VIR_DEVICE_RW_FORCE</a><br />
 <a href="html/libvirt-libvirt.html#VIR_DOMAIN_BLOCKED">VIR_DOMAIN_BLOCKED</a><br />
 <a href="html/libvirt-libvirt.html#VIR_DOMAIN_CRASHED">VIR_DOMAIN_CRASHED</a><br />
 <a href="html/libvirt-libvirt.html#VIR_DOMAIN_DESTROY">VIR_DOMAIN_DESTROY</a><br />
@@ -27,6 +23,8 @@
 <a href="html/libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_ULLONG">VIR_DOMAIN_SCHED_FIELD_ULLONG</a><br />
 <a href="html/libvirt-libvirt.html#VIR_DOMAIN_SHUTDOWN">VIR_DOMAIN_SHUTDOWN</a><br />
 <a href="html/libvirt-libvirt.html#VIR_DOMAIN_SHUTOFF">VIR_DOMAIN_SHUTOFF</a><br />
+<a href="html/libvirt-libvirt.html#VIR_DOMAIN_XML_INACTIVE">VIR_DOMAIN_XML_INACTIVE</a><br />
+<a href="html/libvirt-libvirt.html#VIR_DOMAIN_XML_SECURE">VIR_DOMAIN_XML_SECURE</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_CALL_FAILED">VIR_ERR_CALL_FAILED</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_CONF_SYNTAX">VIR_ERR_CONF_SYNTAX</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_DOM_EXIST">VIR_ERR_DOM_EXIST</a><br />
@@ -39,6 +37,7 @@
 <a href="html/libvirt-virterror.html#VIR_ERR_INVALID_ARG">VIR_ERR_INVALID_ARG</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_INVALID_CONN">VIR_ERR_INVALID_CONN</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_INVALID_DOMAIN">VIR_ERR_INVALID_DOMAIN</a><br />
+<a href="html/libvirt-virterror.html#VIR_ERR_INVALID_MAC">VIR_ERR_INVALID_MAC</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_INVALID_NETWORK">VIR_ERR_INVALID_NETWORK</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_NETWORK_EXIST">VIR_ERR_NETWORK_EXIST</a><br />
 <a href="html/libvirt-virterror.html#VIR_ERR_NONE">VIR_ERR_NONE</a><br />
@@ -77,6 +76,7 @@
 <a href="html/libvirt-virterror.html#VIR_FROM_DOM">VIR_FROM_DOM</a><br />
 <a href="html/libvirt-virterror.html#VIR_FROM_NET">VIR_FROM_NET</a><br />
 <a href="html/libvirt-virterror.html#VIR_FROM_NONE">VIR_FROM_NONE</a><br />
+<a href="html/libvirt-virterror.html#VIR_FROM_OPENVZ">VIR_FROM_OPENVZ</a><br />
 <a href="html/libvirt-virterror.html#VIR_FROM_PROXY">VIR_FROM_PROXY</a><br />
 <a href="html/libvirt-virterror.html#VIR_FROM_QEMU">VIR_FROM_QEMU</a><br />
 <a href="html/libvirt-virterror.html#VIR_FROM_REMOTE">VIR_FROM_REMOTE</a><br />
@@ -88,6 +88,7 @@
 <a href="html/libvirt-virterror.html#VIR_FROM_XENSTORE">VIR_FROM_XENSTORE</a><br />
 <a href="html/libvirt-virterror.html#VIR_FROM_XML">VIR_FROM_XML</a><br />
 <a href="html/libvirt-libvirt.html#VIR_GET_CPUMAP">VIR_GET_CPUMAP</a><br />
+<a href="html/libvirt-libvirt.html#VIR_MIGRATE_LIVE">VIR_MIGRATE_LIVE</a><br />
 <a href="html/libvirt-libvirt.html#VIR_NODEINFO_MAXCPUS">VIR_NODEINFO_MAXCPUS</a><br />
 <a href="html/libvirt-libvirt.html#VIR_UNUSE_CPU">VIR_UNUSE_CPU</a><br />
 <a href="html/libvirt-libvirt.html#VIR_USE_CPU">VIR_USE_CPU</a><br />
@@ -97,7 +98,9 @@
 <a href="html/libvirt-libvirt.html#VIR_VCPU_OFFLINE">VIR_VCPU_OFFLINE</a><br />
 <a href="html/libvirt-libvirt.html#VIR_VCPU_RUNNING">VIR_VCPU_RUNNING</a><br />
 <a href="html/libvirt-virterror.html#VIR_WAR_NO_NETWORK">VIR_WAR_NO_NETWORK</a><br />
-</p><h2>Letter _:</h2><p><a href="html/libvirt-libvirt.html#_virDomainInfo">_virDomainInfo</a><br />
+</p><h2>Letter _:</h2><p><a href="html/libvirt-libvirt.html#_virDomainBlockStats">_virDomainBlockStats</a><br />
+<a href="html/libvirt-libvirt.html#_virDomainInfo">_virDomainInfo</a><br />
+<a href="html/libvirt-libvirt.html#_virDomainInterfaceStats">_virDomainInterfaceStats</a><br />
 <a href="html/libvirt-virterror.html#_virError">_virError</a><br />
 <a href="html/libvirt-libvirt.html#_virNodeInfo">_virNodeInfo</a><br />
 <a href="html/libvirt-libvirt.html#_virSchedParameter">_virSchedParameter</a><br />
@@ -127,9 +130,11 @@
 <a href="html/libvirt-libvirt.html#virConnectPtr">virConnectPtr</a><br />
 <a href="html/libvirt-virterror.html#virCopyLastError">virCopyLastError</a><br />
 <a href="html/libvirt-virterror.html#virDefaultErrorFunc">virDefaultErrorFunc</a><br />
-<a href="html/libvirt-libvirt.html#virDeviceMode">virDeviceMode</a><br />
 <a href="html/libvirt-libvirt.html#virDomain">virDomain</a><br />
 <a href="html/libvirt-libvirt.html#virDomainAttachDevice">virDomainAttachDevice</a><br />
+<a href="html/libvirt-libvirt.html#virDomainBlockStats">virDomainBlockStats</a><br />
+<a href="html/libvirt-libvirt.html#virDomainBlockStatsPtr">virDomainBlockStatsPtr</a><br />
+<a href="html/libvirt-libvirt.html#virDomainBlockStatsStruct">virDomainBlockStatsStruct</a><br />
 <a href="html/libvirt-libvirt.html#virDomainCoreDump">virDomainCoreDump</a><br />
 <a href="html/libvirt-libvirt.html#virDomainCreate">virDomainCreate</a><br />
 <a href="html/libvirt-libvirt.html#virDomainCreateFlags">virDomainCreateFlags</a><br />
@@ -154,10 +159,15 @@
 <a href="html/libvirt-libvirt.html#virDomainGetXMLDesc">virDomainGetXMLDesc</a><br />
 <a href="html/libvirt-libvirt.html#virDomainInfo">virDomainInfo</a><br />
 <a href="html/libvirt-libvirt.html#virDomainInfoPtr">virDomainInfoPtr</a><br />
+<a href="html/libvirt-libvirt.html#virDomainInterfaceStats">virDomainInterfaceStats</a><br />
+<a href="html/libvirt-libvirt.html#virDomainInterfaceStatsPtr">virDomainInterfaceStatsPtr</a><br />
+<a href="html/libvirt-libvirt.html#virDomainInterfaceStatsStruct">virDomainInterfaceStatsStruct</a><br />
 <a href="html/libvirt-libvirt.html#virDomainLookupByID">virDomainLookupByID</a><br />
 <a href="html/libvirt-libvirt.html#virDomainLookupByName">virDomainLookupByName</a><br />
 <a href="html/libvirt-libvirt.html#virDomainLookupByUUID">virDomainLookupByUUID</a><br />
 <a href="html/libvirt-libvirt.html#virDomainLookupByUUIDString">virDomainLookupByUUIDString</a><br />
+<a href="html/libvirt-libvirt.html#virDomainMigrate">virDomainMigrate</a><br />
+<a href="html/libvirt-libvirt.html#virDomainMigrateFlags">virDomainMigrateFlags</a><br />
 <a href="html/libvirt-libvirt.html#virDomainPinVcpu">virDomainPinVcpu</a><br />
 <a href="html/libvirt-libvirt.html#virDomainPtr">virDomainPtr</a><br />
 <a href="html/libvirt-libvirt.html#virDomainReboot">virDomainReboot</a><br />
@@ -174,6 +184,7 @@
 <a href="html/libvirt-libvirt.html#virDomainState">virDomainState</a><br />
 <a href="html/libvirt-libvirt.html#virDomainSuspend">virDomainSuspend</a><br />
 <a href="html/libvirt-libvirt.html#virDomainUndefine">virDomainUndefine</a><br />
+<a href="html/libvirt-libvirt.html#virDomainXMLFlags">virDomainXMLFlags</a><br />
 <a href="html/libvirt-virterror.html#virError">virError</a><br />
 <a href="html/libvirt-virterror.html#virErrorDomain">virErrorDomain</a><br />
 <a href="html/libvirt-virterror.html#virErrorFunc">virErrorFunc</a><br />
@@ -202,6 +213,8 @@
 <a href="html/libvirt-libvirt.html#virNetworkPtr">virNetworkPtr</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkSetAutostart">virNetworkSetAutostart</a><br />
 <a href="html/libvirt-libvirt.html#virNetworkUndefine">virNetworkUndefine</a><br />
+<a href="html/libvirt-libvirt.html#virNodeGetCellsFreeMemory">virNodeGetCellsFreeMemory</a><br />
+<a href="html/libvirt-libvirt.html#virNodeGetFreeMemory">virNodeGetFreeMemory</a><br />
 <a href="html/libvirt-libvirt.html#virNodeGetInfo">virNodeGetInfo</a><br />
 <a href="html/libvirt-libvirt.html#virNodeInfo">virNodeInfo</a><br />
 <a href="html/libvirt-libvirt.html#virNodeInfoPtr">virNodeInfoPtr</a><br />

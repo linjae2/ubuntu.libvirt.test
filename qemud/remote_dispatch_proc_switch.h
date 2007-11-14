@@ -11,6 +11,15 @@ case REMOTE_PROC_DOMAIN_ATTACH_DEVICE:
 	args = (char *) &lv_remote_domain_attach_device_args;
 	memset (&lv_remote_domain_attach_device_args, 0, sizeof lv_remote_domain_attach_device_args);
 	break;
+case REMOTE_PROC_DOMAIN_BLOCK_STATS:
+	fn = (dispatch_fn) remoteDispatchDomainBlockStats;
+	args_filter = (xdrproc_t) xdr_remote_domain_block_stats_args;
+	args = (char *) &lv_remote_domain_block_stats_args;
+	memset (&lv_remote_domain_block_stats_args, 0, sizeof lv_remote_domain_block_stats_args);
+	ret_filter = (xdrproc_t) xdr_remote_domain_block_stats_ret;
+	ret = (char *) &lv_remote_domain_block_stats_ret;
+	memset (&lv_remote_domain_block_stats_ret, 0, sizeof lv_remote_domain_block_stats_ret);
+	break;
 case REMOTE_PROC_DOMAIN_CORE_DUMP:
 	fn = (dispatch_fn) remoteDispatchDomainCoreDump;
 	args_filter = (xdrproc_t) xdr_remote_domain_core_dump_args;
@@ -134,6 +143,15 @@ case REMOTE_PROC_DOMAIN_GET_VCPUS:
 	ret = (char *) &lv_remote_domain_get_vcpus_ret;
 	memset (&lv_remote_domain_get_vcpus_ret, 0, sizeof lv_remote_domain_get_vcpus_ret);
 	break;
+case REMOTE_PROC_DOMAIN_INTERFACE_STATS:
+	fn = (dispatch_fn) remoteDispatchDomainInterfaceStats;
+	args_filter = (xdrproc_t) xdr_remote_domain_interface_stats_args;
+	args = (char *) &lv_remote_domain_interface_stats_args;
+	memset (&lv_remote_domain_interface_stats_args, 0, sizeof lv_remote_domain_interface_stats_args);
+	ret_filter = (xdrproc_t) xdr_remote_domain_interface_stats_ret;
+	ret = (char *) &lv_remote_domain_interface_stats_ret;
+	memset (&lv_remote_domain_interface_stats_ret, 0, sizeof lv_remote_domain_interface_stats_ret);
+	break;
 case REMOTE_PROC_DOMAIN_LOOKUP_BY_ID:
 	fn = (dispatch_fn) remoteDispatchDomainLookupById;
 	args_filter = (xdrproc_t) xdr_remote_domain_lookup_by_id_args;
@@ -160,6 +178,30 @@ case REMOTE_PROC_DOMAIN_LOOKUP_BY_UUID:
 	ret_filter = (xdrproc_t) xdr_remote_domain_lookup_by_uuid_ret;
 	ret = (char *) &lv_remote_domain_lookup_by_uuid_ret;
 	memset (&lv_remote_domain_lookup_by_uuid_ret, 0, sizeof lv_remote_domain_lookup_by_uuid_ret);
+	break;
+case REMOTE_PROC_DOMAIN_MIGRATE_FINISH:
+	fn = (dispatch_fn) remoteDispatchDomainMigrateFinish;
+	args_filter = (xdrproc_t) xdr_remote_domain_migrate_finish_args;
+	args = (char *) &lv_remote_domain_migrate_finish_args;
+	memset (&lv_remote_domain_migrate_finish_args, 0, sizeof lv_remote_domain_migrate_finish_args);
+	ret_filter = (xdrproc_t) xdr_remote_domain_migrate_finish_ret;
+	ret = (char *) &lv_remote_domain_migrate_finish_ret;
+	memset (&lv_remote_domain_migrate_finish_ret, 0, sizeof lv_remote_domain_migrate_finish_ret);
+	break;
+case REMOTE_PROC_DOMAIN_MIGRATE_PERFORM:
+	fn = (dispatch_fn) remoteDispatchDomainMigratePerform;
+	args_filter = (xdrproc_t) xdr_remote_domain_migrate_perform_args;
+	args = (char *) &lv_remote_domain_migrate_perform_args;
+	memset (&lv_remote_domain_migrate_perform_args, 0, sizeof lv_remote_domain_migrate_perform_args);
+	break;
+case REMOTE_PROC_DOMAIN_MIGRATE_PREPARE:
+	fn = (dispatch_fn) remoteDispatchDomainMigratePrepare;
+	args_filter = (xdrproc_t) xdr_remote_domain_migrate_prepare_args;
+	args = (char *) &lv_remote_domain_migrate_prepare_args;
+	memset (&lv_remote_domain_migrate_prepare_args, 0, sizeof lv_remote_domain_migrate_prepare_args);
+	ret_filter = (xdrproc_t) xdr_remote_domain_migrate_prepare_ret;
+	ret = (char *) &lv_remote_domain_migrate_prepare_ret;
+	memset (&lv_remote_domain_migrate_prepare_ret, 0, sizeof lv_remote_domain_migrate_prepare_ret);
 	break;
 case REMOTE_PROC_DOMAIN_PIN_VCPU:
 	fn = (dispatch_fn) remoteDispatchDomainPinVcpu;
@@ -430,4 +472,13 @@ case REMOTE_PROC_OPEN:
 	args_filter = (xdrproc_t) xdr_remote_open_args;
 	args = (char *) &lv_remote_open_args;
 	memset (&lv_remote_open_args, 0, sizeof lv_remote_open_args);
+	break;
+case REMOTE_PROC_SUPPORTS_FEATURE:
+	fn = (dispatch_fn) remoteDispatchSupportsFeature;
+	args_filter = (xdrproc_t) xdr_remote_supports_feature_args;
+	args = (char *) &lv_remote_supports_feature_args;
+	memset (&lv_remote_supports_feature_args, 0, sizeof lv_remote_supports_feature_args);
+	ret_filter = (xdrproc_t) xdr_remote_supports_feature_ret;
+	ret = (char *) &lv_remote_supports_feature_ret;
+	memset (&lv_remote_supports_feature_ret, 0, sizeof lv_remote_supports_feature_ret);
 	break;

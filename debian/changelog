@@ -1,3 +1,10 @@
+libvirt (0.3.3-0ubuntu1) hardy; urgency=low
+
+  * New upstream release.
+  * Update maintainer.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 14 Nov 2007 23:09:33 +0100
+
 libvirt (0.3.0-0ubuntu2) gutsy; urgency=low
 
   * Add lingnutls-dev Build-Dep.

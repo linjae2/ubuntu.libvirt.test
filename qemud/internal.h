@@ -27,6 +27,7 @@
 
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+#include "../src/gnutls_1_0_compat.h"
 
 #include "protocol.h"
 #include "remote_protocol.h"
@@ -46,8 +47,6 @@
 #define ATTRIBUTE_UNUSED
 #define ATTRIBUTE_FORMAT(...)
 #endif
-
-#define UUID_LEN 16
 
 typedef enum {
     QEMUD_ERR,
@@ -112,7 +111,7 @@ struct qemud_socket {
     int readonly;
     /* If set, TLS is required on this socket. */
     int tls;
-
+    int port;
     struct qemud_socket *next;
 };
 
@@ -125,6 +124,9 @@ struct qemud_server {
     int sigread;
     char logDir[PATH_MAX];
     unsigned int shutdown : 1;
+#ifdef HAVE_AVAHI
+    struct libvirtd_mdns *mdns;
+#endif
 };
 
 void qemudLog(int priority, const char *fmt, ...)

@@ -168,6 +168,24 @@ LIBVIRT_END_ALLOW_THREADS;
 }
 
 PyObject *
+libvirt_virDomainGetConnect(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
+    PyObject *py_retval;
+    virConnectPtr c_retval;
+    virDomainPtr dom;
+    PyObject *pyobj_dom;
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virDomainGetConnect", &pyobj_dom))
+        return(NULL);
+    dom = (virDomainPtr) PyvirDomain_Get(pyobj_dom);
+LIBVIRT_BEGIN_ALLOW_THREADS;
+
+    c_retval = virDomainGetConnect(dom);
+LIBVIRT_END_ALLOW_THREADS;
+    py_retval = libvirt_virConnectPtrWrap((virConnectPtr) c_retval);
+    return(py_retval);
+}
+
+PyObject *
 libvirt_virDomainSuspend(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
     PyObject *py_retval;
     int c_retval;
@@ -971,20 +989,27 @@ LIBVIRT_END_ALLOW_THREADS;
 }
 
 PyObject *
-libvirt_virDomainGetConnect(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
+libvirt_virDomainMigrate(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
     PyObject *py_retval;
-    virConnectPtr c_retval;
-    virDomainPtr dom;
-    PyObject *pyobj_dom;
+    virDomainPtr c_retval;
+    virDomainPtr domain;
+    PyObject *pyobj_domain;
+    virConnectPtr dconn;
+    PyObject *pyobj_dconn;
+    unsigned long flags;
+    char * dname;
+    char * uri;
+    unsigned long bandwidth;
 
-    if (!PyArg_ParseTuple(args, (char *)"O:virDomainGetConnect", &pyobj_dom))
+    if (!PyArg_ParseTuple(args, (char *)"OOlzzl:virDomainMigrate", &pyobj_domain, &pyobj_dconn, &flags, &dname, &uri, &bandwidth))
         return(NULL);
-    dom = (virDomainPtr) PyvirDomain_Get(pyobj_dom);
+    domain = (virDomainPtr) PyvirDomain_Get(pyobj_domain);
+    dconn = (virConnectPtr) PyvirConnect_Get(pyobj_dconn);
 LIBVIRT_BEGIN_ALLOW_THREADS;
 
-    c_retval = virDomainGetConnect(dom);
+    c_retval = virDomainMigrate(domain, dconn, flags, dname, uri, bandwidth);
 LIBVIRT_END_ALLOW_THREADS;
-    py_retval = libvirt_virConnectPtrWrap((virConnectPtr) c_retval);
+    py_retval = libvirt_virDomainPtrWrap((virDomainPtr) c_retval);
     return(py_retval);
 }
 

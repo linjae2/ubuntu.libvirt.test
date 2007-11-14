@@ -20,7 +20,7 @@ under the <a href="http://www.opensource.org/licenses/lgpl-license.html">GNU
 Lesser General Public License</a>. Virtualization of the Linux Operating
 System means the ability to run multiple instances of Operating Systems
 concurently on a single hardware system where the basic resources are driven
-by a Linux instance. The library aim at providing long term stable C API
+by a Linux (or Solaris) instance. The library aim at providing long term stable C API
 initially for the <a
 href="http://www.cl.cam.ac.uk/Research/SRG/netos/xen/index.html">Xen
 paravirtualization</a> but should be able to integrate other
@@ -35,6 +35,90 @@ development of libvirt, it is preferable when possible to just use the <a
 href="downloads.html">CVS version or snapshot</a>, contact the mailing list
 and check the <a href="ChangeLog.html">ChangeLog</a> to gauge progresses.</p>
 
+
+<h3>0.3.3: Sep 30 2007</h3>
+<ul>
+  <li>New features: Avahi mDNS daemon export (Daniel Berrange),
+      NUMA support (Beth Kan) </li>
+  <li>Documentation: cleanups (Toth Istvan), typos (Eduardo Pereira), </li>
+  <li>Bug fixes: memory corruption on large dumps (Masayuki Sunou), fix
+      virsh vncdisplay command exit (Masayuki Sunou), Fix network stats
+      TX/RX result (Richard Jones), warning on Xen 3.0.3 (Richard Jones),
+      missing buffer check in virDomainXMLDevID (Hugh Brock), avoid zombies
+      when using remote (Daniel Berrange), xend connection error message
+      (Richard Jones), avoid ssh tty prompt (Daniel Berrange), username
+      handling for remote URIs (Fabian Deutsch), fix potential crash 
+      on multiple input XML tags (Daniel Berrange), Solaris Xen hypercalls
+      fixup (Mark Johnson)</li>
+  <li>Improvements: OpenVZ support (Shuveb Hussain and Anoop Cyriac),
+      CD-Rom reload on XEn (Hugh Brock), PXE boot got QEmu/KVM (Daniel
+      Berrange), QEmu socket permissions customization (Daniel Berrange),
+      more QEmu support (Richard Jones), better path detection for qemu and
+      dnsmasq (Richard Jones), QEmu flags are per-Domain (Daniel Berrange),
+      virsh freecell command, Solaris portability fixes (Mark Johnson),
+      default bootloader support (Daniel Berrange), new virNodeGetFreeMemory
+      API, vncpasswd extraction in configuration files if secure (Mark
+      Johnson and Daniel Berrange), Python bindings for block and interface
+      statistics</li>
+  <li>Code cleanups: virDrvOpenRemoteFlags definition (Richard Jones),
+      configure tests and output (Daniel Berrange)</li>
+</ul>
+<h3>0.3.2: Aug 21 2007</h3>
+<ul>
+  <li>New features: KVM migration and save/restore (Jim Paris), 
+      added API for migration (Richard Jones), added APIs for block device and
+      interface statistic (Richard Jones).</li>
+  <li>Documentation: examples for XML network APIs,
+      fix typo and schedinfo synopsis in man page (Atsushi SAKAI),
+      hypervisor support page update (Richard Jones).</li>
+  <li>Bug fixes: remove a couple of leaks in QEmu/KVM backend(Daniel berrange),
+      fix GnuTLS 1.0 compatibility (Richard Jones), --config/-f option
+      mistake for libvirtd (Richard Jones), remove leak in QEmu backend
+      (Jim Paris), fix some QEmu communication bugs (Jim Paris), UUID
+      lookup though proxy fix, setvcpus checking bugs (with Atsushi SAKAI),
+      int checking in virsh parameters (with Masayuki Sunou), deny devices
+      attach/detach for &lt; Xen 3.0.4 (Masayuki Sunou), XenStore query
+      memory leak (Masayuki Sunou), virsh schedinfo cleanup (Saori Fukuta).</li>
+  <li>Improvement: virsh new ttyconsole command, networking API implementation
+      for test driver (Daniel berrange), qemu/kvm feature reporting of
+      ACPI/APIC (David Lutterkort), checking of QEmu architectures (Daniel
+      berrange), improve devices XML errors reporting (Masayuki Sunou),
+      speedup of domain queries on Xen (Daniel berrange), augment XML dumps
+      with interface devices names (Richard Jones), internal API to query
+      drivers for features (Richard Jones).
+      </li>
+  <li>Cleanups: Improve virNodeGetInfo implentation (Daniel berrange),
+      general UUID code cleanup (Daniel berrange), fix API generator
+      file selection. </li>
+</ul>
+
+<h3>0.3.1: Jul 24 2007</h3>
+<ul>
+  <li>Documentation: index to remote page, script to test certificates,
+      IPv6 remote support docs (Daniel Berrange), document
+      VIRSH_DEFAULT_CONNECT_URI in virsh man page (David Lutterkort),
+      Relax-NG early grammar for the network XML (David Lutterkort)</li>
+  <li>Bug fixes: leaks in disk XML parsing (Masayuki Sunou), hypervisor
+      alignment call problems on PPC64 (Christian Ehrhardt), dead client
+      registration in daemon event loop (Daniel Berrange), double free
+      in error handling (Daniel Berrange), close on exec for log file
+      descriptors in the daemon (Daniel Berrange), avoid caching problem
+      in remote daemon (Daniel Berrange), avoid crash after QEmu domain
+      failure (Daniel Berrange)</li>
+  <li>Improvements: checks of x509 certificates and keys (Daniel Berrange),
+      error reports in the daemon (Daniel Berrange), checking of Ethernet MAC
+      addresses in XML configs (Masayuki Sunou), support for a new
+      clock switch between UTC and localtime (Daniel Berrange), early
+      version of OpenVZ support (Shuveb Hussain), support for input devices
+      on PS/2 and USB buses (Daniel Berrange), more tests especially
+      the QEmu support (Daniel Berrange), range check in credit scheduler
+      (with Saori Fukuta and Atsushi Sakai), add support for listen VNC
+      parameter un QEmu and fix command line arg (Daniel Berrange)</li>
+  <li>Cleanups: debug tracing (Richard Jones), removal of --with-qemud-pid-file
+      (Richard Jones), remove unused virDeviceMode, new util module for
+      code shared between drivers (Shuveb Hussain), xen header location
+      detection (Richard Jones)</li>
+</ul>
 <h3>0.3.0: Jul 9 2007</h3>
 <ul>
   <li>Secure Remote support (Richard Jones).
@@ -528,7 +612,7 @@ drivers present in driver.h:</p>
 <ul>
   <li>xend_internal: implements the driver functions though the Xen
   Daemon</li>
-  <li>xs_internal: implements the subset of the driver availble though the
+  <li>xs_internal: implements the subset of the driver available though the
     Xen Store</li>
   <li>xen_internal: provide the implementation of the functions possible via
     direct hypervisor access</li>
@@ -538,7 +622,7 @@ drivers present in driver.h:</p>
     domains.</li>
   <li>qemu_internal: implement the driver functions for QEmu and
     KVM virtualization engines. It also uses a qemud/ specific daemon
-    which interracts with the QEmu process to implement libvirt API.</li>
+    which interacts with the QEmu process to implement libvirt API.</li>
   <li>test: this is a test driver useful for regression tests of the
     front-end part of libvirt.</li>
 </ul>
@@ -658,7 +742,7 @@ following should be sufficient for basic use:</p>
 
 <p>A <code>disk</code> device indicates a block device, it can have two
 values for the type attribute either 'file' or 'block' corresponding to the 2
-options availble at the Xen layer. It has two mandatory children, and one
+options available at the Xen layer. It has two mandatory children, and one
 optional one in no specific order:</p>
 <ul>
   <li>source with a file attribute containing the path in Domain 0 to the
@@ -677,7 +761,7 @@ number of children in no specific order:</p>
   <li>source: indicating the bridge name</li>
   <li>mac: the optional mac address provided in the address attribute</li>
   <li>ip: the optional IP address provided in the address attribute</li>
-  <li>script: the script used to bridge the interfcae in the Domain 0</li>
+  <li>script: the script used to bridge the interface in the Domain 0</li>
   <li>target: and optional target indicating the device name.</li>
 </ul>
 
@@ -738,6 +822,7 @@ systems:</p>
      &lt;acpi/&gt;
      &lt;apic/&gt;</span>
   &lt;/features&gt;
+  <span style="color: #0000E5; background-color: #FFFFFF">&lt;clock sync="localtime"/&gt;</span>
   &lt;devices&gt;
     <span style="color: #0000E5; background-color: #FFFFFF">&lt;emulator&gt;/usr/lib/xen/bin/qemu-dm&lt;/emulator&gt;</span>
     &lt;interface type='bridge'&gt;
@@ -773,6 +858,11 @@ systems:</p>
       <li><code>acpi</code> - enable ACPI bios</li>
     </ul>
   </li>
+  <li>the optional <code>&lt;clock&gt;</code> element is used to specify
+     whether the emulated BIOS clock in the guest is synced to either
+     <code>localtime</code> or <code>utc</code>. In general Windows will
+     want <code>localtime</code> while all other operating systems will
+     want <code>utc</code>. The default is thus <code>utc</code></li>
   <li>the <code>&lt;os&gt;</code> block description is very different, first
     it indicates that the type is 'hvm' for hardware virtualization, then
     instead of a kernel, boot and command line arguments, it points to an os
@@ -832,6 +922,7 @@ XML description is quite similar, here is a simple example:</p>
   &lt;os&gt;
     &lt;type&gt;hvm&lt;/type&gt;
   &lt;/os&gt;
+  <span style="color: #0000E5; background-color: #FFFFFF">&lt;clock sync="localtime"/&gt;</span>
   &lt;devices&gt;
     <span style="color: #FF0000; background-color: #FFFFFF">&lt;emulator&gt;/home/user/usr/kvm-devel/bin/qemu-system-x86_64&lt;/emulator&gt;</span>
     &lt;disk type='file' device='disk'&gt;
@@ -848,6 +939,7 @@ XML description is quite similar, here is a simple example:</p>
 <p>The specific points to note if using KVM are:</p>
 <ul>
   <li>the top level domain element carries a type of 'kvm'</li>
+  <li>the &lt;clock&gt; optional is supported as with Xen HVM</li>
   <li>the &lt;devices&gt; emulator points to the special qemu binary required
     for KVM</li>
   <li>networking interface definitions definitions are somewhat different due
@@ -879,11 +971,11 @@ support a variety of options:</p>
   <li>Virtual network
     <p>Provides a virtual network using a bridge device in the host.
     Depending on the virtual network configuration, the network may be
-    totally isolated,NAT'ing to aan explicit network device, or NAT'ing to
+    totally isolated, NAT'ing to an explicit network device, or NAT'ing to
     the default route. DHCP and DNS are provided on the virtual network in
     all cases and the IP range can be determined by examining the virtual
     network config with '<code>virsh net-dumpxml &lt;network
-    name&gt;</code>'. There is one virtual network called'default' setup out
+    name&gt;</code>'. There is one virtual network called 'default' setup out
     of the box which does NAT'ing to the default route and has an IP range of
     <code>192.168.22.0/255.255.255.0</code>. Each guest will have an
     associated tun device created with a name of vnetN, which can also be
@@ -953,7 +1045,7 @@ support a variety of options:</p>
   </li>
   <li>TCP tunnel
     <p>A TCP client/server architecture provides a virtual network. One VM
-    provides the server end of the netowrk, all other VMS are configured as
+    provides the server end of the network, all other VMS are configured as
     clients. All network traffic is routed between the VMs via the server.
     This mode is also available to unprivileged users. There is no default
     DNS or DHCP support and no outgoing network access. To provide outgoing
@@ -1075,7 +1167,7 @@ BIOS you will see</p>
   ...
 &lt;/capabilities&gt;</pre>
 
-<p>The fist block (in red) indicates the host hardware capbilities, currently
+<p>The first block (in red) indicates the host hardware capbilities, currently
 it is limited to the CPU properties but other information may be available,
 it shows the CPU architecture, and the features of the chip (the feature
 block is similar to what you will find in a Xen fully virtualized domain
@@ -1296,7 +1388,7 @@ this point, see the error.py example about it:</p>
 libvirt.registerErrorHandler(handler, 'context') </pre>
 
 <p>the second argument to the registerErrorHandler function is passed as the
-fist argument of the callback like in the C version. The error is a tuple
+first argument of the callback like in the C version. The error is a tuple
 containing the same field as a virError in C, but cast to Python.</p>
 
 <h2><a name="FAQ" id="FAQ">FAQ</a></h2>
@@ -1417,12 +1509,42 @@ an existing bug, <a href="http://bugzilla.redhat.com/bugzilla/enter_bug.cgi?prod
 to post to the <a href="mailto:libvir-list@redhat.com">mailing-list</a>
 too, so that everybody working on the project can see it, thanks !</p>
 
+<p>Some of the libvirt developpers may be found on IRC on the OFTC
+network. Use the settings:</p>
+<ul>
+  <li>server: irc.oftc.net</li>
+  <li>port: 6667 (the usual IRC port)</li>
+  <li>channel: #virt</li>
+</ul>
+<p> But there is no guarantee that someone will be watching or able to reply,
+use the mailing-list if you don't get an answer there.</p>
 <h2><a name="Remote">Remote support</a></h2>
 
 <p>
 Libvirt allows you to access hypervisors running on remote
 machines through authenticated and encrypted connections.
 </p>
+<ul>
+ <li><a href="#Remote_basic_usage">Basic usage</a></li>
+ <li><a href="#Remote_transports">Transports</a></li>
+ <li><a href="#Remote_URI_reference">Remote URIs</a>
+ <ul>
+   <li><a href="#Remote_URI_parameters">Extra parameters</a></li>
+ </ul></li>
+ <li><a href="#Remote_certificates">Generating TLS certificates</a>
+ <ul>
+   <li><a href="#Remote_PKI">Public Key Infrastructure set up</a></li>
+   <li><a href="#Remote_TLS_background">Background to TLS certificates</a></li>
+   <li><a href="#Remote_TLS_CA">Setting up a Certificate Authority (CA)</a></li>
+   <li><a href="#Remote_TLS_server_certificates">Issuing server certificates</a></li>
+   <li><a href="#Remote_TLS_client_certificates">Issuing client certificates</a></li>
+   <li><a href="#Remote_TLS_troubleshooting">Troubleshooting TLS certificate problems</a></li>
+ </ul></li>
+ <li><a href="#Remote_libvirtd_configuration">libvirtd configuration file</a></li>
+ <li><a href="#Remote_IPv6">IPv6 support</a></li>
+ <li><a href="#Remote_limitations">Limitations</a></li>
+ <li><a href="#Remote_implementation_notes">Implementation notes</a></li>
+</ul>
 
 <h3><a name="Remote_basic_usage">Basic usage</a></h3>
 
@@ -1495,8 +1617,8 @@ Remote libvirt supports a range of transports:
  <a href="http://www.openssh.com/" title="OpenSSH homepage">ssh
  (secure shell)</a> connection.
  Requires <a href="http://netcat.sourceforge.net/">Netcat (nc)</a>
- installed on the remote machine, and the remote libvirtd should
- be listening on the unix transport.  You should use some sort of
+ installed and libvirtd should be running
+ on the remote machine.  You should use some sort of
  ssh key management (eg.
  <a href="http://mah.everybody.org/docs/ssh"
  title="Using ssh-agent with ssh">ssh-agent</a>)
@@ -1667,11 +1789,25 @@ Note that parameter values must be
 <td> Example: <code>no_verify=1</code> </td>
 </tr>
 
+<tr>
+<td> <code>no_tty</code> </td>
+<td> ssh </td>
+<td>
+  If set to a non-zero value, this stops ssh from asking for
+  a password if it cannot log in to the remote machine automatically
+  (eg. using ssh-agent etc.).  Use this when you don't have access
+  to a terminal - for example in graphical programs which use libvirt.
+</td>
+</tr>
+<tr> <td colspan="2"></td>
+<td> Example: <code>no_tty=1</code> </td>
+</tr>
+
 </table>
 
 <h3><a name="Remote_certificates">Generating TLS certificates</a></h3>
 
-<h4>Public Key Infrastructure set up</h4>
+<h4><a name="Remote_PKI">Public Key Infrastructure set up</a></h4>
 
 <p>
 If you are unsure how to create TLS certificates, skip to the
@@ -2029,15 +2165,19 @@ cp clientcert.pem /etc/pki/libvirt/clientcert.pem
 <dd>
 <p>
 On the server side, run the libvirtd server with
-the '--remote' and '--verbose' options while the
+the '--listen' and '--verbose' options while the
 client is connecting.  The verbose log messages should
 tell you enough to diagnose the problem.
 </p>
 </dd>
 </dl>
+<p> You can use the <a href="pki_check.sh">pki_check.sh</a> shell script
+to analyze the setup on the client or server machines, preferably as root.
+It will try to point out the possible problems and provide solutions to
+fix the set up up to a point where you have secure remote access.</p>
 
 
-<h3><a name="Remote_libvirtd_configuration">libvirtd configuration</a></h3>
+<h3><a name="Remote_libvirtd_configuration">libvirtd configuration file</a></h3>
 
 <p>
 Libvirtd (the remote daemon) is configured from a file called
@@ -2050,6 +2190,8 @@ the command line using <code>-f filename</code> or
 This file should contain lines of the form below.
 Blank lines and comments beginning with <code>#</code> are ignored.
 </p>
+<pre>setting = value</pre>
+<p>The following settings, values and default are:</p>
 
 <table class="top_table">
 <tr>
@@ -2087,6 +2229,53 @@ Blank lines and comments beginning with <code>#</code> are ignored.
 <td> "16509" </td>
 <td>
   The port number or service name to listen on for unencrypted TCP connections.
+</td>
+</tr>
+
+<tr>
+<td> mdns_adv <i>[0|1]</i> </td>
+<td> 1 (advertise with mDNS) </td>
+<td>
+  If set to 1 then the virtualization service will be advertised over
+  mDNS to hosts on the local LAN segment.
+</td>
+</tr>
+
+<tr>
+<td> mdns_name <i>"name"</i> </td>
+<td> "Virtualization Host HOSTNAME" </td>
+<td>
+  The name to advertise for this host with Avahi mDNS. The default
+  includes the machine's short hostname. This must be unique to the
+  local LAN segment.
+</td>
+</tr>
+
+<tr>
+<td> unix_sock_group <i>"groupname"</i> </td>
+<td> "root" </td>
+<td>
+  The UNIX group to own the UNIX domain socket. If the socket permissions allow
+  group access, then applications running under matching group can access the
+  socket. Only valid if running as root
+</td>
+</tr>
+
+<tr>
+<td> unix_sock_ro_perms <i>"octal-perms"</i> </td>
+<td> "0777" </td>
+<td>
+  The permissions for the UNIX domain socket for read-only client connections.
+  The default allows any user to monitor domains.
+</td>
+</tr>
+
+<tr>
+<td> unix_sock_rw_perms <i>"octal-perms"</i> </td>
+<td> "0700" </td>
+<td>
+  The permissions for the UNIX domain socket for read-write client connections.
+  The default allows only root to manage domains.
 </td>
 </tr>
 
@@ -2195,8 +2384,14 @@ Blank lines and comments beginning with <code>#</code> are ignored.
 <h3><a name="Remote_IPv6">IPv6 support</a></h3>
 
 <p>
-IPv6 has received some limited testing and should work.  Problems with
-libvirt and IPv6 should be reported as <a href="bugs.html">bugs</a>.
+The libvirtd service and libvirt remote client driver both use the
+<code>getaddrinfo()</code> functions for name resolution and are
+thus fully IPv6 enabled. ie, if a server has IPv6 address configured
+the daemon will listen for incoming connections on both IPv4 and IPv6
+protocols. If a client has an IPv6 address configured and the DNS
+address resolved for a service is reachable over IPv6, then an IPv6
+connection will be made, otherwise IPv4 will be used. In summary it
+should just 'do the right thing(tm)'.
 </p>
 
 <h3><a name="Remote_limitations">Limitations</a></h3>
@@ -2371,18 +2566,19 @@ use the URI <code>xen:///</code>.
 
 <p>
 To use QEMU support in libvirt you must be running the
-<code>libvirt_qemud</code> daemon.  The purpose of this
+<code>libvirtd</code> daemon (named <code>libvirt_qemud</code>
+in releases prior to 0.3.0).  The purpose of this
 daemon is to manage qemu instances.
 </p>
 
 <p>
-The <code>libvirt_qemud</code> daemon can be run in two ways.  It may
+The <code>libvirtd</code> daemon can be run in two ways.  It may
 be started by init scripts when the machine boots and run in "system
-mode" (<code>libvirt_qemud --system</code>), in which case it manages
+mode" (<code>libvirtd --system</code>), in which case it manages
 qemu instances on behalf of all users of the machine.  It may be also
 be started by the local user in what is known as "session mode"
-(<code>libvirt_qemud --session</code>), to manage qemu instances for
-just the current user.  If no <code>libvirt_qemud</code> is running at
+(<code>libvirtd --session</code>), to manage qemu instances for
+just the current user.  If no <code>libvirtd</code> is running at
 all, then the qemu driver starts one running in session mode.
 </p>
 
@@ -2396,7 +2592,7 @@ So to connect to the daemon, one of two different URIs is used:
 </ul>
 
 <p>
-(If you do <code>libvirt_qemud --help</code>, the daemon will print
+(If you do <code>libvirtd --help</code>, the daemon will print
 out the paths of the Unix domain socket(s) that it listens on in
 the various different modes).
 </p>
@@ -2593,7 +2789,7 @@ which hypervisors.
 
 <p>
 This information changes frequently.  This page was last checked or
-updated on <i>2007-06-29</i>.
+updated on <i>2007-08-20</i>.
 </p>
 
 <h3>Domain functions</h3>
@@ -2630,8 +2826,8 @@ updated on <i>2007-06-29</i>.
   <td> virConnectGetHostname </td>
   <td> 0.3.0 </td>
   <td> &ge; 0.3.0 </td>
-  <td>  </td>
-  <td>  </td>
+  <td> &ge; 0.3.3 </td>
+  <td> &ge; 0.3.3 </td>
   <td> &ge; 0.3.0 </td>
 </tr>
 <tr>
@@ -2654,8 +2850,8 @@ updated on <i>2007-06-29</i>.
   <td> virConnectGetURI </td>
   <td> 0.3.0 </td>
   <td> &ge; 0.3.0 </td>
-  <td>  </td>
-  <td>  </td>
+  <td> &ge; 0.3.0 </td>
+  <td> &ge; 0.3.0 </td>
   <td> &ge; 0.3.0 </td>
 </tr>
 <tr>
@@ -2721,6 +2917,14 @@ updated on <i>2007-06-29</i>.
   <td> x </td>
   <td> x </td>
   <td> &ge; 0.3.0 </td>
+</tr>
+<tr>
+  <td> virDomainBlockStats </td>
+  <td> 0.3.2 </td>
+  <td> &ge; 0.3.2 </td>
+  <td> x </td>
+  <td> x </td>
+  <td> &ge; 0.3.2 </td>
 </tr>
 <tr>
   <td> virDomainCoreDump </td>
@@ -2880,6 +3084,14 @@ updated on <i>2007-06-29</i>.
   <td> &ge; 0.3.0 </td>
 </tr>
 <tr>
+  <td> virDomainInterfaceStats </td>
+  <td> 0.3.2 </td>
+  <td> &ge; 0.3.2 </td>
+  <td> x </td>
+  <td> x </td>
+  <td> &ge; 0.3.2 </td>
+</tr>
+<tr>
   <td> virDomainGetXMLDesc </td>
   <td> All </td>
   <td> All </td>
@@ -2920,6 +3132,14 @@ updated on <i>2007-06-29</i>.
   <td> &ge; 0.3.0 </td>
 </tr>
 <tr>
+  <td> virDomainMigrate </td>
+  <td> 0.3.2 </td>
+  <td> &ge; 0.3.2 </td>
+  <td> x </td>
+  <td> x </td>
+  <td> 0.3.2 </td>
+</tr>
+<tr>
   <td> virDomainPinVcpu </td>
   <td> 0.1.4 </td>
   <td> &ge; 0.1.4 </td>
@@ -2940,7 +3160,7 @@ updated on <i>2007-06-29</i>.
   <td> All </td>
   <td> All </td>
   <td> x </td>
-  <td> x </td>
+  <td> &ge; 0.3.2 </td>
   <td> &ge; 0.3.0 </td>
 </tr>
 <tr>
@@ -2956,7 +3176,7 @@ updated on <i>2007-06-29</i>.
   <td> All </td>
   <td> All </td>
   <td> x </td>
-  <td> x </td>
+  <td> &ge; 0.3.2 </td>
   <td> &ge; 0.3.0 </td>
 </tr>
 <tr>
@@ -3041,6 +3261,14 @@ updated on <i>2007-06-29</i>.
   <td> &ge; 0.2.0 </td>
   <td> &ge; 0.2.0 </td>
   <td> &ge; 0.3.0 </td>
+</tr>
+<tr>
+  <td> virNodeGetCellsFreeMemory </td>
+  <td> 0.3.3 </td>
+  <td> &ge; 0.3.3 </td>
+  <td></td>
+  <td></td>
+  <td></td>
 </tr>
 </table>
 

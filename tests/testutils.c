@@ -7,7 +7,7 @@
  *
  * Karel Zak <kzak@redhat.com>
  *
- * $Id: testutils.c,v 1.6 2007/06/15 15:24:20 rjones Exp $
+ * $Id: testutils.c,v 1.7 2007/07/18 21:08:22 berrange Exp $
  */
 
 #include <stdio.h>
@@ -52,7 +52,7 @@ virtTestCountAverage(double *items, int nitems)
  * returns: -1 = error, 0 = success
  */
 int
-virtTestRun(const char *title, int nloops, int (*body)(void *data), void *data)
+virtTestRun(const char *title, int nloops, int (*body)(const void *data), const void *data)
 {
     int i, ret = 0;
     double *ts = NULL;

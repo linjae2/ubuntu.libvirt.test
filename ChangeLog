@@ -1,3 +1,727 @@
+Sun Sep 30 23:07:59 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* configure.in libvirt.spec.in include/libvirt/libvirt.h docs/*:
+	  preparing release of 0.3.3
+	* po/*: updated the strings localizations
+
+Sun Sep 30 22:51:11 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* python/generator.py python/libvir.c python/libvirt-python-api.xml:
+	  provide bindings for block and interface statistics
+
+Sun Sep 30 12:27:36 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/xend_internal.c: Don't include <bootloader/> for HVM guests
+	* tests/sexpr2xmldata/sexpr2xml-no-source-cdrom.xml: revert previous
+	change since HVM doesn't use bootloaders
+
+Sun Sep 30 15:20:36 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/virsh.c: use virNodeGetFreeMemory() for freecell without
+	  argument
+	* src/libvirt_sym.version: export virNodeGetFreeMemory()
+
+Sun Sep 30 14:49:27 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* include/libvirt/libvirt.h include/libvirt/libvirt.h.in
+	  src/driver.h src/libvirt.c src/openvz_driver.c src/qemu_driver.c
+	  src/test.c src/xen_unified.c src/xend_internal.c: add new API
+	  virNodeGetFreeMemory(), extends the driver. Lacks remote and
+	  QEmu support though.
+	* src/libvirt.c: allows to fix virNodeGetCellsFreeMemory() adding
+	  parameter check for startCell.
+	* proxy/libvirt_proxy.c src/xend_internal.[ch]
+	  include/libvirt/libvirt.h include/libvirt/libvirt.h.in: applied
+	  vncpasswd dump patch from Mark Johnson but with the
+	  virDomainXMLFlags extension as suggested by Daniel Berrange
+	  this changed a couple of internal APIs too
+	* tests/sexpr2xmldata/sexpr2xml-no-source-cdrom.xml: fix one of the
+	  tests affected by bootloader dump change.
+
+Sat Sep 29 14:30:41 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/xen_internal.c, src/xs_internal.c: Solaris hypercall compat
+	changes. (Mark Johnson)
+
+Sat Sep 29 14:23:41 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/sexpr.h, src/sexpr.c, src/xml.c, src/xend_internal.c: Allow
+	bootloader tag to be empty, to indicate use of default configured
+	bootloader path.
+
+Sat Sep 29 14:05:41 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/sexpr.h, src/sexpr.c, src/virsh.c, src/xend_internal.c:
+	Remove use of anonymous union members in sexpr code.
+	* src/internal.h: Solaris portability fix (Mark Johnson)
+
+Fri Sep 28 16:41:41 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c: Fix crash processing multiple <input> tags
+
+Fri Sep 28 16:17:41 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* include/libvirt/libvirt.h[.in] src/driver.h src/openvz_driver.c
+	  src/qemu_driver.c src/remote_internal.c src/test.c
+	  src/xen_internal.[ch] src/xen_unified.c src/xend_internal.[ch]
+	  src/libvirt.c src/libvirt_sym.version: adding NUMA support patches
+	  from Beth Kon adding new virNodeGetCellsFreeMemory entry point
+	  and extending the virConnectGetCapabilities one. Fix a couple of
+	  issues in the patch and add to exported symbols from shared lib.
+	* docs/virsh.pod docs/virsh.1 src/virsh.c: added new command
+	  freecell to get the available memory on the node or in a NUMA cell.
+	* docs/*: updated and regenerated the documentation
+
+Fri Sep 28 11:20:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* docs/libvir.html: Clarified configuration required for
+	remote over ssh.
+
+Tue Sep 25 14:45:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/remote_internal.c: Fix handling of usernames (thanks to
+	Fabian Deutsch for finding and fixing this).
+
+Fri Sep 21 17:14:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c, src/qemu_conf.h: Detect QEMU flags per-VM,
+	not per driver, since different QEMU binaries have their own
+	requirements.
+	* tests/qemuxml2xmltest.c, tests/qemuxml2argvtets.c: Update
+	to changed internal QEMU api/structs.
+
+Fri Sep 21 16:22:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/remote_internal.c: Add a no_tty flag to stop SSH prompting
+	for passwords on console
+	* docs/libvir.html, docs/remote.html: Document no_tty flag
+
+Fri Sep 21 15:06:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* acinclude.m4: Check all compiler flags link successfully
+	instead of just compiling, to deal with broken debian linker
+	with stack protector
+	* configure.in: Remove redundant -fno-stack-protector workaround
+
+Fri Sep 21 15:06:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_driver.c: Use libxml for parsing & checking URIs
+
+Thu Sep 20 19:37:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/bridge.c, src/qemu_driver.c, configure.in: Try to detect
+	the paths of dnsmasq and brctl at compile time.  If found
+	then compile them in, otherwise search $PATH at runtime.
+
+	* libvirt.spec.in: BR dnsmasq and bridge-utils so we have their
+	paths at compile time.
+
+Thu Sep 20 18:10:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/qemu_driver.c, docs/libvir.html: Support virConnectGetHostname
+	and virConnectGetURI for qemu driver.
+
+Thu Sep 20 13:02:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/libvirt.c: Don't try to generate an error message with
+	an invalid connection object.
+
+Thu Sep 20 12:59:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/xend_internal.c: Error message if we cannot connect
+	to xend.
+
+Wed Sep 19 17:42:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/remote_internal.c: Fix waitpid() call to only be done
+	in doRemoteOpen error case (merge error from previous commit)
+
+Wed Sep 19 13:39:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* configure.in: Use pkg-config to locate gnutls if pkg-config
+	is available. Add $(GNUTLS_LIBS) $(GNUTLS_CFLAGS) to all the
+	relevant make targets
+
+Wed Sep 19 09:48:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* configure.in: Make sure we use pkg-config for libxml, where
+	available. Fix newline termination for messages printed with
+	xml-config checks
+
+Tue Sep 18 22:22:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* qemud/qemud.c: Allow customization of UNIX socket permissions
+	and group ownership from config file
+	* docs/libvir.html: Added docs on UNIX socket perms & group owner
+	config parameters
+
+Tue Sep 18 21:34:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* configure.in: Added checks for locating Avahi.
+	* qemud/mdns.c, qemud/mdns.h, qemud/Makefile.am: Convenience API to 
+	bridge between state machine provided by Avahi APIs, and the libvirt
+	daemon.
+	* qemud/qemud.c, qemud/internal.h: Register the daemon as an mDNS
+	service under _libvirt._tcp.
+	* docs/libvir.html: Added notes on mdns config params.
+	* libvirt.spec.in: Added avahi-devel as a BuildRequires
+
+Tue Sep 18 20:42:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/event.h, src/event.c: Added new APIs definitions for updating
+	of existing timers and file handlers
+	* qemud/event.h, qemud/event.c, qemud/qemud.c: Added implementation
+	of APIs for updating existing timers and file handlers. Allow a
+	timeout frequency of 0. Allow frequency of -1 to indicate a disabled
+	timer. Prefix all log messages with EVENT:
+
+Tue Sep 18 19:42:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* configure.in: Re-arrange to use new style AC_INIT/AM_INIT_AUTOMAKE
+	style calls. Pass -Wno-portability flag to automake to keep quiet about
+	GNUmake-isms
+
+Tue Sep 18 19:36:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* configure.in: Don't check for Linux bridge headers if QEMU
+	driver is disabled
+
+Tue Sep 18 19:32:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* configure.in: Print out summary of configuration options
+
+Mon Sep 17 23:04:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/remote_internal.c: Track child pid and do waitpid to clean
+	up zombies if running over a tunnel
+
+Thu Sep 13 17:58:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c: Fix handling of <boot> tag for network PXE
+	* tests/qemuxml2argvdata/qemuxml2argv-boot-network.xml: Fix test
+	for network PXE boot element
+	* tests/qemuxml2argvtest.c, tests/qemuxml2xmltest.c: Fixed potential
+	SEGV crash in error case cleanup
+
+Wed Sep 12 16:35:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/xend_internal.c, src/xml.c, src/xml.h: Properly check buffer
+	size in virDomainXMLDevID (Hugh Brock).
+
+Wed Sep 12 11:30:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/xend_internal.c, src/xen_unified.c: Removed an annoying
+	  warning when using Xen 3.0.3 and inactive domains.
+
+Wed Sep 12 11:25:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/remote_internal.c: virDrvOpenRemoteFlags was accidentally
+	  declared as a global variable, instead of the name an enum.
+
+Mon Sep 10 17:15:29 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* docs/architecture.html docs/errors.html docs/format.html
+	  docs/libvir.html: fixing typos spotted by Eduardo Pereira
+
+Mon Sep 10 13:46:05 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xend_internal.c: applied patch from Hugh Brock to allow
+	  CD Rom device reload by reusing virDomainAttachDevice() with
+	  a new definition
+
+Mon Sep 10 11:35:06 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* include/libvirt/libvirt.h include/libvirt/libvirt.h.in
+	  src/libvirt.c: fixes a few problems in the documentation
+	  pointed out by Toth Istvan.
+	* docs/*: regenerated the docs
+
+Wed Sep  5 16:31:00 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* docs/libvir.html docs/uri.html: remove references to libvirt_qemud
+	  and replace them with libvirtd
+
+Mon Sep  3 18:29:05 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/openvz_conf.c src/openvz_conf.h src/openvz_driver.c: a bit
+	  of cleanup on top of previous patches.
+
+Mon Sep  3 17:35:15 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/openvz_conf.c src/openvz_conf.h src/openvz_driver.c
+	  src/openvz_driver.h: Applied patch from Shuveb Hussain and Anoop
+	  Cyriac to extent OpenVZ driver capabilities, especially Create().
+
+Thu Aug 30 15:11:44 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/buf.c: applied patch from Masayuki Sunou fixing a loop
+	  due to an error in growing buffers.
+
+Wed Aug 29 14:43:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/xen_internal.c (xenHypervisorDomainInterfaceStats): Swap
+	  TX & RX network stats so they appear correct from the point
+	  of view of the domain.
+
+Wed Aug 29 09:46:17 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/virsh.c: apply patch from Masayuki Sunou to fix the exit value
+	  of vncdisplay command.
+
+Mon Aug 27 11:16:48 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xend_internal.c: applied patch from Masayuki Sunou to avoid
+	  memory corruption on very large XML dumps.
+
+Tue Aug 21 16:48:41 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* configure.in libvirt.spec.in include/libvirt/libvirt.h docs/*:
+	  preparing release of 0.3.2
+	* src/libvirt.c: fix a couple of comments
+	* po/*: string localization merge/update
+
+Tue Aug 21 13:52:29 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xs_internal.c: cleanup of memory leaks from Masayuki Sunou
+	* src/virsh.c: another memory leaks of virsh schedinfo cleanup from
+	  Saori Fukuta
+	* po/*: string localization merge/update
+
+Tue Aug 21 10:58:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/libvirt.c (virDomainBlockStats, virDomainInterfaceStats):
+	  Added block device and network interface statistics.
+	* src/xen_internal.c: Support for stats from Xen domains.
+	* qemud/remote.c, qemud/remote_protocol.x, qemud/remote_internal.c:
+	  Support for fetching device and network interface stats
+	  across remote connections.
+	* src/virsh.c: Added 'virsh domblkstat' and 'virsh domifstat'
+	  commands to display stats.
+	* docs/libvir.html, docs/hvsupport.html: Updated hvsupport
+	  documentation.
+
+Tue Aug 21 10:36:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* tests/xencapsdata/*.xml: Fixed tests to include new
+	  <migration_features> element in capabilities XML.
+
+Tue Aug 21 10:21:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/libvirt.c (virDomainMigrate): Added virDomainMigrate
+	  API call.
+	* src/xend_internal.c, src/xen_unified.c: Support for migration
+	  of Xen domains.
+	* src/xen_internal.c: Xen capabilities indicates level of
+	  support for migration.
+	* qemud/remote.c, qemud/remote_protocol.x, src/remote_internal.c:
+	  Support for migration between remote hypervisors.
+	* src/virsh.c: Added 'virsh migrate' command.
+	* docs/libvir.html, docs/hvsupport.html: Updated hvsupport
+	  documentation.
+
+Tue Aug 21 09:56:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* qemud/remote.c, qemud/remote_protocol.x, src/driver.h,
+	  src/internal.h, src/libvirt.c, src/libvirt_sym.version,
+	  src/qemu_driver.c, src/remote_internal.c, src/test.c:
+	  Add a private interface so that libvirt.c coordination
+	  functions can detect the availability of features in
+	  underlying drivers, using the VIR_DRV_SUPPORTS_FEATURE
+	  macro.
+
+Tue Aug 21 09:45:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/xend_internal.c: Return the interface device name as
+	  <target dev='vifX.Y'/> in domain XML.
+	* tests/*: Update XML in regression tests.
+
+Tue Aug 21 09:07:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* docs/libvir.html: Updated the hvsupport page to show that
+	  KVM now supports save and restore operations.
+
+Thu Aug 16 17:41:22 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xend_internal.c: patch from Masayuki Sunou to avoid
+	  attach-disk/attach-interface when < Xen 3.0.4
+
+Thu Aug 16 15:24:30 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/virsh.c: vshCommandOptInt was broken as it would not
+	  detect non-int inputs, problem raised by Masayuki Sunou
+
+Wed Aug 15 12:21:13 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/virsh.c: fixed 2 small bugs in setvcpus command, after
+	  Atsushi SAKAI pointed out a value checking problem
+
+Tue Aug 14 14:32:51 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/proxy_internal.c: fix the UUID lookup though proxy, by
+	  actually sending the UUID string in the request!
+
+Tue Aug 14 09:10:51 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/virsh.c: patch from Atsushi SAKAI fixing schedinfo synopsis
+
+Tue Aug 14 09:04:41 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* virsh.1 docs/virsh.pod: typo fixes from Atsushi SAKAI
+
+Tue Aug 14 07:59:21 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* docs/apibuild.py: fix the API generator to work out of a
+	  include list instead of an exclude list
+	* po/*: updated localization strings
+
+Mon Aug 13 21:46:48 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_driver.c: Implement save & restore APIs for KVM
+	guests using the migrate protocol. Patch from Jim Paris
+
+Mon Aug 13 21:33:48 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_driver.c: added qemudEscapeShellArg() helper function
+	for future save impl. Patch from Jim Paris
+	* src/util.c, src/util.h: Added saferead/safewrite convenience
+	functions for doing read/write safe from signals. Patch from
+	Jim Paris
+
+Mon Aug 13 21:26:48 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c, src/qemu_conf.h, src/qemu_driver.c: Add support
+	for passing -incoming option to QEMU for migration/restore. Patch
+	from Jim Paris
+
+Mon Aug 13 21:18:48 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/util.h, src/util.c: Allow a file descriptor to be supplied
+	for STDIN when calling virExec(), or if -1, redirect from /dev/null
+	* src/qemu_driver.c, src/openvz_driver.c: Pass in -1 for new stdin
+	parameter above where neccessary. Patch from Jim Paris
+
+Mon Aug 13 20:13:48 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_driver.c: Use \r instead of \n for monitor commands to
+	avoid bug where QEMU \n gets translated to \r\n,then causing QEMU
+	to process the command twice. Patch from Jim Paris.
+
+Mon Aug 13 11:55:48 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/qemu_driver.c: patch from Jim Paris removing memory leak
+	* AUTHORS: updated with Shuveb and Jim
+
+Fri Aug 10 14:25:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/xen_internal.c, src/xen_internal.h, src/xen_unified.c:
+	Add impls of the DomainGetOSType, DomainLookupByID and
+	DomainLookupByName drivers using the HV for speed
+	* src/xs_internal.c, src/xs_internal.h: Add helper method to
+	lookup a domain name based on its ID
+
+Thu Aug  9 14:27:00 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/libvirt.c, src/openvz_conf.c, src/qemu_conf.c,
+	src/test.c, src/xm_internal.c, src/xend_internal.c: Use
+	virUUIDFormat() / virUUIDGenerate / virUUIDParse apis.
+	* qemu/internal.h: Remove unused UUID_LEN constants
+	* src/openvz_conf.h, src/qemu_conf.h: Remove duplicated
+	UUID length constants
+	* src/xml.c, src/xml.h: Remove virParseUUID api
+	* src/uuid.h, src/uuid.c: Add virUUIDFormat() api.
+	* proxy/Makefile.am: Include uuid.o
+
+Tue Aug  7 16:35:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/Makefile.am: gnutls_1_0_compat.h to list of sources
+	  (bug reported by Jan Michael).
+
+Tue Aug  7 16:24:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/virsh.c: Include <time.h> (bug reported by Jan Michael).
+
+Tue Aug  7 15:28:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/remote_internal.c: Fix build bug introduced by earlier
+	  patch.
+
+Tue Aug  7 14:18:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* qemud/qemud.c: Fix --config/-f option to libvirtd.
+
+Tue Aug  7 13:58:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* acinclude.m4, configure.in: ./configure option
+	  --disable-stack-protector.
+	* src/gnutls_1_0_compat.h: Compatibility with GnuTLS 1.0.
+	* src/bridge.c: If no bridge ioctls, give an error at runtime.
+
+Thu Aug  2 12:49:08 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xml.c: changes from Masayuki Sunou to improve error reporting
+	  on device XML errors.
+
+Tue Jul 31 10:24:23 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c, src/xml.c, tests/qemuxml2argvtest.c,
+	tests/qemuxml2xmltest.c: Fix a couple of memory leaks
+
+Mon Jul 30 14:40:23 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c: Validate requested architecture and reject
+	unsupported ones
+
+Mon Jul 30 12:15:43 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xen_internal.c: add report of ACPI/APIC for Xen fully virt,
+	  patch from David Lutterkort
+	* tests/xencapsdata/xen-i686-pae-hvm.xml 
+	  tests/xencapsdata/xen-ia64-be-hvm.xml
+	  tests/xencapsdata/xen-ia64-hvm.xml
+	  tests/xencapsdata/xen-x86_64-hvm.xml: this also affects a few tests
+
+Mon Jul 30 11:59:51 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/qemu_conf.[ch] src/qemu_driver.c: add qemu/kvm drivers report
+	  ACPI/APIC features for i686 and x86_64, patch from David Lutterkort
+
+Fri Jul 27 19:19:31 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/test.c: Added impl of networking APIs. Cleanup all other
+	existing APIs. Add missing domain APIs.
+	* src/remote_internal.c: Remove hack for network APIs + test
+	driver now it has its own impl
+	* src/libvirt.c, src/driver.h, src/qemu_driver.c: Added a
+	'name' field to network driver
+	* docs/testnode.xml, docs/testnetdef.xml, docs/testnetpriv.xml:
+	Added example XML for network APIs
+
+Thu Jul 26 10:37:31 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/virsh.c docs/virsh.pod virsh.1: added a ttyconsole command,
+	  this should fix bug #239687
+
+Wed Jul 25 19:16:43 EST 2007 Daniel P. berrange <berrange@redhat.com>
+
+	* scripts/coverage-report.pl: Ignore data from inlined macros
+	in /usr/include files
+
+Wed Jul 25 19:13:43 EST 2007 Daniel P. berrange <berrange@redhat.com>
+
+	* src/nodeinfo.h, src/nodeinfo.c: Generic impl of virNodeGetInfo
+	* src/qemu_driver.c, src/openvz_driver: Switch to generic impl
+	of virNodeGetInfo
+	* src/internal.h: Add STREQLEN STRNEQLEN
+	* src/Makefile.am: Add nodeinfo.{c,h}
+	* docs/apibuild.py: Ignore nodeinfo files
+	* tests/nodeinfotest.c, tests/Makefile.am: Test case for the
+	nodeinfo.c APIs
+	* tests/nodeinfodata/*: Data files for the test suite
+
+Tue Jul 24 17:32:23 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* libvirt.spec.in NEWS docs/* po/*: preparing release 0.3.1
+	* src/libvirt.c python/generator.py: some cleanup and warnings
+	  from Richard W.M. Jones
+
+Tue Jul 24 10:29:11 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c, src/qemu_conf.h: Added support for the VNC
+	'listen' parameter in XML. Move -nographics flag to start of
+	command line to avoid issues with QEMU default monitor settings.
+	* tests/qemuxml2argvtest.c, tests/qemuxml2xmltest.c: Re-enable
+	VNC & SDL tests now they are working correctly
+	* tests/qemudxml2argvdata/*.args: Move -nographics arg to new
+	location due to qemu_conf.c changes
+
+Tue Jul 24 10:24:11 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_driver.c: Fixed crash when cleaning up after failed
+	attempt to start a VM.
+
+Tue Jul 24 10:20:11 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* qemud/remote.c: Always immediately free virDomainPtr objects
+	to avoid them hanging around cached until client exits
+
+Tue Jul 24 11:18:11 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* docs/network.rng docs/Makefile.am libvirt.spec.in: added Relax-NG
+	  grammar for network descriptions that David Lutterkort posted in
+	  April, it needs an update though
+
+Tue Jul 24 10:15:33 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* po/*: update translations and regenerate .pot
+
+Mon Jul 23 13:59:12 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_driver.c: keep monitor filehandle open, and set
+	close-on-exec flag for logfiles.
+
+Mon Jul 23 11:36:12 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* docs/virsh.pod virsh.1: update to document VIRSH_DEFAULT_CONNECT_URI
+	  environment variable as suggested by David Lutterkort
+
+Fri Jul 20 12:53:35 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xen_internal.c: and nother one again from Saori Fukuta
+
+Fri Jul 20 11:02:28 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xen_internal.c: some error handling improvements from Saori Fukuta
+
+Thu Jul 19 18:21:47 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/Makefile.am src/openvz_conf.c src/openvz_conf.h
+	  src/openvz_driver.c src/qemu_driver.c src/util.c src/util.h:
+	  cleanup patches from Shuveb Hussain, with new util module for
+	  common code shared between drivers.
+
+Thu Jul 19 16:35:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* configure.in, src/xen_internal.c: Newer Xen uses
+	  <xen/sys/privcmd.h>.  Added detection code for this in
+	  configure.in.
+
+Thu Jul 19 15:38:44 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xen_internal.c: rewrite of range check in credit scheduler
+	  initially suggested by Atsushi SAKAI
+
+Wed Jul 18 17:45:08 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c: Remove double free of XML property upon
+	error cleanup
+
+Wed Jul 18 17:15:08 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* tests/Makefile.am: Added QEMU tests
+	* tests/qemuxml2argvdata/*: Data files for QEMU tests
+	* tests/qemuxml2argvtest.c: Test XML -> argv conversion
+	* tests/qemuxml2xmltest.c: Test XML -> XML roundtrip
+
+Wed Jul 18 17:11:08 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/xmlrpctest.c, src/xml2sexprtest.c: More void * to
+	const void * conversions
+
+Wed Jul 18 16:42:08 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c, src/qemu_conf.h, src/xm_internal.c,
+	src/xend_internal.c, src/xml.c: Added support for input devices
+	using <input type='mouse|pointer' bus='ps2|xen|usb'/> element.
+	* tests/sexpr2xmltest.c, tests/xmconfigtest.c,
+	tests/xml2sexprtest.c: Add new tests for input devices
+	* tests/test_utils.c, src/test_utils.h: the virTestRun callback
+	uses a const void * instead of void *
+	* tests/virshtest.c, tests/xencaptest.c: Switch to const void *
+	* tests/sexpr2xmldata/*, tests/xmconfigdata/*, tests/xml2sexprdata/*
+	Updated data files to take account of new input device syntax
+
+Wed Jul 18 12:10:08 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/test.c include/libvirt/libvirt.h include/libvirt/libvirt.h.in:
+	  cleanup of unused virDeviceMode
+
+Tue Jul 17 16:39:18 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/openvz_conf.c src/libvirt.c: cleanup, avoid some warnings,
+	  and reuse the existing uuid generation function.
+
+Tue Jul 17 15:24:27 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* configure.in src/Makefile.am src/driver.h src/libvirt.c:
+	  applied patch from Shuveb Hussain to plug the developping
+	  OpenVZ support. Disabled by default.
+	* src/openvz_conf.[ch] src/openvz_driver.[ch]: added new
+	  OpenVZ driver files. Avoid a redefinition of readline().
+
+Mon Jul 16 17:36:24 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* docs/libvir.html, docs/remote.html: Re-write notes on IPV6
+	support in the remote daemon
+
+Mon Jul 16 16:59:24 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c, src/qemu_conf.h, src/xend_internal.c,
+	src/xm_internal.c, src/xml.c: Added support for the <clock/>
+	element to switch between UTC and localtime in guests
+	* tests/sexpr2xmltest.c, tests/xmconfigtest.c,
+	tests/xml2sexprtest.c, tests/sexpr2xmldata/*,
+	tests/xml2sexprdata/*, tests/xmconfigdata/*: Added test
+	cases for new <clock/> element, and adapted existing expected
+	data files where needed.
+	* docs/libvir.html, docs/format.html: Added docs about the
+	new <clock/> element
+
+Fri Jul 13 14:25:16 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xml.c: applied modified patch from Masayuki Sunou for
+	  device hot plug description with a wrong root element.
+
+Fri Jul 13 10:28:53 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/virterror.c src/xml.c include/libvirt/virterror.h:
+	  patch from Masayuki Sunou to check Ethernet MAC addresses
+	  in XML configs
+	* po/*: string update and merge
+
+Thu Jul 12 17:48:40 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* docs/libvir.html docs/remote.html: update the remote page,
+	  add an index
+	* docs/pki_check.sh: shell script to check the PKI and client/server
+	  environment.
+
+Thu Jul 12 11:15:17 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/remote_internal.c: Explicitly check certificate/key files
+	before trying to load them so we can get improved error reports
+	back.
+
+Thu Jul 12 11:02:17 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* src/qemu_conf.c, src/qemu_conf.h, src/qemu_driver.c: Pass
+	around the virConnectPtr when available so errors get reported
+	against that rather than the global error location.
+
+Thu Jul 12 11:02:17 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* qemud/qemud.c: Fix cleanup when client access checks fail
+	so we don't accidentally register a dead client with the
+	event loop. Force close the virConnectPtr object if it is
+	still open when a client connection goes away
+
+Thu Jul 12 11:00:17 EST 2007 Daniel P. Berrange <berrange@redhat.com>
+
+	* qemud/qemud.c: Add explicit checks for existance of x509
+	certificate & key files to get better error reporting than
+	GNU TLS offers when it can't load a file
+
+Thu Jul 12 10:57:17 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xen_internal.c: applied patch from Christian Ehrhardt to
+	  fix Xen hypervisor alignment problems on PPC64
+	* AUTHORS: added Christian
+
+Thu Jul 12 09:34:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* configure.in: Removed --with-qemud-pid-file option since
+	  it is no longer used.
+
+Thu Jul 12 09:34:00 BST 2007 Richard W.M. Jones <rjones@redhat.com>
+
+	* src/libvirt.c, src/xen_unified.c: If compiled with
+	  --enable-debug=yes then we now trace libvirt calls on
+	  stderr.
+
+Wed Jul 11 10:43:25 CEST 2007 Daniel Veillard <veillard@redhat.com>
+
+	* src/xml.c: patch from Masayuki Sunou fixing leaks in
+	  virDomainParseXMLDiskDesc
+
 Mon Jul  9 14:24:12 CEST 2007 Daniel Veillard <veillard@redhat.com>
 
 	* configure.in libvirt.spec.in include/libvirt/libvirt.h

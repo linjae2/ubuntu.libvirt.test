@@ -48,8 +48,7 @@
 #include <getopt.h>
 #include <assert.h>
 #include <fnmatch.h>
-#include <gnutls/gnutls.h>
-#include <gnutls/x509.h>
+#include <grp.h>
 
 #include <libvirt/virterror.h>
 
@@ -58,6 +57,9 @@
 #include "../src/remote_internal.h"
 #include "../src/conf.h"
 #include "event.h"
+#ifdef HAVE_AVAHI
+#include "mdns.h"
+#endif
 
 static int godaemon = 0;        /* -d: Be a daemon */
 static int verbose = 0;         /* -v: Verbose mode */
@@ -70,6 +72,15 @@ static int listen_tls = 1;
 static int listen_tcp = 0;
 static const char *tls_port = LIBVIRTD_TLS_PORT;
 static const char *tcp_port = LIBVIRTD_TCP_PORT;
+
+static gid_t unix_sock_gid = 0; /* Only root by default */
+static int unix_sock_rw_perms = 0700; /* Allow user only */
+static int unix_sock_ro_perms = 0777; /* Allow world */
+
+#ifdef HAVE_AVAHI
+static int mdns_adv = 1;
+static const char *mdns_name = NULL;
+#endif
 
 static int tls_no_verify_certificate = 0;
 static int tls_no_verify_address = 0;
@@ -110,7 +121,19 @@ static void qemudDispatchClientEvent(int fd, int events, void *opaque);
 static void qemudDispatchServerEvent(int fd, int events, void *opaque);
 static int qemudRegisterClientEvent(struct qemud_server *server,
                                     struct qemud_client *client,
-                                    int remove);
+                                    int removeFirst);
+
+static int
+remoteCheckCertFile(const char *type, const char *file)
+{
+    struct stat sb;
+    if (stat(file, &sb) < 0) {
+        qemudLog (QEMUD_ERR, "Cannot access %s '%s': %s (%d)",
+                  type, file, strerror(errno), errno);
+        return -1;
+    }
+    return 0;
+}
 
 static int
 remoteInitializeGnuTLS (void)
@@ -128,6 +151,9 @@ remoteInitializeGnuTLS (void)
     }
 
     if (ca_file && ca_file[0] != '\0') {
+        if (remoteCheckCertFile("CA certificate", ca_file) < 0)
+            return -1;
+
         qemudDebug ("loading CA cert from %s", ca_file);
         err = gnutls_certificate_set_x509_trust_file (x509_cred, ca_file,
                                                       GNUTLS_X509_FMT_PEM);
@@ -139,6 +165,9 @@ remoteInitializeGnuTLS (void)
     }
 
     if (crl_file && crl_file[0] != '\0') {
+        if (remoteCheckCertFile("CA revocation list", ca_file) < 0)
+            return -1;
+
         qemudDebug ("loading CRL from %s", crl_file);
         err = gnutls_certificate_set_x509_crl_file (x509_cred, crl_file,
                                                     GNUTLS_X509_FMT_PEM);
@@ -150,6 +179,10 @@ remoteInitializeGnuTLS (void)
     }
 
     if (cert_file && cert_file[0] != '\0' && key_file && key_file[0] != '\0') {
+        if (remoteCheckCertFile("server certificate", cert_file) < 0)
+            return -1;
+        if (remoteCheckCertFile("server key", key_file) < 0)
+            return -1;
         qemudDebug ("loading cert and key from %s and %s",
                     cert_file, key_file);
         err =
@@ -421,6 +454,7 @@ static int qemudListenUnix(struct qemud_server *server,
     struct qemud_socket *sock = calloc(1, sizeof(struct qemud_socket));
     struct sockaddr_un addr;
     mode_t oldmask;
+    gid_t oldgrp;
 
     if (!sock) {
         qemudLog(QEMUD_ERR, "Failed to allocate memory for struct qemud_socket");
@@ -428,6 +462,7 @@ static int qemudListenUnix(struct qemud_server *server,
     }
 
     sock->readonly = readonly;
+    sock->port = -1;
 
     if ((sock->fd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
         qemudLog(QEMUD_ERR, "Failed to create socket: %s",
@@ -446,16 +481,19 @@ static int qemudListenUnix(struct qemud_server *server,
         addr.sun_path[0] = '\0';
 
 
-    if (readonly)
-        oldmask = umask(~(S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
-    else
-        oldmask = umask(~(S_IRUSR | S_IWUSR));
+    oldgrp = getgid();
+    oldmask = umask(readonly ? ~unix_sock_ro_perms : ~unix_sock_rw_perms);
+    if (getuid() == 0)
+        setgid(unix_sock_gid);
+
     if (bind(sock->fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         qemudLog(QEMUD_ERR, "Failed to bind socket to '%s': %s",
                  path, strerror(errno));
         goto cleanup;
     }
     umask(oldmask);
+    if (getuid() == 0)
+        setgid(oldgrp);
 
     if (listen(sock->fd, 30) < 0) {
         qemudLog(QEMUD_ERR, "Failed to listen for connections on '%s': %s",
@@ -550,6 +588,9 @@ remoteListenTCP (struct qemud_server *server,
         return -1;
 
     for (i = 0; i < nfds; ++i) {
+        struct sockaddr_storage sa;
+        socklen_t salen = sizeof(sa);
+
         sock = calloc (1, sizeof *sock);
 
         if (!sock) {
@@ -565,6 +606,16 @@ remoteListenTCP (struct qemud_server *server,
 
         sock->fd = fds[i];
         sock->tls = tls;
+
+        if (getsockname(sock->fd, (struct sockaddr *)(&sa), &salen) < 0)
+            return -1;
+
+        if (sa.ss_family == AF_INET)
+            sock->port = htons(((struct sockaddr_in*)&sa)->sin_port);
+        else if (sa.ss_family == AF_INET6)
+            sock->port = htons(((struct sockaddr_in6*)&sa)->sin6_port);
+        else
+            sock->port = -1;
 
         if (qemudSetCloseExec(sock->fd) < 0 ||
             qemudSetNonBlock(sock->fd) < 0)
@@ -645,6 +696,7 @@ static int qemudInitPaths(struct qemud_server *server,
 
 static struct qemud_server *qemudInitialize(int sigread) {
     struct qemud_server *server;
+    struct qemud_socket *sock;
     char sockname[PATH_MAX];
     char roSockname[PATH_MAX];
 
@@ -668,8 +720,10 @@ static struct qemud_server *qemudInitialize(int sigread) {
         goto cleanup;
 
     __virEventRegisterImpl(virEventAddHandleImpl,
+                           virEventUpdateHandleImpl,
                            virEventRemoveHandleImpl,
                            virEventAddTimeoutImpl,
+                           virEventUpdateTimeoutImpl,
                            virEventRemoveTimeoutImpl);
 
     virStateInitialize();
@@ -687,11 +741,55 @@ static struct qemud_server *qemudInitialize(int sigread) {
         }
     }
 
+#ifdef HAVE_AVAHI
+    if (getuid() == 0 && mdns_adv) {
+        struct libvirtd_mdns_group *group;
+        int port = 0;
+
+        server->mdns = libvirtd_mdns_new();
+
+        if (!mdns_name) {
+            char groupname[64], localhost[HOST_NAME_MAX+1], *tmp;
+            /* Extract the host part of the potentially FQDN */
+            gethostname(localhost, HOST_NAME_MAX);
+            localhost[HOST_NAME_MAX] = '\0';
+            if ((tmp = strchr(localhost, '.')))
+                *tmp = '\0';
+            snprintf(groupname, sizeof(groupname)-1, "Virtualization Host %s", localhost);
+            groupname[sizeof(groupname)-1] = '\0';
+            group = libvirtd_mdns_add_group(server->mdns, groupname);
+        } else {
+            group = libvirtd_mdns_add_group(server->mdns, mdns_name);
+        }
+
+        /* 
+         * See if there's a TLS enabled port we can advertise. Cowardly
+         * don't bother to advertise TCP since we don't want people using
+         * them for real world apps
+         */
+        sock = server->sockets;
+        while (sock) {
+            if (sock->port != -1 && sock->tls) {
+                port = sock->port;
+                break;
+            }
+            sock = sock->next;
+        }
+    
+        /*
+         * Add the primary entry - we choose SSH because its most likely to always
+         * be available
+         */
+        libvirtd_mdns_add_entry(group, "_libvirt._tcp", port);
+        libvirtd_mdns_start(server->mdns);
+    }
+#endif
+
     return server;
 
  cleanup:
     if (server) {
-        struct qemud_socket *sock = server->sockets;
+        sock = server->sockets;
         while (sock) {
             close(sock->fd);
             sock = sock->next;
@@ -796,8 +894,10 @@ remoteCheckCertificate (gnutls_session_t session)
         if (status & GNUTLS_CERT_REVOKED)
             qemudLog (QEMUD_ERR, "remoteCheckCertificate: the client certificate has been revoked.");
 
+#ifndef GNUTLS_1_0_COMPAT
         if (status & GNUTLS_CERT_INSECURE_ALGORITHM)
             qemudLog (QEMUD_ERR, "remoteCheckCertificate: the client certificate uses an insecure algorithm.");
+#endif
 
         return -1;
     }
@@ -1023,6 +1123,9 @@ static void qemudDispatchClientFailure(struct qemud_server *server, struct qemud
 
     virEventRemoveHandleImpl(client->fd);
 
+    if (client->conn)
+        virConnectClose(client->conn);
+
     if (client->tls && client->session) gnutls_deinit (client->session);
     close(client->fd);
     free(client);
@@ -1054,7 +1157,7 @@ static int qemudClientRead(struct qemud_server *server,
         client->direction = gnutls_record_get_direction (client->session);
         if (qemudRegisterClientEvent (server, client, 1) < 0)
             qemudDispatchClientFailure (server, client);
-        if (ret <= 0) {
+        else if (ret <= 0) {
             if (ret == 0 || (ret != GNUTLS_E_AGAIN &&
                              ret != GNUTLS_E_INTERRUPTED)) {
                 if (ret != 0)
@@ -1166,7 +1269,7 @@ static void qemudDispatchClientRead(struct qemud_server *server, struct qemud_cl
             /* Finished.  Next step is to check the certificate. */
             if (remoteCheckAccess (client) == -1)
                 qemudDispatchClientFailure (server, client);
-            if (qemudRegisterClientEvent (server, client, 1) < 0)
+            else if (qemudRegisterClientEvent (server, client, 1) < 0)
                 qemudDispatchClientFailure (server, client);
         } else if (ret != GNUTLS_E_AGAIN && ret != GNUTLS_E_INTERRUPTED) {
             qemudLog (QEMUD_ERR, "TLS handshake failed: %s",
@@ -1209,7 +1312,7 @@ static int qemudClientWrite(struct qemud_server *server,
         client->direction = gnutls_record_get_direction (client->session);
         if (qemudRegisterClientEvent (server, client, 1) < 0)
             qemudDispatchClientFailure (server, client);
-        if (ret < 0) {
+        else if (ret < 0) {
             if (ret != GNUTLS_E_INTERRUPTED && ret != GNUTLS_E_AGAIN) {
                 qemudLog (QEMUD_ERR, "gnutls_record_send: %s",
                           gnutls_strerror (ret));
@@ -1253,8 +1356,7 @@ static void qemudDispatchClientWrite(struct qemud_server *server, struct qemud_c
             /* Finished.  Next step is to check the certificate. */
             if (remoteCheckAccess (client) == -1)
                 qemudDispatchClientFailure (server, client);
-
-            if (qemudRegisterClientEvent (server, client, 1))
+            else if (qemudRegisterClientEvent (server, client, 1))
                 qemudDispatchClientFailure (server, client);
         } else if (ret != GNUTLS_E_AGAIN && ret != GNUTLS_E_INTERRUPTED) {
             qemudLog (QEMUD_ERR, "TLS handshake failed: %s",
@@ -1463,6 +1565,53 @@ remoteReadConfigFile (const char *filename)
     CHECK_TYPE ("tcp_port", VIR_CONF_STRING);
     tcp_port = p ? strdup (p->str) : tcp_port;
 
+    p = virConfGetValue (conf, "unix_sock_group");
+    CHECK_TYPE ("unix_sock_group", VIR_CONF_STRING);
+    if (p && p->str) {
+        if (getuid() != 0) {
+            qemudLog (QEMUD_WARN, "Cannot set group when not running as root");
+        } else {
+            struct group *grp = getgrnam(p->str);
+            if (!grp) {
+                qemudLog (QEMUD_ERR, "Failed to lookup group '%s'", p->str);
+                return -1;
+            }
+            unix_sock_gid = grp->gr_gid;
+        }
+    }
+
+    p = virConfGetValue (conf, "unix_sock_ro_perms");
+    CHECK_TYPE ("unix_sock_ro_perms", VIR_CONF_STRING);
+    if (p && p->str) {
+        char *tmp = NULL;
+        unix_sock_ro_perms = strtol(p->str, &tmp, 8);
+        if (*tmp) {
+            qemudLog (QEMUD_ERR, "Failed to parse mode '%s'", p->str);
+            return -1;
+        }
+    }
+
+    p = virConfGetValue (conf, "unix_sock_rw_perms");
+    CHECK_TYPE ("unix_sock_rw_perms", VIR_CONF_STRING);
+    if (p && p->str) {
+        char *tmp = NULL;
+        unix_sock_rw_perms = strtol(p->str, &tmp, 8);
+        if (*tmp) {
+            qemudLog (QEMUD_ERR, "Failed to parse mode '%s'", p->str);
+            return -1;
+        }
+    }
+
+#ifdef HAVE_AVAHI
+    p = virConfGetValue (conf, "mdns_adv");
+    CHECK_TYPE ("mdns_adv", VIR_CONF_LONG);
+    mdns_adv = p ? p->l : mdns_adv;
+
+    p = virConfGetValue (conf, "mdns_name");
+    CHECK_TYPE ("mdns_name", VIR_CONF_STRING);
+    mdns_name = p ? strdup (p->str) : NULL;
+#endif
+
     p = virConfGetValue (conf, "tls_no_verify_certificate");
     CHECK_TYPE ("tls_no_verify_certificate", VIR_CONF_LONG);
     tls_no_verify_certificate = p ? p->l : tls_no_verify_certificate;
@@ -1571,7 +1720,7 @@ Options:\n\
   -d | --daemon          Run as a daemon & write PID file.\n\
   -l | --listen          Listen for TCP/IP connections.\n\
   -t | --timeout <secs>  Exit after timeout period.\n\
-  -c | --config <file>   Configuration file.\n\
+  -f | --config <file>   Configuration file.\n\
   -p | --pid-file <file> Change name of PID file.\n\
 \n\
 libvirt management daemon:\n\
@@ -1615,7 +1764,7 @@ int main(int argc, char **argv) {
         { "verbose", no_argument, &verbose, 1},
         { "daemon", no_argument, &godaemon, 1},
         { "listen", no_argument, &ipsock, 1},
-        { "config", required_argument, NULL, 'c'},
+        { "config", required_argument, NULL, 'f'},
         { "timeout", required_argument, NULL, 't'},
         { "pid-file", required_argument, NULL, 'p'},
         { "help", no_argument, NULL, '?' },
@@ -1627,7 +1776,7 @@ int main(int argc, char **argv) {
         int c;
         char *tmp;
 
-        c = getopt_long(argc, argv, "ldfp:t:v", opts, &optidx);
+        c = getopt_long(argc, argv, "ldf:p:t:v", opts, &optidx);
 
         if (c == -1) {
             break;
@@ -1668,7 +1817,9 @@ int main(int argc, char **argv) {
             return 2;
 
         default:
-            abort();
+            fprintf (stderr, "libvirtd: internal error: unknown flag: %c\n",
+                     c);
+            exit (1);
         }
     }
 
