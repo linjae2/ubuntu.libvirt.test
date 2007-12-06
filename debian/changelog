@@ -1,3 +1,46 @@
+libvirt (0.3.3-4ubuntu1) hardy; urgency=low
+
+  * Fakesync with Debian.
+  * Reenable Xen.
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 06 Dec 2007 13:33:13 +0100
+
+libvirt (0.3.3-4) unstable; urgency=low
+
+  * put packages into the proper sections
+  * fix messed up Standards-Version (Closes: #453900)
+
+ -- Guido Guenther <agx@sigxcpu.org>  Sun, 02 Dec 2007 14:50:11 +0100
+
+libvirt (0.3.3-3) unstable; urgency=low
+
+  * add initscript to start libvirtd
+
+ -- Guido Guenther <agx@sigxcpu.org>  Wed, 28 Nov 2007 10:30:29 +0100
+
+libvirt (0.3.3-2) unstable; urgency=low
+
+  * debian/copyright:
+      * update FSF address
+      * update upstream author and copyright information
+  * install the virsh manpage
+  * use binary:Version instead of Source-Version
+
+ -- Guido Guenther <agx@sigxcpu.org>  Fri, 23 Nov 2007 22:31:26 +0100
+
+libvirt (0.3.3-1) unstable; urgency=low
+
+  * repackage for Debian (Closes: #384300)
+  * enable avahi
+  * build with qemu/kvm support
+  * disable xen support until #402249 is fixed
+  * disable qemu autonetwork for now, causes libvirtd to seqfault
+  * fix path to kvm
+  * switch off DH_VERBOSE
+  * thanks to the Ubuntu maintainers for their work!
+
+ -- Guido Guenther <agx@sigxcpu.org>  Fri, 23 Nov 2007 01:58:56 +0100
+
 libvirt (0.3.3-0ubuntu1) hardy; urgency=low
 
   * New upstream release.
