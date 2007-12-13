@@ -1,3 +1,11 @@
+libvirt (0.3.3-4ubuntu3) hardy; urgency=low
+
+  * Change default URI to qemu:///session
+  * Add libvirt0-dbg package, which is just like libvirt0, but built
+    with --enable-debug=yes.
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 13 Dec 2007 21:37:39 +0100
+
 libvirt (0.3.3-4ubuntu2) hardy; urgency=low
 
   * Start libvirtd by default.

@@ -15,3 +15,20 @@ build/libvirt-bin::
 	mkdir -p debian/tmp/etc/libvirt
 	install -m 750 debian/libvirtd.conf debian/tmp/etc/libvirt
 	install -m 750  debian/qemud.conf debian/tmp/etc/libvirt
+
+build/libvirt-doc::
+	$(MAKE) -C docs/examples clean
+	
+# Don't shove the libraries in -dbg into /var/lib/debug
+DEB_DBG_PACKAGES = 
+
+install/libvirt0-dbg::
+	$(DEB_MAKE_INVOKE) clean
+	$(DEB_CONFIGURE_INVOKE) $(cdbs_configure_flags) $(DEB_CONFIGURE_EXTRA_FLAGS) $(DEB_CONFIGURE_USER_FLAGS) --enable-debug=yes
+	$(DEB_MAKE_INVOKE)  install DESTDIR=$(CURDIR)/debian/tmp-dbg/
+
+binary-install/libvirt0-dbg::
+	dh_install -p$(cdbs_curpkg) --sourcedir=debian/tmp-dbg $(DEB_DH_INSTALL_ARGS)
+
+clean::
+	rm -rf debian/tmp-dbg

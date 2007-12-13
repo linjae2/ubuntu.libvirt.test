@@ -23,6 +23,8 @@ Description: the programs for the libvirt library
 Package: libvirt0
 Architecture: any
 Section: libs
+Conflicts: libvirt0-dbg
+Replaces: libvirt0-dbg
 Depends: ${shlibs:Depends}
 Description: library for interfacing with Xen & other virtualization systems
  Libvirt is a C toolkit to interract with the virtualization capabilities
@@ -67,3 +69,16 @@ Description: libvirt python bindings
  .
  This package contains python bindings for the libvirt library
 
+Package: libvirt0-dbg
+Architecture: any
+Section: libs
+Conflicts: libvirt0
+Replaces: libvirt0
+Depends: ${shlibs:Depends}
+Description: library for interfacing with Xen & other virtualization systems - debug version
+ Libvirt is a C toolkit to interract with the virtualization capabilities
+ of recent versions of Linux (and other OSes). The library aims at providing
+ a long term stable C API for different virtualization mechanisms. It currently
+ supports QEMU and KVM..
+ .
+ This version is built with --enable-debug=yes
