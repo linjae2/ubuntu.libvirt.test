@@ -1,0 +1,13 @@
+#! /bin/sh
+
+set -e
+
+# add the libvirtd group
+if ! getent group libvirtd > /dev/null 2>&1
+then
+        addgroup --system libvirtd
+fi
+
+#DEBHELPER#
+
+exit 0
