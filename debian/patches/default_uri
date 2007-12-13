@@ -1,0 +1,15 @@
+Index: libvirt-0.3.3/src/libvirt.c
+===================================================================
+--- libvirt-0.3.3.orig/src/libvirt.c	2007-12-13 17:05:53.711735298 +0100
++++ libvirt-0.3.3/src/libvirt.c	2007-12-13 17:06:35.116274104 +0100
+@@ -396,8 +396,9 @@
+     virConnectPtr ret = NULL;
+ 
+     /* Convert NULL or "" to xen:/// for back compat */
++	/* In Ubuntu, we default to qemu:///session */
+     if (!name || name[0] == '\0')
+-        name = "xen:///";
++        name = "qemu:///session";
+ 
+     /* Convert xen -> xen:/// for back compat */
+     if (!strcasecmp(name, "xen"))
