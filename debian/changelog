@@ -1,3 +1,10 @@
+libvirt (0.3.3-4ubuntu4) hardy; urgency=low
+
+  * Add "Provides: libvirt0" to libvirt0-dbg.
+  * Make virsh understand that the default URI is not xen:///.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 19 Dec 2007 00:13:10 +0100
+
 libvirt (0.3.3-4ubuntu3) hardy; urgency=low
 
   * Change default URI to qemu:///session

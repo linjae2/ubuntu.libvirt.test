@@ -1,7 +1,7 @@
 Index: libvirt-0.3.3/src/libvirt.c
 ===================================================================
---- libvirt-0.3.3.orig/src/libvirt.c	2007-12-13 17:05:53.711735298 +0100
-+++ libvirt-0.3.3/src/libvirt.c	2007-12-13 17:06:35.116274104 +0100
+--- libvirt-0.3.3.orig/src/libvirt.c	2007-12-19 00:09:02.862791849 +0100
++++ libvirt-0.3.3/src/libvirt.c	2007-12-19 00:10:18.499799331 +0100
 @@ -396,8 +396,9 @@
      virConnectPtr ret = NULL;
  
@@ -13,3 +13,17 @@ Index: libvirt-0.3.3/src/libvirt.c
  
      /* Convert xen -> xen:/// for back compat */
      if (!strcasecmp(name, "xen"))
+Index: libvirt-0.3.3/src/virsh.c
+===================================================================
+--- libvirt-0.3.3.orig/src/virsh.c	2007-12-19 00:10:23.883871049 +0100
++++ libvirt-0.3.3/src/virsh.c	2007-12-19 00:10:33.343997063 +0100
+@@ -4499,8 +4499,7 @@
+     virSetErrorFunc(NULL, virshErrorHandler);
+ 
+     /* Force a non-root, Xen connection to readonly */
+-    if ((ctl->name == NULL ||
+-         !strcasecmp(ctl->name, "xen")) && ctl->uid != 0)
++    if (!strcasecmp(ctl->name, "xen") && ctl->uid != 0)
+          ctl->readonly = 1;
+ 
+     if (!ctl->readonly)
