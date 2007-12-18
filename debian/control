@@ -74,6 +74,7 @@ Architecture: any
 Section: libs
 Conflicts: libvirt0
 Replaces: libvirt0
+Provides: libvirt0
 Depends: ${shlibs:Depends}
 Description: library for interfacing with Xen & other virtualization systems - debug version
  Libvirt is a C toolkit to interract with the virtualization capabilities
