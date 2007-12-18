@@ -1,29 +1,92 @@
 Index: libvirt-0.3.3/src/libvirt.c
 ===================================================================
---- libvirt-0.3.3.orig/src/libvirt.c	2007-12-19 00:09:02.862791849 +0100
-+++ libvirt-0.3.3/src/libvirt.c	2007-12-19 00:10:18.499799331 +0100
-@@ -396,8 +396,9 @@
+--- libvirt-0.3.3.orig/src/libvirt.c	2007-12-19 01:12:50.428355732 +0100
++++ libvirt-0.3.3/src/libvirt.c	2007-12-19 01:12:51.492369037 +0100
+@@ -395,9 +395,9 @@
+     int i, res;
      virConnectPtr ret = NULL;
  
-     /* Convert NULL or "" to xen:/// for back compat */
-+	/* In Ubuntu, we default to qemu:///session */
+-    /* Convert NULL or "" to xen:/// for back compat */
++    /* Convert NULL or "" to DEFAULT_URI */
      if (!name || name[0] == '\0')
 -        name = "xen:///";
-+        name = "qemu:///session";
++        name = DEFAULT_URI;
  
      /* Convert xen -> xen:/// for back compat */
      if (!strcasecmp(name, "xen"))
 Index: libvirt-0.3.3/src/virsh.c
 ===================================================================
---- libvirt-0.3.3.orig/src/virsh.c	2007-12-19 00:10:23.883871049 +0100
-+++ libvirt-0.3.3/src/virsh.c	2007-12-19 00:10:33.343997063 +0100
-@@ -4499,8 +4499,7 @@
+--- libvirt-0.3.3.orig/src/virsh.c	2007-12-19 01:12:50.436355832 +0100
++++ libvirt-0.3.3/src/virsh.c	2007-12-19 01:17:55.636173776 +0100
+@@ -4499,9 +4499,12 @@
      virSetErrorFunc(NULL, virshErrorHandler);
  
      /* Force a non-root, Xen connection to readonly */
 -    if ((ctl->name == NULL ||
 -         !strcasecmp(ctl->name, "xen")) && ctl->uid != 0)
-+    if (!strcasecmp(ctl->name, "xen") && ctl->uid != 0)
-          ctl->readonly = 1;
+-         ctl->readonly = 1;
++    if (ctl->uid != 0)
++        if (ctl->name == NULL) {
++            if (strstr(DEFAULT_URI, "xen") == DEFAULT_URI)
++                ctl->readonly = 1;
++		} else if (strstr(ctl->name, "xen") == ctl->name)
++            ctl->readonly = 1;
  
      if (!ctl->readonly)
+         ctl->conn = virConnectOpen(ctl->name);
+Index: libvirt-0.3.3/configure.in
+===================================================================
+--- libvirt-0.3.3.orig/configure.in	2007-12-19 01:12:50.444355928 +0100
++++ libvirt-0.3.3/configure.in	2007-12-19 01:18:47.124817997 +0100
+@@ -88,6 +88,8 @@
+ [  --with-test             add test driver support (on)],[],[with_test=yes])
+ AC_ARG_WITH(remote,
+ [  --with-remote           add remote driver support (on)],[],[with_remote=yes])
++AC_ARG_WITH(default-uri,
++[  --with-default-uri      set default uri to connect to if "" or NULL is passed],[],[with_default_uri=xen:///])
+ 
+ dnl
+ dnl specific tests to setup DV devel environments with debug etc ...
+@@ -197,6 +199,7 @@
+ if test "$with_remote" = "yes" ; then
+     LIBVIRT_FEATURES="$LIBVIRT_FEATURES -DWITH_REMOTE"
+ fi
++LIBVIRT_FEATURES="$LIBVIRT_FEATURES -DDEFAULT_URI=\\\"$with_default_uri\\\""
+ 
+ if test "$with_depends" != "no"
+ then
+@@ -527,23 +530,24 @@
+ AC_MSG_NOTICE([])
+ AC_MSG_NOTICE([Drivers])
+ AC_MSG_NOTICE([])
+-AC_MSG_NOTICE([     Xen: $with_xen])
+-AC_MSG_NOTICE([    QEMU: $with_qemu])
+-AC_MSG_NOTICE([  OpenVZ: $with_openvz])
+-AC_MSG_NOTICE([    Test: $with_test])
+-AC_MSG_NOTICE([  Remote: $with_remote])
++AC_MSG_NOTICE([         Xen: $with_xen])
++AC_MSG_NOTICE([        QEMU: $with_qemu])
++AC_MSG_NOTICE([      OpenVZ: $with_openvz])
++AC_MSG_NOTICE([        Test: $with_test])
++AC_MSG_NOTICE([      Remote: $with_remote])
+ AC_MSG_NOTICE([])
+ AC_MSG_NOTICE([Libraries])
+ AC_MSG_NOTICE([])
+-AC_MSG_NOTICE([  libxml: $LIBXML_CFLAGS $LIBXML_LIBS])
+-AC_MSG_NOTICE([  gnutls: $GNUTLS_CFLAGS $GNUTLS_LIBS])
++AC_MSG_NOTICE([      libxml: $LIBXML_CFLAGS $LIBXML_LIBS])
++AC_MSG_NOTICE([      gnutls: $GNUTLS_CFLAGS $GNUTLS_LIBS])
+ if test "$with_avahi" = "yes" ; then
+-AC_MSG_NOTICE([   avahi: $AVAHI_CFLAGS $AVAHI_LIBS])
++AC_MSG_NOTICE([       avahi: $AVAHI_CFLAGS $AVAHI_LIBS])
+ else
+-AC_MSG_NOTICE([   avahi: no])
++AC_MSG_NOTICE([       avahi: no])
+ fi
+ AC_MSG_NOTICE([])
+ AC_MSG_NOTICE([Miscellaneous])
+ AC_MSG_NOTICE([])
+-AC_MSG_NOTICE([  Debug: $enable_debug])
++AC_MSG_NOTICE([      Debug: $enable_debug])
++AC_MSG_NOTICE([Default uri: $with_default_uri])
+ AC_MSG_NOTICE([])

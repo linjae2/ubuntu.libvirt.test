@@ -1,3 +1,9 @@
+libvirt (0.3.3-4ubuntu5) hardy; urgency=low
+
+  * Made default_uri a configurable.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 19 Dec 2007 00:56:31 +0100
+
 libvirt (0.3.3-4ubuntu4) hardy; urgency=low
 
   * Add "Provides: libvirt0" to libvirt0-dbg.
