@@ -1,17 +1,19 @@
 Source: libvirt
-Section: devel
+Section: libs
 Priority: optional
-Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
-XSBC-Original-Maintainer: Guido Guenther <agx@sigxcpu.org>
-Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-all-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libxen3.1-dev
+Maintainer: Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Uploaders: Guido Guenther <agx@sigxcpu.org>
+Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-all-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libxen3.1-dev, libsasl2-dev, libpolkit-dbus-dev
 XS-Python-Version: current
-Standards-Version: 3.7.2
+Standards-Version: 3.7.3
 
 Package: libvirt-bin
 Architecture: any
 Depends: ${shlibs:Depends}
 Enhances: qemu, kvm
 Section: admin
+Suggests: dnsmasq, bridge-utils
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interract with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -22,7 +24,6 @@ Description: the programs for the libvirt library
 
 Package: libvirt0
 Architecture: any
-Section: libs
 Conflicts: libvirt0-dbg
 Replaces: libvirt0-dbg
 Depends: ${shlibs:Depends}
@@ -45,6 +46,7 @@ Description: documentation for the libvirt library
 
 Package: libvirt-dev
 Architecture: any
+Section: libdevel
 Depends: libvirt0 (= ${binary:Version})
 Description: development files for the libvirt library
  Libvirt is a C toolkit to interract with the virtualization capabilities
