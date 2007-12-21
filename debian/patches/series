@@ -1,4 +1,4 @@
+remove-RHism.diff
 qemu-path.diff
-qemu-disable-network.diff
-default_uri
-autoreconf
+#qemu-disable-network.diff
+dont-use-pk

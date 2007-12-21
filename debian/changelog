@@ -1,3 +1,40 @@
+libvirt (0.4.0-0ubuntu1) hardy; urgency=low
+
+  * New upstream release.
+  * Don't change the default URI. It appears that too many applications
+    still depend on this broken behaviour.
+  * Change maintainer to ubuntu-core-dev.
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 21 Dec 2007 11:24:02 +0100
+
+libvirt (0.3.3-6ubuntu1) hardy; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - Add libvirt0-dbg package.
+    - Start libvirtd by default.
+    - Create libvirtd group, and have libvirtd's sockets have group ownership
+      "libvirtd".
+    - Add libxen as a build-dependency to enable libvirt's Xen features.
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 20 Dec 2007 11:28:00 +0100
+
+libvirt (0.3.3-6) unstable; urgency=low
+
+  * don't include precompiled examples in the doc package (Closes: #456825)
+  * remove RHism from manpage (Closes: #455859)
+  * bump standards version
+
+ -- Guido Guenther <agx@sigxcpu.org>  Wed, 19 Dec 2007 13:45:58 +0100
+
+libvirt (0.3.3-5) unstable; urgency=low
+
+  * make libs match overrides
+  * move to team maintenance
+  * suggest dnsmasq and bridge-utils for qemu networking
+  * remove stale PID files
+
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 13 Dec 2007 21:34:16 +0100
+
 libvirt (0.3.3-4ubuntu5) hardy; urgency=low
 
   * Made default_uri a configurable.
