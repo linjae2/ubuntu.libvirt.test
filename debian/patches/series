@@ -2,3 +2,5 @@ remove-RHism.diff
 qemu-path.diff
 #qemu-disable-network.diff
 dont-use-pk
+libvirt-remote-ssh.patch -p0
+delayed_iff_up_bridge.patch
