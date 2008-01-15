@@ -1,0 +1,21 @@
+Index: remote_internal.c
+===================================================================
+RCS file: /data/cvs/libvirt/src/remote_internal.c,v
+retrieving revision 1.53
+diff -u -r1.53 remote_internal.c
+--- src/remote_internal.c	14 Jan 2008 04:05:23 -0000	1.53
++++ src/remote_internal.c	15 Jan 2008 00:25:18 -0000
+@@ -670,11 +670,12 @@
+         cmd_argv[j++] = strdup (sockname ? sockname : LIBVIRTD_PRIV_UNIX_SOCKET);
+         cmd_argv[j++] = 0;
+         assert (j == nr_args);
+-        for (j = 0; j < nr_args; j++)
++        for (j = 0; j < (nr_args-1); j++) {
+             if (cmd_argv[j] == NULL) {
+                 error (conn, VIR_ERR_SYSTEM_ERROR, strerror (ENOMEM));
+                 goto failed;
+             }
++        }
+     }
+ 
+         /*FALLTHROUGH*/

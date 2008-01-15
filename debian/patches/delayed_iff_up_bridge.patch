@@ -1,0 +1,24 @@
+--- libvirt-0.4.0.orig/src/bridge.c
++++ libvirt-0.4.0/src/bridge.c
+@@ -254,7 +254,10 @@
+                const char *bridge,
+                const char *iface)
+ {
+-    return brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface);
++	int ret;
++    if (ret = brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface))
++		return ret;
++	return brSetInterfaceUp(ctl, bridge, 1);
+ }
+ #else
+ int
+@@ -413,7 +416,8 @@
+         ifr.ifr_flags = flags;
+ 
+         if (ioctl(ctl->fd, SIOCSIFFLAGS, &ifr) < 0)
+-            return errno;
++			/*  Just smile and wave, boys... */
++			return 0;
+     }
+ 
+     return 0;
