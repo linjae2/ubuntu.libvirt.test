@@ -9,6 +9,7 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
 DEB_DH_INSTALL_ARGS := --list-missing
+DEB_DH_INSTALLINIT_ARGS := -r
 
 DEB_CONFIGURE_EXTRA_FLAGS := --disable-rpath --with-qemu --without-openvz --with-avahi
 DEB_PYTHON_SETUP_CMD := /dev/null
@@ -26,13 +27,26 @@ build/libvirt-bin::
 # Don't shove the libraries in -dbg into /var/lib/debug
 DEB_DBG_PACKAGES = 
 
+DEB_BUILDDIR_libvirt0-dbg := $(CURDIR)/build-debug
+
+makebuilddir/libvirt0-dbg:: prepare-debug-build-stamp
+
+prepare-debug-build-stamp:
+	mkdir -p build-debug
+	cp -r ABOUT-NLS acinclude.m4 aclocal.m4 AUTHORS autobuild.sh build-aux ChangeLog compile config.guess config.h.in config.rpath config.sub configure configure.in COPYING COPYING.LIB depcomp docs gnulib include INSTALL install-sh libvirt.pc libvirt.pc.in libvirt.spec libvirt.spec.in ltmain.sh m4 Makefile.am Makefile.in missing mkinstalldirs NEWS po proxy python qemud README scripts src tests TODO virsh.1 build-debug
+	touch prepare-debug-build-stamp
+
+configure/libvirt0-dbg:: build-debug/config.status
+
+build-debug/config.status:
+	chmod a+x build-debug/configure
+	cd build-debug; $(DEB_CONFIGURE_INVOKE) $(cdbs_configure_flags) $(DEB_CONFIGURE_EXTRA_FLAGS) $(DEB_CONFIGURE_USER_FLAGS) --enable-debug=yes
+
 install/libvirt0-dbg::
-	$(DEB_MAKE_INVOKE) clean
-	$(DEB_CONFIGURE_INVOKE) $(cdbs_configure_flags) $(DEB_CONFIGURE_EXTRA_FLAGS) $(DEB_CONFIGURE_USER_FLAGS) --enable-debug=yes
-	$(DEB_MAKE_INVOKE)  install DESTDIR=$(CURDIR)/debian/tmp-dbg/
+	cd build-debug; $(DEB_MAKE_INVOKE) install DESTDIR=$(CURDIR)/debian/tmp-dbg/
 
 binary-install/libvirt0-dbg::
 	dh_install -p$(cdbs_curpkg) --sourcedir=debian/tmp-dbg $(DEB_DH_INSTALL_ARGS)
 
 clean::
-	rm -rf debian/tmp-dbg
+	rm -rf debian/tmp-dbg build-debug prepare-debug-build-stamp

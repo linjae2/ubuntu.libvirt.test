@@ -1,3 +1,11 @@
+libvirt (0.4.0-0ubuntu3) hardy; urgency=low
+
+  * Clean up debian/rules (should reenable concurrent builds).
+  * Don't restart libvirt on upgrades (if there's a good reason, we'll
+    add it to postinst/prerm with checks for specific versions).
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 18 Jan 2008 19:07:19 +0100
+
 libvirt (0.4.0-0ubuntu2) hardy; urgency=low
 
   * IFF_UP'ing a bridge interface doesn't work until the first interface has
