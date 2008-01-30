@@ -27,7 +27,7 @@ Architecture: any
 Conflicts: libvirt0-dbg
 Replaces: libvirt0-dbg
 Depends: ${shlibs:Depends}
-Description: library for interfacing with Xen & other virtualization systems
+Description: library for interfacing with differeny virtualization systems
  Libvirt is a C toolkit to interract with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
  a long term stable C API for different virtualization mechanisms. It currently

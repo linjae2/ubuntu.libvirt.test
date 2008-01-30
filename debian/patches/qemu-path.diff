@@ -1,7 +1,7 @@
 Index: libvirt-0.4.0/src/qemu_conf.c
 ===================================================================
---- libvirt-0.4.0.orig/src/qemu_conf.c	2007-12-12 14:30:49.000000000 +0100
-+++ libvirt-0.4.0/src/qemu_conf.c	2007-12-20 11:33:33.443200522 +0100
+--- libvirt.orig/src/qemu_conf.c	2007-12-21 15:08:26.000000000 +0100
++++ libvirt/src/qemu_conf.c	2007-12-21 15:11:03.000000000 +0100
 @@ -309,7 +309,7 @@
      char *path;
  
@@ -13,8 +13,8 @@ Index: libvirt-0.4.0/src/qemu_conf.c
  
 Index: libvirt-0.4.0/src/qemu_driver.c
 ===================================================================
---- libvirt-0.4.0.orig/src/qemu_driver.c	2007-12-12 14:30:49.000000000 +0100
-+++ libvirt-0.4.0/src/qemu_driver.c	2007-12-20 11:33:33.447200574 +0100
+--- libvirt.orig/src/qemu_driver.c	2007-12-21 15:08:26.000000000 +0100
++++ libvirt/src/qemu_driver.c	2007-12-21 15:11:03.000000000 +0100
 @@ -1560,7 +1560,7 @@
              r = virBufferAdd (xml,
                             "\
