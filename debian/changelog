@@ -1,3 +1,13 @@
+libvirt (0.4.0-2ubuntu3) hardy; urgency=low
+
+  * Build against libxen3-dev instead of libxen3.2-dev.
+  * libvirt-bin:
+    + Replace "Suggests: dnsmasq" with "Depends: dnsmasq-base".
+    + Add dependency on netcat-openbsd (to enable qemu+ssh:// style remote
+      management)
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 08 Feb 2008 17:24:48 +0100
+
 libvirt (0.4.0-2ubuntu2) hardy; urgency=low
 
   * Build against libxen-3.2 instead of 3.1.

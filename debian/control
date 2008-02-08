@@ -4,16 +4,15 @@ Priority: optional
 Maintainer: Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Guenther <agx@sigxcpu.org>
-Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-all-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libxen3.2-dev, libsasl2-dev, libpolkit-dbus-dev
+Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-all-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libxen3-dev, libsasl2-dev, libpolkit-dbus-dev
 XS-Python-Version: current
 Standards-Version: 3.7.3
 
 Package: libvirt-bin
 Architecture: any
-Depends: ${shlibs:Depends}, bridge-utils
+Depends: ${shlibs:Depends}, bridge-utils, dnsmasq-base, netcat-openbsd
 Enhances: qemu, kvm
 Section: admin
-Suggests: dnsmasq
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interract with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
