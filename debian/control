@@ -10,7 +10,7 @@ Standards-Version: 3.7.3
 
 Package: libvirt-bin
 Architecture: any
-Depends: ${shlibs:Depends}, bridge-utils, dnsmasq-base, netcat-openbsd
+Depends: ${shlibs:Depends}, bridge-utils, dnsmasq-base, netcat-openbsd, iptables
 Enhances: qemu, kvm
 Section: admin
 Description: the programs for the libvirt library
