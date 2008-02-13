@@ -1,3 +1,9 @@
+libvirt (0.4.0-2ubuntu5) hardy; urgency=low
+
+  * Create /var/lib/libvirt in libvirt-bin. (LP: #191636)
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 13 Feb 2008 22:17:33 +0100
+
 libvirt (0.4.0-2ubuntu4) hardy; urgency=low
 
   * dont_clobber_existing_bridges.patch:
