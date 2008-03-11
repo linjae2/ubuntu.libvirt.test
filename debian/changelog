@@ -1,3 +1,9 @@
+libvirt (0.4.0-2ubuntu6) hardy; urgency=low
+
+  * *Actually* apply our patches to the -dbg version.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 11 Mar 2008 14:49:03 +0100
+
 libvirt (0.4.0-2ubuntu5) hardy; urgency=low
 
   * Create /var/lib/libvirt in libvirt-bin. (LP: #191636)

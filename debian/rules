@@ -35,6 +35,7 @@ makebuilddir/libvirt0-dbg:: prepare-debug-build-stamp
 prepare-debug-build-stamp:
 	mkdir -p build-debug
 	cp -r ABOUT-NLS acinclude.m4 aclocal.m4 AUTHORS autobuild.sh build-aux ChangeLog compile config.guess config.h.in config.rpath config.sub configure configure.in COPYING COPYING.LIB depcomp docs gnulib include INSTALL install-sh libvirt.pc libvirt.pc.in libvirt.spec libvirt.spec.in ltmain.sh m4 Makefile.am Makefile.in missing mkinstalldirs NEWS po proxy python qemud README scripts src tests TODO virsh.1 build-debug
+	cd build-debug ; QUILT_PATCHES=../debian/patches quilt push -a
 	touch prepare-debug-build-stamp
 
 configure/libvirt0-dbg:: build-debug/config.status
