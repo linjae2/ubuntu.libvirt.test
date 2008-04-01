@@ -1,0 +1,36 @@
+Index: libvirt-0.4.0/src/virsh.c
+===================================================================
+--- libvirt-0.4.0.orig/src/virsh.c	2008-04-01 10:54:59.196447015 +0200
++++ libvirt-0.4.0/src/virsh.c	2008-04-01 11:07:09.308947467 +0200
+@@ -59,6 +59,8 @@
+ #define VSH_PROMPT_RW    "virsh # "
+ #define VSH_PROMPT_RO    "virsh > "
+ 
++#include "remote_internal.h"
++
+ #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
+ #define DIFF_MSEC(T, U) \
+         ((((int) ((T)->tv_sec - (U)->tv_sec)) * 1000000.0 + \
+@@ -4532,10 +4534,20 @@
+     /* set up the library error handler */
+     virSetErrorFunc(NULL, virshErrorHandler);
+ 
++    if ((ctl->name == NULL)) {
++        if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
++            ctl->name = strdup("qemu:///system");
++        } else {
++            ctl->name = strdup("qemu:///session");
++        }
++    }
++
++    if (!ctl->quiet)
++        vshPrint(ctl, _("Connecting to uri: %s\n"), ctl->name);
++
+ #ifndef __MINGW32__
+     /* Force a non-root, Xen connection to readonly */
+-    if ((ctl->name == NULL ||
+-         !strcasecmp(ctl->name, "xen")) && ctl->uid != 0)
++    if (!strcasecmp(ctl->name, "xen") && ctl->uid != 0)
+          ctl->readonly = 1;
+ #endif
+ 

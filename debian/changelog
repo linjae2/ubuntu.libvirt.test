@@ -1,3 +1,11 @@
+libvirt (0.4.0-2ubuntu7) hardy; urgency=low
+
+  * better_default_uri_virsh.patch:
+    - Make virsh connect to qemu:///system by default if the user has write
+      access to /var/run/libvirt/libvirt-sock and qemu:///session if not.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 01 Apr 2008 10:32:59 +0200
+
 libvirt (0.4.0-2ubuntu6) hardy; urgency=low
 
   * *Actually* apply our patches to the -dbg version.
