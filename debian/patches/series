@@ -6,3 +6,6 @@ libvirt-remote-ssh.patch -p0
 delayed_iff_up_bridge.patch
 dont_clobber_existing_bridges.patch
 better_default_uri_virsh.patch
+nic-model.patch -p0
+disk-bus.patch
+graceful_shutdown.patch -p0

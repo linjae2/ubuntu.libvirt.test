@@ -1,7 +1,7 @@
 Index: libvirt-0.4.0/src/virsh.c
 ===================================================================
---- libvirt-0.4.0.orig/src/virsh.c	2008-04-01 10:54:59.196447015 +0200
-+++ libvirt-0.4.0/src/virsh.c	2008-04-01 11:07:09.308947467 +0200
+--- libvirt-0.4.0.orig/src/virsh.c	2008-04-15 18:18:28.724551481 +0200
++++ libvirt-0.4.0/src/virsh.c	2008-04-15 18:19:44.964551465 +0200
 @@ -59,6 +59,8 @@
  #define VSH_PROMPT_RW    "virsh # "
  #define VSH_PROMPT_RO    "virsh > "
@@ -24,7 +24,7 @@ Index: libvirt-0.4.0/src/virsh.c
 +    }
 +
 +    if (!ctl->quiet)
-+        vshPrint(ctl, _("Connecting to uri: %s\n"), ctl->name);
++        fprintf(stderr, _("Connecting to uri: %s\n"), ctl->name);
 +
  #ifndef __MINGW32__
      /* Force a non-root, Xen connection to readonly */
