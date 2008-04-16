@@ -1,0 +1,426 @@
+Index: libvirt-0.4.0/src/qemu_conf.c
+===================================================================
+--- libvirt-0.4.0.orig/src/qemu_conf.c	2008-04-13 15:46:39.975661978 +0200
++++ libvirt-0.4.0/src/qemu_conf.c	2008-04-13 16:09:14.051661129 +0200
+@@ -466,6 +466,7 @@
+     xmlChar *source = NULL;
+     xmlChar *target = NULL;
+     xmlChar *type = NULL;
++    xmlChar *bus = NULL;
+     int typ = 0;
+ 
+     type = xmlGetProp(node, BAD_CAST "type");
+@@ -488,7 +489,7 @@
+         if (cur->type == XML_ELEMENT_NODE) {
+             if ((source == NULL) &&
+                 (xmlStrEqual(cur->name, BAD_CAST "source"))) {
+-	
++
+                 if (typ == QEMUD_DISK_FILE)
+                     source = xmlGetProp(cur, BAD_CAST "file");
+                 else
+@@ -496,6 +497,7 @@
+             } else if ((target == NULL) &&
+                        (xmlStrEqual(cur->name, BAD_CAST "target"))) {
+                 target = xmlGetProp(cur, BAD_CAST "dev");
++                bus = xmlGetProp(cur, BAD_CAST "bus");
+             } else if (xmlStrEqual(cur->name, BAD_CAST "readonly")) {
+                 disk->readonly = 1;
+             }
+@@ -535,7 +537,8 @@
+         strcmp((const char *)target, "hda") &&
+         strcmp((const char *)target, "hdb") &&
+         strcmp((const char *)target, "hdc") &&
+-        strcmp((const char *)target, "hdd")) {
++        strcmp((const char *)target, "hdd") &&
++        strncmp((const char *)target, "vd", 2)) {
+         qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR, "Invalid harddisk device name: %s", target);
+         goto error;
+     }
+@@ -560,10 +563,23 @@
+         goto error;
+     }
+ 
++    if (!bus)
++        disk->bus = QEMUD_DISK_BUS_IDE;
++    else if (!strcmp((const char *)bus, "ide"))
++        disk->bus = QEMUD_DISK_BUS_IDE;
++    else if (!strcmp((const char *)bus, "scsi"))
++        disk->bus = QEMUD_DISK_BUS_SCSI;
++    else if (!strcmp((const char *)bus, "virtio"))
++        disk->bus = QEMUD_DISK_BUS_VIRTIO;
++    else {
++        qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR, "Invalid bus type: %s", bus);
++        goto error;
++    }
++
++    xmlFree(bus);
+     xmlFree(device);
+     xmlFree(target);
+     xmlFree(source);
+-
+     return 0;
+ 
+  error:
+@@ -575,6 +591,8 @@
+         xmlFree(source);
+     if (device)
+         xmlFree(device);
++    if (device)
++        xmlFree(bus);
+     return -1;
+ }
+ 
+@@ -851,7 +869,7 @@
+                 goto error;
+             }
+         }
+-        strncpy (net->model, BAD_CAST model, len);
++        strncpy (net->model, (const char *) model, len);
+         net->model[len] = '\0';
+ 
+         xmlFree (model);
+@@ -939,6 +957,7 @@
+     return -1;
+ }
+ 
++static int qemudDiskCompare(const void *aptr, const void *bptr);
+ 
+ /*
+  * Parses a libvirt XML definition of a guest, and populates the
+@@ -1299,7 +1318,6 @@
+     obj = xmlXPathEval(BAD_CAST "/domain/devices/disk", ctxt);
+     if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
+         (obj->nodesetval != NULL) && (obj->nodesetval->nodeNr >= 0)) {
+-        struct qemud_vm_disk_def *prev = NULL;
+         for (i = 0; i < obj->nodesetval->nodeNr; i++) {
+             struct qemud_vm_disk_def *disk = calloc(1, sizeof(*disk));
+             if (!disk) {
+@@ -1311,18 +1329,25 @@
+                 goto error;
+             }
+             def->ndisks++;
+-            disk->next = NULL;
+             if (i == 0) {
++                disk->next = NULL;
+                 def->disks = disk;
+             } else {
+-                prev->next = disk;
++                struct qemud_vm_disk_def *ptr = def->disks;
++                while (ptr) {
++                    /* We made it to the end.. */
++                    if (!ptr->next || qemudDiskCompare(ptr->next, disk) < 0) {
++                        disk->next = ptr->next;
++                        ptr->next = disk;
++                        break;
++                    }
++                    ptr = ptr->next;
++                }
+             }
+-            prev = disk;
+         }
+     }
+     xmlXPathFreeObject(obj);
+ 
+-
+     /* analysis of the network devices */
+     obj = xmlXPathEval(BAD_CAST "/domain/devices/interface", ctxt);
+     if ((obj != NULL) && (obj->type == XPATH_NODESET) &&
+@@ -1510,6 +1535,127 @@
+     return NULL;
+ }
+ 
++/* Translates a device name of the form (regex) ".d[a-z]+" into
++ * the corresponding index (e.g. sda => 1, hdz => 26, vdaa => 27)
++ * @param name The name of the device
++ * @return name's index, or 0 on failure
++ */
++static int qemudDeviceNameToIndex(const char *name) {
++    const char *ptr = NULL;
++    int idx = 0;
++
++    if (strlen(name) < 3)
++        return 0;
++
++    ptr = name+2;
++
++    while (*ptr) {
++        idx = idx * 26;
++
++        if ('a' > *ptr || 'z' < *ptr)
++            return 0;
++
++        idx += *ptr - 'a' + 1;
++        ptr++;
++    }
++
++    return idx;
++}
++
++/* Helper function for qemudSortDisks */
++static int qemudDiskCompare(const void *aptr, const void *bptr) {
++    struct qemud_vm_disk_def *a = (struct qemud_vm_disk_def *) aptr;
++    struct qemud_vm_disk_def *b = (struct qemud_vm_disk_def *) bptr;
++    if (a->device == b->device)
++        return qemudDeviceNameToIndex(a->dst) - qemudDeviceNameToIndex(b->dst);
++    else
++        return a->device - b->device;
++}
++
++#if 0
++/* Sorts a qemud_vm_disk_def linked list */
++static void qemudSortDisks(struct qemud_vm_disk_def **diskp) {
++    int done = 0;
++    struct qemud_vm_disk_def *firstSorted = NULL;
++
++    /* Loop invariant: All entries after firstSorted are in the correct order */
++    while (!done) {
++        struct qemud_vm_disk_def *disk = *diskp;
++        struct qemud_vm_disk_def *prev = NULL;
++        /* Assume we're done and let the
++         * inner loop tell if that's not true */
++        done = 1;
++        while (disk->next != firstSorted) {
++            if (qemudDiskCompare(disk, disk->next) < 0) {
++                struct qemud_vm_disk_def *tmp = disk->next;
++                disk->next = disk->next->next;
++                tmp->next = disk;
++                /* The first entry of a singly linked list needs special treatment */
++                if (prev)
++                    prev->next = tmp;
++                else
++                    *diskp = tmp;
++                done = 0;
++                continue;
++            }
++            prev = disk;
++            disk = disk->next;
++        }
++        firstSorted = prev;
++    }
++}
++#endif
++
++static const char *qemudBusIdToName(int busId) {
++    const char *busnames[] = { "ide",
++                                "scsi",
++                                "virtio" };
++    return busnames[busId];
++}
++
++static char *qemudDriveOpt(struct qemud_vm_disk_def *disk, int boot)
++{
++    char opt[PATH_MAX];
++
++    switch (disk->device) {
++        case QEMUD_DISK_CDROM:
++            snprintf(opt, PATH_MAX, "file=%s,if=ide,media=cdrom%s",
++                          disk->src, boot ? ",boot=on" : "");
++        break;
++        case QEMUD_DISK_FLOPPY:
++            snprintf(opt, PATH_MAX, "file=%s,if=floppy%s",
++                          disk->src, boot ? ",boot=on" : "");
++        break;
++        case QEMUD_DISK_DISK:
++            snprintf(opt, PATH_MAX, "file=%s,if=%s%s",
++                          disk->src, qemudBusIdToName(disk->bus), boot ? ",boot=on" : "");
++        break;
++        default:
++            return 0;
++    }
++    return strdup(opt);
++}
++
++static char *qemudAddBootDrive(virConnectPtr conn,
++                                struct qemud_vm_def *def,
++                            	char *handledDisks,
++                            	int type) {
++    int j = 0;
++    struct qemud_vm_disk_def *disk = def->disks;
++
++    while (disk) {
++        if (!handledDisks[j] && disk->device == type) {
++            handledDisks[j] = 1;
++            return qemudDriveOpt(disk, 1);
++        }
++        j++;
++        disk = disk->next;
++    }
++    qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                         "Requested boot device type %d, but no such device defined.", type);
++    return 0;
++}
++
+ /*
+  * Constructs a argv suitable for launching qemu with config defined
+  * for a given virtual machine.
+@@ -1645,30 +1791,32 @@
+             goto no_memory;
+     }
+ 
+-    for (i = 0 ; i < vm->def->os.nBootDevs ; i++) {
+-        switch (vm->def->os.bootDevs[i]) {
+-        case QEMUD_BOOT_CDROM:
+-            boot[i] = 'd';
+-            break;
+-        case QEMUD_BOOT_FLOPPY:
+-            boot[i] = 'a';
+-            break;
+-        case QEMUD_BOOT_DISK:
+-            boot[i] = 'c';
+-            break;
+-        case QEMUD_BOOT_NET:
+-            boot[i] = 'n';
+-            break;
+-        default:
+-            boot[i] = 'c';
+-            break;
++    if (vm->def->virtType != QEMUD_VIRT_KVM) {
++        for (i = 0 ; i < vm->def->os.nBootDevs ; i++) {
++            switch (vm->def->os.bootDevs[i]) {
++            case QEMUD_BOOT_CDROM:
++                boot[i] = 'd';
++                break;
++            case QEMUD_BOOT_FLOPPY:
++                boot[i] = 'a';
++                break;
++            case QEMUD_BOOT_DISK:
++                boot[i] = 'c';
++                break;
++            case QEMUD_BOOT_NET:
++                boot[i] = 'n';
++                break;
++            default:
++                boot[i] = 'c';
++                break;
++            }
+         }
++        boot[vm->def->os.nBootDevs] = '\0';
++        if (!((*argv)[++n] = strdup("-boot")))
++            goto no_memory;
++        if (!((*argv)[++n] = strdup(boot)))
++            goto no_memory;
+     }
+-    boot[vm->def->os.nBootDevs] = '\0';
+-    if (!((*argv)[++n] = strdup("-boot")))
+-        goto no_memory;
+-    if (!((*argv)[++n] = strdup(boot)))
+-        goto no_memory;
+ 
+     if (vm->def->os.kernel[0]) {
+         if (!((*argv)[++n] = strdup("-kernel")))
+@@ -1689,22 +1837,69 @@
+             goto no_memory;
+     }
+ 
+-    while (disk) {
+-        char dev[NAME_MAX];
+-        char file[PATH_MAX];
+-        if (!strcmp(disk->dst, "hdc") &&
+-            disk->device == QEMUD_DISK_CDROM)
+-            snprintf(dev, NAME_MAX, "-%s", "cdrom");
+-        else
+-            snprintf(dev, NAME_MAX, "-%s", disk->dst);
+-        snprintf(file, PATH_MAX, "%s", disk->src);
++    if (vm->def->virtType == QEMUD_VIRT_KVM) {
++        char *handledDisks = NULL;
++        int j;
+ 
+-        if (!((*argv)[++n] = strdup(dev)))
+-            goto no_memory;
+-        if (!((*argv)[++n] = strdup(file)))
++        handledDisks = calloc(sizeof(*handledDisks), vm->def->ndisks);
++
++        if (!handledDisks)
+             goto no_memory;
+ 
+-        disk = disk->next;
++		/* When using -drive notation, we need to provide the devices in boot
++		 * preference order. */
++        for (i = 0 ; i < vm->def->os.nBootDevs ; i++) {
++            if (!((*argv)[++n] = strdup("-drive")))
++                goto no_memory;
++
++            switch (vm->def->os.bootDevs[i]) {
++                case QEMUD_BOOT_CDROM:
++                    if (!((*argv)[++n] = qemudAddBootDrive(conn, vm->def, handledDisks, QEMUD_DISK_CDROM)))
++                        goto error;
++                    break;
++	            case QEMUD_BOOT_FLOPPY:
++                    if (!((*argv)[++n] = qemudAddBootDrive(conn, vm->def, handledDisks, QEMUD_DISK_FLOPPY)))
++                        goto error;
++                break;
++                case QEMUD_BOOT_DISK:
++                    if (!((*argv)[++n] = qemudAddBootDrive(conn, vm->def, handledDisks, QEMUD_DISK_DISK)))
++                        goto error;
++                break;
++            }
++        }
++
++        /* Pick up the rest of the devices */
++		j=0;
++        while (disk) {
++            if (!handledDisks[j]) {
++                handledDisks[j] = 1;
++                if (!((*argv)[++n] = strdup("-drive")))
++                    goto no_memory;
++                if (!((*argv)[++n] = qemudDriveOpt(disk, 0)))
++                    goto no_memory;
++            }
++            disk = disk->next;
++            j++;
++        }
++    } else {
++        while (disk) {
++            char dev[NAME_MAX];
++            char file[PATH_MAX];
++
++            if (!strcmp(disk->dst, "hdc") &&
++                disk->device == QEMUD_DISK_CDROM)
++                snprintf(dev, NAME_MAX, "-%s", "cdrom");
++            else
++                snprintf(dev, NAME_MAX, "-%s", disk->dst);
++            snprintf(file, PATH_MAX, "%s", disk->src);
++
++            if (!((*argv)[++n] = strdup(dev)))
++                goto no_memory;
++            if (!((*argv)[++n] = strdup(file)))
++                goto no_memory;
++
++            disk = disk->next;
++        }
+     }
+ 
+     if (!net) {
+@@ -2850,7 +3045,7 @@
+         if (virBufferVSprintf(buf, "      <source %s='%s'/>\n", typeAttrs[disk->type], disk->src) < 0)
+             goto no_memory;
+ 
+-        if (virBufferVSprintf(buf, "      <target dev='%s'/>\n", disk->dst) < 0)
++        if (virBufferVSprintf(buf, "      <target dev='%s' bus='%s'/>\n", disk->dst, qemudBusIdToName(disk->bus)) < 0)
+             goto no_memory;
+ 
+         if (disk->readonly)
+Index: libvirt-0.4.0/src/qemu_conf.h
+===================================================================
+--- libvirt-0.4.0.orig/src/qemu_conf.h	2008-04-13 15:46:39.975661978 +0200
++++ libvirt-0.4.0/src/qemu_conf.h	2008-04-13 15:46:39.987681886 +0200
+@@ -55,10 +55,18 @@
+     QEMUD_DISK_FLOPPY,
+ };
+ 
++enum qemud_vm_disk_bus {
++    QEMUD_DISK_BUS_IDE,
++    QEMUD_DISK_BUS_SCSI,
++    QEMUD_DISK_BUS_VIRTIO
++};
++
++
+ /* Stores the virtual disk configuration */
+ struct qemud_vm_disk_def {
+     int type;
+     int device;
++	int bus;
+     char src[PATH_MAX];
+     char dst[NAME_MAX];
+     int readonly;

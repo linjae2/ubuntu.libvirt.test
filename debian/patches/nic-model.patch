@@ -1,0 +1,145 @@
+Index: docs/libvir.html
+===================================================================
+--- docs/libvir.html.orig	2008-04-11 12:55:19.672613742 -0500
++++ docs/libvir.html	2008-04-11 12:55:57.223628370 -0500
+@@ -1041,6 +1041,14 @@
+   &lt;mac address="11:22:33:44:55:66"/&gt;                                     
+ &lt;/interface&gt;
+     </pre>
++    <pre>
++&lt;interface type='user'&gt;
++  &lt;mac address="11:22:33:44:55:66"/&gt;
++  &lt;model type="ne2k_pci"/&gt;
++&lt;/interface&gt;
++    </pre>
++    <p>(where the network card model is one of those supported by
++      QEMU or KVM - see the relevant manual pages).</p>
+   </li>
+   <li>Virtual network
+     <p>Provides a virtual network using a bridge device in the host.
+Index: src/qemu_conf.c
+===================================================================
+--- src/qemu_conf.c.orig	2008-04-11 12:55:19.692607157 -0500
++++ src/qemu_conf.c	2008-04-11 12:56:13.688628360 -0500
+@@ -605,6 +605,7 @@
+     xmlChar *script = NULL;
+     xmlChar *address = NULL;
+     xmlChar *port = NULL;
++    xmlChar *model = NULL;
+ 
+     net->type = QEMUD_NET_USER;
+ 
+@@ -666,6 +667,8 @@
+                        (net->type == QEMUD_NET_ETHERNET) &&
+                        xmlStrEqual(cur->name, BAD_CAST "script")) {
+                 script = xmlGetProp(cur, BAD_CAST "path");
++            } else if (xmlStrEqual (cur->name, BAD_CAST "model")) {
++                model = xmlGetProp (cur, BAD_CAST "type");
+             }
+         }
+         cur = cur->next;
+@@ -823,6 +826,38 @@
+         xmlFree(address);
+     }
+ 
++    /* NIC model (see -net nic,model=?).  We only check that it looks
++     * reasonable, not that it is a supported NIC type.  FWIW kvm
++     * supports these types as of April 2008:
++     * i82551 i82557b i82559er ne2k_pci pcnet rtl8139 e1000 virtio
++     */
++    if (model != NULL) {
++        int i, len, char_ok;
++
++        len = xmlStrlen (model);
++        if (len >= QEMUD_MODEL_MAX_LEN) {
++            qemudReportError (conn, NULL, NULL, VIR_ERR_INVALID_ARG,
++                              _("Model name '%s' is too long"), model);
++            goto error;
++        }
++        for (i = 0; i < len; ++i) {
++            char_ok =
++                (model[i] >= '0' && model[i] <= '9') ||
++                (model[i] >= 'a' && model[i] <= 'z') ||
++                (model[i] >= 'A' && model[i] <= 'Z') || model[i] == '_';
++            if (!char_ok) {
++                qemudReportError (conn, NULL, NULL, VIR_ERR_INVALID_ARG,
++                                  _("Model name contains invalid characters"));
++                goto error;
++            }
++        }
++        strncpy (net->model, BAD_CAST model, len);
++        net->model[len] = '\0';
++
++        xmlFree (model);
++    } else
++        net->model[0] = '\0';
++
+     return 0;
+ 
+  error:
+@@ -838,6 +873,8 @@
+         xmlFree(script);
+     if (bridge)
+         xmlFree(bridge);
++    if (model)
++        xmlFree(model);
+     return -1;
+ }
+ 
+@@ -1678,13 +1715,22 @@
+     } else {
+         int vlan = 0;
+         while (net) {
++            char model[100];
+             char nic[100];
+ 
+-            if (snprintf(nic, sizeof(nic), "nic,macaddr=%02x:%02x:%02x:%02x:%02x:%02x,vlan=%d",
++            if (net->model[0] != '\0') {
++                if (snprintf (model, sizeof (model), ",model=%s", net->model)
++                    >= sizeof (model))
++                    goto error;
++            } else
++                model[0] = '\0';
++
++            if (snprintf(nic, sizeof(nic),
++                         "nic,macaddr=%02x:%02x:%02x:%02x:%02x:%02x,vlan=%d%s",
+                          net->mac[0], net->mac[1],
+                          net->mac[2], net->mac[3],
+                          net->mac[4], net->mac[5],
+-                         vlan) >= sizeof(nic))
++                         vlan, model) >= sizeof(nic))
+                 goto error;
+ 
+             if (!((*argv)[++n] = strdup("-net")))
+@@ -2881,6 +2927,11 @@
+                     goto no_memory;
+             }
+         }
++        if (net->model && net->model[0] != '\0') {
++            if (virBufferVSprintf(buf, "      <model type='%s'/>\n",
++                                  net->model) < 0)
++                    goto no_memory;
++        }
+ 
+         if (virBufferVSprintf(buf, "    </interface>\n") < 0)
+             goto no_memory;
+Index: src/qemu_conf.h
+===================================================================
+--- src/qemu_conf.h.orig	2008-04-11 12:55:19.716629596 -0500
++++ src/qemu_conf.h	2008-04-11 12:55:57.351638875 -0500
+@@ -67,6 +67,7 @@
+ };
+ 
+ #define QEMUD_MAC_ADDRESS_LEN 6
++#define QEMUD_MODEL_MAX_LEN 10
+ #define QEMUD_OS_TYPE_MAX_LEN 10
+ #define QEMUD_OS_ARCH_MAX_LEN 10
+ #define QEMUD_OS_MACHINE_MAX_LEN 10
+@@ -90,6 +91,7 @@
+ struct qemud_vm_net_def {
+     int type;
+     unsigned char mac[QEMUD_MAC_ADDRESS_LEN];
++    char model[QEMUD_MODEL_MAX_LEN];
+     union {
+         struct {
+             char ifname[BR_IFNAME_MAXLEN];

@@ -1,0 +1,67 @@
+=== modified file 'AUTHORS'
+Index: AUTHORS
+===================================================================
+--- AUTHORS.orig	2008-04-15 14:35:24.396052472 +0200
++++ AUTHORS	2008-04-15 15:11:03.004053088 +0200
+@@ -38,6 +38,7 @@
+   Shuveb Hussain       <shuveb@binarykarma.com>
+   Jim Paris            <jim@jtan.com>
+   Chris Lalancette     <clalance@redhat.com>
++  Guido Guenther       <agx@sigxcpu.org>
+ 
+   [....send patches to get your name here....]
+ 
+Index: ChangeLog
+===================================================================
+--- ChangeLog.orig	2008-04-15 14:35:24.404052248 +0200
++++ ChangeLog	2008-04-15 15:11:03.012052352 +0200
+@@ -1,3 +1,8 @@
++Wed Jan  9 10:55:00 EST 2008 Daniel P. Berrange <berrange@redhat.com>
++
++	* src/qemu_driver.c: Wire up to system_shutdown command for
++	graceful ACPI triggered shutdown process (Guido Guenther)
++
+ Tue Dec 18 00:18:33 CET 2007 Daniel Veillard <veillard@redhat.com>
+ 
+ 	* configure.in docs/libvir.html docs/news.html po/*:
+Index: src/qemu_driver.c
+===================================================================
+--- src/qemu_driver.c.orig	2008-04-15 15:01:04.232071888 +0200
++++ src/qemu_driver.c	2008-04-15 15:11:03.060052978 +0200
+@@ -1849,6 +1849,27 @@
+ }
+ 
+ 
++static int qemudDomainShutdown(virDomainPtr dom) {
++    struct qemud_driver *driver = (struct qemud_driver *)dom->conn->privateData;
++    struct qemud_vm *vm = qemudFindVMByID(driver, dom->id);
++    char* info;
++
++    if (!vm) {
++        qemudReportError(dom->conn, dom, NULL, VIR_ERR_INVALID_DOMAIN,
++                         "no domain with matching id %d", dom->id);
++        return -1;
++    }
++
++    if (qemudMonitorCommand(driver, vm, "system_powerdown", &info) < 0) {
++        qemudReportError(dom->conn, dom, NULL, VIR_ERR_OPERATION_FAILED,
++                         "shutdown operation failed");
++        return -1;
++    }
++    return 0;
++
++}
++
++
+ static int qemudDomainDestroy(virDomainPtr dom) {
+     struct qemud_driver *driver = (struct qemud_driver *)dom->conn->privateData;
+     struct qemud_vm *vm = qemudFindVMByID(driver, dom->id);
+@@ -2855,7 +2876,7 @@
+     qemudDomainLookupByName, /* domainLookupByName */
+     qemudDomainSuspend, /* domainSuspend */
+     qemudDomainResume, /* domainResume */
+-    qemudDomainDestroy, /* domainShutdown */
++    qemudDomainShutdown, /* domainShutdown */
+     NULL, /* domainReboot */
+     qemudDomainDestroy, /* domainDestroy */
+     qemudDomainGetOSType, /* domainGetOSType */
