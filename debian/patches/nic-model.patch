@@ -1,9 +1,9 @@
 Index: docs/libvir.html
 ===================================================================
---- docs/libvir.html.orig	2008-04-11 12:55:19.672613742 -0500
-+++ docs/libvir.html	2008-04-11 12:55:57.223628370 -0500
-@@ -1041,6 +1041,14 @@
-   &lt;mac address="11:22:33:44:55:66"/&gt;                                     
+--- docs/libvir.html.orig	2008-05-01 23:25:29.447781366 +0200
++++ docs/libvir.html	2008-05-02 01:48:44.752779535 +0200
+@@ -1097,6 +1097,14 @@
+   &lt;mac address="11:22:33:44:55:66"/&gt;
  &lt;/interface&gt;
      </pre>
 +    <pre>
@@ -19,9 +19,9 @@ Index: docs/libvir.html
      <p>Provides a virtual network using a bridge device in the host.
 Index: src/qemu_conf.c
 ===================================================================
---- src/qemu_conf.c.orig	2008-04-11 12:55:19.692607157 -0500
-+++ src/qemu_conf.c	2008-04-11 12:56:13.688628360 -0500
-@@ -605,6 +605,7 @@
+--- src/qemu_conf.c.orig	2008-05-02 01:48:44.580777133 +0200
++++ src/qemu_conf.c	2008-05-02 01:49:18.400799045 +0200
+@@ -706,6 +706,7 @@
      xmlChar *script = NULL;
      xmlChar *address = NULL;
      xmlChar *port = NULL;
@@ -29,7 +29,7 @@ Index: src/qemu_conf.c
  
      net->type = QEMUD_NET_USER;
  
-@@ -666,6 +667,8 @@
+@@ -767,6 +768,8 @@
                         (net->type == QEMUD_NET_ETHERNET) &&
                         xmlStrEqual(cur->name, BAD_CAST "script")) {
                  script = xmlGetProp(cur, BAD_CAST "path");
@@ -38,7 +38,7 @@ Index: src/qemu_conf.c
              }
          }
          cur = cur->next;
-@@ -823,6 +826,38 @@
+@@ -926,6 +929,38 @@
          xmlFree(address);
      }
  
@@ -67,7 +67,7 @@ Index: src/qemu_conf.c
 +                goto error;
 +            }
 +        }
-+        strncpy (net->model, BAD_CAST model, len);
++        strncpy (net->model, (const char *) model, len);
 +        net->model[len] = '\0';
 +
 +        xmlFree (model);
@@ -77,7 +77,7 @@ Index: src/qemu_conf.c
      return 0;
  
   error:
-@@ -838,6 +873,8 @@
+@@ -941,6 +976,8 @@
          xmlFree(script);
      if (bridge)
          xmlFree(bridge);
@@ -86,7 +86,7 @@ Index: src/qemu_conf.c
      return -1;
  }
  
-@@ -1678,13 +1715,22 @@
+@@ -1829,13 +1866,22 @@
      } else {
          int vlan = 0;
          while (net) {
@@ -111,7 +111,7 @@ Index: src/qemu_conf.c
                  goto error;
  
              if (!((*argv)[++n] = strdup("-net")))
-@@ -2881,6 +2927,11 @@
+@@ -3071,6 +3117,11 @@
                      goto no_memory;
              }
          }
@@ -121,13 +121,13 @@ Index: src/qemu_conf.c
 +                    goto no_memory;
 +        }
  
-         if (virBufferVSprintf(buf, "    </interface>\n") < 0)
+         if (virBufferAddLit(buf, "    </interface>\n") < 0)
              goto no_memory;
 Index: src/qemu_conf.h
 ===================================================================
---- src/qemu_conf.h.orig	2008-04-11 12:55:19.716629596 -0500
-+++ src/qemu_conf.h	2008-04-11 12:55:57.351638875 -0500
-@@ -67,6 +67,7 @@
+--- src/qemu_conf.h.orig	2008-05-01 23:25:29.487777206 +0200
++++ src/qemu_conf.h	2008-05-02 01:48:58.196780211 +0200
+@@ -68,6 +68,7 @@
  };
  
  #define QEMUD_MAC_ADDRESS_LEN 6
@@ -135,7 +135,7 @@ Index: src/qemu_conf.h
  #define QEMUD_OS_TYPE_MAX_LEN 10
  #define QEMUD_OS_ARCH_MAX_LEN 10
  #define QEMUD_OS_MACHINE_MAX_LEN 10
-@@ -90,6 +91,7 @@
+@@ -97,6 +98,7 @@
  struct qemud_vm_net_def {
      int type;
      unsigned char mac[QEMUD_MAC_ADDRESS_LEN];

@@ -1,8 +1,8 @@
-Index: libvirt-0.4.0/qemud/libvirtd.conf
-===================================================================
---- libvirt-0.4.0.orig/qemud/libvirtd.conf	2007-12-20 17:30:12.767403876 +0100
-+++ libvirt-0.4.0/qemud/libvirtd.conf	2007-12-21 11:06:58.928030600 +0100
-@@ -70,14 +70,14 @@
+diff --git a/qemud/libvirtd.conf b/qemud/libvirtd.conf
+index 3b7db4d..85da39f 100644
+--- a/qemud/libvirtd.conf
++++ b/qemud/libvirtd.conf
+@@ -70,7 +70,7 @@
  # without becoming root.
  #
  # This is restricted to 'root' by default.
@@ -11,14 +11,6 @@ Index: libvirt-0.4.0/qemud/libvirtd.conf
  
  # Set the UNIX socket permissions for the R/O socket. This is used
  # for monitoring VM status only
- #
- # Default allows any user. If setting group ownership may want to
- # restrict this to:
--#unix_sock_ro_perms = "0777"
-+unix_sock_ro_perms = "0777"
- 
- # Set the UNIX socket permissions for the R/W socket. This is used
- # for full management of VMs
 @@ -87,7 +87,7 @@
  #
  # If not using PolicyKit and setting group ownership for access
@@ -46,16 +38,3 @@ Index: libvirt-0.4.0/qemud/libvirtd.conf
  
  # Change the authentication scheme for TCP sockets.
  #
-Index: libvirt-0.4.0/src/conf.c
-===================================================================
---- libvirt-0.4.0.orig/src/conf.c	2007-12-21 11:08:16.941053913 +0100
-+++ libvirt-0.4.0/src/conf.c	2007-12-21 11:08:36.457309922 +0100
-@@ -705,7 +705,7 @@
- virConfPtr
- __virConfReadFile(const char *filename)
- {
--    char content[4096];
-+    char content[16384];
-     int fd;
-     int len;
- 
