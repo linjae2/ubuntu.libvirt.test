@@ -1,5 +1,5 @@
 # DO NOT EDIT! GENERATED AUTOMATICALLY!
-# Copyright (C) 2004-2007 Free Software Foundation, Inc.
+# Copyright (C) 2002-2008 Free Software Foundation, Inc.
 #
 # This file is free software, distributed under the terms of the GNU
 # General Public License.  As a special exception to the GNU General
@@ -65,6 +65,7 @@ AC_DEFUN([gl_INIT],
   AC_PROG_MKDIR_P
   gl_PHYSMEM
   gl_FUNC_POLL
+  gl_POSIX_SHELL
   gl_FUNC_REALLOC_POSIX
   gl_STDLIB_MODULE_INDICATOR([realloc-posix])
   gl_SIZE_MAX
@@ -157,6 +158,13 @@ AC_DEFUN([gl_LIBOBJ], [
   gl_LIBOBJS="$gl_LIBOBJS $1.$ac_objext"
 ])
 
+# m4_foreach_w is provided by autoconf-2.59c and later.
+# This definition is to accommodate developers using versions
+# of autoconf older than that.
+m4_ifndef([m4_foreach_w],
+  [m4_define([m4_foreach_w],
+    [m4_foreach([$1], m4_split(m4_normalize([$2]), [ ]), [$3])])])
+
 # Like AC_REPLACE_FUNCS, except that the module name goes
 # into gl_LIBOBJS instead of into LIBOBJS.
 AC_DEFUN([gl_REPLACE_FUNCS], [
@@ -185,6 +193,13 @@ AC_DEFUN([gltests_LIBOBJ], [
   gltests_LIBOBJS="$gltests_LIBOBJS $1.$ac_objext"
 ])
 
+# m4_foreach_w is provided by autoconf-2.59c and later.
+# This definition is to accommodate developers using versions
+# of autoconf older than that.
+m4_ifndef([m4_foreach_w],
+  [m4_define([m4_foreach_w],
+    [m4_foreach([$1], m4_split(m4_normalize([$2]), [ ]), [$3])])])
+
 # Like AC_REPLACE_FUNCS, except that the module name goes
 # into gltests_LIBOBJS instead of into LIBOBJS.
 AC_DEFUN([gltests_REPLACE_FUNCS], [
@@ -211,6 +226,9 @@ AC_DEFUN([gltests_LIBSOURCES], [
 AC_DEFUN([gl_FILE_LIST], [
   build-aux/config.rpath
   build-aux/link-warning.h
+  build-aux/mktempd
+  build-aux/useless-if-before-free
+  build-aux/vc-list-files
   lib/alloca.in.h
   lib/asnprintf.c
   lib/asprintf.c
@@ -262,7 +280,6 @@ AC_DEFUN([gl_FILE_LIST], [
   lib/vasprintf.c
   lib/wchar.in.h
   lib/xsize.h
-  m4/absolute-header.m4
   m4/alloca.m4
   m4/arpa_inet_h.m4
   m4/codeset.m4
@@ -303,6 +320,7 @@ AC_DEFUN([gl_FILE_LIST], [
   m4/physmem.m4
   m4/po.m4
   m4/poll.m4
+  m4/posix-shell.m4
   m4/printf-posix.m4
   m4/progtest.m4
   m4/realloc.m4

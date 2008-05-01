@@ -8,7 +8,7 @@
  * Author: Daniel Veillard <veillard@redhat.com>
  */
 
-#include "config.h"
+#include <config.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,9 +18,11 @@
 #include "libvirt/virterror.h"
 #include "internal.h"
 
-static virError lastErr =       /* the last error */
-{ 0, 0, NULL, VIR_ERR_NONE, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL };
-static virErrorFunc virErrorHandler = NULL;     /* global error handlet */
+virError __lastErr =       /* the last error */
+  { .code = 0, .domain = 0, .message = NULL, .level = VIR_ERR_NONE,
+    .conn = NULL, .dom = NULL, .str1 = NULL, .str2 = NULL, .str3 = NULL,
+    .int1 = 0, .int2 = 0, .net = NULL };
+static virErrorFunc virErrorHandler = NULL;     /* global error handler */
 static void *virUserData = NULL;        /* associated data */
 
 /*
@@ -67,14 +69,14 @@ static void *virUserData = NULL;        /* associated data */
  * Simpler but may not be suitable for multithreaded accesses, in which
  * case use virCopyLastError()
  *
- * Returns a pointer to the last error or NULL if none occured.
+ * Returns a pointer to the last error or NULL if none occurred.
  */
 virErrorPtr
 virGetLastError(void)
 {
-    if (lastErr.code == VIR_ERR_OK)
+    if (__lastErr.code == VIR_ERR_OK)
         return (NULL);
-    return (&lastErr);
+    return (&__lastErr);
 }
 
 /*
@@ -92,16 +94,16 @@ virCopyLastError(virErrorPtr to)
 {
     if (to == NULL)
         return (-1);
-    if (lastErr.code == VIR_ERR_OK)
+    if (__lastErr.code == VIR_ERR_OK)
         return (0);
-    memcpy(to, &lastErr, sizeof(virError));
-    return (lastErr.code);
+    memcpy(to, &__lastErr, sizeof(virError));
+    return (__lastErr.code);
 }
 
 /**
  * virResetError:
  * @err: pointer to the virError to clean up
- * 
+ *
  * Reset the error being pointed to
  */
 void
@@ -109,26 +111,22 @@ virResetError(virErrorPtr err)
 {
     if (err == NULL)
         return;
-    if (err->message != NULL)
-        free(err->message);
-    if (err->str1 != NULL)
-        free(err->str1);
-    if (err->str2 != NULL)
-        free(err->str2);
-    if (err->str3 != NULL)
-        free(err->str3);
+    free(err->message);
+    free(err->str1);
+    free(err->str2);
+    free(err->str3);
     memset(err, 0, sizeof(virError));
 }
 
 /**
  * virResetLastError:
- * 
+ *
  * Reset the last error caught at the library level.
  */
 void
 virResetLastError(void)
 {
-    virResetError(&lastErr);
+    virResetError(&__lastErr);
 }
 
 /**
@@ -139,7 +137,7 @@ virResetLastError(void)
  * Simpler but may not be suitable for multithreaded accesses, in which
  * case use virConnCopyLastError()
  *
- * Returns a pointer to the last error or NULL if none occured.
+ * Returns a pointer to the last error or NULL if none occurred.
  */
 virErrorPtr
 virConnGetLastError(virConnectPtr conn)
@@ -300,6 +298,12 @@ virDefaultErrorFunc(virErrorPtr err)
         case VIR_FROM_STATS_LINUX:
             dom = "Linux Stats ";
             break;
+        case VIR_FROM_LXC:
+            dom = "Linux Container ";
+            break;
+        case VIR_FROM_STORAGE:
+            dom = "Storage ";
+            break;
 
     }
     if ((err->dom != NULL) && (err->code != VIR_ERR_INVALID_DOMAIN)) {
@@ -345,7 +349,7 @@ __virRaiseError(virConnectPtr conn, virDomainPtr dom, virNetworkPtr net,
                 const char *str1, const char *str2, const char *str3,
                 int int1, int int2, const char *msg, ...)
 {
-    virErrorPtr to = &lastErr;
+    virErrorPtr to = &__lastErr;
     void *userData = virUserData;
     virErrorFunc handler = virErrorHandler;
     char *str;
@@ -406,7 +410,7 @@ __virRaiseError(virConnectPtr conn, virDomainPtr dom, virNetworkPtr net,
 /**
  * __virErrorMsg:
  * @error: the virErrorNumber
- * @info: usually the first paprameter string
+ * @info: usually the first parameter string
  *
  * Internal routine to get the message associated to an error raised
  * from the library
@@ -669,9 +673,9 @@ __virErrorMsg(virErrorNumber error, const char *info)
 	    break;
     case VIR_ERR_INVALID_MAC:
 	    if (info == NULL)
-		errmsg = _("invalid MAC adress");
+		errmsg = _("invalid MAC address");
 	    else
-		errmsg = _("invalid MAC adress: %s");
+		errmsg = _("invalid MAC address: %s");
 	    break;
     case VIR_ERR_AUTH_FAILED:
 	    if (info == NULL)
@@ -679,6 +683,36 @@ __virErrorMsg(virErrorNumber error, const char *info)
 	    else
 		errmsg = _("authentication failed: %s");
 	    break;
+	case VIR_ERR_NO_STORAGE_POOL:
+		if (info == NULL)
+			errmsg = _("Storage pool not found");
+ 		else
+			errmsg = _("Storage pool not found: %s");
+		break;
+	case VIR_ERR_NO_STORAGE_VOL:
+		if (info == NULL)
+			errmsg = _("Storage volume not found");
+		else
+			errmsg = _("Storage volume not found: %s");
+		break;
+	case VIR_ERR_INVALID_STORAGE_POOL:
+		if (info == NULL)
+			errmsg = _("invalid storage pool pointer in");
+		else
+			errmsg = _("invalid storage pool pointer in %s");
+		break;
+	case VIR_ERR_INVALID_STORAGE_VOL:
+		if (info == NULL)
+			errmsg = _("invalid storage volume pointer in");
+		else
+			errmsg = _("invalid storage volume pointer in %s");
+		break;
+	case VIR_WAR_NO_STORAGE:
+		if (info == NULL)
+			errmsg = _("Failed to find a storage driver");
+		else
+			errmsg = _("Failed to find a storage driver: %s");
+		break;
     }
     return (errmsg);
 }

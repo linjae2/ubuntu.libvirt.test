@@ -1,0 +1,41 @@
+=== modified file 'ChangeLog'
+Index: ChangeLog
+===================================================================
+--- ChangeLog.orig	2008-05-01 03:07:31.000000000 +0200
++++ ChangeLog	2008-05-02 01:50:11.471810173 +0200
+@@ -1,3 +1,9 @@
++Tue Apr 29 09:15:00 BST 2008 Richard W.M. Jones <rjones@redhat.com>
++
++	* src/parthelper.c: Don't fail if PED_PARTITION_PROTECTED
++	  is not defined because of ancient libparted
++	  (Soren Hansen).
++
+ Mon Apr  8 17:32:07 CET 2008 Jim Meyering <meyering@redhat.com>
+ 
+ 	* configure.in (ALL_LINGUAS): Fix typo: s/Latn/latin/.
+Index: src/parthelper.c
+===================================================================
+--- src/parthelper.c.orig	2008-02-20 16:52:17.000000000 +0100
++++ src/parthelper.c	2008-05-02 01:49:46.823779384 +0200
+@@ -67,8 +67,10 @@
+                 content = "free";
+             else if (part->type & PED_PARTITION_METADATA)
+                 content = "metadata";
++#ifdef PED_PARTITION_PROTECTED
+             else if (part->type & PED_PARTITION_PROTECTED)
+                 content = "protected";
++#endif
+             else
+                 content = "data";
+         } else if (part->type == PED_PARTITION_EXTENDED) {
+@@ -80,8 +82,10 @@
+                 content = "free";
+             else if (part->type & PED_PARTITION_METADATA)
+                 content = "metadata";
++#ifdef PED_PARTITION_PROTECTED
+             else if (part->type & PED_PARTITION_PROTECTED)
+                 content = "protected";
++#endif
+             else
+                 content = "data";
+         }

@@ -25,6 +25,10 @@
 #ifndef QEMUD_INTERNAL_H__
 #define QEMUD_INTERNAL_H__
 
+#include <config.h>
+
+#include "../src/socketcompat.h"
+
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 #include "../src/gnutls_1_0_compat.h"
@@ -43,7 +47,6 @@
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include "remote_protocol.h"
-#include "../config.h"
 
 #ifdef __GNUC__
 #ifdef HAVE_ANSIDECL_H
@@ -176,6 +179,9 @@ void qemudLog(int priority, const char *fmt, ...)
 void remoteDispatchClientRequest (struct qemud_server *server,
                                   struct qemud_client *client);
 
+#if HAVE_POLKIT
+int qemudGetSocketIdentity(int fd, uid_t *uid, pid_t *pid);
+#endif
 
 #endif
 

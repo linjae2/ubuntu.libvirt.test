@@ -4,20 +4,24 @@ Priority: optional
 Maintainer: Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Guenther <agx@sigxcpu.org>
-Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-all-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libxen3-dev, libsasl2-dev, libpolkit-dbus-dev
+Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-all-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libsasl2-dev, libxen3-dev [i386 amd64], lvm2, libpolkit-dbus-dev, open-iscsi, libparted-dev, uuid-dev, parted
 XS-Python-Version: current
+XS-Original-Vcs-Git: git://git.debian.org/git/pkg-libvirt/libvirt.git
+XS-Original-Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/libvirt.git
+Homepage: http://libvirt.org
 Standards-Version: 3.7.3
 
 Package: libvirt-bin
 Architecture: any
-Depends: ${shlibs:Depends}, bridge-utils, dnsmasq-base, netcat-openbsd, iptables
-Enhances: qemu, kvm
+Depends: ${shlibs:Depends}, bridge-utils, dnsmasq-base, netcat-openbsd, iptables, adduser
+Enhances: qemu, kvm, xen
 Section: admin
+Suggests: policykit
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
  a long term stable C API for different virtualization mechanisms. It currently
- supports QEMU and KVM.
+ supports QEMU, KVM, and XEN.
  .
  This package contains the supporting binaries to use with libvirt
 
@@ -26,11 +30,12 @@ Architecture: any
 Conflicts: libvirt0-dbg
 Replaces: libvirt0-dbg
 Depends: ${shlibs:Depends}
+Recommends: lvm2, qemu
 Description: library for interfacing with different virtualization systems
  Libvirt is a C toolkit to interract with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
  a long term stable C API for different virtualization mechanisms. It currently
- supports QEMU and KVM..
+ supports QEMU, KVM, and XEN.
 
 Package: libvirt-doc
 Architecture: all
@@ -39,19 +44,19 @@ Description: documentation for the libvirt library
  Libvirt is a C toolkit to interract with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
  a long term stable C API for different virtualization mechanisms. It currently
- supports QEMU and KVM.
+ supports QEMU, KVM, and XEN.
  .
  This package contains the documentation.
 
 Package: libvirt-dev
 Architecture: any
 Section: libdevel
-Depends: libvirt0 (= ${binary:Version})
+Depends: libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64]
 Description: development files for the libvirt library
  Libvirt is a C toolkit to interract with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
  a long term stable C API for different virtualization mechanisms. It currently
- supports QEMU and KVM.
+ supports QEMU, KVM, and XEN.
  .
  This package contains the header files and static libraries which are
  needed for developing the applications with libvirt.
@@ -62,13 +67,13 @@ Depends: ${shlibs:Depends}, ${python:Depends}
 Provides: ${python:Provides}
 Section: python
 XB-Python-Version: ${python:Versions}
-Description: libvirt python bindings
+Description: libvirt Python bindings
  Libvirt is a C toolkit to interract with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
  a long term stable C API for different virtualization mechanisms. It currently
- supports QEMU and KVM.
+ supports QEMU, KVM, and XEN.
  .
- This package contains python bindings for the libvirt library
+ This package contains Python bindings for the libvirt library
 
 Package: libvirt0-dbg
 Architecture: any
