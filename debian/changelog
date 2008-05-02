@@ -1,3 +1,10 @@
+libvirt (0.4.2-5ubuntu2) intrepid; urgency=low
+
+  * We call libxen-dev libxen3-dev.
+  * Make libvirt-dev installable alongside libvirt0-dbg.
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 02 May 2008 10:59:50 +0200
+
 libvirt (0.4.2-5ubuntu1) intrepid; urgency=low
 
   * Merge from debian unstable, remaining changes:
