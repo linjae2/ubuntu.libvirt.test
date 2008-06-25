@@ -9,11 +9,11 @@ Subject: [PATCH] qemu-path.diff
  src/qemu_driver.c |    2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/src/qemu_conf.c b/src/qemu_conf.c
-index eead0bc..e5f5321 100644
---- a/src/qemu_conf.c
-+++ b/src/qemu_conf.c
-@@ -347,7 +347,7 @@ qemudCapsInitGuest(virCapsPtr caps,
+Index: libvirt-0.4.4/src/qemu_conf.c
+===================================================================
+--- libvirt-0.4.4.orig/src/qemu_conf.c	2008-06-19 15:15:02.000000000 +0200
++++ libvirt-0.4.4/src/qemu_conf.c	2008-06-25 18:32:42.073949951 +0200
+@@ -372,7 +372,7 @@
              if (access("/dev/kvm", F_OK) == 0 &&
                  virCapabilitiesAddGuestDomain(guest,
                                                "kvm",
@@ -22,19 +22,15 @@ index eead0bc..e5f5321 100644
                                                NULL,
                                                0,
                                                NULL) == NULL)
-diff --git a/src/qemu_driver.c b/src/qemu_driver.c
-index 21f0fed..532f15a 100644
---- a/src/qemu_driver.c
-+++ b/src/qemu_driver.c
-@@ -1408,7 +1408,7 @@ qemudMonitorCommand (const struct qemud_driver *driver ATTRIBUTE_UNUSED,
- static const char *qemudProbe(void)
+Index: libvirt-0.4.4/src/qemu_driver.c
+===================================================================
+--- libvirt-0.4.4.orig/src/qemu_driver.c	2008-06-12 16:52:53.000000000 +0200
++++ libvirt-0.4.4/src/qemu_driver.c	2008-06-25 18:33:09.337965278 +0200
+@@ -1682,6 +1682,7 @@
  {
      if ((virFileExists("/usr/bin/qemu")) ||
--        (virFileExists("/usr/bin/qemu-kvm")) ||
+         (virFileExists("/usr/bin/qemu-kvm")) ||
 +        (virFileExists("/usr/bin/kvm")) ||
- 	(virFileExists("/usr/bin/xenner"))) {
+         (virFileExists("/usr/bin/xenner"))) {
          if (getuid() == 0) {
- 	    return("qemu:///system");
--- 
-1.5.4.3
-
+             return("qemu:///system");

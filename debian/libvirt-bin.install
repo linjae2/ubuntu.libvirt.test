@@ -1,5 +1,5 @@
 usr/bin/*
 usr/sbin/*
-usr/share/PolicyKit/*
 etc/libvirt/*
 etc/sasl2/*
+usr/share/PolicyKit/*
