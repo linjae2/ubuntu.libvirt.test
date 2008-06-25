@@ -5,6 +5,3 @@ libvirt-group.diff
 delayed_iff_up_bridge.patch
 dont_clobber_existing_bridges.patch
 better_default_uri_virsh.patch
-nic-model.patch -p0
-disk-bus.patch -p0
-ancient_parted.patch -p0

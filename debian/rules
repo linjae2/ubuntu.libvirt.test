@@ -29,49 +29,14 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
 	--enable-debug		 \
 	$(BUILD_XEN)
 
+DEB_DBG_PACKAGES = libvirt0-dbg
+DEB_DBG_PACKAGE_libvirt0 = libvirt0-dbg
 DEB_PYTHON_SETUP_CMD := /dev/null
-DEB_DH_MAKESHLIBS_ARGS_libvirt0 += -V 'libvirt0 (>= 0.4.1) | libvirt0-dbg (>= 0.4.1)'
-DEB_DH_MAKESHLIBS_ARGS_libvirt0-dbg += -V 'libvirt0 (>= 0.4.1) | libvirt0-dbg (>= 0.4.1)'
 DEB_DH_MAKESHLIBS_ARGS_libvirt0 += -V 'libvirt0 (>= 0.4.1)'
-DEB_DH_INSTALLINIT_ARGS:=--no-restart-on-upgrade
+DEB_DH_INSTALLINIT_ARGS := --no-restart-on-upgrade
 
 EXAMPLES=debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
 
 binary-install/libvirt-doc::
 	cd $(EXAMPLES) && rm -rf .libs *.o info1 suspend ../html/CVS
 
-build/libvirt-bin::
-	mkdir -p debian/tmp/etc/libvirt
-#	install -m 750 debian/libvirtd.conf debian/tmp/etc/libvirt
-#	install -m 750 debian/qemud.conf debian/tmp/etc/libvirt
-
-# Don't shove the libraries in -dbg into /var/lib/debug
-DEB_DBG_PACKAGES = 
-
-DEB_BUILDDIR_libvirt0-dbg := $(CURDIR)/build-debug
-
-makebuilddir/libvirt0-dbg:: prepare-debug-build-stamp
-
-prepare-debug-build-stamp:
-	mkdir -p build-debug
-	cp -r ABOUT-NLS acinclude.m4 aclocal.m4 AUTHORS autobuild.sh build-aux ChangeLog compile config.guess config.h.in config.rpath config.sub configure configure.in COPYING COPYING.LIB depcomp docs gnulib include INSTALL install-sh libvirt.pc.in libvirt.spec.in ltmain.sh m4 Makefile.am Makefile.in missing mkinstalldirs NEWS po proxy python qemud README scripts src tests TODO virsh.1 build-debug
-	cd build-debug ; QUILT_PATCHES=../debian/patches quilt push -a
-	touch prepare-debug-build-stamp
-
-configure/libvirt0-dbg:: build-debug/config.status
-
-build-debug/config.status:
-	chmod a+x build-debug/configure
-	cd build-debug; $(DEB_CONFIGURE_INVOKE) $(cdbs_configure_flags) $(DEB_CONFIGURE_EXTRA_FLAGS) $(DEB_CONFIGURE_USER_FLAGS) --enable-debug=yes
-
-install/libvirt0-dbg::
-	cd build-debug; $(DEB_MAKE_INVOKE) install DESTDIR=$(CURDIR)/debian/tmp-dbg/
-
-binary-install/libvirt0-dbg::
-	dh_install -p$(cdbs_curpkg) --sourcedir=debian/tmp-dbg $(DEB_DH_INSTALL_ARGS)
-
-binary-fixup/libvirt0-dbg::
-	dh_makeshlibs -p$(cdbs_curpkg) $(DEB_DH_MAKESHLIBS_ARGS)
-
-clean::
-	rm -rf debian/tmp-dbg build-debug prepare-debug-build-stamp
