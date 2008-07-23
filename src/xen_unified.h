@@ -13,6 +13,13 @@
 
 #include "internal.h"
 
+#ifndef HAVE_WINSOCK2_H
+#include <sys/un.h>
+#include <netinet/in.h>
+#else
+#include <winsock2.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,47 +44,45 @@ extern int xenUnifiedRegister (void);
  * structure with direct calls in xen_unified.c.
  */
 struct xenUnifiedDriver {
-	virDrvOpen			open;
-	virDrvClose			close;
-	virDrvGetType			type;
-	virDrvGetVersion		version;
+        virDrvOpen			open;
+        virDrvClose			close;
+        virDrvGetVersion		version;
     virDrvGetHostname       getHostname;
     virDrvGetURI            getURI;
-	virDrvNodeGetInfo		nodeGetInfo;
-	virDrvGetCapabilities		getCapabilities;
-	virDrvListDomains		listDomains;
-	virDrvNumOfDomains		numOfDomains;
-	virDrvDomainCreateLinux		domainCreateLinux;
-	virDrvDomainSuspend		domainSuspend;
-	virDrvDomainResume		domainResume;
-	virDrvDomainShutdown		domainShutdown;
-	virDrvDomainReboot		domainReboot;
-	virDrvDomainDestroy		domainDestroy;
-	virDrvDomainGetOSType		domainGetOSType;
-	virDrvDomainGetMaxMemory	domainGetMaxMemory;
-	virDrvDomainSetMaxMemory	domainSetMaxMemory;
-	virDrvDomainSetMemory		domainSetMemory;
-	virDrvDomainGetInfo		domainGetInfo;
-	virDrvDomainSave		domainSave;
-	virDrvDomainRestore		domainRestore;
-	virDrvDomainCoreDump		domainCoreDump;
-	virDrvDomainSetVcpus		domainSetVcpus;
-	virDrvDomainPinVcpu		domainPinVcpu;
-	virDrvDomainGetVcpus		domainGetVcpus;
-	virDrvDomainGetMaxVcpus		domainGetMaxVcpus;
-	virDrvDomainDumpXML		domainDumpXML;
-	virDrvListDefinedDomains	listDefinedDomains;
-	virDrvNumOfDefinedDomains	numOfDefinedDomains;
-	virDrvDomainCreate		domainCreate;
-	virDrvDomainDefineXML           domainDefineXML;
-	virDrvDomainUndefine            domainUndefine;
-	virDrvDomainAttachDevice	domainAttachDevice;
-	virDrvDomainDetachDevice	domainDetachDevice;
-	virDrvDomainGetAutostart	domainGetAutostart;
-	virDrvDomainSetAutostart	domainSetAutostart;
-	virDrvDomainGetSchedulerType	domainGetSchedulerType;
-	virDrvDomainGetSchedulerParameters domainGetSchedulerParameters;
-	virDrvDomainSetSchedulerParameters domainSetSchedulerParameters;
+        virDrvNodeGetInfo		nodeGetInfo;
+        virDrvGetCapabilities		getCapabilities;
+        virDrvListDomains		listDomains;
+        virDrvNumOfDomains		numOfDomains;
+        virDrvDomainCreateLinux		domainCreateLinux;
+        virDrvDomainSuspend		domainSuspend;
+        virDrvDomainResume		domainResume;
+        virDrvDomainShutdown		domainShutdown;
+        virDrvDomainReboot		domainReboot;
+        virDrvDomainDestroy		domainDestroy;
+        virDrvDomainGetOSType		domainGetOSType;
+        virDrvDomainGetMaxMemory	domainGetMaxMemory;
+        virDrvDomainSetMaxMemory	domainSetMaxMemory;
+        virDrvDomainSetMemory		domainSetMemory;
+        virDrvDomainGetInfo		domainGetInfo;
+        virDrvDomainSave		domainSave;
+        virDrvDomainRestore		domainRestore;
+        virDrvDomainCoreDump		domainCoreDump;
+        virDrvDomainSetVcpus		domainSetVcpus;
+        virDrvDomainPinVcpu		domainPinVcpu;
+        virDrvDomainGetVcpus		domainGetVcpus;
+        virDrvDomainGetMaxVcpus		domainGetMaxVcpus;
+        virDrvListDefinedDomains	listDefinedDomains;
+        virDrvNumOfDefinedDomains	numOfDefinedDomains;
+        virDrvDomainCreate		domainCreate;
+        virDrvDomainDefineXML           domainDefineXML;
+        virDrvDomainUndefine            domainUndefine;
+        virDrvDomainAttachDevice	domainAttachDevice;
+        virDrvDomainDetachDevice	domainDetachDevice;
+        virDrvDomainGetAutostart	domainGetAutostart;
+        virDrvDomainSetAutostart	domainSetAutostart;
+        virDrvDomainGetSchedulerType	domainGetSchedulerType;
+        virDrvDomainGetSchedulerParameters domainGetSchedulerParameters;
+        virDrvDomainSetSchedulerParameters domainSetSchedulerParameters;
 };
 
 /* xenUnifiedPrivatePtr:
@@ -109,29 +114,16 @@ struct _xenUnifiedPrivate {
      * xen_unified.c.
      */
     int opened[XEN_UNIFIED_NR_DRIVERS];
-
-    /* Canonical URI. */
-    char *name;
 };
 
 typedef struct _xenUnifiedPrivate *xenUnifiedPrivatePtr;
 
+
+int xenNbCells(virConnectPtr conn);
+int xenNbCpus(virConnectPtr conn);
+char *xenDomainUsedCpus(virDomainPtr dom);
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* __VIR_XEN_UNIFIED_H__ */
-
-/*
- * vim: set tabstop=4:
- * vim: set shiftwidth=4:
- * vim: set expandtab:
- */
-/*
- * Local variables:
- *  indent-tabs-mode: nil
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 4
- * End:
- */
