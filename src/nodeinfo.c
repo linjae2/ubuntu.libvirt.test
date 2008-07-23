@@ -1,7 +1,7 @@
 /*
  * nodeinfo.c: Helper routines for OS specific node information
  *
- * Copyright (C) 2006, 2007 Red Hat, Inc.
+ * Copyright (C) 2006, 2007, 2008 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -21,22 +21,29 @@
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/utsname.h>
 #include <errno.h>
-#include <ctype.h>
+#include "c-ctype.h"
 
+#ifdef HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
+
+#include "internal.h"
 #include "nodeinfo.h"
+#include "physmem.h"
+#include "util.h"
 
 #ifdef __linux__
-#define MEMINFO_PATH "/proc/meminfo"
 #define CPUINFO_PATH "/proc/cpuinfo"
 
 /* NB, these are not static as we need to call them from testsuite */
-int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo, virNodeInfoPtr nodeinfo);
-int linuxNodeInfoMemPopulate(virConnectPtr conn, FILE *meminfo, virNodeInfoPtr nodeinfo);
+int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo,
+                             virNodeInfoPtr nodeinfo);
 
 int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo, virNodeInfoPtr nodeinfo) {
     char line[1024];
@@ -51,9 +58,9 @@ int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo, virNodeInfoPtr n
     /* XXX hyperthreads */
     while (fgets(line, sizeof(line), cpuinfo) != NULL) {
         char *buf = line;
-        if (STREQLEN(buf, "processor", 9)) { /* aka a single logical CPU */
+        if (STRPREFIX(buf, "processor")) { /* aka a single logical CPU */
             buf += 9;
-            while (*buf && isspace(*buf))
+            while (*buf && c_isspace(*buf))
                 buf++;
             if (*buf != ':') {
                 __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
@@ -62,9 +69,11 @@ int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo, virNodeInfoPtr n
                 return -1;
             }
             nodeinfo->cpus++;
-        } else if (STREQLEN(buf, "cpu MHz", 7)) {
+        } else if (STRPREFIX(buf, "cpu MHz")) {
+            char *p;
+            unsigned int ui;
             buf += 9;
-            while (*buf && isspace(*buf))
+            while (*buf && c_isspace(*buf))
                 buf++;
             if (*buf != ':' || !buf[1]) {
                 __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
@@ -72,11 +81,15 @@ int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo, virNodeInfoPtr n
                                 "parsing cpuinfo cpu MHz");
                 return -1;
             }
-            nodeinfo->mhz = (unsigned int)strtol(buf+1, NULL, 10);
-        } else if (STREQLEN(buf, "cpu cores", 9)) { /* aka cores */
+            if (virStrToLong_ui(buf+1, &p, 10, &ui) == 0
+                /* Accept trailing fractional part.  */
+                && (*p == '\0' || *p == '.' || c_isspace(*p)))
+                nodeinfo->mhz = ui;
+        } else if (STRPREFIX(buf, "cpu cores")) { /* aka cores */
+            char *p;
             unsigned int id;
             buf += 9;
-            while (*buf && isspace(*buf))
+            while (*buf && c_isspace(*buf))
                 buf++;
             if (*buf != ':' || !buf[1]) {
                 __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
@@ -84,8 +97,9 @@ int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo, virNodeInfoPtr n
                                 "parsing cpuinfo cpu cores %c", *buf);
                 return -1;
             }
-            id = (unsigned int)strtol(buf+1, NULL, 10);
-            if (id > nodeinfo->cores)
+            if (virStrToLong_ui(buf+1, &p, 10, &id) == 0
+                && (*p == '\0' || c_isspace(*p))
+                && id > nodeinfo->cores)
                 nodeinfo->cores = id;
         }
     }
@@ -107,37 +121,12 @@ int linuxNodeInfoCPUPopulate(virConnectPtr conn, FILE *cpuinfo, virNodeInfoPtr n
     return 0;
 }
 
-
-int linuxNodeInfoMemPopulate(virConnectPtr conn, FILE *meminfo, virNodeInfoPtr nodeinfo) {
-    char line[1024];
-
-    nodeinfo->memory = 0;
-
-    while (fgets(line, sizeof(line), meminfo) != NULL) {
-        if (STREQLEN(line, "MemTotal:", 9)) {
-            nodeinfo->memory = (unsigned int)strtol(line + 10, NULL, 10);
-        }
-    }
-    if (!nodeinfo->memory) {
-        __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
-                        VIR_ERR_ERROR, NULL, NULL, NULL, 0, 0,
-                        "no memory found");
-        return -1;
-    }
-
-    return 0;
-}
-
-
 #endif
 
 int virNodeInfoPopulate(virConnectPtr conn,
                         virNodeInfoPtr nodeinfo) {
+#ifdef HAVE_UNAME
     struct utsname info;
-#ifdef __linux__
-    int ret;
-    FILE *cpuinfo, *meminfo;
-#endif
 
     if (uname(&info) < 0) {
         __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
@@ -145,12 +134,19 @@ int virNodeInfoPopulate(virConnectPtr conn,
                         "cannot extract machine type %s", strerror(errno));
         return -1;
     }
-
     strncpy(nodeinfo->model, info.machine, sizeof(nodeinfo->model)-1);
     nodeinfo->model[sizeof(nodeinfo->model)-1] = '\0';
 
+#else /* !HAVE_UNAME */
+
+    nodeinfo->model[0] = '\0';
+
+#endif /* !HAVE_UNAME */
+
 #ifdef __linux__
-    cpuinfo = fopen(CPUINFO_PATH, "r");
+    {
+    int ret;
+    FILE *cpuinfo = fopen(CPUINFO_PATH, "r");
     if (!cpuinfo) {
         __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
                         VIR_ERR_ERROR, NULL, NULL, NULL, 0, 0,
@@ -162,17 +158,11 @@ int virNodeInfoPopulate(virConnectPtr conn,
     if (ret < 0)
         return -1;
 
-    meminfo = fopen(MEMINFO_PATH, "r");
-    if (!meminfo) {
-        __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
-                        VIR_ERR_ERROR, NULL, NULL, NULL, 0, 0,
-                        "cannot open %s %s", MEMINFO_PATH, strerror(errno));
-        return -1;
-    }
-    ret = linuxNodeInfoMemPopulate(conn, meminfo, nodeinfo);
-    fclose(meminfo);
+    /* Convert to KB. */
+    nodeinfo->memory = physmem_total () / 1024;
 
     return ret;
+    }
 #else
     /* XXX Solaris will need an impl later if they port QEMU driver */
     __virRaiseError(conn, NULL, NULL, 0, VIR_ERR_INTERNAL_ERROR,
@@ -181,13 +171,3 @@ int virNodeInfoPopulate(virConnectPtr conn,
     return -1;
 #endif
 }
-
-
-/*
- * Local variables:
- *  indent-tabs-mode: nil
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 4
- * End:
- */

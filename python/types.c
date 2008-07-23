@@ -2,10 +2,17 @@
  * types.c: converter functions between the internal representation
  *          and the Python objects
  *
- * Copyright (C) 2005 Red Hat, Inc.
+ * Copyright (C) 2005, 2007 Red Hat, Inc.
  *
  * Daniel Veillard <veillard@redhat.com>
  */
+
+#include <config.h>
+
+/* Horrible kludge to work around even more horrible name-space pollution
+ *    via Python.h.  That file includes /usr/include/python2.5/pyconfig*.h,
+ *       which has over 180 autoconf-style HAVE_* definitions.  Shame on them.  */
+#undef HAVE_PTHREAD_H
 
 #include "libvirt_wrap.h"
 
@@ -43,7 +50,7 @@ libvirt_ulongWrap(unsigned long val)
 #endif
     ret = PyLong_FromLong(val);
     return (ret);
-}   
+}
 
 PyObject *
 libvirt_longlongWrap(long long val)
@@ -138,6 +145,42 @@ libvirt_virNetworkPtrWrap(virNetworkPtr node)
     }
     ret =
         PyCObject_FromVoidPtrAndDesc((void *) node, (char *) "virNetworkPtr",
+                                     NULL);
+    return (ret);
+}
+
+PyObject *
+libvirt_virStoragePoolPtrWrap(virStoragePoolPtr node)
+{
+    PyObject *ret;
+
+#ifdef DEBUG
+    printf("libvirt_virStoragePoolPtrWrap: node = %p\n", node);
+#endif
+    if (node == NULL) {
+        Py_INCREF(Py_None);
+        return (Py_None);
+    }
+    ret =
+        PyCObject_FromVoidPtrAndDesc((void *) node, (char *) "virStoragePoolPtr",
+                                     NULL);
+    return (ret);
+}
+
+PyObject *
+libvirt_virStorageVolPtrWrap(virStorageVolPtr node)
+{
+    PyObject *ret;
+
+#ifdef DEBUG
+    printf("libvirt_virStorageVolPtrWrap: node = %p\n", node);
+#endif
+    if (node == NULL) {
+        Py_INCREF(Py_None);
+        return (Py_None);
+    }
+    ret =
+        PyCObject_FromVoidPtrAndDesc((void *) node, (char *) "virStorageVolPtr",
                                      NULL);
     return (ret);
 }

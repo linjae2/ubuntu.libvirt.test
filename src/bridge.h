@@ -22,6 +22,10 @@
 #ifndef __QEMUD_BRIDGE_H__
 #define __QEMUD_BRIDGE_H__
 
+#include <config.h>
+
+#ifdef WITH_QEMU
+
 #include <net/if.h>
 #include <netinet/in.h>
 
@@ -97,13 +101,6 @@ int     brGetEnableSTP          (brControl *ctl,
                                  const char *bridge,
                                  int *enable);
 
-#endif /* __QEMUD_BRIDGE_H__ */
+#endif /* WITH_QEMU */
 
-/*
- * Local variables:
- *  indent-tabs-mode: nil
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 4
- * End:
- */
+#endif /* __QEMUD_BRIDGE_H__ */

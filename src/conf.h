@@ -1,7 +1,7 @@
 /**
  * conf.h: parser for a subset of the Python encoded Xen configuration files
  *
- * Copyright (C) 2006 Red Hat, Inc.
+ * Copyright (C) 2006, 2007 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
@@ -28,6 +28,21 @@ typedef enum {
     VIR_CONF_LIST = 3		/* a list */
 } virConfType;
 
+static inline const char *
+virConfTypeName (virConfType t)
+{
+    switch (t) {
+    case VIR_CONF_LONG:
+        return "long";
+    case VIR_CONF_STRING:
+        return "string";
+    case VIR_CONF_LIST:
+        return "list";
+    default:
+        return "*unexpected*";
+    }
+}
+
 /**
  * virConfValue:
  * a value from the configuration file
@@ -53,28 +68,30 @@ typedef virConf *virConfPtr;
 virConfPtr      __virConfNew             (void);
 virConfPtr	__virConfReadFile	(const char *filename);
 virConfPtr	__virConfReadMem		(const char *memory,
-					 int len);
+                                         int len);
 int		__virConfFree		(virConfPtr conf);
+void            __virConfFreeValue      (virConfValuePtr val);
 
 virConfValuePtr	__virConfGetValue	(virConfPtr conf,
-					 const char *setting);
+                                         const char *setting);
 int             __virConfSetValue        (virConfPtr conf,
-					 const char *setting,
-					 virConfValuePtr value);
+                                         const char *setting,
+                                         virConfValuePtr value);
 int		__virConfWriteFile	(const char *filename,
-					 virConfPtr conf);
+                                         virConfPtr conf);
 int		__virConfWriteMem	(char *memory,
-					 int *len,
-					 virConfPtr conf);
+                                         int *len,
+                                         virConfPtr conf);
 
-#define virConfNew() (__virConfNew())
-#define virConfReadFile(f) (__virConfReadFile((f)))
-#define virConfReadMem(m,l) (__virConfReadMem((m),(l)))
-#define virConfFree(c) (__virConfFree((c)))
-#define virConfGetValue(c,s) (__virConfGetValue((c),(s)))
-#define virConfSetValue(c,s,v) (__virConfSetValue((c),(s),(v)))
-#define virConfWriteFile(f,c) (__virConfWriteFile((f),(c)))
-#define virConfWriteMem(m,l,c) (__virConfWriteMem((m),(l),(c)))
+#define virConfNew() __virConfNew()
+#define virConfReadFile(f) __virConfReadFile((f))
+#define virConfReadMem(m,l) __virConfReadMem((m),(l))
+#define virConfFree(c) __virConfFree((c))
+#define virConfFreeValue(v) __virConfFreeValue((v))
+#define virConfGetValue(c,s) __virConfGetValue((c),(s))
+#define virConfSetValue(c,s,v) __virConfSetValue((c),(s),(v))
+#define virConfWriteFile(f,c) __virConfWriteFile((f),(c))
+#define virConfWriteMem(m,l,c) __virConfWriteMem((m),(l),(c))
 
 #ifdef __cplusplus
 }

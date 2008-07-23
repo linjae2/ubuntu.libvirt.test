@@ -22,11 +22,14 @@
 #ifndef __QEMUD_IPTABLES_H__
 #define __QEMUD_IPTABLES_H__
 
+#if WITH_QEMU
+
 typedef struct _iptablesContext iptablesContext;
 
 iptablesContext *iptablesContextNew              (void);
 void             iptablesContextFree             (iptablesContext *ctx);
 
+void             iptablesSaveRules               (iptablesContext *ctx);
 void             iptablesReloadRules             (iptablesContext *ctx);
 
 int              iptablesAddTcpInput             (iptablesContext *ctx,
@@ -48,6 +51,15 @@ int              iptablesAddForwardAllowOut      (iptablesContext *ctx,
                                                   const char *iface,
                                                   const char *physdev);
 int              iptablesRemoveForwardAllowOut   (iptablesContext *ctx,
+                                                  const char *network,
+                                                  const char *iface,
+                                                  const char *physdev);
+
+int              iptablesAddForwardAllowRelatedIn(iptablesContext *ctx,
+                                                  const char *network,
+                                                  const char *iface,
+                                                  const char *physdev);
+int              iptablesRemoveForwardAllowRelatedIn(iptablesContext *ctx,
                                                   const char *network,
                                                   const char *iface,
                                                   const char *physdev);
@@ -83,13 +95,6 @@ int              iptablesRemoveForwardMasquerade (iptablesContext *ctx,
                                                   const char *network,
                                                   const char *physdev);
 
-#endif /* __QEMUD_IPTABLES_H__ */
+#endif /* WITH_QEMU */
 
-/*
- * Local variables:
- *  indent-tabs-mode: nil
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 4
- * End:
- */
+#endif /* __QEMUD_IPTABLES_H__ */

@@ -5,7 +5,7 @@
 #
 # By Richard Jones <rjones@redhat.com>
 #
-# $Id: remote_generate_stubs.pl,v 1.1 2007/06/11 11:47:01 rjones Exp $
+# $Id: remote_generate_stubs.pl,v 1.3 2008/05/22 15:20:25 berrange Exp $
 
 use strict;
 
@@ -84,8 +84,8 @@ if ($opt_d) {
     my @keys = sort (keys %calls);
     foreach (@keys) {
 	print "$_:\n";
-	print "\tname $calls{$_}->{name} ($calls{$_}->{ProcName})\n";
-	print "\t$calls{$_}->{args} -> $calls{$_}->{ret}\n";
+	print "        name $calls{$_}->{name} ($calls{$_}->{ProcName})\n";
+	print "        $calls{$_}->{args} -> $calls{$_}->{ret}\n";
     }
 }
 
@@ -93,7 +93,7 @@ if ($opt_d) {
 elsif ($opt_i) {
     my @keys = sort (keys %calls);
     foreach (@keys) {
-	print "static int remoteDispatch$calls{$_}->{ProcName} (struct qemud_client *client, remote_message_header *req, $calls{$_}->{args} *args, $calls{$_}->{ret} *ret);\n";
+	print "static int remoteDispatch$calls{$_}->{ProcName} (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, $calls{$_}->{args} *args, $calls{$_}->{ret} *ret);\n";
     }
 }
 
@@ -117,18 +117,18 @@ elsif ($opt_w) {
     my @keys = sort (keys %calls);
     foreach (@keys) {
 	print "case REMOTE_PROC_$calls{$_}->{UC_NAME}:\n";
-	print "\tfn = (dispatch_fn) remoteDispatch$calls{$_}->{ProcName};\n";
+	print "        fn = (dispatch_fn) remoteDispatch$calls{$_}->{ProcName};\n";
 	if ($calls{$_}->{args} ne "void") {
-	    print "\targs_filter = (xdrproc_t) xdr_$calls{$_}->{args};\n";
-	    print "\targs = (char *) &lv_$calls{$_}->{args};\n";
-	    print "\tmemset (&lv_$calls{$_}->{args}, 0, sizeof lv_$calls{$_}->{args});\n"
+	    print "        args_filter = (xdrproc_t) xdr_$calls{$_}->{args};\n";
+	    print "        args = (char *) &lv_$calls{$_}->{args};\n";
+	    print "        memset (&lv_$calls{$_}->{args}, 0, sizeof lv_$calls{$_}->{args});\n"
 	}
 	if ($calls{$_}->{ret} ne "void") {
-	    print "\tret_filter = (xdrproc_t) xdr_$calls{$_}->{ret};\n";
-	    print "\tret = (char *) &lv_$calls{$_}->{ret};\n";
-	    print "\tmemset (&lv_$calls{$_}->{ret}, 0, sizeof lv_$calls{$_}->{ret});\n"
+	    print "        ret_filter = (xdrproc_t) xdr_$calls{$_}->{ret};\n";
+	    print "        ret = (char *) &lv_$calls{$_}->{ret};\n";
+	    print "        memset (&lv_$calls{$_}->{ret}, 0, sizeof lv_$calls{$_}->{ret});\n"
 	}
-	print "\tbreak;\n";
+	print "        break;\n";
     }
 }
 
@@ -196,7 +196,8 @@ elsif ($opt_s) {
 	my $retvoid = $ret eq "void";
 
 	print "static int\n";
-	print "remoteDispatch$calls{$_}->{ProcName} (struct qemud_client *client,\n";
+	print "remoteDispatch$calls{$_}->{ProcName} (struct qemud_server *server,\n";
+	print "            struct qemud_client *client,\n";
 	print "            remote_message_header *req,\n";
 	print "            remote_get_max_vcpus_args *args,\n";
 	print "            remote_get_max_vcpus_ret *ret)\n";

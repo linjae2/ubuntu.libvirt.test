@@ -23,6 +23,8 @@
 #ifndef __VIR_CONSOLE_H__
 #define __VIR_CONSOLE_H__
 
+#ifndef __MINGW32__
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,13 +35,6 @@ extern "C" {
 }
 #endif
 
-#endif /* __VIR_CONSOLE_H__ */
+#endif /* !__MINGW32__ */
 
-/*
- * Local variables:
- *  indent-tabs-mode: nil
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 4
- * End:
- */
+#endif /* __VIR_CONSOLE_H__ */

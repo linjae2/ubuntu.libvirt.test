@@ -1,7 +1,7 @@
 /*
  * console.c: A dumb serial console client
  *
- * Copyright (C) 2007 Red Hat, Inc.
+ * Copyright (C) 2007, 2008 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,6 +20,10 @@
  * Daniel Berrange <berrange@redhat.com>
  */
 
+#include <config.h>
+
+#ifndef __MINGW32__
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -33,6 +37,7 @@
 
 #include "console.h"
 #include "internal.h"
+#include "util-lib.h"
 
 /* ie  Ctrl-]  as per telnet */
 #define CTRL_CLOSE_BRACKET '\35'
@@ -41,6 +46,19 @@ static int got_signal = 0;
 static void do_signal(int sig ATTRIBUTE_UNUSED) {
     got_signal = 1;
 }
+
+#ifndef HAVE_CFMAKERAW
+static void
+cfmakeraw (struct termios *attr)
+{
+    attr->c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+                         | INLCR | IGNCR | ICRNL | IXON);
+    attr->c_oflag &= ~OPOST;
+    attr->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    attr->c_cflag &= ~(CSIZE | PARENB);
+    attr->c_cflag |= CS8;
+}
+#endif /* !HAVE_CFMAKERAW */
 
 int vshRunConsole(const char *tty) {
     int ttyfd, ret = -1;
@@ -144,7 +162,8 @@ int vshRunConsole(const char *tty) {
 
                 while (sent < got) {
                     int done;
-                    if ((done = write(destfd, buf + sent, got - sent)) <= 0) {
+                    if ((done = safewrite(destfd, buf + sent, got - sent))
+                        <= 0) {
                         fprintf(stderr, _("failure writing output: %s\n"),
                                 strerror(errno));
                         goto cleanup;
@@ -178,11 +197,4 @@ int vshRunConsole(const char *tty) {
     return ret;
 }
 
-/*
- * Local variables:
- *  indent-tabs-mode: nil
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 4
- * End:
- */
+#endif /* !__MINGW32__ */
