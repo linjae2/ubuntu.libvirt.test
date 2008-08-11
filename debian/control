@@ -30,7 +30,8 @@ Architecture: any
 Conflicts: libvirt0-dbg (<< 0.4.2-6ubuntu1)
 Replaces: libvirt0-dbg (<< 0.4.2-6ubuntu1)
 Depends: ${shlibs:Depends}
-Recommends: lvm2, qemu
+Recommends: lvm2, kvm
+Suggests: qemu
 Description: library for interfacing with different virtualization systems
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
