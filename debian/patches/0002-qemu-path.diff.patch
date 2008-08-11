@@ -1,4 +1,4 @@
-From fbc646654ee67e0edd54b2967b494e95fff634f5 Mon Sep 17 00:00:00 2001
+From 795073534283bd96ce6f1b6e266fbccbdce5b250 Mon Sep 17 00:00:00 2001
 From: Guido Guenther <agx@sigxcpu.org>
 Date: Fri, 7 Mar 2008 09:08:26 +0100
 Subject: [PATCH] qemu-path.diff
@@ -9,11 +9,11 @@ Subject: [PATCH] qemu-path.diff
  src/qemu_driver.c |    2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 
-Index: libvirt-0.4.4/src/qemu_conf.c
-===================================================================
---- libvirt-0.4.4.orig/src/qemu_conf.c	2008-06-19 15:15:02.000000000 +0200
-+++ libvirt-0.4.4/src/qemu_conf.c	2008-06-25 18:32:42.073949951 +0200
-@@ -372,7 +372,7 @@
+diff --git a/src/qemu_conf.c b/src/qemu_conf.c
+index 17f0162..bda4fa1 100644
+--- a/src/qemu_conf.c
++++ b/src/qemu_conf.c
+@@ -372,7 +372,7 @@ qemudCapsInitGuest(virCapsPtr caps,
              if (access("/dev/kvm", F_OK) == 0 &&
                  virCapabilitiesAddGuestDomain(guest,
                                                "kvm",
@@ -22,15 +22,19 @@ Index: libvirt-0.4.4/src/qemu_conf.c
                                                NULL,
                                                0,
                                                NULL) == NULL)
-Index: libvirt-0.4.4/src/qemu_driver.c
-===================================================================
---- libvirt-0.4.4.orig/src/qemu_driver.c	2008-06-12 16:52:53.000000000 +0200
-+++ libvirt-0.4.4/src/qemu_driver.c	2008-06-25 18:33:09.337965278 +0200
-@@ -1682,6 +1682,7 @@
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index aae0df3..c49c83e 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -1681,7 +1681,7 @@ qemudMonitorCommand (const struct qemud_driver *driver ATTRIBUTE_UNUSED,
+ static const char *qemudProbe(void)
  {
      if ((virFileExists("/usr/bin/qemu")) ||
-         (virFileExists("/usr/bin/qemu-kvm")) ||
+-        (virFileExists("/usr/bin/qemu-kvm")) ||
 +        (virFileExists("/usr/bin/kvm")) ||
          (virFileExists("/usr/bin/xenner"))) {
          if (getuid() == 0) {
              return("qemu:///system");
+-- 
+1.5.5.4
+
