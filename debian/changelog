@@ -1,3 +1,13 @@
+libvirt (0.4.0-2ubuntu8.2) hardy-proposed; urgency=low
+
+  * masquerade-only-outbound-traffic.patch:
+    - Ensure masquerading rule only catches traffic leaving the virtual
+      network, and not traffic inside it.  (Backported from commit
+      d175caad25a4e80800d5e7e7d8c9d920a88b78e1 of
+      git://git.et.redhat.com/libvirt.git.) (LP: #227837).
+
+ -- J. Bruce Fields <bfields@fieldses.org>  Sun, 05 Oct 2008 15:13:50 -0400
+
 libvirt (0.4.0-2ubuntu8.1) hardy-security; urgency=low
 
   * SECURITY UPDATE: fix privilege escalation due to missing read only

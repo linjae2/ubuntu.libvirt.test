@@ -1,0 +1,23 @@
+diff --git a/src/iptables.c b/src/iptables.c
+index 272ecb4..6390e49 100644
+--- a/src/iptables.c
++++ b/src/iptables.c
+@@ -1032,6 +1032,7 @@ iptablesForwardMasquerade(iptablesContext *ctx,
+         return iptablesAddRemoveRule(ctx->nat_postrouting,
+                                      action,
+                                      "--source", network,
++                                     "--destination", "!", network,
+                                      "--out-interface", physdev,
+                                      "--jump", "MASQUERADE",
+                                      NULL);
+@@ -1039,6 +1040,7 @@ iptablesForwardMasquerade(iptablesContext *ctx,
+         return iptablesAddRemoveRule(ctx->nat_postrouting,
+                                      action,
+                                      "--source", network,
++                                     "--destination", "!", network,
+                                      "--jump", "MASQUERADE",
+                                      NULL);
+     }
+-- 
+1.5.5.rc1
+
