@@ -5,3 +5,4 @@
 0005-delayed_iff_up_bridge.patch
 0006-dont_clobber_existing_bridges.patch
 0007-better_default_uri_virsh.patch
+0008-lp287533.patch
