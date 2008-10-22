@@ -1,3 +1,10 @@
+libvirt (0.4.4-3ubuntu3) intrepid; urgency=low
+
+  * debian/patches/0008-lp287533.patch: allow 16 VCPUs when using kvm
+    (LP: #287533)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 22 Oct 2008 10:13:12 -0500
+
 libvirt (0.4.4-3ubuntu2) intrepid; urgency=low
 
   * Make QEmu a suggested package of libvirt0 rather than a recommended one. 
