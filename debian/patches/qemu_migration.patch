@@ -1,0 +1,1192 @@
+From: Daniel Veillard <veillard@redhat.com>
+Date: Fri, 14 Nov 2008 08:42:47 +0000 (+0000)
+Subject: KVM/QEmu migration support
+X-Git-Url: http://git.et.redhat.com/?p=libvirt.git;a=commitdiff_plain;h=0ef0ee26240a39ef6d557b8f9ba1c48da4cfc749
+
+KVM/QEmu migration support
+* qemud/remote.c qemud/remote_dispatch_localvars.h
+  qemud/remote_dispatch_proc_switch.h qemud/remote_dispatch_prototypes.h
+  qemud/remote_protocol.c qemud/remote_protocol.h
+  qemud/remote_protocol.x src/driver.h src/libvirt.c
+  src/libvirt_internal.h src/libvirt_sym.version src/lxc_driver.c
+  src/openvz_driver.c src/qemu_conf.h src/qemu_driver.c
+  src/remote_internal.c src/test.c src/virsh.c: large patch to
+  add migration support for KVM/QEmu, based on the work of Rich Jones
+  and Chris Lalancette. This introduce a new version of the prepare
+  and finish steps of the migration, so changes the driver API and
+  a lot of code.
+Daniel
+---
+
+Index: libvirt-0.4.6-5ubuntu1/ChangeLog
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/ChangeLog	2008-11-18 14:58:19.308586714 +0100
++++ libvirt-0.4.6-5ubuntu1/ChangeLog	2008-11-18 16:58:41.828583809 +0100
+@@ -1,3 +1,16 @@
++Fri Nov 14 09:38:22 CET 2008 Daniel Veillard <veillard@redhat.com>
++
++	* qemud/remote.c qemud/remote_dispatch_localvars.h
++	  qemud/remote_dispatch_proc_switch.h qemud/remote_dispatch_prototypes.h
++	  qemud/remote_protocol.c qemud/remote_protocol.h
++	  qemud/remote_protocol.x src/driver.h src/libvirt.c
++	  src/libvirt_internal.h src/libvirt_sym.version src/lxc_driver.c
++	  src/openvz_driver.c src/qemu_conf.h src/qemu_driver.c
++	  src/remote_internal.c src/test.c src/virsh.c: large patch to
++	  add migration support for KVM/QEmu, based on the work of Rich Jones
++	  and Chris Lalancette. This introduce a new version of the prepare
++	  and finish steps of the migration, so changes the driver API and
++	  a lot of code.
+ Tue Sep 23 22:45:47 CEST 2008 Daniel Veillard <veillard@redhat.com>
+ 
+ 	* configure.in libvirt.spec.in NEWS docs/*: release of libvirt-0.4.6
+Index: libvirt-0.4.6-5ubuntu1/qemud/remote.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/remote.c	2008-11-18 14:58:19.328584926 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/remote.c	2008-11-18 16:58:41.896583443 +0100
+@@ -1458,6 +1458,69 @@
+ }
+ 
+ static int
++remoteDispatchDomainMigratePrepare2 (struct qemud_server *server ATTRIBUTE_UNUSED,
++                                     struct qemud_client *client,
++                                     remote_message_header *req,
++                                     remote_domain_migrate_prepare2_args *args,
++                                     remote_domain_migrate_prepare2_ret *ret)
++{
++    int r;
++    char *cookie = NULL;
++    int cookielen = 0;
++    char *uri_in;
++    char **uri_out;
++    char *dname;
++    CHECK_CONN (client);
++
++    uri_in = args->uri_in == NULL ? NULL : *args->uri_in;
++    dname = args->dname == NULL ? NULL : *args->dname;
++
++    /* Wacky world of XDR ... */
++    if (VIR_ALLOC(uri_out) < 0) {
++        remoteDispatchSendError(client, req, VIR_ERR_NO_MEMORY, NULL);
++        return -2;
++    }
++
++    r = __virDomainMigratePrepare2 (client->conn, &cookie, &cookielen,
++                                    uri_in, uri_out,
++                                    args->flags, dname, args->resource,
++                                    args->dom_xml);
++    if (r == -1) return -1;
++
++    /* remoteDispatchClientRequest will free cookie, uri_out and
++     * the string if there is one.
++     */
++    ret->cookie.cookie_len = cookielen;
++    ret->cookie.cookie_val = cookie;
++    ret->uri_out = *uri_out == NULL ? NULL : uri_out;
++
++    return 0;
++}
++
++static int
++remoteDispatchDomainMigrateFinish2 (struct qemud_server *server ATTRIBUTE_UNUSED,
++                                    struct qemud_client *client,
++                                    remote_message_header *req,
++                                    remote_domain_migrate_finish2_args *args,
++                                    remote_domain_migrate_finish2_ret *ret)
++{
++    virDomainPtr ddom;
++    CHECK_CONN (client);
++
++    ddom = __virDomainMigrateFinish2 (client->conn, args->dname,
++                                      args->cookie.cookie_val,
++                                      args->cookie.cookie_len,
++                                      args->uri,
++                                      args->flags,
++                                      args->retcode);
++    if (ddom == NULL) return -1;
++
++    make_nonnull_domain (&ret->ddom, ddom);
++
++    return 0;
++}
++
++static int
+ remoteDispatchListDefinedDomains (struct qemud_server *server ATTRIBUTE_UNUSED,
+                                   struct qemud_client *client,
+                                   remote_message_header *req,
+Index: libvirt-0.4.6-5ubuntu1/qemud/remote_dispatch_localvars.h
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/remote_dispatch_localvars.h	2008-11-18 14:58:19.348583138 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/remote_dispatch_localvars.h	2008-11-18 16:58:41.916582214 +0100
+@@ -127,10 +127,14 @@
+ remote_list_networks_args lv_remote_list_networks_args;
+ remote_list_networks_ret lv_remote_list_networks_ret;
+ remote_storage_pool_undefine_args lv_remote_storage_pool_undefine_args;
++remote_domain_migrate_finish2_args lv_remote_domain_migrate_finish2_args;
++remote_domain_migrate_finish2_ret lv_remote_domain_migrate_finish2_ret;
+ remote_domain_set_autostart_args lv_remote_domain_set_autostart_args;
+ remote_storage_pool_get_autostart_args lv_remote_storage_pool_get_autostart_args;
+ remote_storage_pool_get_autostart_ret lv_remote_storage_pool_get_autostart_ret;
+ remote_node_get_free_memory_ret lv_remote_node_get_free_memory_ret;
++remote_domain_migrate_prepare2_args lv_remote_domain_migrate_prepare2_args;
++remote_domain_migrate_prepare2_ret lv_remote_domain_migrate_prepare2_ret;
+ remote_storage_vol_get_path_args lv_remote_storage_vol_get_path_args;
+ remote_storage_vol_get_path_ret lv_remote_storage_vol_get_path_ret;
+ remote_domain_lookup_by_id_args lv_remote_domain_lookup_by_id_args;
+Index: libvirt-0.4.6-5ubuntu1/qemud/remote_dispatch_proc_switch.h
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/remote_dispatch_proc_switch.h	2008-11-18 14:58:19.368610544 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/remote_dispatch_proc_switch.h	2008-11-18 16:58:41.956582339 +0100
+@@ -242,6 +242,15 @@
+         ret = (char *) &lv_remote_domain_migrate_finish_ret;
+         memset (&lv_remote_domain_migrate_finish_ret, 0, sizeof lv_remote_domain_migrate_finish_ret);
+         break;
++case REMOTE_PROC_DOMAIN_MIGRATE_FINISH2:
++        fn = (dispatch_fn) remoteDispatchDomainMigrateFinish2;
++        args_filter = (xdrproc_t) xdr_remote_domain_migrate_finish2_args;
++        args = (char *) &lv_remote_domain_migrate_finish2_args;
++        memset (&lv_remote_domain_migrate_finish2_args, 0, sizeof lv_remote_domain_migrate_finish2_args);
++        ret_filter = (xdrproc_t) xdr_remote_domain_migrate_finish2_ret;
++        ret = (char *) &lv_remote_domain_migrate_finish2_ret;
++        memset (&lv_remote_domain_migrate_finish2_ret, 0, sizeof lv_remote_domain_migrate_finish2_ret);
++        break;
+ case REMOTE_PROC_DOMAIN_MIGRATE_PERFORM:
+         fn = (dispatch_fn) remoteDispatchDomainMigratePerform;
+         args_filter = (xdrproc_t) xdr_remote_domain_migrate_perform_args;
+@@ -257,6 +266,15 @@
+         ret = (char *) &lv_remote_domain_migrate_prepare_ret;
+         memset (&lv_remote_domain_migrate_prepare_ret, 0, sizeof lv_remote_domain_migrate_prepare_ret);
+         break;
++case REMOTE_PROC_DOMAIN_MIGRATE_PREPARE2:
++        fn = (dispatch_fn) remoteDispatchDomainMigratePrepare2;
++        args_filter = (xdrproc_t) xdr_remote_domain_migrate_prepare2_args;
++        args = (char *) &lv_remote_domain_migrate_prepare2_args;
++        memset (&lv_remote_domain_migrate_prepare2_args, 0, sizeof lv_remote_domain_migrate_prepare2_args);
++        ret_filter = (xdrproc_t) xdr_remote_domain_migrate_prepare2_ret;
++        ret = (char *) &lv_remote_domain_migrate_prepare2_ret;
++        memset (&lv_remote_domain_migrate_prepare2_ret, 0, sizeof lv_remote_domain_migrate_prepare2_ret);
++        break;
+ case REMOTE_PROC_DOMAIN_PIN_VCPU:
+         fn = (dispatch_fn) remoteDispatchDomainPinVcpu;
+         args_filter = (xdrproc_t) xdr_remote_domain_pin_vcpu_args;
+Index: libvirt-0.4.6-5ubuntu1/qemud/remote_dispatch_prototypes.h
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/remote_dispatch_prototypes.h	2008-11-18 14:58:19.384585410 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/remote_dispatch_prototypes.h	2008-11-18 16:58:41.972582278 +0100
+@@ -32,8 +32,10 @@
+ static int remoteDispatchDomainLookupByUuid (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_lookup_by_uuid_args *args, remote_domain_lookup_by_uuid_ret *ret);
+ static int remoteDispatchDomainMemoryPeek (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_memory_peek_args *args, remote_domain_memory_peek_ret *ret);
+ static int remoteDispatchDomainMigrateFinish (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_migrate_finish_args *args, remote_domain_migrate_finish_ret *ret);
++static int remoteDispatchDomainMigrateFinish2 (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_migrate_finish2_args *args, remote_domain_migrate_finish2_ret *ret);
+ static int remoteDispatchDomainMigratePerform (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_migrate_perform_args *args, void *ret);
+ static int remoteDispatchDomainMigratePrepare (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_migrate_prepare_args *args, remote_domain_migrate_prepare_ret *ret);
++static int remoteDispatchDomainMigratePrepare2 (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_migrate_prepare2_args *args, remote_domain_migrate_prepare2_ret *ret);
+ static int remoteDispatchDomainPinVcpu (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_pin_vcpu_args *args, void *ret);
+ static int remoteDispatchDomainReboot (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_reboot_args *args, void *ret);
+ static int remoteDispatchDomainRestore (struct qemud_server *server, struct qemud_client *client, remote_message_header *req, remote_domain_restore_args *args, void *ret);
+Index: libvirt-0.4.6-5ubuntu1/qemud/remote_protocol.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/remote_protocol.c	2008-11-18 14:58:19.396584491 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/remote_protocol.c	2008-11-18 16:58:41.988582077 +0100
+@@ -948,6 +948,62 @@
+ }
+ 
+ bool_t
++xdr_remote_domain_migrate_prepare2_args (XDR *xdrs, remote_domain_migrate_prepare2_args *objp)
++{
++
++         if (!xdr_remote_string (xdrs, &objp->uri_in))
++                 return FALSE;
++         if (!xdr_u_quad_t (xdrs, &objp->flags))
++                 return FALSE;
++         if (!xdr_remote_string (xdrs, &objp->dname))
++                 return FALSE;
++         if (!xdr_u_quad_t (xdrs, &objp->resource))
++                 return FALSE;
++         if (!xdr_remote_nonnull_string (xdrs, &objp->dom_xml))
++                 return FALSE;
++        return TRUE;
++}
++
++bool_t
++xdr_remote_domain_migrate_prepare2_ret (XDR *xdrs, remote_domain_migrate_prepare2_ret *objp)
++{
++        char **objp_cpp0 = (char **) (void *) &objp->cookie.cookie_val;
++
++         if (!xdr_bytes (xdrs, objp_cpp0, (u_int *) &objp->cookie.cookie_len, REMOTE_MIGRATE_COOKIE_MAX))
++                 return FALSE;
++         if (!xdr_remote_string (xdrs, &objp->uri_out))
++                 return FALSE;
++        return TRUE;
++}
++
++bool_t
++xdr_remote_domain_migrate_finish2_args (XDR *xdrs, remote_domain_migrate_finish2_args *objp)
++{
++        char **objp_cpp0 = (char **) (void *) &objp->cookie.cookie_val;
++
++         if (!xdr_remote_nonnull_string (xdrs, &objp->dname))
++                 return FALSE;
++         if (!xdr_bytes (xdrs, objp_cpp0, (u_int *) &objp->cookie.cookie_len, REMOTE_MIGRATE_COOKIE_MAX))
++                 return FALSE;
++         if (!xdr_remote_nonnull_string (xdrs, &objp->uri))
++                 return FALSE;
++         if (!xdr_u_quad_t (xdrs, &objp->flags))
++                 return FALSE;
++         if (!xdr_int (xdrs, &objp->retcode))
++                 return FALSE;
++        return TRUE;
++}
++
++bool_t
++xdr_remote_domain_migrate_finish2_ret (XDR *xdrs, remote_domain_migrate_finish2_ret *objp)
++{
++
++         if (!xdr_remote_nonnull_domain (xdrs, &objp->ddom))
++                 return FALSE;
++        return TRUE;
++}
++
++bool_t
+ xdr_remote_list_defined_domains_args (XDR *xdrs, remote_list_defined_domains_args *objp)
+ {
+ 
+Index: libvirt-0.4.6-5ubuntu1/qemud/remote_protocol.h
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/remote_protocol.h	2008-11-18 14:58:19.412582543 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/remote_protocol.h	2008-11-18 16:58:41.996584560 +0100
+@@ -506,6 +506,41 @@
+ };
+ typedef struct remote_domain_migrate_finish_ret remote_domain_migrate_finish_ret;
+ 
++struct remote_domain_migrate_prepare2_args {
++        remote_string uri_in;
++        u_quad_t flags;
++        remote_string dname;
++        u_quad_t resource;
++        remote_nonnull_string dom_xml;
++};
++typedef struct remote_domain_migrate_prepare2_args remote_domain_migrate_prepare2_args;
++
++struct remote_domain_migrate_prepare2_ret {
++        struct {
++                u_int cookie_len;
++                char *cookie_val;
++        } cookie;
++        remote_string uri_out;
++};
++typedef struct remote_domain_migrate_prepare2_ret remote_domain_migrate_prepare2_ret;
++
++struct remote_domain_migrate_finish2_args {
++        remote_nonnull_string dname;
++        struct {
++                u_int cookie_len;
++                char *cookie_val;
++        } cookie;
++        remote_nonnull_string uri;
++        u_quad_t flags;
++        int retcode;
++};
++typedef struct remote_domain_migrate_finish2_args remote_domain_migrate_finish2_args;
++
++struct remote_domain_migrate_finish2_ret {
++        remote_nonnull_domain ddom;
++};
++typedef struct remote_domain_migrate_finish2_ret remote_domain_migrate_finish2_ret;
++
+ struct remote_list_defined_domains_args {
+         int maxnames;
+ };
+@@ -1189,6 +1224,8 @@
+         REMOTE_PROC_NODE_GET_FREE_MEMORY = 102,
+         REMOTE_PROC_DOMAIN_BLOCK_PEEK = 103,
+         REMOTE_PROC_DOMAIN_MEMORY_PEEK = 104,
++        REMOTE_PROC_DOMAIN_MIGRATE_PREPARE2 = 108,
++        REMOTE_PROC_DOMAIN_MIGRATE_FINISH2 = 109,
+ };
+ typedef enum remote_procedure remote_procedure;
+ 
+@@ -1295,6 +1332,10 @@
+ extern  bool_t xdr_remote_domain_migrate_perform_args (XDR *, remote_domain_migrate_perform_args*);
+ extern  bool_t xdr_remote_domain_migrate_finish_args (XDR *, remote_domain_migrate_finish_args*);
+ extern  bool_t xdr_remote_domain_migrate_finish_ret (XDR *, remote_domain_migrate_finish_ret*);
++extern  bool_t xdr_remote_domain_migrate_prepare2_args (XDR *, remote_domain_migrate_prepare2_args*);
++extern  bool_t xdr_remote_domain_migrate_prepare2_ret (XDR *, remote_domain_migrate_prepare2_ret*);
++extern  bool_t xdr_remote_domain_migrate_finish2_args (XDR *, remote_domain_migrate_finish2_args*);
++extern  bool_t xdr_remote_domain_migrate_finish2_ret (XDR *, remote_domain_migrate_finish2_ret*);
+ extern  bool_t xdr_remote_list_defined_domains_args (XDR *, remote_list_defined_domains_args*);
+ extern  bool_t xdr_remote_list_defined_domains_ret (XDR *, remote_list_defined_domains_ret*);
+ extern  bool_t xdr_remote_num_of_defined_domains_ret (XDR *, remote_num_of_defined_domains_ret*);
+@@ -1476,6 +1517,10 @@
+ extern bool_t xdr_remote_domain_migrate_perform_args ();
+ extern bool_t xdr_remote_domain_migrate_finish_args ();
+ extern bool_t xdr_remote_domain_migrate_finish_ret ();
++extern bool_t xdr_remote_domain_migrate_prepare2_args ();
++extern bool_t xdr_remote_domain_migrate_prepare2_ret ();
++extern bool_t xdr_remote_domain_migrate_finish2_args ();
++extern bool_t xdr_remote_domain_migrate_finish2_ret ();
+ extern bool_t xdr_remote_list_defined_domains_args ();
+ extern bool_t xdr_remote_list_defined_domains_ret ();
+ extern bool_t xdr_remote_num_of_defined_domains_ret ();
+Index: libvirt-0.4.6-5ubuntu1/qemud/remote_protocol.x
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/remote_protocol.x	2008-11-18 14:58:19.428585276 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/remote_protocol.x	2008-11-18 16:58:42.020582722 +0100
+@@ -519,6 +519,31 @@
+     remote_nonnull_domain ddom;
+ };
+ 
++struct remote_domain_migrate_prepare2_args {
++    remote_string uri_in;
++    unsigned hyper flags;
++    remote_string dname;
++    unsigned hyper resource;
++    remote_nonnull_string dom_xml;
++};
++
++struct remote_domain_migrate_prepare2_ret {
++    opaque cookie<REMOTE_MIGRATE_COOKIE_MAX>;
++    remote_string uri_out;
++};
++
++struct remote_domain_migrate_finish2_args {
++    remote_nonnull_string dname;
++    opaque cookie<REMOTE_MIGRATE_COOKIE_MAX>;
++    remote_nonnull_string uri;
++    unsigned hyper flags;
++    int retcode;
++};
++
++struct remote_domain_migrate_finish2_ret {
++    remote_nonnull_domain ddom;
++};
++
+ struct remote_list_defined_domains_args {
+     int maxnames;
+ };
+@@ -1086,7 +1111,9 @@
+     REMOTE_PROC_NODE_GET_FREE_MEMORY = 102,
+ 
+     REMOTE_PROC_DOMAIN_BLOCK_PEEK = 103,
+-    REMOTE_PROC_DOMAIN_MEMORY_PEEK = 104
++    REMOTE_PROC_DOMAIN_MEMORY_PEEK = 104,
++    REMOTE_PROC_DOMAIN_MIGRATE_PREPARE2 = 108,
++    REMOTE_PROC_DOMAIN_MIGRATE_FINISH2 = 109
+ };
+ 
+ /* Custom RPC structure. */
+Index: libvirt-0.4.6-5ubuntu1/src/driver.h
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/driver.h	2008-11-18 14:58:19.444584167 +0100
++++ libvirt-0.4.6-5ubuntu1/src/driver.h	2008-11-18 16:58:42.052582040 +0100
+@@ -55,6 +55,11 @@
+     /* Driver is not local. */
+ #define VIR_DRV_FEATURE_REMOTE 2
+ 
++    /* Driver supports V2-style virDomainMigrate, ie. domainMigratePrepare2/
++     * domainMigratePerform/domainMigrateFinish2.
++     */
++#define VIR_DRV_FEATURE_MIGRATION_V2 3
++
+ /* Internal feature-detection macro.  Don't call drv->supports_feature
+  * directly, because it may be NULL, use this macro instead.
+  *
+@@ -280,6 +285,28 @@
+     (*virDrvNodeGetFreeMemory)
+                     (virConnectPtr conn);
+ 
++typedef int
++    (*virDrvDomainMigratePrepare2)
++                    (virConnectPtr dconn,
++                     char **cookie,
++                     int *cookielen,
++                     const char *uri_in,
++                     char **uri_out,
++                     unsigned long flags,
++                     const char *dname,
++                     unsigned long resource,
++                     const char *dom_xml);
++
++typedef virDomainPtr
++    (*virDrvDomainMigrateFinish2)
++                    (virConnectPtr dconn,
++                     const char *dname,
++                     const char *cookie,
++                     int cookielen,
++                     const char *uri,
++                     unsigned long flags,
++                     int retcode);
++
+ /**
+  * _virDriver:
+  *
+@@ -352,6 +379,8 @@
+     virDrvDomainMemoryPeek      domainMemoryPeek;
+     virDrvNodeGetCellsFreeMemory	nodeGetCellsFreeMemory;
+     virDrvNodeGetFreeMemory		getFreeMemory;
++    virDrvDomainMigratePrepare2	domainMigratePrepare2;
++    virDrvDomainMigrateFinish2	domainMigrateFinish2;
+ };
+ 
+ typedef int
+Index: libvirt-0.4.6-5ubuntu1/src/libvirt.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/libvirt.c	2008-11-18 14:58:19.456583736 +0100
++++ libvirt-0.4.6-5ubuntu1/src/libvirt.c	2008-11-18 16:58:42.108583012 +0100
+@@ -2166,7 +2166,8 @@
+     virDomainPtr ddomain = NULL;
+     char *uri_out = NULL;
+     char *cookie = NULL;
+-    int cookielen = 0, ret;
++    char *dom_xml = NULL;
++    int cookielen = 0, ret, version = 0;
+     DEBUG("domain=%p, dconn=%p, flags=%lu, dname=%s, uri=%s, bandwidth=%lu",
+           domain, dconn, flags, dname, uri, bandwidth);
+ 
+@@ -2181,10 +2182,17 @@
+     }
+ 
+     /* Check that migration is supported by both drivers. */
+-    if (!VIR_DRV_SUPPORTS_FEATURE (conn->driver, conn,
+-                                   VIR_DRV_FEATURE_MIGRATION_V1) ||
+-        !VIR_DRV_SUPPORTS_FEATURE (dconn->driver, dconn,
+-                                   VIR_DRV_FEATURE_MIGRATION_V1)) {
++    if (VIR_DRV_SUPPORTS_FEATURE (conn->driver, conn,
++                                  VIR_DRV_FEATURE_MIGRATION_V1) &&
++        VIR_DRV_SUPPORTS_FEATURE (dconn->driver, dconn,
++                                  VIR_DRV_FEATURE_MIGRATION_V1))
++        version = 1;
++    else if (VIR_DRV_SUPPORTS_FEATURE (conn->driver, conn,
++                                       VIR_DRV_FEATURE_MIGRATION_V2) &&
++             VIR_DRV_SUPPORTS_FEATURE (dconn->driver, dconn,
++                                       VIR_DRV_FEATURE_MIGRATION_V2))
++        version = 2;
++    else {
+         virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+         return NULL;
+     }
+@@ -2200,17 +2208,49 @@
+      * the URI by setting uri_out.  If it does not wish to modify
+      * the URI, it should leave uri_out as NULL.
+      */
+-    ret = dconn->driver->domainMigratePrepare
+-        (dconn, &cookie, &cookielen, uri, &uri_out, flags, dname, bandwidth);
+-    if (ret == -1) goto done;
+-    if (uri == NULL && uri_out == NULL) {
+-        virLibConnError (conn, VIR_ERR_INTERNAL_ERROR,
+-                         _("domainMigratePrepare did not set uri"));
+-        goto done;
+-    }
+-    if (uri_out) uri = uri_out; /* Did domainMigratePrepare change URI? */
++    if (version == 1) {
++        ret = dconn->driver->domainMigratePrepare
++            (dconn, &cookie, &cookielen, uri, &uri_out, flags, dname,
++             bandwidth);
++        if (ret == -1) goto done;
++        if (uri == NULL && uri_out == NULL) {
++            virLibConnError (conn, VIR_ERR_INTERNAL_ERROR,
++                             _("domainMigratePrepare did not set uri"));
++            goto done;
++        }
++        if (uri_out) uri = uri_out; /* Did domainMigratePrepare change URI? */
++
++        assert (uri != NULL);
++    }
++    else /* if (version == 2) */ {
++        /* In version 2 of the protocol, the prepare step is slightly
++         * different.  We fetch the domain XML of the source domain
++         * and pass it to Prepare2.
++         */
++        if (!conn->driver->domainDumpXML) {
++            virLibConnError (conn, VIR_ERR_INTERNAL_ERROR, __FUNCTION__);
++            return NULL;
++        }
++        dom_xml = conn->driver->domainDumpXML (domain,
++                                               VIR_DOMAIN_XML_SECURE);
++
++        if (!dom_xml)
++            return NULL;
++
++        ret = dconn->driver->domainMigratePrepare2
++            (dconn, &cookie, &cookielen, uri, &uri_out, flags, dname,
++             bandwidth, dom_xml);
++        free (dom_xml);
++        if (ret == -1) goto done;
++        if (uri == NULL && uri_out == NULL) {
++            virLibConnError (conn, VIR_ERR_INTERNAL_ERROR,
++                             _("domainMigratePrepare2 did not set uri"));
++            goto done;
++        }
++        if (uri_out) uri = uri_out; /* Did domainMigratePrepare2 change URI? */
+ 
+-    assert (uri != NULL);
++        assert (uri != NULL);
++    }
+ 
+     /* Perform the migration.  The driver isn't supposed to return
+      * until the migration is complete.
+@@ -2218,18 +2258,28 @@
+     ret = conn->driver->domainMigratePerform
+         (domain, cookie, cookielen, uri, flags, dname, bandwidth);
+ 
+-    if (ret == -1) goto done;
+-
+-    /* Get the destination domain and return it or error.
+-     * 'domain' no longer actually exists at this point (or so we hope), but
+-     * we still use the object in memory in order to get the name.
+-     */
+-    dname = dname ? dname : domain->name;
+-    if (dconn->driver->domainMigrateFinish)
+-        ddomain = dconn->driver->domainMigrateFinish
+-            (dconn, dname, cookie, cookielen, uri, flags);
+-    else
+-        ddomain = virDomainLookupByName (dconn, dname);
++    if (version == 1) {
++        if (ret == -1) goto done;
++        /* Get the destination domain and return it or error.
++         * 'domain' no longer actually exists at this point
++         * (or so we hope), but we still use the object in memory
++         * in order to get the name.
++         */
++        dname = dname ? dname : domain->name;
++        if (dconn->driver->domainMigrateFinish)
++            ddomain = dconn->driver->domainMigrateFinish
++                (dconn, dname, cookie, cookielen, uri, flags);
++        else
++            ddomain = virDomainLookupByName (dconn, dname);
++    } else /* if (version == 2) */ {
++        /* In version 2 of the migration protocol, we pass the
++         * status code from the sender to the destination host,
++         * so it can do any cleanup if the migration failed.
++         */
++        dname = dname ? dname : domain->name;
++        ddomain = dconn->driver->domainMigrateFinish2
++            (dconn, dname, cookie, cookielen, uri, flags, ret);
++    }
+ 
+  done:
+     free (uri_out);
+@@ -2324,6 +2374,67 @@
+ }
+ 
+ 
++/* Not for public use.  This function is part of the internal
++ * implementation of migration in the remote case.
++ */
++int
++__virDomainMigratePrepare2 (virConnectPtr dconn,
++                            char **cookie,
++                            int *cookielen,
++                            const char *uri_in,
++                            char **uri_out,
++                            unsigned long flags,
++                            const char *dname,
++                            unsigned long bandwidth,
++                            const char *dom_xml)
++{
++    DEBUG("dconn=%p, cookie=%p, cookielen=%p, uri_in=%s, uri_out=%p, flags=%lu, dname=%s, bandwidth=%lu, dom_xml=%s", dconn, cookie, cookielen, uri_in, uri_out, flags, dname, bandwidth, dom_xml);
++
++    if (!VIR_IS_CONNECT (dconn)) {
++        virLibConnError (NULL, VIR_ERR_INVALID_CONN, __FUNCTION__);
++        return -1;
++    }
++
++    if (dconn->driver->domainMigratePrepare2)
++        return dconn->driver->domainMigratePrepare2 (dconn, cookie, cookielen,
++                                                     uri_in, uri_out,
++                                                     flags, dname, bandwidth,
++                                                     dom_xml);
++
++    virLibConnError (dconn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
++    return -1;
++}
++
++/* Not for public use.  This function is part of the internal
++ * implementation of migration in the remote case.
++ */
++virDomainPtr
++__virDomainMigrateFinish2 (virConnectPtr dconn,
++                           const char *dname,
++                           const char *cookie,
++                           int cookielen,
++                           const char *uri,
++                           unsigned long flags,
++                           int retcode)
++{
++    DEBUG("dconn=%p, dname=%s, cookie=%p, cookielen=%d, uri=%s, flags=%lu, retcode=%d", dconn, dname, cookie, cookielen, uri, flags, retcode);
++
++    if (!VIR_IS_CONNECT (dconn)) {
++        virLibConnError (NULL, VIR_ERR_INVALID_CONN, __FUNCTION__);
++        return NULL;
++    }
++
++    if (dconn->driver->domainMigrateFinish2)
++        return dconn->driver->domainMigrateFinish2 (dconn, dname,
++                                                    cookie, cookielen,
++                                                    uri, flags,
++                                                    retcode);
++
++    virLibConnError (dconn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
++    return NULL;
++}
++
++
+ /**
+  * virNodeGetInfo:
+  * @conn: pointer to the hypervisor connection
+Index: libvirt-0.4.6-5ubuntu1/src/libvirt_sym.version
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/libvirt_sym.version	2008-11-18 14:58:19.472585351 +0100
++++ libvirt-0.4.6-5ubuntu1/src/libvirt_sym.version	2008-11-18 16:58:42.124583649 +0100
+@@ -179,6 +179,8 @@
+ 	__virDomainMigratePrepare;
+ 	__virDomainMigratePerform;
+ 	__virDomainMigrateFinish;
++	__virDomainMigratePrepare2;
++	__virDomainMigrateFinish2;
+ 
+         __virFileReadAll;
+         __virStrToLong_i;
+Index: libvirt-0.4.6-5ubuntu1/src/lxc_driver.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/lxc_driver.c	2008-11-18 14:58:19.484585410 +0100
++++ libvirt-0.4.6-5ubuntu1/src/lxc_driver.c	2008-11-18 16:58:42.136583289 +0100
+@@ -1203,6 +1203,8 @@
+     NULL, /* domainMemoryPeek */
+     NULL, /* nodeGetCellsFreeMemory */
+     NULL, /* getFreeMemory */
++    NULL, /* domainMigratePrepare2 */
++    NULL, /* domainMigrateFinish2 */
+ };
+ 
+ 
+Index: libvirt-0.4.6-5ubuntu1/src/openvz_driver.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/openvz_driver.c	2008-11-18 14:58:19.500586675 +0100
++++ libvirt-0.4.6-5ubuntu1/src/openvz_driver.c	2008-11-18 16:58:42.160583336 +0100
+@@ -1014,6 +1014,8 @@
+     NULL, /* domainMemoryPeek */
+     NULL, /* nodeGetCellsFreeMemory */
+     NULL, /* nodeGetFreeMemory */
++    NULL, /* domainMigratePrepare2 */
++    NULL, /* domainMigrateFinish2 */
+ };
+ 
+ int openvzRegister(void) {
+Index: libvirt-0.4.6-5ubuntu1/src/qemu_conf.h
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/qemu_conf.h	2008-11-18 14:58:19.516584798 +0100
++++ libvirt-0.4.6-5ubuntu1/src/qemu_conf.h	2008-11-18 16:58:42.160583336 +0100
+@@ -70,6 +70,9 @@
+     virCapsPtr caps;
+ };
+ 
++/* Port numbers used for KVM migration. */
++#define QEMUD_MIGRATION_FIRST_PORT 49152
++#define QEMUD_MIGRATION_NUM_PORTS 64
+ 
+ void qemudReportError(virConnectPtr conn,
+                       virDomainPtr dom,
+Index: libvirt-0.4.6-5ubuntu1/src/qemu_driver.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/qemu_driver.c	2008-11-18 16:58:41.424587981 +0100
++++ libvirt-0.4.6-5ubuntu1/src/qemu_driver.c	2008-11-18 18:02:45.805585216 +0100
+@@ -755,7 +755,8 @@
+ static int
+ qemudInitCpus(virConnectPtr conn,
+               struct qemud_driver *driver,
+-              virDomainObjPtr vm) {
++              virDomainObjPtr vm,
++              const char *migrateFrom) {
+     char *info = NULL;
+ #if HAVE_SCHED_GETAFFINITY
+     cpu_set_t mask;
+@@ -791,13 +792,15 @@
+     }
+ #endif /* HAVE_SCHED_GETAFFINITY */
+ 
+-    /* Allow the CPUS to start executing */
+-    if (qemudMonitorCommand(driver, vm, "cont", &info) < 0) {
+-        qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+-                         "%s", _("resume operation failed"));
+-        return -1;
++    if (migrateFrom == NULL) {
++        /* Allow the CPUS to start executing */
++        if (qemudMonitorCommand(driver, vm, "cont", &info) < 0) {
++            qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                             "%s", _("resume operation failed"));
++            return -1;
++        }
++        VIR_FREE(info);
+     }
+-    VIR_FREE(info);
+ 
+     return 0;
+ }
+@@ -996,7 +999,7 @@
+                                driver) < 0) ||
+             (qemudWaitForMonitor(conn, driver, vm) < 0) ||
+             (qemudDetectVcpuPIDs(conn, driver, vm) < 0) ||
+-            (qemudInitCpus(conn, driver, vm) < 0)) {
++            (qemudInitCpus(conn, driver, vm, migrateFrom) < 0)) {
+             qemudShutdownVMDaemon(conn, driver, vm);
+             return -1;
+         }
+@@ -1799,6 +1802,16 @@
+     return 0;
+ }
+ 
++/* Which features are supported by this driver? */
++static int
++qemudSupportsFeature (virConnectPtr conn ATTRIBUTE_UNUSED, int feature)
++{
++    switch (feature) {
++    case VIR_DRV_FEATURE_MIGRATION_V2: return 1;
++    default: return 0;
++    }
++}
++
+ static const char *qemudGetType(virConnectPtr conn ATTRIBUTE_UNUSED) {
+     return "QEMU";
+ }
+@@ -4017,6 +4030,260 @@
+     return 0;
+ }
+ 
++/* Migration support. */
++
++/* Prepare is the first step, and it runs on the destination host.
++ *
++ * This starts an empty VM listening on a TCP port.
++ */
++static int
++qemudDomainMigratePrepare2 (virConnectPtr dconn,
++                            char **cookie ATTRIBUTE_UNUSED,
++                            int *cookielen ATTRIBUTE_UNUSED,
++                            const char *uri_in,
++                            char **uri_out,
++                            unsigned long flags ATTRIBUTE_UNUSED,
++                            const char *dname,
++                            unsigned long resource ATTRIBUTE_UNUSED,
++                            const char *dom_xml)
++{
++    static int port = 0;
++    struct qemud_driver *driver = (struct qemud_driver *)dconn->privateData;
++    virDomainDefPtr def;
++    virDomainObjPtr vm = NULL;
++    int this_port;
++    char hostname [HOST_NAME_MAX+1];
++    char migrateFrom [64];
++    const char *p;
++
++    if (!dom_xml) {
++        qemudReportError (dconn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                          "%s", _("no domain XML passed"));
++        return -1;
++    }
++
++    /* The URI passed in may be NULL or a string "tcp://somehostname:port".
++     *
++     * If the URI passed in is NULL then we allocate a port number
++     * from our pool of port numbers and return a URI of
++     * "tcp://ourhostname:port".
++     *
++     * If the URI passed in is not NULL then we try to parse out the
++     * port number and use that (note that the hostname is assumed
++     * to be a correct hostname which refers to the target machine).
++     */
++    if (uri_in == NULL) {
++        this_port = QEMUD_MIGRATION_FIRST_PORT + port++;
++        if (port == QEMUD_MIGRATION_NUM_PORTS) port = 0;
++
++        /* Get hostname */
++        if (gethostname (hostname, HOST_NAME_MAX+1) == -1) {
++            qemudReportError (dconn, NULL, NULL, VIR_ERR_SYSTEM_ERROR,
++                              "%s", strerror (errno));
++            return -1;
++        }
++
++        /* Caller frees */
++        if (asprintf(uri_out, "tcp:%s:%d", hostname, this_port) < 0) {
++            qemudReportError (dconn, NULL, NULL, VIR_ERR_NO_MEMORY,
++                              "%s", strerror (errno));
++            return -1;
++        }
++    } else {
++        /* Check the URI starts with "tcp:".  We will escape the
++         * URI when passing it to the qemu monitor, so bad
++         * characters in hostname part don't matter.
++         */
++        if (!STREQLEN (uri_in, "tcp:", 6)) {
++            qemudReportError (dconn, NULL, NULL, VIR_ERR_INVALID_ARG,
++                  "%s", _("only tcp URIs are supported for KVM migrations"));
++            return -1;
++        }
++
++        /* Get the port number. */
++        p = strrchr (uri_in, ':');
++        p++; /* definitely has a ':' in it, see above */
++        this_port = virParseNumber (&p);
++        if (this_port == -1 || p-uri_in != strlen (uri_in)) {
++            qemudReportError (dconn, NULL, NULL, VIR_ERR_INVALID_ARG,
++                              "%s", _("URI did not have ':port' at the end"));
++            return -1;
++        }
++    }
++
++    /* Parse the domain XML. */
++    if (!(def = virDomainDefParseString(dconn, driver->caps, dom_xml))) {
++        qemudReportError (dconn, NULL, NULL, VIR_ERR_OPERATION_FAILED,
++                          "%s", _("failed to parse XML"));
++        return -1;
++    }
++
++    /* Target domain name, maybe renamed. */
++    dname = dname ? dname : def->name;
++
++#if 1
++    /* Ensure the name and UUID don't already exist in an active VM */
++    vm = virDomainFindByUUID(driver->domains, def->uuid);
++#else
++    /* For TESTING ONLY you can change #if 1 -> #if 0 above and use
++     * this code which lets you do localhost migrations.  You must still
++     * supply a fresh 'dname' but this code assigns a random UUID.
++     */
++    if (virUUIDGenerate (def->uuid) == -1) {
++        qemudReportError (dconn, NULL, NULL, VIR_ERR_OPERATION_FAILED,
++            _("could not generate random UUID"));
++    }
++#endif
++
++    if (!vm) vm = virDomainFindByName(driver->domains, dname);
++    if (vm) {
++        if (virDomainIsActive(vm)) {
++            qemudReportError (dconn, NULL, NULL, VIR_ERR_OPERATION_FAILED,
++                              _("domain with the same name or UUID already exists as '%s'"),
++                              vm->def->name);
++            virDomainDefFree(def);
++            return -1;
++        }
++    }
++
++    if (!(vm = virDomainAssignDef(dconn,
++                                  &driver->domains,
++                                  def))) {
++        qemudReportError (dconn, NULL, NULL, VIR_ERR_OPERATION_FAILED,
++                          "%s", _("failed to assign new VM"));
++        virDomainDefFree(def);
++        return -1;
++    }
++
++    /* Domain starts inactive, even if the domain XML had an id field. */
++    vm->def->id = -1;
++
++    /* Start the QEMU daemon, with the same command-line arguments plus
++     * -incoming tcp:0.0.0.0:port
++     */
++    snprintf (migrateFrom, sizeof (migrateFrom), "tcp:0.0.0.0:%d", this_port);
++    if (qemudStartVMDaemon (dconn, driver, vm, migrateFrom) < 0) {
++        qemudReportError (dconn, NULL, NULL, VIR_ERR_OPERATION_FAILED,
++                          "%s", _("failed to start listening VM"));
++        if (!vm->persistent)
++            virDomainRemoveInactive(&driver->domains, vm);
++
++        return -1;
++    }
++
++    return 0;
++}
++
++/* Perform is the second step, and it runs on the source host. */
++static int
++qemudDomainMigratePerform (virDomainPtr dom,
++                           const char *cookie ATTRIBUTE_UNUSED,
++                           int cookielen ATTRIBUTE_UNUSED,
++                           const char *uri,
++                           unsigned long flags ATTRIBUTE_UNUSED,
++                           const char *dname ATTRIBUTE_UNUSED,
++                           unsigned long resource)
++{
++    struct qemud_driver *driver = (struct qemud_driver *)dom->conn->privateData;
++    virDomainObjPtr vm = virDomainFindByID(driver->domains, dom->id);
++    char *safe_uri;
++    char cmd[HOST_NAME_MAX+50];
++    char *info;
++
++    if (!vm) {
++        qemudReportError (dom->conn, dom, NULL, VIR_ERR_INVALID_DOMAIN,
++                          _("no domain with matching id %d"), dom->id);
++        return -1;
++    }
++
++    if (!virDomainIsActive(vm)) {
++        qemudReportError (dom->conn, dom, NULL, VIR_ERR_OPERATION_FAILED,
++                          "%s", _("domain is not running"));
++        return -1;
++    }
++
++    if (resource > 0) {
++        /* Issue migrate_set_speed command.  Don't worry if it fails. */
++        snprintf (cmd, sizeof cmd, "migrate_set_speed %lum", resource);
++        qemudMonitorCommand (driver, vm, cmd, &info);
++
++        DEBUG ("migrate_set_speed reply: %s", info);
++        VIR_FREE (info);
++    }
++
++    /* Issue the migrate command. */
++    safe_uri = qemudEscapeMonitorArg (uri);
++    if (!safe_uri) {
++        qemudReportError (dom->conn, dom, NULL, VIR_ERR_SYSTEM_ERROR,
++                          "%s", strerror (errno));
++        return -1;
++    }
++    snprintf (cmd, sizeof cmd, "migrate \"%s\"", safe_uri);
++    VIR_FREE (safe_uri);
++
++    if (qemudMonitorCommand (driver, vm, cmd, &info) < 0) {
++        qemudReportError (dom->conn, dom, NULL, VIR_ERR_OPERATION_FAILED,
++                          "%s", _("migrate operation failed"));
++        return -1;
++    }
++
++    DEBUG ("migrate reply: %s", info);
++
++    /* Now check for "fail" in the output string */
++    if (strstr(info, "fail") != NULL) {
++        qemudReportError (dom->conn, dom, NULL, VIR_ERR_OPERATION_FAILED,
++                          _("migrate failed: %s"), info);
++        VIR_FREE(info);
++        return -1;
++    }
++
++    VIR_FREE (info);
++
++    /* Clean up the source domain. */
++    qemudShutdownVMDaemon (dom->conn, driver, vm);
++    if (!vm->persistent)
++        virDomainRemoveInactive(&driver->domains, vm);
++
++    return 0;
++}
++
++/* Finish is the third and final step, and it runs on the destination host. */
++static virDomainPtr
++qemudDomainMigrateFinish2 (virConnectPtr dconn,
++                           const char *dname,
++                           const char *cookie ATTRIBUTE_UNUSED,
++                           int cookielen ATTRIBUTE_UNUSED,
++                           const char *uri ATTRIBUTE_UNUSED,
++                           unsigned long flags ATTRIBUTE_UNUSED,
++                           int retcode)
++{
++    struct qemud_driver *driver = (struct qemud_driver *)dconn->privateData;
++    virDomainObjPtr vm = virDomainFindByName(driver->domains, dname);
++    virDomainPtr dom;
++    char *info = NULL;
++
++    if (!vm) {
++        qemudReportError (dconn, NULL, NULL, VIR_ERR_INVALID_DOMAIN,
++                          _("no domain with matching name %s"), dname);
++        return NULL;
++    }
++
++    /* Did the migration go as planned?  If yes, return the domain
++     * object, but if no, clean up the empty qemu process.
++     */
++    if (retcode == 0) {
++        dom = virGetDomain (dconn, vm->def->name, vm->def->uuid);
++        VIR_FREE(info);
++        vm->state = VIR_DOMAIN_RUNNING;
++        return dom;
++    } else {
++        qemudShutdownVMDaemon (dconn, driver, vm);
++        if (!vm->persistent)
++            virDomainRemoveInactive(&driver->domains, vm);
++        return NULL;
++    }
++}
++
+ static virDriver qemuDriver = {
+     VIR_DRV_QEMU,
+     "QEMU",
+@@ -4024,7 +4291,7 @@
+     qemudProbe, /* probe */
+     qemudOpen, /* open */
+     qemudClose, /* close */
+-    NULL, /* supports_feature */
++    qemudSupportsFeature, /* supports_feature */
+     qemudGetType, /* type */
+     qemudGetVersion, /* version */
+     qemudGetHostname, /* hostname */
+@@ -4073,8 +4340,8 @@
+     NULL, /* domainGetSchedulerType */
+     NULL, /* domainGetSchedulerParameters */
+     NULL, /* domainSetSchedulerParameters */
+-    NULL, /* domainMigratePrepare */
+-    NULL, /* domainMigratePerform */
++    NULL, /* domainMigratePrepare (v1) */
++    qemudDomainMigratePerform, /* domainMigratePerform */
+     NULL, /* domainMigrateFinish */
+     qemudDomainBlockStats, /* domainBlockStats */
+     qemudDomainInterfaceStats, /* domainInterfaceStats */
+@@ -4087,6 +4354,8 @@
+     NULL, /* nodeGetCellsFreeMemory */
+     NULL, /* getFreeMemory */
+ #endif
++    qemudDomainMigratePrepare2, /* domainMigratePrepare2 */
++    qemudDomainMigrateFinish2, /* domainMigrateFinish2 */
+ };
+ 
+ static virNetworkDriver qemuNetworkDriver = {
+Index: libvirt-0.4.6-5ubuntu1/src/remote_internal.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/remote_internal.c	2008-11-18 14:58:19.544583957 +0100
++++ libvirt-0.4.6-5ubuntu1/src/remote_internal.c	2008-11-18 16:58:42.188583334 +0100
+@@ -1953,6 +1953,73 @@
+ }
+ 
+ static int
++remoteDomainMigratePrepare2 (virConnectPtr dconn,
++                             char **cookie, int *cookielen,
++                             const char *uri_in, char **uri_out,
++                             unsigned long flags, const char *dname,
++                             unsigned long resource,
++                             const char *dom_xml)
++{
++    remote_domain_migrate_prepare2_args args;
++    remote_domain_migrate_prepare2_ret ret;
++    GET_PRIVATE (dconn, -1);
++
++    args.uri_in = uri_in == NULL ? NULL : (char **) &uri_in;
++    args.flags = flags;
++    args.dname = dname == NULL ? NULL : (char **) &dname;
++    args.resource = resource;
++    args.dom_xml = (char *) dom_xml;
++
++    memset (&ret, 0, sizeof ret);
++    if (call (dconn, priv, 0, REMOTE_PROC_DOMAIN_MIGRATE_PREPARE2,
++              (xdrproc_t) xdr_remote_domain_migrate_prepare2_args, (char *) &args,
++              (xdrproc_t) xdr_remote_domain_migrate_prepare2_ret, (char *) &ret) == -1)
++        return -1;
++
++    if (ret.cookie.cookie_len > 0) {
++        *cookie = ret.cookie.cookie_val; /* Caller frees. */
++        *cookielen = ret.cookie.cookie_len;
++    }
++    if (ret.uri_out)
++        *uri_out = *ret.uri_out; /* Caller frees. */
++
++    return 0;
++}
++
++static virDomainPtr
++remoteDomainMigrateFinish2 (virConnectPtr dconn,
++                            const char *dname,
++                            const char *cookie,
++                            int cookielen,
++                            const char *uri,
++                            unsigned long flags,
++                            int retcode)
++{
++    virDomainPtr ddom;
++    remote_domain_migrate_finish2_args args;
++    remote_domain_migrate_finish2_ret ret;
++    GET_PRIVATE (dconn, NULL);
++
++    args.dname = (char *) dname;
++    args.cookie.cookie_len = cookielen;
++    args.cookie.cookie_val = (char *) cookie;
++    args.uri = (char *) uri;
++    args.flags = flags;
++    args.retcode = retcode;
++
++    memset (&ret, 0, sizeof ret);
++    if (call (dconn, priv, 0, REMOTE_PROC_DOMAIN_MIGRATE_FINISH2,
++              (xdrproc_t) xdr_remote_domain_migrate_finish2_args, (char *) &args,
++              (xdrproc_t) xdr_remote_domain_migrate_finish2_ret, (char *) &ret) == -1)
++        return NULL;
++
++    ddom = get_nonnull_domain (dconn, ret.ddom);
++    xdr_free ((xdrproc_t) &xdr_remote_domain_migrate_finish2_ret, (char *) &ret);
++
++    return ddom;
++}
++
++static int
+ remoteListDefinedDomains (virConnectPtr conn, char **const names, int maxnames)
+ {
+     int i;
+@@ -4875,6 +4942,8 @@
+     .domainMemoryPeek = remoteDomainMemoryPeek,
+     .nodeGetCellsFreeMemory = remoteNodeGetCellsFreeMemory,
+     .getFreeMemory = remoteNodeGetFreeMemory,
++    .domainMigratePrepare2 = remoteDomainMigratePrepare2,
++    .domainMigrateFinish2 = remoteDomainMigrateFinish2,
+ };
+ 
+ static virNetworkDriver network_driver = {
+Index: libvirt-0.4.6-5ubuntu1/src/test.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/test.c	2008-11-18 14:58:19.556585622 +0100
++++ libvirt-0.4.6-5ubuntu1/src/test.c	2008-11-18 16:58:42.220582652 +0100
+@@ -1595,6 +1595,8 @@
+     NULL, /* domainMemoryPeek */
+     testNodeGetCellsFreeMemory, /* nodeGetCellsFreeMemory */
+     NULL, /* getFreeMemory */
++    NULL, /* domainMigratePrepare2 */
++    NULL, /* domainMigrateFinish2 */
+ };
+ 
+ static virNetworkDriver testNetworkDriver = {
+Index: libvirt-0.4.6-5ubuntu1/src/virsh.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/virsh.c	2008-11-18 16:58:41.700584860 +0100
++++ libvirt-0.4.6-5ubuntu1/src/virsh.c	2008-11-18 16:58:42.224583161 +0100
+@@ -2228,6 +2228,7 @@
+     {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+     {"desturi", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("connection URI of the destination host")},
+     {"migrateuri", VSH_OT_DATA, 0, gettext_noop("migration URI, usually can be omitted")},
++    {"dname", VSH_OT_DATA, 0, gettext_noop("rename to new name during migration (if supported)")},
+     {NULL, 0, 0, NULL}
+ };
+ 
+@@ -2237,6 +2238,7 @@
+     virDomainPtr dom = NULL;
+     const char *desturi;
+     const char *migrateuri;
++    const char *dname;
+     int flags = 0, found, ret = FALSE;
+     virConnectPtr dconn = NULL;
+     virDomainPtr ddom = NULL;
+@@ -2256,6 +2258,9 @@
+     migrateuri = vshCommandOptString (cmd, "migrateuri", &found);
+     if (!found) migrateuri = NULL;
+ 
++    dname = vshCommandOptString (cmd, "dname", &found);
++    if (!found) migrateuri = dname;
++
+     if (vshCommandOptBool (cmd, "live"))
+         flags |= VIR_MIGRATE_LIVE;
+ 
+@@ -2264,7 +2269,7 @@
+     if (!dconn) goto done;
+ 
+     /* Migrate. */
+-    ddom = virDomainMigrate (dom, dconn, flags, NULL, migrateuri, 0);
++    ddom = virDomainMigrate (dom, dconn, flags, dname, migrateuri, 0);
+     if (!ddom) goto done;
+ 
+     ret = TRUE;
+Index: libvirt-0.4.6-5ubuntu1/src/internal.h
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/internal.h	2008-11-18 14:58:19.588587664 +0100
++++ libvirt-0.4.6-5ubuntu1/src/internal.h	2008-11-18 16:58:42.252581970 +0100
+@@ -361,6 +361,8 @@
+ int __virDomainMigratePrepare (virConnectPtr dconn, char **cookie, int *cookielen, const char *uri_in, char **uri_out, unsigned long flags, const char *dname, unsigned long bandwidth);
+ int __virDomainMigratePerform (virDomainPtr domain, const char *cookie, int cookielen, const char *uri, unsigned long flags, const char *dname, unsigned long bandwidth);
+ virDomainPtr __virDomainMigrateFinish (virConnectPtr dconn, const char *dname, const char *cookie, int cookielen, const char *uri, unsigned long flags);
++int __virDomainMigratePrepare2 (virConnectPtr dconn, char **cookie, int *cookielen, const char *uri_in, char **uri_out, unsigned long flags, const char *dname, unsigned long bandwidth, const char *dom_xml);
++virDomainPtr __virDomainMigrateFinish2 (virConnectPtr dconn, const char *dname, const char *cookie, int cookielen, const char *uri, unsigned long flags, int retcode);
+ 
+ typedef struct _virStringList virStringList;
+ 
