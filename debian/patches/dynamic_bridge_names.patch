@@ -1,0 +1,36 @@
+Index: libvirt-0.4.6-5ubuntu1/src/bridge.c
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/src/bridge.c	2008-11-18 14:51:45.184583106 +0100
++++ libvirt-0.4.6-5ubuntu1/src/bridge.c	2008-11-18 14:56:24.377255498 +0100
+@@ -120,7 +120,13 @@
+  * @name: the bridge name
+  *
+  * This function register a new bridge
++ * This function registers a new bridge, @name can be either:
++ *  - a fixed name
++ *  - a name template with '%d' for dynamic name allocation
++ *  - an empty string which will be treated like "virbr%d"
+  *
++ * In either case the final name for the bridge will be stored in @name.
++*
+  * Returns 0 in case of success or an errno code in case of failure.
+  */
+ #ifdef SIOCBRADDBR
+@@ -131,7 +137,7 @@
+     if (!ctl || !ctl->fd || !name)
+         return EINVAL;
+ 
+-    if (*name) {
++    if (*name && !strstr(*name, "%d")) {
+         if (ioctl(ctl->fd, SIOCBRADDBR, *name) == 0)
+             return 0;
+     } else {
+@@ -139,7 +145,7 @@
+         do {
+             char try[50];
+ 
+-            snprintf(try, sizeof(try), "virbr%d", id);
++            snprintf(try, sizeof(try), *name ? *name : "virbr%d", id);
+ 
+             if (ioctl(ctl->fd, SIOCBRADDBR, try) == 0) {
+                 if (!(*name = strdup(try))) {

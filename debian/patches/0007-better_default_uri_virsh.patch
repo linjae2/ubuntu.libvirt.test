@@ -1,0 +1,29 @@
+Index: libvirt-0.4.2-5ubuntu1/src/virsh.c
+===================================================================
+--- libvirt-0.4.2-5ubuntu1.orig/src/virsh.c	2008-05-01 03:07:34.000000000 +0200
++++ libvirt-0.4.2-5ubuntu1/src/virsh.c	2008-05-01 22:50:36.403798885 +0200
+@@ -63,6 +63,8 @@
+ #define VSH_PROMPT_RW    "virsh # "
+ #define VSH_PROMPT_RO    "virsh > "
+ 
++#include "remote_internal.h"
++
+ #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
+ #define DIFF_MSEC(T, U) \
+         ((((int) ((T)->tv_sec - (U)->tv_sec)) * 1000000.0 + \
+@@ -6566,8 +6568,15 @@
+ 
+     if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
+         ctl->name = strdup(defaultConn);
++    } else if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
++        ctl->name = strdup("qemu:///system");
++    } else {
++        ctl->name = strdup("qemu:///session");
+     }
+ 
++    if (!ctl->quiet)
++        fprintf(stderr, _("Connecting to uri: %s\n"), ctl->name);
++
+     if (!vshParseArgv(ctl, argc, argv)) {
+         vshDeinit(ctl);
+         exit(EXIT_FAILURE);

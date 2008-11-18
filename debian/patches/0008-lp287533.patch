@@ -1,0 +1,19 @@
+#
+# https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/287533
+# Description: allow 16 VCPUs when using kvm
+#
+diff -Nur libvirt-0.4.4/src/qemu_driver.c libvirt-0.4.4.new/src/qemu_driver.c
+--- libvirt-0.4.4/src/qemu_driver.c	2008-10-22 10:09:30.000000000 -0500
++++ libvirt-0.4.4.new/src/qemu_driver.c	2008-10-22 10:10:54.000000000 -0500
+@@ -1746,7 +1746,10 @@
+     /* XXX future KVM will support SMP. Need to probe
+        kernel to figure out KVM module version i guess */
+     if (STRCASEEQ(type, "kvm"))
+-        return 1;
++        /* Ubuntu supports up to 16 VCPUs now
++         * https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/287533
++         */
++        return 16;
+ 
+     if (STRCASEEQ(type, "kqemu"))
+         return 1;
