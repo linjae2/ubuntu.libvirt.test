@@ -9,3 +9,4 @@ better_default_uri_virsh.patch
 nic-model.patch -p0
 disk-bus.patch
 graceful_shutdown.patch -p0
+CVE-2008-5086.patch
