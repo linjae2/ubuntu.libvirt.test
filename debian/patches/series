@@ -6,3 +6,4 @@
 0006-dont_clobber_existing_bridges.patch
 0007-better_default_uri_virsh.patch
 0008-lp287533.patch
+0009-CVE-2008-5086.patch
