@@ -1,3 +1,14 @@
+libvirt (0.4.6-5ubuntu2) jaunty; urgency=low
+
+  * SECURITY UPDATE: fix privilege escalation due to missing read only
+    connection checks
+    - debian/patches/0009-CVE-2008-5086.patch: update functions in
+      src/libvirt.c to check against VIR_CONNECT_RO and return with operation
+      denied error
+    - CVE-2008-5086
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 16 Dec 2008 10:47:09 -0600
+
 libvirt (0.4.6-5ubuntu1) jaunty; urgency=low
 
   * Merge from debian unstable, remaining changes:

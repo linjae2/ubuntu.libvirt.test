@@ -8,3 +8,4 @@
 0007-better_default_uri_virsh.patch
 qemu_migration.patch
 dynamic_bridge_names.patch
+0009-CVE-2008-5086.patch
