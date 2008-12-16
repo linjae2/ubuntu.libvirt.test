@@ -1953,6 +1953,11 @@ virDomainSetAutostart(virDomainPtr domain,
 
     conn = domain->conn;
 
+    if (domain->conn->flags & VIR_CONNECT_RO) {
+        virLibDomainError(domain, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        return (-1);
+    }
+
     if (conn->driver->domainSetAutostart)
         return conn->driver->domainSetAutostart (domain, autostart);
 
@@ -2820,6 +2825,11 @@ virNetworkSetAutostart(virNetworkPtr network,
 
     if (!VIR_IS_NETWORK(network)) {
         virLibNetworkError(network, VIR_ERR_INVALID_NETWORK, __FUNCTION__);
+        return (-1);
+    }
+
+    if (network->conn->flags & VIR_CONNECT_RO) {
+        virLibNetworkError(network, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
         return (-1);
     }
 

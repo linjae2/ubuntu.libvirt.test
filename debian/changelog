@@ -1,3 +1,13 @@
+libvirt (0.3.0-0ubuntu2.1) gutsy-security; urgency=low
+
+  * SECURITY UPDATE: fix privilege escalation due to missing read only
+    connection checks
+    - update functions in src/libvirt.c to check against VIR_CONNECT_RO and
+      return with operation denied error
+    - CVE-2008-5086
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 16 Dec 2008 11:06:27 -0600
+
 libvirt (0.3.0-0ubuntu2) gutsy; urgency=low
 
   * Add lingnutls-dev Build-Dep.
