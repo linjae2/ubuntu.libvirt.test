@@ -1,0 +1,1900 @@
+Index: libvirt-0.5.1/configure.in
+===================================================================
+--- libvirt-0.5.1.orig/configure.in	2009-01-08 22:51:34.332438504 +0100
++++ libvirt-0.5.1/configure.in	2009-01-08 22:51:52.247450957 +0100
+@@ -174,6 +174,8 @@
+ AC_ARG_WITH([remote],
+ [  --with-remote           add remote driver support (on)],[],[with_remote=yes])
+ AC_ARG_WITH([libvirtd],
++AC_ARG_WITH([one],
++[  --with-one              add ONE support (on)],[],[with_one=yes])
+ [  --with-libvirtd         add libvirtd support (on)],[],[with_libvirtd=yes])
+ 
+ dnl
+@@ -349,6 +351,19 @@
+ AC_SUBST([XEN_LIBS])
+ 
+ dnl
++dnl OpenNebula driver Compilation setting
++dnl
++
++if test "$with_one" = "yes" ; then
++LIBVIRT_FEATURES="$LIBVIRT_FEATURES -DWITH_ONE -I$ONE_LOCATION/include"
++ONE_LIBS="-L/usr/local/lib -lxmlrpc_client++ -lxmlrpc -lxmlrpc_util -lxmlrpc_xmlparse -lxmlrpc_xmltok -lxmlrpc++ -lxmlrpc_client -lxmlrpc_util -L$ONE_LOCATION/lib -loneapi"
++AC_SUBST([ONE_LIBS])
++AC_DEFINE_UNQUOTED([WITH_ONE],1,[whether Open Nebula Driver is enabled])
++fi
++AM_CONDITIONAL([WITH_ONE],[test "$with_one" = "yes"])
++
++
++
+ dnl check for kernel headers required by xen_inotify
+ dnl
+ if test "$with_xen" != "yes"; then
+@@ -1273,6 +1288,7 @@
+ AC_MSG_NOTICE([  OpenVZ: $with_openvz])
+ AC_MSG_NOTICE([     LXC: $with_lxc])
+ AC_MSG_NOTICE([    Test: $with_test])
++AC_MSG_NOTICE([     ONE: $with_one])
+ AC_MSG_NOTICE([  Remote: $with_remote])
+ AC_MSG_NOTICE([ Network: $with_network])
+ AC_MSG_NOTICE([Libvirtd: $with_libvirtd])
+@@ -1339,6 +1355,9 @@
+ AC_MSG_NOTICE([  devkit: no])
+ fi
+ AC_MSG_NOTICE([])
++if test "$with_one" = "yes" ; then
++AC_MSG_NOTICE([  one: $ONE_LIBS])
++fi
+ AC_MSG_NOTICE([Test suite])
+ AC_MSG_NOTICE([])
+ AC_MSG_NOTICE([  Coverage: $enable_coverage])
+Index: libvirt-0.5.1/include/libvirt/virterror.h
+===================================================================
+--- libvirt-0.5.1.orig/include/libvirt/virterror.h	2009-01-08 22:52:04.463436158 +0100
++++ libvirt-0.5.1/include/libvirt/virterror.h	2009-01-08 22:52:14.068464871 +0100
+@@ -61,6 +61,7 @@
+     VIR_FROM_UML,       /* Error at the UML driver */
+     VIR_FROM_NODEDEV, /* Error from node device monitor */
+     VIR_FROM_XEN_INOTIFY, /* Error from xen inotify layer */
++    VIR_FROM_ONE,
+ } virErrorDomain;
+ 
+ 
+Index: libvirt-0.5.1/src/domain_conf.c
+===================================================================
+--- libvirt-0.5.1.orig/src/domain_conf.c	2009-01-08 22:52:27.435438046 +0100
++++ libvirt-0.5.1/src/domain_conf.c	2009-01-08 22:53:20.911476133 +0100
+@@ -52,7 +52,8 @@
+               "ldom",
+               "test",
+               "vmware",
+-              "hyperv")
++              "hyperv",
++              "one")
+ 
+ VIR_ENUM_IMPL(virDomainBoot, VIR_DOMAIN_BOOT_LAST,
+               "fd",
+Index: libvirt-0.5.1/src/domain_conf.h
+===================================================================
+--- libvirt-0.5.1.orig/src/domain_conf.h	2009-01-08 22:52:27.531439074 +0100
++++ libvirt-0.5.1/src/domain_conf.h	2009-01-08 22:53:26.423438826 +0100
+@@ -47,6 +47,7 @@
+     VIR_DOMAIN_VIRT_TEST,
+     VIR_DOMAIN_VIRT_VMWARE,
+     VIR_DOMAIN_VIRT_HYPERV,
++    VIR_DOMAIN_VIRT_ONE,
+ 
+     VIR_DOMAIN_VIRT_LAST,
+ };
+Index: libvirt-0.5.1/src/driver.h
+===================================================================
+--- libvirt-0.5.1.orig/src/driver.h	2009-01-08 22:52:35.132437247 +0100
++++ libvirt-0.5.1/src/driver.h	2009-01-08 22:53:43.492436144 +0100
+@@ -20,6 +20,7 @@
+     VIR_DRV_OPENVZ = 5,
+     VIR_DRV_LXC = 6,
+     VIR_DRV_UML = 7,
++    VIR_DRV_ONE = 8,
+ } virDrvNo;
+ 
+ 
+Index: libvirt-0.5.1/src/libvirt.c
+===================================================================
+--- libvirt-0.5.1.orig/src/libvirt.c	2009-01-08 22:52:40.024437626 +0100
++++ libvirt-0.5.1/src/libvirt.c	2009-01-08 22:53:54.648437115 +0100
+@@ -54,6 +54,9 @@
+ #ifdef WITH_OPENVZ
+ #include "openvz_driver.h"
+ #endif
++#ifdef WITH_ONE
++#include "one_driver.h"
++#endif
+ #endif
+ 
+ /*
+@@ -311,6 +314,9 @@
+  * @info: extra information string
+  *
+  * Handle an error at the connection level
++#ifdef WITH_ONE
++    if (oneRegister() == -1) return -1;
++#endif
+  */
+ static void
+ virLibConnError(virConnectPtr conn, virErrorNumber error, const char *info)
+@@ -774,6 +780,10 @@
+ #endif
+ #if WITH_REMOTE
+         if (STRCASEEQ(type, "Remote"))
++#if WITH_ONE
++        if (STRCASEEQ(type, "ONE"))
++            *typeVer = LIBVIR_VERSION_NUMBER;
++#endif
+             *typeVer = remoteVersion();
+ #endif
+         if (*typeVer == 0) {
+Index: libvirt-0.5.1/src/Makefile.am
+===================================================================
+--- libvirt-0.5.1.orig/src/Makefile.am	2009-01-08 22:57:20.339464746 +0100
++++ libvirt-0.5.1/src/Makefile.am	2009-01-08 22:57:24.471466998 +0100
+@@ -130,6 +130,9 @@
+ UML_DRIVER_SOURCES =						\
+ 		uml_conf.c uml_conf.h				\
+ 		uml_driver.c uml_driver.h
++ONE_DRIVER_SOURCES =						\
++		one_conf.c one_conf.h				\
++		one_driver.c one_driver.h
+ 
+ NETWORK_DRIVER_SOURCES =					\
+ 		network_driver.h network_driver.c
+@@ -298,6 +301,14 @@
+ libvirt_driver_uml_la_SOURCES = $(UML_DRIVER_SOURCES)
+ endif
+ 
++if WITH_ONE
++noinst_LTLIBRARIES += libvirt_driver_one.la
++libvirt_la_LIBADD  += libvirt_driver_one.la
++libvirt_driver_one_la_SOURCES = $(ONE_DRIVER_SOURCES)
++libvirt_driver_one_la_LDFLAGS = $(ONE_LIBS)
++libvirt_driver_one_la_CFLAGS  = "-DWITH_ONE"
++endif
++
+ if WITH_NETWORK
+ if WITH_DRIVER_MODULES
+ mod_LTLIBRARIES += libvirt_driver_network.la
+@@ -380,6 +391,7 @@
+ 		$(LXC_DRIVER_SOURCES)				\
+ 		$(UML_DRIVER_SOURCES)				\
+ 		$(OPENVZ_DRIVER_SOURCES)			\
++		$(ONE_DRIVER_SOURCES)				\
+ 		$(NETWORK_DRIVER_SOURCES)			\
+ 		$(STORAGE_DRIVER_SOURCES)			\
+ 		$(STORAGE_DRIVER_FS_SOURCES)			\
+Index: libvirt-0.5.1/src/Makefile.in
+===================================================================
+--- libvirt-0.5.1.orig/src/Makefile.in	2009-01-08 22:58:07.580436084 +0100
++++ libvirt-0.5.1/src/Makefile.in	2009-01-08 22:58:24.508458222 +0100
+@@ -57,31 +57,33 @@
+ @WITH_DRIVER_MODULES_TRUE@@WITH_UML_TRUE@am__append_21 = libvirt_driver_uml.la
+ @WITH_DRIVER_MODULES_FALSE@@WITH_UML_TRUE@am__append_22 = libvirt_driver_uml.la
+ @WITH_DRIVER_MODULES_TRUE@@WITH_UML_TRUE@am__append_23 = -module -avoid-version
+-@WITH_DRIVER_MODULES_TRUE@@WITH_NETWORK_TRUE@am__append_24 = libvirt_driver_network.la
+-@WITH_DRIVER_MODULES_FALSE@@WITH_NETWORK_TRUE@am__append_25 = libvirt_driver_network.la
+-@WITH_DRIVER_MODULES_TRUE@@WITH_STORAGE_DIR_TRUE@am__append_26 = libvirt_driver_storage.la
+-@WITH_DRIVER_MODULES_FALSE@@WITH_STORAGE_DIR_TRUE@am__append_27 = libvirt_driver_storage.la
+-@WITH_STORAGE_DIR_TRUE@am__append_28 = $(STORAGE_DRIVER_SOURCES) \
++@WITH_ONE_TRUE@am__append_24 = libvirt_driver_one.la
++@WITH_ONE_TRUE@am__append_25 = libvirt_driver_one.la
++@WITH_DRIVER_MODULES_TRUE@@WITH_NETWORK_TRUE@am__append_26 = libvirt_driver_network.la
++@WITH_DRIVER_MODULES_FALSE@@WITH_NETWORK_TRUE@am__append_27 = libvirt_driver_network.la
++@WITH_DRIVER_MODULES_TRUE@@WITH_STORAGE_DIR_TRUE@am__append_28 = libvirt_driver_storage.la
++@WITH_DRIVER_MODULES_FALSE@@WITH_STORAGE_DIR_TRUE@am__append_29 = libvirt_driver_storage.la
++@WITH_STORAGE_DIR_TRUE@am__append_30 = $(STORAGE_DRIVER_SOURCES) \
+ @WITH_STORAGE_DIR_TRUE@	$(STORAGE_DRIVER_FS_SOURCES)
+-@WITH_STORAGE_LVM_TRUE@am__append_29 = $(STORAGE_DRIVER_LVM_SOURCES)
+-@WITH_STORAGE_ISCSI_TRUE@am__append_30 = $(STORAGE_DRIVER_ISCSI_SOURCES)
+-@WITH_STORAGE_DISK_TRUE@am__append_31 = $(STORAGE_DRIVER_DISK_SOURCES)
++@WITH_STORAGE_LVM_TRUE@am__append_31 = $(STORAGE_DRIVER_LVM_SOURCES)
++@WITH_STORAGE_ISCSI_TRUE@am__append_32 = $(STORAGE_DRIVER_ISCSI_SOURCES)
++@WITH_STORAGE_DISK_TRUE@am__append_33 = $(STORAGE_DRIVER_DISK_SOURCES)
+ 
+ # Needed to keep automake quiet about conditionals
+-@WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_32 = libvirt_driver_nodedev.la
+-@WITH_DRIVER_MODULES_FALSE@@WITH_NODE_DEVICES_TRUE@am__append_33 = libvirt_driver_nodedev.la
+-@HAVE_HAL_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_34 = $(NODE_DEVICE_DRIVER_HAL_SOURCES)
+-@HAVE_HAL_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_35 = $(HAL_CFLAGS)
+-@HAVE_HAL_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_36 = $(HAL_LIBS)
+-@HAVE_DEVKIT_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_37 = $(NODE_DEVICE_DRIVER_DEVKIT_SOURCES)
+-@HAVE_DEVKIT_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_38 = $(DEVKIT_CFLAGS)
+-@HAVE_DEVKIT_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_39 = $(DEVKIT_LIBS)
+-@WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_40 = -module -avoid-version
++@WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_34 = libvirt_driver_nodedev.la
++@WITH_DRIVER_MODULES_FALSE@@WITH_NODE_DEVICES_TRUE@am__append_35 = libvirt_driver_nodedev.la
++@HAVE_HAL_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_36 = $(NODE_DEVICE_DRIVER_HAL_SOURCES)
++@HAVE_HAL_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_37 = $(HAL_CFLAGS)
++@HAVE_HAL_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_38 = $(HAL_LIBS)
++@HAVE_DEVKIT_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_39 = $(NODE_DEVICE_DRIVER_DEVKIT_SOURCES)
++@HAVE_DEVKIT_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_40 = $(DEVKIT_CFLAGS)
++@HAVE_DEVKIT_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_41 = $(DEVKIT_LIBS)
++@WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_42 = -module -avoid-version
+ bin_PROGRAMS = virsh$(EXEEXT)
+-@WITH_WIN_ICON_TRUE@am__append_41 = virsh_win_icon.$(OBJEXT)
++@WITH_WIN_ICON_TRUE@am__append_43 = virsh_win_icon.$(OBJEXT)
+ libexec_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
+-@WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@am__append_42 = libvirt_parthelper
+-@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@am__append_43 = libvirt_lxc
++@WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@am__append_44 = libvirt_parthelper
++@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@am__append_45 = libvirt_lxc
+ subdir = src
+ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+ 	$(srcdir)/libvirt_sym.version.in
+@@ -247,12 +249,24 @@
+ @WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@am_libvirt_driver_nodedev_la_rpath =  \
+ @WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@	-rpath \
+ @WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@	$(moddir)
++libvirt_driver_one_la_LIBADD =
++am__libvirt_driver_one_la_SOURCES_DIST = one_conf.c one_conf.h \
++	one_driver.c one_driver.h
++am__objects_13 = libvirt_driver_one_la-one_conf.lo \
++	libvirt_driver_one_la-one_driver.lo
++@WITH_ONE_TRUE@am_libvirt_driver_one_la_OBJECTS = $(am__objects_13)
++libvirt_driver_one_la_OBJECTS = $(am_libvirt_driver_one_la_OBJECTS)
++libvirt_driver_one_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
++	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
++	$(libvirt_driver_one_la_CFLAGS) $(CFLAGS) \
++	$(libvirt_driver_one_la_LDFLAGS) $(LDFLAGS) -o $@
++@WITH_ONE_TRUE@am_libvirt_driver_one_la_rpath =
+ libvirt_driver_openvz_la_LIBADD =
+ am__libvirt_driver_openvz_la_SOURCES_DIST = openvz_conf.c \
+ 	openvz_conf.h openvz_driver.c openvz_driver.h
+-am__objects_13 = openvz_conf.lo openvz_driver.lo
++am__objects_14 = openvz_conf.lo openvz_driver.lo
+ @WITH_OPENVZ_TRUE@am_libvirt_driver_openvz_la_OBJECTS =  \
+-@WITH_OPENVZ_TRUE@	$(am__objects_13)
++@WITH_OPENVZ_TRUE@	$(am__objects_14)
+ libvirt_driver_openvz_la_OBJECTS =  \
+ 	$(am_libvirt_driver_openvz_la_OBJECTS)
+ libvirt_driver_openvz_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+@@ -264,9 +278,9 @@
+ libvirt_driver_qemu_la_LIBADD =
+ am__libvirt_driver_qemu_la_SOURCES_DIST = qemu_conf.c qemu_conf.h \
+ 	qemu_driver.c qemu_driver.h
+-am__objects_14 = libvirt_driver_qemu_la-qemu_conf.lo \
++am__objects_15 = libvirt_driver_qemu_la-qemu_conf.lo \
+ 	libvirt_driver_qemu_la-qemu_driver.lo
+-@WITH_QEMU_TRUE@am_libvirt_driver_qemu_la_OBJECTS = $(am__objects_14)
++@WITH_QEMU_TRUE@am_libvirt_driver_qemu_la_OBJECTS = $(am__objects_15)
+ libvirt_driver_qemu_la_OBJECTS = $(am_libvirt_driver_qemu_la_OBJECTS)
+ libvirt_driver_qemu_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
+@@ -279,10 +293,10 @@
+ am__libvirt_driver_remote_la_SOURCES_DIST = gnutls_1_0_compat.h \
+ 	remote_internal.c remote_internal.h ../qemud/remote_protocol.c \
+ 	../qemud/remote_protocol.h
+-am__objects_15 = libvirt_driver_remote_la-remote_internal.lo \
++am__objects_16 = libvirt_driver_remote_la-remote_internal.lo \
+ 	libvirt_driver_remote_la-remote_protocol.lo
+ @WITH_REMOTE_TRUE@am_libvirt_driver_remote_la_OBJECTS =  \
+-@WITH_REMOTE_TRUE@	$(am__objects_15)
++@WITH_REMOTE_TRUE@	$(am__objects_16)
+ libvirt_driver_remote_la_OBJECTS =  \
+ 	$(am_libvirt_driver_remote_la_OBJECTS)
+ libvirt_driver_remote_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+@@ -299,18 +313,18 @@
+ 	storage_backend_logical.h storage_backend_logical.c \
+ 	storage_backend_iscsi.h storage_backend_iscsi.c \
+ 	storage_backend_disk.h storage_backend_disk.c
+-am__objects_16 = storage_driver.lo storage_backend.lo
+-am__objects_17 = storage_backend_fs.lo
+-@WITH_STORAGE_DIR_TRUE@am__objects_18 = $(am__objects_16) \
+-@WITH_STORAGE_DIR_TRUE@	$(am__objects_17)
+-am__objects_19 = storage_backend_logical.lo
+-@WITH_STORAGE_LVM_TRUE@am__objects_20 = $(am__objects_19)
+-am__objects_21 = storage_backend_iscsi.lo
+-@WITH_STORAGE_ISCSI_TRUE@am__objects_22 = $(am__objects_21)
+-am__objects_23 = storage_backend_disk.lo
+-@WITH_STORAGE_DISK_TRUE@am__objects_24 = $(am__objects_23)
+-am_libvirt_driver_storage_la_OBJECTS = $(am__objects_18) \
+-	$(am__objects_20) $(am__objects_22) $(am__objects_24)
++am__objects_17 = storage_driver.lo storage_backend.lo
++am__objects_18 = storage_backend_fs.lo
++@WITH_STORAGE_DIR_TRUE@am__objects_19 = $(am__objects_17) \
++@WITH_STORAGE_DIR_TRUE@	$(am__objects_18)
++am__objects_20 = storage_backend_logical.lo
++@WITH_STORAGE_LVM_TRUE@am__objects_21 = $(am__objects_20)
++am__objects_22 = storage_backend_iscsi.lo
++@WITH_STORAGE_ISCSI_TRUE@am__objects_23 = $(am__objects_22)
++am__objects_24 = storage_backend_disk.lo
++@WITH_STORAGE_DISK_TRUE@am__objects_25 = $(am__objects_24)
++am_libvirt_driver_storage_la_OBJECTS = $(am__objects_19) \
++	$(am__objects_21) $(am__objects_23) $(am__objects_25)
+ libvirt_driver_storage_la_OBJECTS =  \
+ 	$(am_libvirt_driver_storage_la_OBJECTS)
+ libvirt_driver_storage_la_LINK = $(LIBTOOL) --tag=CC \
+@@ -323,8 +337,8 @@
+ @WITH_DRIVER_MODULES_TRUE@@WITH_STORAGE_DIR_TRUE@	$(moddir)
+ libvirt_driver_test_la_LIBADD =
+ am__libvirt_driver_test_la_SOURCES_DIST = test.c test.h
+-am__objects_25 = test.lo
+-@WITH_TEST_TRUE@am_libvirt_driver_test_la_OBJECTS = $(am__objects_25)
++am__objects_26 = test.lo
++@WITH_TEST_TRUE@am_libvirt_driver_test_la_OBJECTS = $(am__objects_26)
+ libvirt_driver_test_la_OBJECTS = $(am_libvirt_driver_test_la_OBJECTS)
+ libvirt_driver_test_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+@@ -335,9 +349,9 @@
+ libvirt_driver_uml_la_LIBADD =
+ am__libvirt_driver_uml_la_SOURCES_DIST = uml_conf.c uml_conf.h \
+ 	uml_driver.c uml_driver.h
+-am__objects_26 = libvirt_driver_uml_la-uml_conf.lo \
++am__objects_27 = libvirt_driver_uml_la-uml_conf.lo \
+ 	libvirt_driver_uml_la-uml_driver.lo
+-@WITH_UML_TRUE@am_libvirt_driver_uml_la_OBJECTS = $(am__objects_26)
++@WITH_UML_TRUE@am_libvirt_driver_uml_la_OBJECTS = $(am__objects_27)
+ libvirt_driver_uml_la_OBJECTS = $(am_libvirt_driver_uml_la_OBJECTS)
+ libvirt_driver_uml_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
+@@ -352,16 +366,16 @@
+ 	xen_unified.c xen_unified.h xend_internal.c xend_internal.h \
+ 	xm_internal.c xm_internal.h xs_internal.c xs_internal.h \
+ 	xen_inotify.c xen_inotify.h
+-@WITH_XEN_INOTIFY_TRUE@am__objects_27 =  \
++@WITH_XEN_INOTIFY_TRUE@am__objects_28 =  \
+ @WITH_XEN_INOTIFY_TRUE@	libvirt_driver_xen_la-xen_inotify.lo
+-am__objects_28 = libvirt_driver_xen_la-proxy_internal.lo \
++am__objects_29 = libvirt_driver_xen_la-proxy_internal.lo \
+ 	libvirt_driver_xen_la-sexpr.lo \
+ 	libvirt_driver_xen_la-xen_internal.lo \
+ 	libvirt_driver_xen_la-xen_unified.lo \
+ 	libvirt_driver_xen_la-xend_internal.lo \
+ 	libvirt_driver_xen_la-xm_internal.lo \
+-	libvirt_driver_xen_la-xs_internal.lo $(am__objects_27)
+-@WITH_XEN_TRUE@am_libvirt_driver_xen_la_OBJECTS = $(am__objects_28)
++	libvirt_driver_xen_la-xs_internal.lo $(am__objects_28)
++@WITH_XEN_TRUE@am_libvirt_driver_xen_la_OBJECTS = $(am__objects_29)
+ libvirt_driver_xen_la_OBJECTS = $(am_libvirt_driver_xen_la_OBJECTS)
+ libvirt_driver_xen_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
+@@ -372,19 +386,19 @@
+ @WITH_DRIVER_MODULES_TRUE@@WITH_XEN_TRUE@	-rpath $(moddir)
+ am__DEPENDENCIES_1 = libvirt_util.la libvirt_driver.la $(am__append_4) \
+ 	$(am__append_7) $(am__append_11) $(am__append_15) \
+-	../gnulib/lib/libgnu.la
++	$(am__append_25) ../gnulib/lib/libgnu.la
+ libvirt_test_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+-am__objects_29 =
+-am_libvirt_test_la_OBJECTS = $(am__objects_29)
++am__objects_30 =
++am_libvirt_test_la_OBJECTS = $(am__objects_30)
+ libvirt_test_la_OBJECTS = $(am_libvirt_test_la_OBJECTS)
+ libvirt_test_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libvirt_test_la_CFLAGS) \
+ 	$(CFLAGS) $(libvirt_test_la_LDFLAGS) $(LDFLAGS) -o $@
+ libvirt_util_la_LIBADD =
+-am__objects_30 = bridge.lo buf.lo conf.lo event.lo hash.lo iptables.lo \
++am__objects_31 = bridge.lo buf.lo conf.lo event.lo hash.lo iptables.lo \
+ 	memory.lo qparams.lo uuid.lo util.lo virterror.lo logging.lo \
+ 	xml.lo
+-am_libvirt_util_la_OBJECTS = $(am__objects_30)
++am_libvirt_util_la_OBJECTS = $(am__objects_31)
+ libvirt_util_la_OBJECTS = $(am_libvirt_util_la_OBJECTS)
+ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
+ @WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@am__EXEEXT_1 = libvirt_parthelper$(EXEEXT)
+@@ -400,24 +414,24 @@
+ 	virterror_internal.h logging.c logging.h xml.c xml.h \
+ 	capabilities.c capabilities.h domain_conf.c domain_conf.h \
+ 	nodeinfo.h nodeinfo.c
+-am__objects_31 = libvirt_lxc-lxc_conf.$(OBJEXT) \
++am__objects_32 = libvirt_lxc-lxc_conf.$(OBJEXT) \
+ 	libvirt_lxc-lxc_container.$(OBJEXT) \
+ 	libvirt_lxc-lxc_controller.$(OBJEXT) \
+ 	libvirt_lxc-veth.$(OBJEXT) libvirt_lxc-cgroup.$(OBJEXT)
+-am__objects_32 = libvirt_lxc-bridge.$(OBJEXT) \
++am__objects_33 = libvirt_lxc-bridge.$(OBJEXT) \
+ 	libvirt_lxc-buf.$(OBJEXT) libvirt_lxc-conf.$(OBJEXT) \
+ 	libvirt_lxc-event.$(OBJEXT) libvirt_lxc-hash.$(OBJEXT) \
+ 	libvirt_lxc-iptables.$(OBJEXT) libvirt_lxc-memory.$(OBJEXT) \
+ 	libvirt_lxc-qparams.$(OBJEXT) libvirt_lxc-uuid.$(OBJEXT) \
+ 	libvirt_lxc-util.$(OBJEXT) libvirt_lxc-virterror.$(OBJEXT) \
+ 	libvirt_lxc-logging.$(OBJEXT) libvirt_lxc-xml.$(OBJEXT)
+-am__objects_33 = libvirt_lxc-capabilities.$(OBJEXT) \
++am__objects_34 = libvirt_lxc-capabilities.$(OBJEXT) \
+ 	libvirt_lxc-domain_conf.$(OBJEXT) \
+ 	libvirt_lxc-nodeinfo.$(OBJEXT)
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@am_libvirt_lxc_OBJECTS =  \
+-@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(am__objects_31) \
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(am__objects_32) \
+-@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(am__objects_33)
++@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(am__objects_33) \
++@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(am__objects_34)
+ libvirt_lxc_OBJECTS = $(am_libvirt_lxc_OBJECTS)
+ am__DEPENDENCIES_2 =
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@libvirt_lxc_DEPENDENCIES =  \
+@@ -427,9 +441,9 @@
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libvirt_lxc_CFLAGS) \
+ 	$(CFLAGS) $(libvirt_lxc_LDFLAGS) $(LDFLAGS) -o $@
+ am__libvirt_parthelper_SOURCES_DIST = parthelper.c
+-am__objects_34 = libvirt_parthelper-parthelper.$(OBJEXT)
++am__objects_35 = libvirt_parthelper-parthelper.$(OBJEXT)
+ @WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@am_libvirt_parthelper_OBJECTS =  \
+-@WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@	$(am__objects_34)
++@WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@	$(am__objects_35)
+ libvirt_parthelper_OBJECTS = $(am_libvirt_parthelper_OBJECTS)
+ @WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@libvirt_parthelper_DEPENDENCIES = $(am__DEPENDENCIES_2)
+ libvirt_parthelper_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+@@ -440,7 +454,7 @@
+ virsh_OBJECTS = $(am_virsh_OBJECTS)
+ virsh_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_2) \
+ 	libvirt.la ../gnulib/lib/libgnu.la $(am__DEPENDENCIES_2) \
+-	$(am__append_41)
++	$(am__append_43)
+ virsh_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+ 	--mode=link $(CCLD) $(virsh_CFLAGS) $(CFLAGS) $(virsh_LDFLAGS) \
+ 	$(LDFLAGS) -o $@
+@@ -460,6 +474,7 @@
+ 	$(libvirt_driver_lxc_la_SOURCES) \
+ 	$(libvirt_driver_network_la_SOURCES) \
+ 	$(libvirt_driver_nodedev_la_SOURCES) \
++	$(libvirt_driver_one_la_SOURCES) \
+ 	$(libvirt_driver_openvz_la_SOURCES) \
+ 	$(libvirt_driver_qemu_la_SOURCES) \
+ 	$(libvirt_driver_remote_la_SOURCES) \
+@@ -473,6 +488,7 @@
+ 	$(am__libvirt_driver_lxc_la_SOURCES_DIST) \
+ 	$(am__libvirt_driver_network_la_SOURCES_DIST) \
+ 	$(am__libvirt_driver_nodedev_la_SOURCES_DIST) \
++	$(am__libvirt_driver_one_la_SOURCES_DIST) \
+ 	$(am__libvirt_driver_openvz_la_SOURCES_DIST) \
+ 	$(am__libvirt_driver_qemu_la_SOURCES_DIST) \
+ 	$(am__libvirt_driver_remote_la_SOURCES_DIST) \
+@@ -834,6 +850,7 @@
+ NUMACTL_LIBS = @NUMACTL_LIBS@
+ OBJDUMP = @OBJDUMP@
+ OBJEXT = @OBJEXT@
++ONE_LIBS = @ONE_LIBS@
+ PACKAGE = @PACKAGE@
+ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
+ PACKAGE_NAME = @PACKAGE_NAME@
+@@ -1044,10 +1061,11 @@
+ 	$(TEST_DRIVER_SOURCES) $(REMOTE_DRIVER_SOURCES) \
+ 	$(XEN_DRIVER_SOURCES) $(QEMU_DRIVER_SOURCES) \
+ 	$(LXC_DRIVER_SOURCES) $(UML_DRIVER_SOURCES) \
+-	$(OPENVZ_DRIVER_SOURCES) $(NETWORK_DRIVER_SOURCES) \
+-	$(STORAGE_DRIVER_SOURCES) $(STORAGE_DRIVER_FS_SOURCES) \
+-	$(STORAGE_DRIVER_LVM_SOURCES) $(STORAGE_DRIVER_ISCSI_SOURCES) \
+-	$(STORAGE_DRIVER_DISK_SOURCES) $(NODE_DEVICE_DRIVER_SOURCES) \
++	$(OPENVZ_DRIVER_SOURCES) $(ONE_DRIVER_SOURCES) \
++	$(NETWORK_DRIVER_SOURCES) $(STORAGE_DRIVER_SOURCES) \
++	$(STORAGE_DRIVER_FS_SOURCES) $(STORAGE_DRIVER_LVM_SOURCES) \
++	$(STORAGE_DRIVER_ISCSI_SOURCES) $(STORAGE_DRIVER_DISK_SOURCES) \
++	$(NODE_DEVICE_DRIVER_SOURCES) \
+ 	$(NODE_DEVICE_DRIVER_HAL_SOURCES) \
+ 	$(NODE_DEVICE_DRIVER_DEVKIT_SOURCES) \
+ 	$(STORAGE_HELPER_DISK_SOURCES) $(LXC_CONTROLLER_SOURCES)
+@@ -1055,8 +1073,8 @@
+ moddir = $(libdir)/libvirt/drivers
+ mod_LTLIBRARIES = $(am__append_2) $(am__append_5) $(am__append_9) \
+ 	$(am__append_13) $(am__append_16) $(am__append_19) \
+-	$(am__append_21) $(am__append_24) $(am__append_26) \
+-	$(am__append_32)
++	$(am__append_21) $(am__append_26) $(am__append_28) \
++	$(am__append_34)
+ 
+ # These files are not related to driver APIs. Simply generic
+ # helper APIs for various purposes
+@@ -1147,6 +1165,10 @@
+ 		uml_conf.c uml_conf.h				\
+ 		uml_driver.c uml_driver.h
+ 
++ONE_DRIVER_SOURCES = \
++		one_conf.c one_conf.h				\
++		one_driver.c one_driver.h
++
+ NETWORK_DRIVER_SOURCES = \
+ 		network_driver.h network_driver.c
+ 
+@@ -1199,11 +1221,11 @@
+ noinst_LTLIBRARIES = libvirt_util.la libvirt_driver.la $(am__append_3) \
+ 	$(am__append_6) $(am__append_10) $(am__append_14) \
+ 	$(am__append_17) $(am__append_20) $(am__append_22) \
+-	$(am__append_25) $(am__append_27) $(am__append_33) \
+-	libvirt_test.la
++	$(am__append_24) $(am__append_27) $(am__append_29) \
++	$(am__append_35) libvirt_test.la
+ libvirt_la_LIBADD = libvirt_util.la libvirt_driver.la $(am__append_4) \
+ 	$(am__append_7) $(am__append_11) $(am__append_15) \
+-	@CYGWIN_EXTRA_LIBADD@ ../gnulib/lib/libgnu.la
++	$(am__append_25) @CYGWIN_EXTRA_LIBADD@ ../gnulib/lib/libgnu.la
+ libvirt_util_la_SOURCES = \
+ 		$(UTIL_SOURCES)
+ 
+@@ -1247,14 +1269,17 @@
+ @WITH_UML_TRUE@libvirt_driver_uml_la_LDFLAGS = $(NUMACTL_LIBS) \
+ @WITH_UML_TRUE@	$(am__append_23)
+ @WITH_UML_TRUE@libvirt_driver_uml_la_SOURCES = $(UML_DRIVER_SOURCES)
++@WITH_ONE_TRUE@libvirt_driver_one_la_SOURCES = $(ONE_DRIVER_SOURCES)
++@WITH_ONE_TRUE@libvirt_driver_one_la_LDFLAGS = $(ONE_LIBS)
++@WITH_ONE_TRUE@libvirt_driver_one_la_CFLAGS = "-DWITH_ONE"
+ # Stateful, so linked to daemon instead
+ #libvirt_la_LIBADD += libvirt_driver_network.la
+ @WITH_DRIVER_MODULES_TRUE@@WITH_NETWORK_TRUE@libvirt_driver_network_la_LDFLAGS = -module -avoid-version
+ @WITH_NETWORK_TRUE@libvirt_driver_network_la_SOURCES = $(NETWORK_DRIVER_SOURCES)
+ 
+ # Needed to keep automake quiet about conditionals
+-libvirt_driver_storage_la_SOURCES = $(am__append_28) $(am__append_29) \
+-	$(am__append_30) $(am__append_31)
++libvirt_driver_storage_la_SOURCES = $(am__append_30) $(am__append_31) \
++	$(am__append_32) $(am__append_33)
+ # Stateful, so linked to daemon instead
+ #libvirt_la_LIBADD += libvirt_driver_storage.la
+ @WITH_DRIVER_MODULES_TRUE@@WITH_STORAGE_DIR_TRUE@libvirt_driver_storage_la_LDFLAGS = -module -avoid-version
+@@ -1262,12 +1287,12 @@
+ #libvirt_la_LIBADD += libvirt_driver_nodedev.la
+ @WITH_NODE_DEVICES_TRUE@libvirt_driver_nodedev_la_SOURCES =  \
+ @WITH_NODE_DEVICES_TRUE@	$(NODE_DEVICE_DRIVER_SOURCES) \
+-@WITH_NODE_DEVICES_TRUE@	$(am__append_34) $(am__append_37)
++@WITH_NODE_DEVICES_TRUE@	$(am__append_36) $(am__append_39)
+ @WITH_NODE_DEVICES_TRUE@libvirt_driver_nodedev_la_CFLAGS =  \
+-@WITH_NODE_DEVICES_TRUE@	$(am__append_35) $(am__append_38)
++@WITH_NODE_DEVICES_TRUE@	$(am__append_37) $(am__append_40)
+ @WITH_NODE_DEVICES_TRUE@libvirt_driver_nodedev_la_LDFLAGS =  \
+-@WITH_NODE_DEVICES_TRUE@	$(am__append_36) $(am__append_39) \
+-@WITH_NODE_DEVICES_TRUE@	$(am__append_40)
++@WITH_NODE_DEVICES_TRUE@	$(am__append_38) $(am__append_41) \
++@WITH_NODE_DEVICES_TRUE@	$(am__append_42)
+ 
+ # Empty source list - it merely links a bunch of convenience libs together
+ libvirt_la_SOURCES = 
+@@ -1301,7 +1326,7 @@
+ 
+ virsh_LDFLAGS = $(WARN_CFLAGS) $(COVERAGE_LDFLAGS)
+ virsh_LDADD = $(STATIC_BINARIES) $(WARN_CFLAGS) libvirt.la \
+-	../gnulib/lib/libgnu.la $(VIRSH_LIBS) $(am__append_41)
++	../gnulib/lib/libgnu.la $(VIRSH_LIBS) $(am__append_43)
+ virsh_CFLAGS = $(COVERAGE_CFLAGS) $(READLINE_CFLAGS)
+ BUILT_SOURCES = virsh-net-edit.c virsh-pool-edit.c
+ @WITH_LIBVIRTD_TRUE@@WITH_STORAGE_DISK_TRUE@libvirt_parthelper_SOURCES = $(STORAGE_HELPER_DISK_SOURCES)
+@@ -1427,6 +1452,8 @@
+ 	$(libvirt_driver_network_la_LINK) $(am_libvirt_driver_network_la_rpath) $(libvirt_driver_network_la_OBJECTS) $(libvirt_driver_network_la_LIBADD) $(LIBS)
+ libvirt_driver_nodedev.la: $(libvirt_driver_nodedev_la_OBJECTS) $(libvirt_driver_nodedev_la_DEPENDENCIES) 
+ 	$(libvirt_driver_nodedev_la_LINK) $(am_libvirt_driver_nodedev_la_rpath) $(libvirt_driver_nodedev_la_OBJECTS) $(libvirt_driver_nodedev_la_LIBADD) $(LIBS)
++libvirt_driver_one.la: $(libvirt_driver_one_la_OBJECTS) $(libvirt_driver_one_la_DEPENDENCIES) 
++	$(libvirt_driver_one_la_LINK) $(am_libvirt_driver_one_la_rpath) $(libvirt_driver_one_la_OBJECTS) $(libvirt_driver_one_la_LIBADD) $(LIBS)
+ libvirt_driver_openvz.la: $(libvirt_driver_openvz_la_OBJECTS) $(libvirt_driver_openvz_la_DEPENDENCIES) 
+ 	$(libvirt_driver_openvz_la_LINK) $(am_libvirt_driver_openvz_la_rpath) $(libvirt_driver_openvz_la_OBJECTS) $(libvirt_driver_openvz_la_LIBADD) $(LIBS)
+ libvirt_driver_qemu.la: $(libvirt_driver_qemu_la_OBJECTS) $(libvirt_driver_qemu_la_DEPENDENCIES) 
+@@ -1538,6 +1565,8 @@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_nodedev_la-node_device.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_nodedev_la-node_device_devkit.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_nodedev_la-node_device_hal.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_one_la-one_conf.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_one_la-one_driver.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_qemu_la-qemu_conf.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_qemu_la-qemu_driver.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_driver_remote_la-remote_internal.Plo@am__quote@
+@@ -1717,6 +1746,20 @@
+ @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+ @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_driver_nodedev_la_CFLAGS) $(CFLAGS) -c -o libvirt_driver_nodedev_la-node_device_devkit.lo `test -f 'node_device_devkit.c' || echo '$(srcdir)/'`node_device_devkit.c
+ 
++libvirt_driver_one_la-one_conf.lo: one_conf.c
++@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_driver_one_la_CFLAGS) $(CFLAGS) -MT libvirt_driver_one_la-one_conf.lo -MD -MP -MF $(DEPDIR)/libvirt_driver_one_la-one_conf.Tpo -c -o libvirt_driver_one_la-one_conf.lo `test -f 'one_conf.c' || echo '$(srcdir)/'`one_conf.c
++@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libvirt_driver_one_la-one_conf.Tpo $(DEPDIR)/libvirt_driver_one_la-one_conf.Plo
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='one_conf.c' object='libvirt_driver_one_la-one_conf.lo' libtool=yes @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_driver_one_la_CFLAGS) $(CFLAGS) -c -o libvirt_driver_one_la-one_conf.lo `test -f 'one_conf.c' || echo '$(srcdir)/'`one_conf.c
++
++libvirt_driver_one_la-one_driver.lo: one_driver.c
++@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_driver_one_la_CFLAGS) $(CFLAGS) -MT libvirt_driver_one_la-one_driver.lo -MD -MP -MF $(DEPDIR)/libvirt_driver_one_la-one_driver.Tpo -c -o libvirt_driver_one_la-one_driver.lo `test -f 'one_driver.c' || echo '$(srcdir)/'`one_driver.c
++@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libvirt_driver_one_la-one_driver.Tpo $(DEPDIR)/libvirt_driver_one_la-one_driver.Plo
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='one_driver.c' object='libvirt_driver_one_la-one_driver.lo' libtool=yes @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_driver_one_la_CFLAGS) $(CFLAGS) -c -o libvirt_driver_one_la-one_driver.lo `test -f 'one_driver.c' || echo '$(srcdir)/'`one_driver.c
++
+ libvirt_driver_qemu_la-qemu_conf.lo: qemu_conf.c
+ @am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_driver_qemu_la_CFLAGS) $(CFLAGS) -MT libvirt_driver_qemu_la-qemu_conf.lo -MD -MP -MF $(DEPDIR)/libvirt_driver_qemu_la-qemu_conf.Tpo -c -o libvirt_driver_qemu_la-qemu_conf.lo `test -f 'qemu_conf.c' || echo '$(srcdir)/'`qemu_conf.c
+ @am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libvirt_driver_qemu_la-qemu_conf.Tpo $(DEPDIR)/libvirt_driver_qemu_la-qemu_conf.Plo
+Index: libvirt-0.5.1/configure
+===================================================================
+--- libvirt-0.5.1.orig/configure	2009-01-08 22:59:01.084438479 +0100
++++ libvirt-0.5.1/configure	2009-01-08 22:59:07.472460140 +0100
+@@ -1239,6 +1239,9 @@
+ WITH_XEN_FALSE
+ XEN_CFLAGS
+ XEN_LIBS
++ONE_LIBS
++WITH_ONE_TRUE
++WITH_ONE_FALSE
+ WITH_XEN_INOTIFY_TRUE
+ WITH_XEN_INOTIFY_FALSE
+ PKG_CONFIG
+@@ -2006,6 +2009,15 @@
+   --with-lxc              add Linux Container support (on)
+   --with-test             add test driver support (on)
+   --with-remote           add remote driver support (on)
++
++  --with-one              add ONE support (on)
++# Check whether --with-one was given.
++if test "${with_one+set}" = set; then
++  withval=$with_one;
++else
++  with_one=yes
++fi
++
+   --with-libvirtd         add libvirtd support (on)
+   --with-remote-pid-file=pidfile|none
+                           PID file for libvirtd
+@@ -5270,11 +5282,13 @@
+ cat confdefs.h >>conftest.$ac_ext
+ cat >>conftest.$ac_ext <<_ACEOF
+ /* end confdefs.h.  */
+-#include <stdio.h>
++#include <sys/types.h> /* for off_t */
++     #include <stdio.h>
+ int
+ main ()
+ {
+-return fseeko (stdin, 0, 0) && (fseeko) (stdin, 0, 0);
++int (*fp) (FILE *, off_t, int) = fseeko;
++     return fseeko (stdin, 0, 0) && fp (stdin, 0, 0);
+   ;
+   return 0;
+ }
+@@ -5314,11 +5328,13 @@
+ cat >>conftest.$ac_ext <<_ACEOF
+ /* end confdefs.h.  */
+ #define _LARGEFILE_SOURCE 1
+-#include <stdio.h>
++#include <sys/types.h> /* for off_t */
++     #include <stdio.h>
+ int
+ main ()
+ {
+-return fseeko (stdin, 0, 0) && (fseeko) (stdin, 0, 0);
++int (*fp) (FILE *, off_t, int) = fseeko;
++     return fseeko (stdin, 0, 0) && fp (stdin, 0, 0);
+   ;
+   return 0;
+ }
+@@ -25252,7 +25268,7 @@
+   ;;
+ *-*-irix6*)
+   # Find out which ABI we are using.
+-  echo '#line 25255 "configure"' > conftest.$ac_ext
++  echo '#line 25271 "configure"' > conftest.$ac_ext
+   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+   (eval $ac_compile) 2>&5
+   ac_status=$?
+@@ -27806,11 +27822,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:27809: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:27825: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>conftest.err)
+    ac_status=$?
+    cat conftest.err >&5
+-   echo "$as_me:27813: \$? = $ac_status" >&5
++   echo "$as_me:27829: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s "$ac_outfile"; then
+      # The compiler can only warn and ignore the option if not recognized
+      # So say no if there are warnings other than the usual output.
+@@ -28096,11 +28112,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:28099: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:28115: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>conftest.err)
+    ac_status=$?
+    cat conftest.err >&5
+-   echo "$as_me:28103: \$? = $ac_status" >&5
++   echo "$as_me:28119: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s "$ac_outfile"; then
+      # The compiler can only warn and ignore the option if not recognized
+      # So say no if there are warnings other than the usual output.
+@@ -28200,11 +28216,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:28203: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:28219: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>out/conftest.err)
+    ac_status=$?
+    cat out/conftest.err >&5
+-   echo "$as_me:28207: \$? = $ac_status" >&5
++   echo "$as_me:28223: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s out/conftest2.$ac_objext
+    then
+      # The compiler can only warn and ignore the option if not recognized
+@@ -30551,7 +30567,7 @@
+   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
+   lt_status=$lt_dlunknown
+   cat > conftest.$ac_ext <<EOF
+-#line 30554 "configure"
++#line 30570 "configure"
+ #include "confdefs.h"
+ 
+ #if HAVE_DLFCN_H
+@@ -30651,7 +30667,7 @@
+   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
+   lt_status=$lt_dlunknown
+   cat > conftest.$ac_ext <<EOF
+-#line 30654 "configure"
++#line 30670 "configure"
+ #include "confdefs.h"
+ 
+ #if HAVE_DLFCN_H
+@@ -33071,11 +33087,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:33074: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:33090: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>conftest.err)
+    ac_status=$?
+    cat conftest.err >&5
+-   echo "$as_me:33078: \$? = $ac_status" >&5
++   echo "$as_me:33094: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s "$ac_outfile"; then
+      # The compiler can only warn and ignore the option if not recognized
+      # So say no if there are warnings other than the usual output.
+@@ -33175,11 +33191,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:33178: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:33194: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>out/conftest.err)
+    ac_status=$?
+    cat out/conftest.err >&5
+-   echo "$as_me:33182: \$? = $ac_status" >&5
++   echo "$as_me:33198: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s out/conftest2.$ac_objext
+    then
+      # The compiler can only warn and ignore the option if not recognized
+@@ -34739,11 +34755,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:34742: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:34758: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>conftest.err)
+    ac_status=$?
+    cat conftest.err >&5
+-   echo "$as_me:34746: \$? = $ac_status" >&5
++   echo "$as_me:34762: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s "$ac_outfile"; then
+      # The compiler can only warn and ignore the option if not recognized
+      # So say no if there are warnings other than the usual output.
+@@ -34843,11 +34859,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:34846: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:34862: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>out/conftest.err)
+    ac_status=$?
+    cat out/conftest.err >&5
+-   echo "$as_me:34850: \$? = $ac_status" >&5
++   echo "$as_me:34866: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s out/conftest2.$ac_objext
+    then
+      # The compiler can only warn and ignore the option if not recognized
+@@ -37032,11 +37048,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:37035: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:37051: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>conftest.err)
+    ac_status=$?
+    cat conftest.err >&5
+-   echo "$as_me:37039: \$? = $ac_status" >&5
++   echo "$as_me:37055: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s "$ac_outfile"; then
+      # The compiler can only warn and ignore the option if not recognized
+      # So say no if there are warnings other than the usual output.
+@@ -37322,11 +37338,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:37325: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:37341: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>conftest.err)
+    ac_status=$?
+    cat conftest.err >&5
+-   echo "$as_me:37329: \$? = $ac_status" >&5
++   echo "$as_me:37345: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s "$ac_outfile"; then
+      # The compiler can only warn and ignore the option if not recognized
+      # So say no if there are warnings other than the usual output.
+@@ -37426,11 +37442,11 @@
+    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+    -e 's:$: $lt_compiler_flag:'`
+-   (eval echo "\"\$as_me:37429: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:37445: $lt_compile\"" >&5)
+    (eval "$lt_compile" 2>out/conftest.err)
+    ac_status=$?
+    cat out/conftest.err >&5
+-   echo "$as_me:37433: \$? = $ac_status" >&5
++   echo "$as_me:37449: \$? = $ac_status" >&5
+    if (exit $ac_status) && test -s out/conftest2.$ac_objext
+    then
+      # The compiler can only warn and ignore the option if not recognized
+@@ -42679,6 +42695,28 @@
+ 
+ 
+ 
++
++if test "$with_one" = "yes" ; then
++LIBVIRT_FEATURES="$LIBVIRT_FEATURES -DWITH_ONE -I$ONE_LOCATION/include"
++ONE_LIBS="-L/usr/local/lib -lxmlrpc_client++ -lxmlrpc -lxmlrpc_util -lxmlrpc_xmlparse -lxmlrpc_xmltok -lxmlrpc++ -lxmlrpc_client -lxmlrpc_util -L$ONE_LOCATION/lib -loneapi"
++
++
++cat >>confdefs.h <<_ACEOF
++#define WITH_ONE 1
++_ACEOF
++
++fi
++ if test "$with_one" = "yes"; then
++  WITH_ONE_TRUE=
++  WITH_ONE_FALSE='#'
++else
++  WITH_ONE_TRUE='#'
++  WITH_ONE_FALSE=
++fi
++
++
++
++
+ if test "$with_xen" != "yes"; then
+     with_xen_inotify=no
+ fi
+@@ -50716,6 +50754,13 @@
+ Usually this means the macro was only invoked conditionally." >&2;}
+    { (exit 1); exit 1; }; }
+ fi
++if test -z "${WITH_ONE_TRUE}" && test -z "${WITH_ONE_FALSE}"; then
++  { { echo "$as_me:$LINENO: error: conditional \"WITH_ONE\" was never defined.
++Usually this means the macro was only invoked conditionally." >&5
++echo "$as_me: error: conditional \"WITH_ONE\" was never defined.
++Usually this means the macro was only invoked conditionally." >&2;}
++   { (exit 1); exit 1; }; }
++fi
+ if test -z "${WITH_XEN_INOTIFY_TRUE}" && test -z "${WITH_XEN_INOTIFY_FALSE}"; then
+   { { echo "$as_me:$LINENO: error: conditional \"WITH_XEN_INOTIFY\" was never defined.
+ Usually this means the macro was only invoked conditionally." >&5
+@@ -52063,6 +52108,9 @@
+ WITH_XEN_FALSE!$WITH_XEN_FALSE$ac_delim
+ XEN_CFLAGS!$XEN_CFLAGS$ac_delim
+ XEN_LIBS!$XEN_LIBS$ac_delim
++ONE_LIBS!$ONE_LIBS$ac_delim
++WITH_ONE_TRUE!$WITH_ONE_TRUE$ac_delim
++WITH_ONE_FALSE!$WITH_ONE_FALSE$ac_delim
+ WITH_XEN_INOTIFY_TRUE!$WITH_XEN_INOTIFY_TRUE$ac_delim
+ WITH_XEN_INOTIFY_FALSE!$WITH_XEN_INOTIFY_FALSE$ac_delim
+ PKG_CONFIG!$PKG_CONFIG$ac_delim
+@@ -52075,9 +52123,6 @@
+ SASL_CFLAGS!$SASL_CFLAGS$ac_delim
+ SASL_LIBS!$SASL_LIBS$ac_delim
+ POLKIT_CFLAGS!$POLKIT_CFLAGS$ac_delim
+-POLKIT_LIBS!$POLKIT_LIBS$ac_delim
+-POLKIT_AUTH!$POLKIT_AUTH$ac_delim
+-HAVE_POLKIT_TRUE!$HAVE_POLKIT_TRUE$ac_delim
+ _ACEOF
+ 
+   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
+@@ -52119,6 +52164,9 @@
+ ac_delim='%!_!# '
+ for ac_last_try in false false false false false :; do
+   cat >conf$$subs.sed <<_ACEOF
++POLKIT_LIBS!$POLKIT_LIBS$ac_delim
++POLKIT_AUTH!$POLKIT_AUTH$ac_delim
++HAVE_POLKIT_TRUE!$HAVE_POLKIT_TRUE$ac_delim
+ HAVE_POLKIT_FALSE!$HAVE_POLKIT_FALSE$ac_delim
+ AVAHI_CFLAGS!$AVAHI_CFLAGS$ac_delim
+ AVAHI_LIBS!$AVAHI_LIBS$ac_delim
+@@ -52213,9 +52261,6 @@
+ HAVE_DEVKIT_TRUE!$HAVE_DEVKIT_TRUE$ac_delim
+ HAVE_DEVKIT_FALSE!$HAVE_DEVKIT_FALSE$ac_delim
+ WITH_NODE_DEVICES_TRUE!$WITH_NODE_DEVICES_TRUE$ac_delim
+-WITH_NODE_DEVICES_FALSE!$WITH_NODE_DEVICES_FALSE$ac_delim
+-LIBOBJS!$LIBOBJS$ac_delim
+-LTLIBOBJS!$LTLIBOBJS$ac_delim
+ _ACEOF
+ 
+   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
+@@ -52257,13 +52302,16 @@
+ ac_delim='%!_!# '
+ for ac_last_try in false false false false false :; do
+   cat >conf$$subs.sed <<_ACEOF
++WITH_NODE_DEVICES_FALSE!$WITH_NODE_DEVICES_FALSE$ac_delim
++LIBOBJS!$LIBOBJS$ac_delim
++LTLIBOBJS!$LTLIBOBJS$ac_delim
+ gl_LIBOBJS!$gl_LIBOBJS$ac_delim
+ gl_LTLIBOBJS!$gl_LTLIBOBJS$ac_delim
+ gltests_LIBOBJS!$gltests_LIBOBJS$ac_delim
+ gltests_LTLIBOBJS!$gltests_LTLIBOBJS$ac_delim
+ _ACEOF
+ 
+-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 4; then
++  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 7; then
+     break
+   elif $ac_last_try; then
+     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
+@@ -52998,6 +53046,8 @@
+ echo "$as_me:      LXC: $with_lxc" >&6;}
+ { echo "$as_me:$LINENO:     Test: $with_test" >&5
+ echo "$as_me:     Test: $with_test" >&6;}
++{ echo "$as_me:$LINENO:      ONE: $with_one" >&5
++echo "$as_me:      ONE: $with_one" >&6;}
+ { echo "$as_me:$LINENO:   Remote: $with_remote" >&5
+ echo "$as_me:   Remote: $with_remote" >&6;}
+ { echo "$as_me:$LINENO:  Network: $with_network" >&5
+@@ -53103,6 +53153,10 @@
+ fi
+ { echo "$as_me:$LINENO: " >&5
+ echo "$as_me: " >&6;}
++if test "$with_one" = "yes" ; then
++{ echo "$as_me:$LINENO:   one: $ONE_LIBS" >&5
++echo "$as_me:   one: $ONE_LIBS" >&6;}
++fi
+ { echo "$as_me:$LINENO: Test suite" >&5
+ echo "$as_me: Test suite" >&6;}
+ { echo "$as_me:$LINENO: " >&5
+Index: libvirt-0.5.1/src/one_conf.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.5.1/src/one_conf.c	2009-01-08 22:59:17.843438436 +0100
+@@ -0,0 +1,130 @@
++/*----------------------------------------------------------------------------------*/
++/* Copyright 2002-2008, Distributed Systems Architecture Group, Universidad   
++ * Complutense de Madrid (dsa-research.org)                                   
++ *                                                                            
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++ */ 
++/*-----------------------------------------------------------------------------------*/
++
++
++/* includes */
++#include <config.h>
++
++#include <sys/utsname.h>
++
++#include "virterror_internal.h"
++#include "one_conf.h"
++
++virCapsPtr oneCapsInit(void){
++
++ 	struct utsname utsname;
++    virCapsPtr caps;
++    virCapsGuestPtr guest;
++
++    uname(&utsname);
++
++    if ((caps = virCapabilitiesNew(utsname.machine,
++                                   0, 0)) == NULL)
++        goto no_memory;
++
++    virCapabilitiesSetMacPrefix(caps, (unsigned char[]){ 0x52, 0x54, 0x00 });
++
++    if ((guest = virCapabilitiesAddGuest(caps,
++                                         "hvm",
++                                         utsname.machine,
++                                         sizeof(int) == 4 ? 32 : 8,
++                                         NULL,
++                                         NULL,
++                                         0,
++                                         NULL)) == NULL)
++        goto no_memory;
++
++    if (virCapabilitiesAddGuestDomain(guest,
++                                      "one",
++                                      NULL,
++                                      NULL,
++                                      0,
++                                      NULL) == NULL)
++        goto no_memory;
++    return caps;
++
++no_memory:
++    virCapabilitiesFree(caps);
++    return NULL;
++
++}
++
++int oneSubmitVM(virConnectPtr conn ATTRIBUTE_UNUSED ,one_driver_t* driver  ,virDomainObjPtr vm)
++{	
++	FILE* fd=NULL;
++	char path[20];
++    int oneid;
++	sprintf(path,"/tmp/onetempl%d",driver->nextid);	
++	if(!(fd=fopen(path,"w")  ) ){
++		 perror("temporal description file:");
++		 return 0;
++	}
++
++	if(xmlOneTemplate(vm->def,fd)){
++		unlink(path);
++        fclose(fd);
++        return -1;
++         }
++	fclose(fd);
++	if( (oneid=c_oneAllocate(path))<0 )
++			{
++			oneError(conn, NULL, VIR_ERR_OPERATION_FAILED,
++                        "Error submitting virtual machine to ONE");
++            unlink(path);             
++        	return -1;
++			};
++
++//    unlink(path);
++    return oneid;
++};
++
++ int xmlOneTemplate(virDomainDefPtr def, FILE* fd){
++
++	//set name:
++	fprintf(fd,"NAME = %s \n",def->name);
++    //set vcpu
++    fprintf(fd,"CPU = %ld \n",(def->vcpus));
++    //set memory:
++	fprintf(fd,"MEMORY = %ld \n",(def->maxmem)/1000);
++	
++    fprintf(fd,"OS = [\n  kernel   = \"%s\",\n  initrd   = \"%s\",\n",def->os.kernel,def->os.initrd);
++    if(def->os.cmdline) fprintf(fd,"  kernel_cmd = \"%s\",\n",def->os.cmdline);
++    fprintf(fd,"  root     = \"%s\" ]\n",def->os.root);
++
++//set Disks & NICS
++    int i;
++    for(i=0 ;i<def->ndisks;i++){
++ 		fprintf(fd,"DISK = [ \n  source   = \"%s\",\n  target   = \"%s\",",def->disks[i]->src,def->disks[i]->dst);
++		if(def->disks[i]->readonly) fprintf(fd,"\n  readonly = \"yes\"]\n");
++		else fprintf(fd,"\n  readonly = \"no\"]\n");
++        }
++    
++    for(i=0;i< def->nnets;i++){
++        fprintf(fd, "NIC= [\n");
++   //     if(def->nets[i]->target)
++     //     fprintf(fd,"  target = \"%s\",\n",def->nets[i]->target);
++       // if(def->nets[i]->bridge)
++         // fprintf(fd,"  bridge = \"%s\",\n",def->nets[i]->bridge);
++		fprintf(fd,"  mac=\"%02x:%02x:%02x:%02x:%02x:%02x\" ]\n",def->nets[i]->mac[0],def->nets[i]->mac[1],def->nets[i]->mac[2],def->nets[i]->mac[3],def->nets[i]->mac[4],def->nets[i]->mac[5]);
++	}
++    
++	return 0;
++   
++};
+Index: libvirt-0.5.1/src/one_conf.h
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.5.1/src/one_conf.h	2009-01-08 22:59:17.875436706 +0100
+@@ -0,0 +1,50 @@
++/*----------------------------------------------------------------------------------*/
++/* Copyright 2002-2008, Distributed Systems Architecture Group, Universidad   
++ * Complutense de Madrid (dsa-research.org)                                   
++ *                                                                            
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++ */ 
++/*-----------------------------------------------------------------------------------*/
++
++#ifndef ONE_CONF_H
++#define ONE_CONF_H
++
++#include <config.h>
++
++#include "internal.h"
++#include "domain_conf.h"
++#include "capabilities.h"
++
++typedef struct one_driver one_driver_t;
++struct one_driver {
++    PTHREAD_MUTEX_T(lock);
++
++    virCapsPtr caps;
++    virDomainObjList domains;
++	int nextid;
++    struct OneClient* one;   
++};
++
++
++virCapsPtr oneCapsInit(void);
++int oneSubmitVM(virConnectPtr conn ,one_driver_t* driver, virDomainObjPtr  vm);
++int xmlOneTemplate(virDomainDefPtr def, FILE* fd);
++
++#define oneError(conn, dom, code, fmt...)                                    \
++        virReportErrorHelper(conn, VIR_FROM_ONE, code, __FILE__,           \
++                               __FUNCTION__, __LINE__, fmt)
++
++#endif /* ONE_CONF_H */
++
+Index: libvirt-0.5.1/src/one_driver.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.5.1/src/one_driver.c	2009-01-08 22:59:17.895438969 +0100
+@@ -0,0 +1,724 @@
++/*----------------------------------------------------------------------------------*/
++/* Copyright 2002-2008, Distributed Systems Architecture Group, Universidad   
++ * Complutense de Madrid (dsa-research.org)                                   
++ *                                                                            
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++ */ 
++/*-----------------------------------------------------------------------------------*/
++
++#include <config.h>
++
++#include <fcntl.h>
++#include <sched.h>
++#include <sys/utsname.h>
++#include <stdbool.h>
++#include <string.h>
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <sys/un.h>
++#include <sys/poll.h>
++#include <unistd.h>
++#include <wait.h>
++#include <sys/time.h>
++
++#include "virterror_internal.h"
++#include "logging.h"
++#include "datatypes.h"
++#include "one_conf.h"
++#include "one_driver.h"
++#include "memory.h"
++#include "util.h"
++#include "bridge.h"
++#include "veth.h"
++#include "event.h"
++#include "cgroup.h"
++
++static int oneStart(void);
++
++static void oneDriverLock(one_driver_t* driver)
++{
++    pthread_mutex_lock(&driver->lock);
++}
++
++static void oneDriverUnlock(one_driver_t* driver)
++{
++    pthread_mutex_unlock(&driver->lock);
++}
++
++static one_driver_t *one_driver =NULL;
++
++/* Functions */
++
++static virDrvOpenStatus oneOpen(virConnectPtr conn,
++                                virConnectAuthPtr auth ATTRIBUTE_UNUSED,
++                                int flags ATTRIBUTE_UNUSED)
++{
++     /* Verify uri was specified */
++    if (conn->uri == NULL) {
++        conn->uri = xmlParseURI("one:///");
++        if (!conn->uri) {
++            oneError(conn, NULL, VIR_ERR_NO_MEMORY, NULL);
++            return VIR_DRV_OPEN_ERROR;
++        }
++    } else if (conn->uri->scheme == NULL ||
++               STRNEQ(conn->uri->scheme, "one")) {
++        goto declineConnection;
++    }
++	if(oneStart())
++		goto declineConnection;
++    conn->privateData = one_driver;
++    pthread_mutex_init(&one_driver->lock,NULL);
++    return VIR_DRV_OPEN_SUCCESS;
++
++declineConnection:
++    return VIR_DRV_OPEN_DECLINED;
++}
++
++static int oneClose(virConnectPtr conn)
++{	
++    if (one_driver == NULL)
++      return(-1);
++    oneDriverLock(one_driver);
++    virDomainObjListFree(&one_driver->domains);
++    virCapabilitiesFree(one_driver->caps);
++    oneDriverUnlock(one_driver);
++    VIR_FREE(one_driver);
++    conn->privateData = NULL;
++    return 0;
++}
++
++static virDomainPtr oneDomainLookupByID(virConnectPtr conn,
++                                        int id)
++{
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    virDomainPtr dom = NULL;
++    virDomainObjPtr vm = NULL;
++
++    oneDriverLock(driver);
++    vm = virDomainFindByID(&driver->domains, id);
++    oneDriverUnlock(driver);
++
++    if (!vm) {
++        oneError(conn, NULL, VIR_ERR_NO_DOMAIN, NULL);
++        goto return_point;
++    }
++
++    dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
++    if (dom) {
++        dom->id = vm->def->id;
++    }
++
++return_point:
++    if(vm){
++        virDomainObjUnlock(vm);
++        }
++    return dom;
++}
++
++static virDomainPtr oneDomainLookupByUUID(virConnectPtr conn,
++                                          const unsigned char *uuid)
++{
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    virDomainPtr dom = NULL;
++    virDomainObjPtr vm = NULL;
++
++    oneDriverLock(driver);
++    vm = virDomainFindByUUID(&driver->domains, uuid);
++    oneDriverUnlock(driver);
++    if (!vm) {
++        oneError(conn, NULL, VIR_ERR_NO_DOMAIN, NULL);
++        goto return_point;
++    }
++
++    dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
++    if (dom) {
++        dom->id = vm->def->id;
++    }
++
++return_point:
++    if(vm){
++        virDomainObjUnlock(vm);
++        }
++    return dom;
++}
++
++static virDomainPtr oneDomainLookupByName(virConnectPtr conn,
++                                          const char *name)
++{
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    virDomainObjPtr vm = NULL;
++    virDomainPtr dom=NULL;
++
++    oneDriverLock(driver);
++    vm = virDomainFindByName(&driver->domains, name);
++    oneDriverUnlock(driver);
++
++    if (!vm) {
++        oneError(conn, NULL, VIR_ERR_NO_DOMAIN, NULL);
++        goto return_point;
++    }
++
++    dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
++    if (dom) {
++        dom->id = vm->def->id;
++    }
++return_point:
++    if(vm){
++        virDomainObjUnlock(vm);
++         }
++    return dom;
++}
++
++static int oneListDomains(virConnectPtr conn, int *ids, int nids) {
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    int got = 0, i;
++
++    oneDriverLock(driver);
++    for (i = 0 ; i < driver->domains.count && got < nids ; i++){
++        if (virDomainIsActive(driver->domains.objs[i]))
++            ids[got++] = driver->domains.objs[i]->def->id;
++    }
++    oneDriverUnlock(driver);
++
++    return got;
++}
++static int oneNumDomains(virConnectPtr conn) {
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    int n = 0, i;
++
++    oneDriverLock(driver);
++    for (i = 0 ; i < driver->domains.count ; i++)
++        if (virDomainIsActive(driver->domains.objs[i]))
++            n++;
++    oneDriverUnlock(driver);
++
++    return n;
++}
++
++static int oneListDefinedDomains(virConnectPtr conn,
++                                 char **const names, int nnames) {
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    int got = 0, i;
++
++    oneDriverLock(driver);
++    for (i = 0 ; i < driver->domains.count && got < nnames ; i++) {
++        if (!virDomainIsActive(driver->domains.objs[i])) {
++            if (!(names[got++] = strdup(driver->domains.objs[i]->def->name))) {
++                oneError(conn, NULL, VIR_ERR_NO_MEMORY,
++                         "%s", _("failed to allocate space for VM name string"));
++                goto cleanup;
++            }
++        }
++    }
++
++    oneDriverUnlock(driver);
++    return got;
++
++ cleanup:
++    for (i = 0 ; i < got ; i++)
++        VIR_FREE(names[i]);
++    return -1;
++}
++
++
++static int oneNumDefinedDomains(virConnectPtr conn) {
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    int n = 0, i;
++
++    oneDriverLock(driver);
++    for (i = 0 ; i < driver->domains.count ; i++)
++        if (!virDomainIsActive(driver->domains.objs[i]))
++            n++;
++    oneDriverUnlock(driver);
++
++    return n;
++}
++
++
++
++static virDomainPtr oneDomainDefine(virConnectPtr conn, const char *xml){
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    virDomainDefPtr def;
++    virDomainObjPtr vm;
++    virDomainPtr dom=NULL;
++
++    oneDriverLock(driver);
++    if (!(def = virDomainDefParseString(conn, driver->caps, xml)))
++        return NULL;
++
++    vm = virDomainFindByName(&driver->domains, def->name);
++    if (vm) {
++          oneError(conn,NULL, VIR_ERR_OPERATION_FAILED,
++          _("Already an OpenNebula VM active with the id '%s'"),
++          def->name);
++          goto return_point;
++    }
++
++    if (!(vm = virDomainAssignDef(conn, &driver->domains, def))) {
++        virDomainDefFree(def);
++        return NULL;
++    }
++
++    vm->def->id = -1;
++
++    dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
++    if (dom) {
++        dom->id = vm->def->id;
++    }
++
++return_point:
++    virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return dom;
++}
++
++
++static int oneDomainUndefine(virDomainPtr dom)
++{
++    one_driver_t *driver = (one_driver_t *)dom->conn->privateData;
++    virDomainObjPtr vm = NULL;
++    int ret=-1;
++    
++    oneDriverLock(driver);
++    vm =virDomainFindByUUID(&driver->domains, dom->uuid);
++    if (!vm) {
++        oneError(dom->conn, NULL, VIR_ERR_INVALID_DOMAIN,
++                 "%s", _("no domain with matching uuid"));
++        goto return_point;
++    }
++    if (virDomainIsActive(vm)) {
++        oneError(dom->conn, NULL, VIR_ERR_INTERNAL_ERROR,
++                 "%s", _("cannot delete active domain"));
++        goto return_point;
++    }
++    virDomainRemoveInactive(&driver->domains, vm);
++    ret=0;
++
++
++return_point:
++    if(vm)
++        virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return ret;
++}
++
++static int oneDomainGetInfo(virDomainPtr dom,
++                            virDomainInfoPtr info)
++{
++    one_driver_t *driver = (one_driver_t *)dom->conn->privateData;
++    struct timeval tv;
++    virDomainObjPtr vm = NULL;
++    oneDriverLock(driver);
++    vm= virDomainFindByUUID(&driver->domains, dom->uuid);
++    oneDriverUnlock(driver);
++
++    if (!vm) {
++        oneError(dom->conn,NULL, VIR_ERR_INVALID_DOMAIN,
++                 "%s", _("no domain with matching uuid"));
++        return -1;
++    }
++
++    if(gettimeofday(&tv,NULL)<0){
++        oneError(dom->conn,NULL, VIR_ERR_INTERNAL_ERROR,
++                    "%s",_("getting time of day"));
++        virDomainObjUnlock(vm);
++        return -1;
++        }
++
++    if (!virDomainIsActive(vm)) {
++        info->cpuTime = 0;
++    } else {
++	  char vm_info[257];
++      c_oneVmInfo(vm->pid,vm_info,256);
++      //State:
++      char* cptr =strstr(vm_info,"LCM STATE");
++      cptr-=2;
++      int one_state=atoi(cptr);
++      switch(one_state){
++          case 3: if (vm->state!=VIR_DOMAIN_SHUTDOWN) vm->state=VIR_DOMAIN_RUNNING;break;
++          case 5: vm->state=VIR_DOMAIN_PAUSED;break;  /** pause */
++          case 6: vm->state=VIR_DOMAIN_SHUTOFF; /** done  */
++                  vm->def->id=-1;
++                  break;
++          case 7: vm->state=VIR_DOMAIN_CRASHED;break; /** error */
++          default: break;
++          };
++      //Memory:
++      cptr=strstr(vm_info,"MEMORY");  
++      cptr=index(cptr,':');
++      cptr++;
++      vm->def->memory = (atoi(cptr) / 1024 ) * 1000;
++      info->cpuTime = ((tv.tv_sec * 1000ll * 1000ll  * 1000ll) + (tv.tv_usec      * 1000ll));
++
++    }
++    
++    info->state = vm->state;
++    info->maxMem = vm->def->maxmem;
++    info->memory = vm->def->memory;
++    info->nrVirtCpu = 1;
++
++    virDomainObjUnlock(vm);
++    return 0;
++}
++
++static char *oneGetOSType(virDomainPtr dom)
++{
++
++    one_driver_t *driver = (one_driver_t *)dom->conn->privateData;
++    virDomainObjPtr vm = NULL;
++
++    oneDriverLock(driver);
++    vm =virDomainFindByUUID(&driver->domains, dom->uuid);
++    oneDriverUnlock(driver);
++    if (!vm) {
++        oneError(dom->conn, NULL, VIR_ERR_INVALID_DOMAIN,
++                 "%s", _("no domain with matching uuid"));
++        return NULL;
++    }
++
++    virDomainObjUnlock(vm);
++    return strdup(vm->def->os.type);
++}
++
++/**
++ * oneDomainStart:
++ * @dom: domain to start
++ *
++ * Looks up domain and starts it.
++ *
++ * Returns 0 on success or -1 in case of error
++ */
++static int oneDomainStart(virDomainPtr dom)
++{
++    virConnectPtr conn = dom->conn;
++    one_driver_t *driver = (one_driver_t *)(conn->privateData);
++    virDomainObjPtr vm = NULL;
++    int ret = -1;
++    
++    oneDriverLock(driver);
++    vm = virDomainFindByName(&driver->domains, dom->name);
++
++    if (!vm) {
++        oneError(conn, NULL, VIR_ERR_INVALID_DOMAIN,
++                 _("no domain named %s"), dom->name);
++        goto return_point;
++    }
++	int oneid;
++    if((oneid = oneSubmitVM(dom->conn,driver,vm)) <0){
++        goto return_point;
++    }
++    vm->pid=oneid;
++    vm->def->id=driver->nextid++;
++    vm->state=VIR_DOMAIN_BLOCKED;
++    ret=0;
++
++return_point:
++    if(vm)
++        virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return ret;
++
++
++}
++
++/**
++ * oneDomainCreateAndStart:
++ * @conn: pointer to connection
++ * @xml: XML definition of domain
++ * @flags: Unused
++ *
++ * Creates a domain based on xml and starts it
++ *
++ * Returns 0 on success or -1 in case of error
++ */
++static virDomainPtr
++oneDomainCreateAndStart(virConnectPtr conn,
++                        const char *xml,
++                        unsigned int flags ATTRIBUTE_UNUSED) {
++    one_driver_t *driver = (one_driver_t *)conn->privateData;
++    virDomainObjPtr vm=NULL ;
++    virDomainDefPtr def;
++    virDomainPtr dom = NULL;
++	int oneid;
++
++    oneDriverLock(driver);
++    if (!(def = virDomainDefParseString(conn, driver->caps, xml)))
++        goto return_point;
++
++    vm = virDomainFindByName(&driver->domains, def->name);
++    if (vm) {
++            oneError(conn,NULL, VIR_ERR_OPERATION_FAILED,
++           _("Already an OpenNebula VM active with the id '%s'"),
++           def->name);
++        goto return_point;
++    }
++    if (!(vm = virDomainAssignDef(conn, &driver->domains, def))) {
++        virDomainDefFree(def);
++        goto return_point;
++    }
++
++    if ((oneid = oneSubmitVM(conn, driver, vm)) < 0) {
++        virDomainRemoveInactive(&driver->domains, vm);
++        goto return_point;
++    }
++    vm->def->id=driver->nextid++;
++    vm->pid=oneid;
++    vm->state=VIR_DOMAIN_BLOCKED;
++
++    dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
++    if (dom) {
++        dom->id = vm->def->id;
++    }
++return_point:
++    if(vm)
++        virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return dom;
++}
++
++/**
++ * oneDomainShutdown:
++ * @dom: Ptr to domain to shutdown
++ *
++ * Sends SIGINT to container root process to request it to shutdown
++ *
++ * Returns 0 on success or -1 in case of error
++ */
++static int oneDomainShutdown(virDomainPtr dom)
++{
++    one_driver_t *driver = (one_driver_t*)dom->conn->privateData;
++    virDomainObjPtr vm=NULL;
++    int ret=-1;
++
++    oneDriverLock(driver);
++     if((vm=virDomainFindByID(&driver->domains, dom->id))){
++
++		if(!(c_oneShutdown(vm->pid) ) ) {
++        	vm->state=VIR_DOMAIN_SHUTDOWN;
++			ret= 0;
++            goto return_point;
++		  }
++		oneError( dom->conn,NULL, VIR_ERR_OPERATION_FAILED,"Domain Shutdown",NULL);
++		goto return_point;
++	}
++    oneError(dom->conn,NULL, VIR_ERR_INVALID_DOMAIN,
++                 _("no domain with id %d"), dom->id);
++
++return_point:
++    if(vm)
++        virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return ret;
++    
++}
++
++
++/**
++ * oneDomainDestroy:
++ * @dom: Ptr to domain to destroy
++ *
++ * Sends SIGKILL to container root process to terminate the container
++ *
++ * Returns 0 on success or -1 in case of error
++ */
++static int oneDomainDestroy(virDomainPtr dom)
++{
++    one_driver_t *driver = (one_driver_t*)dom->conn->privateData;
++    virDomainObjPtr vm=NULL;
++
++    oneDriverLock(driver);    
++    vm= virDomainFindByID(&driver->domains, dom->id);
++    if (!vm) {
++        oneError(dom->conn, NULL, VIR_ERR_INVALID_DOMAIN,
++                 _("no domain with id %d"), dom->id);
++        oneDriverUnlock(driver);
++        return -1;
++    }
++    virDomainRemoveInactive(&driver->domains, vm);
++    virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return 0;
++}
++static int
++oneDomainSuspend(virDomainPtr dom){
++
++	one_driver_t* driver=dom->conn->privateData;
++	virDomainObjPtr vm=NULL;
++	int ret=-1;
++    
++    oneDriverLock(driver);
++	if ((vm=virDomainFindByID(&driver->domains,dom->id))){
++
++      if (vm->state == VIR_DOMAIN_RUNNING) {
++        if( !(c_oneSuspend(vm->pid) )   ){
++           vm->state=VIR_DOMAIN_PAUSED;
++           ret=0;
++           goto return_point;
++           }    
++        oneError(dom->conn, NULL, VIR_ERR_OPERATION_FAILED,
++                                      "%s", "failed to pause domain");
++        goto return_point;
++        }
++      oneError(dom->conn,NULL,VIR_ERR_OPERATION_FAILED,
++                              "%s", "domain is not running");
++    }
++	else {
++        oneError(dom->conn, NULL, VIR_ERR_INVALID_DOMAIN,
++                         "no domain with matching id %d", dom->id);
++	  }   	
++
++return_point:
++    if(vm)
++        virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return ret;
++
++};
++
++
++static int 
++oneDomainResume(virDomainPtr dom){
++     one_driver_t* driver=dom->conn->privateData;
++     virDomainObjPtr vm=NULL;
++     int ret=-1;
++
++     oneDriverLock(driver);
++     if ((vm=virDomainFindByID(&driver->domains,dom->id))){
++
++        if (vm->state == VIR_DOMAIN_PAUSED) {
++           if( !(c_oneResume(vm->pid) )   ){
++              vm->state=VIR_DOMAIN_RUNNING;
++              ret=0;
++              goto return_point;
++           }                                                                               
++           oneError(dom->conn, NULL, VIR_ERR_OPERATION_FAILED,
++                                       "%s", "failed to resume ");
++           goto return_point;
++        } 
++       oneError(dom->conn,NULL,VIR_ERR_OPERATION_FAILED,
++                                 "%s", " domain is not paused ");
++     }
++     else {
++         oneError(dom->conn, NULL, VIR_ERR_INVALID_DOMAIN,
++                          "no domain with matching id %d", dom->id);
++     }       
++
++return_point:
++    if(vm)
++        virDomainObjUnlock(vm);
++    oneDriverUnlock(driver);
++    return ret;    
++};
++
++
++
++static int oneStart(void)
++{
++    if (VIR_ALLOC(one_driver) < 0) {
++        return -1;
++    }
++  
++    if ((one_driver->caps = oneCapsInit()) == NULL) {
++        VIR_FREE(one_driver);
++        return -1;
++    }
++	one_driver->nextid=1;
++	c_oneStart();
++    return 0;
++}
++
++
++static int oneVersion(virConnectPtr conn ATTRIBUTE_UNUSED , unsigned long *hvVer)
++{
++	*hvVer = 2;
++    return 0;
++}
++
++
++static int oneGetAutostart(virConnectPtr conn ATTRIBUTE_UNUSED)
++{
++    return 0;
++}
++
++/* Function Tables */
++static virDriver oneDriver = {
++    VIR_DRV_ONE, /* the number virDrvNo */
++    "ONE", /* the name of the driver */
++    oneOpen, /* open */
++    oneClose, /* close */
++    NULL, /* supports_feature */
++    NULL, /* type */
++    oneVersion, /* version */
++    NULL, /* getHostname */
++    NULL, /* getURI */
++    NULL, /* getMaxVcpus */
++    NULL, /* nodeGetInfo */
++    NULL, /* getCapabilities */
++    oneListDomains, /* listDomains */
++    oneNumDomains, /* numOfDomains */
++    oneDomainCreateAndStart, /* domainCreateXML */
++    oneDomainLookupByID, /* domainLookupByID */
++    oneDomainLookupByUUID, /* domainLookupByUUID */
++    oneDomainLookupByName, /* domainLookupByName */
++    oneDomainSuspend, /* domainSuspend */
++    oneDomainResume, /* domainResume */
++    oneDomainShutdown, /* domainShutdown */
++    NULL, /* domainReboot */
++    oneDomainDestroy, /* domainDestroy */
++    oneGetOSType, /* domainGetOSType */
++    NULL, /* domainGetMaxMemory */
++    NULL, /* domainSetMaxMemory */
++    NULL, /* domainSetMemory */
++    oneDomainGetInfo, /* domainGetInfo */
++    NULL, /* domainSave */
++    NULL, /* domainRestore */
++    NULL, /* domainCoreDump */
++    NULL, /* domainSetVcpus */
++    NULL, /* domainPinVcpu */
++    NULL, /* domainGetVcpus */
++    NULL, /* domainGetMaxVcpus */
++    NULL, /* domainDumpXML */
++    oneListDefinedDomains, /* listDefinedDomains */
++    oneNumDefinedDomains, /* numOfDefinedDomains */
++    oneDomainStart, /* domainCreate */
++    oneDomainDefine, /* domainDefineXML */
++    oneDomainUndefine, /* domainUndefine */
++    NULL, /* domainAttachDevice */
++    NULL, /* domainDetachDevice */
++    oneGetAutostart, /* domainGetAutostart */
++    NULL, /* domainSetAutostart */
++    NULL, /* domainGetSchedulerType */
++    NULL, /* domainGetSchedulerParameters */
++    NULL, /* domainSetSchedulerParameters */
++    NULL, /* domainMigratePrepare */
++    NULL, /* domainMigratePerform */
++    NULL, /* domainMigrateFinish */
++    NULL, /* domainBlockStats */
++    NULL, /* domainInterfaceStats */
++    NULL, /* domainBlockPeek */
++    NULL, /* domainMemoryPeek */
++    NULL, /* nodeGetCellsFreeMemory */
++    NULL, /* getFreeMemory */
++    NULL, /* domainEventRegister */
++    NULL, /* domainEventDeregister */
++    NULL, /* domainMigratePrepare2 */
++    NULL, /* domainMigrateFinish2 */
++};
++    
++int oneRegister(void)
++{
++    virRegisterDriver(&oneDriver);
++    return 0;
++}
+Index: libvirt-0.5.1/src/one_driver.h
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.5.1/src/one_driver.h	2009-01-08 22:59:17.919439995 +0100
+@@ -0,0 +1,30 @@
++/*----------------------------------------------------------------------------------*/
++/* Copyright 2002-2008, Distributed Systems Architecture Group, Universidad   
++ * Complutense de Madrid (dsa-research.org)                                   
++ *                                                                            
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++ */ 
++/*-----------------------------------------------------------------------------------*/
++
++
++#ifndef ONE_DRIVER_H
++#define ONE_DRIVER_H
++
++#include <config.h>
++
++/* Function declarations */
++int oneRegister(void);
++
++#endif /* ONE_DRIVER_H */
