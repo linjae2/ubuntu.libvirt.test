@@ -7,16 +7,16 @@ Subject: [PATCH] allow libvirt group to access the socket
  qemud/libvirtd.conf |    8 ++++----
  1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/qemud/libvirtd.conf b/qemud/libvirtd.conf
-index c323185..cff232d 100644
---- a/qemud/libvirtd.conf
-+++ b/qemud/libvirtd.conf
+Index: libvirt-0.4.6-5ubuntu1/qemud/libvirtd.conf
+===================================================================
+--- libvirt-0.4.6-5ubuntu1.orig/qemud/libvirtd.conf	2008-11-14 23:48:00.000000000 +0100
++++ libvirt-0.4.6-5ubuntu1/qemud/libvirtd.conf	2008-11-18 12:53:16.017690455 +0100
 @@ -75,7 +75,7 @@
  # without becoming root.
  #
  # This is restricted to 'root' by default.
 -#unix_sock_group = "libvirt"
-+unix_sock_group = "libvirt"
++unix_sock_group = "libvirtd"
  
  # Set the UNIX socket permissions for the R/O socket. This is used
  # for monitoring VM status only
@@ -47,6 +47,3 @@ index c323185..cff232d 100644
  
  # Change the authentication scheme for TCP sockets.
  #
--- 
-1.5.6.5
-

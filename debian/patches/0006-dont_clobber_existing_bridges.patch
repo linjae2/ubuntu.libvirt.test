@@ -1,0 +1,12 @@
+Index: ubuntu/qemud/default-network.xml
+===================================================================
+--- ubuntu.orig/qemud/default-network.xml	2008-02-12 01:20:09.818288028 +0100
++++ ubuntu/qemud/default-network.xml	2008-02-12 01:20:17.518258142 +0100
+@@ -1,6 +1,6 @@
+ <network>
+   <name>default</name>
+-  <bridge name="virbr0" />
++  <bridge name="virbr%d" />
+   <forward/>
+   <ip address="192.168.122.1" netmask="255.255.255.0">
+     <dhcp>

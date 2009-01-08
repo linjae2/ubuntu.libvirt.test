@@ -21,7 +21,7 @@ set -e
 case "$1" in
     configure)
     	if ! getent group libvirt >/dev/null; then
-    		addgroup --system libvirt
+    		addgroup --system libvirtd
 	fi
     ;;
 
