@@ -1,4 +1,3 @@
-From f7cfb3813be36f8178392e0d313935d4fd97e49a Mon Sep 17 00:00:00 2001
 From: Guido Guenther <agx@sigxcpu.org>
 Date: Fri, 7 Mar 2008 09:08:26 +0100
 Subject: [PATCH] qemu-disable-network.diff
@@ -9,13 +8,13 @@ Subject: [PATCH] qemu-disable-network.diff
  2 files changed, 0 insertions(+), 6 deletions(-)
 
 diff --git a/qemud/Makefile.am b/qemud/Makefile.am
-index 5d6ff63..29ff58c 100644
+index a0c161a..0e736d0 100644
 --- a/qemud/Makefile.am
 +++ b/qemud/Makefile.am
-@@ -107,9 +107,6 @@ install-data-local: install-init install-data-sasl install-data-polkit
- 	  $(DESTDIR)$(sysconfdir)/$(default_xml_dest)
- 	sed -i -e "s,</name>,</name>\n  <uuid>$(UUID)</uuid>," \
- 	  $(DESTDIR)$(sysconfdir)/$(default_xml_dest)
+@@ -152,9 +152,6 @@ install-data-local: install-init install-data-sasl install-data-polkit \
+ 	test -z "$(UUID)" || \
+ 	  sed -i -e "s,</name>,</name>\n  <uuid>$(UUID)</uuid>," \
+ 	    $(DESTDIR)$(sysconfdir)/$(default_xml_dest)
 -	test -e $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml || \
 -           ln -s ../default.xml \
 -	    $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml
@@ -23,13 +22,13 @@ index 5d6ff63..29ff58c 100644
  	mkdir -p $(DESTDIR)$(localstatedir)/run/libvirt
  	mkdir -p $(DESTDIR)$(localstatedir)/lib/libvirt
 diff --git a/qemud/Makefile.in b/qemud/Makefile.in
-index 6b7cefe..7293b86 100644
+index ac4bfdc..5a22dc9 100644
 --- a/qemud/Makefile.in
 +++ b/qemud/Makefile.in
-@@ -1092,9 +1092,6 @@ remote_protocol.c: remote_protocol.h
- @WITH_LIBVIRTD_TRUE@	  $(DESTDIR)$(sysconfdir)/$(default_xml_dest)
- @WITH_LIBVIRTD_TRUE@	sed -i -e "s,</name>,</name>\n  <uuid>$(UUID)</uuid>," \
- @WITH_LIBVIRTD_TRUE@	  $(DESTDIR)$(sysconfdir)/$(default_xml_dest)
+@@ -1291,9 +1291,6 @@ remote_protocol.c: remote_protocol.h
+ @WITH_LIBVIRTD_TRUE@	test -z "$(UUID)" || \
+ @WITH_LIBVIRTD_TRUE@	  sed -i -e "s,</name>,</name>\n  <uuid>$(UUID)</uuid>," \
+ @WITH_LIBVIRTD_TRUE@	    $(DESTDIR)$(sysconfdir)/$(default_xml_dest)
 -@WITH_LIBVIRTD_TRUE@	test -e $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml || \
 -@WITH_LIBVIRTD_TRUE@           ln -s ../default.xml \
 -@WITH_LIBVIRTD_TRUE@	    $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml
@@ -37,5 +36,3 @@ index 6b7cefe..7293b86 100644
  @WITH_LIBVIRTD_TRUE@	mkdir -p $(DESTDIR)$(localstatedir)/run/libvirt
  @WITH_LIBVIRTD_TRUE@	mkdir -p $(DESTDIR)$(localstatedir)/lib/libvirt
 -- 
-1.5.6.5
-
