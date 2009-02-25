@@ -1,3 +1,9 @@
+libvirt (0.6.0-1ubuntu3) jaunty; urgency=low
+
+  * No change rebuild for python2.6.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 25 Feb 2009 12:17:13 +0000
+
 libvirt (0.6.0-1ubuntu2) jaunty; urgency=low
 
   * Accidentally dropped our changes to
