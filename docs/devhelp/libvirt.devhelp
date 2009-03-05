@@ -14,6 +14,9 @@
     <function name="VIR_DOMAIN_SCHED_FIELD_LENGTH" link="libvirt-libvirt.html#VIR_DOMAIN_SCHED_FIELD_LENGTH"/>
     <function name="VIR_GET_CPUMAP" link="libvirt-libvirt.html#VIR_GET_CPUMAP"/>
     <function name="VIR_NODEINFO_MAXCPUS" link="libvirt-libvirt.html#VIR_NODEINFO_MAXCPUS"/>
+    <function name="VIR_SECURITY_DOI_BUFLEN" link="libvirt-libvirt.html#VIR_SECURITY_DOI_BUFLEN"/>
+    <function name="VIR_SECURITY_LABEL_BUFLEN" link="libvirt-libvirt.html#VIR_SECURITY_LABEL_BUFLEN"/>
+    <function name="VIR_SECURITY_MODEL_BUFLEN" link="libvirt-libvirt.html#VIR_SECURITY_MODEL_BUFLEN"/>
     <function name="VIR_UNUSE_CPU" link="libvirt-libvirt.html#VIR_UNUSE_CPU"/>
     <function name="VIR_USE_CPU" link="libvirt-libvirt.html#VIR_USE_CPU"/>
     <function name="VIR_UUID_BUFLEN" link="libvirt-libvirt.html#VIR_UUID_BUFLEN"/>
@@ -96,6 +99,7 @@
     <function name="VIR_ERR_NO_NODE_DEVICE" link="libvirt-virterror.html#VIR_ERR_NO_NODE_DEVICE"/>
     <function name="VIR_ERR_NO_OS" link="libvirt-virterror.html#VIR_ERR_NO_OS"/>
     <function name="VIR_ERR_NO_ROOT" link="libvirt-virterror.html#VIR_ERR_NO_ROOT"/>
+    <function name="VIR_ERR_NO_SECURITY_MODEL" link="libvirt-virterror.html#VIR_ERR_NO_SECURITY_MODEL"/>
     <function name="VIR_ERR_NO_SOURCE" link="libvirt-virterror.html#VIR_ERR_NO_SOURCE"/>
     <function name="VIR_ERR_NO_STORAGE_POOL" link="libvirt-virterror.html#VIR_ERR_NO_STORAGE_POOL"/>
     <function name="VIR_ERR_NO_STORAGE_VOL" link="libvirt-virterror.html#VIR_ERR_NO_STORAGE_VOL"/>
@@ -137,6 +141,7 @@
     <function name="VIR_FROM_QEMU" link="libvirt-virterror.html#VIR_FROM_QEMU"/>
     <function name="VIR_FROM_REMOTE" link="libvirt-virterror.html#VIR_FROM_REMOTE"/>
     <function name="VIR_FROM_RPC" link="libvirt-virterror.html#VIR_FROM_RPC"/>
+    <function name="VIR_FROM_SECURITY" link="libvirt-virterror.html#VIR_FROM_SECURITY"/>
     <function name="VIR_FROM_SEXPR" link="libvirt-virterror.html#VIR_FROM_SEXPR"/>
     <function name="VIR_FROM_STATS_LINUX" link="libvirt-virterror.html#VIR_FROM_STATS_LINUX"/>
     <function name="VIR_FROM_STORAGE" link="libvirt-virterror.html#VIR_FROM_STORAGE"/>
@@ -200,6 +205,8 @@
     <function name="virNodeInfoPtr" link="libvirt-libvirt.html#virNodeInfoPtr"/>
     <function name="virSchedParameterPtr" link="libvirt-libvirt.html#virSchedParameterPtr"/>
     <function name="virSchedParameterType" link="libvirt-libvirt.html#virSchedParameterType"/>
+    <function name="virSecurityLabelPtr" link="libvirt-libvirt.html#virSecurityLabelPtr"/>
+    <function name="virSecurityModelPtr" link="libvirt-libvirt.html#virSecurityModelPtr"/>
     <function name="virStoragePoolBuildFlags" link="libvirt-libvirt.html#virStoragePoolBuildFlags"/>
     <function name="virStoragePoolDeleteFlags" link="libvirt-libvirt.html#virStoragePoolDeleteFlags"/>
     <function name="virStoragePoolInfoPtr" link="libvirt-libvirt.html#virStoragePoolInfoPtr"/>
@@ -223,6 +230,8 @@
     <function name="virNodeDevice" link="libvirt-libvirt.html#virNodeDevice"/>
     <function name="virNodeInfo" link="libvirt-libvirt.html#virNodeInfo"/>
     <function name="virSchedParameter" link="libvirt-libvirt.html#virSchedParameter"/>
+    <function name="virSecurityLabel" link="libvirt-libvirt.html#virSecurityLabel"/>
+    <function name="virSecurityModel" link="libvirt-libvirt.html#virSecurityModel"/>
     <function name="virStoragePool" link="libvirt-libvirt.html#virStoragePool"/>
     <function name="virStoragePoolInfo" link="libvirt-libvirt.html#virStoragePoolInfo"/>
     <function name="virStorageVol" link="libvirt-libvirt.html#virStorageVol"/>
@@ -270,6 +279,7 @@
     <function name="virConnectOpen ()" link="libvirt-libvirt.html#virConnectOpen"/>
     <function name="virConnectOpenAuth ()" link="libvirt-libvirt.html#virConnectOpenAuth"/>
     <function name="virConnectOpenReadOnly ()" link="libvirt-libvirt.html#virConnectOpenReadOnly"/>
+    <function name="virConnectRef ()" link="libvirt-libvirt.html#virConnectRef"/>
     <function name="virCopyLastError ()" link="libvirt-virterror.html#virCopyLastError"/>
     <function name="virDefaultErrorFunc ()" link="libvirt-virterror.html#virDefaultErrorFunc"/>
     <function name="virDomainAttachDevice ()" link="libvirt-libvirt.html#virDomainAttachDevice"/>
@@ -293,6 +303,7 @@
     <function name="virDomainGetOSType ()" link="libvirt-libvirt.html#virDomainGetOSType"/>
     <function name="virDomainGetSchedulerParameters ()" link="libvirt-libvirt.html#virDomainGetSchedulerParameters"/>
     <function name="virDomainGetSchedulerType ()" link="libvirt-libvirt.html#virDomainGetSchedulerType"/>
+    <function name="virDomainGetSecurityLabel ()" link="libvirt-libvirt.html#virDomainGetSecurityLabel"/>
     <function name="virDomainGetUUID ()" link="libvirt-libvirt.html#virDomainGetUUID"/>
     <function name="virDomainGetUUIDString ()" link="libvirt-libvirt.html#virDomainGetUUIDString"/>
     <function name="virDomainGetVcpus ()" link="libvirt-libvirt.html#virDomainGetVcpus"/>
@@ -306,6 +317,7 @@
     <function name="virDomainMigrate ()" link="libvirt-libvirt.html#virDomainMigrate"/>
     <function name="virDomainPinVcpu ()" link="libvirt-libvirt.html#virDomainPinVcpu"/>
     <function name="virDomainReboot ()" link="libvirt-libvirt.html#virDomainReboot"/>
+    <function name="virDomainRef ()" link="libvirt-libvirt.html#virDomainRef"/>
     <function name="virDomainRestore ()" link="libvirt-libvirt.html#virDomainRestore"/>
     <function name="virDomainResume ()" link="libvirt-libvirt.html#virDomainResume"/>
     <function name="virDomainSave ()" link="libvirt-libvirt.html#virDomainSave"/>
@@ -318,6 +330,7 @@
     <function name="virDomainSuspend ()" link="libvirt-libvirt.html#virDomainSuspend"/>
     <function name="virDomainUndefine ()" link="libvirt-libvirt.html#virDomainUndefine"/>
     <function name="virEventRegisterImpl ()" link="libvirt-libvirt.html#virEventRegisterImpl"/>
+    <function name="virFreeError ()" link="libvirt-virterror.html#virFreeError"/>
     <function name="virGetLastError ()" link="libvirt-virterror.html#virGetLastError"/>
     <function name="virGetVersion ()" link="libvirt-libvirt.html#virGetVersion"/>
     <function name="virInitialize ()" link="libvirt-libvirt.html#virInitialize"/>
@@ -336,8 +349,10 @@
     <function name="virNetworkLookupByName ()" link="libvirt-libvirt.html#virNetworkLookupByName"/>
     <function name="virNetworkLookupByUUID ()" link="libvirt-libvirt.html#virNetworkLookupByUUID"/>
     <function name="virNetworkLookupByUUIDString ()" link="libvirt-libvirt.html#virNetworkLookupByUUIDString"/>
+    <function name="virNetworkRef ()" link="libvirt-libvirt.html#virNetworkRef"/>
     <function name="virNetworkSetAutostart ()" link="libvirt-libvirt.html#virNetworkSetAutostart"/>
     <function name="virNetworkUndefine ()" link="libvirt-libvirt.html#virNetworkUndefine"/>
+    <function name="virNodeDeviceDettach ()" link="libvirt-libvirt.html#virNodeDeviceDettach"/>
     <function name="virNodeDeviceFree ()" link="libvirt-libvirt.html#virNodeDeviceFree"/>
     <function name="virNodeDeviceGetName ()" link="libvirt-libvirt.html#virNodeDeviceGetName"/>
     <function name="virNodeDeviceGetParent ()" link="libvirt-libvirt.html#virNodeDeviceGetParent"/>
@@ -345,13 +360,18 @@
     <function name="virNodeDeviceListCaps ()" link="libvirt-libvirt.html#virNodeDeviceListCaps"/>
     <function name="virNodeDeviceLookupByName ()" link="libvirt-libvirt.html#virNodeDeviceLookupByName"/>
     <function name="virNodeDeviceNumOfCaps ()" link="libvirt-libvirt.html#virNodeDeviceNumOfCaps"/>
+    <function name="virNodeDeviceReAttach ()" link="libvirt-libvirt.html#virNodeDeviceReAttach"/>
+    <function name="virNodeDeviceRef ()" link="libvirt-libvirt.html#virNodeDeviceRef"/>
+    <function name="virNodeDeviceReset ()" link="libvirt-libvirt.html#virNodeDeviceReset"/>
     <function name="virNodeGetCellsFreeMemory ()" link="libvirt-libvirt.html#virNodeGetCellsFreeMemory"/>
     <function name="virNodeGetFreeMemory ()" link="libvirt-libvirt.html#virNodeGetFreeMemory"/>
     <function name="virNodeGetInfo ()" link="libvirt-libvirt.html#virNodeGetInfo"/>
+    <function name="virNodeGetSecurityModel ()" link="libvirt-libvirt.html#virNodeGetSecurityModel"/>
     <function name="virNodeListDevices ()" link="libvirt-libvirt.html#virNodeListDevices"/>
     <function name="virNodeNumOfDevices ()" link="libvirt-libvirt.html#virNodeNumOfDevices"/>
     <function name="virResetError ()" link="libvirt-virterror.html#virResetError"/>
     <function name="virResetLastError ()" link="libvirt-virterror.html#virResetLastError"/>
+    <function name="virSaveLastError ()" link="libvirt-virterror.html#virSaveLastError"/>
     <function name="virSetErrorFunc ()" link="libvirt-virterror.html#virSetErrorFunc"/>
     <function name="virStoragePoolBuild ()" link="libvirt-libvirt.html#virStoragePoolBuild"/>
     <function name="virStoragePoolCreate ()" link="libvirt-libvirt.html#virStoragePoolCreate"/>
@@ -373,6 +393,7 @@
     <function name="virStoragePoolLookupByUUIDString ()" link="libvirt-libvirt.html#virStoragePoolLookupByUUIDString"/>
     <function name="virStoragePoolLookupByVolume ()" link="libvirt-libvirt.html#virStoragePoolLookupByVolume"/>
     <function name="virStoragePoolNumOfVolumes ()" link="libvirt-libvirt.html#virStoragePoolNumOfVolumes"/>
+    <function name="virStoragePoolRef ()" link="libvirt-libvirt.html#virStoragePoolRef"/>
     <function name="virStoragePoolRefresh ()" link="libvirt-libvirt.html#virStoragePoolRefresh"/>
     <function name="virStoragePoolSetAutostart ()" link="libvirt-libvirt.html#virStoragePoolSetAutostart"/>
     <function name="virStoragePoolUndefine ()" link="libvirt-libvirt.html#virStoragePoolUndefine"/>
@@ -388,5 +409,6 @@
     <function name="virStorageVolLookupByKey ()" link="libvirt-libvirt.html#virStorageVolLookupByKey"/>
     <function name="virStorageVolLookupByName ()" link="libvirt-libvirt.html#virStorageVolLookupByName"/>
     <function name="virStorageVolLookupByPath ()" link="libvirt-libvirt.html#virStorageVolLookupByPath"/>
+    <function name="virStorageVolRef ()" link="libvirt-libvirt.html#virStorageVolRef"/>
   </functions>
 </book>

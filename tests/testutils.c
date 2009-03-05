@@ -1,13 +1,11 @@
 /*
  * testutils.c: basic test utils
  *
- * Copyright (C) 2005-2007 Red Hat, Inc.
+ * Copyright (C) 2005-2009 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
  * Karel Zak <kzak@redhat.com>
- *
- * $Id: testutils.c,v 1.22 2008/11/21 12:16:08 berrange Exp $
  */
 
 #include <config.h>
@@ -28,6 +26,8 @@
 #include "internal.h"
 #include "memory.h"
 #include "util.h"
+#include "threads.h"
+#include "virterror_internal.h"
 
 #if TEST_OOM_TRACE
 #include <execinfo.h>
@@ -35,10 +35,6 @@
 
 #ifdef HAVE_PATHS_H
 #include <paths.h>
-#endif
-
-#ifndef _PATH_DEVNULL
-#define	_PATH_DEVNULL	"/dev/null"
 #endif
 
 #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
@@ -110,27 +106,36 @@ virtTestRun(const char *title, int nloops, int (*body)(const void *data), const 
     return ret;
 }
 
-int virtTestLoadFile(const char *name,
+/* Read FILE into buffer BUF of length BUFLEN.
+   Upon any failure, or if FILE appears to contain more than BUFLEN bytes,
+   diagnose it and return -1, but don't bother trying to preserve errno.
+   Otherwise, return the number of bytes read (and copied into BUF).  */
+int virtTestLoadFile(const char *file,
                      char **buf,
                      int buflen) {
-    FILE *fp = fopen(name, "r");
+    FILE *fp = fopen(file, "r");
     struct stat st;
 
-    if (!fp)
+    if (!fp) {
+        fprintf (stderr, "%s: failed to open: %s\n", file, strerror(errno));
         return -1;
+    }
 
     if (fstat(fileno(fp), &st) < 0) {
+        fprintf (stderr, "%s: failed to fstat: %s\n", file, strerror(errno));
         fclose(fp);
         return -1;
     }
 
     if (st.st_size > (buflen-1)) {
+        fprintf (stderr, "%s: larger than buffer (> %d)\n", file, buflen-1);
         fclose(fp);
         return -1;
     }
 
     if (st.st_size) {
         if (fread(*buf, st.st_size, 1, fp) != 1) {
+            fprintf (stderr, "%s: read failed: %s\n", file, strerror(errno));
             fclose(fp);
             return -1;
         }
@@ -157,9 +162,9 @@ void virtTestCaptureProgramExecChild(const char *const argv[],
         NULL
     };
 
-    if ((stdinfd = open(_PATH_DEVNULL, O_RDONLY)) < 0)
+    if ((stdinfd = open("/dev/null", O_RDONLY)) < 0)
         goto cleanup;
-    if ((stderrfd = open(_PATH_DEVNULL, O_WRONLY)) < 0)
+    if ((stderrfd = open("/dev/null", O_WRONLY)) < 0)
         goto cleanup;
 
     open_max = sysconf (_SC_OPEN_MAX);
@@ -325,8 +330,8 @@ int virtTestMain(int argc,
                  int (*func)(int, char **))
 {
     char *debugStr;
-#if TEST_OOM
     int ret;
+#if TEST_OOM
     int approxAlloc = 0;
     int n;
     char *oomStr = NULL;
@@ -335,6 +340,10 @@ int virtTestMain(int argc,
     pid_t *workers;
     int worker = 0;
 #endif
+
+    if (virThreadInitialize() < 0 ||
+        virErrorInitialize() < 0)
+        return 1;
 
     if ((debugStr = getenv("VIR_TEST_DEBUG")) != NULL) {
         if (virStrToLong_ui(debugStr, NULL, 10, &testDebug) < 0)
@@ -355,8 +364,10 @@ int virtTestMain(int argc,
     if (getenv("VIR_TEST_MP") != NULL) {
         mp = sysconf(_SC_NPROCESSORS_ONLN);
         fprintf(stderr, "Using %d worker processes\n", mp);
-        if (VIR_ALLOC_N(workers, mp) < 0)
-            return EXIT_FAILURE;
+        if (VIR_ALLOC_N(workers, mp) < 0) {
+            ret = EXIT_FAILURE;
+            goto cleanup;
+        }
     }
 
     if (testOOM)
@@ -365,7 +376,7 @@ int virtTestMain(int argc,
     /* Run once to count allocs, and ensure it passes :-) */
     ret = (func)(argc, argv);
     if (ret != EXIT_SUCCESS)
-        return EXIT_FAILURE;
+        goto cleanup;
 
 #if TEST_OOM_TRACE
     if (testDebug)
@@ -437,9 +448,11 @@ int virtTestMain(int argc,
         else
             fprintf(stderr, " FAILED\n");
     }
-    return ret;
-
+cleanup:
 #else
-    return (func)(argc, argv);
+    ret = (func)(argc, argv);
 #endif
+
+    virResetLastError();
+    return ret;
 }

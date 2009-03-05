@@ -1,7 +1,7 @@
 /*
  * xml.c: XML based interfaces for the libvir library
  *
- * Copyright (C) 2005, 2007, 2008 Red Hat, Inc.
+ * Copyright (C) 2005, 2007-2009 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
@@ -22,6 +22,8 @@
 #include "buf.h"
 #include "util.h"
 #include "memory.h"
+
+#define VIR_FROM_THIS VIR_FROM_XML
 
 #define virXMLError(conn, code, fmt...)                                      \
         virReportErrorHelper(conn, VIR_FROM_XML, code, __FILE__,           \
@@ -68,10 +70,40 @@ virXPathString(virConnectPtr conn,
     ret = strdup((char *) obj->stringval);
     xmlXPathFreeObject(obj);
     if (ret == NULL) {
-        virXMLError(conn, VIR_ERR_NO_MEMORY, "%s", _("strdup failed"));
+        virReportOOMError(conn);
     }
     ctxt->node = relnode;
     return (ret);
+}
+
+/**
+ * virXPathStringLimit:
+ * @xpath: the XPath string to evaluate
+ * @maxlen: maximum length permittred string
+ * @ctxt: an XPath context
+ *
+ * Wrapper for virXPathString, which validates the length of the returned
+ * string.
+ *
+ * Returns a new string which must be deallocated by the caller or NULL if
+ * the evaluation failed.
+ */
+char *
+virXPathStringLimit(virConnectPtr conn,
+                    const char *xpath,
+                    size_t maxlen,
+                    xmlXPathContextPtr ctxt)
+{
+    char *tmp = virXPathString(conn, xpath, ctxt);
+
+    if (tmp != NULL && strlen(tmp) >= maxlen) {
+        virXMLError(conn, VIR_ERR_INTERNAL_ERROR,
+                    _("\'%s\' value longer than %Zd bytes in virXPathStringLimit()"),
+                    xpath, maxlen);
+            return NULL;
+    }
+
+    return tmp;
 }
 
 /**
@@ -114,6 +146,50 @@ virXPathNumber(virConnectPtr conn,
     return (0);
 }
 
+static int
+virXPathLongBase(virConnectPtr conn,
+                 const char *xpath,
+                 xmlXPathContextPtr ctxt,
+                 int base,
+                 long *value)
+{
+    xmlXPathObjectPtr obj;
+    xmlNodePtr relnode;
+    int ret = 0;
+
+    if ((ctxt == NULL) || (xpath == NULL) || (value == NULL)) {
+        virXMLError(conn, VIR_ERR_INTERNAL_ERROR,
+                    "%s", _("Invalid parameter to virXPathLong()"));
+        return (-1);
+    }
+    relnode = ctxt->node;
+    obj = xmlXPathEval(BAD_CAST xpath, ctxt);
+    if ((obj != NULL) && (obj->type == XPATH_STRING) &&
+        (obj->stringval != NULL) && (obj->stringval[0] != 0)) {
+        char *conv = NULL;
+        long val;
+
+        val = strtol((const char *) obj->stringval, &conv, base);
+        if (conv == (const char *) obj->stringval) {
+            ret = -2;
+        } else {
+            *value = val;
+        }
+    } else if ((obj != NULL) && (obj->type == XPATH_NUMBER) &&
+               (!(isnan(obj->floatval)))) {
+        *value = (long) obj->floatval;
+        if (*value != obj->floatval) {
+            ret = -2;
+        }
+    } else {
+        ret = -1;
+    }
+
+    xmlXPathFreeObject(obj);
+    ctxt->node = relnode;
+    return (ret);
+}
+
 /**
  * virXPathLong:
  * @xpath: the XPath string to evaluate
@@ -132,13 +208,45 @@ virXPathLong(virConnectPtr conn,
              xmlXPathContextPtr ctxt,
              long *value)
 {
+    return virXPathLongBase(conn, xpath, ctxt, 10, value);
+}
+
+/**
+ * virXPathLongHex:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ * @value: the returned long value
+ *
+ * Convenience function to evaluate an XPath number
+ * according to a base of 16
+ *
+ * Returns 0 in case of success in which case @value is set,
+ *         or -1 if the XPath evaluation failed or -2 if the
+ *         value doesn't have a long format.
+ */
+int
+virXPathLongHex(virConnectPtr conn,
+                const char *xpath,
+                xmlXPathContextPtr ctxt,
+                long *value)
+{
+    return virXPathLongBase(conn, xpath, ctxt, 16, value);
+}
+
+static int
+virXPathULongBase(virConnectPtr conn,
+                  const char *xpath,
+                  xmlXPathContextPtr ctxt,
+                  int base,
+                  unsigned long *value)
+{
     xmlXPathObjectPtr obj;
     xmlNodePtr relnode;
     int ret = 0;
 
     if ((ctxt == NULL) || (xpath == NULL) || (value == NULL)) {
         virXMLError(conn, VIR_ERR_INTERNAL_ERROR,
-                    "%s", _("Invalid parameter to virXPathNumber()"));
+                    "%s", _("Invalid parameter to virXPathULong()"));
         return (-1);
     }
     relnode = ctxt->node;
@@ -148,7 +256,7 @@ virXPathLong(virConnectPtr conn,
         char *conv = NULL;
         long val;
 
-        val = strtol((const char *) obj->stringval, &conv, 10);
+        val = strtoul((const char *) obj->stringval, &conv, base);
         if (conv == (const char *) obj->stringval) {
             ret = -2;
         } else {
@@ -156,7 +264,7 @@ virXPathLong(virConnectPtr conn,
         }
     } else if ((obj != NULL) && (obj->type == XPATH_NUMBER) &&
                (!(isnan(obj->floatval)))) {
-        *value = (long) obj->floatval;
+        *value = (unsigned long) obj->floatval;
         if (*value != obj->floatval) {
             ret = -2;
         }
@@ -187,13 +295,56 @@ virXPathULong(virConnectPtr conn,
               xmlXPathContextPtr ctxt,
               unsigned long *value)
 {
+    return virXPathULongBase(conn, xpath, ctxt, 10, value);
+}
+
+/**
+ * virXPathUHex:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ * @value: the returned long value
+ *
+ * Convenience function to evaluate an XPath number
+ * according to base of 16
+ *
+ * Returns 0 in case of success in which case @value is set,
+ *         or -1 if the XPath evaluation failed or -2 if the
+ *         value doesn't have a long format.
+ */
+int
+virXPathULongHex(virConnectPtr conn,
+                 const char *xpath,
+                 xmlXPathContextPtr ctxt,
+                 unsigned long *value)
+{
+    return virXPathULongBase(conn, xpath, ctxt, 16, value);
+}
+
+/**
+ * virXPathULongLong:
+ * @xpath: the XPath string to evaluate
+ * @ctxt: an XPath context
+ * @value: the returned long long value
+ *
+ * Convenience function to evaluate an XPath number
+ *
+ * Returns 0 in case of success in which case @value is set,
+ *         or -1 if the XPath evaluation failed or -2 if the
+ *         value doesn't have a long format.
+ */
+int
+virXPathULongLong(virConnectPtr conn,
+                  const char *xpath,
+                  xmlXPathContextPtr ctxt,
+                  unsigned long long *value)
+{
     xmlXPathObjectPtr obj;
     xmlNodePtr relnode;
     int ret = 0;
 
     if ((ctxt == NULL) || (xpath == NULL) || (value == NULL)) {
         virXMLError(conn, VIR_ERR_INTERNAL_ERROR,
-                    "%s", _("Invalid parameter to virXPathNumber()"));
+                    "%s", _("Invalid parameter to virXPathULong()"));
         return (-1);
     }
     relnode = ctxt->node;
@@ -201,9 +352,9 @@ virXPathULong(virConnectPtr conn,
     if ((obj != NULL) && (obj->type == XPATH_STRING) &&
         (obj->stringval != NULL) && (obj->stringval[0] != 0)) {
         char *conv = NULL;
-        long val;
+        unsigned long long val;
 
-        val = strtoul((const char *) obj->stringval, &conv, 10);
+        val = strtoull((const char *) obj->stringval, &conv, 10);
         if (conv == (const char *) obj->stringval) {
             ret = -2;
         } else {
@@ -211,7 +362,7 @@ virXPathULong(virConnectPtr conn,
         }
     } else if ((obj != NULL) && (obj->type == XPATH_NUMBER) &&
                (!(isnan(obj->floatval)))) {
-        *value = (unsigned long) obj->floatval;
+        *value = (unsigned long long) obj->floatval;
         if (*value != obj->floatval) {
             ret = -2;
         }
@@ -350,9 +501,7 @@ virXPathNodeSet(virConnectPtr conn,
     ret = obj->nodesetval->nodeNr;
     if (list != NULL && ret) {
         if (VIR_ALLOC_N(*list, ret) < 0) {
-            virXMLError(conn, VIR_ERR_NO_MEMORY,
-                        _("allocate string array size %lu"),
-                        (unsigned long)ret * sizeof(**list));
+            virReportOOMError(conn);
             ret = -1;
         } else {
             memcpy(*list, obj->nodesetval->nodeTab,
@@ -363,4 +512,3 @@ virXPathNodeSet(virConnectPtr conn,
     ctxt->node = relnode;
     return (ret);
 }
-

@@ -24,7 +24,7 @@
 
 #include <config.h>
 
-#if defined(WITH_QEMU) || defined(WITH_LXC)
+#if defined(WITH_BRIDGE)
 
 #include <net/if.h>
 #include <netinet/in.h>
@@ -47,8 +47,10 @@ int     brInit                  (brControl **ctl);
 void    brShutdown              (brControl *ctl);
 
 int     brAddBridge             (brControl *ctl,
-                                 char **name);
+                                 const char *name);
 int     brDeleteBridge          (brControl *ctl,
+                                 const char *name);
+int     brHasBridge             (brControl *ctl,
                                  const char *name);
 
 int     brAddInterface          (brControl *ctl,
@@ -61,6 +63,7 @@ int     brDeleteInterface       (brControl *ctl,
 int     brAddTap                (brControl *ctl,
                                  const char *bridge,
                                  char **ifname,
+                                 int vnet_hdr,
                                  int *tapfd);
 
 int     brSetInterfaceUp        (brControl *ctl,
@@ -98,6 +101,6 @@ int     brGetEnableSTP          (brControl *ctl,
                                  const char *bridge,
                                  int *enable);
 
-#endif /* WITH_QEMU || WITH_LXC */
+#endif /* WITH_BRIDGE */
 
 #endif /* __QEMUD_BRIDGE_H__ */
