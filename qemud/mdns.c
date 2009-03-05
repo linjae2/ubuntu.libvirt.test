@@ -44,7 +44,7 @@
 #include "remote_internal.h"
 #include "memory.h"
 
-#define AVAHI_DEBUG(fmt, ...) qemudDebug("AVAHI: " fmt, __VA_ARGS__)
+#define AVAHI_DEBUG(fmt, ...) DEBUG(fmt, __VA_ARGS__)
 
 struct libvirtd_mdns_entry {
     char *type;
@@ -309,7 +309,7 @@ static AvahiTimeout *libvirtd_mdns_timeout_new(const AvahiPoll *api ATTRIBUTE_UN
     AvahiTimeout *t;
     struct timeval now;
     long long nowms, thenms, timeout;
-    AVAHI_DEBUG("Add timeout %p TV %p", t, tv);
+    AVAHI_DEBUG("Add timeout TV %p", tv);
     if (VIR_ALLOC(t) < 0)
         return NULL;
 

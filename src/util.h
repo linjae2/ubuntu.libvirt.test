@@ -27,6 +27,7 @@
 
 #include "verify.h"
 #include <sys/select.h>
+#include <sys/types.h>
 
 int saferead(int fd, void *buf, size_t count);
 ssize_t safewrite(int fd, const void *buf, size_t count);
@@ -37,11 +38,29 @@ enum {
     VIR_EXEC_DAEMON = (1 << 1),
 };
 
+int virSetNonBlock(int fd);
+int virSetCloseExec(int fd);
+
+/* This will execute in the context of the first child
+ * after fork() but before execve() */
+typedef int (*virExecHook)(void *data);
+
+int virExecWithHook(virConnectPtr conn,
+                    const char *const*argv,
+                    const char *const*envp,
+                    const fd_set *keepfd,
+                    int *retpid,
+                    int infd,
+                    int *outfd,
+                    int *errfd,
+                    int flags,
+                    virExecHook hook,
+                    void *data);
 int virExec(virConnectPtr conn,
             const char *const*argv,
             const char *const*envp,
             const fd_set *keepfd,
-            int *retpid,
+            pid_t *retpid,
             int infd,
             int *outfd,
             int *errfd,
@@ -51,6 +70,8 @@ int virRun(virConnectPtr conn, const char *const*argv, int *status);
 int virFileReadLimFD(int fd, int maxlen, char **buf);
 
 int virFileReadAll(const char *path, int maxlen, char **buf);
+
+int virFileWriteStr(const char *path, const char *str);
 
 int virFileMatchesNameSuffix(const char *file,
                              const char *name,
@@ -79,6 +100,8 @@ int virFileOpenTty(int *ttymaster,
                    char **ttyName,
                    int rawmode);
 
+char* virFilePid(const char *dir,
+                 const char *name);
 int virFileWritePid(const char *dir,
                     const char *name,
                     pid_t pid);
@@ -112,6 +135,8 @@ int virMacAddrCompare (const char *mac1, const char *mac2);
 
 void virSkipSpaces(const char **str);
 int virParseNumber(const char **str);
+int virAsprintf(char **strp, const char *fmt, ...)
+    ATTRIBUTE_FORMAT(printf, 2, 3);
 
 #define VIR_MAC_BUFLEN 6
 #define VIR_MAC_PREFIX_BUFLEN 3
@@ -136,7 +161,7 @@ const char *virEnumToString(const char *const*types,
                             int type);
 
 #define VIR_ENUM_IMPL(name, lastVal, ...)                               \
-    static const char const *name ## TypeList[] = { __VA_ARGS__ };      \
+    static const char *const name ## TypeList[] = { __VA_ARGS__ };      \
     extern int (* name ## Verify (void)) [verify_true (ARRAY_CARDINALITY(name ## TypeList) == lastVal)]; \
     const char *name ## TypeToString(int type) {                        \
         return virEnumToString(name ## TypeList,                        \
@@ -160,5 +185,17 @@ static inline int getuid (void) { return 0; }
 #ifndef HAVE_GETGID
 static inline int getgid (void) { return 0; }
 #endif
+
+char *virGetHostname(void);
+
+int virKillProcess(pid_t pid, int sig);
+
+#ifdef HAVE_GETPWUID_R
+char *virGetUserDirectory(virConnectPtr conn,
+                          uid_t uid);
+#endif
+
+int virRandomInitialize(unsigned int seed);
+int virRandom(int max);
 
 #endif /* __VIR_UTIL_H__ */
