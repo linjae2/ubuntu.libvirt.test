@@ -1,3 +1,12 @@
+libvirt (0.6.1-0ubuntu1) jaunty; urgency=low
+
+  * New upstream release. (FFe: LP: #339868)
+  * Dropped 0004-Don-t-hardcode-ssh-port.patch: Included upstream.
+  * Rewrote dynamic_bridge_names.patch to work with refactored upstream
+    bridging code.
+
+ -- Soren Hansen <soren@ubuntu.com>  Mon, 09 Mar 2009 11:18:01 +0100
+
 libvirt (0.6.0-1ubuntu3) jaunty; urgency=low
 
   * No change rebuild for python2.6.
