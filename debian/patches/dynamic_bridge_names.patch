@@ -1,36 +1,68 @@
-Index: libvirt-0.5.1/src/bridge.c
+Index: libvirt-0.6.1/src/network_conf.c
 ===================================================================
---- libvirt-0.5.1.orig/src/bridge.c	2009-01-08 23:04:59.728468586 +0100
-+++ libvirt-0.5.1/src/bridge.c	2009-01-08 23:04:59.808437269 +0100
-@@ -120,7 +120,13 @@
-  * @name: the bridge name
-  *
-  * This function register a new bridge
-+ * This function registers a new bridge, @name can be either:
-+ *  - a fixed name
-+ *  - a name template with '%d' for dynamic name allocation
-+ *  - an empty string which will be treated like "virbr%d"
-  *
-+ * In either case the final name for the bridge will be stored in @name.
-+*
-  * Returns 0 in case of success or an errno code in case of failure.
-  */
- #ifdef SIOCBRADDBR
-@@ -131,7 +137,7 @@
-     if (!ctl || !ctl->fd || !name)
-         return EINVAL;
+--- libvirt-0.6.1.orig/src/network_conf.c	2009-03-09 12:36:23.854123164 +0100
++++ libvirt-0.6.1/src/network_conf.c	2009-03-09 12:53:19.958122973 +0100
+@@ -747,7 +747,7 @@
+     /* Generate a bridge if none is found, but don't check for collisions
+      * if a bridge is hardcoded, so the network is at least defined
+      */
+-    if (!def->bridge && !(def->bridge = virNetworkAllocateBridge(conn, nets)))
++    if (!def->bridge && !(def->bridge = virNetworkAllocateBridge(conn, nets, NULL)))
+         goto error;
  
--    if (*name) {
-+    if (*name && !strstr(*name, "%d")) {
-         if (ioctl(ctl->fd, SIOCBRADDBR, *name) == 0)
-             return 0;
+     if (!(net = virNetworkAssignDef(conn, nets, def)))
+@@ -875,16 +875,20 @@
+ }
+ 
+ char *virNetworkAllocateBridge(virConnectPtr conn,
+-                               const virNetworkObjListPtr nets)
++                               const virNetworkObjListPtr nets,
++                               const char *template)
+ {
+ 
+     int id = 0;
+     char *newname;
+ 
++	if (!template)
++		template = "virbr%d";
++
+     do {
+         char try[50];
+ 
+-        snprintf(try, sizeof(try), "virbr%d", id);
++        snprintf(try, sizeof(try), template, id);
+ 
+         if (!virNetworkBridgeInUse(nets, try, NULL)) {
+             if (!(newname = strdup(try))) {
+@@ -909,7 +913,7 @@
+ 
+     int ret = -1;
+ 
+-    if (def->bridge) {
++    if (def->bridge && !strstr(def->bridge, "%d")) {
+         if (virNetworkBridgeInUse(nets, def->bridge, def->name)) {
+             networkReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+                                _("bridge name '%s' already in use."),
+@@ -918,7 +922,7 @@
+         }
      } else {
-@@ -139,7 +145,7 @@
-         do {
-             char try[50];
+         /* Allocate a bridge name */
+-        if (!(def->bridge = virNetworkAllocateBridge(conn, nets)))
++        if (!(def->bridge = virNetworkAllocateBridge(conn, nets, def->bridge)))
+             goto error;
+     }
  
--            snprintf(try, sizeof(try), "virbr%d", id);
-+            snprintf(try, sizeof(try), *name ? *name : "virbr%d", id);
+Index: libvirt-0.6.1/src/network_conf.h
+===================================================================
+--- libvirt-0.6.1.orig/src/network_conf.h	2009-03-09 12:50:43.003152440 +0100
++++ libvirt-0.6.1/src/network_conf.h	2009-03-09 12:51:10.210126375 +0100
+@@ -174,7 +174,8 @@
+                           const char *skipname);
  
-             if (ioctl(ctl->fd, SIOCBRADDBR, try) == 0) {
-                 if (!(*name = strdup(try))) {
+ char *virNetworkAllocateBridge(virConnectPtr conn,
+-                               const virNetworkObjListPtr nets);
++                               const virNetworkObjListPtr nets,
++                               const char *template);
+ 
+ int virNetworkSetBridgeName(virConnectPtr conn,
+                             const virNetworkObjListPtr nets,
