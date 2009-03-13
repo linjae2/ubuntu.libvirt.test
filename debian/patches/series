@@ -8,3 +8,5 @@
 0007-better_default_uri_virsh.patch
 dynamic_bridge_names.patch
 #opennebula.diff
+event-loop-hang.diff -p0
+xen-events-handling-fix.diff

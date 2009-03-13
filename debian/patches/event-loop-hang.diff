@@ -1,0 +1,87 @@
+On Thu, Mar 12, 2009 at 10:04:50PM +0000, Nick Moffitt wrote:
+> Daniel Veillard:
+> >  As was reported on IRC and found by Dan Berrange, sometimes Xen event
+> >  handling could start to go wild and block processing of requests in
+> > the daemon.
+> > 
+> >  The fault at least on libvirt side is that we didn't filter out non
+> > read/write event requests when asking for watches in the xenstore. The
+> > provided patch seems to work for the person who reported the original
+> > problem,
+> 
+> It seems to work, although it may not have solved my problem:
+> 
+> 	http://dpaste.com/13740/
+> 
+> There are five backed-up pause requests on this server, and it seems
+> that four of them may be stuck in the xenstore code (apologies for the
+> lack of debugging symbols on there.  I really ought to get a debug
+> package built, or haul over an unstripped version of libxenstore.so 3.2
+> from somewhere).
+
+Ok, turns out the original patch (though worthwhile) was a red herring.
+The core problem was that the event loop was getting confused when we
+removed a monitored file handle. It would then start running the wrong
+event handler callbacks. So the xenstore watch handler got called even
+though no watch was pending :-( This also caused clients to get stuck
+because the watch detecting end-of-file on the socket wasn't getting
+called.
+
+The patch fixes the loop which dispatches callbacks, so that it does
+not assume the index into 'nfds' matches the index in 'handles'. They
+have to be tracked indepedantly, to take account of deleted handles.
+
+Daniel
+
+Index: qemud/event.c
+===================================================================
+RCS file: /data/cvs/libvirt/qemud/event.c,v
+retrieving revision 1.19
+diff -u -p -r1.19 event.c
+--- qemud/event.c	17 Feb 2009 09:44:18 -0000	1.19
++++ qemud/event.c	13 Mar 2009 15:31:33 -0000
+@@ -409,25 +409,26 @@ static int virEventDispatchTimeouts(void
+  * Returns 0 upon success, -1 if an error occurred
+  */
+ static int virEventDispatchHandles(int nfds, struct pollfd *fds) {
+-    int i;
++    int i, n;
+ 
+-    for (i = 0 ; i < nfds ; i++) {
++    for (i = 0, n = 0 ; i < eventLoop.handlesCount && n < nfds ; i++) {
+         if (eventLoop.handles[i].deleted) {
+             EVENT_DEBUG("Skip deleted %d", eventLoop.handles[i].fd);
+             continue;
+         }
+ 
+-        if (fds[i].revents) {
++        if (fds[n].revents) {
+             virEventHandleCallback cb = eventLoop.handles[i].cb;
+             void *opaque = eventLoop.handles[i].opaque;
+-            int hEvents = virPollEventToEventHandleType(fds[i].revents);
+-            EVENT_DEBUG("Dispatch %d %d %p", fds[i].fd,
+-                        fds[i].revents, eventLoop.handles[i].opaque);
++            int hEvents = virPollEventToEventHandleType(fds[n].revents);
++            EVENT_DEBUG("Dispatch %d %d %p", fds[n].fd,
++                        fds[n].revents, eventLoop.handles[i].opaque);
+             virEventUnlock();
+             (cb)(eventLoop.handles[i].watch,
+-                 fds[i].fd, hEvents, opaque);
++                 fds[n].fd, hEvents, opaque);
+             virEventLock();
+         }
++        n++;
+     }
+ 
+     return 0;
+
+-- 
+|: Red Hat, Engineering, London   -o-   http://people.redhat.com/berrange/ :|
+|: http://libvirt.org  -o-  http://virt-manager.org  -o-  http://ovirt.org :|
+|: http://autobuild.org       -o-         http://search.cpan.org/~danberr/ :|
+|: GnuPG: 7D3B9505  -o-  F3C9 553F A1DA 4AC2 5648 23C1 B3DF F742 7D3B 9505 :|
+
+--
+Libvir-list mailing list
+Libvir-list@redhat.com
+https://www.redhat.com/mailman/listinfo/libvir-list

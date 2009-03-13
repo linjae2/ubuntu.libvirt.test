@@ -1,3 +1,12 @@
+libvirt (0.6.1-0ubuntu2) jaunty; urgency=low
+
+  * Add fix for event loop hang (LP: #344195)
+    http://article.gmane.org/gmane.comp.emulators.libvirt/12437
+  * Add fix for Xen events handling.
+    http://git.et.redhat.com/?p=libvirt.git;a=commit;h=124cfcbc2bcd1b71b51e720b9bfc7d8e69e8af89 
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 13 Mar 2009 16:51:33 +0100
+
 libvirt (0.6.1-0ubuntu1) jaunty; urgency=low
 
   * New upstream release. (FFe: LP: #339868)
