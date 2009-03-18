@@ -1,3 +1,11 @@
+libvirt (0.6.1-0ubuntu3) jaunty; urgency=low
+
+  * Fix "libvirt's defaults are slightly less than sane" (LP: #344913)
+    - more-flexible-emulator-on-x86.patch (from upstream)
+    - default-arch.patch
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 19 Mar 2009 00:23:14 +0100
+
 libvirt (0.6.1-0ubuntu2) jaunty; urgency=low
 
   * Add fix for event loop hang (LP: #344195)
