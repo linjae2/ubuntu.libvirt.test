@@ -1,0 +1,18 @@
+Index: libvirt-0.6.1/src/capabilities.c
+===================================================================
+--- libvirt-0.6.1.orig/src/capabilities.c	2009-03-18 23:31:31.314020775 +0100
++++ libvirt-0.6.1/src/capabilities.c	2009-03-19 00:11:14.349990289 +0100
+@@ -471,6 +471,13 @@
+                                 const char *ostype)
+ {
+     int i;
++	/* Let's first see if we can match the host arch */
++    for (i = 0 ; i < caps->nguests ; i++) {
++        if (STREQ(caps->guests[i]->ostype, ostype) 
++              && STREQ(caps->guests[i]->arch.name, caps->host.arch))
++            return caps->guests[i]->arch.name;
++    }
++	/* If we couldn't we just grab the first match */
+     for (i = 0 ; i < caps->nguests ; i++) {
+         if (STREQ(caps->guests[i]->ostype, ostype))
+             return caps->guests[i]->arch.name;

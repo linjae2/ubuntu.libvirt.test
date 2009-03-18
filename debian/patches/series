@@ -10,3 +10,5 @@ dynamic_bridge_names.patch
 #opennebula.diff
 event-loop-hang.diff -p0
 xen-events-handling-fix.diff
+more-flexible-emulator-on-x86.patch -p0
+default-arch.patch
