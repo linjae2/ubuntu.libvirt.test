@@ -1,3 +1,12 @@
+libvirt (0.6.1-0ubuntu4) jaunty; urgency=low
+
+  [ Marc Deslauriers <marc.deslauriers@ubuntu.com> ]
+  * 0008-increase-logoutput-timeout.patch: increase timeout waiting
+    for log output in src/qemu_driver.c, set to 30 seconds, which 10x
+    longer than before, and matches the disk-wait in mdadm, LP: #344400
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Fri, 27 Mar 2009 10:57:53 -0500
+
 libvirt (0.6.1-0ubuntu3) jaunty; urgency=low
 
   * Fix "libvirt's defaults are slightly less than sane" (LP: #344913)
