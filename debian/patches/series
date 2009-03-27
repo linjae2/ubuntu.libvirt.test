@@ -8,6 +8,7 @@
 0007-better_default_uri_virsh.patch
 dynamic_bridge_names.patch
 #opennebula.diff
+0008-increase-logoutput-timeout.patch
 event-loop-hang.diff -p0
 xen-events-handling-fix.diff
 more-flexible-emulator-on-x86.patch -p0
