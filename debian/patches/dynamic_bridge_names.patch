@@ -1,17 +1,28 @@
 Index: libvirt-0.6.1/src/network_conf.c
 ===================================================================
---- libvirt-0.6.1.orig/src/network_conf.c	2009-03-09 12:36:23.854123164 +0100
-+++ libvirt-0.6.1/src/network_conf.c	2009-03-09 12:53:19.958122973 +0100
-@@ -747,7 +747,7 @@
+--- libvirt-0.6.1.orig/src/network_conf.c	2009-04-16 20:49:28.851655724 +0200
++++ libvirt-0.6.1/src/network_conf.c	2009-04-17 13:11:54.494770980 +0200
+@@ -724,6 +724,7 @@
+     virNetworkDefPtr def = NULL;
+     virNetworkObjPtr net;
+     int autostart;
++    char *tmp;
+ 
+     if ((configFile = virNetworkConfigFile(conn, configDir, name)) == NULL)
+         goto error;
+@@ -747,7 +748,10 @@
      /* Generate a bridge if none is found, but don't check for collisions
       * if a bridge is hardcoded, so the network is at least defined
       */
 -    if (!def->bridge && !(def->bridge = virNetworkAllocateBridge(conn, nets)))
-+    if (!def->bridge && !(def->bridge = virNetworkAllocateBridge(conn, nets, NULL)))
++    if (tmp = virNetworkAllocateBridge(conn, nets, def->bridge)) {
++        VIR_FREE(def->bridge);
++        def->bridge = tmp;
++    } else
          goto error;
  
      if (!(net = virNetworkAssignDef(conn, nets, def)))
-@@ -875,16 +875,20 @@
+@@ -875,16 +879,20 @@
  }
  
  char *virNetworkAllocateBridge(virConnectPtr conn,
@@ -34,7 +45,7 @@ Index: libvirt-0.6.1/src/network_conf.c
  
          if (!virNetworkBridgeInUse(nets, try, NULL)) {
              if (!(newname = strdup(try))) {
-@@ -909,7 +913,7 @@
+@@ -909,7 +917,7 @@
  
      int ret = -1;
  
@@ -43,7 +54,7 @@ Index: libvirt-0.6.1/src/network_conf.c
          if (virNetworkBridgeInUse(nets, def->bridge, def->name)) {
              networkReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
                                 _("bridge name '%s' already in use."),
-@@ -918,7 +922,7 @@
+@@ -918,7 +926,7 @@
          }
      } else {
          /* Allocate a bridge name */
@@ -54,8 +65,8 @@ Index: libvirt-0.6.1/src/network_conf.c
  
 Index: libvirt-0.6.1/src/network_conf.h
 ===================================================================
---- libvirt-0.6.1.orig/src/network_conf.h	2009-03-09 12:50:43.003152440 +0100
-+++ libvirt-0.6.1/src/network_conf.h	2009-03-09 12:51:10.210126375 +0100
+--- libvirt-0.6.1.orig/src/network_conf.h	2009-04-16 20:49:28.899655820 +0200
++++ libvirt-0.6.1/src/network_conf.h	2009-04-17 09:42:33.075084537 +0200
 @@ -174,7 +174,8 @@
                            const char *skipname);
  
