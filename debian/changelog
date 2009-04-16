@@ -1,3 +1,9 @@
+libvirt (0.6.1-0ubuntu5) jaunty; urgency=low
+
+  * Fix logic error when applying %d bridge name rewriting. (LP: #350780)
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 16 Apr 2009 20:48:49 +0200
+
 libvirt (0.6.1-0ubuntu4) jaunty; urgency=low
 
   [ Marc Deslauriers <marc.deslauriers@ubuntu.com> ]
