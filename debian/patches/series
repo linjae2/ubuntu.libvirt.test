@@ -1,7 +1,11 @@
 0001-remove-RHism.diff.patch
-0002-qemu-disable-network.diff.patch
+#0002-qemu-disable-network.diff.patch
 0003-allow-libvirt-group-to-access-the-socket.patch
 0004-fix-Debian-specific-path-to-hvm-loader.patch
-0005-don-t-crash-with-def-NULL.patch
-0006-Fix-QEMU-ARGV-detection-with-kvm-85.patch
-0007-Declare-support-for-QEMU-migration-in-capabilities.patch
+# Ubuntu specific patches:
+9000-delayed_iff_up_bridge.patch
+9001-dont_clobber_existing_bridges.patch
+9002-better_default_uri_virsh.patch
+9003-increase-logoutput-timeout.patch
+9004-better-default-arch.patch
+9005-libvirtd-group-name.patch

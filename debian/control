@@ -1,9 +1,10 @@
 Source: libvirt
 Section: libs
 Priority: optional
-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Maintainer: Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 Uploaders: Guido Günther <agx@sigxcpu.org>
-Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libsasl2-dev, libxen-dev [i386 amd64], lvm2, qemu [amd64 i386 powerpc sparc], libpolkit-dbus-dev, open-iscsi, libparted1.8-dev, libselinux1-dev, libdevmapper-dev, uuid-dev, libhal-dev, module-init-tools
+XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Build-Depends: cdbs (>= 0.4.43), debhelper (>= 5.0.38), libxml2-dev, libncurses5-dev, libreadline5-dev, zlib1g-dev, libgnutls-dev, python-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libsasl2-dev, libxen3-dev [i386 amd64], lvm2, libpolkit-dbus-dev, open-iscsi, libparted1.8-dev, libselinux1-dev, libdevmapper-dev, uuid-dev, libhal-dev, module-init-tools
 XS-Python-Version: current
 Vcs-Git: git://git.debian.org/git/pkg-libvirt/libvirt.git
 Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/libvirt.git
@@ -12,10 +13,10 @@ Standards-Version: 3.8.1
 
 Package: libvirt-bin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, libvirt0 (>= ${binary:Version}), logrotate
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, libvirt0 (>= ${binary:Version}), logrotate, bridge-utils, dnsmasq-base, netcat-openbsd, iptables
 Enhances: qemu, kvm, xen
 Section: admin
-Recommends: netcat-openbsd, bridge-utils, dnsmasq-base (>= 2.46-1), iptables, qemu (>= 0.9.1)
+Recommends: kvm
 Suggests: policykit
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
@@ -28,6 +29,8 @@ Description: the programs for the libvirt library
 Package: libvirt0
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: libvirt0-dbg (<< 0.4.2-6ubuntu1)
+Replaces: libvirt0-dbg (<< 0.4.2-6ubuntu1)
 Recommends: lvm2
 Description: library for interfacing with different virtualization systems
  Libvirt is a C toolkit to interact with the virtualization capabilities
@@ -64,7 +67,7 @@ Description: documentation for the libvirt library
 Package: libvirt-dev
 Architecture: any
 Section: libdevel
-Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64]
+Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen3-dev [i386 amd64]
 Recommends: pkg-config
 Description: development files for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities

@@ -1,0 +1,13 @@
+Index: libvirt-0.6.4/src/qemu_driver.c
+===================================================================
+--- libvirt-0.6.4.orig/src/qemu_driver.c	2009-06-22 11:05:43.672034668 +0200
++++ libvirt-0.6.4/src/qemu_driver.c	2009-06-22 11:06:31.800087249 +0200
+@@ -979,7 +979,7 @@
+ 
+     ret = qemudReadLogOutput(conn, vm, logfd, buf, sizeof(buf),
+                              qemudFindCharDevicePTYs,
+-                             "console", 3);
++                             "console", 30);
+     if (close(logfd) < 0) {
+         char ebuf[4096];
+         VIR_WARN(_("Unable to close logfile: %s\n"),
