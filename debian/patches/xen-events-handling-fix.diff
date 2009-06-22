@@ -1,0 +1,47 @@
+From: Daniel Veillard <veillard@redhat.com>
+Date: Wed, 11 Mar 2009 13:43:24 +0000 (+0000)
+Subject: * src/xs_internal.c: fix xen events handling problem (Dan Berrange)
+X-Git-Url: http://git.et.redhat.com/?p=libvirt.git;a=commitdiff_plain;h=124cfcbc2bcd1b71b51e720b9bfc7d8e69e8af89
+
+* src/xs_internal.c: fix xen events handling problem (Dan Berrange)
+Daniel
+---
+
+Index: libvirt-0.6.1/ChangeLog
+===================================================================
+--- libvirt-0.6.1.orig/ChangeLog	2009-03-04 14:13:15.000000000 +0100
++++ libvirt-0.6.1/ChangeLog	2009-03-17 23:26:54.216796814 +0100
+@@ -1,3 +1,7 @@
++Wed Mar 11 14:42:24 CET 2009 Daniel Veillard <veilard@redhat.com>
++
++	* src/xs_internal.c: fix xen events handling problem (Dan Berrange)
++
+ Wed Mar  4 14:11:15 CET 2009 Daniel Veillard <veilard@redhat.com>
+ 
+ 	* NEWS configure.in libvirt.spec.in doc/* include/libvirt/libvirt.h:
+Index: libvirt-0.6.1/src/xs_internal.c
+===================================================================
+--- libvirt-0.6.1.orig/src/xs_internal.c	2009-02-16 09:43:41.000000000 +0100
++++ libvirt-0.6.1/src/xs_internal.c	2009-03-17 23:26:17.249798285 +0100
+@@ -1215,7 +1215,7 @@
+ static void
+ xenStoreWatchEvent(int watch ATTRIBUTE_UNUSED,
+                    int fd ATTRIBUTE_UNUSED,
+-                   int events ATTRIBUTE_UNUSED,
++                   int events,
+                    void *data)
+ {
+     char		 **event;
+@@ -1226,8 +1226,12 @@
+ 
+     virConnectPtr        conn = data;
+     xenUnifiedPrivatePtr priv = (xenUnifiedPrivatePtr) conn->privateData;
++
+     if(!priv) return;
+ 
++    /* only set a watch on read and write events */
++    if (events & (VIR_EVENT_HANDLE_ERROR | VIR_EVENT_HANDLE_HANGUP)) return;
++
+     xenUnifiedLock(priv);
+ 
+     if(!priv->xshandle)
