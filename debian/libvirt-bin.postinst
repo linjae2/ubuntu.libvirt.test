@@ -20,8 +20,8 @@ set -e
 
 case "$1" in
     configure)
-    	if ! getent group libvirt >/dev/null; then
-    		addgroup --system libvirt
+    	if ! getent group libvirtd >/dev/null; then
+    		addgroup --system libvirtd
 	fi
 
 	# libvirt from 0.6.0 on is safe to restart with running vms:

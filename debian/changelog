@@ -1,3 +1,10 @@
+libvirt (0.6.4-1ubuntu2) karmic; urgency=low
+
+  * Also rename the libvirt group to libvirtd in postinst/postrm.
+    (LP: #392696)
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 26 Jun 2009 22:49:45 +0200
+
 libvirt (0.6.4-1ubuntu1) karmic; urgency=low
 
   * Merge from debian unstable, remaining changes:
