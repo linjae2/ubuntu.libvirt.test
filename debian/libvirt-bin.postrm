@@ -21,8 +21,8 @@ set -e
 
 case "$1" in
     purge)
-    	if getent group libvirt >/dev/null; then
-    		delgroup libvirt || true
+    	if getent group libvirtd >/dev/null; then
+    		delgroup libvirtd || true
 	fi
 	
     ;;
