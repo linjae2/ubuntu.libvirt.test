@@ -1,3 +1,11 @@
+libvirt (0.6.1-0ubuntu5.1) jaunty-proposed; urgency=low
+
+  * debian/patches/event-handling-fix-rh499698-lp362288.patch: cherry pick
+    from upstream; fixes critical, destructive bug whereby calling
+    'virsh destroy foo' kills foo, plus another vm; LP: #362288
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Thu, 16 Jul 2009 18:45:28 -0500
+
 libvirt (0.6.1-0ubuntu5) jaunty; urgency=low
 
   * Fix logic error when applying %d bridge name rewriting. (LP: #350780)
