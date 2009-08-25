@@ -1,0 +1,18 @@
+#
+# Description: increase timeout for waiting on a Unix socket to avoid
+#              'monitor socket did not show up.: No such file or directory'
+#              errors
+#
+Index: libvirt-0.7.0/src/qemu_driver.c
+===================================================================
+--- libvirt-0.7.0.orig/src/qemu_driver.c	2009-08-17 11:29:03.000000000 -0500
++++ libvirt-0.7.0/src/qemu_driver.c	2009-08-17 11:30:34.000000000 -0500
+@@ -898,7 +898,7 @@
+ {
+     struct sockaddr_un addr;
+     int monfd;
+-    int timeout = 3; /* In seconds */
++    int timeout = 30; /* In seconds */
+     int ret, i = 0;
+ 
+     if ((monfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {

@@ -20,8 +20,8 @@ set -e
 
 case "$1" in
     configure)
-    	if ! getent group libvirt >/dev/null; then
-    		addgroup --system libvirt
+    	if ! getent group libvirtd >/dev/null; then
+    		addgroup --system libvirtd
 	fi
 
 	# libvirt from 0.6.0 on is safe to restart with running vms:
@@ -45,6 +45,15 @@ case "$1" in
 		update-rc.d -f libvirt-bin remove >/dev/null
 	    fi
 	fi
+
+        profile="/etc/apparmor.d/usr.sbin.libvirtd"
+        if [ -f "$profile" ] && aa-status --enabled 2>/dev/null; then
+            apparmor_parser -r "$profile" || true
+        fi
+        profile="/etc/apparmor.d/usr.bin.virt-aa-helper"
+        if [ -f "$profile" ] && aa-status --enabled 2>/dev/null; then
+            apparmor_parser -r "$profile" || true
+        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

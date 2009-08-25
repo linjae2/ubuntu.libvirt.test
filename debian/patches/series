@@ -1,4 +1,15 @@
 0001-remove-RHism.diff.patch
-0002-qemu-disable-network.diff.patch
+#0002-qemu-disable-network.diff.patch
 0003-allow-libvirt-group-to-access-the-socket.patch
 0004-fix-Debian-specific-path-to-hvm-loader.patch
+# Ubuntu specific patches:
+9000-delayed_iff_up_bridge.patch
+9001-dont_clobber_existing_bridges.patch
+9002-better_default_uri_virsh.patch
+9003-increase-logoutput-timeout.patch
+9004-better-default-arch.patch
+9005-libvirtd-group-name.patch
+9006-increase-unix-socket-timeout.patch
+9090-reenable-nonfile-labels.patch
+9091-apparmor.patch
+9092-apparmor-autoreconf.patch

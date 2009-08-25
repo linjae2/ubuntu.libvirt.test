@@ -56,4 +56,23 @@ Access Control
 Access to the libvirt socket is controlled by membership in the "libvirt" group.
 If you want to manage VMs as non root you need to add a user to that group.
 
+AppArmor Profile
+----------------
+Libvirt now contains AppArmor integration when using KVM or QEMU. Libvirtd can
+be configured to launch virtual machines that are confined by uniquely
+restrictive AppArmor profiles. This feature significantly improves
+virtualization in Ubuntu by providing user-space host protection as well as
+guest isolation. To disable AppArmor integration, disable the libvirt profile
+by performing:
+
+$ sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.libvirtd
+$ sudo ln -s /etc/apparmor.d/usr.sbin.libvirtd /etc/apparmor.d/disable/usr.sbin.libvirtd
+
+If your system uses AppArmor, please note that the shipped profile works with
+the default installation, and changes in your configuration may require changes
+to the installed apparmor profile. Before filing a bug against this software,
+please see https://wiki.ubuntu.com/DebuggingApparmor before filing a bug
+against this software.
+
+
  -- Guido Guenther <agx@sigxcpu.org>  Thu, 15 May 2008 14:13:03 +0100
