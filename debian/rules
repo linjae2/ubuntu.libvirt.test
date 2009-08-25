@@ -35,6 +35,7 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
         --with-storage-iscsi     \
         --with-storage-disk      \
 	--with-init-scripts=none \
+	--with-apparmor		 \
 	--without-numactl	 \
 	--enable-debug		 \
 	$(BUILD_XEN)		 \
@@ -50,5 +51,14 @@ DEB_DH_INSTALLLOGROTATE_ARGS := --name=libvirtd
 
 EXAMPLES=debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
 
+
+build/libvirt-bin::
+	mkdir -p debian/tmp/etc/apparmor.d/abstractions debian/tmp/etc/apparmor.d/libvirt
+	cp -f debian/apparmor/libvirt-qemu debian/tmp/etc/apparmor.d/abstractions
+	cp -f debian/apparmor/usr.bin.virt-aa-helper debian/tmp/etc/apparmor.d
+	cp -f debian/apparmor/usr.sbin.libvirtd debian/tmp/etc/apparmor.d
+	cp -f debian/apparmor/TEMPLATE debian/tmp/etc/apparmor.d/libvirt
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-bin.apport debian/tmp/usr/share/apport/package-hooks/source_libvirt-bin.py
 binary-install/libvirt-doc::
 	cd $(EXAMPLES) && rm -rf .libs *.o info1 suspend ../html/CVS

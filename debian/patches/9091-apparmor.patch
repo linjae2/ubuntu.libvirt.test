@@ -1,0 +1,1897 @@
+#
+# Ubuntu: https://launchpad.net/bugs/388422
+# Description: implement AppArmor security driver for libvirt
+#
+Index: libvirt-0.7.0/configure.in
+===================================================================
+--- libvirt-0.7.0.orig/configure.in	2009-08-25 16:34:27.000000000 -0500
++++ libvirt-0.7.0/configure.in	2009-08-25 21:17:31.000000000 -0500
+@@ -778,6 +778,84 @@
+ AM_CONDITIONAL([WITH_SECDRIVER_SELINUX], [test "$with_secdriver_selinux" != "no"])
+ 
+ 
++dnl AppArmor
++AC_ARG_WITH([apparmor],
++  [  --with-apparmor        use AppArmor to manage security],
++  [],
++  [with_apparmor=check])
++
++APPARMOR_CFLAGS=
++APPARMOR_LIBS=
++if test "$with_apparmor" != "no"; then
++  old_cflags="$CFLAGS"
++  old_libs="$LIBS"
++  if test "$with_apparmor" = "check"; then
++    AC_CHECK_HEADER([sys/apparmor.h],[],[with_apparmor=no])
++    AC_CHECK_LIB([apparmor], [aa_change_profile],[],[with_apparmor=no])
++    AC_CHECK_LIB([apparmor], [aa_change_hat],[],[with_apparmor=no])
++    if test "$with_apparmor" != "no"; then
++      with_apparmor="yes"
++    fi
++  else
++    fail=0
++    AC_CHECK_HEADER([sys/apparmor.h],[],[fail=1])
++    AC_CHECK_LIB([apparmor], [aa_change_profile],[],[fail=1])
++    AC_CHECK_LIB([apparmor], [aa_change_hat],[],[fail=1])
++    test $fail = 1 &&
++      AC_MSG_ERROR([You must install the AppArmor development package in order to compile libvirt])
++  fi
++  CFLAGS="$old_cflags"
++  LIBS="$old_libs"
++fi
++if test "$with_apparmor" = "yes"; then
++  APPARMOR_LIBS="-lapparmor"
++  AC_DEFINE_UNQUOTED([HAVE_APPARMOR], 1, [whether AppArmor is available for security])
++  AC_DEFINE_UNQUOTED([APPARMOR_DIR], "/etc/apparmor.d", [path to apparmor directory])
++  AC_DEFINE_UNQUOTED([APPARMOR_PROFILES_PATH], "/sys/kernel/security/apparmor/profiles", [path to kernel profiles])
++  AC_DEFINE_UNQUOTED([VIRT_AA_HELPER_PATH], "$prefix/bin/virt-aa-helper", [path to virt-aa-helper])
++fi
++AM_CONDITIONAL([HAVE_APPARMOR], [test "$with_apparmor" != "no"])
++AC_SUBST([APPARMOR_CFLAGS])
++AC_SUBST([APPARMOR_LIBS])
++
++
++AC_ARG_WITH([secdriver-apparmor],
++  [  --with-secdriver-apparmor         use AppArmor security driver],
++  [],
++  [with_secdriver_apparmor=check])
++
++if test "$with_apparmor" != "yes" ; then
++  if test "$with_secdriver_apparmor" = "check" ; then
++    with_secdriver_apparmor=no
++  else
++    AC_MSG_ERROR([You must install the AppArmor development package in order to compile libvirt])
++  fi
++else
++  old_cflags="$CFLAGS"
++  old_libs="$LIBS"
++  CFLAGS="$CFLAGS $APPARMOR_CFLAGS"
++  LIBS="$CFLAGS $APPARMOR_LIBS"
++
++  fail=0
++  AC_CHECK_FUNC([change_hat], [], [fail=1])
++  AC_CHECK_FUNC([aa_change_profile], [], [fail=1])
++  CFLAGS="$old_cflags"
++  LIBS="$old_libs"
++
++  if test "$fail" = "1" ; then
++    if test "$with_secdriver_apparmor" = "check" ; then
++      with_secdriver_apparmor=no
++    else
++      AC_MSG_ERROR([You must install the AppArmor development package in order to compile libvirt])
++    fi
++  else
++    with_secdriver_apparmor=yes
++    AC_DEFINE_UNQUOTED([WITH_SECDRIVER_APPARMOR], 1, [whether AppArmor security driver is available])
++  fi
++fi
++AM_CONDITIONAL([WITH_SECDRIVER_APPARMOR], [test "$with_secdriver_apparmor" != "no"])
++
++
+ 
+ dnl NUMA lib
+ AC_ARG_WITH([numactl],
+@@ -1661,6 +1739,7 @@
+ AC_MSG_NOTICE([Security Drivers])
+ AC_MSG_NOTICE([])
+ AC_MSG_NOTICE([ SELinux: $with_secdriver_selinux])
++AC_MSG_NOTICE([ AppArmor: $with_secdriver_apparmor])
+ AC_MSG_NOTICE([])
+ AC_MSG_NOTICE([Driver Loadable Modules])
+ AC_MSG_NOTICE([])
+@@ -1704,6 +1783,11 @@
+ else
+ AC_MSG_NOTICE([ selinux: no])
+ fi
++if test "$with_apparmor" = "yes" ; then
++AC_MSG_NOTICE([ apparmor: $APPARMOR_CFLAGS $APPARMOR_LIBS])
++else
++AC_MSG_NOTICE([ apparmor: no])
++fi
+ if test "$with_numactl" = "yes" ; then
+ AC_MSG_NOTICE([ numactl: $NUMACTL_CFLAGS $NUMACTL_LIBS])
+ else
+Index: libvirt-0.7.0/src/Makefile.am
+===================================================================
+--- libvirt-0.7.0.orig/src/Makefile.am	2009-08-25 16:34:27.000000000 -0500
++++ libvirt-0.7.0/src/Makefile.am	2009-08-25 21:17:31.000000000 -0500
+@@ -9,6 +9,7 @@
+ 	   $(LIBSSH_CFLAGS) \
+ 	   $(XEN_CFLAGS) \
+ 	   $(SELINUX_CFLAGS) \
++	   $(APPARMOR_CFLAGS) \
+ 	   $(DRIVER_MODULE_CFLAGS) \
+ 	   -DLIBDIR=\""$(libdir)"\" \
+ 	   -DBINDIR=\""$(libexecdir)"\" \
+@@ -212,6 +213,8 @@
+ SECURITY_DRIVER_SELINUX_SOURCES =				\
+ 		security_selinux.h security_selinux.c
+ 
++SECURITY_DRIVER_APPARMOR_SOURCES =				\
++		security_apparmor.h security_apparmor.c
+ 
+ NODE_DEVICE_DRIVER_SOURCES =					\
+ 		node_device.c node_device.h
+@@ -517,6 +520,9 @@
+ if WITH_SECDRIVER_SELINUX
+ libvirt_driver_security_la_SOURCES += $(SECURITY_DRIVER_SELINUX_SOURCES)
+ endif
++if WITH_SECDRIVER_APPARMOR
++libvirt_driver_security_la_SOURCES += $(SECURITY_DRIVER_APPARMOR_SOURCES)
++endif
+ 
+ # Add all conditional sources just in case...
+ EXTRA_DIST +=							\
+@@ -604,7 +610,7 @@
+ libvirt_la_LDFLAGS = $(VERSION_SCRIPT_FLAGS)libvirt.syms \
+                      -version-info @LIBVIRT_VERSION_INFO@ \
+                     $(COVERAGE_CFLAGS:-f%=-Wc,-f%) \
+-                    $(LIBXML_LIBS) $(SELINUX_LIBS) \
++                    $(LIBXML_LIBS) $(SELINUX_LIBS) $(APPARMOR_LIBS) \
+ 		    $(XEN_LIBS) $(DRIVER_MODULE_LIBS) \
+ 		    @CYGWIN_EXTRA_LDFLAGS@ @MINGW_EXTRA_LDFLAGS@
+ libvirt_la_CFLAGS = $(COVERAGE_CFLAGS) -DIN_LIBVIRT
+@@ -642,6 +648,23 @@
+ 		../gnulib/lib/libgnu.la				\
+ 		$(VIRSH_LIBS)
+ virsh_CFLAGS = $(COVERAGE_CFLAGS) $(READLINE_CFLAGS) $(NUMACTL_CFLAGS)
++
++if WITH_SECDRIVER_APPARMOR
++bin_PROGRAMS += virt-aa-helper
++
++virt_aa_helper_SOURCES =					\
++	virt-aa-helper.c
++
++virt_aa_helper_LDFLAGS = $(WARN_CFLAGS) $(COVERAGE_LDFLAGS)
++virt_aa_helper_LDADD =						\
++		$(STATIC_BINARIES)				\
++		$(WARN_CFLAGS)					\
++		libvirt.la					\
++		../gnulib/lib/libgnu.la				\
++		$(VIRSH_LIBS)
++virt_aa_helper_CFLAGS = $(COVERAGE_CFLAGS)
++endif
++
+ BUILT_SOURCES = virsh-net-edit.c virsh-pool-edit.c libvirt.syms
+ 
+ virsh-net-edit.c: virsh.c Makefile.am
+Index: libvirt-0.7.0/src/security_apparmor.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.0/src/security_apparmor.c	2009-08-25 21:17:31.000000000 -0500
+@@ -0,0 +1,590 @@
++/*
++ * AppArmor security driver for libvirt
++ * Copyright (C) 2009 Canonical Ltd.
++ *
++ * This program is free software: you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 3, as published
++ * by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranties of
++ * MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
++ * PURPOSE.  See the GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ * Author:
++ *   Jamie Strandboge <jamie@canonical.com>
++ *   Based on security_selinux.c by James Morris <jmorris@namei.org>
++ *
++ */
++
++#include <config.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <sys/apparmor.h>
++#include <errno.h>
++#include <unistd.h>
++
++#include "security.h"
++#include "security_apparmor.h"
++#include "util.h"
++#include "memory.h"
++#include "virterror_internal.h"
++#include "datatypes.h"
++
++#define VIR_FROM_THIS VIR_FROM_SECURITY
++#define SECURITY_APPARMOR_VOID_DOI	"0"
++#define SECURITY_APPARMOR_NAME 		"apparmor"
++
++/*
++ * profile_status returns '-1' on error, '0' if loaded
++ *
++ * If check_enforcing is set to '1', then returns '-1' on error, '0' if
++ * loaded in complain mode, and '1' if loaded in enforcing mode.
++ */
++static int
++profile_status(const char *str, const int check_enforcing) {
++    char ebuf[1024];
++    char *content = NULL;
++    char *tmp = NULL;
++    char *etmp = NULL;
++    int rc = -1;
++
++    /* create string that is '<str> \0' for accurate matching */
++    if ((tmp = (char *) malloc((strlen(str) + 2) * sizeof(char))) == NULL) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR,
++                               _("%s: could not allocate memory for string"),
++                               __func__);
++        return rc;
++    }
++    sprintf(tmp, "%s ", str);
++
++    if (check_enforcing != 0) {
++        /* create string that is '<str> (enforce)\0' for accurate matching */
++        if ((etmp = (char *)malloc((strlen(str) + 11)*sizeof(char))) == NULL) {
++            virSecurityReportError(NULL, VIR_ERR_ERROR,
++                                   _("%s: could not allocate memory for "
++                                   "string"), __func__);
++            free(tmp);
++            return rc;
++        }
++        sprintf(etmp, "%s (enforce)", str);
++    }
++
++    if (virFileReadAll(APPARMOR_PROFILES_PATH, MAX_FILE_LEN, &content) < 0) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR,
++                               _("%s: Failed to read AppArmor profiles list "
++                               "%s: %s"), __func__,APPARMOR_PROFILES_PATH,
++                               virStrerror(errno, ebuf, sizeof ebuf));
++        if (etmp != NULL)
++            free(etmp);
++        free(tmp);
++        return rc;
++    }
++
++    if (strstr(content, tmp) != NULL)
++        rc = 0;
++    if (check_enforcing != 0 && rc == 0 && strstr(content, etmp) != NULL)
++        rc = 1;	/* return '1' if loaded and enforcing */
++
++    if (etmp != NULL)
++        free(etmp);
++    free(tmp);
++    VIR_FREE(content);
++
++    return rc;
++}
++
++static int
++profile_loaded(const char *str) {
++    return profile_status(str, 0);
++}
++
++/*
++ * profile_status_file returns '-1' on error, '0' if file on disk is in
++ * complain mode and '1' file on disk is in enforcing mode
++ */
++static int
++profile_status_file(const char *str) {
++    char ebuf[1024];
++    char profile[PATH_MAX];
++    char *content = NULL;
++    char *tmp = NULL;
++    int rc = -1;
++    int len;
++
++    if (snprintf(profile, PATH_MAX, "%s/%s",
++                 APPARMOR_DIR "/libvirt", str) > PATH_MAX - 1) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR, _("%s: profile name "
++                               "exceeds maximum length"), __func__);
++    }
++
++    if (!virFileExists(profile)) {
++        return rc;
++    }
++
++    if ((len = virFileReadAll(profile, MAX_FILE_LEN, &content)) < 0) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR,
++                               _("%s: Failed to read '%s': %s"),
++                               __func__,profile,
++                               virStrerror(errno, ebuf, sizeof ebuf));
++        return rc;
++    }
++
++    /* create string that is ' <str> flags=(complain)\0' */
++    if ((tmp = (char *) malloc((strlen(str) + 19) * sizeof(char))) == NULL) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR,
++                               _("%s: could not allocate memory for string"),
++                               __func__);
++        VIR_FREE(content);
++        return rc;
++    }
++    sprintf(tmp, " %s flags=(complain)", str);
++
++    if (strstr(content, tmp) != NULL)
++        rc = 0;
++    else
++        rc = 1;
++
++    free(tmp);
++    VIR_FREE(content);
++
++    return rc;
++}
++
++/*
++ * load (add) a profile. Will create one if necessary. If skip_disk is not
++ * NULL, then don't include the skipped disk.
++ */
++static int
++load_profile(const char *profile, virDomainObjPtr vm, const char *skip_disk) {
++    const char **argv;
++    int rc = -1;
++    int offset;
++    size_t i;
++    size_t len;
++    int create;
++    int j;
++
++    create = 1;
++    offset = 6;
++    if (profile_status_file(profile) >= 0)
++        create = 0;
++    len = offset + vm->def->ndisks + 1;
++
++    if ((argv = malloc(len * sizeof(*argv))) == NULL) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR,
++                               _("%s: could not allocate memory"),
++                               __func__);
++        return rc;
++    }
++
++    argv[0] = VIRT_AA_HELPER_PATH;
++    argv[2] = (char *) "-u";
++    argv[3] = profile;
++    argv[4] = (char *) "-n";
++    argv[5] = vm->def->name;
++
++    if (create == 0)
++        argv[1] = (char *) "-r";
++    else
++        argv[1] = (char *) "-c";
++
++    /* add disks to argv, skipping skip_disk if it is defined. */
++    j = 0;
++    for (i = 0; i < vm->def->ndisks; i++) {
++        if (vm->def->disks[i]->src == NULL || (skip_disk != NULL &&
++             strcmp(skip_disk, vm->def->disks[i]->src) == 0)) {
++            continue;
++        }
++        if (offset + j >= len - 1)
++            break;
++        argv[offset+j] = vm->def->disks[i]->src;
++        j++;
++    }
++    argv[offset+j] = NULL;
++
++    if (virRun(NULL, argv, NULL) == 0)
++        rc = 0;
++
++    free(argv);
++    return rc;
++}
++
++static int
++remove_profile(const char *profile) {
++    const char *argv[5];
++    int rc = -1;
++
++    argv[0] = VIRT_AA_HELPER_PATH;
++    argv[1] = (char *) "-R";
++    argv[2] = (char *) "-u";
++    argv[3] = profile;
++    argv[4] = NULL;
++
++    if (virRun(NULL, argv, NULL) == 0)
++        rc = 0;
++
++    return rc;
++}
++
++/*
++ * profile_name is buffer to hold name and len is how many bytes in the
++ * buffer
++ */
++static int
++get_profile_name(virConnectPtr conn,
++                 virDomainObjPtr vm,
++                 char *profile_name,
++                 const size_t len)
++{
++    virDomainPtr dom = NULL;
++    int rc = -1;
++    char *prefix = (char *) "libvirt-";
++
++    if (len < PROFILE_NAME_SIZE) {
++        virSecurityReportError(conn, VIR_ERR_ERROR,
++                               _("%s: profile_name has wrong size"), __func__);
++        return rc;
++    }
++    profile_name[0] = '\0';
++    strcat(profile_name, prefix);
++
++    /* generate the profile name */
++    dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
++    if (!dom) {
++        virSecurityReportError(conn, VIR_ERR_ERROR,
++                               _("%s: could not get domain for VM"), __func__);
++        return rc;
++    }
++    dom->id = vm->def->id;
++
++    if (virDomainGetUUIDString(dom, &profile_name[strlen(profile_name)]) != 0) {
++        virSecurityReportError(conn, VIR_ERR_ERROR,
++                               _("%s: could not find uuid for VM"), __func__);
++        return rc;
++    }
++
++    return 0;
++}
++
++/* returns -1 on error or profile for libvirtd is unconfined, 0 if complain
++ * mode and 1 if enforcing
++ */
++static int
++use_apparmor(void) {
++    char libvirt_daemon[PATH_MAX];
++    int rc = -1;
++    ssize_t len = 0;
++
++    if ((len = readlink("/proc/self/exe", libvirt_daemon, PATH_MAX - 1)) < 0) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR, _("%s: path to libvirt "
++                               "daemon could not be found"), __func__);
++        return rc;
++    }
++    libvirt_daemon[len] = '\0';
++
++    if (access(APPARMOR_PROFILES_PATH, R_OK) != 0)
++        return rc;
++
++    return profile_status(libvirt_daemon, 1);
++}
++
++/* Called on libvirtd startup to see if AppArmor is available */
++static int
++AppArmorSecurityDriverProbe(void)
++{
++    char template[PATH_MAX];
++
++    if (use_apparmor() < 0)
++        return SECURITY_DRIVER_DISABLE;
++
++    /* see if template file exists */
++    if (snprintf(template, PATH_MAX, "%s/TEMPLATE",
++                 APPARMOR_DIR "/libvirt") > PATH_MAX - 1) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR, _("%s: template "
++                               "exceeds maximum length"), __func__);
++        return SECURITY_DRIVER_DISABLE;
++    }
++
++    if (!virFileExists(template)) {
++        virSecurityReportError(NULL, VIR_ERR_ERROR,
++                               _("%s: template '%s' does not exist"),
++                               __func__, template);
++        return SECURITY_DRIVER_DISABLE;
++    }
++
++    return SECURITY_DRIVER_ENABLE;
++}
++
++/* Security driver initialization. DOI is for 'Domain of Interpretation' and is
++ * currently not used.
++ */
++static int
++AppArmorSecurityDriverOpen(virConnectPtr conn, virSecurityDriverPtr drv)
++{
++    virSecurityDriverSetDOI(conn, drv, SECURITY_APPARMOR_VOID_DOI);
++    return 0;
++}
++
++/* Currently called in qemudStartVMDaemon to setup a 'label'. We look for and
++ * use a profile based on the UUID, otherwise create one based on a template.
++ * Keep in mind that this is called on 'start' with RestoreSecurityLabel being
++ * called on shutdown.
++*/
++static int
++AppArmorGenSecurityLabel(virConnectPtr conn, virDomainObjPtr vm)
++{
++    int rc = -1;
++    char profile_name[PROFILE_NAME_SIZE];
++    profile_name[0] = '\0';
++
++    if ( ( vm->def->seclabel.label ) ||
++         ( vm->def->seclabel.model ) ||
++         ( vm->def->seclabel.imagelabel )) {
++        virSecurityReportError(conn, VIR_ERR_ERROR,
++                               _("%s: security label already defined for VM"),
++                               __func__);
++        return rc;
++    }
++
++    if (get_profile_name(conn, vm, profile_name, sizeof(profile_name)) < 0)
++        return rc;
++
++    /* if the profile is not already loaded, then load one */
++    if (profile_loaded(profile_name) < 0) {
++        if (load_profile(profile_name, vm, NULL) < 0) {
++            virSecurityReportError(conn, VIR_ERR_ERROR,
++                                   _("%s: cannot generate AppArmor profile '%s'"),
++                                     __func__, profile_name);
++            return rc;
++        }
++    }
++
++    vm->def->seclabel.label = strndup(profile_name, strlen(profile_name));
++    if (! vm->def->seclabel.label)  {
++        virSecurityReportError(conn, VIR_ERR_ERROR,
++                               _("%s: cannot generate AppArmor profile name "
++                                 "(label)"), __func__);
++        goto err;
++    }
++
++    /* set imagelabel the same as label (but we won't use it) */
++    vm->def->seclabel.imagelabel = strndup(profile_name, strlen(profile_name));
++    if (! vm->def->seclabel.imagelabel)  {
++        virSecurityReportError(conn, VIR_ERR_ERROR,
++                               _("%s: cannot generate AppArmor profile name "
++                               "(imagelabel)"), __func__);
++        goto err;
++    }
++
++    vm->def->seclabel.model = strdup(SECURITY_APPARMOR_NAME);
++    if (! vm->def->seclabel.model) {
++        virReportOOMError(conn);
++        goto err;
++    }
++
++    rc = 0;
++    goto done;
++
++err:
++    remove_profile(profile_name);
++    VIR_FREE(vm->def->seclabel.label);
++    VIR_FREE(vm->def->seclabel.imagelabel);
++    VIR_FREE(vm->def->seclabel.model);
++done:
++    return rc;
++}
++
++/* Seen with 'virsh dominfo <vm>'. This function only called if the VM is
++ * running.
++ */
++static int
++AppArmorGetSecurityLabel(virConnectPtr conn,
++                        virDomainObjPtr vm,
++                        virSecurityLabelPtr sec)
++{
++    int rc = -1;
++    char profile_name[PROFILE_NAME_SIZE];
++    profile_name[0] = '\0';
++
++    if (get_profile_name(conn, vm, profile_name, sizeof(profile_name)) < 0)
++        return rc;
++
++    strncpy(sec->label, profile_name, VIR_SECURITY_LABEL_BUFLEN);
++    sec->label[VIR_SECURITY_LABEL_BUFLEN - 1] = '\0';
++
++    if ((sec->enforcing = profile_status(profile_name, 1)) < 0) {
++        char ebuf[1024];
++        virSecurityReportError(conn, VIR_ERR_ERROR, _("%s: error calling "
++                               "profile_status(): %s"), __func__,
++                               virStrerror(errno, ebuf, sizeof ebuf));
++        return rc;
++    }
++
++    return 0;
++}
++
++/* Called on VM shutdown and destroy. See AppArmorGenSecurityLabel (above) for
++ * more details. Currently called via qemudShutdownVMDaemon.
++ */
++static int
++AppArmorRestoreSecurityLabel(virConnectPtr conn,
++                            virDomainObjPtr vm)
++{
++    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
++    char ebuf[1024];
++    int rc = 0;
++    if (secdef->imagelabel) {
++        if ((rc = remove_profile(secdef->label)) != 0) {
++            virSecurityReportError(conn, VIR_ERR_ERROR, _("%s: could not "
++                               "remove profile for '%s': %s"), __func__,
++                               secdef->label,
++                               virStrerror(errno, ebuf, sizeof ebuf));
++        }
++        VIR_FREE(secdef->model);
++        VIR_FREE(secdef->label);
++        VIR_FREE(secdef->imagelabel);
++    }
++    return rc;
++}
++
++/* Called via virExecWithHook. Output goes to
++ * /var/log/libvirt/qemu/<vm name>.log
++ */
++static int
++AppArmorSetSecurityLabel(virConnectPtr conn,
++                        virSecurityDriverPtr drv,
++                        virDomainObjPtr vm)
++{
++    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
++    char ebuf[1024];
++    int rc = -1;
++    char profile_name[PROFILE_NAME_SIZE];
++    profile_name[0] = '\0';
++
++    if (get_profile_name(conn, vm, profile_name, sizeof(profile_name)) < 0)
++        return rc;
++
++    if (!STREQ(drv->name, secdef->model)) {
++        virSecurityReportError(conn, VIR_ERR_ERROR,
++                               _("%s: security label driver mismatch: "
++                                 "\'%s\' model configured for domain, but "
++                                 "hypervisor driver is \'%s\'."),
++                                 __func__, secdef->model, drv->name);
++        if (use_apparmor() > 0)
++            return rc;
++    }
++
++    if (aa_change_profile(profile_name) < 0) {
++        virSecurityReportError(conn, VIR_ERR_ERROR, _("%s: error calling "
++                               "aa_change_profile(): %s"), __func__,
++                               virStrerror(errno, ebuf, sizeof ebuf));
++        return rc;
++    }
++
++    return 0;
++}
++
++
++/* Called when hotplugging */
++static int
++AppArmorRestoreSecurityImageLabel(virConnectPtr conn,
++                                 virDomainObjPtr vm,
++                                 virDomainDiskDefPtr disk)
++{
++    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
++    int rc = -1;
++    char profile_name[PROFILE_NAME_SIZE];
++    profile_name[0] = '\0';
++
++    if (secdef->imagelabel) {
++        if (get_profile_name(conn, vm, profile_name, sizeof(profile_name)) < 0)
++            return rc;
++
++        /* Update the profile only if it is loaded */
++        if (profile_loaded(secdef->imagelabel) >= 0) {
++            if (load_profile(secdef->imagelabel, vm, disk->src) < 0) {
++                virSecurityReportError(conn, VIR_ERR_ERROR,
++                                   _("%s: cannot update AppArmor profile "
++                                     "'%s'"), __func__, secdef->imagelabel);
++                return rc;
++            }
++        }
++    }
++
++    return 0;
++}
++
++/* Called when hotplugging */
++static int
++AppArmorSetSecurityImageLabel(virConnectPtr conn,
++                             virDomainObjPtr vm,
++                             virDomainDiskDefPtr disk)
++
++{
++    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
++    int rc = -1;
++    char profile_name[PROFILE_NAME_SIZE];
++    profile_name[0] = '\0';
++
++    if (!disk->src)
++        return 0;
++
++    if (secdef->imagelabel) {
++        /* if the device doesn't exist, error out */
++        if (!virFileExists(disk->src)) {
++            virSecurityReportError(conn, VIR_ERR_ERROR,
++                                   _("%s: '%s' does not exist"), __func__,
++                                     disk->src);
++            return rc;
++        }
++
++        if (get_profile_name(conn, vm, profile_name, sizeof(profile_name)) < 0)
++            return rc;
++
++        /* update the profile only if it is loaded */
++        if (profile_loaded(secdef->imagelabel) >= 0) {
++            if (load_profile(secdef->imagelabel, vm, NULL) < 0) {
++                virSecurityReportError(conn, VIR_ERR_ERROR,
++                                       _("%s: cannot update AppArmor profile "
++					 "'%s'"), __func__,
++                                         secdef->imagelabel);
++            return rc;
++            }
++        }
++    }
++
++    return 0;
++}
++
++/* TODO: need to verify this */
++static int
++AppArmorSecurityVerify(virConnectPtr conn, virDomainDefPtr def)
++{
++    const virSecurityLabelDefPtr secdef = &def->seclabel;
++    if (secdef->type == VIR_DOMAIN_SECLABEL_STATIC) {
++        if (use_apparmor() < 0 || profile_status(secdef->label, 0) < 0) {
++            virSecurityReportError(conn, VIR_ERR_XML_ERROR,
++                                   _("Invalid security label %s"), secdef->label);
++            return -1;
++        }
++    }
++    return 0;
++}
++
++virSecurityDriver virAppArmorSecurityDriver = {
++    .name                       = SECURITY_APPARMOR_NAME,
++    .probe                      = AppArmorSecurityDriverProbe,
++    .open                       = AppArmorSecurityDriverOpen,
++    .domainSecurityVerify       = AppArmorSecurityVerify,
++    .domainSetSecurityImageLabel = AppArmorSetSecurityImageLabel,
++    .domainRestoreSecurityImageLabel = AppArmorRestoreSecurityImageLabel,
++    .domainGenSecurityLabel     = AppArmorGenSecurityLabel,
++    .domainGetSecurityLabel     = AppArmorGetSecurityLabel,
++    .domainRestoreSecurityLabel = AppArmorRestoreSecurityLabel,
++    .domainSetSecurityLabel     = AppArmorSetSecurityLabel,
++};
+Index: libvirt-0.7.0/src/security_apparmor.h
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.0/src/security_apparmor.h	2009-08-25 21:17:31.000000000 -0500
+@@ -0,0 +1,28 @@
++/*
++ * Copyright (C) 2009 Canonical Ltd.
++ *
++ * This program is free software: you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 3, as published
++ * by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranties of
++ * MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
++ * PURPOSE.  See the GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ * Author:
++ *   Jamie Strandboge <jamie@canonical.com>
++ *
++ */
++#ifndef __VIR_SECURITY_APPARMOR_H__
++#define __VIR_SECURITY_APPARMOR_H__
++
++extern virSecurityDriver virAppArmorSecurityDriver;
++
++#define PROFILE_NAME_SIZE  8 + VIR_UUID_STRING_BUFLEN /* libvirt-<uuid> */
++#define MAX_FILE_LEN       (1024*1024*10) /* 10MB limit for sanity check */
++
++#endif /* __VIR_SECURITY_APPARMOR_H__ */
+Index: libvirt-0.7.0/src/security.c
+===================================================================
+--- libvirt-0.7.0.orig/src/security.c	2009-08-25 16:34:27.000000000 -0500
++++ libvirt-0.7.0/src/security.c	2009-08-25 21:17:31.000000000 -0500
+@@ -20,10 +20,17 @@
+ #include "security_selinux.h"
+ #endif
+ 
++#ifdef WITH_SECDRIVER_APPARMOR
++#include "security_apparmor.h"
++#endif
++
+ static virSecurityDriverPtr security_drivers[] = {
+ #ifdef WITH_SECDRIVER_SELINUX
+     &virSELinuxSecurityDriver,
+ #endif
++#ifdef WITH_SECDRIVER_APPARMOR
++    &virAppArmorSecurityDriver,
++#endif
+     NULL
+ };
+ 
+Index: libvirt-0.7.0/src/virt-aa-helper.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.0/src/virt-aa-helper.c	2009-08-25 21:17:31.000000000 -0500
+@@ -0,0 +1,768 @@
++/*
++ * virt-aa-helper: wrapper program used by AppArmor security driver.
++ * Copyright (C) 2009 Canonical Ltd.
++ *
++ * This program is free software: you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 3, as published
++ * by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranties of
++ * MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
++ * PURPOSE.  See the GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ * Author:
++ *   Jamie Strandboge <jamie@canonical.com>
++ *
++ */
++
++#include <config.h>
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <stdarg.h>
++#include <unistd.h>
++#include <errno.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <getopt.h>
++#include "c-ctype.h"
++#include "internal.h"
++#include "virterror_internal.h"
++#include "memory.h"
++#include "util.h"
++#include "security.h"
++#include "security_apparmor.h"
++
++static char *progname;
++
++typedef struct {
++    char uuid[PROFILE_NAME_SIZE];	/* UUID of vm */
++    char name[PATH_MAX];		/* name of vm */
++    char cmd;				/* 'c'   create
++                                           'a'   add (load)
++                                           'r'   replace
++                                           'R'   remove */
++    int ndisks;				/* number of disks */
++    char **disks;			/* list of disks */
++} vahControl;
++
++static int
++vahDeinit(vahControl *ctl)
++{
++    int i;
++    if (ctl->disks != NULL) {
++        for (i = 0; i < ctl->ndisks; i++) {
++            if (ctl->disks[i] != NULL)
++                free(ctl->disks[i]);
++        }
++        free(ctl->disks);
++    }
++    return 0;
++}
++
++static void
++vah_error(vahControl *ctl, int doexit, const char *str) {
++    fprintf(stderr, _("%s: error: %s\n"), progname, str);
++
++    if (doexit) {
++        if (ctl != NULL)
++            vahDeinit(ctl);
++        exit(EXIT_FAILURE);
++    }
++}
++
++static void
++vah_warning(const char *str) {
++    fprintf(stderr, _("%s: warning: %s\n"), progname, str);
++}
++
++/*
++ * Replace @oldstr in @orig with @repstr
++ * @len is number of bytes allocated for @orig. Assumes @orig, @oldstr and
++ * @repstr are null terminated
++ */
++static int
++replace_string(char *orig, const size_t len, const char *oldstr,
++                 const char *repstr) {
++    int idx;
++    char *pos = NULL;
++    char *tmp = NULL;
++
++    if ((pos = strstr(orig, oldstr)) == NULL) {
++        vah_error(NULL, 0, "could not find replacement string");
++        return -1;
++    }
++
++    if ((tmp = (char *) malloc(len * sizeof(char))) == NULL) {
++        vah_error(NULL, 0, "could not allocate memory for string");
++        return -1;
++    }
++    tmp[0] = '\0';
++
++    idx = abs(pos - orig);
++
++    /* copy everything up to oldstr */
++    strncat(tmp, orig, idx);
++
++    /* add the replacement string */
++    if (strlen(tmp) + strlen(repstr) > len - 1) {
++        vah_error(NULL, 0, "not enough space in target buffer");
++        free(tmp);
++        return -1;
++    }
++    strcat(tmp, repstr);
++
++    /* add everything after oldstr */
++    if (strlen(tmp) + strlen(orig) - (idx + strlen(oldstr)) > len - 1) {
++        vah_error(NULL, 0, "not enough space in target buffer");
++        free(tmp);
++        return -1;
++    }
++    strncat(tmp, orig + idx + strlen(oldstr),
++            strlen(orig) - (idx + strlen(oldstr)));
++
++    strncpy(orig, tmp, len);
++    orig[len-1] = '\0';
++    free(tmp);
++
++    return 0;
++}
++
++/*
++ * run an apparmor_parser command
++ */
++static int
++parserCommand(const char *profile_name, const char cmd) {
++    const char *argv[4];
++    char flag[3];
++    char profile[PATH_MAX];
++
++    if (strchr("arR", cmd) == NULL) {
++        vah_error(NULL, 0, "invalid flag");
++        return -1;
++    }
++
++    snprintf(flag, 3, "-%c", cmd);
++
++    if (snprintf(profile, PATH_MAX, "%s/%s",
++                 APPARMOR_DIR "/libvirt", profile_name) > PATH_MAX - 1) {
++        vah_error(NULL, 0, "profile name exceeds maximum length");
++        return -1;
++    }
++
++    if (!virFileExists(profile)) {
++        vah_error(NULL, 0, "profile does not exist");
++        return -1;
++    }
++
++    argv[0] = (char *) "/sbin/apparmor_parser";
++    argv[1] = flag;
++    argv[2] = profile;
++    argv[3] = NULL;
++
++    if (virRun(NULL, argv, NULL) != 0) {
++        vah_error(NULL, 0, "failed to run apparmor_parser");
++        return -1;
++    }
++
++    return 0;
++}
++
++/*
++ * Update the disks file
++ */
++static int
++update_include_file(const char *include_file, const char *included_files) {
++    int plen;
++    int fd;
++    char *pcontent = NULL;
++    char *existing = NULL;
++    char *warning = (char *) "# DO NOT EDIT THIS FILE DIRECTLY. IT IS MANAGED BY LIBVIRT.\n";
++
++    plen = strlen(warning) + strlen(included_files) + 1;
++    if (plen > MAX_FILE_LEN) {
++        vah_error(NULL, 0, "invalid length for new profile");
++        return -1;
++    }
++
++    if ((pcontent = (char *) malloc(plen * sizeof(char))) == NULL) {
++        vah_error(NULL, 0, "could not allocate memory for profile");
++        return -1;
++    }
++    pcontent[0] = '\0';
++
++    if (snprintf(pcontent, plen, "%s%s", warning, included_files) > plen - 1) {
++        vah_error(NULL, 0, "profile content exceeds maximum length");
++        free(pcontent);
++        return -1;
++    }
++
++    /* only update the disk profile if it is different */
++    if (virFileExists(include_file)) {
++        if (virFileReadAll(include_file, MAX_FILE_LEN, &existing) == plen - 1) {
++            if (strncmp(existing, pcontent, plen - 1) == 0) {
++                free(pcontent);
++                VIR_FREE(existing);
++                return 0;
++            }
++        }
++        if (existing != NULL)
++            VIR_FREE(existing);
++    }
++
++    /* write the file */
++    if ((fd = open(include_file, O_CREAT|O_TRUNC|O_WRONLY, 0644)) == -1) {
++        vah_error(NULL, 0, "failed to create disks profile");
++        free(pcontent);
++        return -1;
++    }
++
++    if (safewrite(fd, pcontent, plen - 1) < 0) { /* don't write the '\0' */
++        close (fd);
++        vah_error(NULL, 0, "failed to write to profile");
++        free(pcontent);
++        return -1;
++    }
++
++    free(pcontent);
++    if (close (fd) != 0) {
++        vah_error(NULL, 0, "failed to close or write to profile");
++        return -1;
++    }
++    return 0;
++}
++
++/*
++ * Create a profile based on a template
++ */
++static int
++create_profile(const char *profile, const char *profile_name, const char *profile_files) {
++    char template[PATH_MAX];
++    char *tcontent = NULL;
++    char *pcontent = NULL;
++    char *replace_name = NULL;
++    char *replace_files = NULL;
++    const char *template_name =  "\nprofile LIBVIRT_TEMPLATE";
++    const char *template_end = "\n}";
++    int tlen, plen, rnlen, rflen;
++    int fd;
++    int rc = -1;
++
++    if (virFileExists(profile)) {
++        vah_error(NULL, 0, "profile exists");
++        goto end;
++    }
++
++    if (snprintf(template, PATH_MAX, "%s/TEMPLATE",
++                 APPARMOR_DIR "/libvirt") > PATH_MAX - 1) {
++        vah_error(NULL, 0, "template name exceeds maximum length");
++        goto end;
++    }
++
++    if (!virFileExists(template)) {
++        vah_error(NULL, 0, "template does not exist");
++        goto end;
++    }
++
++    if ((tlen = virFileReadAll(template, MAX_FILE_LEN, &tcontent)) < 0) {
++        vah_error(NULL, 0, "failed to read AppArmor template");
++        goto end;
++    }
++
++    if (strstr(tcontent, template_name) == NULL) {
++        vah_error(NULL, 0, "failed to find replacement string in template");
++        goto clean_tcontent;
++    }
++
++    if (strstr(tcontent, template_end) == NULL) {
++        vah_error(NULL, 0, "failed to find replacement string in template");
++        goto clean_tcontent;
++    }
++
++    /* '\nprofile <profile_name>\0' */
++    rnlen = strlen(profile_name) * sizeof(char) + 10;
++    if ((replace_name = (char *) malloc(rnlen)) == NULL) {
++        vah_error(NULL, 0, "could not allocate memory for profile name");
++        goto clean_tcontent;
++    }
++    if (snprintf(replace_name, rnlen, "\nprofile %s", profile_name) >
++        rnlen - 1) {
++        vah_error(NULL, 0, "profile name exceeds maximum length");
++        free(replace_name);
++        goto clean_tcontent;
++    }
++
++    /* '\n<profile_files>\n}\0' */
++    rflen = strlen(profile_files) * sizeof(char) + 4;
++    if ((replace_files = (char *) malloc(rflen)) == NULL) {
++        vah_error(NULL, 0, "could not allocate memory for profile disks");
++        free(replace_name);
++        goto clean_tcontent;
++    }
++    if (snprintf(replace_files, rflen, "\n%s\n}", profile_files) >
++        rflen - 1) {
++        vah_error(NULL, 0, "profile disks exceed maximum length");
++        goto clean_replace;
++    }
++
++    plen = tlen + strlen(replace_name) - strlen(template_name) +
++           strlen(replace_files) - strlen(template_end) + 1;
++    if (plen > MAX_FILE_LEN || plen < tlen) {
++        vah_error(NULL, 0, "invalid length for new profile");
++        goto clean_replace;
++    }
++
++    if ((pcontent = (char *) malloc(plen * sizeof(char))) == NULL) {
++        vah_error(NULL, 0, "could not allocate memory for profile");
++        goto clean_replace;
++    }
++    pcontent[0] = '\0';
++    strcpy(pcontent, tcontent);
++
++    if (replace_string(pcontent, plen, template_name, replace_name) < 0)
++        goto clean_all;
++
++    if (replace_string(pcontent, plen, template_end, replace_files) < 0)
++        goto clean_all;
++
++    /* write the file */
++    if ((fd = open(profile, O_CREAT|O_EXCL|O_WRONLY, 0644)) == -1) {
++        vah_error(NULL, 0, "failed to create profile");
++        goto clean_all;
++    }
++
++    if (safewrite(fd, pcontent, plen - 1) < 0) { /* don't write the '\0' */
++        close (fd);
++        vah_error(NULL, 0, "failed to write to profile");
++        goto clean_all;
++    }
++
++    if (close (fd) != 0) {
++        vah_error(NULL, 0, "failed to close or write to profile");
++        goto clean_all;
++    }
++    rc = 0;
++
++clean_all:
++    free(pcontent);
++clean_replace:
++    free(replace_name);
++    free(replace_files);
++clean_tcontent:
++    VIR_FREE(tcontent);
++end:
++    return rc;
++}
++
++/*
++ * Load an existing profile
++ */
++static int
++parserLoad(const char *profile_name) {
++    return parserCommand(profile_name, 'a');
++}
++
++/*
++ * Remove an existing profile
++ */
++static int
++parserRemove(const char *profile_name) {
++    return parserCommand(profile_name, 'R');
++}
++
++/*
++ * Replace an existing profile
++ */
++static int
++parserReplace(const char *profile_name) {
++    return parserCommand(profile_name, 'r');
++}
++
++static int
++valid_uuid(const char *uuid) {
++    int i;
++    char *prefix = (char *) "libvirt-";
++
++    if (strlen(uuid) != PROFILE_NAME_SIZE - 1)
++        return -1;
++
++    if (strncmp(prefix, uuid, strlen(prefix)) != 0)
++        return -1;
++
++    for (i = strlen(prefix); i < PROFILE_NAME_SIZE - 1; i++) {
++        if (uuid[i] == '-')
++            continue;
++        if (!c_isxdigit(uuid[i]))
++            return -1;
++    }
++    return 0;
++}
++
++static int
++valid_name(const char *name) {
++    /* just try to filter out any dangerous characters in the name that can be
++       used to subvert the profile */
++    char *bad = (char *) " /[]*";
++    int i;
++
++    if (strlen(name) == 0 || strlen(name) > PATH_MAX - 1)
++        return -1;
++
++    for (i = 0; i < strlen(bad); i++)
++        if (strchr(name, bad[i]) != NULL)
++            return -1;
++
++    return 0;
++}
++
++
++/*
++ * Don't allow disks to special files or restricted paths such as /bin, /sbin,
++ * /usr/bin, /usr/sbin and /etc. This is in an effort to prevent read/write
++ * access to system files which could be used to elevate privileges. This is a
++ * safety measure in case libvirtd is under a restrictive profile and is
++ * subverted and trying to escape confinement.
++ *
++ * Note that we cannot exclude block devices because they are valid devices.
++ * The TEMPLATE file can be adjusted to explicitly disallow these if needed.
++ */
++static int
++valid_disk_path(const char *path) {
++    struct stat sb;
++    int i;
++    int npaths = 20;
++    char **restricted;
++    int rc = -1;
++
++    if (path == NULL || strlen(path) > PATH_MAX - 1)
++        return rc;
++
++    if ((restricted = (char **)calloc(sizeof(char **), npaths)) == NULL) {
++        vah_error(NULL, 0, "could not allocate memory for paths");
++        return rc;
++    }
++
++    restricted[0] = (char *) "/bin/";
++    restricted[1] = (char *) "/boot/";
++    restricted[2] = (char *) "/etc/";
++    restricted[3] = (char *) "/initrd/";
++    restricted[4] = (char *) "/initrd.img";
++    restricted[5] = (char *) "/lib";
++    restricted[6] = (char *) "/lost+found/";
++    restricted[7] = (char *) "/proc/";
++    restricted[8] = (char *) "/sbin/";
++    restricted[9] = (char *) "/selinux/";
++    restricted[10] = (char *) "/sys/";
++    restricted[11] = (char *) "/usr/bin/";
++    restricted[12] = (char *) "/usr/lib";
++    restricted[13] = (char *) "/usr/sbin/";
++    restricted[14] = (char *) "/usr/share/";
++    restricted[15] = (char *) "/usr/local/bin/";
++    restricted[16] = (char *) "/usr/local/etc/";
++    restricted[17] = (char *) "/usr/local/lib";
++    restricted[18] = (char *) "/usr/local/sbin/";
++    restricted[19] = (char *) "/vmlinuz";
++
++    if (stat(path, &sb) == -1)
++        goto end;
++
++    switch (sb.st_mode & S_IFMT) {
++       case S_IFCHR:  goto end; break;
++       case S_IFDIR:  goto end; break;
++       case S_IFIFO:  goto end; break;
++       case S_IFSOCK: goto end; break;
++       default:       break;
++    }
++
++    for (i = 0; i < npaths; i++) {
++        if (strlen(path) < strlen(restricted[i]))
++            continue;
++
++        if (strncmp(path, restricted[i], strlen(restricted[i])) == 0) {
++            rc = 1;
++            goto end;
++        }
++    }
++    rc = 0;
++
++end:
++    free(restricted);
++    return rc;
++}
++
++/*
++ * Print usage
++ */
++static void
++vah_usage(void)
++{
++    fprintf(stdout, "\n%s [options] disk1 disk2 ...\n\n"
++            "  Options:\n"
++            "    -a | --add                     load profile\n"
++            "    -c | --create                  create profile from template\n"
++            "    -D | --delete                  unload and delete profile\n"
++            "    -r | --replace                 reload profile\n"
++            "    -R | --remove                  unload profile\n"
++            "    -h | --help                    this help\n"
++            "    -n | --name <domain name>      domain name\n"
++            "    -u | --uuid <uuid>             uuid (profile name)\n"
++            "\n", progname);
++
++    fprintf(stdout, "This command is intended to be used by libvirtd "
++                    "and not used directly.\n");
++    return;
++}
++
++static int
++vahParseArgv(vahControl *ctl, int argc, char **argv) {
++    int arg, idx = 0;
++    struct option opt[] = {
++        {"add", 0, 0, 'a'},
++        {"create", 0, 0, 'c'},
++        {"delete", 0, 0, 'D'},
++        {"help", 0, 0, 'h'},
++        {"replace", 0, 0, 'r'},
++        {"remove", 0, 0, 'R'},
++        {"uuid", 1, 0, 'u'},
++        {"name", 1, 0, 'n'},
++        {0, 0, 0, 0}
++    };
++
++    int i;
++
++    while ((arg = getopt_long(argc, argv, "acDhrRn:u:", opt, &idx)) != -1) {
++        switch (arg) {
++        case 'a':
++            ctl->cmd = 'a';
++            break;
++        case 'c':
++            ctl->cmd = 'c';
++            break;
++        case 'D':
++            ctl->cmd = 'D';
++            break;
++        case 'h':
++            vah_usage();
++            exit(EXIT_SUCCESS);
++            break;
++        case 'r':
++            ctl->cmd = 'r';
++            break;
++        case 'R':
++            ctl->cmd = 'R';
++            break;
++        case 'u':
++            if (strlen(optarg) > PROFILE_NAME_SIZE - 1)
++                vah_error(ctl, 1, "invalid UUID");
++            strncpy((char *) ctl->uuid, optarg, PROFILE_NAME_SIZE);
++            ctl->uuid[PROFILE_NAME_SIZE - 1] = '\0';
++            break;
++        case 'n':
++            strncpy((char *) ctl->name, optarg, PATH_MAX);
++            ctl->name[PATH_MAX - 1] = '\0';
++            break;
++        default:
++            vah_error(ctl, 1, "unsupported option");
++            break;
++        }
++    }
++    if (strchr("acDrR", ctl->cmd) == NULL)
++        vah_error(ctl, 1, "bad command");
++
++    if (valid_uuid(ctl->uuid) != 0)
++        vah_error(ctl, 1, "invalid UUID");
++
++    if (ctl->cmd == 'c' || ctl->cmd == 'r') {
++        if (strlen(ctl->name) == 0)
++            vah_error(ctl, 1, "name is required");
++
++        if (valid_name(ctl->name) != 0)
++            vah_error(ctl, 1, "invalid name");
++
++        if (optind >= argc) {
++            ctl->ndisks = 0;
++            vah_warning("profile has 0 disks");
++        } else {
++            ctl->ndisks = 0;
++            for (i = optind; i < argc; i++) {
++                if (virFileExists(argv[i]))
++                    ctl->ndisks++;
++                else
++                    vah_error(NULL, 0, "skipping disk (does not exist)");
++            }
++            if (ctl->ndisks == 0) {
++                vah_warning("profile has 0 disks");
++            } else {
++                if ((ctl->disks = (char **)calloc(sizeof(char **),
++                    ctl->ndisks)) == NULL)
++                     vah_error(ctl, 1, "could not allocate memory for disks");
++
++                for (i = 0; i < ctl->ndisks; i++) {
++                    if ((ctl->disks[i] = realpath(argv[optind+i], NULL))
++                        == NULL)
++                        vah_error(ctl, 1, "could not disk, skipping");
++                    if (valid_disk_path(ctl->disks[i]) != 0)
++                        vah_error(ctl, 1, "invalid disk");
++                }
++            }
++        }
++    }
++    return 0;
++}
++
++/*
++ * virt-aa-helper -c -u UUID -n name disk1, disk2, ...
++ * virt-aa-helper -r -u UUID -n name disk1, disk2, ...
++ * virt-aa-helper -a -u UUID
++ * virt-aa-helper -R -u UUID
++ * virt-aa-helper -D -u UUID
++ */
++int
++main(int argc, char **argv) {
++    vahControl _ctl, *ctl = &_ctl;
++    int rc = -1;
++    int i, tlen = 0, ilen = 0;
++    char profile[PATH_MAX];
++    char include_file[PATH_MAX];
++    char tmp[3*PATH_MAX];
++    char *included_files = NULL;
++
++    /* clear the environment */
++    environ = NULL;
++    if (setenv("PATH", "/sbin:/usr/sbin", 1) != 0) {
++        vah_error(ctl, 1, "could not set PATH");
++    }
++    if (setenv("IFS", " \t\n", 1) != 0) {
++        vah_error(ctl, 1, "could not set IFS");
++    }
++
++    if (!(progname = strrchr(argv[0], '/')))
++        progname = argv[0];
++    else
++        progname++;
++
++    memset(ctl, 0, sizeof(vahControl));
++
++    if (vahParseArgv(ctl, argc, argv) != 0)
++        vah_error(ctl, 1, "could not parse arguments");
++
++    if (snprintf(profile, PATH_MAX, "%s/%s",
++                 APPARMOR_DIR "/libvirt", ctl->uuid) > PATH_MAX - 1)
++        vah_error(ctl, 1, "profile name exceeds maximum length");
++
++    if (snprintf(include_file, PATH_MAX, "%s/%s.files",
++                 APPARMOR_DIR "/libvirt", ctl->uuid) > PATH_MAX - 1)
++        vah_error(ctl, 1, "disk profile name exceeds maximum length");
++
++    if (ctl->cmd == 'a')
++        rc = parserLoad(ctl->uuid);
++    else if (ctl->cmd == 'R' || ctl->cmd == 'D') {
++        rc = parserRemove(ctl->uuid);
++        if (ctl->cmd == 'D') {
++            unlink(include_file);
++            unlink(profile);
++        }
++    } else if (ctl->cmd == 'c' || ctl->cmd == 'r') {
++        if (ctl->cmd == 'c' && virFileExists(profile))
++            vah_error(ctl, 1, "profile exists");
++
++        /* build up included_files */
++        for (i = 0 ; i < ctl->ndisks ; i++) {
++            /* '  %s rw,\n' */
++            ilen += strlen(ctl->disks[i]) + strlen("   rw,\n");
++        }
++        ilen += strlen("  /var/log/libvirt/**/.log w,\n"
++                       "  /var/run/libvirt/**/.monitor rw,\n"
++                       "  /var/run/libvirt/**/.pid rwk,\n");
++        ilen += strlen(ctl->name) * 3 + 1;
++
++        if ((included_files = (char *) malloc(ilen * sizeof(char))) == NULL)
++            vah_error(ctl, 1, "could not allocate memory for profile");
++
++        included_files[0] = '\0';
++        tmp[0] = '\0';
++        for (i = 0 ; i < ctl->ndisks ; i++) {
++            if (snprintf(tmp, PATH_MAX, "  %s rw,\n", ctl->disks[i]) > PATH_MAX - 1) {
++                vah_error(ctl, 0, "disk line exceeds maximum length");
++                goto clean;
++            }
++            if (strlen(included_files) + strlen(tmp) > ilen - 1) {
++                vah_error(ctl, 0, "disk lines exceed maximum length");
++                goto clean;
++            }
++            strcat(included_files, tmp);
++        }
++
++        /* While 3*PATH_MAX is not accurate when thinking about PATH_MAX,
++         * it is good enough since the #include line is a relative path
++         * and we are just trying to keep tmp from overflowing here anyway
++         */
++        if (snprintf(tmp, 3*PATH_MAX,
++                     "  /var/log/libvirt/**/%s.log w,\n"
++                     "  /var/run/libvirt/**/%s.monitor rw,\n"
++                     "  /var/run/libvirt/**/%s.pid rwk,\n",
++                     ctl->name, ctl->name, ctl->name) > 3*PATH_MAX - 1) {
++            vah_error(ctl, 0, "added rules exceed maximum length");
++            goto clean;
++        }
++
++        if (strlen(included_files) + strlen(tmp) > ilen - 1) {
++            vah_error(ctl, 0, "added rules exceed maximum length");
++            goto clean;
++        }
++        strcat(included_files, tmp);
++
++        /* (re)create the include file using included_files */
++        if ((rc = update_include_file(include_file, included_files)) != 0)
++            goto clean;
++
++
++        /* create the profile from TEMPLATE */
++        if (ctl->cmd == 'c') {
++            tlen = strlen("  #include <libvirt/.files>\n");
++            tlen += PROFILE_NAME_SIZE;
++
++	   /* While PATH_MAX + 14 is not accurate when thinking about PATH_MAX,
++            * it is good enough since the #include line is a relative path
++            * and we are just trying to keep tmp from overflowing here anyway
++            */
++            if (snprintf(tmp, PATH_MAX + 14, "  #include <libvirt/%s.files>\n",
++                         ctl->uuid) > PATH_MAX - 13) {
++                vah_error(ctl, 0, "added include exceeds maximum length");
++                goto clean;
++            }
++
++            if ((rc = create_profile(profile, ctl->uuid, tmp)) != 0) {
++                vah_error(ctl, 0, "could not create profile");
++                unlink(include_file);
++            }
++        }
++
++        if (rc == 0) {
++            if (ctl->cmd == 'c')
++               rc = parserLoad(ctl->uuid);
++            else
++               rc = parserReplace(ctl->uuid);
++
++            /* cleanup */
++            if (rc != 0) {
++                unlink(include_file);
++                if (ctl->cmd == 'c')
++                    unlink(profile);
++            }
++        }
++    }
++
++clean:
++    if (included_files != NULL)
++        free(included_files);
++    vahDeinit(ctl);
++
++    exit(rc == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
++}
++
+Index: libvirt-0.7.0/tests/test_virt-aa-helper.sh
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.0/tests/test_virt-aa-helper.sh	2009-08-25 21:24:02.000000000 -0500
+@@ -0,0 +1,292 @@
++#!/bin/sh
++set -e
++
++#
++# needs to be run as root with libvirtd running
++#
++
++apparmord="/etc/apparmor.d"
++
++output="/dev/null"
++if [ ! -z "$1" ] && [ "$1" = "-d" ]; then
++    output="/dev/stdout"
++    shift
++fi
++
++if [ -z "$1" ]; then
++    echo "Need path to virt-aa-helper"
++    exit 1
++fi
++
++exec="$1"
++#exec="valgrind -v $1"
++shift
++
++tmpdir=`mktemp -d`
++trap "rm -rf $tmpdir" EXIT HUP INT QUIT TERM
++
++disk1="$tmpdir/1.img"
++disk2="$tmpdir/2.img"
++relative_disk1="$tmpdir/./../`basename $tmpdir`//./1.img"
++nonexistent="$tmpdir/nonexistant.img"
++bad_disk="/etc/passwd"
++
++valid_uuid="libvirt-00000000-0000-0000-0000-0123456789ab"
++valid_name="foo"
++nonexistent_uuid="libvirt-00000000-0000-0000-0000-000000000001"
++
++errors=0
++
++touch "$disk1" "$disk2"
++
++# Expected failures
++echo "Expected failures:"
++for args in "-z" "-A" "-c" "-c -n -u $valid_uuid $disk1" "-c -n foo[a-z] -u $valid_uuid $disk1" "-c -n $valid_name $disk1" "-c -n $valid_name -u libvirt-00000000-0000-0000-0000-00000000000g $disk1" "-c -n $valid_name -u 00000000-0000-0000-0000-000000000000" "-c -n $valid_name -u $disk1" "-R" "-R -u $nonexistent_uuid" "-r" "-r -u $valid_uuid $disk1" "-r -n foo -u $valid_uuid" "-r -n foo -u $nonexistent_uuid $disk1" "-c -n $valid_name -u $valid_uuid $bad_disk" "-c -n $valid_name -u $valid_uuid $disk1 $bad_disk $disk2" "-c -n $valid_name -u ${valid_uuid}toolong $disk1" "-c -n $valid_name -u libvirt-00000000-0000-0000-0000-0123456789a $disk1"; do
++    echo -n " '$args': "
++    if $exec $args >$output 2>&1 ; then
++        echo "FAIL: exited with '0'"
++        errors=$(($errors + 1))
++    else
++        echo "pass"
++    fi
++done
++
++echo ""
++echo "Expected pass (an early failure may trigger later failures):"
++echo "Create/Replace/Remove/Add/Delete profile"
++args="-c -n foo -u $valid_uuid $disk1"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ ! -e "$i" ]; then
++            err="$err$i "
++        fi
++    done
++    if [ -z "$err" ]; then
++        echo "pass"
++    else
++        echo "FAIL: could not find $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-r -n foo -u $valid_uuid $disk2"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ ! -e "$i" ]; then
++            err="$err$i "
++        fi
++    done
++    if [ -z "$err" ]; then
++        echo "pass"
++    else
++        echo "FAIL: could not find $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-R -u $valid_uuid"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ ! -e "$i" ]; then
++            err="$err$i "
++        fi
++    done
++    if [ -z "$err" ]; then
++        echo "pass"
++    else
++        echo "FAIL: could not find $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-a -u $valid_uuid"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ ! -e "$i" ]; then
++            err="$err$i "
++        fi
++    done
++    if [ -z "$err" ]; then
++        echo "pass"
++    else
++        echo "FAIL: could not find $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-D -u $valid_uuid"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ -e "$i" ]; then
++            err="$err$i "
++            rm -f "$i"
++        fi
++    done
++    if [ -z "$err" ]; then
++        echo "pass"
++    else
++        echo "FAIL: found $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-c -n foo -u $valid_uuid $nonexistent"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ ! -e "$i" ]; then
++            err="$err$i "
++        fi
++    done
++    if [ -z "$err" ]; then
++        # relative_disk should be the same as disk1 in the include file
++        if grep -q "$nonexistent" "$apparmord/libvirt/$valid_uuid.files"; then
++            echo "FAIL: found '$nonexistent' in '$apparmord/libvirt/$valid_uuid.files"
++            errors=$(($errors + 1))
++        else
++            echo "pass"
++        fi
++    else
++        echo "FAIL: could not find $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-r -n foo -u $valid_uuid $nonexistent"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ ! -e "$i" ]; then
++            err="$err$i "
++        fi
++    done
++    if [ -z "$err" ]; then
++        # relative_disk should be the same as disk1 in the include file
++        if grep -q "$nonexistent" "$apparmord/libvirt/$valid_uuid.files"; then
++            echo "FAIL: found '$nonexistent' in '$apparmord/libvirt/$valid_uuid.files"
++            errors=$(($errors + 1))
++        else
++            echo "pass"
++        fi
++    else
++        echo "FAIL: could not find $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-D -u $valid_uuid"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ -e "$i" ]; then
++            err="$err$i "
++            rm -f "$i"
++        fi
++    done
++    if [ -z "$err" ]; then
++        echo "pass"
++    else
++        echo "FAIL: found $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-c -n foo -u $valid_uuid $relative_disk1"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ ! -e "$i" ]; then
++            err="$err$i "
++        fi
++    done
++    if [ -z "$err" ]; then
++        # relative_disk should be the same as disk1 in the include file
++        if grep -q "$disk1" "$apparmord/libvirt/$valid_uuid.files"; then
++            echo "pass"
++        else
++            echo "FAIL: could not find '$disk1' in '$apparmord/libvirt/$valid_uuid.files"
++            errors=$(($errors + 1))
++        fi
++    else
++        echo "FAIL: could not find $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-D -u $valid_uuid"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    err=
++    for i in "$apparmord/libvirt/$valid_uuid" "$apparmord/libvirt/$valid_uuid.files" ; do
++        if [ -e "$i" ]; then
++            err="$err$i "
++            rm -f "$i"
++        fi
++    done
++    if [ -z "$err" ]; then
++        echo "pass"
++    else
++        echo "FAIL: found $err"
++        errors=$(($errors + 1))
++    fi
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++args="-h"
++echo -n " '$args': "
++if $exec $args >$output 2>&1 ; then
++    echo "pass"
++else
++    echo "FAIL: exited with error"
++    errors=$(($errors + 1))
++fi
++
++echo ""
++if [ "$errors" != "0" ]; then
++    echo "FAIL: $errors error(s)"
++    exit 1
++fi
++echo PASS

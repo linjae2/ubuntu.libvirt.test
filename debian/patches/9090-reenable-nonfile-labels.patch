@@ -1,0 +1,53 @@
+#
+# Ubuntu: https://launchpad.net/bugs/388422
+# Description: add back in virDomainObjPtr argument to
+#              RestoreSecurityImageLabel since AppArmor labels are not stored
+#              on disk
+#
+Index: libvirt-0.7.0/src/qemu_driver.c
+===================================================================
+--- libvirt-0.7.0.orig/src/qemu_driver.c	2009-08-13 22:33:09.000000000 -0500
++++ libvirt-0.7.0/src/qemu_driver.c	2009-08-13 22:33:30.000000000 -0500
+@@ -5552,7 +5552,7 @@
+          dev->data.disk->bus == VIR_DOMAIN_DISK_BUS_VIRTIO)) {
+         ret = qemudDomainDetachPciDiskDevice(dom->conn, vm, dev);
+         if (driver->securityDriver)
+-            driver->securityDriver->domainRestoreSecurityImageLabel(dom->conn, dev->data.disk);
++            driver->securityDriver->domainRestoreSecurityImageLabel(dom->conn, vm, dev->data.disk);
+         if (qemuDomainSetDeviceOwnership(dom->conn, driver, dev, 1) < 0)
+             VIR_WARN0("Fail to restore disk device ownership");
+     } else if (dev->type == VIR_DOMAIN_DEVICE_NET) {
+Index: libvirt-0.7.0/src/security.h
+===================================================================
+--- libvirt-0.7.0.orig/src/security.h	2009-08-13 22:32:30.000000000 -0500
++++ libvirt-0.7.0/src/security.h	2009-08-13 22:33:09.000000000 -0500
+@@ -32,6 +32,7 @@
+ typedef int (*virSecurityDriverOpen) (virConnectPtr conn,
+                                       virSecurityDriverPtr drv);
+ typedef int (*virSecurityDomainRestoreImageLabel) (virConnectPtr conn,
++                                                   virDomainObjPtr vm,
+                                                    virDomainDiskDefPtr disk);
+ typedef int (*virSecurityDomainSetImageLabel) (virConnectPtr conn,
+                                                virDomainObjPtr vm,
+Index: libvirt-0.7.0/src/security_selinux.c
+===================================================================
+--- libvirt-0.7.0.orig/src/security_selinux.c	2009-08-13 22:32:30.000000000 -0500
++++ libvirt-0.7.0/src/security_selinux.c	2009-08-13 22:33:09.000000000 -0500
+@@ -345,6 +345,7 @@
+ 
+ static int
+ SELinuxRestoreSecurityImageLabel(virConnectPtr conn,
++                                 virDomainObjPtr vm,
+                                  virDomainDiskDefPtr disk)
+ {
+     struct stat buf;
+@@ -414,7 +415,8 @@
+     int rc = 0;
+     if (secdef->imagelabel) {
+         for (i = 0 ; i < vm->def->ndisks ; i++) {
+-            if (SELinuxRestoreSecurityImageLabel(conn, vm->def->disks[i]) < 0)
++            if (SELinuxRestoreSecurityImageLabel(conn, vm,
++                                                 vm->def->disks[i]) < 0)
+                 rc = -1;
+         }
+         VIR_FREE(secdef->model);

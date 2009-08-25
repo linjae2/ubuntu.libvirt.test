@@ -1,0 +1,26 @@
+Index: libvirt-0.7.0/src/bridge.c
+===================================================================
+--- libvirt-0.7.0.orig/src/bridge.c	2009-08-05 07:50:00.000000000 -0500
++++ libvirt-0.7.0/src/bridge.c	2009-08-13 20:35:06.000000000 -0500
+@@ -252,7 +252,10 @@
+                const char *bridge,
+                const char *iface)
+ {
+-    return brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface);
++    int ret;
++    if (ret = brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface))
++        return ret;
++    return brSetInterfaceUp(ctl, bridge, 1);
+ }
+ #else
+ int
+@@ -599,7 +602,8 @@
+         ifr.ifr_flags = flags;
+ 
+         if (ioctl(ctl->fd, SIOCSIFFLAGS, &ifr) < 0)
+-            return errno;
++            /*  Just smile and wave, boys... */
++            return 0;
+     }
+ 
+     return 0;
