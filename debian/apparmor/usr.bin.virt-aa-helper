@@ -12,7 +12,7 @@
   network inet,
 
   deny @{PROC}/[0-9]*/mounts r,
-  /proc/filesystems r,
+  @{PROC}/filesystems r,
 
   /usr/bin/virt-aa-helper mr,
   /sbin/apparmor_parser Ux,
