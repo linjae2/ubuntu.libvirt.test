@@ -24,6 +24,11 @@ case "$1" in
     		addgroup --system libvirtd
 	fi
 
+	# Add each admin user to the libvirtd group
+	for u in $(grep "^admin:" /etc/group | sed -e "s/^.*://" -e "s/,/ /g"); do
+		adduser "$u" libvirtd >/dev/null
+	done
+
 	# libvirt from 0.6.0 on is safe to restart with running vms:
 	if [ -n "$2" ] &&  dpkg --compare-versions "$2" ge 0.6.0; then
 	    if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
