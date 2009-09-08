@@ -1,3 +1,14 @@
+libvirt (0.7.0-1ubuntu4) karmic; urgency=low
+
+  * debian/libvirt-bin.postinst: add each admin user to libvirtd,
+    LP: #410226; note that this is only a partial fix, as admin users
+    added after libvirt's install will need to be individually added
+    to libvirtd; however, this should fix a huge number of
+    single-admin-user-in-default-Ubuntu-system annoyances
+  * debian/control: bump standards version
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 08 Sep 2009 17:56:52 -0500
+
 libvirt (0.7.0-1ubuntu3) karmic; urgency=low
 
   * debian/apparmor/libvirt-qemu: allow access to /dev/kqemu
