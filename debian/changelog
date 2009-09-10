@@ -1,3 +1,15 @@
+libvirt (0.7.0-1ubuntu5) karmic; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: switch to enforcing by default. Please
+    note that this was only in complain mode temporarily to work around kernel
+    bugs in the 2.6.31-9 kernel. Confinement of virtual machines (controlled
+    by /etc/apparmor.d/libvirt/TEMPLATE) was already in enforcing mode.
+    (LP: #427338)
+  * debian/README.Debian: update AppArmor section based on the upstream
+    documentation
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 10 Sep 2009 08:05:45 -0500
+
 libvirt (0.7.0-1ubuntu4) karmic; urgency=low
 
   * debian/libvirt-bin.postinst: add each admin user to libvirtd,

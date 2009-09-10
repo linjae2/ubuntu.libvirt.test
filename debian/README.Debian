@@ -56,14 +56,55 @@ Access Control
 Access to the libvirt socket is controlled by membership in the "libvirt" group.
 If you want to manage VMs as non root you need to add a user to that group.
 
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 15 May 2008 14:13:03 +0100
+
+
 AppArmor Profile
 ----------------
-Libvirt now contains AppArmor integration when using KVM or QEMU. Libvirtd can
-be configured to launch virtual machines that are confined by uniquely
-restrictive AppArmor profiles. This feature significantly improves
-virtualization in Ubuntu by providing user-space host protection as well as
-guest isolation. To disable AppArmor integration, disable the libvirt profile
-by performing:
+Libvirt now contains AppArmor integration when using KVM or QEMU using
+libvirt's sVirt infrastructure. Libvirtd can be configured to launch virtual
+machines that are confined by uniquely restrictive AppArmor profiles. This
+feature significantly improves virtualization in Ubuntu by providing user-space
+host protection as well as guest isolation.
+
+In the sVirt model, if a profile is loaded for the libvirtd daemon, then each
+qemu:///system QEMU virtual machine will have a profile created for it when
+the virtual machine is started if one does not already exist. This generated
+profile is based on a template file and uses a profile name based on the UUID
+of the QEMU virtual machine and contains rules allowing access to only the
+files it needs to run, such as its disks, pid file and log files. Just before
+the QEMU virtual machine is started, the libvirtd daemon will change into this
+unique profile, preventing the QEMU process from accessing any file resources
+that are present in another QEMU process or the host machine.
+
+The AppArmor sVirt implementation is flexible in that it allows a user to
+customize the template file in /etc/apparmor.d/libvirt/TEMPLATE for
+site-specific access for all newly created QEMU virtual machines. When a
+new profile is generated, two files are created:
+
+ /etc/apparmor.d/libvirt/libvirt-<uuid>
+ /etc/apparmor.d/libvirt/libvirt-<uuid>.files
+
+The former can be fine-tuned by the administrator to allow custom access for
+this particular QEMU virtual machine, and the latter will be updated
+appropriately when required file access changes, such as when a disk is added.
+This flexibility allows for situations such as having one virtual machine in
+complain mode with all others in enforce mode.
+
+Profiles for /usr/sbin/libvirtd, /usr/bin/virt-aa-helper (a helper program
+which the libvirtd daemon uses instead of manipulating AppArmor directly), and
+/etc/apparmor.d/abstractions/libvirt-qemu are used to configure AppArmor
+confinement with sVirt.
+
+If the sVirt security model is active, then the node capabilities XML will
+include its details. If a virtual machine is currently protected by the
+security model, then the guest XML will include its assigned profile name. If
+enabled at compile time, the sVirt security model will be activated if AppArmor
+is available on the host OS and a profile for the libvirtd daemon is loaded
+when libvirtd is started. To disable sVirt, and revert to the basic level of
+AppArmor protection (host protection only), the /etc/libvirt/qemu.conf file can
+be used to change the setting to security_driver="none". Users may also
+disable AppArmor integration through AppArmor itself by performing:
 
 $ sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.libvirtd
 $ sudo ln -s /etc/apparmor.d/usr.sbin.libvirtd /etc/apparmor.d/disable/usr.sbin.libvirtd
@@ -74,5 +115,4 @@ to the installed apparmor profile. Before filing a bug against this software,
 please see https://wiki.ubuntu.com/DebuggingApparmor before filing a bug
 against this software.
 
-
- -- Guido Guenther <agx@sigxcpu.org>  Thu, 15 May 2008 14:13:03 +0100
+ -- Jamie Strandboge <jamie@canonical.com>  Thu, 10 Sep 2009 08:29:04 -0500
