@@ -2,7 +2,7 @@
 #include <tunables/global>
 @{LIBVIRT}="libvirt"
 
-/usr/sbin/libvirtd flags=(complain) {
+/usr/sbin/libvirtd {
   #include <abstractions/base>
 
   capability kill,
