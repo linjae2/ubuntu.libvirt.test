@@ -1,10 +1,18 @@
+libvirt (0.6.1-0ubuntu5.1~hardy1) hardy-backports; urgency=low
+
+  * Backport from Jaunty
+  * debian/control: drop open-iscsi dep, adjust libparted dep
+  * debian/rules: configure without iscsi
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Mon, 14 Sep 2009 15:46:11 -0500
+
 libvirt (0.6.1-0ubuntu5.1) jaunty-proposed; urgency=low
 
   * debian/patches/event-handling-fix-rh499698-lp362288.patch: cherry pick
     from upstream; fixes critical, destructive bug whereby calling
     'virsh destroy foo' kills foo, plus another vm; LP: #362288
 
- -- Dustin Kirkland <kirkland@ubuntu.com>  Thu, 16 Jul 2009 18:45:28 -0500
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Thu, 16 Jul 2009 19:11:32 -0500
 
 libvirt (0.6.1-0ubuntu5) jaunty; urgency=low
 
