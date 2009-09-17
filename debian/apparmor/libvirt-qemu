@@ -69,3 +69,8 @@
   /usr/bin/qemu-sparc64 rmix,
   /usr/bin/qemu-x86_64 rmix,
 
+  # workaround LP: #431090 until libvirt supports these in the security plugin
+  /var/lib/eucalyptus/instances/**/console.log w,
+  /var/lib/eucalyptus/instances/**/kernel r,
+  /var/lib/eucalyptus/instances/**/ramdisk r,
+

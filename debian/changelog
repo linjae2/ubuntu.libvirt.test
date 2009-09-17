@@ -1,3 +1,11 @@
+libvirt (0.7.0-1ubuntu6) karmic; urgency=low
+
+  * debian/apparmor/libvirt-qemu: workaround eucalyptus serial console,
+    kernel and initrd location. This should be removed after virt-aa-helper is
+    able to get these from XML. (LP: #431090)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 17 Sep 2009 11:35:42 -0500
+
 libvirt (0.7.0-1ubuntu5) karmic; urgency=low
 
   * debian/apparmor/usr.sbin.libvirtd: switch to enforcing by default. Please
