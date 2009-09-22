@@ -1,3 +1,9 @@
+libvirt (0.7.0-1ubuntu7) karmic; urgency=low
+
+  * debian/apparmor/libvirt-qemu: add chown capability (LP: #434417)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 22 Sep 2009 08:03:21 -0500
+
 libvirt (0.7.0-1ubuntu6) karmic; urgency=low
 
   * debian/apparmor/libvirt-qemu: workaround eucalyptus serial console,
