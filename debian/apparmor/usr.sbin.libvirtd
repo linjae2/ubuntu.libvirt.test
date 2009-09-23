@@ -12,6 +12,15 @@
   capability sys_admin,
   capability sys_module,
   capability sys_ptrace,
+  capability sys_nice,
+  capability sys_chroot,
+  capability setuid,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability chown,
+  capability setpcap,
+  capability mknod,
 
   network inet stream,
 
