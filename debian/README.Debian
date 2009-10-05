@@ -94,7 +94,9 @@ complain mode with all others in enforce mode.
 Profiles for /usr/sbin/libvirtd, /usr/bin/virt-aa-helper (a helper program
 which the libvirtd daemon uses instead of manipulating AppArmor directly), and
 /etc/apparmor.d/abstractions/libvirt-qemu are used to configure AppArmor
-confinement with sVirt.
+confinement with sVirt. Administrators of libvirt in production environments
+are encouraged to review these files (especially 'libvirt-qemu') to ensure that
+only the access required is given to the virtual machines.
 
 If the sVirt security model is active, then the node capabilities XML will
 include its details. If a virtual machine is currently protected by the

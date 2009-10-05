@@ -4,8 +4,8 @@
 #
 Index: libvirt-0.7.0/configure.in
 ===================================================================
---- libvirt-0.7.0.orig/configure.in	2009-09-23 11:43:44.000000000 -0500
-+++ libvirt-0.7.0/configure.in	2009-09-23 16:40:10.000000000 -0500
+--- libvirt-0.7.0.orig/configure.in	2009-09-28 14:32:12.000000000 -0500
++++ libvirt-0.7.0/configure.in	2009-10-05 16:01:19.000000000 -0500
 @@ -778,6 +778,84 @@
  AM_CONDITIONAL([WITH_SECDRIVER_SELINUX], [test "$with_secdriver_selinux" != "no"])
  
@@ -113,8 +113,8 @@ Index: libvirt-0.7.0/configure.in
  else
 Index: libvirt-0.7.0/src/Makefile.am
 ===================================================================
---- libvirt-0.7.0.orig/src/Makefile.am	2009-09-23 11:43:44.000000000 -0500
-+++ libvirt-0.7.0/src/Makefile.am	2009-09-23 16:40:10.000000000 -0500
+--- libvirt-0.7.0.orig/src/Makefile.am	2009-09-28 14:32:12.000000000 -0500
++++ libvirt-0.7.0/src/Makefile.am	2009-10-05 16:01:19.000000000 -0500
 @@ -9,6 +9,7 @@
  	   $(LIBSSH_CFLAGS) \
  	   $(XEN_CFLAGS) \
@@ -178,7 +178,7 @@ Index: libvirt-0.7.0/src/Makefile.am
 Index: libvirt-0.7.0/src/security_apparmor.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/src/security_apparmor.c	2009-09-23 16:44:27.000000000 -0500
++++ libvirt-0.7.0/src/security_apparmor.c	2009-10-05 16:01:19.000000000 -0500
 @@ -0,0 +1,593 @@
 +
 +/*
@@ -776,7 +776,7 @@ Index: libvirt-0.7.0/src/security_apparmor.c
 Index: libvirt-0.7.0/src/security_apparmor.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/src/security_apparmor.h	2009-09-23 16:40:10.000000000 -0500
++++ libvirt-0.7.0/src/security_apparmor.h	2009-10-05 16:01:19.000000000 -0500
 @@ -0,0 +1,23 @@
 +
 +/*
@@ -803,8 +803,8 @@ Index: libvirt-0.7.0/src/security_apparmor.h
 +#endif /* __VIR_SECURITY_APPARMOR_H__ */
 Index: libvirt-0.7.0/src/security.c
 ===================================================================
---- libvirt-0.7.0.orig/src/security.c	2009-09-23 11:43:44.000000000 -0500
-+++ libvirt-0.7.0/src/security.c	2009-09-23 16:40:10.000000000 -0500
+--- libvirt-0.7.0.orig/src/security.c	2009-09-28 14:32:12.000000000 -0500
++++ libvirt-0.7.0/src/security.c	2009-10-05 16:01:19.000000000 -0500
 @@ -20,10 +20,17 @@
  #include "security_selinux.h"
  #endif
@@ -826,8 +826,8 @@ Index: libvirt-0.7.0/src/security.c
 Index: libvirt-0.7.0/src/virt-aa-helper.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/src/virt-aa-helper.c	2009-09-23 16:41:25.000000000 -0500
-@@ -0,0 +1,962 @@
++++ libvirt-0.7.0/src/virt-aa-helper.c	2009-10-05 16:03:44.000000000 -0500
+@@ -0,0 +1,970 @@
 +
 +/*
 + * virt-aa-helper: wrapper program used by AppArmor security driver.
@@ -1512,9 +1512,17 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +    }
 +
 +    for (i = 0; i < ctl->def->ndisks; i++)
-+        if (ctl->def->disks[i] && ctl->def->disks[i]->src)
-+            if (vah_add_file(&buf, ctl->def->disks[i]->src, "rw") != 0)
++        if (ctl->def->disks[i] && ctl->def->disks[i]->src) {
++            int ret;
++
++            if (ctl->def->disks[i]->readonly)
++                ret = vah_add_file(&buf, ctl->def->disks[i]->src, "r");
++            else
++                ret = vah_add_file(&buf, ctl->def->disks[i]->src, "rw");
++
++            if (ret != 0)
 +                goto clean;
++        }
 +
 +    for (i = 0; i < ctl->def->nserials; i++)
 +        if (ctl->def->serials[i] && ctl->def->serials[i]->data.file.path)
@@ -1725,11 +1733,11 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +        if (ctl->cmd == 'c' && virFileExists(profile))
 +            vah_error(ctl, 1, "profile exists");
 +
-+        virBufferVSprintf(&buf, "  %s/log/libvirt/**/%s.log w,\n",
++        virBufferVSprintf(&buf, "  \"%s/log/libvirt/**/%s.log\" w,\n",
 +                          LOCAL_STATE_DIR, ctl->def->name);
-+        virBufferVSprintf(&buf, "  %s/run/libvirt/**/%s.monitor rw,\n",
++        virBufferVSprintf(&buf, "  \"%s/run/libvirt/**/%s.monitor\" rw,\n",
 +                          LOCAL_STATE_DIR, ctl->def->name);
-+        virBufferVSprintf(&buf, "  %s/run/libvirt/**/%s.pid rwk,\n",
++        virBufferVSprintf(&buf, "  \"%s/run/libvirt/**/%s.pid\" rwk,\n",
 +                          LOCAL_STATE_DIR, ctl->def->name);
 +        if (ctl->files)
 +            virBufferVSprintf(&buf, "%s", ctl->files);
@@ -1793,7 +1801,7 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 Index: libvirt-0.7.0/tests/virt-aa-helper-test
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/tests/virt-aa-helper-test	2009-09-23 16:45:39.000000000 -0500
++++ libvirt-0.7.0/tests/virt-aa-helper-test	2009-10-05 16:01:19.000000000 -0500
 @@ -0,0 +1,250 @@
 +#!/bin/sh
 +set -e
