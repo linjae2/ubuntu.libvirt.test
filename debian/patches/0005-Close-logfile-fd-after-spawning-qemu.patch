@@ -1,0 +1,27 @@
+From 32456779a1e93854631cc8da930c077d04b56660 Mon Sep 17 00:00:00 2001
+From: Ryota Ozaki <ozaki.ryota@gmail.com>
+Date: Thu, 10 Sep 2009 11:34:14 +0200
+Subject: [PATCH 2/2] Close logfile fd after spawning qemu
+
+* src/qemu_driver.c: avoid a leak of file descriptor when exec'ing qemu
+---
+ src/qemu_driver.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index 5c2a8ec..d778a89 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -2239,6 +2239,9 @@ static int qemudStartVMDaemon(virConnectPtr conn,
+         /* No need for 'goto cleanup' now since qemudShutdownVMDaemon does enough */
+     }
+ 
++    if (logfile != -1)
++        close(logfile);
++
+     return ret;
+ 
+ cleanup:
+-- 
+1.6.3.3
+
