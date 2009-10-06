@@ -1,3 +1,11 @@
+libvirt (0.7.0-1ubuntu10) karmic; urgency=low
+
+  * debian/patches/0005-Close-logfile-fd-after-spawning-qemu.patch: fix
+    egregious file descriptor leak with cherry-pick from upstream git,
+    LP: #438815
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 06 Oct 2009 18:57:22 -0500
+
 libvirt (0.7.0-1ubuntu9) karmic; urgency=low
 
   * allow access for sound (LP: #437854)

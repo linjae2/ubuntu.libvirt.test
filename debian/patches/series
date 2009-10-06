@@ -13,3 +13,4 @@
 9090-reenable-nonfile-labels.patch
 9091-apparmor.patch
 9092-apparmor-autoreconf.patch
+0005-Close-logfile-fd-after-spawning-qemu.patch
