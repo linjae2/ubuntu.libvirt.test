@@ -1,3 +1,14 @@
+libvirt (0.7.0-1ubuntu11) karmic; urgency=low
+
+  * debian/patches/9091-apparmor.patch:
+    - src/virt-aa-helper.c: update to parse XML for guest's architecture and
+      os.type rather than just trying to make something up.
+    - tests/virt-aa-helper-test: add some tests for the above and fix another
+      test
+    - LP: #448671
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 14 Oct 2009 14:55:20 -0500
+
 libvirt (0.7.0-1ubuntu10) karmic; urgency=low
 
   * debian/patches/0005-Close-logfile-fd-after-spawning-qemu.patch: fix

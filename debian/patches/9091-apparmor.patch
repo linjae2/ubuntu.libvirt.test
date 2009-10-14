@@ -4,8 +4,8 @@
 #
 Index: libvirt-0.7.0/configure.in
 ===================================================================
---- libvirt-0.7.0.orig/configure.in	2009-09-28 14:32:12.000000000 -0500
-+++ libvirt-0.7.0/configure.in	2009-10-05 16:01:19.000000000 -0500
+--- libvirt-0.7.0.orig/configure.in	2009-08-05 07:53:49.000000000 -0500
++++ libvirt-0.7.0/configure.in	2009-10-14 16:08:43.000000000 -0500
 @@ -778,6 +778,84 @@
  AM_CONDITIONAL([WITH_SECDRIVER_SELINUX], [test "$with_secdriver_selinux" != "no"])
  
@@ -113,8 +113,8 @@ Index: libvirt-0.7.0/configure.in
  else
 Index: libvirt-0.7.0/src/Makefile.am
 ===================================================================
---- libvirt-0.7.0.orig/src/Makefile.am	2009-09-28 14:32:12.000000000 -0500
-+++ libvirt-0.7.0/src/Makefile.am	2009-10-05 16:01:19.000000000 -0500
+--- libvirt-0.7.0.orig/src/Makefile.am	2009-07-24 11:38:23.000000000 -0500
++++ libvirt-0.7.0/src/Makefile.am	2009-10-14 16:08:43.000000000 -0500
 @@ -9,6 +9,7 @@
  	   $(LIBSSH_CFLAGS) \
  	   $(XEN_CFLAGS) \
@@ -178,7 +178,7 @@ Index: libvirt-0.7.0/src/Makefile.am
 Index: libvirt-0.7.0/src/security_apparmor.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/src/security_apparmor.c	2009-10-05 16:01:19.000000000 -0500
++++ libvirt-0.7.0/src/security_apparmor.c	2009-10-14 16:08:43.000000000 -0500
 @@ -0,0 +1,593 @@
 +
 +/*
@@ -776,7 +776,7 @@ Index: libvirt-0.7.0/src/security_apparmor.c
 Index: libvirt-0.7.0/src/security_apparmor.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/src/security_apparmor.h	2009-10-05 16:01:19.000000000 -0500
++++ libvirt-0.7.0/src/security_apparmor.h	2009-10-14 16:08:43.000000000 -0500
 @@ -0,0 +1,23 @@
 +
 +/*
@@ -803,8 +803,8 @@ Index: libvirt-0.7.0/src/security_apparmor.h
 +#endif /* __VIR_SECURITY_APPARMOR_H__ */
 Index: libvirt-0.7.0/src/security.c
 ===================================================================
---- libvirt-0.7.0.orig/src/security.c	2009-09-28 14:32:12.000000000 -0500
-+++ libvirt-0.7.0/src/security.c	2009-10-05 16:01:19.000000000 -0500
+--- libvirt-0.7.0.orig/src/security.c	2009-07-22 08:37:32.000000000 -0500
++++ libvirt-0.7.0/src/security.c	2009-10-14 16:08:43.000000000 -0500
 @@ -20,10 +20,17 @@
  #include "security_selinux.h"
  #endif
@@ -826,8 +826,8 @@ Index: libvirt-0.7.0/src/security.c
 Index: libvirt-0.7.0/src/virt-aa-helper.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/src/virt-aa-helper.c	2009-10-05 16:03:44.000000000 -0500
-@@ -0,0 +1,970 @@
++++ libvirt-0.7.0/src/virt-aa-helper.c	2009-10-14 16:08:43.000000000 -0500
+@@ -0,0 +1,1053 @@
 +
 +/*
 + * virt-aa-helper: wrapper program used by AppArmor security driver.
@@ -879,6 +879,7 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +    virDomainDefPtr def;        /* VM definition */
 +    virCapsPtr caps;            /* VM capabilities */
 +    char *hvm;                  /* type of hypervisor (eg hvm, xen) */
++    char *arch;                 /* machine architecture */
 +    int bits;                   /* bits in the guest */
 +    char *newdisk;              /* newly added disk */
 +} vahControl;
@@ -894,6 +895,7 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +        virCapabilitiesFree(ctl->caps);
 +    free(ctl->files);
 +    free(ctl->hvm);
++    free(ctl->arch);
 +    free(ctl->newdisk);
 +
 +    return 0;
@@ -914,8 +916,6 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +            "    -R | --remove                  unload profile\n"
 +            "    -h | --help                    this help\n"
 +            "    -u | --uuid <uuid>             uuid (profile name)\n"
-+            "    -H | --hvm <hvm>               hypervisor type\n"
-+            "    -b | --bits <bits>             architecture bits\n"
 +            "\n", progname);
 +
 +    fprintf(stdout, "This command is intended to be used by libvirtd "
@@ -1383,35 +1383,132 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +    return rc;
 +}
 +
++/* Called from SAX on parsing errors in the XML. */
++static void
++catchXMLError (void *ctx, const char *msg ATTRIBUTE_UNUSED, ...)
++{
++    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr) ctx;
++
++    if (ctxt) {
++        if (virGetLastError() == NULL &&
++            ctxt->lastError.level == XML_ERR_FATAL &&
++            ctxt->lastError.message != NULL) {
++                char *err_str = NULL;
++                if (virAsprintf(&err_str, "XML error at line %d: %s",
++                                ctxt->lastError.line,
++                                ctxt->lastError.message) == -1)
++                    vah_error(NULL, 0, "Could not get XML error");
++                else {
++                    vah_error(NULL, 0, err_str);
++                    VIR_FREE(err_str);
++                }
++        }
++    }
++}
++
++/*
++ * Parse the xml we received to fill in the following:
++ * ctl->hvm
++ * ctl->arch
++ * ctl->bits
++ *
++ * These are suitable for setting up a virCapsPtr
++ */
++static int
++caps_mockup(vahControl * ctl, const char *xmlStr)
++{
++    int rc = -1;
++    xmlParserCtxtPtr pctxt = NULL;
++    xmlDocPtr xml = NULL;
++    xmlXPathContextPtr ctxt = NULL;
++    xmlNodePtr root;
++
++    /* Set up a parser context so we can catch the details of XML errors. */
++    pctxt = xmlNewParserCtxt ();
++    if (!pctxt || !pctxt->sax)
++        goto cleanup;
++    pctxt->sax->error = catchXMLError;
++
++    xml = xmlCtxtReadDoc (pctxt, BAD_CAST xmlStr, "domain.xml", NULL,
++                          XML_PARSE_NOENT | XML_PARSE_NONET |
++                          XML_PARSE_NOWARNING);
++    if (!xml) {
++        if (virGetLastError() == NULL)
++            vah_error(NULL, 0, "failed to parse xml document");
++        goto cleanup;
++    }
++
++    if ((root = xmlDocGetRootElement(xml)) == NULL) {
++        vah_error(NULL, 0, "missing root element");
++        goto cleanup;
++    }
++
++    if (!xmlStrEqual(root->name, BAD_CAST "domain")) {
++        vah_error(NULL, 0, "incorrect root element");
++        goto cleanup;
++    }
++
++    if ((ctxt = xmlXPathNewContext(xml)) == NULL) {
++        vah_error(ctl, 0, "could not allocate memory");
++        goto cleanup;
++    }
++    ctxt->node = root;
++
++    ctl->hvm = virXPathString(NULL, "string(./os/type[1])", ctxt);
++    if (!ctl->hvm || STRNEQ(ctl->hvm, "hvm")) {
++        vah_error(ctl, 0, "os.type is not 'hvm'");
++        goto cleanup;
++    }
++    ctl->arch = virXPathString(NULL, "string(./os/type[1]/@arch)", ctxt);
++    if (!ctl->arch) {
++        /* The XML we are given should have an arch, but in case it doesn't,
++         * just use the host's arch.
++         */
++        struct utsname utsname;
++
++        /* Really, this never fails - look at the man-page. */
++        uname (&utsname);
++        if ((ctl->arch = strdup(utsname.machine)) == NULL) {
++            vah_error(ctl, 0, "could not allocate memory");
++            goto cleanup;
++        }
++    }
++    if (STREQ(ctl->arch, "x86_64"))
++        ctl->bits = 64;
++    else
++        ctl->bits = 32;
++
++    rc = 0;
++
++  cleanup:
++    xmlFreeParserCtxt (pctxt);
++    xmlFreeDoc (xml);
++    xmlXPathFreeContext(ctxt);
++
++    return rc;
++}
++
 +static int
 +get_definition(vahControl * ctl, const char *xmlStr)
 +{
 +    int rc = -1;
-+    struct utsname utsname;
 +    virCapsGuestPtr guest;  /* this is freed when caps is freed */
 +
 +    /*
 +     * mock up some capabilities. We don't currently use these explicitly,
 +     * but need them for virDomainDefParseString().
 +     */
++    if (caps_mockup(ctl, xmlStr) != 0)
++        goto exit;
 +
-+    /* Really, this never fails - look at the man-page. */
-+    uname (&utsname);
-+
-+    /* set some defaults if not specified */
-+    if (!ctl->bits)
-+        ctl->bits = 32;
-+    if (!ctl->hvm)
-+        ctl->hvm = strdup("hvm");
-+
-+    if ((ctl->caps = virCapabilitiesNew(utsname.machine, 1, 1)) == NULL) {
++    if ((ctl->caps = virCapabilitiesNew(ctl->arch, 1, 1)) == NULL) {
 +        vah_error(ctl, 0, "could not allocate memory");
 +        goto exit;
 +    }
 +
 +    if ((guest = virCapabilitiesAddGuest(ctl->caps,
 +                                         ctl->hvm,
-+                                         utsname.machine,
++                                         ctl->arch,
 +                                         ctl->bits,
 +                                         NULL,
 +                                         NULL,
@@ -1590,24 +1687,14 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +        {"replace", 0, 0, 'r'},
 +        {"remove", 0, 0, 'R'},
 +        {"uuid", 1, 0, 'u'},
-+        {"hvm", 1, 0, 'H'},
-+        {"bits", 1, 0, 'b'},
 +        {0, 0, 0, 0}
 +    };
-+    int bits;
 +
 +    while ((arg = getopt_long(argc, argv, "acdDhrRH:b:u:f:", opt,
 +            &idx)) != -1) {
 +        switch (arg) {
 +            case 'a':
 +                ctl->cmd = 'a';
-+                break;
-+            case 'b':
-+                bits = atoi(optarg);
-+                if (bits == 32 || bits == 64)
-+                    ctl->bits = bits;
-+                else
-+                    vah_error(ctl, 1, "invalid bits (should be 32 or 64)");
 +                break;
 +            case 'c':
 +                ctl->cmd = 'c';
@@ -1625,10 +1712,6 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 +            case 'h':
 +                vah_usage();
 +                exit(EXIT_SUCCESS);
-+                break;
-+            case 'H':
-+                if ((ctl->hvm = strdup(optarg)) == NULL)
-+                    vah_error(ctl, 1, "could not allocate memory for hvm");
 +                break;
 +            case 'r':
 +                ctl->cmd = 'r';
@@ -1801,8 +1884,8 @@ Index: libvirt-0.7.0/src/virt-aa-helper.c
 Index: libvirt-0.7.0/tests/virt-aa-helper-test
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.7.0/tests/virt-aa-helper-test	2009-10-05 16:01:19.000000000 -0500
-@@ -0,0 +1,250 @@
++++ libvirt-0.7.0/tests/virt-aa-helper-test	2009-10-14 16:08:53.000000000 -0500
+@@ -0,0 +1,262 @@
 +#!/bin/sh
 +set -e
 +
@@ -1954,13 +2037,11 @@ Index: libvirt-0.7.0/tests/virt-aa-helper-test
 +testme "1" "non-existent uuid" "-R -u $nonexistent_uuid"
 +testme "1" "no -u with -r" "-r"
 +testme "1" "old '-n' option" "-c -n foo -u $valid_uuid" "$test_xml"
-+testme "1" "invalid bits" "-c -b 15 -u $valid_uuid" "$test_xml"
-+testme "1" "invalid bits2" "-c -b a -u $valid_uuid" "$test_xml"
 +
 +cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$bad_disk,g" > "$test_xml"
 +testme "1" "bad disk" "-c -u $valid_uuid" "$test_xml"
 +
-+cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$bad_disk,g" | sed "s,</devices>,<disk type='file' device='disk'><source file='$disk2'<target dev='hda' bus='ide'/></disk></devices>,g" > "$test_xml"
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$bad_disk,g" | sed "s,</devices>,<disk type='file' device='disk'><source file='$disk2'/><target dev='hda' bus='ide'/></disk></devices>,g" > "$test_xml"
 +testme "1" "bad disk2" "-c -u $valid_uuid" "$test_xml"
 +
 +cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</devices>,<devices>,g" > "$test_xml"
@@ -1972,14 +2053,28 @@ Index: libvirt-0.7.0/tests/virt-aa-helper-test
 +cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,/boot/initrd,g" > "$test_xml"
 +testme "1" "-r with invalid -f" "-r -u $valid_uuid -f $bad_disk" "$test_xml"
 +
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1</disk>,g" > "$test_xml"
++testme "1" "-c with malformed xml" "-c -u $valid_uuid" "$test_xml"
++
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,<type arch='x86_64' machine='pc'>hvm</type>,,g" > "$test_xml"
++testme "1" "-c with no os.type" "-c -u $valid_uuid" "$test_xml"
++
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,<type arch='x86_64' machine='pc'>hvm</type>,<type>hvm</type>,g" > "$test_xml"
++testme "1" "-c with no architecture" "-c -u $valid_uuid" "$test_xml"
++
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,hvm</type>,hvm_invalid</type>,g" > "$test_xml"
++testme "1" "-c with invalid hvm" "-c -u $valid_uuid" "$test_xml"
++
 +
 +echo "Expected pass:" >$output
 +cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" > "$test_xml"
-+testme "0" "create" "-c -u $valid_uuid" "$test_xml"
-+testme "0" "create with bits (32)" "-c -b 32 -u $valid_uuid" "$test_xml"
-+testme "0" "create with bits (64)" "-c -b 64 -u $valid_uuid" "$test_xml"
-+testme "0" "create with hvm" "-c -H hvm -u $valid_uuid" "$test_xml"
-+testme "0" "create with hvm and bits" "-c -H hvm --bits 32 -u $valid_uuid" "$test_xml"
++testme "0" "create (x86_64)" "-c -u $valid_uuid" "$test_xml"
++
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,arch='x86_64',arch='i686',g" > "$test_xml"
++testme "0" "create (i686)" "-c -u $valid_uuid" "$test_xml"
++
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,arch='x86_64',arch='ppc',g" > "$test_xml"
++testme "0" "create (ppc)" "-c -u $valid_uuid" "$test_xml"
 +
 +cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</disk>,</disk><disk type='file' device='disk'><source file='$disk2'/><target dev='hdb' bus='ide'/></disk>,g" > "$test_xml"
 +testme "0" "create multiple disks" "-c -u $valid_uuid" "$test_xml"
