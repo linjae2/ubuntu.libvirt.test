@@ -31,7 +31,7 @@
   # the rules for files in /dev.
   /dev/shm/ r,
   /dev/shm/pulse-shm* r,
-  owner /dev/shm/pulse-shm* rwk,
+  /dev/shm/pulse-shm* rwk,
   /dev/snd/* rw,
   capability ipc_lock,
   # 'kill' is not required for sound and is a security risk. Do not enable
@@ -39,9 +39,10 @@
   deny capability kill,
 
   /etc/pulse/client.conf r,
+  @{HOME}/.pulse-cookie rwk,
   owner /root/.pulse-cookie rwk,
-  owner /root/.pulse/ w,
-  owner /root/.pulse/* w,
+  owner /root/.pulse/ rw,
+  owner /root/.pulse/* rw,
   /usr/share/alsa/** r,
   owner /tmp/pulse-*/ rw,
   owner /tmp/pulse-*/* rw,
