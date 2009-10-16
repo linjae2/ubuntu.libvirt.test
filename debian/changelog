@@ -1,3 +1,10 @@
+libvirt (0.7.0-1ubuntu12) karmic; urgency=low
+
+  * debian/apparmor/libvirt-qemu: a couple more fixes for pulseaudio
+    LP: #453329
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 16 Oct 2009 17:06:15 -0500
+
 libvirt (0.7.0-1ubuntu11) karmic; urgency=low
 
   * debian/patches/9091-apparmor.patch:
