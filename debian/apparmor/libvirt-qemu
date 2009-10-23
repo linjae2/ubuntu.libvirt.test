@@ -94,3 +94,18 @@
   /usr/bin/qemu-sparc32plus rmix,
   /usr/bin/qemu-sparc64 rmix,
   /usr/bin/qemu-x86_64 rmix,
+
+  # for save and resume
+  /bin/dash rmix,
+  /bin/dd rmix,
+  /bin/cat rmix,
+
+  # workaround https://launchpad.net/bugs/457716. The svirt driver does not
+  # relabel the state file (https://bugzilla.redhat.com/show_bug.cgi?id=529363)
+  # resulting in denied messages. The below works around this somewhat by
+  # allowing users to save state files in their home directories. We use
+  # 'owner' to make sure we don't overwrite the user's files. This will be
+  # removed when the upstream bug is fixed.
+  #include <abstractions/private-files-strict>
+  owner @{HOME}/ r,
+  owner @{HOME}/** rw,
