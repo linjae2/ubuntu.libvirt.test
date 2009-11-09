@@ -1,0 +1,32 @@
+Index: libvirt-0.7.0/src/virt-aa-helper.c
+===================================================================
+--- libvirt-0.7.0.orig/src/virt-aa-helper.c	2009-10-26 16:35:30.000000000 -0500
++++ libvirt-0.7.0/src/virt-aa-helper.c	2009-10-26 16:38:09.000000000 -0500
+@@ -484,6 +484,10 @@
+     if (strchr(path, '"') != NULL)
+         return 1;
+ 
++    /* Require an absolute path */
++    if (STRNEQLEN(path, "/", 1))
++        return 1;
++
+     if (VIR_ALLOC_N(restricted, npaths) < 0) {
+         vah_error(NULL, 0, "could not allocate memory for paths");
+         return rc;
+@@ -720,6 +724,16 @@
+     if (path == NULL)
+         return rc;
+ 
++    /* Skip files without an absolute path. Not having one confuses the
++     * apparmor parser and this also ensures things like tcp consoles don't
++     * get added to the profile.
++     */
++    if (STRNEQLEN(path, "/", 1)) {
++        vah_warning(path);
++        vah_warning("  skipped non-absolute path");
++        return 0;
++    }
++
+     if (virFileExists(path)) {
+         if ((tmp = realpath(path, NULL)) == NULL) {
+             vah_error(NULL, 0, path);
