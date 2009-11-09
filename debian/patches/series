@@ -14,3 +14,5 @@
 9091-apparmor.patch
 9092-apparmor-autoreconf.patch
 0005-Close-logfile-fd-after-spawning-qemu.patch
+9093-lp460271.patch
+9094-lp453335.patch
