@@ -1,0 +1,15 @@
+Index: libvirt-0.7.0/src/virt-aa-helper.c
+===================================================================
+--- libvirt-0.7.0.orig/src/virt-aa-helper.c	2009-10-18 20:25:22.000000000 -0500
++++ libvirt-0.7.0/src/virt-aa-helper.c	2009-10-18 20:27:40.000000000 -0500
+@@ -743,6 +743,10 @@
+     }
+ 
+     virBufferVSprintf(buf, "  \"%s\" %s,\n", tmp, perms);
++    if (readonly) {
++        virBufferVSprintf(buf, "  # don't audit writes to readonly media\n");
++        virBufferVSprintf(buf, "  deny \"%s\" w,\n", tmp);
++    }
+ 
+     if (virBufferError(buf)) {
+          vah_error(NULL, 0, "failed to allocate file buffer");
