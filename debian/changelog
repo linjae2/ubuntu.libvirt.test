@@ -1,3 +1,14 @@
+libvirt (0.7.0-1ubuntu15) lucid; urgency=low
+
+  * Run test suite at build time.
+  * Add libxml2-utils dependency. Needed by the test suite.
+  * Remove "Connecting to uri: " notice from virsh. It breaks the test
+    suite, the information is readily available with the "uri" command
+    inside virsh, and it's a usability delta with upstream, so
+    constantly causes confusion.
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 27 Nov 2009 11:21:53 +0100
+
 libvirt (0.7.0-1ubuntu14) lucid; urgency=low
 
   * debian/patches/9093-lp460271.patch: require absolute path for dynamic

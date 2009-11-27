@@ -10,6 +10,7 @@
 9004-better-default-arch.patch
 9005-libvirtd-group-name.patch
 9006-increase-unix-socket-timeout.patch
+9007-default-config-test-case.patch
 9090-reenable-nonfile-labels.patch
 9091-apparmor.patch
 9092-apparmor-autoreconf.patch
