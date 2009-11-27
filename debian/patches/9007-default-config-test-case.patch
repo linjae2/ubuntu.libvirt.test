@@ -1,0 +1,13 @@
+Index: ubuntu/tests/daemon-conf
+===================================================================
+--- ubuntu.orig/tests/daemon-conf	2009-11-27 21:43:46.752303120 +0100
++++ ubuntu/tests/daemon-conf	2009-11-27 21:51:40.149811739 +0100
+@@ -16,7 +16,7 @@
+ conf="$abs_top_srcdir/qemud/libvirtd.conf"
+ 
+ # Ensure that each commented out PARAMETER = VALUE line has the expected form.
+-grep '[a-z_]  *=  *[^ ]' "$conf" | grep -vE '^#[a-z_]+ = ' \
++grep '^#' "$conf" | grep '[a-z_]  *=  *[^ ]' | grep -vE '^#[a-z_]+ = ' \
+   && { echo "$0: found unexpected lines (above) in $conf" 1>&2; exit 1; }
+ 
+ # Start with the sample libvirtd.conf file, uncommenting all real directives.
