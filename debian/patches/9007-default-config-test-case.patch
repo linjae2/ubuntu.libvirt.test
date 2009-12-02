@@ -1,7 +1,7 @@
 Index: libvirt-0.7.2/tests/daemon-conf
 ===================================================================
---- libvirt-0.7.2.orig/tests/daemon-conf	2009-10-07 05:40:00.000000000 -0500
-+++ libvirt-0.7.2/tests/daemon-conf	2009-12-01 16:07:14.000000000 -0600
+--- libvirt-0.7.2.orig/tests/daemon-conf	2009-12-02 12:11:55.000000000 -0600
++++ libvirt-0.7.2/tests/daemon-conf	2009-12-02 12:14:46.000000000 -0600
 @@ -20,7 +20,7 @@
  conf="$abs_top_srcdir/daemon/libvirtd.conf"
  
