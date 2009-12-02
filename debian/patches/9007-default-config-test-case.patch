@@ -1,0 +1,26 @@
+Index: libvirt-0.7.2/tests/daemon-conf
+===================================================================
+--- libvirt-0.7.2.orig/tests/daemon-conf	2009-10-07 05:40:00.000000000 -0500
++++ libvirt-0.7.2/tests/daemon-conf	2009-12-01 16:07:14.000000000 -0600
+@@ -20,7 +20,7 @@
+ conf="$abs_top_srcdir/daemon/libvirtd.conf"
+ 
+ # Ensure that each commented out PARAMETER = VALUE line has the expected form.
+-grep '[a-z_]  *=  *[^ ]' "$conf" | grep -vE '^#[a-z_]+ = ' \
++grep '^#' "$conf" | grep '[a-z_]  *=  *[^ ]' | grep -vE '^#[a-z_]+ = ' \
+   && { echo "$0: found unexpected lines (above) in $conf" 1>&2; exit 1; }
+ 
+ # Start with the sample libvirtd.conf file, uncommenting all real directives.
+@@ -81,8 +81,10 @@
+ sleep $sleep_secs
+ kill $pid
+ 
+-# Expect an orderly shut-down and successful exit.
+-wait $pid || fail=1
++# Expect an orderly shut-down and successful exit, but do not fail if in a deep directory
++wait $pid || {
++  grep "qemudListenUnix:.* : Path .*/libvirt-sock too long for unix socket" log || fail=1
++}
+ 
+ # "cat log" would print this for non-root:
+ #   Cannot set group when not running as root

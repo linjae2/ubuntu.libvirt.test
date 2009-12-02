@@ -1,0 +1,40 @@
+From: Jamie Strandboge <jamie@canonical.com>
+Subject: [PATCH] AppArmor require absolute paths
+Origin: dae7054b7697d30f2b88cd5dff3dfb954323d40b
+Bug-Ubuntu: https://launchpad.net/bugs/460271
+
+* src/security/virt-aa-helper.c: require absolute path for dynamic added
+  files. This is required by AppArmor and conveniently prevents adding
+  tcp consoles to the profile
+
+diff -Nur libvirt-0.7.2-3ubuntu1/src/security/virt-aa-helper.c libvirt-0.7.2-3ubuntu1.new/src/security/virt-aa-helper.c
+--- libvirt-0.7.2-3ubuntu1/src/security/virt-aa-helper.c	2009-11-30 17:37:05.270891879 -0600
++++ libvirt-0.7.2-3ubuntu1.new/src/security/virt-aa-helper.c	2009-11-30 17:37:35.770887115 -0600
+@@ -517,6 +517,10 @@
+     if (strchr(path, '"') != NULL)
+         return 1;
+ 
++    /* Require an absolute path */
++    if (STRNEQLEN(path, "/", 1))
++        return 1;
++
+     if (!virFileExists(path))
+         vah_warning("path does not exist, skipping file type checks");
+     else {
+@@ -718,6 +722,16 @@
+     if (path == NULL)
+         return rc;
+ 
++    /* Skip files without an absolute path. Not having one confuses the
++     * apparmor parser and this also ensures things like tcp consoles don't
++     * get added to the profile.
++     */
++    if (STRNEQLEN(path, "/", 1)) {
++        vah_warning(path);
++        vah_warning("  skipped non-absolute path");
++        return 0;
++    }
++
+     if (virFileExists(path)) {
+         if ((tmp = realpath(path, NULL)) == NULL) {
+             vah_error(NULL, 0, path);

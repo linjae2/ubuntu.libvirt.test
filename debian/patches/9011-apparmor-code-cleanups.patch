@@ -1,0 +1,161 @@
+From: Jamie Strandboge <jamie@canonical.com>
+Subject: [PATCH] AppArmor code cleanups
+Origin: 3cbc05012dd13cb6fff560d75e4c7e4b6c5089ab
+
+* src/security/security_apparmor.c: a few code cleanups following a
+  review on the list
+
+Index: libvirt-0.7.2/src/security/security_apparmor.c
+===================================================================
+--- libvirt-0.7.2.orig/src/security/security_apparmor.c	2009-12-02 08:35:33.000000000 -0600
++++ libvirt-0.7.2/src/security/security_apparmor.c	2009-12-02 08:45:23.000000000 -0600
+@@ -56,13 +56,16 @@
+     int rc = -1;
+ 
+     /* create string that is '<str> \0' for accurate matching */
+-    if (virAsprintf(&tmp, "%s ", str) == -1)
++    if (virAsprintf(&tmp, "%s ", str) == -1) {
++        virReportOOMError(NULL);
+         return rc;
++    }
+ 
+     if (check_enforcing != 0) {
+         /* create string that is '<str> (enforce)\0' for accurate matching */
+         if (virAsprintf(&etmp, "%s (enforce)", str) == -1) {
+             VIR_FREE(tmp);
++            virReportOOMError(NULL);
+             return rc;
+         }
+     }
+@@ -71,8 +74,6 @@
+         virReportSystemError(NULL, errno,
+                              _("Failed to read AppArmor profiles list "
+                              "\'%s\'"), APPARMOR_PROFILES_PATH);
+-        if (check_enforcing != 0)
+-            VIR_FREE(etmp);
+         goto clean;
+     }
+ 
+@@ -81,12 +82,12 @@
+     if (check_enforcing != 0) {
+         if (rc == 0 && strstr(content, etmp) != NULL)
+             rc = 1;                 /* return '1' if loaded and enforcing */
+-        VIR_FREE(etmp);
+     }
+ 
+     VIR_FREE(content);
+   clean:
+     VIR_FREE(tmp);
++    VIR_FREE(etmp);
+ 
+     return rc;
+ }
+@@ -104,32 +105,30 @@
+ static int
+ profile_status_file(const char *str)
+ {
+-    char profile[PATH_MAX];
++    char *profile = NULL;
+     char *content = NULL;
+     char *tmp = NULL;
+     int rc = -1;
+     int len;
+ 
+-    if (snprintf(profile, PATH_MAX, "%s/%s", APPARMOR_DIR "/libvirt", str)
+-       > PATH_MAX - 1) {
+-        virSecurityReportError(NULL, VIR_ERR_ERROR,
+-                               "%s", _("profile name exceeds maximum length"));
+-    }
+-
+-    if (!virFileExists(profile)) {
++    if (virAsprintf(&profile, "%s/%s", APPARMOR_DIR "/libvirt", str) == -1) {
++        virReportOOMError(NULL);
+         return rc;
+     }
+ 
++    if (!virFileExists(profile))
++        goto failed;
++
+     if ((len = virFileReadAll(profile, MAX_FILE_LEN, &content)) < 0) {
+         virReportSystemError(NULL, errno,
+                              _("Failed to read \'%s\'"), profile);
+-        return rc;
++        goto failed;
+     }
+ 
+     /* create string that is ' <str> flags=(complain)\0' */
+     if (virAsprintf(&tmp, " %s flags=(complain)", str) == -1) {
+         virReportOOMError(NULL);
+-        goto clean;
++        goto failed;
+     }
+ 
+     if (strstr(content, tmp) != NULL)
+@@ -137,8 +136,9 @@
+     else
+         rc = 1;
+ 
++  failed:
+     VIR_FREE(tmp);
+-  clean:
++    VIR_FREE(profile);
+     VIR_FREE(content);
+ 
+     return rc;
+@@ -164,7 +164,7 @@
+ 
+     xml = virDomainDefFormat(conn, vm->def, VIR_DOMAIN_XML_SECURE);
+     if (!xml)
+-        goto failed;
++        goto clean;
+ 
+     if (profile_status_file(profile) >= 0)
+         create = false;
+@@ -214,7 +214,6 @@
+   clean:
+     VIR_FREE(xml);
+ 
+-  failed:
+     if (pipefd[0] > 0)
+         close(pipefd[0]);
+     if (pipefd[1] > 0)
+@@ -281,26 +280,30 @@
+ static int
+ AppArmorSecurityDriverProbe(void)
+ {
+-    char template[PATH_MAX];
++    char *template = NULL;
++    int rc = SECURITY_DRIVER_DISABLE;
+ 
+     if (use_apparmor() < 0)
+-        return SECURITY_DRIVER_DISABLE;
++        return rc;
+ 
+     /* see if template file exists */
+-    if (snprintf(template, PATH_MAX, "%s/TEMPLATE",
+-                 APPARMOR_DIR "/libvirt") > PATH_MAX - 1) {
+-        virSecurityReportError(NULL, VIR_ERR_ERROR,
+-                               "%s", _("template too large"));
+-        return SECURITY_DRIVER_DISABLE;
++    if (virAsprintf(&template, "%s/TEMPLATE",
++                               APPARMOR_DIR "/libvirt") == -1) {
++        virReportOOMError(NULL);
++        return rc;
+     }
+ 
+     if (!virFileExists(template)) {
+         virSecurityReportError(NULL, VIR_ERR_ERROR,
+                                _("template \'%s\' does not exist"), template);
+-        return SECURITY_DRIVER_DISABLE;
++        goto clean;
+     }
++    rc = SECURITY_DRIVER_ENABLE;
+ 
+-    return SECURITY_DRIVER_ENABLE;
++  clean:
++    VIR_FREE(template);
++
++    return rc;
+ }
+ 
+ /* Security driver initialization. DOI is for 'Domain of Interpretation' and is

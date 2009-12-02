@@ -7,11 +7,11 @@ Subject: [PATCH] Fix SELinux linking issues.
  src/Makefile.in |    2 ++
  2 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/src/Makefile.am b/src/Makefile.am
-index 5963a73..3ba7caf 100644
---- a/src/Makefile.am
-+++ b/src/Makefile.am
-@@ -657,6 +657,8 @@ libvirt_driver_security_la_CFLAGS = \
+Index: libvirt-0.7.2/src/Makefile.am
+===================================================================
+--- libvirt-0.7.2.orig/src/Makefile.am	2009-12-01 13:15:52.000000000 -0600
++++ libvirt-0.7.2/src/Makefile.am	2009-12-01 14:27:40.000000000 -0600
+@@ -657,6 +657,8 @@
  libvirt_driver_security_la_LDFLAGS =
  if WITH_SECDRIVER_SELINUX
  libvirt_driver_security_la_SOURCES += $(SECURITY_DRIVER_SELINUX_SOURCES)
@@ -20,17 +20,27 @@ index 5963a73..3ba7caf 100644
  endif
  if WITH_SECDRIVER_APPARMOR
  libvirt_driver_security_la_SOURCES += $(SECURITY_DRIVER_APPARMOR_SOURCES)
-diff --git a/src/Makefile.in b/src/Makefile.in
-index acbf648..2cb6689 100644
---- a/src/Makefile.in
-+++ b/src/Makefile.in
-@@ -114,6 +114,8 @@ host_triplet = @host@
+Index: libvirt-0.7.2/src/Makefile.in
+===================================================================
+--- libvirt-0.7.2.orig/src/Makefile.in	2009-12-01 13:15:52.000000000 -0600
++++ libvirt-0.7.2/src/Makefile.in	2009-12-01 14:33:11.000000000 -0600
+@@ -114,6 +114,8 @@
  @HAVE_DEVKIT_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_70 = $(DEVKIT_LIBS)
  @WITH_DRIVER_MODULES_TRUE@@WITH_NODE_DEVICES_TRUE@am__append_71 = -module -avoid-version
  @WITH_SECDRIVER_SELINUX_TRUE@am__append_72 = $(SECURITY_DRIVER_SELINUX_SOURCES)
-+@WITH_SECDRIVER_SELINUX_TRUE@am__append_74 = $(SELINUX_CFLAGS)
-+@WITH_SECDRIVER_SELINUX_TRUE@am__append_75 = $(SELINUX_LIBS)
++@WITH_SECDRIVER_SELINUX_TRUE@am__append_82 = $(SELINUX_CFLAGS)
++@WITH_SECDRIVER_SELINUX_TRUE@am__append_83 = $(SELINUX_LIBS)
  @WITH_SECDRIVER_APPARMOR_TRUE@am__append_73 = $(SECURITY_DRIVER_APPARMOR_SOURCES)
  @WITH_SECDRIVER_APPARMOR_TRUE@am__append_74 = $(APPARMOR_CFLAGS)
  @WITH_SECDRIVER_APPARMOR_TRUE@am__append_75 = $(APPARMOR_LIBS)
--- 
+@@ -1909,8 +1911,8 @@
+ libvirt_driver_security_la_SOURCES = $(SECURITY_DRIVER_SOURCES) \
+ 	$(am__append_72) $(am__append_73)
+ libvirt_driver_security_la_CFLAGS = -I@top_srcdir@/src/conf \
+-	$(am__append_74)
+-libvirt_driver_security_la_LDFLAGS = $(am__append_75)
++	$(am__append_74) $(am__append_82)
++libvirt_driver_security_la_LDFLAGS = $(am__append_75) $(am__append_83)
+ BUILT_SOURCES = libvirt.syms
+ 
+ # Empty source list - it merely links a bunch of convenience libs together
