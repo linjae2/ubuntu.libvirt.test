@@ -1,3 +1,11 @@
+libvirt (0.7.2-4ubuntu2) lucid; urgency=low
+
+  * debian/control: Build-Depends on qemu-kvm, not qemu
+  * debian/patches/9007-default-config-test-case.patch: revert last change
+    which caused a different failure on buildd
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 02 Dec 2009 11:14:59 -0600
+
 libvirt (0.7.2-4ubuntu1) lucid; urgency=low
 
   * Merge from debian testing. Remaining changes:
