@@ -1,0 +1,33 @@
+From: Daniel P. Berrange <berrange@redhat.com>
+Subject: [PATCH] Fix event test timer checks on kernels with HZ=100
+Origin: 32f021f2664290cffe34723c52435ac4a62fb365
+
+On kernels with HZ=100, the resolution of sleeps in poll() is
+quite bad. Doing a precise check on the expiry time vs the
+current time will thus often thing the timer has not expired
+even though we're within 10ms of the expected expiry time. This
+then causes another pointless sleep in poll() for <10ms. Timers
+do not need to have such precise expiration, so we treat a timer
+as expired if it is within 20ms of the expected expiry time. This
+also fixes the eventtest.c test suite on kernels with HZ=100
+
+* daemon/event.c: Add 20ms fuzz when checking for timer expiry
+
+Index: libvirt-0.7.2/daemon/event.c
+===================================================================
+--- libvirt-0.7.2.orig/daemon/event.c	2009-12-02 08:34:33.000000000 -0600
++++ libvirt-0.7.2/daemon/event.c	2009-12-02 08:35:15.000000000 -0600
+@@ -413,7 +413,12 @@
+         if (eventLoop.timeouts[i].deleted || eventLoop.timeouts[i].frequency < 0)
+             continue;
+ 
+-        if (eventLoop.timeouts[i].expiresAt <= now) {
++        /* Add 20ms fuzz so we don't pointlessly spin doing
++         * <10ms sleeps, particularly on kernels with low HZ
++         * it is fine that a timer expires 20ms earlier than
++         * requested
++         */
++        if (eventLoop.timeouts[i].expiresAt <= (now+20)) {
+             virEventTimeoutCallback cb = eventLoop.timeouts[i].cb;
+             int timer = eventLoop.timeouts[i].timer;
+             void *opaque = eventLoop.timeouts[i].opaque;

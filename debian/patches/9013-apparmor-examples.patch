@@ -1,0 +1,215 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: add examples/apparmor
+ These files were mistakenly ommitted from the upstream tarball
+
+Index: libvirt-0.7.2-3ubuntu1/examples/apparmor/libvirt-qemu
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.2-3ubuntu1/examples/apparmor/libvirt-qemu	2009-11-30 17:35:45.000000000 -0600
+@@ -0,0 +1,109 @@
++# Last Modified: Fri Nov  6 16:41:59 2009
++
++  #include <abstractions/base>
++  #include <abstractions/consoles>
++  #include <abstractions/nameservice>
++
++  # required for reading disk images
++  capability dac_override,
++  capability dac_read_search,
++  capability chown,
++
++  network inet stream,
++  network inet6 stream,
++
++  /dev/net/tun rw,
++  /dev/kvm rw,
++  /dev/ptmx rw,
++  /dev/kqemu rw,
++
++  # WARNING: uncommenting these gives the guest direct access to host hardware.
++  # This is required for USB pass through but is a security risk. You have been
++  # warned.
++  #/sys/bus/usb/devices/ r,
++  #/sys/devices/*/*/usb[0-9]*/** r,
++  #/dev/bus/usb/*/[0-9]* rw,
++
++  # WARNING: this gives the guest direct access to host hardware and specific
++  # portions of shared memory. This is required for sound using ALSA with kvm,
++  # but may constitute a security risk. If your environment does not require
++  # the use of sound in your VMs, feel free to comment out or prepend 'deny' to
++  # the rules for files in /dev.
++  /dev/shm/ r,
++  /dev/shm/pulse-shm* r,
++  /dev/shm/pulse-shm* rwk,
++  /dev/snd/* rw,
++  capability ipc_lock,
++  # 'kill' is not required for sound and is a security risk. Do not enable
++  # unless you absolutely need it.
++  deny capability kill,
++
++  /etc/pulse/client.conf r,
++  @{HOME}/.pulse-cookie rwk,
++  owner /root/.pulse-cookie rwk,
++  owner /root/.pulse/ rw,
++  owner /root/.pulse/* rw,
++  /usr/share/alsa/** r,
++  owner /tmp/pulse-*/ rw,
++  owner /tmp/pulse-*/* rw,
++  /var/lib/dbus/machine-id r,
++
++  # access to firmware's etc
++  /usr/share/kvm/** r,
++  /usr/share/qemu/** r,
++  /usr/share/bochs/** r,
++  /usr/share/openbios/** r,
++  /usr/share/openhackware/** r,
++  /usr/share/proll/** r,
++  /usr/share/vgabios/** r,
++
++  # the various binaries
++  /usr/bin/kvm rmix,
++  /usr/bin/qemu rmix,
++  /usr/bin/qemu-system-arm rmix,
++  /usr/bin/qemu-system-cris rmix,
++  /usr/bin/qemu-system-i386 rmix,
++  /usr/bin/qemu-system-m68k rmix,
++  /usr/bin/qemu-system-mips rmix,
++  /usr/bin/qemu-system-mips64 rmix,
++  /usr/bin/qemu-system-mips64el rmix,
++  /usr/bin/qemu-system-mipsel rmix,
++  /usr/bin/qemu-system-ppc rmix,
++  /usr/bin/qemu-system-ppc64 rmix,
++  /usr/bin/qemu-system-ppcemb rmix,
++  /usr/bin/qemu-system-sh4 rmix,
++  /usr/bin/qemu-system-sh4eb rmix,
++  /usr/bin/qemu-system-sparc rmix,
++  /usr/bin/qemu-system-sparc64 rmix,
++  /usr/bin/qemu-system-x86_64 rmix,
++  /usr/bin/qemu-alpha rmix,
++  /usr/bin/qemu-arm rmix,
++  /usr/bin/qemu-armeb rmix,
++  /usr/bin/qemu-cris rmix,
++  /usr/bin/qemu-i386 rmix,
++  /usr/bin/qemu-m68k rmix,
++  /usr/bin/qemu-mips rmix,
++  /usr/bin/qemu-mipsel rmix,
++  /usr/bin/qemu-ppc rmix,
++  /usr/bin/qemu-ppc64 rmix,
++  /usr/bin/qemu-ppc64abi32 rmix,
++  /usr/bin/qemu-sh4 rmix,
++  /usr/bin/qemu-sh4eb rmix,
++  /usr/bin/qemu-sparc rmix,
++  /usr/bin/qemu-sparc64 rmix,
++  /usr/bin/qemu-sparc32plus rmix,
++  /usr/bin/qemu-sparc64 rmix,
++  /usr/bin/qemu-x86_64 rmix,
++
++  # for save and resume
++  /bin/dash rmix,
++  /bin/dd rmix,
++  /bin/cat rmix,
++
++  # The svirt driver does not relabel the state file
++  # (https://bugzilla.redhat.com/show_bug.cgi?id=529363) resulting in denied
++  # messages. Uncommenting these lines can work around this somewhat by
++  # allowing users to save state files in the specified directory. We use
++  # 'owner' to make sure we don't overwrite the user's files.
++  #owner @{HOME}/libvirt-state-files/ r,
++  #owner @{HOME}/libvirt-state-files/** rw,
+Index: libvirt-0.7.2-3ubuntu1/examples/apparmor/TEMPLATE
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.2-3ubuntu1/examples/apparmor/TEMPLATE	2009-11-30 17:35:45.000000000 -0600
+@@ -0,0 +1,9 @@
++#
++# This profile is for the domain whose UUID matches this file.
++#
++
++#include <tunables/global>
++
++profile LIBVIRT_TEMPLATE {
++  #include <abstractions/libvirt-qemu>
++}
+Index: libvirt-0.7.2-3ubuntu1/examples/apparmor/usr.lib.libvirt.virt-aa-helper
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.2-3ubuntu1/examples/apparmor/usr.lib.libvirt.virt-aa-helper	2009-11-30 17:35:45.000000000 -0600
+@@ -0,0 +1,22 @@
++# Last Modified: Mon Jul  06 17:22:37 2009
++#include <tunables/global>
++
++/usr/lib/libvirt/virt-aa-helper {
++  #include <abstractions/base>
++
++  # needed for searching directories
++  capability dac_override,
++  capability dac_read_search,
++
++  # needed for when disk is on a network filesystem
++  network inet,
++
++  deny @{PROC}/[0-9]*/mounts r,
++  @{PROC}/filesystems r,
++
++  /usr/lib/libvirt/virt-aa-helper mr,
++  /sbin/apparmor_parser Ux,
++
++  /etc/apparmor.d/libvirt/* r,
++  /etc/apparmor.d/libvirt/libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]* rw,
++}
+Index: libvirt-0.7.2-3ubuntu1/examples/apparmor/usr.sbin.libvirtd
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt-0.7.2-3ubuntu1/examples/apparmor/usr.sbin.libvirtd	2009-11-30 17:36:04.000000000 -0600
+@@ -0,0 +1,51 @@
++# Last Modified: Wed Sep 23 23:23:58 2009
++#include <tunables/global>
++@{LIBVIRT}="libvirt"
++
++/usr/sbin/libvirtd {
++  #include <abstractions/base>
++
++  capability kill,
++  capability net_admin,
++  capability net_raw,
++  capability setgid,
++  capability sys_admin,
++  capability sys_module,
++  capability sys_ptrace,
++  capability sys_nice,
++  capability sys_chroot,
++  capability setuid,
++  capability dac_override,
++  capability dac_read_search,
++  capability fowner,
++  capability chown,
++  capability setpcap,
++  capability mknod,
++
++  network inet stream,
++  network inet dgram,
++  network inet6 stream,
++  network inet6 dgram,
++
++  # Very lenient profile for libvirtd since we want to first focus on confining
++  # the guests. Guests will have a very restricted profile.
++  /** rwmkl,
++
++  /bin/* Ux,
++  /sbin/* Ux,
++  /usr/bin/* Ux,
++  /usr/sbin/* Ux,
++
++  # force the use of virt-aa-helper
++  audit deny /sbin/apparmor_parser rwxl,
++  audit deny /etc/apparmor.d/libvirt/** wxl,
++  audit deny /sys/kernel/security/apparmor/features rwxl,
++  audit deny /sys/kernel/security/apparmor/matching rwxl,
++  audit deny /sys/kernel/security/apparmor/.* rwxl,
++  /sys/kernel/security/apparmor/profiles r,
++  /usr/lib/libvirt/* PUxr,
++
++  # allow changing to our UUID-based named profiles
++  change_profile -> @{LIBVIRT}-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*,
++
++}

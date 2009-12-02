@@ -1,0 +1,45 @@
+From: Daniel P. Berrange <berrange@redhat.com>
+Subject: [PATCH] Don't return fatal error in HAL driver init if HAL isn't running
+Origin: 7bed630dfbad2c42788c66506325375f825918ba
+
+The HAL driver returns a fatal error code in the case where HAL
+is not running. This causes the entire libvirtd daemon to quit
+which isn't desirable. Instead it should simply disable the HAL
+driver
+
+* src/node_device/node_device_hal.c: Quietly disable HAL if it is
+  not running
+
+diff -Nur libvirt-0.7.2/src/node_device/node_device_hal.c libvirt-0.7.2.new/src/node_device/node_device_hal.c
+--- libvirt-0.7.2/src/node_device/node_device_hal.c	2009-09-22 04:50:23.000000000 -0500
++++ libvirt-0.7.2.new/src/node_device/node_device_hal.c	2009-12-02 07:42:04.350890241 -0600
+@@ -692,6 +692,7 @@
+     DBusError err;
+     char **udi = NULL;
+     int num_devs, i;
++    int ret = -1;
+ 
+     /* Ensure caps_tbl is sorted by capability name */
+     qsort(caps_tbl, ARRAY_CARDINALITY(caps_tbl), sizeof(caps_tbl[0]),
+@@ -728,7 +729,11 @@
+         goto failure;
+     }
+     if (!libhal_ctx_init(hal_ctx, &err)) {
+-        VIR_ERROR0("libhal_ctx_init failed\n");
++        VIR_ERROR0("libhal_ctx_init failed, haldaemon is probably not running\n");
++        /* We don't want to show a fatal error here,
++           otherwise entire libvirtd shuts down when
++           hald isn't running */
++        ret = 0;
+         goto failure;
+     }
+ 
+@@ -786,7 +791,7 @@
+     nodeDeviceUnlock(driverState);
+     VIR_FREE(driverState);
+ 
+-    return -1;
++    return ret;
+ }
+ 
+ 

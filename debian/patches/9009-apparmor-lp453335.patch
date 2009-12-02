@@ -1,0 +1,25 @@
+From: Jamie Strandboge <jamie@canonical.com>
+Subject: [PATCH] AppArmor handling of accesses to readonly files
+Origin: d0d4b8ad76d3e8a859ee90701a21a3f003a22c1f
+Bug-Ubuntu: https://launchpad.net/bugs/453335
+
+* src/security/virt-aa-helper.c: suppress confusing and misleading
+  apparmor denied message when kvm/qemu tries to open a libvirt specified
+  readonly file (such as a cdrom) with write permissions. libvirt uses
+  the readonly attribute for the security driver only, and has no way
+  of telling kvm/qemu that the device should be opened readonly
+
+diff -Nur libvirt-0.7.2-3ubuntu1/src/security/virt-aa-helper.c libvirt-0.7.2-3ubuntu1.new/src/security/virt-aa-helper.c
+--- libvirt-0.7.2-3ubuntu1/src/security/virt-aa-helper.c	2009-11-30 17:38:32.362166195 -0600
++++ libvirt-0.7.2-3ubuntu1.new/src/security/virt-aa-helper.c	2009-11-30 17:38:57.580891392 -0600
+@@ -755,6 +755,10 @@
+     }
+ 
+     virBufferVSprintf(buf, "  \"%s\" %s,\n", tmp, perms);
++    if (readonly) {
++        virBufferVSprintf(buf, "  # don't audit writes to readonly media\n");
++        virBufferVSprintf(buf, "  deny \"%s\" w,\n", tmp);
++    }
+ 
+   clean:
+     free(tmp);
