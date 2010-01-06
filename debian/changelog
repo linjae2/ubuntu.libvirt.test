@@ -1,3 +1,12 @@
+libvirt (0.7.2-4ubuntu5) lucid; urgency=low
+
+  * debian/rules, debian/libvirt-bin.upstart: migrate libvirt to upstart
+    (LP: #446036)
+  * debian/control: depend on open-iscsi-utils, rather than open-iscsi,
+    fixed again, grrr (LP: #414986)
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 05 Jan 2010 23:23:28 -0600
+
 libvirt (0.7.2-4ubuntu4) lucid; urgency=low
 
   * debian/libvirt-bin.postinst: don't sed a non-existent file (LP: #493582)
