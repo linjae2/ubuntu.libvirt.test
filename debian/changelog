@@ -1,3 +1,11 @@
+libvirt (0.7.2-4ubuntu6) lucid; urgency=low
+
+  * Update libvirt0 description to match the other packages in supported
+    virtualization technologies.
+  * Rename Vcs-* to XS-Debian-Vcs-*.
+
+ -- Loïc Minier <loic.minier@ubuntu.com>  Tue, 12 Jan 2010 17:22:02 +0100
+
 libvirt (0.7.2-4ubuntu5) lucid; urgency=low
 
   * debian/rules, debian/libvirt-bin.upstart: migrate libvirt to upstart
