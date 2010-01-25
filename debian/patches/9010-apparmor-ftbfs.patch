@@ -1,36 +1,23 @@
-Author: Jamie Strandboge <jamie@ubuntu.com>
 Description: fix a miscommit and automake dependency ordering
+Origin: http://libvirt.org/git/?p=libvirt.git;a=commit;h=cfe49446d3d2b181db69330a01a609bf84490072
+ http://libvirt.org/git/?p=libvirt.git;a=commit;h=9933c4f2f6b8c084bbda6195d5025e1bb103a611
 
 Index: libvirt-0.7.5/src/security/virt-aa-helper.c
 ===================================================================
---- libvirt-0.7.5.orig/src/security/virt-aa-helper.c	2010-01-22 18:18:36.000000000 -0600
-+++ libvirt-0.7.5/src/security/virt-aa-helper.c	2010-01-22 18:18:36.000000000 -0600
-@@ -852,8 +852,8 @@
+--- libvirt-0.7.5.orig/src/security/virt-aa-helper.c	2010-01-25 17:42:10.000000000 -0600
++++ libvirt-0.7.5/src/security/virt-aa-helper.c	2010-01-25 17:43:03.000000000 -0600
+@@ -851,7 +851,6 @@
+                 if (rc != 0)
                      goto clean;
                  break;
-                 }
--            }
- /* TODO: update so files in /sys are readonly
-+            }
-             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
-                 pciDevice *pci = pciGetDevice(NULL,
-                            dev->source.subsys.u.pci.domain,
-@@ -870,9 +870,10 @@
-                 break;
+-                }
              }
- */
--            default:
-+            default: {
-                 rc = 0;
-                 break;
-+                }
-             } /* switch */
-         }
- 
+ /* TODO: update so files in /sys are readonly
+             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
 Index: libvirt-0.7.5/src/Makefile.am
 ===================================================================
---- libvirt-0.7.5.orig/src/Makefile.am	2010-01-22 18:18:58.000000000 -0600
-+++ libvirt-0.7.5/src/Makefile.am	2010-01-22 18:19:49.000000000 -0600
+--- libvirt-0.7.5.orig/src/Makefile.am	2009-12-23 08:55:40.000000000 -0600
++++ libvirt-0.7.5/src/Makefile.am	2010-01-25 17:42:10.000000000 -0600
 @@ -876,9 +876,9 @@
  virt_aa_helper_LDADD =						\
  		$(WARN_CFLAGS)					\
@@ -45,8 +32,8 @@ Index: libvirt-0.7.5/src/Makefile.am
  		-I@top_srcdir@/src/security
 Index: libvirt-0.7.5/src/Makefile.in
 ===================================================================
---- libvirt-0.7.5.orig/src/Makefile.in	2010-01-22 18:19:01.000000000 -0600
-+++ libvirt-0.7.5/src/Makefile.in	2010-01-22 18:21:40.000000000 -0600
+--- libvirt-0.7.5.orig/src/Makefile.in	2009-12-23 09:17:42.000000000 -0600
++++ libvirt-0.7.5/src/Makefile.in	2010-01-25 17:42:10.000000000 -0600
 @@ -758,9 +758,9 @@
  virt_aa_helper_OBJECTS = $(am_virt_aa_helper_OBJECTS)
  @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@virt_aa_helper_DEPENDENCIES = $(am__DEPENDENCIES_2) \
