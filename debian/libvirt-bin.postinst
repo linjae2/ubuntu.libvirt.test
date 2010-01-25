@@ -20,9 +20,14 @@ set -e
 
 case "$1" in
     configure)
-    	if ! getent group libvirt >/dev/null; then
-    		addgroup --system libvirt
+    	if ! getent group libvirtd >/dev/null; then
+    		addgroup --system libvirtd
 	fi
+
+	# Add each admin user to the libvirtd group
+	for u in $(grep "^admin:" /etc/group | sed -e "s/^.*://" -e "s/,/ /g"); do
+		adduser "$u" libvirtd >/dev/null
+	done
 
 	# user and group libvirt runs qemu/kvm instances with
 	if ! getent group kvm >/dev/null; then
@@ -61,6 +66,33 @@ case "$1" in
 	       [ -e /etc/rc6.d/K20libvirt-bin ]; then
 		update-rc.d -f libvirt-bin remove >/dev/null
 	    fi
+	fi
+
+	# 0.7.2 moved virt-aa-helper to /usr/lib/libvirt, so preserve
+	# the user changes (if any). If the old profile was changed,
+	# then update it for the new path, then move into place.
+	old_profile="/etc/apparmor.d/usr.bin.virt-aa-helper"
+	new_profile="/etc/apparmor.d/usr.lib.libvirt.virt-aa-helper"
+	if dpkg --compare-versions "$2" le-nl "0.7.0-1ubuntu15" && [ -f "$old_profile" ]; then
+	    sed -i "s#/usr/bin/virt-aa-helper#/usr/lib/libvirt/virt-aa-helper#g" "$old_profile"
+	    old_md5sum="$(md5sum $old_profile | sed -e 's/ .*//')"
+	    new_md5sum="$(md5sum $new_profile | sed -e 's/ .*//')"
+	    if [ "$old_md5sum" = "$new_md5sum" ]; then
+	        rm -f "$old_profile"
+	    else
+	        echo "Migrating user changes to $new_profile ..."
+	        mv -f "$new_profile" "$new_profile".dpkg-new
+	        mv -f "$old_profile" "$new_profile"
+	    fi
+	fi
+
+	profile="/etc/apparmor.d/usr.sbin.libvirtd"
+	if [ -f "$profile" ] && aa-status --enabled 2>/dev/null; then
+	    apparmor_parser -r -W -T "$profile" || true
+	fi
+	profile="/etc/apparmor.d/usr.lib.libvirt.virt-aa-helper"
+	if [ -f "$profile" ] && aa-status --enabled 2>/dev/null; then
+	    apparmor_parser -r -W -T "$profile" || true
 	fi
     ;;
 

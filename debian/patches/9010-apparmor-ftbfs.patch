@@ -1,0 +1,73 @@
+Author: Jamie Strandboge <jamie@ubuntu.com>
+Description: fix a miscommit and automake dependency ordering
+
+Index: libvirt-0.7.5/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-0.7.5.orig/src/security/virt-aa-helper.c	2010-01-22 18:18:36.000000000 -0600
++++ libvirt-0.7.5/src/security/virt-aa-helper.c	2010-01-22 18:18:36.000000000 -0600
+@@ -852,8 +852,8 @@
+                     goto clean;
+                 break;
+                 }
+-            }
+ /* TODO: update so files in /sys are readonly
++            }
+             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
+                 pciDevice *pci = pciGetDevice(NULL,
+                            dev->source.subsys.u.pci.domain,
+@@ -870,9 +870,10 @@
+                 break;
+             }
+ */
+-            default:
++            default: {
+                 rc = 0;
+                 break;
++                }
+             } /* switch */
+         }
+ 
+Index: libvirt-0.7.5/src/Makefile.am
+===================================================================
+--- libvirt-0.7.5.orig/src/Makefile.am	2010-01-22 18:18:58.000000000 -0600
++++ libvirt-0.7.5/src/Makefile.am	2010-01-22 18:19:49.000000000 -0600
+@@ -876,9 +876,9 @@
+ virt_aa_helper_LDADD =						\
+ 		$(WARN_CFLAGS)					\
+ 		$(LIBXML_LIBS)					\
+-		@top_srcdir@/gnulib/lib/libgnu.la		\
+ 		@top_srcdir@/src/libvirt_conf.la		\
+-		@top_srcdir@/src/libvirt_util.la
++		@top_srcdir@/src/libvirt_util.la		\
++		@top_srcdir@/gnulib/lib/libgnu.la
+ virt_aa_helper_CFLAGS =						\
+ 		-I@top_srcdir@/src/conf				\
+ 		-I@top_srcdir@/src/security
+Index: libvirt-0.7.5/src/Makefile.in
+===================================================================
+--- libvirt-0.7.5.orig/src/Makefile.in	2010-01-22 18:19:01.000000000 -0600
++++ libvirt-0.7.5/src/Makefile.in	2010-01-22 18:21:40.000000000 -0600
+@@ -758,9 +758,9 @@
+ virt_aa_helper_OBJECTS = $(am_virt_aa_helper_OBJECTS)
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@virt_aa_helper_DEPENDENCIES = $(am__DEPENDENCIES_2) \
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@	$(am__DEPENDENCIES_2) \
+-@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@	@top_srcdir@/gnulib/lib/libgnu.la \
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@	@top_srcdir@/src/libvirt_conf.la \
+-@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@	@top_srcdir@/src/libvirt_util.la
++@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@	@top_srcdir@/src/libvirt_util.la \
++@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@	@top_srcdir@/gnulib/lib/libgnu.la
+ virt_aa_helper_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+ 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+ 	$(virt_aa_helper_CFLAGS) $(CFLAGS) $(virt_aa_helper_LDFLAGS) \
+@@ -2095,9 +2095,9 @@
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@virt_aa_helper_LDADD = \
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		$(WARN_CFLAGS)					\
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		$(LIBXML_LIBS)					\
+-@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		@top_srcdir@/gnulib/lib/libgnu.la		\
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		@top_srcdir@/src/libvirt_conf.la		\
+-@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		@top_srcdir@/src/libvirt_util.la
++@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		@top_srcdir@/src/libvirt_util.la		\
++@WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		@top_srcdir@/gnulib/lib/libgnu.la
+ 
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@virt_aa_helper_CFLAGS = \
+ @WITH_LIBVIRTD_TRUE@@WITH_SECDRIVER_APPARMOR_TRUE@		-I@top_srcdir@/src/conf				\
