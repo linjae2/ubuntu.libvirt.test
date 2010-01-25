@@ -1,0 +1,12 @@
+diff -Nur libvirt-0.7.5/tests/daemon-conf libvirt-0.7.5.new/tests/daemon-conf
+--- libvirt-0.7.5/tests/daemon-conf	2009-12-22 03:37:57.000000000 -0600
++++ libvirt-0.7.5.new/tests/daemon-conf	2010-01-22 14:53:38.039531290 -0600
+@@ -20,7 +20,7 @@
+ conf="$abs_top_srcdir/daemon/libvirtd.conf"
+ 
+ # Ensure that each commented out PARAMETER = VALUE line has the expected form.
+-grep '[a-z_]  *=  *[^ ]' "$conf" | grep -vE '^#[a-z_]+ = ' \
++grep '^#' "$conf" | grep '[a-z_]  *=  *[^ ]' | grep -vE '^#[a-z_]+ = ' \
+   && { echo "$0: found unexpected lines (above) in $conf" 1>&2; exit 1; }
+ 
+ # Start with the sample libvirtd.conf file, uncommenting all real directives.

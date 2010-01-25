@@ -1,3 +1,93 @@
+libvirt (0.7.5-5ubuntu1) lucid; urgency=low
+
+  * Merge from debian unstable. Remaining changes:
+    - debian/control:
+      + Build-Depends on qemu-kvm, not qemu
+      + Build-Depends on open-iscsi-utils, not open-iscsi
+      + Build-Depends on libxml2-utils
+      + Build-Depends on libapparmor-dev and Suggests apparmor (>=
+        2.3+1289-0ubuntu14)
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin
+      + Recommends qemu-kvm (>= 0.11.0-0ubuntu6)
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such
+      + We call libxen-dev libxen3-dev, so change all references
+      + temporarily remove Build-Depends on libcap-ng-dev, which isn't
+        available in Ubuntu main yet
+      + Rename Vcs-* to XS-Debian-Vcs-*
+    - debian/libvirt-bin.postinst:
+      + rename the libvirt group to libvirtd
+      + add each admin user to the libvirtd group
+      + reload apparmor profiles
+      + 0.7.2 moved /usr/bin/virt-aa-helper to /usr/lib/libvirt, so the
+        profile changed from usr.bin.virt-aa-helper to
+        usr.lib.libvirt.virt-aa-helper and needs to be migrated. If the user
+        made no changes to the old profile, remove it, otherwise, update the
+        paths, preserving the shipped usr.lib.libvirt.virt-aa-helper
+    - debian/libvirt-bin.postrm:
+      + rename the libvirt group to libvirtd
+      + remove apparmor symlinks on purge
+    - debian/libvirt-bin.preinst: added to force complain on certain
+      upgrades
+    - debian/README.Debian: add AppArmor section based on the upstream
+      documentation
+    - debian/rules:
+      + update DEB_DH_INSTALLINIT_ARGS for upstart
+      + add DEB_MAKE_CHECK_TARGET := check
+      + use --with-apparmor
+      + copy apparmor and apport hook to debian/tmp
+    - add debian/libvirt-bin.upstart
+    - debian/libvirt-bin.dirs: add /etc/apparmor.d/abstractions,
+      /etc/apparmor.d/disable, /etc/apparmor.d/force-complain,
+      /etc/apparmor.d/libvirt, /etc/cron.daily and
+      /usr/share/apport/package-hooks
+    - add debian/libvirt-bin.cron.daily
+    - add debian/libvirt-bin.apport
+    - debian/libvirt-bin.install: install apparmor profiles, abstractions
+      and apport hook
+    - debian/patches/series: don't apply 0002-qemu-disable-network.diff.patch
+      + 9000-delayed_iff_up_bridge.patch
+      + 9001-dont_clobber_existing_bridges.patch
+      + 9002-better_default_uri_virsh.patch
+      + 9003-increase-logoutput-timeout.patch
+      + 9004-better-default-arch.patch
+      + 9005-libvirtd-group-name.patch
+      + 9006-increase-unix-socket-timeout.patch
+      + 9007-default-config-test-case.patch
+      + 9008-warn-on-daemon-conf-test-wait.patch (renamed from 9016)
+    - Dropped the following patches now including upstream:
+      + 0005-Fix-SELinux-linking-issues.patch
+      + 9008-apparmor-caps-mockup.patch
+      + 9009-apparmor-lp453335.patch
+      + 9010-apparmor-lp460271.patch
+      + 9011-apparmor-code-cleanups.patch
+      + 9012-apparmor-add-virt-aa-helper-test.patch
+      + 9013-apparmor-examples.patch
+      + 9014-event-fuzz.patch
+      + 9015-hal-startup-failure-is-nonfatal.patch
+  * debian/patches/9009-run-as-root-by-default.patch: run virtual machines
+    via qemu:///system as root. As of 0.7, upstream libvirt has the ability to
+    run VMs started via qemu:///system as an unprivileged user. Debian's
+    libvirt now runs these VMs as libvirt-qemu:kvm. However, the upstream
+    implementation is contentious among the community and while the it does
+    reduce the privileges of the VMs running under qemu:///system, all VMs
+    currently run under the same user, so there is no guest isolation. Even if
+    each user ran under its own user, an attacker could potentially break out
+    of the VM and have unconfined user access (albeit non-root). In Ubuntu,
+    Qemu/KVM virtual machines are already fully isolated and confined by the
+    AppArmor security driver so this feature has been disabled. Once there is
+    consensus among the community on the implementation and its use, changing
+    this default in Ubuntu can be considered as an additional protection to
+    the AppArmor driver.
+  * debian/README.Debian: add section discussing the security implications of
+    using qemu:///system
+  * debian/patches/9010-apparmor-ftbfs.patch: fix missing bracket in
+    virt-aa-helper.c and automake dependency declaration. This should be
+    dropped in 0.7.6 or higher.
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Mon, 25 Jan 2010 12:48:13 -0600
+
 libvirt (0.7.5-5) unstable; urgency=low
 
   [ Guido Günther ]
@@ -82,6 +172,128 @@ libvirt (0.7.4-1) unstable; urgency=low
 
  -- Guido Günther <agx@sigxcpu.org>  Tue, 01 Dec 2009 18:51:18 +0100
 
+libvirt (0.7.2-4ubuntu6) lucid; urgency=low
+
+  * Update libvirt0 description to match the other packages in supported
+    virtualization technologies.
+  * Rename Vcs-* to XS-Debian-Vcs-*.
+
+ -- Loïc Minier <loic.minier@ubuntu.com>  Tue, 12 Jan 2010 17:22:02 +0100
+
+libvirt (0.7.2-4ubuntu5) lucid; urgency=low
+
+  * debian/rules, debian/libvirt-bin.upstart: migrate libvirt to upstart
+    (LP: #446036)
+  * debian/control: depend on open-iscsi-utils, rather than open-iscsi,
+    fixed again, grrr (LP: #414986)
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 05 Jan 2010 23:23:28 -0600
+
+libvirt (0.7.2-4ubuntu4) lucid; urgency=low
+
+  * debian/libvirt-bin.postinst: don't sed a non-existent file (LP: #493582)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Mon, 07 Dec 2009 08:55:03 -0600
+
+libvirt (0.7.2-4ubuntu3) lucid; urgency=low
+
+  * debian/patches/9016-warn-on-daemon-conf-test-wait.patch: workaround FTBFS
+    on buildd by not failing when waiting on pid
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 02 Dec 2009 12:12:17 -0600
+
+libvirt (0.7.2-4ubuntu2) lucid; urgency=low
+
+  * debian/control: Build-Depends on qemu-kvm, not qemu
+  * debian/patches/9007-default-config-test-case.patch: revert last change
+    which caused a different failure on buildd
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 02 Dec 2009 11:14:59 -0600
+
+libvirt (0.7.2-4ubuntu1) lucid; urgency=low
+
+  * Merge from debian testing. Remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin
+      + Recommends qemu-kvm (>= 0.11.0-0ubuntu6)
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such
+      + We call libxen-dev libxen3-dev, so change all references
+      + Build-Depends on libxml2-utils
+      + Build-Depends on open-iscsi-utils instead of open-iscsi due to
+        LP: #414986
+    - debian/postinst:
+      + rename the libvirt group to libvirtd
+      + add each admin user to the libvirtd group
+    - debian/libvirt-bin.postrm: rename the libvirt group to libvirtd
+    - debian/rules: add DEB_MAKE_CHECK_TARGET := check
+    - debian/patches/900[0-7]: updated/refreshed for new paths in 0.7.2
+    - debian/patches/series: don't apply 0002-qemu-disable-network.diff.patch
+    - AppArmor integration:
+      + debian/control: Build-Depends on libapparmor-dev and Suggests
+        apparmor (>= 2.3+1289-0ubuntu14)
+      + debian/libvirt-bin.dirs: add /etc/apparmor.d/abstractions,
+        /etc/apparmor.d/force-complain, /etc/apparmor.d/libvirt,
+        /etc/cron.daily and /usr/share/apport/package-hooks
+      + add debian/libvirt-bin.cron.daily (LP: #438165)
+      + add debian/libvirt-bin.apport
+      + debian/libvirt-bin.install: install apparmor profiles, abstractions
+        and apport hook
+      + debian/postinst: reload apparmor profiles
+      + debian/libvirt-bin.postrm: remove apparmor symlinks on purge
+      + debian/libvirt-bin.preinst: added to force complain on certain
+        upgrades
+      + debian/README.Debian: add AppArmor section based on the upstream
+        documentation
+      + debian/rules: use --with-apparmor and copy apparmor and apport hook to
+        debian/tmp
+    - Dropped the following patches now included upstream:
+      + 0005-Close-logfile-fd-after-spawning-qemu.patch
+      + 9090-reenable-nonfile-labels.patch
+      + 9091-apparmor.patch
+      + 9092-apparmor-autoreconf.patch
+  * AppArmor integration updates:
+    - debian/apparmor/usr.sbin.libvirtd: allow libvirtd access to
+      /usr/lib/libvirt/* (LP: #480478)
+    - debian/apparmor/libvirt-qemu: allow guests access to
+      /etc/pki/libvirt-vnc/** (LP: #484562)
+    - debian/libvirt-bin.postinst: 0.7.2 moved /usr/bin/virt-aa-helper to
+      /usr/lib/libvirt, so the profile changed from usr.bin.virt-aa-helper
+      to usr.lib.libvirt.virt-aa-helper and needs to be migrated. If the user
+      made no changes to the old profile, remove it, otherwise, update the
+      paths, preserving the shipped usr.lib.libvirt.virt-aa-helper
+    - update to 0.7.4 version of the sVirt AppArmor driver (can be dropped in
+      0.7.4):
+      + debian/patches/9008-apparmor-caps-mockup.patch
+      + debian/patches/9009-apparmor-lp453335.patch
+      + debian/patches/9010-apparmor-lp460271.patch
+      + debian/patches/9011-apparmor-code-cleanups.patch
+    - add virt-aa-helper-test and examples/apparmor that were omitted from the
+      upstream tarball (can be dropped in 0.7.5):
+      + debian/patches/9012-apparmor-add-virt-aa-helper-test.patch
+      + debian/patches/9013-apparmor-examples.patch
+      + debian/rules: add post-patches target to make virt-aa-helper-test
+        executable
+  * debian/patches/0005-Fix-SELinux-linking-issues.patch: updated to work
+    when both apparmor and selinux are available. This patch should be
+    dropped in 0.7.4.
+  * debian/patches/9007-default-config-test-case.patch: updated to not fail
+    if building in a deep directory
+  * debian/patches/9014-event-fuzz.patch: add a little fuzz to not be quite
+    so precise with expected expiry time. Fixes FTBFS with HZ=100 kernels.
+    Can be dropped in 0.7.5.
+  * debian/patches/9015-hal-startup-failure-is-nonfatal.patch: disable hal
+    driver if hald is not running instead of dying. Can be dropped in
+    0.7.4.
+  * debian/control: temporarily remove Build-Depends on libcap-ng-dev, which
+    isn't available in Ubuntu main yet
+  * revert change to new source format 3.0 (quilt) since Launchpad can't
+    handle it yet (see LP: #293106)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 02 Dec 2009 09:22:21 -0600
+
 libvirt (0.7.2-4) unstable; urgency=low
 
   * [213ca47] switch to new source format 3.0 (quilt)
@@ -156,6 +368,226 @@ libvirt (0.7.1-1) unstable; urgency=low
 
  -- Guido Günther <agx@sigxcpu.org>  Sat, 26 Sep 2009 17:15:02 +0200
 
+libvirt (0.7.0-1ubuntu15) lucid; urgency=low
+
+  * Run test suite at build time.
+  * Add libxml2-utils dependency. Needed by the test suite.
+  * Remove "Connecting to uri: " notice from virsh. It breaks the test
+    suite, the information is readily available with the "uri" command
+    inside virsh, and it's a usability delta with upstream, so
+    constantly causes confusion.
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 27 Nov 2009 11:21:53 +0100
+
+libvirt (0.7.0-1ubuntu14) lucid; urgency=low
+
+  * debian/patches/9093-lp460271.patch: require absolute path for dynamic
+    added files (LP: #460271)
+  * debian/patches/9094-lp453335.patch: suppress confusing and misleading
+    apparmor denied message when kvm/qemu tries to open a libvirt specified
+    readonly file (such as a cdrom) with write permissions. libvirt uses the
+    readonly attribute for the security driver only, and has no way of telling
+    kvm/qemu that the device should be opened readonly. (LP: #453335)
+  * debian/apparmor/usr.sbin.libvirtd: allow 'inet dgram' for migration to
+    work (LP: #461528)
+  * debian/apparmor/usr.sbin.libvirtd: properly support qemu+tcp:// by
+    allowing 'inet6 stream' and 'inet6 dgram' (LP: #462000)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Mon, 09 Nov 2009 17:11:05 -0600
+
+libvirt (0.7.0-1ubuntu13) karmic; urgency=low
+
+  * allow save/restore to work in $HOME. This is a workaround until upstream
+    https://bugzilla.redhat.com/show_bug.cgi?id=529363 is fixed. (LP: #457716)
+  * debian/libvirt-bin.cron.daily: don't comlain if no domain XML definitions
+    or domain AppArmor profiles. Based on work by Loïc Minier. (LP: #457607)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 23 Oct 2009 03:52:33 -0500
+
+libvirt (0.7.0-1ubuntu12) karmic; urgency=low
+
+  * debian/apparmor/libvirt-qemu: a couple more fixes for pulseaudio
+    LP: #453329
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 16 Oct 2009 17:06:15 -0500
+
+libvirt (0.7.0-1ubuntu11) karmic; urgency=low
+
+  * debian/patches/9091-apparmor.patch:
+    - src/virt-aa-helper.c: update to parse XML for guest's architecture and
+      os.type rather than just trying to make something up.
+    - tests/virt-aa-helper-test: add some tests for the above and fix another
+      test
+    - LP: #448671
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 14 Oct 2009 14:55:20 -0500
+
+libvirt (0.7.0-1ubuntu10) karmic; urgency=low
+
+  * debian/patches/0005-Close-logfile-fd-after-spawning-qemu.patch: fix
+    egregious file descriptor leak with cherry-pick from upstream git,
+    LP: #438815
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 06 Oct 2009 18:57:22 -0500
+
+libvirt (0.7.0-1ubuntu9) karmic; urgency=low
+
+  * allow access for sound (LP: #437854)
+    - abstractions/libvirt-qemu: add very specific rules for allowing ALSA. We
+      do not use the audio abstraction because the virtual machine runs as root
+      and therefore DAC cannot be used as a fallback.
+    - debian/README.Debian: add some text to encourage review of the AppArmor
+      profiles and abstraction when using in production environments
+  * debian/libvirt-bin.cron.daily: added to clean out old profiles that are no
+    longer associated with a virtual machine definition (LP: #438165)
+  * debian/patches/9091-apparmor.patch:
+    - quote the pid, monitor and logfile in case any of them have weird
+      characters (complete fix for LP: #432810)
+    - support <readonly/> for disks
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Mon, 05 Oct 2009 16:31:12 -0500
+
+libvirt (0.7.0-1ubuntu8) karmic; urgency=low
+
+  * debian/patches/9091-apparmor.patch: sync with upstream for maintenance,
+    licensing compliance with upstream and bug fixes:
+    - handle files with spaces in the name (LP: #432810)
+    - add serial, console, kernel and initrd support (LP: #432581)
+    - allow read only access to /boot, /vmlinuz and /initrd.img
+    - allow access to character devices (eg USB devices)
+    - have virt-aa-helper accept XML on stdin, which allows for adding
+      other devices in the future and helps ensure we always have the most
+      up to date definition
+    - update profile on attach and detach of devices (LP: #435527)
+    - add --dryrun option to virt-aa-helper, and greatly improve the
+      virt-aa-helper-test script
+  * revert workaround for LP: #431090 now that kernel, initrd, et al is
+    properly supported
+  * debian/apparmor/usr.sbin.libvirtd: add various capabilities
+    recommended by upstream to prevent potential regressions
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 22 Sep 2009 20:04:58 -0500
+
+libvirt (0.7.0-1ubuntu7) karmic; urgency=low
+
+  * debian/apparmor/libvirt-qemu: add chown capability (LP: #434417)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 22 Sep 2009 08:03:21 -0500
+
+libvirt (0.7.0-1ubuntu6) karmic; urgency=low
+
+  * debian/apparmor/libvirt-qemu: workaround eucalyptus serial console,
+    kernel and initrd location. This should be removed after virt-aa-helper is
+    able to get these from XML. (LP: #431090)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 17 Sep 2009 11:35:42 -0500
+
+libvirt (0.7.0-1ubuntu5) karmic; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: switch to enforcing by default. Please
+    note that this was only in complain mode temporarily to work around kernel
+    bugs in the 2.6.31-9 kernel. Confinement of virtual machines (controlled
+    by /etc/apparmor.d/libvirt/TEMPLATE) was already in enforcing mode.
+    (LP: #427338)
+  * debian/README.Debian: update AppArmor section based on the upstream
+    documentation
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 10 Sep 2009 08:05:45 -0500
+
+libvirt (0.7.0-1ubuntu4) karmic; urgency=low
+
+  * debian/libvirt-bin.postinst: add each admin user to libvirtd,
+    LP: #410226; note that this is only a partial fix, as admin users
+    added after libvirt's install will need to be individually added
+    to libvirtd; however, this should fix a huge number of
+    single-admin-user-in-default-Ubuntu-system annoyances
+  * debian/control: bump standards version
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 08 Sep 2009 17:56:52 -0500
+
+libvirt (0.7.0-1ubuntu3) karmic; urgency=low
+
+  * debian/apparmor/libvirt-qemu: allow access to /dev/kqemu
+  * debian/apparmor/usr.bin.virt-aa-helper: use @{PROC} instead of /proc
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 26 Aug 2009 12:19:24 -0500
+
+libvirt (0.7.0-1ubuntu2) karmic; urgency=low
+
+  * Add AppArmor support (LP: #388422):
+    - debian/patches/9090-reenable-nonfile-labels.patch: add back in
+      virDomainObjPtr argument to RestoreSecurityImageLabel since AppArmor
+      labels are not stored on disk
+    - debian/patches/9091-apparmor.patch: add AppArmor security driver
+    - debian/patches/9092-apparmor-autoreconf.patch: after installing libtool
+      and the build dependencies, run autoreconf to pull in changes to
+      Makefile.am and configure.in in 9091-apparmor.patch
+    - debian/rules: use --with-apparmor and copy debian/apparmor/* to
+      debian/tmp
+    - debian/control: Build-Depends on libapparmor-dev and Suggests apparmor
+      >= 2.3+1289-0ubuntu14
+    - add profiles and abstractions to debian/apparmor. usr.sbin.libvirtd will
+      default to complain mode until LP: #401931 is sorted out
+    - debian/libvirt-bin.dirs: add /etc/apparmor.d/libvirt,
+      /etc/apparmor.d/abstractions, and /etc/apparmor.d/force-complain
+    - debian/libvirt-bin.install: install profiles and abstractions
+    - debian/libvirt-bin.preinst: newly added to force complain on certian
+      upgrades
+    - debian/libvirt-bin.postinst: (re)load profile
+    - debian/libvirt-bin.postrm: remove force-complain profile on purge
+  * 9006-increase-unix-socket-timeout.patch:
+    increase timeout waiting for unix socket in src/qemu_driver.c, set to 30
+    seconds, which 10x longer than before, and matches the logoutput timeout
+    adjustment in 9003-increase-logoutput-timeout.patch. This is needed with
+    the new qemudOpenMonitorUnix() function introduced in 0.7.0.
+  * add apport hook:
+    - add debian/libvirt-bin.apport
+    - debian/libvirt-bin.dirs: add /usr/share/apport/package-hooks
+    - debian/libvirt-bin.install: add source_libvirt-bin.py
+    - debian/rules: install libvirt-bin.apport
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 25 Aug 2009 11:51:42 -0500
+
+libvirt (0.7.0-1ubuntu1) karmic; urgency=low
+
+  * Merge from debian experimental, remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin.
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such.
+      + We call libxen-dev libxen3-dev, so change all references.
+      + Build-Depends on open-iscsi-utils instead of open-iscsi due to
+        LP: #414986
+    - 9000-delayed_iff_up_bridge.patch:
+      Don't try to bring up the bridge before at least one interface has been
+      added to it.
+    - 9001-dont_clobber_existing_bridges.patch:
+      Assign the name of the virtual bridge dynamically to avoid interfering
+      with existing bridges.
+    - 9002-better_default_uri_virsh.patch:
+      Default to qemu:///system if the user has write access to the libvirt
+      socket, otherwise qemu:///session.
+    - 9003-increase-logoutput-timeout.patch:
+      increase timeout waiting for log output in src/qemu_driver.c, set to 30
+      seconds, which 10x longer than before, and matches the disk-wait in
+      mdadm. (LP #344400)
+    - 9004-better-default-arch.patch:
+      If a domain does not specify its architecture, attempt to match the host.
+      (LP #344913)
+    - 9005-libvirtd-group-name.patch:
+      Rename libvirt group to libvirtd.
+    - rename the libvirt group to libvirtd in postinst/postrm
+  * Dropped the following patches from debian/patches (they don't apply any
+    more were not applied in 0.6.4-1ubuntu2):
+    - dynamic_bridge_names.patch
+    - event-loop-hang.diff
+    - more-flexible-emulator-on-x86.patch
+    - xen-events-handling-fix.diff
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 13 Aug 2009 20:24:24 -0500
+
 libvirt (0.7.0-1) experimental; urgency=low
 
   [ Laurent Léonard ]
@@ -202,6 +634,46 @@ libvirt (0.6.5-1) unstable; urgency=low
     private symbols
 
  -- Guido Günther <agx@sigxcpu.org>  Sun, 05 Jul 2009 13:07:53 +0200
+
+libvirt (0.6.4-1ubuntu2) karmic; urgency=low
+
+  * Also rename the libvirt group to libvirtd in postinst/postrm.
+    (LP: #392696)
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 26 Jun 2009 22:49:45 +0200
+
+libvirt (0.6.4-1ubuntu1) karmic; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such.
+    - 9000-delayed_iff_up_bridge.patch:
+      Don't try to bring up the bridge before at least one interface has been
+      added to it.
+    - 9001-dont_clobber_existing_bridges.patch
+      Assign the name of the virtual bridge dynamically to avoid interfering
+      with existing bridges.
+    - 9002-better_default_uri_virsh.patch:
+      Default to qemu:///system if the user has write access to the libvirt
+      socket, otherwise qemu:///session.
+    - 9003-increase-logoutput-timeout.patch:
+      increase timeout waiting for log output in src/qemu_driver.c, set to 30
+      seconds, which 10x longer than before, and matches the disk-wait in
+      mdadm. (LP #344400)
+    - 9004-better-default-arch.patch:
+      If a domain does not specify its architecture, attempt to match the host.
+      (LP #344913)
+    - 9005-libvirtd-group-name.patch:
+      Rename libvirt group to libvirtd.
+    - We call libxen-dev libxen3-dev, so change all references.
+
+ -- Soren Hansen <soren@ubuntu.com>  Mon, 22 Jun 2009 11:14:57 +0200
 
 libvirt (0.6.4-1) unstable; urgency=low
 
@@ -293,6 +765,87 @@ libvirt (0.6.1-1) unstable; urgency=low
 
  -- Guido Günther <agx@sigxcpu.org>  Thu, 05 Mar 2009 13:58:41 +0100
 
+libvirt (0.6.1-0ubuntu5) jaunty; urgency=low
+
+  * Fix logic error when applying %d bridge name rewriting. (LP: #350780)
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 16 Apr 2009 20:48:49 +0200
+
+libvirt (0.6.1-0ubuntu4) jaunty; urgency=low
+
+  [ Marc Deslauriers <marc.deslauriers@ubuntu.com> ]
+  * 0008-increase-logoutput-timeout.patch: increase timeout waiting
+    for log output in src/qemu_driver.c, set to 30 seconds, which 10x
+    longer than before, and matches the disk-wait in mdadm, LP: #344400
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Fri, 27 Mar 2009 10:57:53 -0500
+
+libvirt (0.6.1-0ubuntu3) jaunty; urgency=low
+
+  * Fix "libvirt's defaults are slightly less than sane" (LP: #344913)
+    - more-flexible-emulator-on-x86.patch (from upstream)
+    - default-arch.patch
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 19 Mar 2009 00:23:14 +0100
+
+libvirt (0.6.1-0ubuntu2) jaunty; urgency=low
+
+  * Add fix for event loop hang (LP: #344195)
+    http://article.gmane.org/gmane.comp.emulators.libvirt/12437
+  * Add fix for Xen events handling.
+    http://git.et.redhat.com/?p=libvirt.git;a=commit;h=124cfcbc2bcd1b71b51e720b9bfc7d8e69e8af89 
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 13 Mar 2009 16:51:33 +0100
+
+libvirt (0.6.1-0ubuntu1) jaunty; urgency=low
+
+  * New upstream release. (FFe: LP: #339868)
+  * Dropped 0004-Don-t-hardcode-ssh-port.patch: Included upstream.
+  * Rewrote dynamic_bridge_names.patch to work with refactored upstream
+    bridging code.
+
+ -- Soren Hansen <soren@ubuntu.com>  Mon, 09 Mar 2009 11:18:01 +0100
+
+libvirt (0.6.0-1ubuntu3) jaunty; urgency=low
+
+  * No change rebuild for python2.6.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 25 Feb 2009 12:17:13 +0000
+
+libvirt (0.6.0-1ubuntu2) jaunty; urgency=low
+
+  * Accidentally dropped our changes to
+    0003-allow-libvirt-group-to-access-the-socket.patch, causing the
+    group as which libvirtd expected to run to be wrong. Change it back
+    to "libvirtd" rather than "libvirt". (LP: #328093)
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 11 Feb 2009 16:10:28 +0100
+
+libvirt (0.6.0-1ubuntu1) jaunty; urgency=low
+
+  * Merge with Debian experimental. Remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge
+      before at least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the
+      user has write access to the libvirt socket, otherwise
+      qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+    - Included (but did not enable) opennebula patch (since it's not in
+      main yet).
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 11 Feb 2009 01:01:42 +0100
+
 libvirt (0.6.0-1) experimental; urgency=low
 
   * [30be86d] Imported Upstream version 0.6.0
@@ -339,6 +892,31 @@ libvirt (0.5.1-5) experimental; urgency=low
   * [4565a65] drop superflous headers and footers from remaining patches
 
  -- Guido Günther <agx@sigxcpu.org>  Fri, 30 Jan 2009 23:06:29 +0100
+
+libvirt (0.5.1-4ubuntu1) jaunty; urgency=low
+
+  * Merge with Debian experimental.
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge
+      before at least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the
+      user has write access to the libvirt socket, otherwise
+      qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+  * Included (but did not enable) opennebula patch (since it's not in
+    the archive yet).
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 08 Jan 2009 23:01:16 +0100
 
 libvirt (0.5.1-4) experimental; urgency=low
 
@@ -436,6 +1014,42 @@ libvirt (0.4.6-6) unstable; urgency=low
 
  -- Guido Günther <agx@sigxcpu.org>  Thu, 27 Nov 2008 18:06:48 +0100
 
+libvirt (0.4.6-5ubuntu2) jaunty; urgency=low
+
+  * SECURITY UPDATE: fix privilege escalation due to missing read only
+    connection checks
+    - debian/patches/0009-CVE-2008-5086.patch: update functions in
+      src/libvirt.c to check against VIR_CONNECT_RO and return with operation
+      denied error
+    - CVE-2008-5086
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 16 Dec 2008 10:47:09 -0600
+
+libvirt (0.4.6-5ubuntu1) jaunty; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg, since
+        we used to ship them as such.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+  * Add qemu migration patch (from upstream git (adjusted for 0.4.6)).
+  * Add dynamic_bridge_names.patch to again support dynamic bridge names.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 18 Nov 2008 18:04:40 +0100
+
 libvirt (0.4.6-5) unstable; urgency=low
 
   * [411ada3] add more details about dnsmasq vs. libvirtd (Closes: #504605)
@@ -509,6 +1123,44 @@ libvirt (0.4.5-1) experimental; urgency=low
 
  -- Guido Guenther <agx@sigxcpu.org>  Thu, 18 Sep 2008 19:02:55 +0200
 
+libvirt (0.4.4-3ubuntu3) intrepid; urgency=low
+
+  * debian/patches/0008-lp287533.patch: allow 16 VCPUs when using kvm
+    (LP: #287533)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 22 Oct 2008 10:13:12 -0500
+
+libvirt (0.4.4-3ubuntu2) intrepid; urgency=low
+
+  * Make QEmu a suggested package of libvirt0 rather than a recommended one. 
+  * Make kvm a recommended package of libvirt0.
+
+ -- Soren Hansen <soren@ubuntu.com>  Mon, 11 Aug 2008 16:18:03 +0200
+
+libvirt (0.4.4-3ubuntu1) intrepid; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + DebianMaintainerField
+      + Don't build-depend on QEmu.
+      + Add "XS-Original-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg, since
+        we used to ship them as such.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+
+ -- Soren Hansen <soren@ubuntu.com>  Mon, 11 Aug 2008 15:36:54 +0200
+
 libvirt (0.4.4-3) unstable; urgency=low
 
   * upload to unstable
@@ -538,6 +1190,45 @@ libvirt (0.4.4-1) experimental; urgency=low
 
  -- Guido Guenther <agx@sigxcpu.org>  Fri, 27 Jun 2008 10:06:00 +0200
 
+libvirt (0.4.4-0ubuntu1) intrepid; urgency=low
+
+  * New upstream release
+    - Drop nic-model, disk-bus, and ancient_parted.patch. They're all
+      upstream now (in some form).
+    - Add new libdevmapper-dev build-dependency.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 25 Jun 2008 18:51:21 +0200
+
+libvirt (0.4.2-6ubuntu1) UNRELEASED; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + DebianMaintainerField
+      + Don't build-depend on QEmu.
+      + Add "XS-Original-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+    - debian/libvirt-bin.default
+      + Make libvirtd start by default
+    - Add /var/lib/libvirt to libvirt-bin package. (dnsmasq needs it to store
+      its state info.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Rename libvirt group to libvirtd.
+    - Build iscsi and disk storage support.
+    - delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - nic-model.patch: Add support for <model type='foo'/> NIC configuration.
+    - disk-bus.patch:  Add support for bus='foo' attributes for disk targets.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - ancient_parted.patch: Fix builds against libparted1.7
+    - We call libxen-dev libxen3-dev, so change all references.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 25 Jun 2008 16:40:46 +0200
+
 libvirt (0.4.2-6) unstable; urgency=low
 
   * reenable open-iscsi support  - thanks to to the open-iscsi
@@ -549,6 +1240,44 @@ libvirt (0.4.2-6) unstable; urgency=low
   * README.Debian: explain debugging
 
  -- Guido Guenther <agx@sigxcpu.org>  Thu, 15 May 2008 18:04:20 +0200
+
+libvirt (0.4.2-5ubuntu2) intrepid; urgency=low
+
+  * We call libxen-dev libxen3-dev.
+  * Make libvirt-dev installable alongside libvirt0-dbg.
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 02 May 2008 10:59:50 +0200
+
+libvirt (0.4.2-5ubuntu1) intrepid; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + DebianMaintainerField
+      + Don't build-depend on QEmu.
+      + Add "XS-Original-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+    - Add libvirt0-dbg package
+    - debian/libvirt-bin.default
+      + Make libvirtd start by default
+    - Add /var/lib/libvirt to libvirt-bin package. (dnsmasq needs it to store
+      its state info.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Install PolicyKit and sasl stuff in libvirt-bin.
+    - Rename libvirt group to libvirtd.
+    - Build iscsi and disk storage support.
+    - delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - nic-model.patch: Add support for <model type='foo'/> NIC configuration.
+    - disk-bus.patch:  Add support for bus='foo' attributes for disk targets.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - ancient_parted.patch: Fix builds against libparted1.7
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 02 May 2008 01:50:32 +0200
 
 libvirt (0.4.2-5) unstable; urgency=low
 
@@ -644,6 +1373,87 @@ libvirt (0.4.0-3) unstable; urgency=low
 
  -- Guido Guenther <agx@sigxcpu.org>  Sun, 03 Feb 2008 14:21:46 +0100
 
+libvirt (0.4.0-2ubuntu8) hardy; urgency=low
+
+  * disk-bus.patch:
+    - Add bus attribute to disk/target tags. Allows you to create virtio disks.
+      (LP: #213991)
+  * nic-model.patch:
+    - Add <model type='foo'/> support to network interfaces. (LP: #213991)
+  * graceful_shutdown.patch:
+    - Rather than pulling the power from virtual machines, send an ACPI power
+      button event and let the OS handle it.
+  * better_default_uri_virsh.patch:
+    - Updated patch: Output connection URI to stderr instead of stdout to avoid
+      breaking scripts that use virsh.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 16 Apr 2008 10:35:03 +0200
+
+libvirt (0.4.0-2ubuntu7) hardy; urgency=low
+
+  * better_default_uri_virsh.patch:
+    - Make virsh connect to qemu:///system by default if the user has write
+      access to /var/run/libvirt/libvirt-sock and qemu:///session if not.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 01 Apr 2008 10:32:59 +0200
+
+libvirt (0.4.0-2ubuntu6) hardy; urgency=low
+
+  * *Actually* apply our patches to the -dbg version.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 11 Mar 2008 14:49:03 +0100
+
+libvirt (0.4.0-2ubuntu5) hardy; urgency=low
+
+  * Create /var/lib/libvirt in libvirt-bin. (LP: #191636)
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 13 Feb 2008 22:17:33 +0100
+
+libvirt (0.4.0-2ubuntu4) hardy; urgency=low
+
+  * dont_clobber_existing_bridges.patch:
+    - Change bridge name from virbr0 to virbr%d, to ensure we never clobber
+      existing bridges.
+  * Add iptables dependency
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 13 Feb 2008 00:53:20 +0100
+
+libvirt (0.4.0-2ubuntu3) hardy; urgency=low
+
+  * Build against libxen3-dev instead of libxen3.2-dev.
+  * libvirt-bin:
+    + Replace "Suggests: dnsmasq" with "Depends: dnsmasq-base".
+    + Add dependency on netcat-openbsd (to enable qemu+ssh:// style remote
+      management)
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 08 Feb 2008 17:24:48 +0100
+
+libvirt (0.4.0-2ubuntu2) hardy; urgency=low
+
+  * Build against libxen-3.2 instead of 3.1.
+  * Bump bridge-utils from Suggests: to Depends:.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 05 Feb 2008 10:34:31 +0100
+
+libvirt (0.4.0-2ubuntu1) hardy; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - DebianMaintainerField.
+    - Add libxen3.1-dev to enable Xen management.
+    - Add libpolkit-dbus-dev to enable polkit integration.
+    - Build libvirt0-dbg flavour.
+    - Start libvirtd by default.
+    - Install polkit policy.
+    - Install sasl config.
+    - Install sample qemu and libvirtd config.
+    - Create libvirtd group in postinst.
+    - libvirt-remote-ssh.patch: Fix foo+ssh:// urls.
+    - delayed_iff_up_bridge.patch: Don't try to IFF_UP the bridge interface
+      until an interface gets added to it.
+  * Create /var/run if it doesn't exist (LP: #178106).
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 30 Jan 2008 16:43:11 +0100
+
 libvirt (0.4.0-2) unstable; urgency=low
 
   * libvirt-bin.init: fix the reload target
@@ -662,6 +1472,42 @@ libvirt (0.4.0-1) unstable; urgency=low
   * libvirtd-bin.init: libvirtd supports reload
 
  -- Guido Guenther <agx@sigxcpu.org>  Fri, 21 Dec 2007 16:49:13 +0100
+
+libvirt (0.4.0-0ubuntu3) hardy; urgency=low
+
+  * Clean up debian/rules (should reenable concurrent builds).
+  * Don't restart libvirt on upgrades (if there's a good reason, we'll
+    add it to postinst/prerm with checks for specific versions).
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 18 Jan 2008 19:07:19 +0100
+
+libvirt (0.4.0-0ubuntu2) hardy; urgency=low
+
+  * IFF_UP'ing a bridge interface doesn't work until the first interface has
+    been added to it.
+  * Fix remote ssh connections.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 15 Jan 2008 10:53:25 +0100
+
+libvirt (0.4.0-0ubuntu1) hardy; urgency=low
+
+  * New upstream release.
+  * Don't change the default URI. It appears that too many applications
+    still depend on this broken behaviour.
+  * Change maintainer to ubuntu-core-dev.
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 21 Dec 2007 11:24:02 +0100
+
+libvirt (0.3.3-6ubuntu1) hardy; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - Add libvirt0-dbg package.
+    - Start libvirtd by default.
+    - Create libvirtd group, and have libvirtd's sockets have group ownership
+      "libvirtd".
+    - Add libxen as a build-dependency to enable libvirt's Xen features.
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 20 Dec 2007 11:28:00 +0100
 
 libvirt (0.3.3-6) unstable; urgency=low
 
@@ -693,6 +1539,42 @@ libvirt (0.3.3-4.xen0) unstable; urgency=low
   * debian/control: we also support xen
 
  -- Guido Guenther <agx@sigxcpu.org>  Thu, 06 Dec 2007 15:43:03 +0100
+
+libvirt (0.3.3-4ubuntu5) hardy; urgency=low
+
+  * Made default_uri a configurable.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 19 Dec 2007 00:56:31 +0100
+
+libvirt (0.3.3-4ubuntu4) hardy; urgency=low
+
+  * Add "Provides: libvirt0" to libvirt0-dbg.
+  * Make virsh understand that the default URI is not xen:///.
+
+ -- Soren Hansen <soren@ubuntu.com>  Wed, 19 Dec 2007 00:13:10 +0100
+
+libvirt (0.3.3-4ubuntu3) hardy; urgency=low
+
+  * Change default URI to qemu:///session
+  * Add libvirt0-dbg package, which is just like libvirt0, but built
+    with --enable-debug=yes.
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 13 Dec 2007 21:37:39 +0100
+
+libvirt (0.3.3-4ubuntu2) hardy; urgency=low
+
+  * Start libvirtd by default.
+  * Create libvirtd group, and have libvirtd's sockets have group ownership
+    "libvirtd".
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 13 Dec 2007 15:08:29 +0100
+
+libvirt (0.3.3-4ubuntu1) hardy; urgency=low
+
+  * Fakesync with Debian.
+  * Reenable Xen.
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 06 Dec 2007 13:33:13 +0100
 
 libvirt (0.3.3-4) unstable; urgency=low
 

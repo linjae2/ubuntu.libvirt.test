@@ -1,19 +1,20 @@
 Source: libvirt
 Section: libs
 Priority: optional
-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-minds.org>
-Build-Depends: cdbs (>= 0.4.43), debhelper (>= 7), libxml2-dev, libncurses5-dev, libreadline-dev, zlib1g-dev, libgnutls-dev, python-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libsasl2-dev, libxen-dev [i386 amd64], lvm2, qemu [amd64 i386 powerpc sparc], open-iscsi, libparted1.8-dev, libdevmapper-dev, uuid-dev,
+Build-Depends: cdbs (>= 0.4.43), debhelper (>= 7), libxml2-dev, libncurses5-dev, libreadline-dev, zlib1g-dev, libgnutls-dev, python-dev (>= 2.3.5-11), python-central (>= 0.5.6), quilt, libavahi-client-dev, libsasl2-dev, libxen3-dev [i386 amd64], lvm2, qemu-kvm [amd64 i386 powerpc sparc], open-iscsi-utils, libparted1.8-dev, libdevmapper-dev, uuid-dev,
  libudev-dev,
  libpciaccess-dev,
  module-init-tools,
  policykit-1,
  dpkg-dev (<< 1.15.3) | dpkg-dev (>> 1.15.3),
- libcap-ng-dev
+ libxml2-utils, libapparmor-dev
 XS-Python-Version: current
 Build-Conflicts: dpkg-dev (= 1.15.3)
-Vcs-Git: git://git.debian.org/git/pkg-libvirt/libvirt.git
-Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/libvirt.git
+XS-Debian-Vcs-Git: git://git.debian.org/git/pkg-libvirt/libvirt.git
+XS-Debian-Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/libvirt.git
 Homepage: http://libvirt.org
 Standards-Version: 3.8.3
 DM-Upload-Allowed: yes
@@ -21,11 +22,12 @@ DM-Upload-Allowed: yes
 Package: libvirt-bin
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, libvirt0 (= ${binary:Version}), logrotate,
- hal
+ hal,
+ bridge-utils, netcat-openbsd, dnsmasq-base (>= 2.46-1), iptables
 Enhances: qemu, kvm, xen
 Section: admin
-Recommends: netcat-openbsd, bridge-utils, dnsmasq-base (>= 2.46-1), iptables, qemu (>= 0.9.1)
-Suggests: policykit-1
+Recommends: qemu-kvm (>= 0.11.0-0ubuntu6)
+Suggests: policykit-1, apparmor (>= 2.3+1289-0ubuntu14)
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -37,6 +39,8 @@ Description: the programs for the libvirt library
 Package: libvirt0
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: libvirt0-dbg (<< 0.4.2-6ubuntu1)
+Replaces: libvirt0-dbg (<< 0.4.2-6ubuntu1)
 Recommends: lvm2
 Description: library for interfacing with different virtualization systems
  Libvirt is a C toolkit to interact with the virtualization capabilities
@@ -73,7 +77,7 @@ Description: documentation for the libvirt library
 Package: libvirt-dev
 Architecture: any
 Section: libdevel
-Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64]
+Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen3-dev [i386 amd64]
 Recommends: pkg-config
 Description: development files for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
