@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu3) lucid; urgency=low
+
+  * 9008-fix-daemon-conf-ftbfs.patch: fix for FTBFS on Ubuntu buildds by
+    disabling running libvirtd with a valid config file in the daemon-conf
+    test. This patch used to be 9008-warn-on-daemon-conf-test-wait.patch
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Mon, 25 Jan 2010 21:08:46 -0600
+
 libvirt (0.7.5-5ubuntu2) lucid; urgency=low
 
   * debian/patches/9010-apparmor-ftbfs.patch: updated to match upstream
