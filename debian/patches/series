@@ -15,6 +15,6 @@
 9005-libvirtd-group-name.patch
 9006-increase-unix-socket-timeout.patch
 9007-default-config-test-case.patch
-9008-warn-on-daemon-conf-test-wait.patch
+9008-fix-daemon-conf-ftbfs.patch
 9009-run-as-root-by-default.patch
 9010-apparmor-ftbfs.patch
