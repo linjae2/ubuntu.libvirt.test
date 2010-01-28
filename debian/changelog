@@ -1,3 +1,13 @@
+libvirt (0.7.5-5ubuntu4) lucid; urgency=low
+
+  * debian/patches/9011-node_device_driver.patch: Don't free an uninitalized
+    pointer in update_driver_name() in src/node_device/node_device_driver.c
+    (LP: #513544)
+  * debian/patches/9012-dont-crash-on-restart.patch: don't crash on restart
+    if domain(s) with PCI devices are running
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 28 Jan 2010 08:26:14 -0600
+
 libvirt (0.7.5-5ubuntu3) lucid; urgency=low
 
   * 9008-fix-daemon-conf-ftbfs.patch: fix for FTBFS on Ubuntu buildds by

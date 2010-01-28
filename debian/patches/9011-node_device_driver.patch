@@ -1,0 +1,29 @@
+Description: Don't free an uninitalized pointer in update_driver_name()
+ This invalid free results in heap corruption. Some symptoms I saw
+ because of this were libvirtd crashing and virt-manager hanging
+ while trying to enumerate devices.
+Origin: http://libvirt.org/git/?p=libvirt.git;a=commit;h=338e7c3c8d5b861f3ad376863519f3496736987e
+Bug: https://bugzilla.redhat.com/show_bug.cgi?id=556815
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/513544
+
+diff -Nur libvirt-0.7.5/src/node_device/node_device_driver.c libvirt-0.7.5.new/src/node_device/node_device_driver.c
+--- libvirt-0.7.5/src/node_device/node_device_driver.c	2009-12-22 03:37:57.000000000 -0600
++++ libvirt-0.7.5.new/src/node_device/node_device_driver.c	2010-01-28 08:24:22.765837964 -0600
+@@ -78,7 +78,7 @@
+                               virNodeDeviceObjPtr dev)
+ {
+     char *driver_link = NULL;
+-    char *devpath;
++    char *devpath = NULL;
+     char *p;
+     int ret = -1;
+ 
+@@ -114,7 +114,7 @@
+ 
+ cleanup:
+     VIR_FREE(driver_link);
+-    free(devpath);
++    VIR_FREE(devpath);
+     return ret;
+ }
+ #else
