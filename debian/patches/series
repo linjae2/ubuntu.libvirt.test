@@ -18,3 +18,5 @@
 9008-fix-daemon-conf-ftbfs.patch
 9009-run-as-root-by-default.patch
 9010-apparmor-ftbfs.patch
+9011-node_device_driver.patch
+9012-dont-crash-on-restart.patch
