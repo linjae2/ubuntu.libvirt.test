@@ -1,3 +1,9 @@
+libvirt (0.7.5-5ubuntu5) lucid; urgency=low
+
+  * Build-Depend on libcap-ng. (LP: #488963)
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 04 Feb 2010 14:50:40 -0800
+
 libvirt (0.7.5-5ubuntu4) lucid; urgency=low
 
   * debian/patches/9011-node_device_driver.patch: Don't free an uninitalized
