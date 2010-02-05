@@ -20,3 +20,4 @@
 9010-apparmor-ftbfs.patch
 9011-node_device_driver.patch
 9012-dont-crash-on-restart.patch
+9013-apparmor-dont-clear-caps.patch

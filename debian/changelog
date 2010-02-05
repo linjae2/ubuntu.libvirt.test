@@ -1,3 +1,13 @@
+libvirt (0.7.5-5ubuntu6) lucid; urgency=low
+
+  * debian/patches/9013-apparmor-dont-clear-caps.patch: Don't clear
+    capabilities when calling virt-aa-helper. When built with libcap-ng,
+    clearing caps makes virt-aa-helper lose MAC_ADMIN, which is (obviously)
+    needed by apparmor_parser. This restores libcap-ng behavior to what it was
+    when not built with libcap-ng. (LP: #517714)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 05 Feb 2010 16:48:42 -0600
+
 libvirt (0.7.5-5ubuntu5) lucid; urgency=low
 
   * Build-Depend on libcap-ng. (LP: #488963)
