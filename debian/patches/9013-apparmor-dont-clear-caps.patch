@@ -1,0 +1,31 @@
+Author: Jamie Strandboge <jamie@ubuntu.com>
+Description: Don't clear capabilities when calling virt-aa-helper. When built
+ with libcap-ng, clearing caps makes virt-aa-helper lose MAC_ADMIN, which is
+ (obviously) needed by apparmor_parser. This restores libcap-ng behavior to
+ what it was when not built with libcap-ng.
+diff -Nur libvirt-0.7.5/src/security/security_apparmor.c libvirt-0.7.5.new/src/security/security_apparmor.c
+--- libvirt-0.7.5/src/security/security_apparmor.c	2009-12-22 03:37:57.000000000 -0600
++++ libvirt-0.7.5.new/src/security/security_apparmor.c	2010-02-05 16:32:53.588796032 -0600
+@@ -174,19 +174,19 @@
+             VIRT_AA_HELPER, "-c", "-u", profile, NULL
+         };
+         ret = virExec(conn, argv, NULL, NULL, &child,
+-                      pipefd[0], NULL, NULL, VIR_EXEC_CLEAR_CAPS);
++                      pipefd[0], NULL, NULL, VIR_EXEC_NONE);
+     } else if (disk && disk->src) {
+         const char *const argv[] = {
+             VIRT_AA_HELPER, "-r", "-u", profile, "-f", disk->src, NULL
+         };
+         ret = virExec(conn, argv, NULL, NULL, &child,
+-                      pipefd[0], NULL, NULL, VIR_EXEC_CLEAR_CAPS);
++                      pipefd[0], NULL, NULL, VIR_EXEC_NONE);
+     } else {
+         const char *const argv[] = {
+             VIRT_AA_HELPER, "-r", "-u", profile, NULL
+         };
+         ret = virExec(conn, argv, NULL, NULL, &child,
+-                      pipefd[0], NULL, NULL, VIR_EXEC_CLEAR_CAPS);
++                      pipefd[0], NULL, NULL, VIR_EXEC_NONE);
+     }
+     if (ret < 0)
+         goto clean;
