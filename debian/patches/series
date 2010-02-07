@@ -7,6 +7,7 @@
 0007-Implement-path-lookup-for-USB-by-vendor-product.patch
 0008-qemu-Use-log-output-for-pty-assignment-if-info-chard.patch
 0009-Fix-QEMU-driver-custom-domain-status-XML-extensions.patch
+0010-Use-base-16-for-product-vendor.patch
 9000-delayed_iff_up_bridge.patch
 9001-dont_clobber_existing_bridges.patch
 9002-better_default_uri_virsh.patch
