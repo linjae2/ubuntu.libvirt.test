@@ -1,0 +1,48 @@
+From 3238081efd6212babb45e42bc3fd918d3df939fe Mon Sep 17 00:00:00 2001
+From: Cole Robinson <crobinso@redhat.com>
+Date: Tue, 12 Jan 2010 13:39:46 -0500
+Subject: [PATCH] node_device: udev: Use base 16 for product/vendor
+
+udev doesn't prefix USB product/vendor info with '0x', so the
+strtol conversions were wrong for the product field (vendor already
+set the correct base). Make the change for PCI product/vendor as
+well to be safe.
+
+This fixes USB device assignment via virt-manager.
+---
+ src/node_device/node_device_udev.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/node_device/node_device_udev.c b/src/node_device/node_device_udev.c
+index 7a9c1e5..55cfee2 100644
+--- a/src/node_device/node_device_udev.c
++++ b/src/node_device/node_device_udev.c
+@@ -457,14 +457,14 @@ static int udevProcessPCI(struct udev_device *device,
+     if (udevGetUintSysfsAttr(device,
+                              "vendor",
+                              &data->pci_dev.vendor,
+-                             0) == PROPERTY_ERROR) {
++                             16) == PROPERTY_ERROR) {
+         goto out;
+     }
+ 
+     if (udevGetUintSysfsAttr(device,
+                              "device",
+                              &data->pci_dev.product,
+-                             0) == PROPERTY_ERROR) {
++                             16) == PROPERTY_ERROR) {
+         goto out;
+     }
+ 
+@@ -522,7 +522,7 @@ static int udevProcessUSBDevice(struct udev_device *device,
+     if (udevGetUintProperty(device,
+                             "ID_MODEL_ID",
+                             &data->usb_dev.product,
+-                            0) == PROPERTY_ERROR) {
++                            16) == PROPERTY_ERROR) {
+         goto out;
+     }
+ 
+-- 
+1.6.3.3
+

@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu7) lucid; urgency=low
+
+  * debian/patches/0010-Use-base-16-for-product-vendor.patch: parse the USB
+    and PCI product and vendor ids in hexadecimal. This fixes incorrect
+    USB ids being used in virt-manager. (LP: #514610)
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Sun, 07 Feb 2010 11:08:23 -0500
+
 libvirt (0.7.5-5ubuntu6) lucid; urgency=low
 
   * debian/patches/9013-apparmor-dont-clear-caps.patch: Don't clear
