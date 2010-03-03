@@ -1,3 +1,14 @@
+libvirt (0.7.5-5ubuntu9) lucid; urgency=low
+
+  * debian/apparmor/libvirt-qemu:
+    - explicitly deny setpcap to silence denials. See LP: 522845 for details
+    - allow read access to /proc/*/status
+  * debian/patches/9014-apparmor-remove-unloaded-profile-is-not-fatal.patch:
+    Don't exit with error if the user unloaded the profile outside of libvirt
+    (LP: #530400)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 03 Mar 2010 06:29:39 -0600
+
 libvirt (0.7.5-5ubuntu8) lucid; urgency=low
 
   * Build against parted 2.1.

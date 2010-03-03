@@ -22,3 +22,4 @@
 9011-node_device_driver.patch
 9012-dont-crash-on-restart.patch
 9013-apparmor-dont-clear-caps.patch
+9014-apparmor-remove-unloaded-profile-is-not-fatal.patch
