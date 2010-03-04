@@ -1,3 +1,12 @@
+libvirt (0.7.5-5ubuntu10) lucid; urgency=low
+
+  * debian/patches/9015-autodetect-nc-params.patch: autodetect if the
+    remote nc command supports the -q option. (LP: #517478)
+  * debian/patches/0006-Terminate-nc-on-EOF.patch: disabled
+    as the previous patch replaces it.
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Thu, 04 Mar 2010 07:58:52 -0500
+
 libvirt (0.7.5-5ubuntu9) lucid; urgency=low
 
   * debian/apparmor/libvirt-qemu:
