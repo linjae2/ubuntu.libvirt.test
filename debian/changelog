@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu11) lucid; urgency=low
+
+  * Make sure cache setting is output by virDomainGetXMLDesc (and, by
+    extension, "virsh dumpxml"), even if no special driverName is set.
+    (LP: #531741)
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 04 Mar 2010 22:19:52 +0100
+
 libvirt (0.7.5-5ubuntu10) lucid; urgency=low
 
   * debian/patches/9015-autodetect-nc-params.patch: autodetect if the
