@@ -1,0 +1,17 @@
+Index: libvirt-0.7.5/src/conf/domain_conf.c
+===================================================================
+--- libvirt-0.7.5.orig/src/conf/domain_conf.c	2010-03-04 22:14:05.254932520 +0100
++++ libvirt-0.7.5/src/conf/domain_conf.c	2010-03-04 22:15:35.104926861 +0100
+@@ -3902,8 +3902,10 @@
+                       "    <disk type='%s' device='%s'>\n",
+                       type, device);
+ 
+-    if (def->driverName) {
+-        virBufferVSprintf(buf, "      <driver name='%s'", def->driverName);
++    if (def->driverName || def->driverType || def->cachemode) {
++        virBufferVSprintf(buf, "      <driver");
++        if (def->driverName)
++            virBufferVSprintf(buf, " name='%s'", def->driverName);
+         if (def->driverType)
+             virBufferVSprintf(buf, " type='%s'", def->driverType);
+         if (def->cachemode)
