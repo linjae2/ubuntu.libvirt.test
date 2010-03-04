@@ -1,0 +1,43 @@
+--- libvirt-0.7.5.orig/src/network/bridge_driver.c.orig	2010-02-26 10:37:27.264674533 +1100
++++ libvirt-0.7.5/src/network/bridge_driver.c	2010-02-26 10:38:28.414672138 +1100
+@@ -837,30 +837,12 @@ networkEnableIpForwarding(void)
+ 
+ #define SYSCTL_PATH "/proc/sys"
+ 
+-static int networkDisableIPV6(virConnectPtr conn,
++static int networkSetupIPv6(virConnectPtr conn,
+                               virNetworkObjPtr network)
+ {
+     char *field = NULL;
+     int ret = -1;
+ 
+-    if (virAsprintf(&field, SYSCTL_PATH "/net/ipv6/conf/%s/disable_ipv6", network->def->bridge) < 0) {
+-        virReportOOMError(conn);
+-        goto cleanup;
+-    }
+-
+-    if (access(field, W_OK) < 0 && errno == ENOENT) {
+-        VIR_DEBUG("ipv6 appears to already be disabled on %s", network->def->bridge);
+-        ret = 0;
+-        goto cleanup;
+-    }
+-
+-    if (virFileWriteStr(field, "1") < 0) {
+-        virReportSystemError(conn, errno,
+-                             _("cannot enable %s"), field);
+-        goto cleanup;
+-    }
+-    VIR_FREE(field);
+-
+     if (virAsprintf(&field, SYSCTL_PATH "/net/ipv6/conf/%s/accept_ra", network->def->bridge) < 0) {
+         virReportOOMError(conn);
+         goto cleanup;
+@@ -908,7 +890,7 @@ static int networkStartNetworkDaemon(vir
+         return -1;
+     }
+ 
+-    if (networkDisableIPV6(conn, network) < 0)
++    if (networkSetupIPv6(conn, network) < 0)
+         goto err_delbr;
+ 
+     if (brSetForwardDelay(driver->brctl, network->def->bridge, network->def->delay) < 0)
