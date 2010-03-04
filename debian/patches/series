@@ -3,7 +3,7 @@
 0003-allow-libvirt-group-to-access-the-socket.patch
 0004-fix-Debian-specific-path-to-hvm-loader.patch
 0005-Also-look-for-dmi-information-in-sys-class.patch
-0006-Terminate-nc-on-EOF.patch
+#0006-Terminate-nc-on-EOF.patch
 0007-Implement-path-lookup-for-USB-by-vendor-product.patch
 0008-qemu-Use-log-output-for-pty-assignment-if-info-chard.patch
 0009-Fix-QEMU-driver-custom-domain-status-XML-extensions.patch
@@ -23,3 +23,4 @@
 9012-dont-crash-on-restart.patch
 9013-apparmor-dont-clear-caps.patch
 9014-apparmor-remove-unloaded-profile-is-not-fatal.patch
+9015-autodetect-nc-params.patch
