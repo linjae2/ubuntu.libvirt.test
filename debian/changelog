@@ -1,3 +1,9 @@
+libvirt (0.7.5-5ubuntu12) lucid; urgency=low
+
+  * Build against parted 2.2.
+
+ -- Colin Watson <cjwatson@ubuntu.com>  Tue, 09 Mar 2010 01:18:49 +0000
+
 libvirt (0.7.5-5ubuntu11) lucid; urgency=low
 
   * Make sure cache setting is output by virDomainGetXMLDesc (and, by
