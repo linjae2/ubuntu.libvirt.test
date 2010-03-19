@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu14) lucid; urgency=low
+
+  * debian/patches/9018-fix-pty-console.patch: fix issue using
+    console in virsh.
+    (LP: #542324)
+
+ -- Scott Moser <smoser@ubuntu.com>  Fri, 19 Mar 2010 15:58:21 -0400
+
 libvirt (0.7.5-5ubuntu13) lucid; urgency=low
 
   * debian/patches/9017-dont-disable-ipv6.patch: don't disable IPv6

@@ -1,0 +1,80 @@
+author	  Matthew Booth <mbooth@redhat.com>
+	  Wed, 6 Jan 2010 16:09:04 +0000 (17:09 +0100)
+committer Daniel Veillard <veillard@redhat.com>
+	  Wed, 6 Jan 2010 16:09:04 +0000 (17:09 +0100)
+commit	  c0a9b6a5338e54b64a4a28415ffbdb6bcc2b38c5
+tree	  fe4c2e1e53239b4adb0643f7d475ebc8a649d670
+parent	  aee70b7482b4eb7c69f5cacfeb364000294300aa
+
+Fix parsing of 'info chardev' line endings
+
+This change makes the 'info chardev' parser ignore any trailing
+whitespace on a line. This fixes a specific problem handling a '\r\n'
+line ending.
+
+* src/qemu/qemu_monitor_text.c: Ignore trailing whitespace in
+  'info chardev' output.
+
+X-Git-Url: http://libvirt.org/git/?p=libvirt.git;a=blobdiff_plain;f=src%2Fqemu%2Fqemu_monitor_text.c;h=5b9ced21402fe1712f0e4db89bdf9f1d695159ff;hp=ab361c6f2b528592d1f96bb1846483fdf80536b1;hb=c0a9b6a5338e54b64a4a28415ffbdb6bcc2b38c5;hpb=aee70b7482b4eb7c69f5cacfeb364000294300aa
+
+diff --git a/src/qemu/qemu_monitor_text.c b/src/qemu/qemu_monitor_text.c
+index ab361c6..5b9ced2 100644
+--- a/src/qemu/qemu_monitor_text.c
++++ b/src/qemu/qemu_monitor_text.c
+@@ -1705,15 +1705,26 @@ int qemuMonitorTextGetPtyPaths(qemuMonitorPtr mon,
+         goto cleanup;
+     }
+ 
+-    char *pos = reply;                  /* The current start of searching */
+-    char *end = pos + strlen(reply);    /* The end of the reply string */
++    char *pos;                          /* The current start of searching */
++    char *next = reply;                 /* The start of the next line */
+     char *eol;                   /* The character which ends the current line */
++    char *end = reply + strlen(reply);  /* The end of the reply string */
++
++    while (next) {
++        pos = next;
+ 
+-    while (pos < end) {
+         /* Split the output into lines */
+         eol = memchr(pos, '\n', end - pos);
+-        if (eol == NULL)
++        if (eol == NULL) {
+             eol = end;
++            next = NULL;
++        } else {
++            next = eol + 1;
++        }
++
++        /* Ignore all whitespace immediately before eol */
++        while (eol > pos && c_isspace(*(eol-1)))
++            eol -= 1;
+ 
+         /* Look for 'filename=pty:' */
+ #define NEEDLE "filename=pty:"
+@@ -1721,13 +1732,13 @@ int qemuMonitorTextGetPtyPaths(qemuMonitorPtr mon,
+ 
+         /* If it's not there we can ignore this line */
+         if (!needle)
+-            goto next;
++            continue;
+ 
+         /* id is everthing from the beginning of the line to the ':'
+          * find ':' and turn it into a terminator */
+         char *colon = memchr(pos, ':', needle - pos);
+         if (colon == NULL)
+-            goto next;
++            continue;
+         *colon = '\0';
+         char *id = pos;
+ 
+@@ -1747,9 +1758,6 @@ int qemuMonitorTextGetPtyPaths(qemuMonitorPtr mon,
+             goto cleanup;
+         }
+ #undef NEEDLE
+-
+-    next:
+-        pos = eol + 1;
+     }
+ 
+     ret = 0;
