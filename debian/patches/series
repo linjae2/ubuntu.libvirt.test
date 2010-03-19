@@ -26,3 +26,4 @@
 9015-autodetect-nc-params.patch
 9016-disk-cache-setting-xml.patch
 9017-dont-disable-ipv6.patch
+9018-fix-pty-console.patch
