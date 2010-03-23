@@ -1,3 +1,10 @@
+libvirt (0.7.5-5ubuntu15) lucid; urgency=low
+
+  * debian/apparmor/libvirt-qemu, examples/apparmor/libvirt-qemu:
+    allow seabios in the apparmor profile, LP: #545302
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 23 Mar 2010 11:28:28 -0700
+
 libvirt (0.7.5-5ubuntu14) lucid; urgency=low
 
   * debian/patches/9018-fix-pty-console.patch: fix issue using
