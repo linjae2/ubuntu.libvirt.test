@@ -56,6 +56,7 @@
   /usr/share/openhackware/** r,
   /usr/share/proll/** r,
   /usr/share/vgabios/** r,
+  /usr/share/seabios/** r,
 
   # the various binaries
   /usr/bin/kvm rmix,
