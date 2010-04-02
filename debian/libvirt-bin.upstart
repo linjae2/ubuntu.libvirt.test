@@ -12,6 +12,11 @@ pre-start script
 	if ! pidof /usr/sbin/libvirtd >/dev/null; then
 		[ -f /var/run/libvirtd.pid ] && rm -f /var/run/libvirtd.pid
 	fi
+	ifconfig virbr0 start || true
+end script
+
+post-stop script
+	ifconfig virbr0 stop || true
 end script
 
 # if you used to set $libvirtd_opts in /etc/default/libvirt-bin, you can change the
