@@ -1,3 +1,12 @@
+libvirt (0.7.5-5ubuntu16) lucid; urgency=low
+
+  * debian/libvirt-bin.upstart: libvirt has a nasty habit of leaving
+    it's pidfile lying around when/if it crashes; add a pre-start
+    check that removes the pidfile if it exists but the daemon is
+    not actually running, LP: #510658
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Thu, 01 Apr 2010 19:47:04 -0500
+
 libvirt (0.7.5-5ubuntu15) lucid; urgency=low
 
   * debian/apparmor/libvirt-qemu, examples/apparmor/libvirt-qemu:
