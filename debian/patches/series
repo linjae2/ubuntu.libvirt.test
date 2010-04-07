@@ -27,3 +27,6 @@
 9016-disk-cache-setting-xml.patch
 9017-dont-disable-ipv6.patch
 9018-fix-pty-console.patch
+9019-apparmor-fix-xauth.patch
+9020-apparmor-fix-backingstore.patch
+9021-apparmor-fix-hostdev.patch

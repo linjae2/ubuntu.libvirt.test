@@ -1,0 +1,45 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: adjust virt-aa-helper to handle SDL graphics, specifically
+ Xauthority. Also remove a couple redundant checks.
+Bug-Ubuntu: https://launchpad.net/bugs/545426
+Forwarded: Yes
+
+diff -Nur libvirt-0.7.5/src/security/virt-aa-helper.c libvirt-0.7.5.new/src/security/virt-aa-helper.c
+--- libvirt-0.7.5/src/security/virt-aa-helper.c	2010-04-05 16:55:01.827314204 -0500
++++ libvirt-0.7.5.new/src/security/virt-aa-helper.c	2010-04-05 16:55:08.386044026 -0500
+@@ -766,7 +766,7 @@
+ 
+     virBufferVSprintf(buf, "  \"%s\" %s,\n", tmp, perms);
+     if (readonly) {
+-        virBufferVSprintf(buf, "  # don't audit writes to readonly media\n");
++        virBufferVSprintf(buf, "  # don't audit writes to readonly files\n");
+         virBufferVSprintf(buf, "  deny \"%s\" w,\n", tmp);
+     }
+ 
+@@ -829,11 +829,11 @@
+         if (vah_add_file(&buf, ctl->def->console->data.file.path, "w") != 0)
+             goto clean;
+ 
+-    if (ctl->def->os.kernel && ctl->def->os.kernel)
++    if (ctl->def->os.kernel)
+         if (vah_add_file(&buf, ctl->def->os.kernel, "r") != 0)
+             goto clean;
+ 
+-    if (ctl->def->os.initrd && ctl->def->os.initrd)
++    if (ctl->def->os.initrd)
+         if (vah_add_file(&buf, ctl->def->os.initrd, "r") != 0)
+             goto clean;
+ 
+@@ -841,6 +841,12 @@
+         if (vah_add_file(&buf, ctl->def->os.loader, "r") != 0)
+             goto clean;
+ 
++    if (ctl->def->ngraphics == 1 &&
++        ctl->def->graphics[0]->type == VIR_DOMAIN_GRAPHICS_TYPE_SDL)
++        if (vah_add_file(&buf, ctl->def->graphics[0]->data.sdl.xauth,
++                         "r") != 0)
++            goto clean;
++
+     for (i = 0; i < ctl->def->nhostdevs; i++)
+         if (ctl->def->hostdevs[i]) {
+             virDomainHostdevDefPtr dev = ctl->def->hostdevs[i];

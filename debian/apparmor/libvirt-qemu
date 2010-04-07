@@ -22,12 +22,9 @@
   /dev/kqemu rw,
   @{PROC}/*/status r,
 
-  # WARNING: uncommenting these gives the guest direct access to host hardware.
-  # This is required for USB pass through but is a security risk. You have been
-  # warned.
-  #/sys/bus/usb/devices/ r,
-  #/sys/devices/*/*/usb[0-9]*/** r,
-  #/dev/bus/usb/*/[0-9]* rw,
+  # For hostdev access. The actual devices will be added dynamically
+  /sys/bus/usb/devices/ r,
+  /sys/devices/*/*/usb[0-9]*/** r,
 
   # WARNING: this gives the guest direct access to host hardware and specific
   # portions of shared memory. This is required for sound using ALSA with kvm,
@@ -42,6 +39,9 @@
   # 'kill' is not required for sound and is a security risk. Do not enable
   # unless you absolutely need it.
   deny capability kill,
+
+  # Uncomment the following if you need access to /dev/fb*
+  #/dev/fb* rw,
 
   /etc/pulse/client.conf r,
   @{HOME}/.pulse-cookie rwk,
