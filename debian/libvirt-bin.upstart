@@ -9,9 +9,8 @@ respawn
 
 pre-start script
 	mkdir -p /var/run/libvirt
-	if ! pidof /usr/sbin/libvirtd >/dev/null; then
-		rm -f /var/run/libvirtd.pid
-	fi
+	# Clean up a pidfile that might be left around
+	rm -f /var/run/libvirtd.pid
 end script
 
 # If you used to set $libvirtd_opts in /etc/default/libvirt-bin,
