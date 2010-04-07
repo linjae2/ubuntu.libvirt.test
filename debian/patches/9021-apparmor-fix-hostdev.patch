@@ -1,0 +1,132 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: adjust virt-aa-helper to handle pci devices. Update valid_path()
+ to have an override array to check against, and add "/sys/devices/pci" to it.
+ Then rename file_iterate_cb() to file_iterate_hostdev_cb() and create
+ file_iterate_pci_cb() based on it.
+Bug-Ubuntu: https://launchpad.net/bugs/545795
+Forwarded: Yes
+
+Index: libvirt-0.7.5/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-0.7.5.orig/src/security/virt-aa-helper.c	2010-04-05 19:53:35.000000000 -0500
++++ libvirt-0.7.5/src/security/virt-aa-helper.c	2010-04-05 19:53:35.000000000 -0500
+@@ -490,7 +490,7 @@
+ valid_path(const char *path, const bool readonly)
+ {
+     struct stat sb;
+-    int npaths;
++    int npaths, opaths;
+     const char * const restricted[] = {
+         "/bin/",
+         "/etc/",
+@@ -516,6 +516,10 @@
+         "/initrd",
+         "/initrd.img"
+     };
++    /* override the above with these */
++    const char * const override[] = {
++        "/sys/devices/pci"	/* for hostdev pci devices */
++    };
+ 
+     if (path == NULL || strlen(path) > PATH_MAX - 1) {
+         vah_error(NULL, 0, "bad pathname");
+@@ -553,9 +557,12 @@
+         }
+     }
+ 
++    opaths = sizeof(override)/sizeof *(override);
++
+     npaths = sizeof(restricted)/sizeof *(restricted);
+-    if (array_starts_with(path, restricted, npaths) == 0)
+-        return 1;
++    if (array_starts_with(path, restricted, npaths) == 0 &&
++        array_starts_with(path, override, opaths) != 0)
++            return 1;
+ 
+     npaths = sizeof(restricted_rw)/sizeof *(restricted_rw);
+     if (!readonly) {
+@@ -778,9 +785,18 @@
+ }
+ 
+ static int
+-file_iterate_cb(virConnectPtr conn ATTRIBUTE_UNUSED,
+-                usbDevice *dev ATTRIBUTE_UNUSED,
+-                const char *file, void *opaque)
++file_iterate_hostdev_cb(virConnectPtr conn ATTRIBUTE_UNUSED,
++                        usbDevice *dev ATTRIBUTE_UNUSED,
++                        const char *file, void *opaque)
++{
++    virBufferPtr buf = opaque;
++    return vah_add_file(buf, file, "rw");
++}
++
++static int
++file_iterate_pci_cb(virConnectPtr conn ATTRIBUTE_UNUSED,
++                        usbDevice *dev ATTRIBUTE_UNUSED,
++                        const char *file, void *opaque)
+ {
+     virBufferPtr buf = opaque;
+     return vah_add_file(buf, file, "rw");
+@@ -825,7 +841,7 @@
+                 path = NULL;
+ 
+                 if (ret < 0) {
+-                    vah_warning("skipping backingStore check (open failed)");
++                    vah_warning("could not open path, skipping");
+                     continue;
+                 }
+ 
+@@ -890,13 +906,12 @@
+                     continue;
+ 
+                 rc = usbDeviceFileIterate(NULL, usb,
+-                                          file_iterate_cb, &buf);
++                                          file_iterate_hostdev_cb, &buf);
+                 usbFreeDevice(NULL, usb);
+                 if (rc != 0)
+                     goto clean;
+                 break;
+             }
+-/* TODO: update so files in /sys are readonly
+             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
+                 pciDevice *pci = pciGetDevice(NULL,
+                            dev->source.subsys.u.pci.domain,
+@@ -907,12 +922,12 @@
+                 if (pci == NULL)
+                     continue;
+ 
+-                rc = pciDeviceFileIterate(NULL, pci, file_iterate_cb, &buf);
++                rc = pciDeviceFileIterate(NULL, pci, file_iterate_pci_cb, &buf);
+                 pciFreeDevice(NULL, pci);
+ 
+                 break;
+             }
+-*/
++
+             default:
+                 rc = 0;
+                 break;
+Index: libvirt-0.7.5/tests/virt-aa-helper-test
+===================================================================
+--- libvirt-0.7.5.orig/tests/virt-aa-helper-test	2010-04-05 19:54:36.000000000 -0500
++++ libvirt-0.7.5/tests/virt-aa-helper-test	2010-04-05 19:54:57.000000000 -0500
+@@ -204,7 +204,8 @@
+     cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</disk>,</disk><hostdev mode='subsystem' type='usb'><source><address bus='002' device='004'/></source></hostdev>,g" > "$test_xml"
+     testme "0" "create hostdev (USB)" "-c -u $valid_uuid" "$test_xml"
+ 
+-    cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</disk>,</disk><hostdev mode='subsystem' type='pci'><source><address bus='0x00' slot='0x00' function='0x0'/></source></hostdev>,g" > "$test_xml"
++    cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</disk>,</disk><hostdev mode='subsystem' type='pci'><source><address bus='0x00' slot='0x19' function='0x0'/></source></hostdev>,g" > "$test_xml"
++
+     testme "0" "create hostdev (PCI)" "-c -u $valid_uuid" "$test_xml"
+ fi
+ 
+@@ -265,6 +266,9 @@
+ cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</os>,<initrd>/initrd.img</initrd></os>,g" > "$test_xml"
+ testme "0" "initrd is /initrd.img" "-r -u $valid_uuid" "$test_xml"
+ 
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,<graphics*,<graphics type='sdl' display=':0.0' xauth='/home/myself/.Xauthority'/>,g" > "$test_xml"
++testme "0" "sdl Xauthority" "-r -u $valid_uuid" "$test_xml"
++
+ testme "0" "help" "-h"
+ 
+ echo "" >$output
