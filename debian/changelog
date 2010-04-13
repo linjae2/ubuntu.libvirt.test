@@ -1,3 +1,10 @@
+libvirt (0.7.5-5ubuntu22) lucid; urgency=low
+
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow ro access to files
+    in /mnt, /media and /srv
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 13 Apr 2010 08:27:46 -0500
+
 libvirt (0.7.5-5ubuntu21) lucid; urgency=low
 
   * debian/libvirt-bin.upstart: simplify pidfile cleanup logic,

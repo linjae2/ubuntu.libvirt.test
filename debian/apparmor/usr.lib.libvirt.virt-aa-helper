@@ -26,7 +26,7 @@
   /etc/apparmor.d/libvirt/libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]* rw,
 
   # for backingstore -- allow access to non-hidden files in @{HOME} as well
-  # as storage pools
+  # as storage pools, and removable media and filesystems
   audit deny @{HOME}/.* mrwkl,
   audit deny @{HOME}/.*/ rw,
   audit deny @{HOME}/.*/** mrwkl,
@@ -36,4 +36,7 @@
   @{HOME}/** r,
   /var/lib/libvirt/images/ r,
   /var/lib/libvirt/images/** r,
+  /media/** r,
+  /mnt/** r,
+  /srv/** r,
 }
