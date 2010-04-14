@@ -1,3 +1,10 @@
+libvirt (0.7.5-5ubuntu23) lucid; urgency=low
+
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: also allow /opt but deny
+    access to /dev to suppress confusing, non-fatal profile denials.
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 14 Apr 2010 07:36:13 -0500
+
 libvirt (0.7.5-5ubuntu22) lucid; urgency=low
 
   * debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow ro access to files
