@@ -27,18 +27,21 @@
 
   # For backingstore, virt-aa-helper needs to peek inside the disk image, so
   # allow access to non-hidden files in @{HOME} as well as storage pools, and
-  # removable media and filesystems. A virt-aa-helper failure when checking a
-  # disk for backinsgstore is non-fatal (but obviously the backingstore won't
-  # be added).
+  # removable media and filesystems, and certain file extentions. A
+  # virt-aa-helper failure when checking a disk for backinsgstore is non-fatal
+  # (but obviously the backingstore won't be added).
   audit deny @{HOME}/.* mrwkl,
   audit deny @{HOME}/.*/ rw,
   audit deny @{HOME}/.*/** mrwkl,
-  audit deny @{HOME}/bin/ rw,
-  audit deny @{HOME}/bin/** mrwkl,
   @{HOME}/ r,
   @{HOME}/** r,
+
   /var/lib/libvirt/images/ r,
   /var/lib/libvirt/images/** r,
   /{media,mnt,opt,srv}/** r,
-  deny /dev/** mrwkl,
+
+  /**.img r,
+  /**.qcow{,2} r,
+  /**.vmdk r,
+  /**.[iI][sS][oO] r,
 }
