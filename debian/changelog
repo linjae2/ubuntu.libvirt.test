@@ -1,3 +1,22 @@
+libvirt (0.8.0-2) unstable; urgency=low
+
+  * [70fbcb6] New patch 0007-nwfilter-Don-t-crash-if-driverState- NULL.patch
+    nwfilter: Don't crash if driverState == NULL (Closes: #577728)
+  * [d7d1abd] New patch 0008-Ignore-empty-type-statement-in-disk-
+    element.patch Ignore empty type statement in disk element
+    (Closes: #578347)
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 19 Apr 2010 18:11:57 +0200
+
+libvirt (0.8.0-1) unstable; urgency=low
+
+  * Imported Upstream version 0.8.0
+  * Drop patches.
+  * Update libvirt0 symbols.
+  * Switch to new source format 3.0 (quilt).
+
+ -- Laurent Léonard <laurent@open-minds.org>  Tue, 13 Apr 2010 20:50:29 +0200
+
 libvirt (0.7.7-4) unstable; urgency=low
 
   [ Guido Günther ]
