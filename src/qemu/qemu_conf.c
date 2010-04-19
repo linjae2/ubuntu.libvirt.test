@@ -2459,7 +2459,7 @@ qemuBuildDriveStr(virDomainDiskDefPtr disk,
     if (disk->readonly &&
         qemuCmdFlags & QEMUD_CMD_FLAG_DEVICE)
         virBufferAddLit(&opt, ",readonly=on");
-    if (disk->driverType &&
+    if (disk->driverType && strlen(disk->driverType) &&
         disk->type != VIR_DOMAIN_DISK_TYPE_DIR &&
         qemuCmdFlags & QEMUD_CMD_FLAG_DRIVE_FORMAT)
         virBufferVSprintf(&opt, ",format=%s", disk->driverType);
