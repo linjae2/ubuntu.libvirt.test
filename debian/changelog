@@ -1,3 +1,12 @@
+libvirt (0.7.5-5ubuntu26) lucid; urgency=low
+
+  * debian/patches/9022-dont-leak-log-fd.path.patch: Fix FD leak in
+    qemudStartVMDaemon (LP: #567392)
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: update paths for LVM
+    volumes and searching /sys/bus/usb/devices/ (LP: #565691)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 20 Apr 2010 13:45:12 -0500
+
 libvirt (0.7.5-5ubuntu25) lucid; urgency=low
 
   * debian/apparmor/usr.lib.libvirt.virt-aa-helper: update paths for

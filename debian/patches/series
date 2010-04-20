@@ -30,3 +30,4 @@
 9019-apparmor-fix-xauth.patch
 9020-apparmor-fix-backingstore.patch
 9021-apparmor-fix-hostdev.patch
+9022-dont-leak-log-fd.path.patch
