@@ -1,0 +1,16 @@
+Origin: http://libvirt.org/git/?p=libvirt.git;a=commit;h=caad0a878337b52c4453444bb227b74cce6e6d5f
+Description: qemu: Fix FD leak in qemudStartVMDaemon
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/567392
+diff -Nur libvirt-0.7.5/src/qemu/qemu_driver.c libvirt-0.7.5.new/src/qemu/qemu_driver.c
+--- libvirt-0.7.5/src/qemu/qemu_driver.c	2010-04-20 13:38:05.868030650 -0500
++++ libvirt-0.7.5.new/src/qemu/qemu_driver.c	2010-04-20 13:40:05.121886018 -0500
+@@ -2588,6 +2588,9 @@
+     if (virDomainSaveStatus(conn, driver->caps, driver->stateDir, vm) < 0)
+         goto abort;
+ 
++    if (logfile != -1)
++        close(logfile);
++
+     return 0;
+ 
+ cleanup:

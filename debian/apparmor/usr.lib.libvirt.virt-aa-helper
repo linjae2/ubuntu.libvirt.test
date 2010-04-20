@@ -18,6 +18,10 @@
   # for hostdev
   /sys/devices/ r,
   /sys/devices/** r,
+  /sys/bus/usb/devices/ r,
+  deny /dev/sd* r,
+  deny /dev/mapper/ r,
+  deny /dev/mapper/* r,
 
   /usr/lib/libvirt/virt-aa-helper mr,
   /sbin/apparmor_parser Ux,
