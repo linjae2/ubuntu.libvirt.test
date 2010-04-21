@@ -26,7 +26,7 @@ case "$1" in
 
 	# Add each admin user to the libvirtd group
 	for u in $(grep "^admin:" /etc/group | sed -e "s/^.*://" -e "s/,/ /g"); do
-		adduser "$u" libvirtd >/dev/null
+		adduser "$u" libvirtd >/dev/null || true
 	done
 
 	# user and group libvirt runs qemu/kvm instances with

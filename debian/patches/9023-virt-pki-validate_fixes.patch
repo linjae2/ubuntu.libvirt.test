@@ -1,0 +1,80 @@
+portability fixes to tools/virt-pki-validate.in
+
+A few fixes will help make tools/virt-pki-validate.in useful on Debian and Ubuntu.  And one fix should be useful to everyone (see #4).
+
+ 1) note our gnutls-bin package (in addition to your gnutls-utils package) in the no-certtool error text
+
+ 2) adjust the ORG-setting sed regular expressions to work with both Red Hat and Ubuntu style cacert.pem Issuer format
+
+ 3) fix a bashism, == should be = in the case where /bin/sh is a symlink to dash
+
+ 4) $(SYSCONFDIR) cannot evaluate; set a single shell SYSCONFDIR variable to the autoconf @SYSCONFDIR@ value, and use $SYSCONFDIR everywhere
+
+This was tested against gnutls 2.8.5.  And against both Red Hat and Ubuntu cacert.pem files.  Credit Jamie Strandboge with the regular expression changes.
+
+Bug report:
+ * https://bugs.edge.launchpad.net/ubuntu/+source/libvirt/+bug/562266
+
+Signed-off-by: Dustin Kirkland <kirkland@canonical.com>
+
+diff -uprN libvirt-0.7.5/tools/virt-pki-validate.in libvirt-0.7.5.new/tools/virt-pki-validate.in
+--- libvirt-0.7.5/tools/virt-pki-validate.in	2009-12-22 03:37:57.000000000 -0600
++++ libvirt-0.7.5.new/tools/virt-pki-validate.in	2010-04-21 15:42:04.677879001 -0500
+@@ -16,8 +16,8 @@ PORT=16514
+ CERTOOL=`which certtool 2>/dev/null`
+ if [ ! -x $CERTOOL ]
+ then
+-    echo Could not locate the certtool program
+-    echo make sure the gnutls-utils package is installed
++    echo "Could not locate the certtool program"
++    echo "make sure the gnutls-utils (or gnutls-bin) package is installed"
+     exit 1
+ fi
+ echo Found $CERTOOL
+@@ -25,7 +25,8 @@ echo Found $CERTOOL
+ #
+ # Check the directory structure
+ #
+-PKI="$(SYSCONFDIR)/pki"
++SYSCONFDIR="@SYSCONFDIR@"
++PKI="$SYSCONFDIR/pki"
+ if [ ! -d $PKI ]
+ then
+     echo the $PKI directory is missing, it is usually
+@@ -129,8 +130,8 @@ then
+     echo "as root do: chmod 644 $CA/cacert.pem"
+     exit 1
+ fi
+-ORG=`$CERTOOL -i --infile $CA/cacert.pem | grep Issuer | sed 's+Issuer: CN=++'`
+-if [ "$ORG" == "" ]
++ORG=`$CERTOOL -i --infile $CA/cacert.pem | grep Issuer | sed -e 's+\s*Issuer: .*CN=++' -e 's+,EMAIL=.*++'`
++if [ "$ORG" = "" ]
+ then
+     echo the CA certificate $CA/cacert.pem does not define the organization
+     echo it should probably regenerated
+@@ -240,19 +241,19 @@ fi
+ 
+ if [ "$SERVER" = "1" ]
+ then
+-    if [ -r $(SYSCONFDIR)/sysconfig/libvirtd ]
++    if [ -r $SYSCONFDIR/sysconfig/libvirtd ]
+     then
+-        if [ "`grep '^LIBVIRTD_ARGS' $(SYSCONFDIR)/sysconfig/libvirtd | grep -- '--listen'`" = "" ]
++        if [ "`grep '^LIBVIRTD_ARGS' $SYSCONFDIR/sysconfig/libvirtd | grep -- '--listen'`" = "" ]
+ 	then
+-	    echo Make sure $(SYSCONFDIR)/sysconfig/libvirtd is setup to listen to
++	    echo Make sure $SYSCONFDIR/sysconfig/libvirtd is setup to listen to
+ 	    echo TCP/IP connections and restart the libvirtd service
+ 	fi
+     fi
+-    if [ -r $(SYSCONFDIR)/sysconfig/iptables ]
++    if [ -r $SYSCONFDIR/sysconfig/iptables ]
+     then
+-        if [ "`grep $PORT $(SYSCONFDIR)/sysconfig/iptables`" = "" ]
++        if [ "`grep $PORT $SYSCONFDIR/sysconfig/iptables`" = "" ]
+ 	then
+-	    echo Make sure $(SYSCONFDIR)/sysconfig/iptables is setup to allow
++	    echo Make sure $SYSCONFDIR/sysconfig/iptables is setup to allow
+ 	    echo incoming TCP/IP connections on port $PORT and
+ 	    echo restart the iptables service
+ 	fi
