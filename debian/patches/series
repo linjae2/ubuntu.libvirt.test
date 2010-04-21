@@ -31,3 +31,4 @@
 9020-apparmor-fix-backingstore.patch
 9021-apparmor-fix-hostdev.patch
 9022-dont-leak-log-fd.path.patch
+9023-virt-pki-validate_fixes.patch
