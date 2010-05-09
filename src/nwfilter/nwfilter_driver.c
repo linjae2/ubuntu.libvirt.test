@@ -70,6 +70,8 @@ nwfilterDriverStartup(int privileged) {
     if (virNWFilterLearnInit() < 0)
         return -1;
 
+    virNWFilterTechDriversInit();
+
     if (virNWFilterConfLayerInit(virNWFilterDomainFWUpdateCB) < 0)
         goto conf_init_err;
 
@@ -126,6 +128,7 @@ alloc_err_exit:
     virNWFilterConfLayerShutdown();
 
 conf_init_err:
+    virNWFilterTechDriversShutdown();
     virNWFilterLearnShutdown();
 
     return -1;
@@ -381,10 +384,12 @@ cleanup:
 
 static char *
 nwfilterDumpXML(virNWFilterPtr obj,
-                unsigned int flags ATTRIBUTE_UNUSED) {
+                unsigned int flags) {
     virNWFilterDriverStatePtr driver = obj->conn->nwfilterPrivateData;
     virNWFilterPoolObjPtr pool;
     char *ret = NULL;
+
+    virCheckFlags(0, NULL);
 
     nwfilterDriverLock(driver);
     pool = virNWFilterPoolObjFindByUUID(&driver->pools, obj->uuid);
