@@ -1,0 +1,22 @@
+Index: libvirt-0.7.5/src/node_device/node_device_udev.c
+===================================================================
+--- libvirt-0.7.5.orig/src/node_device/node_device_udev.c	2010-05-25 02:26:36.000000000 +1200
++++ libvirt-0.7.5/src/node_device/node_device_udev.c	2010-05-25 02:29:35.000000000 +1200
+@@ -1247,6 +1247,9 @@
+     ret = 0;
+ 
+ out:
++    if (ret != 0) {
++       virNodeDeviceDefFree(def); /* Free assigned memory to prevent leaks */
++    }
+     return ret;
+ }
+ 
+@@ -1373,6 +1376,7 @@
+     }
+ 
+ out:
++    udev_device_unref(device);
+     return;
+ }
+ 
