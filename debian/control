@@ -26,8 +26,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, libvirt0 (= ${binary:Versi
  bridge-utils, netcat-openbsd, dnsmasq-base (>= 2.46-1), iptables
 Enhances: qemu, kvm, xen
 Section: admin
-Recommends: qemu-kvm (>= 0.11.0-0ubuntu6)
-Suggests: policykit-1, apparmor (>= 2.3+1289-0ubuntu14)
+Suggests: policykit-1, apparmor (>= 2.3+1289-0ubuntu14), qemu-kvm (>= 0.11.0-0ubuntu6)
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -41,7 +40,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Conflicts: libvirt0-dbg (<< 0.4.2-6ubuntu1)
 Replaces: libvirt0-dbg (<< 0.4.2-6ubuntu1)
-Recommends: lvm2
+Suggests: lvm2
 Description: library for interfacing with different virtualization systems
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
