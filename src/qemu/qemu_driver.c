@@ -3360,7 +3360,7 @@ static int qemudStartVMDaemon(virConnectPtr conn,
 
     ret = virExecDaemonize(argv, progenv, &keepfd, &child,
                            stdin_fd, &logfile, &logfile,
-                           VIR_EXEC_NONBLOCK | VIR_EXEC_CLEAR_CAPS,
+                           VIR_EXEC_NONBLOCK /* | VIR_EXEC_CLEAR_CAPS */,
                            qemudSecurityHook, &hookData,
                            pidfile);
     VIR_FREE(pidfile);
