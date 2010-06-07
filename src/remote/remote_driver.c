@@ -736,7 +736,7 @@ doRemoteOpen (virConnectPtr conn,
     }
 
     case trans_ssh: {
-        int j, nr_args = 6;
+        int j, nr_args = 8;
 
         if (username) nr_args += 2; /* For -l username */
         if (no_tty) nr_args += 5;   /* For -T -o BatchMode=yes -e none */
@@ -770,6 +770,8 @@ doRemoteOpen (virConnectPtr conn,
         }
         cmd_argv[j++] = strdup (priv->hostname);
         cmd_argv[j++] = strdup (netcat ? netcat : "nc");
+        cmd_argv[j++] = strdup ("-q");
+        cmd_argv[j++] = strdup ("0");
         cmd_argv[j++] = strdup ("-U");
         cmd_argv[j++] = strdup (sockname ? sockname :
                                 (flags & VIR_CONNECT_RO
