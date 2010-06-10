@@ -1,3 +1,10 @@
+libvirt (0.7.5-5ubuntu29) maverick; urgency=low
+
+  * debian/apparmor/libvirt-qemu: allow setgid and setuid so qemu can drop
+    privileges (LP: #579584)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 10 Jun 2010 13:09:44 -0500
+
 libvirt (0.7.5-5ubuntu28) maverick; urgency=low
 
   * debian/control: lower qemu-kvm and lvm2 from Recommends to Suggests,
