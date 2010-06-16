@@ -2183,7 +2183,7 @@ ebiptablesDisplayRuleInstance(virConnectPtr conn ATTRIBUTE_UNUSED,
  */
 static char *
 ebiptablesWriteToTempFile(const char *string) {
-    char filename[] = "/tmp/virtdXXXXXX";
+    char filename[] = LOCAL_STATE_DIR "/lib/libvirt/virtdXXXXXX";
     int len;
     char *filnam;
     virBuffer buf = VIR_BUFFER_INITIALIZER;

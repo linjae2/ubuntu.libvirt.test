@@ -1,0 +1,11 @@
+diff -Nur libvirt-0.7.5/src/network/default.xml libvirt-0.7.5.new/src/network/default.xml
+--- libvirt-0.7.5/src/network/default.xml	2009-12-22 03:37:57.000000000 -0600
++++ libvirt-0.7.5.new/src/network/default.xml	2010-01-22 14:44:06.549525060 -0600
+@@ -1,6 +1,6 @@
+ <network>
+   <name>default</name>
+-  <bridge name="virbr0" />
++  <bridge name="virbr%d" />
+   <forward/>
+   <ip address="192.168.122.1" netmask="255.255.255.0">
+     <dhcp>

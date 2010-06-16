@@ -1,0 +1,325 @@
+Description: support save and restore
+Author: Jamie Strandboge <jamie@canonical.com>
+Origin:
+ http://libvirt.org/git/?p=libvirt.git;a=patch;h=2b57478ef0a0a983cc6a47b98300c8359f9708d0
+ http://libvirt.org/git/?p=libvirt.git;a=patch;h=97b68a4943cf286be73b48aaf840103605a6a218
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/457716
+Forwarded: yes
+
+Index: libvirt-0.8.1/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-0.8.1.orig/src/qemu/qemu_driver.c	2010-06-15 16:31:34.000000000 -0500
++++ libvirt-0.8.1/src/qemu/qemu_driver.c	2010-06-15 16:42:41.000000000 -0500
+@@ -148,7 +148,8 @@
+                               struct qemud_driver *driver,
+                               virDomainObjPtr vm,
+                               const char *migrateFrom,
+-                              int stdin_fd);
++                              int stdin_fd,
++                              const char *stdin_path);
+ 
+ static void qemudShutdownVMDaemon(struct qemud_driver *driver,
+                                   virDomainObjPtr vm);
+@@ -629,7 +630,7 @@
+         int ret;
+ 
+         virResetLastError();
+-        ret = qemudStartVMDaemon(data->conn, data->driver, vm, NULL, -1);
++        ret = qemudStartVMDaemon(data->conn, data->driver, vm, NULL, -1, NULL);
+         if (ret < 0) {
+             virErrorPtr err = virGetLastError();
+             VIR_ERROR(_("Failed to autostart VM '%s': %s"),
+@@ -3141,7 +3142,8 @@
+                               struct qemud_driver *driver,
+                               virDomainObjPtr vm,
+                               const char *migrateFrom,
+-                              int stdin_fd) {
++                              int stdin_fd,
++                              const char *stdin_path) {
+     const char **argv = NULL, **tmp;
+     const char **progenv = NULL;
+     int i, ret;
+@@ -3189,7 +3191,7 @@
+     DEBUG0("Generating setting domain security labels (if required)");
+     if (driver->securityDriver &&
+         driver->securityDriver->domainSetSecurityAllLabel &&
+-        driver->securityDriver->domainSetSecurityAllLabel(vm) < 0)
++        driver->securityDriver->domainSetSecurityAllLabel(vm, stdin_path) < 0)
+         goto cleanup;
+ 
+     /* Ensure no historical cgroup for this VM is lying around bogus
+@@ -4051,7 +4053,7 @@
+     if (qemuDomainObjBeginJobWithDriver(driver, vm) < 0)
+         goto cleanup; /* XXXX free the 'vm' we created ? */
+ 
+-    if (qemudStartVMDaemon(conn, driver, vm, NULL, -1) < 0) {
++    if (qemudStartVMDaemon(conn, driver, vm, NULL, -1, NULL) < 0) {
+         if (qemuDomainObjEndJob(vm) > 0)
+             virDomainRemoveInactive(&driver->domains,
+                                     vm);
+@@ -5991,7 +5993,7 @@
+         }
+     }
+     /* Set the migration source and start it up. */
+-    ret = qemudStartVMDaemon(conn, driver, vm, "stdio", fd);
++    ret = qemudStartVMDaemon(conn, driver, vm, "stdio", fd, path);
+     if (intermediate_pid != -1) {
+         /* Wait for intermediate process to exit */
+         while (waitpid(intermediate_pid, &childstat, 0) == -1 &&
+@@ -6416,7 +6418,7 @@
+         virDomainObjLock(vm);
+     }
+ 
+-    ret = qemudStartVMDaemon(dom->conn, driver, vm, NULL, -1);
++    ret = qemudStartVMDaemon(dom->conn, driver, vm, NULL, -1, NULL);
+     if (ret != -1)
+         event = virDomainEventNewFromObj(vm,
+                                          VIR_DOMAIN_EVENT_STARTED,
+@@ -9637,7 +9639,7 @@
+     /* Start the QEMU daemon, with the same command-line arguments plus
+      * -incoming unix:/path/to/file or exec:nc -U /path/to/file
+      */
+-    internalret = qemudStartVMDaemon(dconn, driver, vm, migrateFrom, -1);
++    internalret = qemudStartVMDaemon(dconn, driver, vm, migrateFrom, -1, NULL);
+     VIR_FREE(migrateFrom);
+     if (internalret < 0) {
+         /* Note that we don't set an error here because qemudStartVMDaemon
+@@ -9842,7 +9844,7 @@
+      * -incoming tcp:0.0.0.0:port
+      */
+     snprintf (migrateFrom, sizeof (migrateFrom), "tcp:0.0.0.0:%d", this_port);
+-    if (qemudStartVMDaemon (dconn, driver, vm, migrateFrom, -1) < 0) {
++    if (qemudStartVMDaemon (dconn, driver, vm, migrateFrom, -1, NULL) < 0) {
+         /* Note that we don't set an error here because qemudStartVMDaemon
+          * should have already done that.
+          */
+@@ -11282,7 +11284,7 @@
+                 goto endjob;
+ 
+             rc = qemudStartVMDaemon(snapshot->domain->conn, driver, vm, NULL,
+-                                    -1);
++                                    -1, NULL);
+             if (qemuDomainSnapshotSetInactive(vm, driver->snapshotDir) < 0)
+                 goto endjob;
+             if (rc < 0)
+Index: libvirt-0.8.1/src/qemu/qemu_security_dac.c
+===================================================================
+--- libvirt-0.8.1.orig/src/qemu/qemu_security_dac.c	2010-06-15 16:31:40.000000000 -0500
++++ libvirt-0.8.1/src/qemu/qemu_security_dac.c	2010-06-15 16:32:30.000000000 -0500
+@@ -340,7 +340,7 @@
+ 
+ 
+ static int
+-qemuSecurityDACSetSecurityAllLabel(virDomainObjPtr vm)
++qemuSecurityDACSetSecurityAllLabel(virDomainObjPtr vm, const char *stdin_path ATTRIBUTE_UNUSED)
+ {
+     int i;
+ 
+Index: libvirt-0.8.1/src/qemu/qemu_security_stacked.c
+===================================================================
+--- libvirt-0.8.1.orig/src/qemu/qemu_security_stacked.c	2010-06-15 16:31:46.000000000 -0500
++++ libvirt-0.8.1/src/qemu/qemu_security_stacked.c	2010-06-15 16:32:30.000000000 -0500
+@@ -196,18 +196,18 @@
+ 
+ 
+ static int
+-qemuSecurityStackedSetSecurityAllLabel(virDomainObjPtr vm)
++qemuSecurityStackedSetSecurityAllLabel(virDomainObjPtr vm, const char *stdin_path)
+ {
+     int rc = 0;
+ 
+     if (driver->securitySecondaryDriver &&
+         driver->securitySecondaryDriver->domainSetSecurityAllLabel &&
+-        driver->securitySecondaryDriver->domainSetSecurityAllLabel(vm) < 0)
++        driver->securitySecondaryDriver->domainSetSecurityAllLabel(vm, stdin_path) < 0)
+         rc = -1;
+ 
+     if (driver->securityPrimaryDriver &&
+         driver->securityPrimaryDriver->domainSetSecurityAllLabel &&
+-        driver->securityPrimaryDriver->domainSetSecurityAllLabel(vm) < 0)
++        driver->securityPrimaryDriver->domainSetSecurityAllLabel(vm, stdin_path) < 0)
+         rc = -1;
+ 
+     return rc;
+Index: libvirt-0.8.1/src/security/security_apparmor.c
+===================================================================
+--- libvirt-0.8.1.orig/src/security/security_apparmor.c	2010-06-15 16:32:03.000000000 -0500
++++ libvirt-0.8.1/src/security/security_apparmor.c	2010-06-15 16:44:58.000000000 -0500
+@@ -149,7 +149,7 @@
+  */
+ static int
+ load_profile(const char *profile, virDomainObjPtr vm,
+-             virDomainDiskDefPtr disk)
++             const char *fn)
+ {
+     int rc = -1, status, ret;
+     bool create = true;
+@@ -175,9 +175,9 @@
+         };
+         ret = virExec(argv, NULL, NULL, &child,
+                       pipefd[0], NULL, NULL, VIR_EXEC_NONE);
+-    } else if (disk && disk->src) {
++    } else if (fn) {
+         const char *const argv[] = {
+-            VIRT_AA_HELPER, "-r", "-u", profile, "-f", disk->src, NULL
++            VIRT_AA_HELPER, "-r", "-u", profile, "-f", fn, NULL
+         };
+         ret = virExec(argv, NULL, NULL, &child,
+                       pipefd[0], NULL, NULL, VIR_EXEC_NONE);
+@@ -277,6 +277,40 @@
+     return rc;
+ }
+ 
++/* reload the profile, adding read/write file specified by fn if it is not
++ * NULL.
++ */
++static int
++reload_profile(virDomainObjPtr vm, const char *fn)
++{
++    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
++    int rc = -1;
++    char *profile_name = NULL;
++
++    if (secdef->type == VIR_DOMAIN_SECLABEL_STATIC)
++        return 0;
++
++    if ((profile_name = get_profile_name(vm)) == NULL)
++        return rc;
++
++    /* Update the profile only if it is loaded */
++    if (profile_loaded(secdef->imagelabel) >= 0) {
++        if (load_profile(secdef->imagelabel, vm, fn) < 0) {
++            virSecurityReportError(VIR_ERR_INTERNAL_ERROR,
++                                   _("cannot update AppArmor profile "
++                                     "\'%s\'"),
++                                   secdef->imagelabel);
++            goto clean;
++        }
++    }
++
++    rc = 0;
++  clean:
++    VIR_FREE(profile_name);
++
++    return rc;
++}
++
+ /* Called on libvirtd startup to see if AppArmor is available */
+ static int
+ AppArmorSecurityDriverProbe(void)
+@@ -377,14 +411,14 @@
+ }
+ 
+ static int
+-AppArmorSetSecurityAllLabel(virDomainObjPtr vm)
++AppArmorSetSecurityAllLabel(virDomainObjPtr vm, const char *stdin_path)
+ {
+     if (vm->def->seclabel.type == VIR_DOMAIN_SECLABEL_STATIC)
+         return 0;
+ 
+     /* if the profile is not already loaded, then load one */
+     if (profile_loaded(vm->def->seclabel.label) < 0) {
+-        if (load_profile(vm->def->seclabel.label, vm, NULL) < 0) {
++        if (load_profile(vm->def->seclabel.label, vm, stdin_path) < 0) {
+             virSecurityReportError(VIR_ERR_INTERNAL_ERROR,
+                                    _("cannot generate AppArmor profile "
+                                    "\'%s\'"), vm->def->seclabel.label);
+@@ -501,32 +535,7 @@
+ AppArmorRestoreSecurityImageLabel(virDomainObjPtr vm,
+                                   virDomainDiskDefPtr disk ATTRIBUTE_UNUSED)
+ {
+-    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
+-    int rc = -1;
+-    char *profile_name = NULL;
+-
+-    if (secdef->type == VIR_DOMAIN_SECLABEL_STATIC)
+-        return 0;
+-
+-    if ((profile_name = get_profile_name(vm)) == NULL)
+-        return rc;
+-
+-    /* Update the profile only if it is loaded */
+-    if (profile_loaded(secdef->imagelabel) >= 0) {
+-        if (load_profile(secdef->imagelabel, vm, NULL) < 0) {
+-            virSecurityReportError(VIR_ERR_INTERNAL_ERROR,
+-                                   _("cannot update AppArmor profile "
+-                                     "\'%s\'"),
+-                                   secdef->imagelabel);
+-            goto clean;
+-        }
+-    }
+-
+-    rc = 0;
+-  clean:
+-    VIR_FREE(profile_name);
+-
+-    return rc;
++    return reload_profile(vm, NULL);
+ }
+ 
+ /* Called when hotplugging */
+@@ -556,7 +565,7 @@
+ 
+         /* update the profile only if it is loaded */
+         if (profile_loaded(secdef->imagelabel) >= 0) {
+-            if (load_profile(secdef->imagelabel, vm, disk) < 0) {
++            if (load_profile(secdef->imagelabel, vm, disk->src) < 0) {
+                 virSecurityReportError(VIR_ERR_INTERNAL_ERROR,
+                                      _("cannot update AppArmor profile "
+                                      "\'%s\'"),
+@@ -623,6 +632,21 @@
+     return 0;
+ }
+ 
++static int
++AppArmorSetSavedStateLabel(virDomainObjPtr vm,
++                          const char *savefile)
++{
++    return reload_profile(vm, savefile);
++}
++
++
++static int
++AppArmorRestoreSavedStateLabel(virDomainObjPtr vm,
++                               const char *savefile ATTRIBUTE_UNUSED)
++{
++    return reload_profile(vm, NULL);
++}
++
+ virSecurityDriver virAppArmorSecurityDriver = {
+     .name = SECURITY_APPARMOR_NAME,
+     .probe = AppArmorSecurityDriverProbe,
+@@ -639,4 +663,6 @@
+     .domainSetSecurityAllLabel = AppArmorSetSecurityAllLabel,
+     .domainSetSecurityHostdevLabel = AppArmorSetSecurityHostdevLabel,
+     .domainRestoreSecurityHostdevLabel = AppArmorRestoreSecurityHostdevLabel,
++    .domainSetSavedStateLabel = AppArmorSetSavedStateLabel,
++    .domainRestoreSavedStateLabel = AppArmorRestoreSavedStateLabel,
+ };
+Index: libvirt-0.8.1/src/security/security_driver.h
+===================================================================
+--- libvirt-0.8.1.orig/src/security/security_driver.h	2010-06-15 16:31:52.000000000 -0500
++++ libvirt-0.8.1/src/security/security_driver.h	2010-06-15 16:44:34.000000000 -0500
+@@ -45,7 +45,8 @@
+ typedef int (*virSecurityDomainGenLabel) (virDomainObjPtr sec);
+ typedef int (*virSecurityDomainReserveLabel) (virDomainObjPtr sec);
+ typedef int (*virSecurityDomainReleaseLabel) (virDomainObjPtr sec);
+-typedef int (*virSecurityDomainSetAllLabel) (virDomainObjPtr sec);
++typedef int (*virSecurityDomainSetAllLabel) (virDomainObjPtr sec,
++                                             const char *stdin_path);
+ typedef int (*virSecurityDomainRestoreAllLabel) (virDomainObjPtr vm);
+ typedef int (*virSecurityDomainGetProcessLabel) (virDomainObjPtr vm,
+                                                  virSecurityLabelPtr sec);
+Index: libvirt-0.8.1/src/security/security_selinux.c
+===================================================================
+--- libvirt-0.8.1.orig/src/security/security_selinux.c	2010-06-15 16:31:57.000000000 -0500
++++ libvirt-0.8.1/src/security/security_selinux.c	2010-06-15 16:32:30.000000000 -0500
+@@ -730,7 +730,7 @@
+ }
+ 
+ static int
+-SELinuxSetSecurityAllLabel(virDomainObjPtr vm)
++SELinuxSetSecurityAllLabel(virDomainObjPtr vm, const char *stdin_path ATTRIBUTE_UNUSED)
+ {
+     const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
+     int i;
