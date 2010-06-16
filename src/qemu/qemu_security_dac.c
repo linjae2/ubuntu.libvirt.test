@@ -340,7 +340,7 @@ qemuSecurityDACRestoreSecurityAllLabel(virDomainObjPtr vm)
 
 
 static int
-qemuSecurityDACSetSecurityAllLabel(virDomainObjPtr vm)
+qemuSecurityDACSetSecurityAllLabel(virDomainObjPtr vm, const char *stdin_path ATTRIBUTE_UNUSED)
 {
     int i;
 
