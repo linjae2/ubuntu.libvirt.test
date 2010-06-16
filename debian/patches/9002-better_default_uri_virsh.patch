@@ -1,0 +1,56 @@
+Index: libvirt-0.8.1/tools/virsh.c
+===================================================================
+--- libvirt-0.8.1.orig/tools/virsh.c	2010-04-30 07:46:09.000000000 -0500
++++ libvirt-0.8.1/tools/virsh.c	2010-06-15 14:20:23.000000000 -0500
+@@ -63,6 +63,8 @@
+ #define VSH_PROMPT_RW    "virsh # "
+ #define VSH_PROMPT_RO    "virsh > "
+ 
++#include "remote_driver.h"
++
+ #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
+ #define DIFF_MSEC(T, U) \
+         ((((int) ((T)->tv_sec - (U)->tv_sec)) * 1000000.0 + \
+@@ -10465,6 +10467,10 @@
+ 
+     if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
+         ctl->name = strdup(defaultConn);
++    } else if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
++        ctl->name = strdup("qemu:///system");
++    } else {
++        ctl->name = strdup("qemu:///session");
+     }
+ 
+     if (!vshParseArgv(ctl, argc, argv)) {
+Index: libvirt-0.8.1/tools/Makefile.am
+===================================================================
+--- libvirt-0.8.1.orig/tools/Makefile.am	2010-06-15 14:21:40.000000000 -0500
++++ libvirt-0.8.1/tools/Makefile.am	2010-06-15 14:22:26.000000000 -0500
+@@ -45,9 +45,11 @@
+ 		-I$(top_srcdir)/gnulib/lib -I../gnulib/lib	\
+ 		-I../include -I$(top_srcdir)/include		\
+ 		-I$(top_srcdir)/src				\
++		-I$(top_srcdir)/src/remote			\
+ 		-I$(top_srcdir)/src/util			\
+ 		-DGETTEXT_PACKAGE=\"$(PACKAGE)\"		\
+ 		-DLOCALEBASEDIR=\""$(datadir)/locale"\"		\
++		-DLOCAL_STATE_DIR=\""$(localstatedir)"\"	\
+ 		$(WARN_CFLAGS)					\
+ 		$(COVERAGE_CFLAGS)				\
+ 		$(LIBXML_CFLAGS)				\
+Index: libvirt-0.8.1/tools/Makefile.in
+===================================================================
+--- libvirt-0.8.1.orig/tools/Makefile.in	2010-06-15 14:21:40.000000000 -0500
++++ libvirt-0.8.1/tools/Makefile.in	2010-06-15 14:22:49.000000000 -0500
+@@ -1023,9 +1023,11 @@
+ 		-I$(top_srcdir)/gnulib/lib -I../gnulib/lib	\
+ 		-I../include -I$(top_srcdir)/include		\
+ 		-I$(top_srcdir)/src				\
++		-I$(top_srcdir)/src/remote			\
+ 		-I$(top_srcdir)/src/util			\
+ 		-DGETTEXT_PACKAGE=\"$(PACKAGE)\"		\
+ 		-DLOCALEBASEDIR=\""$(datadir)/locale"\"		\
++		-DLOCAL_STATE_DIR=\""$(localstatedir)"\"	\
+ 		$(WARN_CFLAGS)					\
+ 		$(COVERAGE_CFLAGS)				\
+ 		$(LIBXML_CFLAGS)				\

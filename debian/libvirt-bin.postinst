@@ -20,9 +20,14 @@ set -e
 
 case "$1" in
     configure)
-    	if ! getent group libvirt >/dev/null; then
-    		addgroup --system libvirt
+    	if ! getent group libvirtd >/dev/null; then
+    		addgroup --system libvirtd
 	fi
+
+	# Add each admin user to the libvirtd group
+	for u in $(grep "^admin:" /etc/group | sed -e "s/^.*://" -e "s/,/ /g"); do
+		adduser "$u" libvirtd >/dev/null || true
+	done
 
 	# user and group libvirt runs qemu/kvm instances with
 	if ! getent group kvm >/dev/null; then
@@ -62,6 +67,13 @@ case "$1" in
 		update-rc.d -f libvirt-bin remove >/dev/null
 	    fi
 	fi
+
+        for p in usr.sbin.libvirtd usr.lib.libvirt.virt-aa-helper ; do
+            profile="/etc/apparmor.d/$p"
+            if [ -f "$profile" ] && aa-status --enabled 2>/dev/null; then
+                apparmor_parser -r "$profile" || true
+            fi
+        done
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
