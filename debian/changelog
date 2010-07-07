@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu27.2) lucid-proposed; urgency=low
+
+  [ Nigel Jones ]
+  * debian/patches/9024-free-memory-for-invalid-devices.patch: clean
+    up a memory leak affecting multipath+libvirt, LP: #571093
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Wed, 07 Jul 2010 10:18:48 -0400
+
 libvirt (0.7.5-5ubuntu27) lucid; urgency=low
 
   * debian/libvirt-bin.postinst: ensure that the convenience feature
