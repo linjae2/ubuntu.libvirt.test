@@ -1,0 +1,12 @@
+diff -Nur libvirt-0.7.5/daemon/libvirtd.conf libvirt-0.7.5.new/daemon/libvirtd.conf
+--- libvirt-0.7.5/daemon/libvirtd.conf	2010-01-22 14:47:37.469547794 -0600
++++ libvirt-0.7.5.new/daemon/libvirtd.conf	2010-01-22 14:48:22.690780210 -0600
+@@ -78,7 +78,7 @@
+ # without becoming root.
+ #
+ # This is restricted to 'root' by default.
+-unix_sock_group = "libvirt"
++unix_sock_group = "libvirtd"
+ 
+ # Set the UNIX socket permissions for the R/O socket. This is used
+ # for monitoring VM status only

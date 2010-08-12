@@ -1,0 +1,93 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: Exit with error if virDomainDiskDefForeachPath() fails, unless
+ the disk doesn't exist, at which point we skip it without error. Also add
+ several tests to virt-aa-helper-test for '-p' option.
+Forwarded: yes
+
+Index: libvirt-0.8.3/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-0.8.3.orig/src/security/virt-aa-helper.c	2010-08-12 09:51:42.000000000 -0500
++++ libvirt-0.8.3/src/security/virt-aa-helper.c	2010-08-12 09:58:42.000000000 -0500
+@@ -853,11 +853,25 @@
+          * careful than just ignoring them */
+         int ret = virDomainDiskDefForeachPath(ctl->def->disks[i],
+                                               ctl->allowDiskFormatProbing,
+-                                              true,
++                                              false,
+                                               add_file_path,
+                                               &buf);
+-        if (ret != 0)
++        /*
++         * If virDomainDiskDefForeachPath() fails, then exit with error,
++         * unless the disk doesn't exist, in which case we just skip it
++         * without error in order to preserve previous behavior.
++         */
++        if (ret != 0) {
++            if (ctl->def->disks[i] && ctl->def->disks[i]->src) {
++                if (!virFileExists(ctl->def->disks[i]->src)) {
++                    continue;
++                } else {
++                    vah_warning(ctl->def->disks[i]->src);
++                    vah_warning("  skipped (bad disk format)");
++                }
++            }
+             goto clean;
++        }
+     }
+ 
+     for (i = 0; i < ctl->def->nserials; i++)
+Index: libvirt-0.8.3/tests/virt-aa-helper-test
+===================================================================
+--- libvirt-0.8.3.orig/tests/virt-aa-helper-test	2010-08-12 09:51:53.000000000 -0500
++++ libvirt-0.8.3/tests/virt-aa-helper-test	2010-08-12 10:03:11.000000000 -0500
+@@ -144,6 +144,7 @@
+ testme "1" "invalid arg" "-z"
+ testme "1" "invalid case" "-A"
+ testme "1" "not enough args" "-c"
++testme "1" "not enough args" "-p"
+ 
+ cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" > "$test_xml"
+ testme "1" "no -u with -c" "-c" "$test_xml"
+@@ -160,17 +161,25 @@
+ cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$bad_disk,g" > "$test_xml"
+ testme "1" "bad disk" "-c -u $valid_uuid" "$test_xml"
+ 
+-cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$bad_disk,g" | sed "s,</devices>,<disk type='file' device='disk'><source file='$disk2'/><target dev='hda' bus='ide'/></disk></devices>,g" > "$test_xml"
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$bad_disk,g" | sed "s,</devices>,<disk type='file' device='disk'><driver name='qemu' type='raw'/><source file='$disk2'/><target dev='hda' bus='ide'/></disk></devices>,g" > "$test_xml"
++
+ testme "1" "bad disk2" "-c -u $valid_uuid" "$test_xml"
+ 
+ cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</devices>,<devices>,g" > "$test_xml"
+ testme "1" "malformed xml" "-c -u $valid_uuid" "$test_xml"
+ 
+-cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,/boot/initrd,g" > "$test_xml"
+-testme "1" "disk in /boot" "-r -u $valid_uuid" "$test_xml"
+-
+-cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,/boot/initrd,g" > "$test_xml"
+-testme "1" "-r with invalid -f" "-r -u $valid_uuid -f $bad_disk" "$test_xml"
++initrd=`ls -1 /boot/initrd* | head -1`
++if [ -z "$initrd" ]; then
++    echo "Skipping /boot/initrd* tests. Could not find /boot/initrd*"
++else
++    cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$initrd,g" > "$test_xml"
++    testme "1" "disk in /boot without probing" "-p 0 -r -u $valid_uuid" "$test_xml"
++    testme "1" "disk in /boot with probing" "-p 1 -r -u $valid_uuid" "$test_xml"
++
++    cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,/boot/initrd,g" > "$test_xml"
++    testme "1" "-r with invalid -f with probing" "-p 1 -r -u $valid_uuid -f $bad_disk" "$test_xml"
++    testme "1" "-r with invalid -f without probing" "-p 0 -r -u $valid_uuid -f $bad_disk" "$test_xml"
++fi
+ 
+ cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1</disk>,g" > "$test_xml"
+ testme "1" "-c with malformed xml" "-c -u $valid_uuid" "$test_xml"
+@@ -195,8 +204,8 @@
+ cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,arch='x86_64',arch='ppc',g" > "$test_xml"
+ testme "0" "create (ppc)" "-c -u $valid_uuid" "$test_xml"
+ 
+-cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</disk>,</disk><disk type='file' device='disk'><source file='$disk2'/><target dev='hdb' bus='ide'/></disk>,g" > "$test_xml"
+-testme "0" "create multiple disks" "-c -u $valid_uuid -p 1" "$test_xml"
++cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</disk>,</disk><disk type='file' device='disk'><driver name='qemu' type='raw'/><source file='$disk2'/><target dev='hdb' bus='ide'/></disk>,g" > "$test_xml"
++testme "0" "create multiple disks" "-c -u $valid_uuid" "$test_xml"
+ 
+ cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###',${disk1}'/><readonly,g" > "$test_xml"
+ testme "0" "create (readonly)" "-c -u $valid_uuid" "$test_xml"
