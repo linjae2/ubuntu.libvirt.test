@@ -853,22 +853,50 @@ get_files(vahControl * ctl)
          * careful than just ignoring them */
         int ret = virDomainDiskDefForeachPath(ctl->def->disks[i],
                                               ctl->allowDiskFormatProbing,
-                                              true,
+                                              false,
                                               add_file_path,
                                               &buf);
-        if (ret != 0)
+        /*
+         * If virDomainDiskDefForeachPath() fails, then exit with error,
+         * unless the disk doesn't exist, in which case we just skip it
+         * without error in order to preserve previous behavior.
+         */
+        if (ret != 0) {
+            if (ctl->def->disks[i] && ctl->def->disks[i]->src) {
+                if (!virFileExists(ctl->def->disks[i]->src)) {
+                    continue;
+                } else {
+                    vah_warning(ctl->def->disks[i]->src);
+                    vah_warning("  skipped (bad disk format)");
+                }
+            }
             goto clean;
+        }
     }
 
     for (i = 0; i < ctl->def->nserials; i++)
         if (ctl->def->serials[i] && ctl->def->serials[i]->data.file.path)
             if (vah_add_file(&buf,
-                             ctl->def->serials[i]->data.file.path, "w") != 0)
+                             ctl->def->serials[i]->data.file.path, "rw") != 0)
                 goto clean;
 
     if (ctl->def->console && ctl->def->console->data.file.path)
-        if (vah_add_file(&buf, ctl->def->console->data.file.path, "w") != 0)
+        if (vah_add_file(&buf, ctl->def->console->data.file.path, "rw") != 0)
             goto clean;
+
+    for (i = 0 ; i < ctl->def->nparallels; i++)
+        if (ctl->def->parallels[i] && ctl->def->parallels[i]->data.file.path)
+            if (vah_add_file(&buf,
+                             ctl->def->parallels[i]->data.file.path,
+                             "rw") != 0)
+                goto clean;
+
+    for (i = 0 ; i < ctl->def->nchannels; i++)
+        if (ctl->def->channels[i] && ctl->def->channels[i]->data.file.path)
+            if (vah_add_file(&buf,
+                             ctl->def->channels[i]->data.file.path,
+                             "rw") != 0)
+                goto clean;
 
     if (ctl->def->os.kernel)
         if (vah_add_file(&buf, ctl->def->os.kernel, "r") != 0)
