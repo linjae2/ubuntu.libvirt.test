@@ -18,3 +18,4 @@
 9011-move-ebtables-script.patch
 9012-apparmor-dont-ignore-open.patch
 9013-apparmor-chardev.patch
+9014-skip-nodeinfotest.patch

@@ -1,3 +1,10 @@
+libvirt (0.8.3-1ubuntu2) maverick; urgency=low
+
+  * debian/patches/9014-skip-nodeinfotest.patch: fix FTBFS in nodeinfotest
+    which is still broken on armel
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 13 Aug 2010 08:12:23 -0500
+
 libvirt (0.8.3-1ubuntu1) maverick; urgency=low
 
   * Merge from debian unstable with security fixes
