@@ -853,11 +853,25 @@ get_files(vahControl * ctl)
          * careful than just ignoring them */
         int ret = virDomainDiskDefForeachPath(ctl->def->disks[i],
                                               ctl->allowDiskFormatProbing,
-                                              true,
+                                              false,
                                               add_file_path,
                                               &buf);
-        if (ret != 0)
+        /*
+         * If virDomainDiskDefForeachPath() fails, then exit with error,
+         * unless the disk doesn't exist, in which case we just skip it
+         * without error in order to preserve previous behavior.
+         */
+        if (ret != 0) {
+            if (ctl->def->disks[i] && ctl->def->disks[i]->src) {
+                if (!virFileExists(ctl->def->disks[i]->src)) {
+                    continue;
+                } else {
+                    vah_warning(ctl->def->disks[i]->src);
+                    vah_warning("  skipped (bad disk format)");
+                }
+            }
             goto clean;
+        }
     }
 
     for (i = 0; i < ctl->def->nserials; i++)
