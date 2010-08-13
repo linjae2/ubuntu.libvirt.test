@@ -877,12 +877,26 @@ get_files(vahControl * ctl)
     for (i = 0; i < ctl->def->nserials; i++)
         if (ctl->def->serials[i] && ctl->def->serials[i]->data.file.path)
             if (vah_add_file(&buf,
-                             ctl->def->serials[i]->data.file.path, "w") != 0)
+                             ctl->def->serials[i]->data.file.path, "rw") != 0)
                 goto clean;
 
     if (ctl->def->console && ctl->def->console->data.file.path)
-        if (vah_add_file(&buf, ctl->def->console->data.file.path, "w") != 0)
+        if (vah_add_file(&buf, ctl->def->console->data.file.path, "rw") != 0)
             goto clean;
+
+    for (i = 0 ; i < ctl->def->nparallels; i++)
+        if (ctl->def->parallels[i] && ctl->def->parallels[i]->data.file.path)
+            if (vah_add_file(&buf,
+                             ctl->def->parallels[i]->data.file.path,
+                             "rw") != 0)
+                goto clean;
+
+    for (i = 0 ; i < ctl->def->nchannels; i++)
+        if (ctl->def->channels[i] && ctl->def->channels[i]->data.file.path)
+            if (vah_add_file(&buf,
+                             ctl->def->channels[i]->data.file.path,
+                             "rw") != 0)
+                goto clean;
 
     if (ctl->def->os.kernel)
         if (vah_add_file(&buf, ctl->def->os.kernel, "r") != 0)
