@@ -1,0 +1,49 @@
+From 3ad8cbd3bef617bae42426c6697d21e930cb9bb1 Mon Sep 17 00:00:00 2001
+From: Soren Hansen <soren@linux2go.dk>
+Date: Thu, 12 Aug 2010 15:42:34 +0200
+Subject: [PATCH] Make sure all command line arguments get passed to UML
+
+If umlBuildCommandLineChr fails (e.g. due to an unsupported chardev
+type), it returns NULL. umlBuildCommandLine does not check for this and
+sets this as an argument on the comand line, effectively ending the
+argument list. This patch checks for this case and sets the chardev to
+"none".
+
+Signed-off-by: Soren Hansen <soren@linux2go.dk>
+---
+ src/uml/uml_conf.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
+
+Index: libvirt-0.8.3/src/uml/uml_conf.c
+===================================================================
+--- libvirt-0.8.3.orig/src/uml/uml_conf.c	2010-07-29 11:48:30.000000000 +0200
++++ libvirt-0.8.3/src/uml/uml_conf.c	2010-08-16 13:30:12.636132000 +0200
+@@ -508,10 +508,10 @@
+     }
+ 
+     for (i = 0 ; i < UML_MAX_CHAR_DEVICE ; i++) {
+-        char *ret;
++        char *ret = NULL;
+         if (i == 0 && vm->def->console)
+             ret = umlBuildCommandLineChr(vm->def->console, "con");
+-        else
++        if (!ret)
+             if (virAsprintf(&ret, "con%d=none", i) < 0)
+                 goto no_memory;
+         ADD_ARG(ret);
+@@ -519,13 +519,13 @@
+ 
+     for (i = 0 ; i < UML_MAX_CHAR_DEVICE ; i++) {
+         virDomainChrDefPtr chr = NULL;
+-        char *ret;
++        char *ret = NULL;
+         for (j = 0 ; j < vm->def->nserials ; j++)
+             if (vm->def->serials[j]->target.port == i)
+                 chr = vm->def->serials[j];
+         if (chr)
+             ret = umlBuildCommandLineChr(chr, "ssl");
+-        else
++        if (!ret)
+             if (virAsprintf(&ret, "ssl%d=none", i) < 0)
+                 goto no_memory;
+         ADD_ARG(ret);

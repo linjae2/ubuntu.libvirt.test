@@ -112,7 +112,6 @@ umlConnectTapDevice(virDomainNetDefPtr net,
                     const char *bridge)
 {
     brControl *brctl = NULL;
-    int tapfd = -1;
     int template_ifname = 0;
     int err;
     unsigned char tapmac[VIR_MAC_BUFLEN];
@@ -140,7 +139,7 @@ umlConnectTapDevice(virDomainNetDefPtr net,
                         &net->ifname,
                         tapmac,
                         0,
-                        &tapfd))) {
+                        NULL))) {
         if (errno == ENOTSUP) {
             /* In this particular case, give a better diagnostic. */
             umlReportError(VIR_ERR_INTERNAL_ERROR,
@@ -159,7 +158,6 @@ umlConnectTapDevice(virDomainNetDefPtr net,
             VIR_FREE(net->ifname);
         goto error;
     }
-    close(tapfd);
 
     brShutdown(brctl);
 
@@ -508,10 +506,10 @@ int umlBuildCommandLine(virConnectPtr conn,
     }
 
     for (i = 0 ; i < UML_MAX_CHAR_DEVICE ; i++) {
-        char *ret;
+        char *ret = NULL;
         if (i == 0 && vm->def->console)
             ret = umlBuildCommandLineChr(vm->def->console, "con");
-        else
+        if (!ret)
             if (virAsprintf(&ret, "con%d=none", i) < 0)
                 goto no_memory;
         ADD_ARG(ret);
@@ -519,13 +517,13 @@ int umlBuildCommandLine(virConnectPtr conn,
 
     for (i = 0 ; i < UML_MAX_CHAR_DEVICE ; i++) {
         virDomainChrDefPtr chr = NULL;
-        char *ret;
+        char *ret = NULL;
         for (j = 0 ; j < vm->def->nserials ; j++)
             if (vm->def->serials[j]->target.port == i)
                 chr = vm->def->serials[j];
         if (chr)
             ret = umlBuildCommandLineChr(chr, "ssl");
-        else
+        if (!ret)
             if (virAsprintf(&ret, "ssl%d=none", i) < 0)
                 goto no_memory;
         ADD_ARG(ret);

@@ -19,3 +19,8 @@
 9012-apparmor-dont-ignore-open.patch
 9013-apparmor-chardev.patch
 9014-skip-nodeinfotest.patch
+9015-Add-ubd-to-the-list-of-disk-prefixes.patch
+9016-Close-fd-s-of-persistent-tap-devices.patch
+9017-Make-sure-all-command-line-arguments-get-passed-to-U.patch
+9018-Make-umlConnectTapDevice-ask-brAddTap-for-a-persiste.patch
+9019-Remove-wrong-check-for-uml-monitor-response-size.patch

@@ -1,0 +1,28 @@
+From 4358f76aa4dfa0aac9736f2c55683c1304f8b078 Mon Sep 17 00:00:00 2001
+From: Soren Hansen <soren@linux2go.dk>
+Date: Wed, 11 Aug 2010 23:51:41 +0200
+Subject: [PATCH] Close fd's of persistent tap devices
+
+When passing a NULL tapfd argument to brAddTap, we need to close the fd
+of the tap device. If we don't, libvirt will keep the fd open
+indefinitely and renders the the guest unable to configure its side of
+the tap device.
+
+Signed-off-by: Soren Hansen <soren@linux2go.dk>
+---
+ src/util/bridge.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+Index: libvirt-0.8.3/src/util/bridge.c
+===================================================================
+--- libvirt-0.8.3.orig/src/util/bridge.c	2010-08-16 13:27:14.000000000 +0200
++++ libvirt-0.8.3/src/util/bridge.c	2010-08-16 13:30:07.546132002 +0200
+@@ -541,6 +541,8 @@
+         goto error;
+     if (tapfd)
+         *tapfd = fd;
++    else
++        close(fd);
+     return 0;
+ 
+  error:
