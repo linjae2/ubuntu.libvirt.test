@@ -1,15 +1,24 @@
 Author: Jamie Strandboge <jamie@canonical.com>
-Description: fix serial ports, parallel ports and channels
+Description: Check for VIR_DOMAIN_CHR_TYPE in serial ports and add 'rw' for
+ defined serial ports, parallel ports and channels
 Forwarded: yes
 Bug-Ubuntu: LP: #578527, LP: #609055
 
 Index: libvirt-0.8.3/src/security/virt-aa-helper.c
 ===================================================================
---- libvirt-0.8.3.orig/src/security/virt-aa-helper.c	2010-08-12 12:00:04.000000000 -0500
-+++ libvirt-0.8.3/src/security/virt-aa-helper.c	2010-08-12 12:00:04.000000000 -0500
-@@ -877,13 +877,27 @@
+--- libvirt-0.8.3.orig/src/security/virt-aa-helper.c	2010-08-16 16:00:35.000000000 -0500
++++ libvirt-0.8.3/src/security/virt-aa-helper.c	2010-08-16 16:00:40.000000000 -0500
+@@ -861,15 +861,44 @@
+     }
+ 
      for (i = 0; i < ctl->def->nserials; i++)
-         if (ctl->def->serials[i] && ctl->def->serials[i]->data.file.path)
+-        if (ctl->def->serials[i] && ctl->def->serials[i]->data.file.path)
++        if (ctl->def->serials[i] &&
++            (ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_PTY ||
++             ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_DEV ||
++             ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_FILE ||
++             ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
++            ctl->def->serials[i]->data.file.path)
              if (vah_add_file(&buf,
 -                             ctl->def->serials[i]->data.file.path, "w") != 0)
 +                             ctl->def->serials[i]->data.file.path, "rw") != 0)
@@ -21,14 +30,24 @@ Index: libvirt-0.8.3/src/security/virt-aa-helper.c
              goto clean;
  
 +    for (i = 0 ; i < ctl->def->nparallels; i++)
-+        if (ctl->def->parallels[i] && ctl->def->parallels[i]->data.file.path)
++        if (ctl->def->parallels[i] &&
++            (ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_PTY ||
++             ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_DEV ||
++             ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_FILE ||
++             ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
++            ctl->def->parallels[i]->data.file.path)
 +            if (vah_add_file(&buf,
 +                             ctl->def->parallels[i]->data.file.path,
 +                             "rw") != 0)
 +                goto clean;
 +
 +    for (i = 0 ; i < ctl->def->nchannels; i++)
-+        if (ctl->def->channels[i] && ctl->def->channels[i]->data.file.path)
++        if (ctl->def->channels[i] &&
++            (ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_PTY ||
++             ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_DEV ||
++             ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_FILE ||
++             ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
++            ctl->def->channels[i]->data.file.path)
 +            if (vah_add_file(&buf,
 +                             ctl->def->channels[i]->data.file.path,
 +                             "rw") != 0)
@@ -39,8 +58,8 @@ Index: libvirt-0.8.3/src/security/virt-aa-helper.c
              goto clean;
 Index: libvirt-0.8.3/tests/virt-aa-helper-test
 ===================================================================
---- libvirt-0.8.3.orig/tests/virt-aa-helper-test	2010-08-12 12:00:13.000000000 -0500
-+++ libvirt-0.8.3/tests/virt-aa-helper-test	2010-08-12 12:13:41.000000000 -0500
+--- libvirt-0.8.3.orig/tests/virt-aa-helper-test	2010-08-16 16:00:40.000000000 -0500
++++ libvirt-0.8.3/tests/virt-aa-helper-test	2010-08-16 16:00:40.000000000 -0500
 @@ -246,6 +246,9 @@
  cat "$template_xml" | sed "s,###UUID###,$uuid,g" | sed "s,###DISK###,$disk1,g" | sed "s,</devices>,<serial type='pty'><target port='0'/></serial></devices>,g" > "$test_xml"
  testme "0" "serial (pty)" "-r -u $valid_uuid" "$test_xml"
