@@ -1,0 +1,28 @@
+From 92e43e6d026b06d79ae156de511df1f024f4bf42 Mon Sep 17 00:00:00 2001
+From: Soren Hansen <soren@linux2go.dk>
+Date: Tue, 10 Aug 2010 13:46:46 +0200
+Subject: [PATCH] Add "ubd" to the list of disk prefixes
+
+virDiskNameToIndex has a list of disk name prefixes that it uses in the
+process of finding the disk's index. This list is missing "ubd" which
+is the disk prefix used for UML domains.
+
+Signed-off-by: Soren Hansen <soren@linux2go.dk>
+---
+ .mailmap        |    1 +
+ src/util/util.c |    2 +-
+ 2 files changed, 2 insertions(+), 1 deletions(-)
+
+Index: libvirt-0.8.3/src/util/util.c
+===================================================================
+--- libvirt-0.8.3.orig/src/util/util.c	2010-07-22 13:24:43.000000000 +0200
++++ libvirt-0.8.3/src/util/util.c	2010-08-16 13:29:54.236132001 +0200
+@@ -2367,7 +2367,7 @@
+ int virDiskNameToIndex(const char *name) {
+     const char *ptr = NULL;
+     int idx = 0;
+-    static char const* const drive_prefix[] = {"fd", "hd", "vd", "sd", "xvd"};
++    static char const* const drive_prefix[] = {"fd", "hd", "vd", "sd", "xvd", "ubd"};
+     unsigned int i;
+ 
+     for (i = 0; i < ARRAY_CARDINALITY(drive_prefix); i++) {

@@ -1,3 +1,18 @@
+libvirt (0.8.3-1ubuntu3) maverick; urgency=low
+
+  * Added the following patches:
+    - 9015-Add-ubd-to-the-list-of-disk-prefixes.patch.
+    - 9016-Close-fd-s-of-persistent-tap-devices.patch.
+    - 9017-Make-sure-all-command-line-arguments-get-passed-to-U.patch.
+    - 9018-Make-umlConnectTapDevice-ask-brAddTap-for-a-persiste.patch.
+    - 9019-Remove-wrong-check-for-uml-monitor-response-size.patch
+  * All but the last are already in upstream git. Together, they make
+    user-mode-linux guests work again.
+  * Note: The last patch in the list is still being reviewed upstream.
+    Depending on the outcome, I'll update here accordingly.
+
+ -- Soren Hansen <soren@ubuntu.com>  Mon, 16 Aug 2010 13:33:23 +0200
+
 libvirt (0.8.3-1ubuntu2) maverick; urgency=low
 
   * debian/patches/9014-skip-nodeinfotest.patch: fix FTBFS in nodeinfotest
