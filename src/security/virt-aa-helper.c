@@ -853,29 +853,20 @@ get_files(vahControl * ctl)
          * careful than just ignoring them */
         int ret = virDomainDiskDefForeachPath(ctl->def->disks[i],
                                               ctl->allowDiskFormatProbing,
-                                              false,
+                                              true,
                                               add_file_path,
                                               &buf);
-        /*
-         * If virDomainDiskDefForeachPath() fails, then exit with error,
-         * unless the disk doesn't exist, in which case we just skip it
-         * without error in order to preserve previous behavior.
-         */
-        if (ret != 0) {
-            if (ctl->def->disks[i] && ctl->def->disks[i]->src) {
-                if (!virFileExists(ctl->def->disks[i]->src)) {
-                    continue;
-                } else {
-                    vah_warning(ctl->def->disks[i]->src);
-                    vah_warning("  skipped (bad disk format)");
-                }
-            }
+        if (ret != 0)
             goto clean;
-        }
     }
 
     for (i = 0; i < ctl->def->nserials; i++)
-        if (ctl->def->serials[i] && ctl->def->serials[i]->data.file.path)
+        if (ctl->def->serials[i] &&
+            (ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_PTY ||
+             ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_DEV ||
+             ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_FILE ||
+             ctl->def->serials[i]->type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
+            ctl->def->serials[i]->data.file.path)
             if (vah_add_file(&buf,
                              ctl->def->serials[i]->data.file.path, "rw") != 0)
                 goto clean;
@@ -885,14 +876,24 @@ get_files(vahControl * ctl)
             goto clean;
 
     for (i = 0 ; i < ctl->def->nparallels; i++)
-        if (ctl->def->parallels[i] && ctl->def->parallels[i]->data.file.path)
+        if (ctl->def->parallels[i] &&
+            (ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_PTY ||
+             ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_DEV ||
+             ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_FILE ||
+             ctl->def->parallels[i]->type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
+            ctl->def->parallels[i]->data.file.path)
             if (vah_add_file(&buf,
                              ctl->def->parallels[i]->data.file.path,
                              "rw") != 0)
                 goto clean;
 
     for (i = 0 ; i < ctl->def->nchannels; i++)
-        if (ctl->def->channels[i] && ctl->def->channels[i]->data.file.path)
+        if (ctl->def->channels[i] &&
+            (ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_PTY ||
+             ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_DEV ||
+             ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_FILE ||
+             ctl->def->channels[i]->type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
+            ctl->def->channels[i]->data.file.path)
             if (vah_add_file(&buf,
                              ctl->def->channels[i]->data.file.path,
                              "rw") != 0)
