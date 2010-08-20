@@ -1,3 +1,17 @@
+libvirt (0.8.3-1ubuntu5) maverick; urgency=low
+
+  * update to allow pcidev and hostdev to work with AppArmor (LP: #545795)
+    - debian/patches/lp-545795.patch: add vendor and device to
+      pciDeviceFileIterate(). Patch submitted upstream and they feel it is
+      reasonable, but not committed yet. This should fix pcidev.
+    - debian/apparmor/usr.lib.libvirt.virt-aa-helper: add read access to
+      /sys/bus/usb/devices/**
+    - debian/apparmor/libvirt-qemu: adjust read access to be
+      /sys/devices/**/usb[0-9]*/** instead of /sys/devices/*/*/usb[0-9]*/**.
+      Patched based on work by Andreas Ntaflos.
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 20 Aug 2010 09:21:15 -0500
+
 libvirt (0.8.3-1ubuntu4) maverick; urgency=low
 
   * debian/patches/9012-apparmor-dont-ignore-open.patch: don't bother with
