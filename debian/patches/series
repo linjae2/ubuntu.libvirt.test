@@ -24,3 +24,4 @@
 9017-Make-sure-all-command-line-arguments-get-passed-to-U.patch
 9018-Make-umlConnectTapDevice-ask-brAddTap-for-a-persiste.patch
 9019-Remove-wrong-check-for-uml-monitor-response-size.patch
+9020-lp545795.patch

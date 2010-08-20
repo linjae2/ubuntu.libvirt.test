@@ -20,6 +20,7 @@
   /sys/devices/ r,
   /sys/devices/** r,
   /sys/bus/usb/devices/ r,
+  /sys/bus/usb/devices/** r,
   deny /dev/sd* r,
   deny /dev/mapper/ r,
   deny /dev/mapper/* r,
