@@ -8572,22 +8572,6 @@ static inline int qemudFindDisk(virDomainDefPtr def, const char *dst)
     return -1;
 }
 
-static inline void qemudShrinkDisks(virDomainDefPtr def, size_t i)
-{
-    if (def->ndisks > 1) {
-        memmove(def->disks + i,
-                def->disks + i + 1,
-                sizeof(*def->disks) *
-                (def->ndisks - (i + 1)));
-        def->ndisks--;
-        if (VIR_REALLOC_N(def->disks, def->ndisks) < 0) {
-            /* ignore, harmless */
-        }
-    } else {
-        VIR_FREE(def->disks);
-        def->ndisks = 0;
-    }
-}
 
 static int qemudDomainDetachPciDiskDevice(struct qemud_driver *driver,
                                           virDomainObjPtr vm,
@@ -8640,7 +8624,7 @@ static int qemudDomainDetachPciDiskDevice(struct qemud_driver *driver,
     }
     qemuDomainObjExitMonitorWithDriver(driver, vm);
 
-    qemudShrinkDisks(vm->def, i);
+    virDomainDiskRemove(vm->def, i);
 
     virDomainDiskDefFree(detach);
 
@@ -8704,7 +8688,7 @@ static int qemudDomainDetachSCSIDiskDevice(struct qemud_driver *driver,
     }
     qemuDomainObjExitMonitorWithDriver(driver, vm);
 
-    qemudShrinkDisks(vm->def, i);
+    virDomainDiskRemove(vm->def, i);
 
     virDomainDiskDefFree(detach);
 

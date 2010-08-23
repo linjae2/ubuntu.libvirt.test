@@ -23,5 +23,8 @@
 9016-Close-fd-s-of-persistent-tap-devices.patch
 9017-Make-sure-all-command-line-arguments-get-passed-to-U.patch
 9018-Make-umlConnectTapDevice-ask-brAddTap-for-a-persiste.patch
-9019-Remove-wrong-check-for-uml-monitor-response-size.patch
+9019-uml-fix-logic-bug-in-checking-reply-length.patch
 9020-lp545795.patch
+9021-Allow-chardev-of-type-file-for-UML-domains.patch
+9022-Rename-qemudShrinkDisks-to-virDomainDiskRemove-and-m.patch
+9023-Support-virDomainAttachDevice-and-virDomainDetachDev.patch

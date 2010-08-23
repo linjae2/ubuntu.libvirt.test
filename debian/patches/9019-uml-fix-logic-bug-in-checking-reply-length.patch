@@ -1,0 +1,38 @@
+From 3223871e2e40c1426cbabe07b7c52f2a5ccc4e96 Mon Sep 17 00:00:00 2001
+From: Eric Blake <eblake@redhat.com>
+Date: Mon, 16 Aug 2010 15:21:38 -0600
+Subject: [PATCH] uml: fix logic bug in checking reply length
+
+* src/uml/uml_driver.c (umlMonitorCommand): Validate that enough
+bytes were read to dereference both res.length, and that many
+bytes from res.data.
+Reported by Soren Hansen.
+---
+ src/uml/uml_driver.c |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/src/uml/uml_driver.c b/src/uml/uml_driver.c
+index 04493ba..4b2e96b 100644
+--- a/src/uml/uml_driver.c
++++ b/src/uml/uml_driver.c
+@@ -737,14 +737,12 @@ static int umlMonitorCommand(const struct uml_driver *driver,
+             virReportSystemError(errno, _("cannot read reply %s"), cmd);
+             goto error;
+         }
+-        if (nbytes < sizeof res) {
++        /* Ensure res.length is safe to read before validating its value.  */
++        if (nbytes < offsetof(struct monitor_request, data) ||
++            nbytes < offsetof(struct monitor_request, data) + res.length) {
+             virReportSystemError(0, _("incomplete reply %s"), cmd);
+             goto error;
+         }
+-        if (sizeof res.data < res.length) {
+-            virReportSystemError(0, _("invalid length in reply %s"), cmd);
+-            goto error;
+-        }
+ 
+         if (VIR_REALLOC_N(retdata, retlen + res.length) < 0) {
+             virReportOOMError();
+-- 
+1.7.0.4
+
