@@ -1,0 +1,115 @@
+From 567092dbfbc5cca3cca9f3b093336d67aa952aba Mon Sep 17 00:00:00 2001
+From: Soren Hansen <soren@linux2go.dk>
+Date: Mon, 23 Aug 2010 09:23:23 +0200
+Subject: [PATCH 1/2] Rename qemudShrinkDisks to virDomainDiskRemove and move to domain_conf.c
+
+Other drivers will need this same functionality, so move it to up to
+conf/domain_conf.c and give it a more general name.
+
+Signed-off-by: Soren Hansen <soren@linux2go.dk>
+---
+ src/conf/domain_conf.c   |   18 ++++++++++++++++++
+ src/conf/domain_conf.h   |    2 ++
+ src/libvirt_private.syms |    1 +
+ src/qemu/qemu_driver.c   |   20 ++------------------
+ 4 files changed, 23 insertions(+), 18 deletions(-)
+
+Index: libvirt-0.8.3/src/conf/domain_conf.c
+===================================================================
+--- libvirt-0.8.3.orig/src/conf/domain_conf.c	2010-08-02 21:16:42.000000000 +0200
++++ libvirt-0.8.3/src/conf/domain_conf.c	2010-08-23 14:28:16.824428000 +0200
+@@ -4054,6 +4054,24 @@
+ }
+ 
+ 
++void virDomainDiskRemove(virDomainDefPtr def, size_t i)
++{
++    if (def->ndisks > 1) {
++        memmove(def->disks + i,
++                def->disks + i + 1,
++                sizeof(*def->disks) *
++                (def->ndisks - (i + 1)));
++        def->ndisks--;
++        if (VIR_REALLOC_N(def->disks, def->ndisks) < 0) {
++            /* ignore, harmless */
++        }
++    } else {
++        VIR_FREE(def->disks);
++        def->ndisks = 0;
++    }
++}
++
++
+ int virDomainControllerInsert(virDomainDefPtr def,
+                               virDomainControllerDefPtr controller)
+ {
+Index: libvirt-0.8.3/src/conf/domain_conf.h
+===================================================================
+--- libvirt-0.8.3.orig/src/conf/domain_conf.h	2010-07-29 11:48:30.000000000 +0200
++++ libvirt-0.8.3/src/conf/domain_conf.h	2010-08-23 14:28:16.824428000 +0200
+@@ -1055,6 +1055,8 @@
+                                    virDomainDiskDefPtr disk);
+ int virDomainDiskDefAssignAddress(virCapsPtr caps, virDomainDiskDefPtr def);
+ 
++void virDomainDiskRemove(virDomainDefPtr def, size_t i);
++
+ int virDomainControllerInsert(virDomainDefPtr def,
+                               virDomainControllerDefPtr controller);
+ void virDomainControllerInsertPreAlloced(virDomainDefPtr def,
+Index: libvirt-0.8.3/src/libvirt_private.syms
+===================================================================
+--- libvirt-0.8.3.orig/src/libvirt_private.syms	2010-08-02 21:16:42.000000000 +0200
++++ libvirt-0.8.3/src/libvirt_private.syms	2010-08-23 14:28:16.824428000 +0200
+@@ -144,6 +144,7 @@
+ virDomainDiskDeviceTypeToString;
+ virDomainDiskInsert;
+ virDomainDiskInsertPreAlloced;
++virDomainDiskRemove;
+ virDomainDiskDefAssignAddress;
+ virDomainControllerInsert;
+ virDomainControllerInsertPreAlloced;
+Index: libvirt-0.8.3/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-0.8.3.orig/src/qemu/qemu_driver.c	2010-08-03 09:53:52.000000000 +0200
++++ libvirt-0.8.3/src/qemu/qemu_driver.c	2010-08-23 14:28:16.834428000 +0200
+@@ -8572,22 +8572,6 @@
+     return -1;
+ }
+ 
+-static inline void qemudShrinkDisks(virDomainDefPtr def, size_t i)
+-{
+-    if (def->ndisks > 1) {
+-        memmove(def->disks + i,
+-                def->disks + i + 1,
+-                sizeof(*def->disks) *
+-                (def->ndisks - (i + 1)));
+-        def->ndisks--;
+-        if (VIR_REALLOC_N(def->disks, def->ndisks) < 0) {
+-            /* ignore, harmless */
+-        }
+-    } else {
+-        VIR_FREE(def->disks);
+-        def->ndisks = 0;
+-    }
+-}
+ 
+ static int qemudDomainDetachPciDiskDevice(struct qemud_driver *driver,
+                                           virDomainObjPtr vm,
+@@ -8640,7 +8624,7 @@
+     }
+     qemuDomainObjExitMonitorWithDriver(driver, vm);
+ 
+-    qemudShrinkDisks(vm->def, i);
++    virDomainDiskRemove(vm->def, i);
+ 
+     virDomainDiskDefFree(detach);
+ 
+@@ -8704,7 +8688,7 @@
+     }
+     qemuDomainObjExitMonitorWithDriver(driver, vm);
+ 
+-    qemudShrinkDisks(vm->def, i);
++    virDomainDiskRemove(vm->def, i);
+ 
+     virDomainDiskDefFree(detach);
+ 

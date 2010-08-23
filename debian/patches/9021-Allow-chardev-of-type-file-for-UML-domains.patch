@@ -1,0 +1,130 @@
+From 62b6997ce67a640ad1ea18c8d03a37afcac75712 Mon Sep 17 00:00:00 2001
+From: Soren Hansen <soren@linux2go.dk>
+Date: Wed, 18 Aug 2010 12:41:53 +0200
+Subject: [PATCH] Allow chardev of type 'file' for UML domains.
+
+Like the comment suggested, we just open the file and pass the file
+descriptor to uml. The input "stream" is set to "null", since I couldn't
+find any useful way to actually use a file for input for a chardev and
+this also mimics what e.g. QEmu does internally.
+
+Signed-off-by: Soren Hansen <soren@linux2go.dk>
+---
+ src/uml/uml_conf.c   |   31 ++++++++++++++++++++++++++-----
+ src/uml/uml_conf.h   |    1 +
+ src/uml/uml_driver.c |   10 +++++++++-
+ 3 files changed, 36 insertions(+), 6 deletions(-)
+
+diff --git a/src/uml/uml_conf.c b/src/uml/uml_conf.c
+index 42193e4..65b06c5 100644
+--- a/src/uml/uml_conf.c
++++ b/src/uml/uml_conf.c
+@@ -295,7 +295,8 @@ error:
+ 
+ static char *
+ umlBuildCommandLineChr(virDomainChrDefPtr def,
+-                       const char *dev)
++                       const char *dev,
++                       fd_set *keepfd)
+ {
+     char *ret = NULL;
+ 
+@@ -344,8 +345,27 @@ umlBuildCommandLineChr(virDomainChrDefPtr def,
+         break;
+ 
+     case VIR_DOMAIN_CHR_TYPE_FILE:
+-    case VIR_DOMAIN_CHR_TYPE_PIPE:
+-        /* XXX could open the file/pipe & just pass the FDs */
++         {
++            int fd_out;
++
++            if ((fd_out = open(def->data.file.path,
++                               O_WRONLY | O_APPEND | O_CREAT, 0660)) < 0) {
++                virReportSystemError(errno,
++                                     _("failed to open chardev file: %s"),
++                                     def->data.file.path);
++                return NULL;
++            }
++            if (virAsprintf(&ret, "%s%d=null,fd:%d", dev, def->target.port, fd_out) < 0) {
++                virReportOOMError();
++                close(fd_out);
++                return NULL;
++            }
++            FD_SET(fd_out, keepfd);
++        }
++        break;
++   case VIR_DOMAIN_CHR_TYPE_PIPE:
++        /* XXX could open the pipe & just pass the FDs. Be wary of
++         * the effects of blocking I/O, though. */
+ 
+     case VIR_DOMAIN_CHR_TYPE_VC:
+     case VIR_DOMAIN_CHR_TYPE_UDP:
+@@ -391,6 +411,7 @@ static char *umlNextArg(char *args)
+ int umlBuildCommandLine(virConnectPtr conn,
+                         struct uml_driver *driver ATTRIBUTE_UNUSED,
+                         virDomainObjPtr vm,
++                        fd_set *keepfd,
+                         const char ***retargv,
+                         const char ***retenv)
+ {
+@@ -513,7 +534,7 @@ int umlBuildCommandLine(virConnectPtr conn,
+     for (i = 0 ; i < UML_MAX_CHAR_DEVICE ; i++) {
+         char *ret = NULL;
+         if (i == 0 && vm->def->console)
+-            ret = umlBuildCommandLineChr(vm->def->console, "con");
++            ret = umlBuildCommandLineChr(vm->def->console, "con", keepfd);
+         if (!ret)
+             if (virAsprintf(&ret, "con%d=none", i) < 0)
+                 goto no_memory;
+@@ -527,7 +548,7 @@ int umlBuildCommandLine(virConnectPtr conn,
+             if (vm->def->serials[j]->target.port == i)
+                 chr = vm->def->serials[j];
+         if (chr)
+-            ret = umlBuildCommandLineChr(chr, "ssl");
++            ret = umlBuildCommandLineChr(chr, "ssl", keepfd);
+         if (!ret)
+             if (virAsprintf(&ret, "ssl%d=none", i) < 0)
+                 goto no_memory;
+diff --git a/src/uml/uml_conf.h b/src/uml/uml_conf.h
+index b33acc8..d8b2349 100644
+--- a/src/uml/uml_conf.h
++++ b/src/uml/uml_conf.h
+@@ -71,6 +71,7 @@ virCapsPtr  umlCapsInit               (void);
+ int         umlBuildCommandLine       (virConnectPtr conn,
+                                        struct uml_driver *driver,
+                                        virDomainObjPtr dom,
++                                       fd_set *keepfd,
+                                        const char ***retargv,
+                                        const char ***retenv);
+ 
+diff --git a/src/uml/uml_driver.c b/src/uml/uml_driver.c
+index 9cad7f1..6582d95 100644
+--- a/src/uml/uml_driver.c
++++ b/src/uml/uml_driver.c
+@@ -869,7 +869,7 @@ static int umlStartVMDaemon(virConnectPtr conn,
+         return -1;
+     }
+ 
+-    if (umlBuildCommandLine(conn, driver, vm,
++    if (umlBuildCommandLine(conn, driver, vm, &keepfd,
+                             &argv, &progenv) < 0) {
+         close(logfd);
+         umlCleanupTapDevices(conn, vm);
+@@ -908,6 +908,14 @@ static int umlStartVMDaemon(virConnectPtr conn,
+                            NULL, NULL, NULL);
+     close(logfd);
+ 
++    /*
++     * At the moment, the only thing that populates keepfd is
++     * umlBuildCommandLineChr. We want to close every fd it opens.
++     */
++    for (i = 0; i < FD_SETSIZE; i++)
++        if (FD_ISSET(i, &keepfd))
++            close(i);
++
+     for (i = 0 ; argv[i] ; i++)
+         VIR_FREE(argv[i]);
+     VIR_FREE(argv);
+-- 
+1.7.0.4
+
