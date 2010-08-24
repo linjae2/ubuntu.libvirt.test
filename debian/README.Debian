@@ -123,24 +123,20 @@ Adding users to the libvirtd group effectively grants them root access. In
 Ubuntu, users in the admin group (who already have 'sudo' access) are added to
 this group automatically.
 
-Virtual machines started from qemu:///system run with root privileges. As
-discussed above, in Ubuntu Qemu/KVM virtual machines are fully isolated and
-confined by the AppArmor security driver. Users may optionally choose to adjust
+Virtual machines started from qemu:///system may run with or without root
+privileges. As discussed above, in Ubuntu Qemu/KVM virtual machines are fully
+isolated and confined by the AppArmor security driver. Users can adjust this
 /etc/libvirt/qemu.conf so that virtual machines started under qemu:///system
 run as a non-privileged user (new in libvirt 0.7). The 'libvirt-qemu' user and
-'kvm' group are configured for this purpose.
+'kvm' group are configured for this purpose. In Ubuntu, libvirt runs virtual
+machines with non-root privileges as well as fully confined by AppArmor.
 
 While the current non-root implementation does reduce the privileges of virtual
-machines running under qemu:///system, all VMs run under the same user and
-there is no guest isolation. Additionally, if each VM ran under its own user,
-an attacker could potentially break out of the VM and have unconfined user
-access to the host machine.
-
-Considering that the current implementation is new and not as well tested,
-libvirt in Ubuntu will by default run virtual machines with root privileges,
-but fully confined by AppArmor. Once there is consensus among the community on
-the implementation, running VMs as non-root can be considered as an additional
-protection to the AppArmor driver.
+machines running under qemu:///system, continuing to use a MAC system such as
+AppArmor is important because without the MAC system all VMs will still run
+under the same user and there is no guest isolation. Additionally, if each VM
+ran under its own user, an attacker could potentially break out of the VM and
+have unconfined user access to the host machine.
 
 
 Disk migration
