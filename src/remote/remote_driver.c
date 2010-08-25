@@ -730,7 +730,7 @@ doRemoteOpen (virConnectPtr conn,
     }
 
     case trans_ssh: {
-        int j, nr_args = 4;
+        int j, nr_args = 5;
         virBuffer cmd_netcat = VIR_BUFFER_INITIALIZER;
 
         if (username) nr_args += 2; /* For -l username */
@@ -764,6 +764,7 @@ doRemoteOpen (virConnectPtr conn,
             cmd_argv[j++] = strdup ("none");
         }
         cmd_argv[j++] = strdup (priv->hostname);
+        cmd_argv[j++] = strdup ("sh -c");
 
 	/*
 	 * This ugly thing is a shell script to detect availability of
@@ -776,13 +777,19 @@ doRemoteOpen (virConnectPtr conn,
 	 * to the desired behavior.
 	 */
 
-        virBufferVSprintf(&cmd_netcat, "%s -q 2>&1 | grep -q 'requires an argument';"
+        virBufferVSprintf(&cmd_netcat, "'%s -q 2>&1 | grep -q \"requires an argument\";"
                                        "if [ $? -eq 0 ] ; then"
-                                       "   CMD='-q 0';"
+                                       "   CMD=\"%s -q 0 -U %s\";"
                                        "else"
-                                       "   CMD='';"
-                                       "fi;%s $CMD -U %s",
+                                       "   CMD=\"%s -U %s\";"
+                                       "fi;"
+                                       "eval \"$CMD\";'",
                                        netcat ? netcat : "nc",
+                                       netcat ? netcat : "nc",
+                                       sockname ? sockname :
+                                        (flags & VIR_CONNECT_RO
+                                         ? LIBVIRTD_PRIV_UNIX_SOCKET_RO
+                                         : LIBVIRTD_PRIV_UNIX_SOCKET),
                                        netcat ? netcat : "nc",
                                        sockname ? sockname :
                                         (flags & VIR_CONNECT_RO
