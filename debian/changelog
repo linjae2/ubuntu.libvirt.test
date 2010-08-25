@@ -1,3 +1,10 @@
+libvirt (0.8.3-1ubuntu8) maverick; urgency=low
+
+  * debian/patches/9009-autodetect-nc-params.patch: updated to fix
+    connecting to a remote server when using zsh or tcsh. (LP: #605172)
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 25 Aug 2010 12:41:25 -0400
+
 libvirt (0.8.3-1ubuntu7) maverick; urgency=low
 
   * debian/patches/series: per Ubuntu Server team, run qemu/kvm as non-root
