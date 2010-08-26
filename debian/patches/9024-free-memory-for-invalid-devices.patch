@@ -1,18 +1,68 @@
-Index: libvirt-0.7.5/src/node_device/node_device_udev.c
-===================================================================
---- libvirt-0.7.5.orig/src/node_device/node_device_udev.c	2010-05-25 02:26:36.000000000 +1200
-+++ libvirt-0.7.5/src/node_device/node_device_udev.c	2010-05-25 02:29:35.000000000 +1200
-@@ -1247,6 +1247,9 @@
+commit e7f3bad46edf352abd9f700af9ec59882762c4ca
+Author: David Allan <dallan@redhat.com>
+Date:   Fri May 28 22:22:05 2010 -0400
+
+    Fix leaks in udev device add/remove v3
+    
+    * This patch is a modification of a patch submitted by Nigel Jones.
+      It fixes several memory leaks on device addition/removal:
+    
+    1. Free the virNodeDeviceDefPtr in udevAddOneDevice if the return
+       value is non-zero
+    
+    2. Always release the node device reference after the device has been
+       processed.
+    
+    * Refactored for better readability per the suggestion of clalance
+
+diff --git a/src/node_device/node_device_udev.c b/src/node_device/node_device_udev.c
+index 6e3ecd7..73217c5 100644
+--- a/src/node_device/node_device_udev.c
++++ b/src/node_device/node_device_udev.c
+@@ -1235,10 +1235,11 @@ static int udevAddOneDevice(struct udev_device *device)
+         goto out;
+     }
+ 
++    /* If this is a device change, the old definition will be freed
++     * and the current definition will take its place. */
+     dev = virNodeDeviceAssignDef(NULL, &driverState->devs, def);
+     if (dev == NULL) {
+         VIR_ERROR("Failed to create device for '%s'\n", def->name);
+-        virNodeDeviceDefFree(def);
+         goto out;
+     }
+ 
+@@ -1247,6 +1248,10 @@ static int udevAddOneDevice(struct udev_device *device)
      ret = 0;
  
  out:
 +    if (ret != 0) {
-+       virNodeDeviceDefFree(def); /* Free assigned memory to prevent leaks */
++        virNodeDeviceDefFree(def);
 +    }
++
      return ret;
  }
  
-@@ -1373,6 +1376,7 @@
+@@ -1261,15 +1266,17 @@ static int udevProcessDeviceListEntry(struct udev *udev,
+     name = udev_list_entry_get_name(list_entry);
+ 
+     device = udev_device_new_from_syspath(udev, name);
++
+     if (device != NULL) {
+         if (udevAddOneDevice(device) != 0) {
+             VIR_INFO("Failed to create node device for udev device '%s'\n",
+                      name);
+         }
+-        udev_device_unref(device);
+         ret = 0;
+     }
+ 
++    udev_device_unref(device);
++
+     return ret;
+ }
+ 
+@@ -1373,6 +1380,7 @@ static void udevEventHandleCallback(int watch ATTRIBUTE_UNUSED,
      }
  
  out:

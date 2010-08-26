@@ -32,3 +32,5 @@
 9021-apparmor-fix-hostdev.patch
 9022-dont-leak-log-fd.path.patch
 9023-virt-pki-validate_fixes.patch
+9024-free-memory-for-invalid-devices.patch
+9025-avoid-NULL-dereference-upon-disk-op-fail.patch
