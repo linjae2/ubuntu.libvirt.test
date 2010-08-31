@@ -1696,7 +1696,7 @@ static int umlDomainAttachUmlDisk(struct uml_driver *driver,
                                   virDomainObjPtr vm,
                                   virDomainDiskDefPtr disk)
 {
-    int i, ret;
+    int i;
     char *cmd = NULL;
     char *reply = NULL;
 
@@ -1726,9 +1726,6 @@ static int umlDomainAttachUmlDisk(struct uml_driver *driver,
         virReportOOMError();
         goto error;
     }
-
-    if (ret < 0)
-        goto error;
 
     virDomainDiskInsertPreAlloced(vm->def, disk);
 

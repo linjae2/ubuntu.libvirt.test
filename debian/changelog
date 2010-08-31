@@ -1,3 +1,13 @@
+libvirt (0.8.3-1ubuntu9) maverick; urgency=low
+
+  * Update 9023-Support-virDomainAttachDevice-and-virDomainDetachDev.patch
+    based on a small last-minute change upstream.
+  * Add 9024-Explicitly-pass-uml_dir-argument-to-user-mode-linux.patch
+    to stop user-mode-linux domains running under a libvirtd run by
+    upstart from mysteriously and silently crashing during boot.
+
+ -- Soren Hansen <soren@ubuntu.com>  Tue, 31 Aug 2010 16:05:24 +0200
+
 libvirt (0.8.3-1ubuntu8) maverick; urgency=low
 
   * debian/patches/9009-autodetect-nc-params.patch: updated to fix
