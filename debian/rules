@@ -70,4 +70,6 @@ build/libvirt-bin::
 	cp -f debian/apparmor/TEMPLATE debian/tmp/etc/apparmor.d/libvirt
 	mkdir -p debian/tmp/usr/share/apport/package-hooks
 	cp -f debian/libvirt-bin.apport debian/tmp/usr/share/apport/package-hooks/source_libvirt-bin.py
+	mkdir -p debian/tmp/usr/sbin
+	cp -f debian/libvirt-migrate-qemu-disks debian/tmp/usr/sbin
 

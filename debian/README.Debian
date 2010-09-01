@@ -142,4 +142,35 @@ but fully confined by AppArmor. Once there is consensus among the community on
 the implementation, running VMs as non-root can be considered as an additional
 protection to the AppArmor driver.
 
- -- Jamie Strandboge <jamie@canonical.com>  Thu, 10 Sep 2009 08:29:04 -0500
+Disk migration
+==============
+Libvirt versions earlier that 0.8.3 would probe a qemu disk to determine its
+format and did not require that the format be declared in the XML. Newer
+versions of libvirt will default to the 'raw' format when the format is not
+specified in the XML. As a result, non-raw disks without unspecified disk
+format will no longer be available in virtual machines.
+
+libvirt-migrate-qemu-disks is provided to aid in transitioning virtual
+machine definitions to the new required format. In essence, it will check
+all domains for affected virtual machines, probe the affected disks and update
+the domain definition accordingly. For example, a domain with:
+
+    <disk type='file' device='disk'>
+      <source file='/var/lib/libvirt/images/foo.qcow2'/>
+      <target dev='hda' bus='ide'/>
+      <address type='drive' controller='0' bus='0' unit='0'/>
+    </disk>
+
+will be updated to have:
+
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/var/lib/libvirt/images/foo.qcow2'/>
+      <target dev='hda' bus='ide'/>
+      <address type='drive' controller='0' bus='0' unit='0'/>
+    </disk>
+
+This command will be run automatically on upgrade to 0.8.3-1ubuntu1. See
+'man 1 libvirt-migrate-qemu-disks' for details.
+
+ -- Jamie Strandboge <jamie@canonical.com>  Thu, 12 Aug 2010 15:03:07 -0500

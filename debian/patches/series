@@ -32,3 +32,5 @@
 9021-apparmor-fix-hostdev.patch
 9022-dont-leak-log-fd.path.patch
 9023-virt-pki-validate_fixes.patch
+9900-CVE-2010-2237-2238-2239.patch
+9901-CVE-2010-2242.patch

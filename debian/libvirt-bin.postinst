@@ -110,6 +110,13 @@ esac
 
 #DEBHELPER#
 
+# This must run after libvirt-bin has started
+if [ "$1" = "configure" ]; then
+    if dpkg --compare-versions "$2" lt-nl "0.7.5-5ubuntu27.5" ; then
+        libvirt-migrate-qemu-disks -a || true
+    fi
+fi
+
 exit 0
 
 
