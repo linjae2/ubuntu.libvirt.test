@@ -11,3 +11,4 @@ disk-bus.patch
 graceful_shutdown.patch -p0
 masquerade-only-outbound-traffic.patch
 CVE-2008-5086.patch
+CVE-2010-2242.patch

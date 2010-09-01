@@ -1,3 +1,13 @@
+libvirt (0.4.0-2ubuntu8.3) hardy-security; urgency=low
+
+  * SECURITY UPDATE: fix to disallow privileged users in guests from accessing
+    privileged resources, such as NFS
+    - debian/patches/CVE-2010-2242.patch: set iptables masqerading rules to
+      use ports 1024-65535
+    - CVE-2010-2242
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 01 Sep 2010 16:47:58 -0500
+
 libvirt (0.4.0-2ubuntu8.2) hardy-proposed; urgency=low
 
   * masquerade-only-outbound-traffic.patch:
