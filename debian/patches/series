@@ -14,3 +14,4 @@ xen-events-handling-fix.diff
 more-flexible-emulator-on-x86.patch -p0
 default-arch.patch
 event-handling-fix-rh499698-lp362288.patch
+9901-CVE-2010-2242.patch
