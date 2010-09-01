@@ -16,3 +16,5 @@
 0005-Close-logfile-fd-after-spawning-qemu.patch
 9093-lp460271.patch
 9094-lp453335.patch
+9900-CVE-2010-2239.patch
+9901-CVE-2010-2242.patch
