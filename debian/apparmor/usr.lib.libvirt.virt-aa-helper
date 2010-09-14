@@ -47,6 +47,7 @@
   /var/lib/libvirt/images/ r,
   /var/lib/libvirt/images/** r,
   /var/lib/eucalyptus/instances/**/disk* r,
+  /var/lib/eucalyptus/instances/**/loader* r,
   /{media,mnt,opt,srv}/** r,
 
   /**.img r,
