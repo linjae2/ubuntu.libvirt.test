@@ -30,3 +30,4 @@
 9023-Support-virDomainAttachDevice-and-virDomainDetachDev.patch
 9024-Explicitly-pass-uml_dir-argument-to-user-mode-linux.patch
 9025-Add-nwfilter-support-to-UML-driver.patch
+9026-Rebuild-network-filter-for-UML-guests-on-updates.patch
