@@ -1,3 +1,12 @@
+libvirt (0.8.3-1ubuntu12) maverick; urgency=low
+
+  * 9027-Make-newfilter-xml-transformations-endian-safe.patch
+    NWFilter XML processing includes endian assumptions.  Ensure
+    that XML is parsed in an endian-safe manner.  Thanks to
+    Stefan Berger for developing the patch upstream. (LP: #643394)
+
+ -- Emmet Hikory <persia@ubuntu.com>  Mon, 20 Sep 2010 19:18:11 +0900
+
 libvirt (0.8.3-1ubuntu11) maverick; urgency=low
 
   * 9026-Rebuild-network-filter-for-UML-guests-on-updates.patch.
