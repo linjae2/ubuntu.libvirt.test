@@ -1,0 +1,17 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: fix compiler warning and stat() failure on 32-bit machines when
+ stating large files. This can be dropped in 0.8.5.
+Bug-Ubuntu: https://launchpad.net/bugs/628055
+
+Index: libvirt-0.8.3/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-0.8.3.orig/src/security/virt-aa-helper.c	2010-09-22 15:15:14.000000000 -0500
++++ libvirt-0.8.3/src/security/virt-aa-helper.c	2010-09-22 15:20:52.000000000 -0500
+@@ -18,6 +18,7 @@
+ #include <stdarg.h>
+ #include <unistd.h>
+ #include <errno.h>
++#include <sys/stat.h>
+ #include <sys/types.h>
+ #include <fcntl.h>
+ #include <getopt.h>

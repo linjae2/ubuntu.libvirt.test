@@ -18,6 +18,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <getopt.h>
