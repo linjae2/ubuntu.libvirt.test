@@ -27,6 +27,7 @@
   network inet dgram,
   network inet6 stream,
   network inet6 dgram,
+  network packet dgram,
 
   # for now, use a very lenient profile since we want to first focus on
   # confining the guests

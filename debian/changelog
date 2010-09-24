@@ -1,3 +1,12 @@
+libvirt (0.8.3-1ubuntu14) maverick; urgency=low
+
+  * Let Apparmor allow libvirtd to create PF_PACKET sockets. Several
+    utility functions require it. Of particular interest, the NWFilter
+    code uses it, so libvirt's firewalling functionality depends on
+    this. (LP: #646706)
+
+ -- Soren Hansen <soren@ubuntu.com>  Fri, 24 Sep 2010 23:36:36 +0200
+
 libvirt (0.8.3-1ubuntu13) maverick; urgency=low
 
   * debian/patch/9028-lp628055.patch: include sys/stat.h to fix compiler
