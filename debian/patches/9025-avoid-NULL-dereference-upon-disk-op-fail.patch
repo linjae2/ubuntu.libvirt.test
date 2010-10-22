@@ -1,0 +1,22 @@
+commit eebf932e9418b8a626488ced40294e4f5d580e49
+Author: Jim Meyering <meyering@redhat.com>
+Date:   Wed Dec 16 14:15:50 2009 +0100
+
+    qemu_driver.c: avoid NULL dereference upon disk-op failure
+    
+    * src/qemu/qemu_driver.c (qemudDomainAttachDevice): Call
+    virCgroupDenyDevicePath only if cgroup is non-NULL.
+
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index a6a1a5a..4639478 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -5497,7 +5497,7 @@ static int qemudDomainAttachDevice(virDomainPtr dom,
+                              virDomainDiskDeviceTypeToString(dev->data.disk->device));
+             /* Fallthrough */
+         }
+-        if (ret != 0) {
++        if (ret != 0 && cgroup) {
+             virCgroupDenyDevicePath(cgroup,
+                                     dev->data.disk->src);
+         }
