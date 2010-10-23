@@ -36,3 +36,4 @@
 9025-avoid-NULL-dereference-upon-disk-op-fail.patch
 9900-CVE-2010-2237-2238-2239.patch
 9901-CVE-2010-2242.patch
+9902-lp665531.patch
