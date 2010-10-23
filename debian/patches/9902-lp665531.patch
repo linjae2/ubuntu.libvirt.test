@@ -1,0 +1,24 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: don't fail with <driver name='qemu' type='host_device'/>.
+ 'host_device' is for raw files that don't have holes, so treat it as such.
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/665531
+
+Index: libvirt-0.7.5/src/conf/domain_conf.c
+===================================================================
+--- libvirt-0.7.5.orig/src/conf/domain_conf.c	2010-10-23 10:30:44.000000000 -0500
++++ libvirt-0.7.5/src/conf/domain_conf.c	2010-10-23 10:57:02.000000000 -0500
+@@ -5415,6 +5415,14 @@
+         if (STREQ(formatStr, "aio"))
+             formatStr = "raw"; /* Xen compat */
+ 
++        /* Restore behavior for <driver name='qemu' type='host_device'/>
++         * host_device. (LP: #665531)
++         */
++        if (disk->driverName &&
++            STREQ(disk->driverName, "qemu") &&
++            STREQ(formatStr, "host_device"))
++            formatStr = "raw";
++
+         if ((format = virStorageFileFormatTypeFromString(formatStr)) < 0) {
+             virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                  _("unknown disk format '%s' for %s"),

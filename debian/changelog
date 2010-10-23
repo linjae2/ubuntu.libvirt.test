@@ -1,3 +1,10 @@
+libvirt (0.7.5-5ubuntu27.7) lucid-security; urgency=low
+
+  * debian/patches/9902-lp665531.patch: restore use of '<driver name='qemu'
+    type='host_device'/>' (LP: #665531)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Sat, 23 Oct 2010 11:01:42 -0500
+
 libvirt (0.7.5-5ubuntu27.6) lucid-security; urgency=low
 
   Renable the changes in 27.3, which were mistakenly dropped (LP: #665182)
