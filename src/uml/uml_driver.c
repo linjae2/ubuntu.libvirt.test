@@ -374,6 +374,10 @@ umlStartup(int privileged) {
 
         if ((base = strdup (SYSCONF_DIR "/libvirt")) == NULL)
             goto out_of_memory;
+
+        if (virAsprintf(&uml_driver->monitorDir,
+                        "%s/run/libvirt/uml-guest", LOCAL_STATE_DIR) == -1)
+            goto out_of_memory;
     } else {
 
         if (virAsprintf(&uml_driver->logDir,
@@ -382,11 +386,11 @@ umlStartup(int privileged) {
 
         if (virAsprintf(&base, "%s/.libvirt", userdir) == -1)
             goto out_of_memory;
-    }
 
-    if (virAsprintf(&uml_driver->monitorDir,
-                    "%s/.uml", userdir) == -1)
-        goto out_of_memory;
+        if (virAsprintf(&uml_driver->monitorDir,
+                        "%s/.uml", userdir) == -1)
+            goto out_of_memory;
+    }
 
     /* Configuration paths are either ~/.libvirt/uml/... (session) or
      * /etc/libvirt/uml/... (system).
@@ -1084,7 +1088,6 @@ static int umlGetProcessInfo(unsigned long long *cpuTime, int pid) {
     }
 
     if (!(pidinfo = fopen(proc, "r"))) {
-        /*printf("cannot read pid info");*/
         /* VM probably shut down, so fake 0 */
         *cpuTime = 0;
         return 0;
@@ -1417,7 +1420,7 @@ static unsigned long umlDomainGetMaxMemory(virDomainPtr dom) {
                        _("no domain with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
-    ret = vm->def->maxmem;
+    ret = vm->def->mem.max_balloon;
 
 cleanup:
     if (vm)
@@ -1443,13 +1446,13 @@ static int umlDomainSetMaxMemory(virDomainPtr dom, unsigned long newmax) {
         goto cleanup;
     }
 
-    if (newmax < vm->def->memory) {
+    if (newmax < vm->def->mem.cur_balloon) {
         umlReportError(VIR_ERR_INVALID_ARG, "%s",
                        _("cannot set max memory lower than current memory"));
         goto cleanup;
     }
 
-    vm->def->maxmem = newmax;
+    vm->def->mem.max_balloon = newmax;
     ret = 0;
 
 cleanup:
@@ -1482,13 +1485,13 @@ static int umlDomainSetMemory(virDomainPtr dom, unsigned long newmem) {
         goto cleanup;
     }
 
-    if (newmem > vm->def->maxmem) {
+    if (newmem > vm->def->mem.max_balloon) {
         umlReportError(VIR_ERR_INVALID_ARG, "%s",
                        _("cannot set memory higher than max memory"));
         goto cleanup;
     }
 
-    vm->def->memory = newmem;
+    vm->def->mem.cur_balloon = newmem;
     ret = 0;
 
 cleanup:
@@ -1525,8 +1528,8 @@ static int umlDomainGetInfo(virDomainPtr dom,
         }
     }
 
-    info->maxMem = vm->def->maxmem;
-    info->memory = vm->def->memory;
+    info->maxMem = vm->def->mem.max_balloon;
+    info->memory = vm->def->mem.cur_balloon;
     info->nrVirtCpu = vm->def->vcpus;
     ret = 0;
 
@@ -2126,6 +2129,8 @@ static virDriver umlDriver = {
     NULL, /* domainRestore */
     NULL, /* domainCoreDump */
     NULL, /* domainSetVcpus */
+    NULL, /* domainSetVcpusFlags */
+    NULL, /* domainGetVcpusFlags */
     NULL, /* domainPinVcpu */
     NULL, /* domainGetVcpus */
     NULL, /* domainGetMaxVcpus */
@@ -2193,17 +2198,15 @@ static virDriver umlDriver = {
     NULL, /* domainRevertToSnapshot */
     NULL, /* domainSnapshotDelete */
     NULL, /* qemuDomainMonitorCommand */
+    NULL, /* domainSetMemoryParamters */
+    NULL, /* domainGetMemoryParamters */
 };
 
 static int
 umlVMFilterRebuild(virConnectPtr conn ATTRIBUTE_UNUSED,
                    virHashIterator iter, void *data)
 {
-    struct uml_driver *driver = uml_driver;
-
-    umlDriverLock(driver);
     virHashForEach(uml_driver->domains.objs, iter, data);
-    umlDriverUnlock(driver);
 
     return 0;
 }
@@ -2216,9 +2219,23 @@ static virStateDriver umlStateDriver = {
     .active = umlActive,
 };
 
+static void
+umlVMDriverLock(void)
+{
+    umlDriverLock(uml_driver);
+}
+
+static void
+umlVMDriverUnlock(void)
+{
+    umlDriverUnlock(uml_driver);
+}
+
 static virNWFilterCallbackDriver umlCallbackDriver = {
     .name = "UML",
     .vmFilterRebuild = umlVMFilterRebuild,
+    .vmDriverLock = umlVMDriverLock,
+    .vmDriverUnlock = umlVMDriverUnlock,
 };
 
 int umlRegister(void) {

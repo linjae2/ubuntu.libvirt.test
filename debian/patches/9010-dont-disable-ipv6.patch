@@ -8,11 +8,11 @@ Description: Don't disable IPv6 on the bridge interface. The original intent of
 Bug-RedHat: https://bugzilla.redhat.com/show_bug.cgi?id=501934
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/528934
 Forwarded: yes
-Index: libvirt-0.8.3/src/network/bridge_driver.c
+Index: libvirt-0.8.5/src/network/bridge_driver.c
 ===================================================================
---- libvirt-0.8.3.orig/src/network/bridge_driver.c	2010-08-02 14:16:42.000000000 -0500
-+++ libvirt-0.8.3/src/network/bridge_driver.c	2010-08-11 17:12:52.000000000 -0500
-@@ -954,29 +954,11 @@
+--- libvirt-0.8.5.orig/src/network/bridge_driver.c	2010-11-02 16:26:33.704307000 -0500
++++ libvirt-0.8.5/src/network/bridge_driver.c	2010-11-02 16:29:40.363576000 -0500
+@@ -1028,29 +1028,11 @@
  
  #define SYSCTL_PATH "/proc/sys"
  
@@ -43,7 +43,7 @@ Index: libvirt-0.8.3/src/network/bridge_driver.c
      if (virAsprintf(&field, SYSCTL_PATH "/net/ipv6/conf/%s/accept_ra", network->def->bridge) < 0) {
          virReportOOMError();
          goto cleanup;
-@@ -1136,7 +1118,7 @@
+@@ -1191,7 +1173,7 @@
          return -1;
      }
  

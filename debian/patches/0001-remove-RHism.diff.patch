@@ -6,11 +6,11 @@ Subject: [PATCH] remove-RHism.diff
  tools/virsh.pod |    2 +-
  1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/tools/virsh.pod b/tools/virsh.pod
-index e0471b1..692dc29 100644
---- a/tools/virsh.pod
-+++ b/tools/virsh.pod
-@@ -42,7 +42,7 @@ the program.
+Index: libvirt-0.8.5/tools/virsh.pod
+===================================================================
+--- libvirt-0.8.5.orig/tools/virsh.pod	2010-11-02 16:26:33.704307000 -0500
++++ libvirt-0.8.5/tools/virsh.pod	2010-11-02 16:29:06.873576000 -0500
+@@ -92,7 +92,7 @@
  
  Most B<virsh> operations rely upon the libvirt library being able to
  connect to an already running libvirtd service.  This can usually be
@@ -19,4 +19,3 @@ index e0471b1..692dc29 100644
  
  Most B<virsh> commands require root privileges to run due to the
  communications channels used to talk to the hypervisor.  Running as
--- 

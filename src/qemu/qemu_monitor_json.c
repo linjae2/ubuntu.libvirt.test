@@ -1353,7 +1353,7 @@ int qemuMonitorJSONEjectMedia(qemuMonitorPtr mon,
     int ret;
     virJSONValuePtr cmd = qemuMonitorJSONMakeCommand("eject",
                                                      "s:device", devname,
-                                                     "i:force", 0,
+                                                     "b:force", 0,
                                                      NULL);
     virJSONValuePtr reply = NULL;
     if (!cmd)
@@ -1481,17 +1481,12 @@ int qemuMonitorJSONSetMigrationDowntime(qemuMonitorPtr mon,
                                         unsigned long long downtime)
 {
     int ret;
-    char *downtimestr;
     virJSONValuePtr cmd;
     virJSONValuePtr reply = NULL;
-    if (virAsprintf(&downtimestr, "%llums", downtime) < 0) {
-        virReportOOMError();
-        return -1;
-    }
+
     cmd = qemuMonitorJSONMakeCommand("migrate_set_downtime",
-                                     "s:value", downtimestr,
+                                     "d:value", downtime / 1000.0,
                                      NULL);
-    VIR_FREE(downtimestr);
     if (!cmd)
         return -1;
 
@@ -1606,9 +1601,9 @@ static int qemuMonitorJSONMigrate(qemuMonitorPtr mon,
     int ret;
     virJSONValuePtr cmd =
       qemuMonitorJSONMakeCommand("migrate",
-                                 "i:detach", flags & QEMU_MONITOR_MIGRATE_BACKGROUND ? 1 : 0,
-                                 "i:blk", flags & QEMU_MONITOR_MIGRATE_NON_SHARED_DISK ? 1 : 0,
-                                 "i:inc", flags & QEMU_MONITOR_MIGRATE_NON_SHARED_INC ? 1 : 0,
+                                 "b:detach", flags & QEMU_MONITOR_MIGRATE_BACKGROUND ? 1 : 0,
+                                 "b:blk", flags & QEMU_MONITOR_MIGRATE_NON_SHARED_DISK ? 1 : 0,
+                                 "b:inc", flags & QEMU_MONITOR_MIGRATE_NON_SHARED_INC ? 1 : 0,
                                  "s:uri", uri,
                                  NULL);
     virJSONValuePtr reply = NULL;
@@ -1703,8 +1698,9 @@ int qemuMonitorJSONMigrateToFile(qemuMonitorPtr mon,
      * allow starting at an alignment of 512, but without wasting
      * padding to get to the larger alignment useful for speed.  Use
      * <> redirection to avoid truncating a regular file.  */
-    if (virAsprintf(&dest, "exec:%s | { dd bs=%llu seek=%llu if=/dev/null && "
-                    "dd bs=%llu; } 1<>%s",
+    if (virAsprintf(&dest, "exec:" VIR_WRAPPER_SHELL_PREFIX "%s | "
+                    "{ dd bs=%llu seek=%llu if=/dev/null && "
+                    "dd bs=%llu; } 1<>%s" VIR_WRAPPER_SHELL_SUFFIX,
                     argstr, QEMU_MONITOR_MIGRATE_TO_FILE_BS,
                     offset / QEMU_MONITOR_MIGRATE_TO_FILE_BS,
                     QEMU_MONITOR_MIGRATE_TO_FILE_TRANSFER_SIZE,

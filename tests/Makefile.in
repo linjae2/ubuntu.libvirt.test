@@ -14,7 +14,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -37,14 +36,14 @@ host_triplet = @host@
 @WITH_DRIVER_MODULES_TRUE@am__append_1 = \
 @WITH_DRIVER_MODULES_TRUE@	-DTEST_DRIVER_DIR=\"$(top_builddir)/src/.libs\"
 
-noinst_PROGRAMS = virshtest$(EXEEXT) conftest$(EXEEXT) \
-	nodeinfotest$(EXEEXT) statstest$(EXEEXT) qparamtest$(EXEEXT) \
-	$(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
-	$(am__EXEEXT_4) $(am__EXEEXT_5) $(am__EXEEXT_6) \
-	networkxml2xmltest$(EXEEXT) nwfilterxml2xmltest$(EXEEXT) \
-	storagevolxml2xmltest$(EXEEXT) storagepoolxml2xmltest$(EXEEXT) \
-	nodedevxml2xmltest$(EXEEXT) interfacexml2xmltest$(EXEEXT) \
-	$(am__EXEEXT_7)
+check_PROGRAMS = virshtest$(EXEEXT) conftest$(EXEEXT) \
+	sockettest$(EXEEXT) nodeinfotest$(EXEEXT) statstest$(EXEEXT) \
+	qparamtest$(EXEEXT) virbuftest$(EXEEXT) $(am__EXEEXT_1) \
+	$(am__EXEEXT_2) $(am__EXEEXT_3) $(am__EXEEXT_4) \
+	$(am__EXEEXT_5) $(am__EXEEXT_6) networkxml2xmltest$(EXEEXT) \
+	nwfilterxml2xmltest$(EXEEXT) storagevolxml2xmltest$(EXEEXT) \
+	storagepoolxml2xmltest$(EXEEXT) nodedevxml2xmltest$(EXEEXT) \
+	interfacexml2xmltest$(EXEEXT) $(am__EXEEXT_7)
 @WITH_XEN_TRUE@am__append_2 = xml2sexprtest sexpr2xmltest \
 @WITH_XEN_TRUE@	reconnect xmconfigtest xencapstest
 
@@ -73,12 +72,12 @@ noinst_PROGRAMS = virshtest$(EXEEXT) conftest$(EXEEXT) \
 @WITH_SECDRIVER_APPARMOR_TRUE@am__append_9 = virt-aa-helper-test
 @WITH_SECDRIVER_APPARMOR_FALSE@am__append_10 = virt-aa-helper-test
 TESTS = virshtest$(EXEEXT) nodeinfotest$(EXEEXT) statstest$(EXEEXT) \
-	qparamtest$(EXEEXT) $(test_scripts) $(am__EXEEXT_8) \
-	$(am__EXEEXT_9) $(am__EXEEXT_10) $(am__EXEEXT_3) \
-	$(am__EXEEXT_4) $(am__EXEEXT_5) $(am__EXEEXT_7) \
-	networkxml2xmltest$(EXEEXT) storagevolxml2xmltest$(EXEEXT) \
-	storagepoolxml2xmltest$(EXEEXT) nodedevxml2xmltest$(EXEEXT) \
-	interfacexml2xmltest$(EXEEXT)
+	qparamtest$(EXEEXT) virbuftest$(EXEEXT) sockettest$(EXEEXT) \
+	$(test_scripts) $(am__EXEEXT_8) $(am__EXEEXT_9) \
+	$(am__EXEEXT_10) $(am__EXEEXT_3) $(am__EXEEXT_4) \
+	$(am__EXEEXT_5) $(am__EXEEXT_7) networkxml2xmltest$(EXEEXT) \
+	storagevolxml2xmltest$(EXEEXT) storagepoolxml2xmltest$(EXEEXT) \
+	nodedevxml2xmltest$(EXEEXT) interfacexml2xmltest$(EXEEXT)
 @WITH_XEN_TRUE@am__append_11 = xml2sexprtest \
 @WITH_XEN_TRUE@	sexpr2xmltest \
 @WITH_XEN_TRUE@	xmconfigtest \
@@ -124,10 +123,12 @@ am__aclocal_m4_deps = $(top_srcdir)/gnulib/m4/00gnulib.m4 \
 	$(top_srcdir)/gnulib/m4/fcntl_h.m4 \
 	$(top_srcdir)/gnulib/m4/float_h.m4 \
 	$(top_srcdir)/gnulib/m4/fseeko.m4 \
+	$(top_srcdir)/gnulib/m4/func.m4 \
 	$(top_srcdir)/gnulib/m4/getaddrinfo.m4 \
 	$(top_srcdir)/gnulib/m4/getdelim.m4 \
 	$(top_srcdir)/gnulib/m4/gethostname.m4 \
 	$(top_srcdir)/gnulib/m4/getline.m4 \
+	$(top_srcdir)/gnulib/m4/getpagesize.m4 \
 	$(top_srcdir)/gnulib/m4/getpass.m4 \
 	$(top_srcdir)/gnulib/m4/gettimeofday.m4 \
 	$(top_srcdir)/gnulib/m4/gnulib-common.m4 \
@@ -144,6 +145,7 @@ am__aclocal_m4_deps = $(top_srcdir)/gnulib/m4/00gnulib.m4 \
 	$(top_srcdir)/gnulib/m4/lstat.m4 \
 	$(top_srcdir)/gnulib/m4/malloc.m4 \
 	$(top_srcdir)/gnulib/m4/malloca.m4 \
+	$(top_srcdir)/gnulib/m4/md5.m4 \
 	$(top_srcdir)/gnulib/m4/memchr.m4 \
 	$(top_srcdir)/gnulib/m4/mkstemp.m4 \
 	$(top_srcdir)/gnulib/m4/mktime.m4 \
@@ -156,6 +158,7 @@ am__aclocal_m4_deps = $(top_srcdir)/gnulib/m4/00gnulib.m4 \
 	$(top_srcdir)/gnulib/m4/perror.m4 \
 	$(top_srcdir)/gnulib/m4/physmem.m4 \
 	$(top_srcdir)/gnulib/m4/po.m4 $(top_srcdir)/gnulib/m4/poll.m4 \
+	$(top_srcdir)/gnulib/m4/poll_h.m4 \
 	$(top_srcdir)/gnulib/m4/posix-shell.m4 \
 	$(top_srcdir)/gnulib/m4/printf.m4 \
 	$(top_srcdir)/gnulib/m4/pthread.m4 \
@@ -168,6 +171,7 @@ am__aclocal_m4_deps = $(top_srcdir)/gnulib/m4/00gnulib.m4 \
 	$(top_srcdir)/gnulib/m4/servent.m4 \
 	$(top_srcdir)/gnulib/m4/sleep.m4 \
 	$(top_srcdir)/gnulib/m4/snprintf.m4 \
+	$(top_srcdir)/gnulib/m4/socketlib.m4 \
 	$(top_srcdir)/gnulib/m4/sockets.m4 \
 	$(top_srcdir)/gnulib/m4/socklen.m4 \
 	$(top_srcdir)/gnulib/m4/sockpfaf.m4 \
@@ -200,6 +204,7 @@ am__aclocal_m4_deps = $(top_srcdir)/gnulib/m4/00gnulib.m4 \
 	$(top_srcdir)/gnulib/m4/sys_utsname_h.m4 \
 	$(top_srcdir)/gnulib/m4/sys_wait_h.m4 \
 	$(top_srcdir)/gnulib/m4/tempname.m4 \
+	$(top_srcdir)/gnulib/m4/termios_h.m4 \
 	$(top_srcdir)/gnulib/m4/time_h.m4 \
 	$(top_srcdir)/gnulib/m4/time_r.m4 \
 	$(top_srcdir)/gnulib/m4/timegm.m4 \
@@ -241,7 +246,6 @@ CONFIG_CLEAN_VPATH_FILES =
 @WITH_SECDRIVER_APPARMOR_TRUE@am__EXEEXT_5 = secaatest$(EXEEXT)
 @WITH_CIL_TRUE@am__EXEEXT_6 = object-locking$(EXEEXT)
 @WITH_LIBVIRTD_TRUE@am__EXEEXT_7 = eventtest$(EXEEXT)
-PROGRAMS = $(noinst_PROGRAMS)
 am_conftest_OBJECTS = conftest.$(OBJEXT)
 conftest_OBJECTS = $(am_conftest_OBJECTS)
 am__DEPENDENCIES_1 =
@@ -352,9 +356,15 @@ sexpr2xmltest_OBJECTS = $(am_sexpr2xmltest_OBJECTS)
 @WITH_XEN_TRUE@sexpr2xmltest_DEPENDENCIES =  \
 @WITH_XEN_TRUE@	../src/libvirt_driver_xen.la \
 @WITH_XEN_TRUE@	$(am__DEPENDENCIES_2)
-am_statstest_OBJECTS = statstest.$(OBJEXT) testutils.$(OBJEXT)
+am_sockettest_OBJECTS = sockettest.$(OBJEXT) testutils.$(OBJEXT)
+sockettest_OBJECTS = $(am_sockettest_OBJECTS)
+sockettest_DEPENDENCIES = ../src/libvirt_util.la $(am__DEPENDENCIES_2)
+am__statstest_SOURCES_DIST = statstest.c testutils.h testutils.c
+@WITH_XEN_TRUE@am_statstest_OBJECTS = statstest.$(OBJEXT) \
+@WITH_XEN_TRUE@	testutils.$(OBJEXT)
 statstest_OBJECTS = $(am_statstest_OBJECTS)
-statstest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+@WITH_XEN_TRUE@statstest_DEPENDENCIES = ../src/libvirt_driver_xen.la \
+@WITH_XEN_TRUE@	$(am__DEPENDENCIES_2)
 am_storagepoolxml2xmltest_OBJECTS = storagepoolxml2xmltest.$(OBJEXT) \
 	testutils.$(OBJEXT)
 storagepoolxml2xmltest_OBJECTS = $(am_storagepoolxml2xmltest_OBJECTS)
@@ -363,6 +373,9 @@ am_storagevolxml2xmltest_OBJECTS = storagevolxml2xmltest.$(OBJEXT) \
 	testutils.$(OBJEXT)
 storagevolxml2xmltest_OBJECTS = $(am_storagevolxml2xmltest_OBJECTS)
 storagevolxml2xmltest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_virbuftest_OBJECTS = virbuftest.$(OBJEXT) testutils.$(OBJEXT)
+virbuftest_OBJECTS = $(am_virbuftest_OBJECTS)
+virbuftest_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_virshtest_OBJECTS = virshtest.$(OBJEXT) testutils.$(OBJEXT)
 virshtest_OBJECTS = $(am_virshtest_OBJECTS)
 virshtest_DEPENDENCIES = $(am__DEPENDENCIES_2)
@@ -438,11 +451,12 @@ SOURCES = $(conftest_SOURCES) $(esxutilstest_SOURCES) \
 	$(qemuxml2xmltest_SOURCES) $(qparamtest_SOURCES) \
 	$(reconnect_SOURCES) $(secaatest_SOURCES) \
 	$(seclabeltest_SOURCES) $(sexpr2xmltest_SOURCES) \
-	$(statstest_SOURCES) $(storagepoolxml2xmltest_SOURCES) \
-	$(storagevolxml2xmltest_SOURCES) $(virshtest_SOURCES) \
-	$(vmx2xmltest_SOURCES) $(xencapstest_SOURCES) \
-	$(xmconfigtest_SOURCES) $(xml2sexprtest_SOURCES) \
-	$(xml2vmxtest_SOURCES)
+	$(sockettest_SOURCES) $(statstest_SOURCES) \
+	$(storagepoolxml2xmltest_SOURCES) \
+	$(storagevolxml2xmltest_SOURCES) $(virbuftest_SOURCES) \
+	$(virshtest_SOURCES) $(vmx2xmltest_SOURCES) \
+	$(xencapstest_SOURCES) $(xmconfigtest_SOURCES) \
+	$(xml2sexprtest_SOURCES) $(xml2vmxtest_SOURCES)
 DIST_SOURCES = $(conftest_SOURCES) $(am__esxutilstest_SOURCES_DIST) \
 	$(am__eventtest_SOURCES_DIST) $(interfacexml2xmltest_SOURCES) \
 	$(networkxml2xmltest_SOURCES) $(nodedevxml2xmltest_SOURCES) \
@@ -454,10 +468,11 @@ DIST_SOURCES = $(conftest_SOURCES) $(am__esxutilstest_SOURCES_DIST) \
 	$(am__qemuxml2xmltest_SOURCES_DIST) $(qparamtest_SOURCES) \
 	$(am__reconnect_SOURCES_DIST) $(am__secaatest_SOURCES_DIST) \
 	$(am__seclabeltest_SOURCES_DIST) \
-	$(am__sexpr2xmltest_SOURCES_DIST) $(statstest_SOURCES) \
+	$(am__sexpr2xmltest_SOURCES_DIST) $(sockettest_SOURCES) \
+	$(am__statstest_SOURCES_DIST) \
 	$(storagepoolxml2xmltest_SOURCES) \
-	$(storagevolxml2xmltest_SOURCES) $(virshtest_SOURCES) \
-	$(am__vmx2xmltest_SOURCES_DIST) \
+	$(storagevolxml2xmltest_SOURCES) $(virbuftest_SOURCES) \
+	$(virshtest_SOURCES) $(am__vmx2xmltest_SOURCES_DIST) \
 	$(am__xencapstest_SOURCES_DIST) \
 	$(am__xmconfigtest_SOURCES_DIST) \
 	$(am__xml2sexprtest_SOURCES_DIST) \
@@ -526,6 +541,8 @@ APPLE_UNIVERSAL_BUILD = @APPLE_UNIVERSAL_BUILD@
 AR = @AR@
 AS = @AS@
 ASM_SYMBOL_PREFIX = @ASM_SYMBOL_PREFIX@
+AUDIT_CFLAGS = @AUDIT_CFLAGS@
+AUDIT_LIBS = @AUDIT_LIBS@
 AUGPARSE = @AUGPARSE@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
@@ -563,6 +580,7 @@ DNSMASQ = @DNSMASQ@
 DRIVER_MODULE_CFLAGS = @DRIVER_MODULE_CFLAGS@
 DRIVER_MODULE_LIBS = @DRIVER_MODULE_LIBS@
 DSYMUTIL = @DSYMUTIL@
+DTRACE = @DTRACE@
 DUMPBIN = @DUMPBIN@
 EBTABLES_PATH = @EBTABLES_PATH@
 ECHO_C = @ECHO_C@
@@ -691,6 +709,7 @@ GNULIB_OPEN = @GNULIB_OPEN@
 GNULIB_OPENAT = @GNULIB_OPENAT@
 GNULIB_PERROR = @GNULIB_PERROR@
 GNULIB_PIPE2 = @GNULIB_PIPE2@
+GNULIB_POLL = @GNULIB_POLL@
 GNULIB_POPEN = @GNULIB_POPEN@
 GNULIB_PREAD = @GNULIB_PREAD@
 GNULIB_PRINTF = @GNULIB_PRINTF@
@@ -747,6 +766,8 @@ GNULIB_STRTOULL = @GNULIB_STRTOULL@
 GNULIB_STRVERSCMP = @GNULIB_STRVERSCMP@
 GNULIB_SYMLINK = @GNULIB_SYMLINK@
 GNULIB_SYMLINKAT = @GNULIB_SYMLINKAT@
+GNULIB_SYSTEM_POSIX = @GNULIB_SYSTEM_POSIX@
+GNULIB_TCGETSID = @GNULIB_TCGETSID@
 GNULIB_TIMEGM = @GNULIB_TIMEGM@
 GNULIB_TIME_R = @GNULIB_TIME_R@
 GNULIB_TMPFILE = @GNULIB_TMPFILE@
@@ -768,12 +789,14 @@ GNULIB_VPRINTF = @GNULIB_VPRINTF@
 GNULIB_VPRINTF_POSIX = @GNULIB_VPRINTF_POSIX@
 GNULIB_VSNPRINTF = @GNULIB_VSNPRINTF@
 GNULIB_VSPRINTF_POSIX = @GNULIB_VSPRINTF_POSIX@
+GNULIB_WAITPID = @GNULIB_WAITPID@
 GNULIB_WCRTOMB = @GNULIB_WCRTOMB@
 GNULIB_WCSNRTOMBS = @GNULIB_WCSNRTOMBS@
 GNULIB_WCSRTOMBS = @GNULIB_WCSRTOMBS@
 GNULIB_WCTOB = @GNULIB_WCTOB@
 GNULIB_WCWIDTH = @GNULIB_WCWIDTH@
 GNULIB_WRITE = @GNULIB_WRITE@
+GNULIB__EXIT = @GNULIB__EXIT@
 GNUTLS_CFLAGS = @GNUTLS_CFLAGS@
 GNUTLS_LIBS = @GNUTLS_LIBS@
 GREP = @GREP@
@@ -783,7 +806,6 @@ HAVE_ACCEPT4 = @HAVE_ACCEPT4@
 HAVE_ARPA_INET_H = @HAVE_ARPA_INET_H@
 HAVE_ATOLL = @HAVE_ATOLL@
 HAVE_BTOWC = @HAVE_BTOWC@
-HAVE_CALLOC_POSIX = @HAVE_CALLOC_POSIX@
 HAVE_CANONICALIZE_FILE_NAME = @HAVE_CANONICALIZE_FILE_NAME@
 HAVE_CHOWN = @HAVE_CHOWN@
 HAVE_DECL_ENVIRON = @HAVE_DECL_ENVIRON@
@@ -845,7 +867,6 @@ HAVE_LINKAT = @HAVE_LINKAT@
 HAVE_LOCALTIME_R = @HAVE_LOCALTIME_R@
 HAVE_LONG_LONG_INT = @HAVE_LONG_LONG_INT@
 HAVE_LSTAT = @HAVE_LSTAT@
-HAVE_MALLOC_POSIX = @HAVE_MALLOC_POSIX@
 HAVE_MBRLEN = @HAVE_MBRLEN@
 HAVE_MBRTOWC = @HAVE_MBRTOWC@
 HAVE_MBSINIT = @HAVE_MBSINIT@
@@ -870,7 +891,12 @@ HAVE_NETINET_IN_H = @HAVE_NETINET_IN_H@
 HAVE_OPENAT = @HAVE_OPENAT@
 HAVE_OS_H = @HAVE_OS_H@
 HAVE_PIPE2 = @HAVE_PIPE2@
+HAVE_POLL = @HAVE_POLL@
+HAVE_POLL_H = @HAVE_POLL_H@
 HAVE_PREAD = @HAVE_PREAD@
+HAVE_PTHREAD_H = @HAVE_PTHREAD_H@
+HAVE_PTHREAD_SPINLOCK_T = @HAVE_PTHREAD_SPINLOCK_T@
+HAVE_PTHREAD_T = @HAVE_PTHREAD_T@
 HAVE_PTSNAME = @HAVE_PTSNAME@
 HAVE_PWRITE = @HAVE_PWRITE@
 HAVE_RANDOM_H = @HAVE_RANDOM_H@
@@ -878,7 +904,6 @@ HAVE_RANDOM_R = @HAVE_RANDOM_R@
 HAVE_RAWMEMCHR = @HAVE_RAWMEMCHR@
 HAVE_READLINK = @HAVE_READLINK@
 HAVE_READLINKAT = @HAVE_READLINKAT@
-HAVE_REALLOC_POSIX = @HAVE_REALLOC_POSIX@
 HAVE_REALPATH = @HAVE_REALPATH@
 HAVE_RENAMEAT = @HAVE_RENAMEAT@
 HAVE_RPMATCH = @HAVE_RPMATCH@
@@ -920,6 +945,8 @@ HAVE_SYS_SOCKET_H = @HAVE_SYS_SOCKET_H@
 HAVE_SYS_TIME_H = @HAVE_SYS_TIME_H@
 HAVE_SYS_TYPES_H = @HAVE_SYS_TYPES_H@
 HAVE_SYS_UTSNAME_H = @HAVE_SYS_UTSNAME_H@
+HAVE_TCGETSID = @HAVE_TCGETSID@
+HAVE_TERMIOS_H = @HAVE_TERMIOS_H@
 HAVE_TIMEGM = @HAVE_TIMEGM@
 HAVE_TTYNAME_R = @HAVE_TTYNAME_R@
 HAVE_UNAME = @HAVE_UNAME@
@@ -941,6 +968,7 @@ HAVE_WINSOCK2_H = @HAVE_WINSOCK2_H@
 HAVE_WINT_T = @HAVE_WINT_T@
 HAVE_WS2TCPIP_H = @HAVE_WS2TCPIP_H@
 HAVE__BOOL = @HAVE__BOOL@
+HAVE__EXIT = @HAVE__EXIT@
 HOSTENT_LIB = @HOSTENT_LIB@
 HTML_DIR = @HTML_DIR@
 INCLUDE_NEXT = @INCLUDE_NEXT@
@@ -1006,7 +1034,6 @@ MODPROBE = @MODPROBE@
 MOUNT = @MOUNT@
 MSGFMT = @MSGFMT@
 MSGMERGE = @MSGMERGE@
-MV = @MV@
 NETCF_CFLAGS = @NETCF_CFLAGS@
 NETCF_LIBS = @NETCF_LIBS@
 NETINET_IN_H = @NETINET_IN_H@
@@ -1017,6 +1044,8 @@ NEXT_AS_FIRST_DIRECTIVE_FCNTL_H = @NEXT_AS_FIRST_DIRECTIVE_FCNTL_H@
 NEXT_AS_FIRST_DIRECTIVE_FLOAT_H = @NEXT_AS_FIRST_DIRECTIVE_FLOAT_H@
 NEXT_AS_FIRST_DIRECTIVE_NETDB_H = @NEXT_AS_FIRST_DIRECTIVE_NETDB_H@
 NEXT_AS_FIRST_DIRECTIVE_NETINET_IN_H = @NEXT_AS_FIRST_DIRECTIVE_NETINET_IN_H@
+NEXT_AS_FIRST_DIRECTIVE_POLL_H = @NEXT_AS_FIRST_DIRECTIVE_POLL_H@
+NEXT_AS_FIRST_DIRECTIVE_PTHREAD_H = @NEXT_AS_FIRST_DIRECTIVE_PTHREAD_H@
 NEXT_AS_FIRST_DIRECTIVE_SCHED_H = @NEXT_AS_FIRST_DIRECTIVE_SCHED_H@
 NEXT_AS_FIRST_DIRECTIVE_STDDEF_H = @NEXT_AS_FIRST_DIRECTIVE_STDDEF_H@
 NEXT_AS_FIRST_DIRECTIVE_STDINT_H = @NEXT_AS_FIRST_DIRECTIVE_STDINT_H@
@@ -1031,6 +1060,7 @@ NEXT_AS_FIRST_DIRECTIVE_SYS_STAT_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_STAT_H@
 NEXT_AS_FIRST_DIRECTIVE_SYS_TIME_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_TIME_H@
 NEXT_AS_FIRST_DIRECTIVE_SYS_UTSNAME_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_UTSNAME_H@
 NEXT_AS_FIRST_DIRECTIVE_SYS_WAIT_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_WAIT_H@
+NEXT_AS_FIRST_DIRECTIVE_TERMIOS_H = @NEXT_AS_FIRST_DIRECTIVE_TERMIOS_H@
 NEXT_AS_FIRST_DIRECTIVE_TIME_H = @NEXT_AS_FIRST_DIRECTIVE_TIME_H@
 NEXT_AS_FIRST_DIRECTIVE_UNISTD_H = @NEXT_AS_FIRST_DIRECTIVE_UNISTD_H@
 NEXT_AS_FIRST_DIRECTIVE_WCHAR_H = @NEXT_AS_FIRST_DIRECTIVE_WCHAR_H@
@@ -1039,6 +1069,8 @@ NEXT_FCNTL_H = @NEXT_FCNTL_H@
 NEXT_FLOAT_H = @NEXT_FLOAT_H@
 NEXT_NETDB_H = @NEXT_NETDB_H@
 NEXT_NETINET_IN_H = @NEXT_NETINET_IN_H@
+NEXT_POLL_H = @NEXT_POLL_H@
+NEXT_PTHREAD_H = @NEXT_PTHREAD_H@
 NEXT_SCHED_H = @NEXT_SCHED_H@
 NEXT_STDDEF_H = @NEXT_STDDEF_H@
 NEXT_STDINT_H = @NEXT_STDINT_H@
@@ -1053,6 +1085,7 @@ NEXT_SYS_STAT_H = @NEXT_SYS_STAT_H@
 NEXT_SYS_TIME_H = @NEXT_SYS_TIME_H@
 NEXT_SYS_UTSNAME_H = @NEXT_SYS_UTSNAME_H@
 NEXT_SYS_WAIT_H = @NEXT_SYS_WAIT_H@
+NEXT_TERMIOS_H = @NEXT_TERMIOS_H@
 NEXT_TIME_H = @NEXT_TIME_H@
 NEXT_UNISTD_H = @NEXT_UNISTD_H@
 NEXT_WCHAR_H = @NEXT_WCHAR_H@
@@ -1069,6 +1102,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
+PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PARTED = @PARTED@
 PATH_SEPARATOR = @PATH_SEPARATOR@
@@ -1079,9 +1113,9 @@ PKG_CONFIG = @PKG_CONFIG@
 POLKIT_AUTH = @POLKIT_AUTH@
 POLKIT_CFLAGS = @POLKIT_CFLAGS@
 POLKIT_LIBS = @POLKIT_LIBS@
-POLL_H = @POLL_H@
 POSIX_SHELL = @POSIX_SHELL@
 POSUB = @POSUB@
+PRAGMA_COLUMNS = @PRAGMA_COLUMNS@
 PRAGMA_SYSTEM_HEADER = @PRAGMA_SYSTEM_HEADER@
 PREFERABLY_POSIX_SHELL = @PREFERABLY_POSIX_SHELL@
 PTHREAD_H = @PTHREAD_H@
@@ -1100,6 +1134,7 @@ RANLIB = @RANLIB@
 READLINE_CFLAGS = @READLINE_CFLAGS@
 REMOTE_PID_FILE = @REMOTE_PID_FILE@
 REPLACE_BTOWC = @REPLACE_BTOWC@
+REPLACE_CALLOC = @REPLACE_CALLOC@
 REPLACE_CANONICALIZE_FILE_NAME = @REPLACE_CANONICALIZE_FILE_NAME@
 REPLACE_CHOWN = @REPLACE_CHOWN@
 REPLACE_CLOSE = @REPLACE_CLOSE@
@@ -1134,6 +1169,7 @@ REPLACE_LINKAT = @REPLACE_LINKAT@
 REPLACE_LOCALTIME_R = @REPLACE_LOCALTIME_R@
 REPLACE_LSEEK = @REPLACE_LSEEK@
 REPLACE_LSTAT = @REPLACE_LSTAT@
+REPLACE_MALLOC = @REPLACE_MALLOC@
 REPLACE_MBRLEN = @REPLACE_MBRLEN@
 REPLACE_MBRTOWC = @REPLACE_MBRTOWC@
 REPLACE_MBSINIT = @REPLACE_MBSINIT@
@@ -1153,12 +1189,14 @@ REPLACE_OBSTACK_PRINTF = @REPLACE_OBSTACK_PRINTF@
 REPLACE_OPEN = @REPLACE_OPEN@
 REPLACE_OPENAT = @REPLACE_OPENAT@
 REPLACE_PERROR = @REPLACE_PERROR@
+REPLACE_POLL = @REPLACE_POLL@
 REPLACE_POPEN = @REPLACE_POPEN@
 REPLACE_PREAD = @REPLACE_PREAD@
 REPLACE_PRINTF = @REPLACE_PRINTF@
 REPLACE_PUTENV = @REPLACE_PUTENV@
 REPLACE_PWRITE = @REPLACE_PWRITE@
 REPLACE_READLINK = @REPLACE_READLINK@
+REPLACE_REALLOC = @REPLACE_REALLOC@
 REPLACE_REALPATH = @REPLACE_REALPATH@
 REPLACE_REMOVE = @REPLACE_REMOVE@
 REPLACE_RENAME = @REPLACE_RENAME@
@@ -1203,7 +1241,6 @@ REPLACE_WCSRTOMBS = @REPLACE_WCSRTOMBS@
 REPLACE_WCTOB = @REPLACE_WCTOB@
 REPLACE_WCWIDTH = @REPLACE_WCWIDTH@
 REPLACE_WRITE = @REPLACE_WRITE@
-RM = @RM@
 RPCGEN = @RPCGEN@
 SASL_CFLAGS = @SASL_CFLAGS@
 SASL_LIBS = @SASL_LIBS@
@@ -1225,7 +1262,6 @@ STRIP = @STRIP@
 SYS_IOCTL_H_HAVE_WINSOCK2_H = @SYS_IOCTL_H_HAVE_WINSOCK2_H@
 SYS_IOCTL_H_HAVE_WINSOCK2_H_AND_USE_SOCKETS = @SYS_IOCTL_H_HAVE_WINSOCK2_H_AND_USE_SOCKETS@
 SYS_TIME_H_DEFINES_STRUCT_TIMESPEC = @SYS_TIME_H_DEFINES_STRUCT_TIMESPEC@
-TAR = @TAR@
 TIME_H_DEFINES_STRUCT_TIMESPEC = @TIME_H_DEFINES_STRUCT_TIMESPEC@
 U = @U@
 UDEVADM = @UDEVADM@
@@ -1259,6 +1295,7 @@ XMLCATALOG = @XMLCATALOG@
 XMLLINT = @XMLLINT@
 XMLRPC_CFLAGS = @XMLRPC_CFLAGS@
 XMLRPC_LIBS = @XMLRPC_LIBS@
+XML_CATALOG_FILE = @XML_CATALOG_FILE@
 XSLTPROC = @XSLTPROC@
 YAJL_CFLAGS = @YAJL_CFLAGS@
 YAJL_LIBS = @YAJL_LIBS@
@@ -1304,7 +1341,6 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
-lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -1379,10 +1415,14 @@ TESTS_ENVIRONMENT = \
   PATH="$(path_add)$(PATH_SEPARATOR)$$PATH"	\
   SHELL="$(SHELL)"				\
   LIBVIRT_DRIVER_DIR="$(abs_top_builddir)/src/.libs" \
-  LIBVIRT_DEBUG="error"				\
   LC_ALL=C					\
   $(VG)
 
+sockettest_SOURCES = \
+	sockettest.c \
+	testutils.c testutils.h
+
+sockettest_LDADD = ../src/libvirt_util.la $(LDADDS)
 @WITH_XEN_TRUE@xml2sexprtest_SOURCES = \
 @WITH_XEN_TRUE@	xml2sexprtest.c testutilsxen.c testutilsxen.h \
 @WITH_XEN_TRUE@	testutils.c testutils.h
@@ -1406,6 +1446,10 @@ TESTS_ENVIRONMENT = \
 @WITH_XEN_TRUE@	reconnect.c
 
 @WITH_XEN_TRUE@reconnect_LDADD = $(LDADDS)
+@WITH_XEN_TRUE@statstest_SOURCES = \
+@WITH_XEN_TRUE@	statstest.c testutils.h testutils.c
+
+@WITH_XEN_TRUE@statstest_LDADD = ../src/libvirt_driver_xen.la $(LDADDS)
 @WITH_QEMU_TRUE@qemuxml2argvtest_SOURCES = \
 @WITH_QEMU_TRUE@	qemuxml2argvtest.c testutilsqemu.c testutilsqemu.h \
 @WITH_QEMU_TRUE@	testutils.c testutils.h
@@ -1481,10 +1525,6 @@ nodeinfotest_SOURCES = \
 	nodeinfotest.c testutils.h testutils.c
 
 nodeinfotest_LDADD = $(LDADDS)
-statstest_SOURCES = \
-	statstest.c testutils.h testutils.c
-
-statstest_LDADD = $(LDADDS)
 @WITH_SECDRIVER_SELINUX_TRUE@seclabeltest_SOURCES = \
 @WITH_SECDRIVER_SELINUX_TRUE@	seclabeltest.c
 
@@ -1497,6 +1537,10 @@ qparamtest_SOURCES = \
 	qparamtest.c testutils.h testutils.c
 
 qparamtest_LDADD = $(LDADDS)
+virbuftest_SOURCES = \
+	virbuftest.c testutils.h testutils.c
+
+virbuftest_LDADD = $(LDADDS)
 @WITH_LIBVIRTD_TRUE@eventtest_SOURCES = \
 @WITH_LIBVIRTD_TRUE@	eventtest.c testutils.h testutils.c ../daemon/event.c
 
@@ -1542,8 +1586,8 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
-clean-noinstPROGRAMS:
-	@list='$(noinst_PROGRAMS)'; test -n "$$list" || exit 0; \
+clean-checkPROGRAMS:
+	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
 	echo " rm -f" $$list; \
 	rm -f $$list || exit $$?; \
 	test -n "$(EXEEXT)" || exit 0; \
@@ -1604,6 +1648,9 @@ seclabeltest$(EXEEXT): $(seclabeltest_OBJECTS) $(seclabeltest_DEPENDENCIES)
 sexpr2xmltest$(EXEEXT): $(sexpr2xmltest_OBJECTS) $(sexpr2xmltest_DEPENDENCIES) 
 	@rm -f sexpr2xmltest$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(sexpr2xmltest_OBJECTS) $(sexpr2xmltest_LDADD) $(LIBS)
+sockettest$(EXEEXT): $(sockettest_OBJECTS) $(sockettest_DEPENDENCIES) 
+	@rm -f sockettest$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(sockettest_OBJECTS) $(sockettest_LDADD) $(LIBS)
 statstest$(EXEEXT): $(statstest_OBJECTS) $(statstest_DEPENDENCIES) 
 	@rm -f statstest$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(statstest_OBJECTS) $(statstest_LDADD) $(LIBS)
@@ -1613,6 +1660,9 @@ storagepoolxml2xmltest$(EXEEXT): $(storagepoolxml2xmltest_OBJECTS) $(storagepool
 storagevolxml2xmltest$(EXEEXT): $(storagevolxml2xmltest_OBJECTS) $(storagevolxml2xmltest_DEPENDENCIES) 
 	@rm -f storagevolxml2xmltest$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(storagevolxml2xmltest_OBJECTS) $(storagevolxml2xmltest_LDADD) $(LIBS)
+virbuftest$(EXEEXT): $(virbuftest_OBJECTS) $(virbuftest_DEPENDENCIES) 
+	@rm -f virbuftest$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(virbuftest_OBJECTS) $(virbuftest_LDADD) $(LIBS)
 virshtest$(EXEEXT): $(virshtest_OBJECTS) $(virshtest_DEPENDENCIES) 
 	@rm -f virshtest$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(virshtest_OBJECTS) $(virshtest_LDADD) $(LIBS)
@@ -1656,12 +1706,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/secaatest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/seclabeltest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sexpr2xmltest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sockettest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statstest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/storagepoolxml2xmltest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/storagevolxml2xmltest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testutils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testutilsqemu.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testutilsxen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/virbuftest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/virshtest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vmx2xmltest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xencapstest.Po@am__quote@
@@ -2001,9 +2053,10 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-recursive
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile
 installdirs: installdirs-recursive
 installdirs-am:
 install: install-recursive
@@ -2034,7 +2087,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-recursive
 
-clean-am: clean-generic clean-libtool clean-noinstPROGRAMS \
+clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-recursive
@@ -2107,9 +2160,9 @@ uninstall-am:
 	ctags-recursive install-am install-strip tags-recursive
 
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
-	all all-am check check-TESTS check-am clean clean-generic \
-	clean-libtool clean-noinstPROGRAMS ctags ctags-recursive \
-	distclean distclean-compile distclean-generic \
+	all all-am check check-TESTS check-am clean \
+	clean-checkPROGRAMS clean-generic clean-libtool ctags \
+	ctags-recursive distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
 	install-data-am install-dvi install-dvi-am install-exec \

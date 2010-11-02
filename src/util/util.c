@@ -43,9 +43,7 @@
 #endif
 #include <string.h>
 #include <signal.h>
-#if HAVE_TERMIOS_H
-# include <termios.h>
-#endif
+#include <termios.h>
 #include "c-ctype.h"
 
 #ifdef HAVE_PATHS_H
@@ -929,6 +927,15 @@ virExecDaemonize(const char *const*argv ATTRIBUTE_UNUSED,
     return -1;
 }
 
+int
+virFork(pid_t *pid)
+{
+    *pid = -1;
+    errno = ENOTSUP;
+
+    return -1;
+}
+
 # endif /* WIN32 */
 
 int
@@ -941,9 +948,11 @@ virPipeReadUntilEOF(int outfd, int errfd,
 
     fds[0].fd = outfd;
     fds[0].events = POLLIN;
+    fds[0].revents = 0;
     finished[0] = 0;
     fds[1].fd = errfd;
     fds[1].events = POLLIN;
+    fds[1].revents = 0;
     finished[1] = 0;
 
     while(!(finished[0] && finished[1])) {
@@ -2085,6 +2094,21 @@ virStrToDouble(char const *s,
         return -1;
     *result = val;
     return 0;
+}
+
+/* Convert C from hexadecimal character to integer.  */
+int
+virHexToBin(unsigned char c)
+{
+    switch (c) {
+    default: return c - '0';
+    case 'a': case 'A': return 10;
+    case 'b': case 'B': return 11;
+    case 'c': case 'C': return 12;
+    case 'd': case 'D': return 13;
+    case 'e': case 'E': return 14;
+    case 'f': case 'F': return 15;
+    }
 }
 
 /**

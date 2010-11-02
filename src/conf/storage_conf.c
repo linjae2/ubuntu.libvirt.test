@@ -43,6 +43,7 @@
 #include "buf.h"
 #include "util.h"
 #include "memory.h"
+#include "files.h"
 
 #define VIR_FROM_THIS VIR_FROM_STORAGE
 
@@ -284,6 +285,8 @@ virStoragePoolSourceFree(virStoragePoolSourcePtr source) {
     VIR_FREE(source->name);
     VIR_FREE(source->adapter);
     VIR_FREE(source->initiator.iqn);
+    VIR_FREE(source->vendor);
+    VIR_FREE(source->product);
 
     if (source->authType == VIR_STORAGE_POOL_AUTH_CHAP) {
         VIR_FREE(source->auth.chap.login);
@@ -464,6 +467,9 @@ virStoragePoolDefParseSource(xmlXPathContextPtr ctxt,
         if (virStoragePoolDefParseAuthChap(ctxt, &source->auth.chap) < 0)
             goto cleanup;
     }
+
+    source->vendor = virXPathString("string(./vendor/@name)", ctxt);
+    source->product = virXPathString("string(./product/@name)", ctxt);
 
     ret = 0;
 cleanup:
@@ -838,6 +844,15 @@ virStoragePoolSourceFormat(virBufferPtr buf,
         virBufferVSprintf(buf,"    <auth type='chap' login='%s' passwd='%s'/>\n",
                           src->auth.chap.login,
                           src->auth.chap.passwd);
+
+    if (src->vendor != NULL) {
+        virBufferEscapeString(buf,"    <vendor name='%s'/>\n", src->vendor);
+    }
+
+    if (src->product != NULL) {
+        virBufferEscapeString(buf,"    <product name='%s'/>\n", src->product);
+    }
+
     virBufferAddLit(buf,"  </source>\n");
 
     return 0;
@@ -1403,12 +1418,14 @@ virStoragePoolObjLoad(virStoragePoolObjListPtr pools,
         return NULL;
     }
 
+    VIR_FREE(pool->configFile);  // for driver reload
     pool->configFile = strdup(path);
     if (pool->configFile == NULL) {
         virReportOOMError();
         virStoragePoolDefFree(def);
         return NULL;
     }
+    VIR_FREE(pool->autostartLink); // for driver reload
     pool->autostartLink = strdup(autostartLink);
     if (pool->autostartLink == NULL) {
         virReportOOMError();
@@ -1544,7 +1561,7 @@ virStoragePoolObjSaveDef(virStorageDriverStatePtr driver,
         goto cleanup;
     }
 
-    if (close(fd) < 0) {
+    if (VIR_CLOSE(fd) < 0) {
         virReportSystemError(errno,
                              _("cannot save config file %s"),
                              pool->configFile);
@@ -1554,9 +1571,7 @@ virStoragePoolObjSaveDef(virStorageDriverStatePtr driver,
     ret = 0;
 
  cleanup:
-    if (fd != -1)
-        close(fd);
-
+    VIR_FORCE_CLOSE(fd);
     VIR_FREE(xml);
 
     return ret;

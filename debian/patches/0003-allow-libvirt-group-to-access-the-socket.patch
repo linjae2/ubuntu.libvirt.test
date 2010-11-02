@@ -6,10 +6,10 @@ Subject: [PATCH] allow libvirt group to access the socket
  daemon/libvirtd.conf |    8 ++++----
  1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/daemon/libvirtd.conf b/daemon/libvirtd.conf
-index d11c0fb..8de5c82 100644
---- a/daemon/libvirtd.conf
-+++ b/daemon/libvirtd.conf
+Index: libvirt-0.8.5/daemon/libvirtd.conf
+===================================================================
+--- libvirt-0.8.5.orig/daemon/libvirtd.conf	2010-11-02 16:26:33.704307000 -0500
++++ libvirt-0.8.5/daemon/libvirtd.conf	2010-11-02 16:29:10.863576002 -0500
 @@ -78,7 +78,7 @@
  # without becoming root.
  #
@@ -46,4 +46,3 @@ index d11c0fb..8de5c82 100644
  
  # Change the authentication scheme for TCP sockets.
  #
--- 

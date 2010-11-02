@@ -1,8 +1,8 @@
-Index: libvirt-0.8.3/src/util/bridge.c
+Index: libvirt-0.8.5/src/util/bridge.c
 ===================================================================
---- libvirt-0.8.3.orig/src/util/bridge.c	2010-07-23 04:19:49.000000000 -0500
-+++ libvirt-0.8.3/src/util/bridge.c	2010-08-11 16:59:54.000000000 -0500
-@@ -244,7 +244,10 @@
+--- libvirt-0.8.5.orig/src/util/bridge.c	2010-11-02 16:26:33.704307000 -0500
++++ libvirt-0.8.5/src/util/bridge.c	2010-11-02 16:29:19.163576003 -0500
+@@ -245,7 +245,10 @@
                 const char *bridge,
                 const char *iface)
  {
@@ -14,7 +14,7 @@ Index: libvirt-0.8.3/src/util/bridge.c
  }
  # else
  int
-@@ -613,7 +616,8 @@
+@@ -616,7 +619,8 @@
          ifr.ifr_flags = flags;
  
          if (ioctl(ctl->fd, SIOCSIFFLAGS, &ifr) < 0)
