@@ -34,6 +34,7 @@
 #include "memory.h"
 #include "domain_conf.h"
 #include "domain_nwfilter.h"
+#include "nwfilter_conf.h"
 #include "nwfilter_driver.h"
 #include "nwfilter_gentech_driver.h"
 
@@ -41,9 +42,6 @@
 #include "nwfilter_learnipaddr.h"
 
 #define VIR_FROM_THIS VIR_FROM_NWFILTER
-
-#define nwfilterLog(msg...) fprintf(stderr, msg)
-
 
 static virNWFilterDriverStatePtr driverState;
 
@@ -95,7 +93,6 @@ nwfilterDriverStartup(int privileged) {
             goto error;
 
         if (virAsprintf(&base, "%s/.libvirt", userdir) == -1) {
-            nwfilterLog("out of memory in virAsprintf");
             VIR_FREE(userdir);
             goto out_of_memory;
         }
@@ -118,7 +115,7 @@ nwfilterDriverStartup(int privileged) {
     return 0;
 
 out_of_memory:
-    nwfilterLog("virNWFilterStartup: out of memory");
+    virReportOOMError();
 
 error:
     VIR_FREE(base);
@@ -143,15 +140,30 @@ conf_init_err:
  */
 static int
 nwfilterDriverReload(void) {
+    virConnectPtr conn;
+
     if (!driverState) {
         return -1;
     }
 
-    nwfilterDriverLock(driverState);
-    virNWFilterPoolLoadAllConfigs(NULL,
-                                  &driverState->pools,
-                                  driverState->configDir);
-    nwfilterDriverUnlock(driverState);
+    conn = virConnectOpen("qemu:///system");
+
+    if (conn) {
+        /* shut down all threads -- they will be restarted if necessary */
+        virNWFilterLearnThreadsTerminate(true);
+
+        nwfilterDriverLock(driverState);
+        virNWFilterCallbackDriversLock();
+
+        virNWFilterPoolLoadAllConfigs(conn,
+                                      &driverState->pools,
+                                      driverState->configDir);
+
+        virNWFilterCallbackDriversUnlock();
+        nwfilterDriverUnlock(driverState);
+
+        virConnectClose(conn);
+    }
 
     return 0;
 }
@@ -321,6 +333,8 @@ nwfilterDefine(virConnectPtr conn,
     virNWFilterPtr ret = NULL;
 
     nwfilterDriverLock(driver);
+    virNWFilterCallbackDriversLock();
+
     if (!(def = virNWFilterDefParseString(conn, xml)))
         goto cleanup;
 
@@ -340,6 +354,8 @@ cleanup:
     virNWFilterDefFree(def);
     if (pool)
         virNWFilterPoolObjUnlock(pool);
+
+    virNWFilterCallbackDriversUnlock();
     nwfilterDriverUnlock(driver);
     return ret;
 }
@@ -352,6 +368,8 @@ nwfilterUndefine(virNWFilterPtr obj) {
     int ret = -1;
 
     nwfilterDriverLock(driver);
+    virNWFilterCallbackDriversLock();
+
     pool = virNWFilterPoolObjFindByUUID(&driver->pools, obj->uuid);
     if (!pool) {
         virNWFilterReportError(VIR_ERR_INVALID_NWFILTER,
@@ -378,6 +396,8 @@ nwfilterUndefine(virNWFilterPtr obj) {
 cleanup:
     if (pool)
         virNWFilterPoolObjUnlock(pool);
+
+    virNWFilterCallbackDriversUnlock();
     nwfilterDriverUnlock(driver);
     return ret;
 }

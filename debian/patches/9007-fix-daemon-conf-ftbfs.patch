@@ -18,13 +18,13 @@ Description: don't FTBFS on Ubuntu's buildd
  This portion of the test needs to stay disabled until these issues are fully
  resolved.
 
-Index: libvirt-0.8.3/tests/daemon-conf
+Index: libvirt-0.8.5/tests/daemon-conf
 ===================================================================
---- libvirt-0.8.3.orig/tests/daemon-conf	2010-08-11 17:07:52.000000000 -0500
-+++ libvirt-0.8.3/tests/daemon-conf	2010-08-11 17:09:28.000000000 -0500
-@@ -86,19 +86,20 @@
- # Replace the invalid host_uuid with one that is valid:
- sed 's/^\(host_uuid =.*\)0"$/\11"/' tmp.conf > k; mv k tmp.conf
+--- libvirt-0.8.5.orig/tests/daemon-conf	2010-11-02 16:29:33.223576006 -0500
++++ libvirt-0.8.5/tests/daemon-conf	2010-11-02 16:29:36.353576003 -0500
+@@ -89,19 +89,20 @@
+ sed 's/^\(host_uuid =.*\)0"$/\11"/; s/^\(audit_level =.*\)2$/\1 1/' tmp.conf > k
+ mv k tmp.conf
  
 -$abs_top_builddir/daemon/libvirtd --pid-file=pid-file --config=tmp.conf \
 -    > log 2>&1 & pid=$!

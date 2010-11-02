@@ -1,7 +1,7 @@
-Index: libvirt-0.8.3/src/conf/capabilities.c
+Index: libvirt-0.8.5/src/conf/capabilities.c
 ===================================================================
---- libvirt-0.8.3.orig/src/conf/capabilities.c	2010-07-20 11:41:50.000000000 -0500
-+++ libvirt-0.8.3/src/conf/capabilities.c	2010-08-11 17:03:20.000000000 -0500
+--- libvirt-0.8.5.orig/src/conf/capabilities.c	2010-11-02 16:24:03.203576001 -0500
++++ libvirt-0.8.5/src/conf/capabilities.c	2010-11-02 16:29:24.733576001 -0500
 @@ -505,6 +505,13 @@
                                     const char *ostype)
  {

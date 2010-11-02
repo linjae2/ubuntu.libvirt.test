@@ -44,6 +44,7 @@
 #include "xen_hypervisor.h"
 #include "xs_internal.h" /* To extract VNC port & Serial console TTY */
 #include "memory.h"
+#include "count-one-bits.h"
 
 /* required for cpumap_t */
 #include <xen/dom0_ops.h>
@@ -863,7 +864,7 @@ xenDaemonOpen_tcp(virConnectPtr conn, const char *host, const char *port)
 
 /**
  * xend_wait_for_devices:
- * @xend: pointer to the Xem Daemon block
+ * @xend: pointer to the Xen Daemon block
  * @name: name for the domain
  *
  * Block the domain until all the virtual devices are ready. This operation
@@ -883,7 +884,7 @@ xend_wait_for_devices(virConnectPtr xend, const char *name)
 
 /**
  * xenDaemonListDomainsOld:
- * @xend: pointer to the Xem Daemon block
+ * @xend: pointer to the Xen Daemon block
  *
  * This method will return an array of names of currently running
  * domains.  The memory should be released will a call to free().
@@ -951,7 +952,7 @@ xenDaemonListDomainsOld(virConnectPtr xend)
  * @xend: A xend instance
  * @sexpr: An S-Expr description of the domain.
  *
- * This method will create a domain based the passed in description.  The
+ * This method will create a domain based on the passed in description.  The
  * domain will be paused after creation and must be unpaused with
  * xenDaemonResumeDomain() to begin execution.
  * This method may be deprecated once switching to XML-RPC based communcations
@@ -1386,7 +1387,8 @@ xenDaemonParseSxprDisks(virDomainDefPtr def,
            but blktap disks ended up in a differently named
            (device (tap ....)) block.... */
         if (sexpr_lookup(node, "device/vbd") ||
-            sexpr_lookup(node, "device/tap")) {
+            sexpr_lookup(node, "device/tap") ||
+            sexpr_lookup(node, "device/tap2")) {
             char *offset;
             const char *src = NULL;
             const char *dst = NULL;
@@ -1397,6 +1399,10 @@ xenDaemonParseSxprDisks(virDomainDefPtr def,
                 src = sexpr_node(node, "device/vbd/uname");
                 dst = sexpr_node(node, "device/vbd/dev");
                 mode = sexpr_node(node, "device/vbd/mode");
+            } else if (sexpr_lookup(node, "device/tap2")) {
+                src = sexpr_node(node, "device/tap2/uname");
+                dst = sexpr_node(node, "device/tap2/dev");
+                mode = sexpr_node(node, "device/tap2/mode");
             } else {
                 src = sexpr_node(node, "device/tap/uname");
                 dst = sexpr_node(node, "device/tap/dev");
@@ -1444,7 +1450,8 @@ xenDaemonParseSxprDisks(virDomainDefPtr def,
 
                 src = offset + 1;
 
-                if (STREQ (disk->driverName, "tap")) {
+                if (STREQ (disk->driverName, "tap") ||
+                    STREQ (disk->driverName, "tap2")) {
                     offset = strchr(src, ':');
                     if (!offset) {
                         virXendError(VIR_ERR_INTERNAL_ERROR,
@@ -2161,10 +2168,12 @@ xenDaemonParseSxpr(virConnectPtr conn,
         }
     }
 
-    def->maxmem = (unsigned long) (sexpr_u64(root, "domain/maxmem") << 10);
-    def->memory = (unsigned long) (sexpr_u64(root, "domain/memory") << 10);
-    if (def->memory > def->maxmem)
-        def->maxmem = def->memory;
+    def->mem.max_balloon = (unsigned long)
+                           (sexpr_u64(root, "domain/maxmem") << 10);
+    def->mem.cur_balloon = (unsigned long)
+                           (sexpr_u64(root, "domain/memory") << 10);
+    if (def->mem.cur_balloon > def->mem.max_balloon)
+        def->mem.cur_balloon = def->mem.max_balloon;
 
     if (cpus != NULL) {
         def->cpumasklen = VIR_DOMAIN_CPUMASK_LEN;
@@ -2182,7 +2191,10 @@ xenDaemonParseSxpr(virConnectPtr conn,
         }
     }
 
-    def->vcpus = sexpr_int(root, "domain/vcpus");
+    def->maxvcpus = sexpr_int(root, "domain/vcpus");
+    def->vcpus = count_one_bits(sexpr_int(root, "domain/vcpu_avail"));
+    if (!def->vcpus || def->maxvcpus < def->vcpus)
+        def->vcpus = def->maxvcpus;
 
     tmp = sexpr_node(root, "domain/on_poweroff");
     if (tmp != NULL) {
@@ -2206,7 +2218,7 @@ xenDaemonParseSxpr(virConnectPtr conn,
 
     tmp = sexpr_node(root, "domain/on_crash");
     if (tmp != NULL) {
-        if ((def->onCrash = virDomainLifecycleTypeFromString(tmp)) < 0) {
+        if ((def->onCrash = virDomainLifecycleCrashTypeFromString(tmp)) < 0) {
             virXendError(VIR_ERR_INTERNAL_ERROR,
                          _("unknown lifecycle type %s"), tmp);
             goto error;
@@ -2424,7 +2436,7 @@ sexpr_to_xend_domain_info(virDomainPtr domain, const struct sexpr *root,
                           virDomainInfoPtr info)
 {
     const char *flags;
-
+    int vcpus;
 
     if ((root == NULL) || (info == NULL))
         return (-1);
@@ -2455,7 +2467,11 @@ sexpr_to_xend_domain_info(virDomainPtr domain, const struct sexpr *root,
             info->state = VIR_DOMAIN_NOSTATE;
     }
     info->cpuTime = sexpr_float(root, "domain/cpu_time") * 1000000000;
-    info->nrVirtCpu = sexpr_int(root, "domain/vcpus");
+    vcpus = sexpr_int(root, "domain/vcpus");
+    info->nrVirtCpu = count_one_bits(sexpr_int(root, "domain/vcpu_avail"));
+    if (!info->nrVirtCpu || vcpus < info->nrVirtCpu)
+        info->nrVirtCpu = vcpus;
+
     return (0);
 }
 
@@ -2791,7 +2807,7 @@ xenDaemonDomainSuspend(virDomainPtr domain)
 
 /**
  * xenDaemonDomainResume:
- * @xend: pointer to the Xem Daemon block
+ * @xend: pointer to the Xen Daemon block
  * @name: name for the domain
  *
  * Resume the domain after xenDaemonDomainSuspend() has been called
@@ -3010,7 +3026,7 @@ xenDaemonDomainCoreDump(virDomainPtr domain, const char *filename,
     }
 
     return xend_op(domain->conn, domain->name,
-                   "op", "dump", "file", filename, "live", "0",
+                   "op", "dump", "file", filename,
                    "live", (flags & VIR_DUMP_LIVE ? "1" : "0"),
                    "crash", (flags & VIR_DUMP_CRASH ? "1" : "0"),
                    NULL);
@@ -3018,7 +3034,7 @@ xenDaemonDomainCoreDump(virDomainPtr domain, const char *filename,
 
 /**
  * xenDaemonDomainRestore:
- * @conn: pointer to the Xem Daemon block
+ * @conn: pointer to the Xen Daemon block
  * @filename: path for the output file
  *
  * This method will restore a domain saved to disk by xenDaemonDomainSave().
@@ -3519,34 +3535,79 @@ xenDaemonLookupByID(virConnectPtr conn, int id) {
 }
 
 /**
- * xenDaemonDomainSetVcpus:
+ * xenDaemonDomainSetVcpusFlags:
  * @domain: pointer to domain object
  * @nvcpus: the new number of virtual CPUs for this domain
+ * @flags: bitwise-ORd from virDomainVcpuFlags
  *
- * Dynamically change the number of virtual CPUs used by the domain.
+ * Change virtual CPUs allocation of domain according to flags.
  *
- * Returns 0 for success; -1 (with errno) on error
+ * Returns 0 on success, -1 if an error message was issued, and -2 if
+ * the unified driver should keep trying.
  */
 int
-xenDaemonDomainSetVcpus(virDomainPtr domain, unsigned int vcpus)
+xenDaemonDomainSetVcpusFlags(virDomainPtr domain, unsigned int vcpus,
+                             unsigned int flags)
 {
     char buf[VIR_UUID_BUFLEN];
     xenUnifiedPrivatePtr priv;
+    int max;
 
     if ((domain == NULL) || (domain->conn == NULL) || (domain->name == NULL)
-     || (vcpus < 1)) {
+        || (vcpus < 1)) {
         virXendError(VIR_ERR_INVALID_ARG, __FUNCTION__);
         return (-1);
     }
 
     priv = (xenUnifiedPrivatePtr) domain->conn->privateData;
 
-    if (domain->id < 0 && priv->xendConfigVersion < 3)
-        return(-1);
+    if ((domain->id < 0 && priv->xendConfigVersion < 3) ||
+        (flags & VIR_DOMAIN_VCPU_MAXIMUM))
+        return -2;
+
+    /* With xendConfigVersion 2, only _LIVE is supported.  With
+     * xendConfigVersion 3, only _LIVE|_CONFIG is supported for
+     * running domains, or _CONFIG for inactive domains.  */
+    if (priv->xendConfigVersion < 3) {
+        if (flags & VIR_DOMAIN_VCPU_CONFIG) {
+            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                         _("Xend version does not support modifying "
+                           "persistent config"));
+            return -1;
+        }
+    } else if (domain->id < 0) {
+        if (flags & VIR_DOMAIN_VCPU_LIVE) {
+            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                         _("domain not running"));
+            return -1;
+        }
+    } else {
+        if ((flags & (VIR_DOMAIN_VCPU_LIVE | VIR_DOMAIN_VCPU_CONFIG)) !=
+            (VIR_DOMAIN_VCPU_LIVE | VIR_DOMAIN_VCPU_CONFIG)) {
+            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                         _("Xend only supports modifying both live and "
+                           "persistent config"));
+        }
+    }
+
+    /* Unfortunately, xend_op does not validate whether this exceeds
+     * the maximum.  */
+    flags |= VIR_DOMAIN_VCPU_MAXIMUM;
+    if ((max = xenDaemonDomainGetVcpusFlags(domain, flags)) < 0) {
+        virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("could not determin max vcpus for the domain"));
+        return -1;
+    }
+    if (vcpus > max) {
+        virXendError(VIR_ERR_INVALID_ARG,
+                     _("requested vcpus is greater than max allowable"
+                       " vcpus for the domain: %d > %d"), vcpus, max);
+        return -1;
+    }
 
     snprintf(buf, sizeof(buf), "%d", vcpus);
-    return(xend_op(domain->conn, domain->name, "op", "set_vcpus", "vcpus",
-                   buf, NULL));
+    return xend_op(domain->conn, domain->name, "op", "set_vcpus", "vcpus",
+                   buf, NULL);
 }
 
 /**
@@ -3601,6 +3662,58 @@ xenDaemonDomainPinVcpu(virDomainPtr domain, unsigned int vcpu,
     snprintf(buf, sizeof(buf), "%d", vcpu);
     return(xend_op(domain->conn, domain->name, "op", "pincpu", "vcpu", buf,
                   "cpumap", mapstr, NULL));
+}
+
+/**
+ * xenDaemonDomainGetVcpusFlags:
+ * @domain: pointer to domain object
+ * @flags: bitwise-ORd from virDomainVcpuFlags
+ *
+ * Extract information about virtual CPUs of domain according to flags.
+ *
+ * Returns the number of vcpus on success, -1 if an error message was
+ * issued, and -2 if the unified driver should keep trying.
+
+ */
+int
+xenDaemonDomainGetVcpusFlags(virDomainPtr domain, unsigned int flags)
+{
+    struct sexpr *root;
+    int ret;
+    xenUnifiedPrivatePtr priv;
+
+    if (domain == NULL || domain->conn == NULL || domain->name == NULL) {
+        virXendError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        return -1;
+    }
+
+    priv = (xenUnifiedPrivatePtr) domain->conn->privateData;
+
+    /* If xendConfigVersion is 2, then we can only report _LIVE (and
+     * xm_internal reports _CONFIG).  If it is 3, then _LIVE and
+     * _CONFIG are always in sync for a running system.  */
+    if (domain->id < 0 && priv->xendConfigVersion < 3)
+        return -2;
+    if (domain->id < 0 && (flags & VIR_DOMAIN_VCPU_LIVE)) {
+        virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("domain not active"));
+        return -1;
+    }
+
+    root = sexpr_get(domain->conn, "/xend/domain/%s?detail=1", domain->name);
+    if (root == NULL)
+        return -1;
+
+    ret = sexpr_int(root, "domain/vcpus");
+    if (!(flags & VIR_DOMAIN_VCPU_MAXIMUM)) {
+        int vcpus = count_one_bits(sexpr_int(root, "domain/vcpu_avail"));
+        if (vcpus)
+            ret = MIN(vcpus, ret);
+    }
+    if (!ret)
+        ret = -2;
+    sexpr_free(root);
+    return ret;
 }
 
 /**
@@ -3872,17 +3985,17 @@ xenDaemonAttachDeviceFlags(virDomainPtr domain, const char *xml,
     priv = (xenUnifiedPrivatePtr) domain->conn->privateData;
 
     if (domain->id < 0) {
+        /* Cannot modify live config if domain is inactive */
+        if (flags & VIR_DOMAIN_DEVICE_MODIFY_LIVE) {
+            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                         _("Cannot modify live config if domain is inactive"));
+            return -1;
+        }
         /* If xendConfigVersion < 3 only live config can be changed */
         if (priv->xendConfigVersion < 3) {
             virXendError(VIR_ERR_OPERATION_INVALID, "%s",
                          _("Xend version does not support modifying "
                            "persistent config"));
-            return -1;
-        }
-        /* Cannot modify live config if domain is inactive */
-        if (flags & VIR_DOMAIN_DEVICE_MODIFY_LIVE) {
-            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
-                         _("Cannot modify live config if domain is inactive"));
             return -1;
         }
     } else {
@@ -3898,8 +4011,9 @@ xenDaemonAttachDeviceFlags(virDomainPtr domain, const char *xml,
         /* Xen only supports modifying both live and persistent config if
          * xendConfigVersion >= 3
          */
-        if (flags != (VIR_DOMAIN_DEVICE_MODIFY_LIVE |
-                      VIR_DOMAIN_DEVICE_MODIFY_CONFIG)) {
+        if (priv->xendConfigVersion >= 3 &&
+            (flags != (VIR_DOMAIN_DEVICE_MODIFY_LIVE |
+                       VIR_DOMAIN_DEVICE_MODIFY_CONFIG))) {
             virXendError(VIR_ERR_OPERATION_INVALID, "%s",
                          _("Xend only supports modifying both live and "
                            "persistent config"));
@@ -4011,17 +4125,17 @@ xenDaemonUpdateDeviceFlags(virDomainPtr domain, const char *xml,
     priv = (xenUnifiedPrivatePtr) domain->conn->privateData;
 
     if (domain->id < 0) {
+        /* Cannot modify live config if domain is inactive */
+        if (flags & VIR_DOMAIN_DEVICE_MODIFY_LIVE) {
+            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                         _("Cannot modify live config if domain is inactive"));
+            return -1;
+        }
         /* If xendConfigVersion < 3 only live config can be changed */
         if (priv->xendConfigVersion < 3) {
             virXendError(VIR_ERR_OPERATION_INVALID, "%s",
                          _("Xend version does not support modifying "
                            "persistent config"));
-            return -1;
-        }
-        /* Cannot modify live config if domain is inactive */
-        if (flags & VIR_DOMAIN_DEVICE_MODIFY_LIVE) {
-            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
-                         _("Cannot modify live config if domain is inactive"));
             return -1;
         }
     } else {
@@ -4037,8 +4151,9 @@ xenDaemonUpdateDeviceFlags(virDomainPtr domain, const char *xml,
         /* Xen only supports modifying both live and persistent config if
          * xendConfigVersion >= 3
          */
-        if (flags != (VIR_DOMAIN_DEVICE_MODIFY_LIVE |
-                      VIR_DOMAIN_DEVICE_MODIFY_CONFIG)) {
+        if (priv->xendConfigVersion >= 3 &&
+            (flags != (VIR_DOMAIN_DEVICE_MODIFY_LIVE |
+                       VIR_DOMAIN_DEVICE_MODIFY_CONFIG))) {
             virXendError(VIR_ERR_OPERATION_INVALID, "%s",
                          _("Xend only supports modifying both live and "
                            "persistent config"));
@@ -4122,17 +4237,17 @@ xenDaemonDetachDeviceFlags(virDomainPtr domain, const char *xml,
     priv = (xenUnifiedPrivatePtr) domain->conn->privateData;
 
     if (domain->id < 0) {
+        /* Cannot modify live config if domain is inactive */
+        if (flags & VIR_DOMAIN_DEVICE_MODIFY_LIVE) {
+            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
+                         _("Cannot modify live config if domain is inactive"));
+            return -1;
+        }
         /* If xendConfigVersion < 3 only live config can be changed */
         if (priv->xendConfigVersion < 3) {
             virXendError(VIR_ERR_OPERATION_INVALID, "%s",
                          _("Xend version does not support modifying "
                            "persistent config"));
-            return -1;
-        }
-        /* Cannot modify live config if domain is inactive */
-        if (flags & VIR_DOMAIN_DEVICE_MODIFY_LIVE) {
-            virXendError(VIR_ERR_OPERATION_INVALID, "%s",
-                         _("Cannot modify live config if domain is inactive"));
             return -1;
         }
     } else {
@@ -4148,8 +4263,9 @@ xenDaemonDetachDeviceFlags(virDomainPtr domain, const char *xml,
         /* Xen only supports modifying both live and persistent config if
          * xendConfigVersion >= 3
          */
-        if (flags != (VIR_DOMAIN_DEVICE_MODIFY_LIVE |
-                      VIR_DOMAIN_DEVICE_MODIFY_CONFIG)) {
+        if (priv->xendConfigVersion >= 3 &&
+            (flags != (VIR_DOMAIN_DEVICE_MODIFY_LIVE |
+                       VIR_DOMAIN_DEVICE_MODIFY_CONFIG))) {
             virXendError(VIR_ERR_OPERATION_INVALID, "%s",
                          _("Xend only supports modifying both live and "
                            "persistent config"));
@@ -4955,7 +5071,7 @@ error:
 
 /**
  * xenDaemonDomainBlockPeek:
- * @dom: domain object
+ * @domain: domain object
  * @path: path to the file or device
  * @offset: offset
  * @size: size
@@ -5066,10 +5182,8 @@ struct xenUnifiedDriver xenDaemonDriver = {
     xenDaemonDomainSave,         /* domainSave */
     xenDaemonDomainRestore,      /* domainRestore */
     xenDaemonDomainCoreDump,     /* domainCoreDump */
-    xenDaemonDomainSetVcpus,     /* domainSetVcpus */
     xenDaemonDomainPinVcpu,      /* domainPinVcpu */
     xenDaemonDomainGetVcpus,     /* domainGetVcpus */
-    NULL,                        /* domainGetMaxVcpus */
     xenDaemonListDefinedDomains, /* listDefinedDomains */
     xenDaemonNumOfDefinedDomains,/* numOfDefinedDomains */
     xenDaemonDomainCreate,       /* domainCreate */
@@ -5306,9 +5420,10 @@ xenDaemonFormatSxprDisk(virConnectPtr conn ATTRIBUTE_UNUSED,
     /* Normally disks are in a (device (vbd ...)) block
      * but blktap disks ended up in a differently named
      * (device (tap ....)) block.... */
-    if (def->driverName &&
-        STREQ(def->driverName, "tap")) {
+    if (def->driverName && STREQ(def->driverName, "tap")) {
         virBufferAddLit(buf, "(tap ");
+    } else if (def->driverName && STREQ(def->driverName, "tap2")) {
+        virBufferAddLit(buf, "(tap2 ");
     } else {
         virBufferAddLit(buf, "(vbd ");
     }
@@ -5329,7 +5444,8 @@ xenDaemonFormatSxprDisk(virConnectPtr conn ATTRIBUTE_UNUSED,
 
     if (def->src) {
         if (def->driverName) {
-            if (STREQ(def->driverName, "tap")) {
+            if (STREQ(def->driverName, "tap") ||
+                STREQ(def->driverName, "tap2")) {
                 virBufferVSprintf(buf, "(uname '%s:%s:%s')",
                                   def->driverName,
                                   def->driverType ? def->driverType : "aio",
@@ -5636,7 +5752,7 @@ xenDaemonFormatSxprInput(virDomainInputDefPtr input,
  *
  * Generate an SEXPR representing the domain configuration.
  *
- * Returns the 0 terminatedi S-Expr string or NULL in case of error.
+ * Returns the 0 terminated S-Expr string or NULL in case of error.
  *         the caller must free() the returned value.
  */
 char *
@@ -5652,8 +5768,11 @@ xenDaemonFormatSxpr(virConnectPtr conn,
     virBufferAddLit(&buf, "(vm ");
     virBufferVSprintf(&buf, "(name '%s')", def->name);
     virBufferVSprintf(&buf, "(memory %lu)(maxmem %lu)",
-                      def->memory/1024, def->maxmem/1024);
-    virBufferVSprintf(&buf, "(vcpus %lu)", def->vcpus);
+                      def->mem.cur_balloon/1024, def->mem.max_balloon/1024);
+    virBufferVSprintf(&buf, "(vcpus %u)", def->maxvcpus);
+    /* Computing the vcpu_avail bitmask works because MAX_VIRT_CPUS is 32.  */
+    if (def->vcpus < def->maxvcpus)
+        virBufferVSprintf(&buf, "(vcpu_avail %u)", (1U << def->vcpus) - 1);
 
     if (def->cpumask) {
         char *ranges = virDomainCpuSetFormat(def->cpumask, def->cpumasklen);
@@ -5693,7 +5812,7 @@ xenDaemonFormatSxpr(virConnectPtr conn,
     }
     virBufferVSprintf(&buf, "(on_reboot '%s')", tmp);
 
-    if (!(tmp = virDomainLifecycleTypeToString(def->onCrash))) {
+    if (!(tmp = virDomainLifecycleCrashTypeToString(def->onCrash))) {
         virXendError(VIR_ERR_INTERNAL_ERROR,
                      _("unexpected lifecycle value %d"), def->onCrash);
         goto error;
@@ -5748,7 +5867,10 @@ xenDaemonFormatSxpr(virConnectPtr conn,
             else
                 virBufferVSprintf(&buf, "(kernel '%s')", def->os.loader);
 
-            virBufferVSprintf(&buf, "(vcpus %lu)", def->vcpus);
+            virBufferVSprintf(&buf, "(vcpus %u)", def->maxvcpus);
+            if (def->vcpus < def->maxvcpus)
+                virBufferVSprintf(&buf, "(vcpu_avail %u)",
+                                  (1U << def->vcpus) - 1);
 
             for (i = 0 ; i < def->os.nBootDevs ; i++) {
                 switch (def->os.bootDevs[i]) {
@@ -5928,6 +6050,9 @@ virDomainXMLDevID(virDomainPtr domain,
         if (dev->data.disk->driverName &&
             STREQ(dev->data.disk->driverName, "tap"))
             strcpy(class, "tap");
+        else if (dev->data.disk->driverName &&
+            STREQ(dev->data.disk->driverName, "tap2"))
+            strcpy(class, "tap2");
         else
             strcpy(class, "vbd");
 

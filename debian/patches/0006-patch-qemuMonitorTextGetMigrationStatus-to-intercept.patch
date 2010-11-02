@@ -40,11 +40,11 @@ to savely detect that the command 'info migrate' is not implemented.
  src/qemu/qemu_monitor_text.c |   10 +++++++++-
  1 files changed, 9 insertions(+), 1 deletions(-)
 
-diff --git a/src/qemu/qemu_monitor_text.c b/src/qemu/qemu_monitor_text.c
-index 69971a6..ff9641c 100644
---- a/src/qemu/qemu_monitor_text.c
-+++ b/src/qemu/qemu_monitor_text.c
-@@ -1124,7 +1124,15 @@ int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
+Index: libvirt-0.8.5/src/qemu/qemu_monitor_text.c
+===================================================================
+--- libvirt-0.8.5.orig/src/qemu/qemu_monitor_text.c	2010-11-02 16:26:33.704307000 -0500
++++ libvirt-0.8.5/src/qemu/qemu_monitor_text.c	2010-11-02 16:29:17.263576000 -0500
+@@ -1124,7 +1124,15 @@
              *total *= 1024;
  
          }
@@ -61,4 +61,3 @@ index 69971a6..ff9641c 100644
  
  done:
      ret = 0;
--- 
