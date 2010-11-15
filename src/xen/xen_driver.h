@@ -1,7 +1,7 @@
 /*
  * xen_unified.c: Unified Xen driver.
  *
- * Copyright (C) 2007 Red Hat, Inc.
+ * Copyright (C) 2007, 2010 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
@@ -27,6 +27,14 @@
 #  include <netinet/in.h>
 # else
 #  include <winsock2.h>
+# endif
+
+/* xen-unstable changeset 19788 removed MAX_VIRT_CPUS from public
+ * headers.  Its semantic was retained with XEN_LEGACY_MAX_VCPUS.
+ * Ensure MAX_VIRT_CPUS is defined accordingly.
+ */
+# if !defined(MAX_VIRT_CPUS) && defined(XEN_LEGACY_MAX_VCPUS)
+#  define MAX_VIRT_CPUS XEN_LEGACY_MAX_VCPUS
 # endif
 
 extern int xenRegister (void);
@@ -84,10 +92,8 @@ struct xenUnifiedDriver {
         virDrvDomainSave		domainSave;
         virDrvDomainRestore		domainRestore;
         virDrvDomainCoreDump		domainCoreDump;
-        virDrvDomainSetVcpus		domainSetVcpus;
         virDrvDomainPinVcpu		domainPinVcpu;
         virDrvDomainGetVcpus		domainGetVcpus;
-        virDrvDomainGetMaxVcpus		domainGetMaxVcpus;
         virDrvListDefinedDomains	listDefinedDomains;
         virDrvNumOfDefinedDomains	numOfDefinedDomains;
         virDrvDomainCreate		domainCreate;
@@ -220,6 +226,7 @@ int  xenUnifiedRemoveDomainInfo(xenUnifiedDomainInfoListPtr info,
 void xenUnifiedDomainEventDispatch (xenUnifiedPrivatePtr priv,
                                     virDomainEventPtr event);
 unsigned long xenUnifiedVersion(void);
+int xenUnifiedGetMaxVcpus(virConnectPtr conn, const char *type);
 
 # ifndef PROXY
 void xenUnifiedLock(xenUnifiedPrivatePtr priv);
