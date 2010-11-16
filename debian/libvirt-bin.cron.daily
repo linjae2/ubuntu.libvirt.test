@@ -23,12 +23,16 @@ remove_if_unused() {
 }
 
 # read in all existing uuids
-for i in `ls -1 /etc/libvirt/qemu/*.xml 2>/dev/null` ; do
-    uuid=`grep '<uuid>' "$i" | sed 's#.*<uuid>\(.*\)</uuid>.*#\1#'`
-    uuids="$uuids $uuid"
+for i in /etc/libvirt/qemu/*.xml ; do
+    if [ -r "$i" ]; then
+        uuid=`grep '<uuid>' "$i" | sed 's#.*<uuid>\(.*\)</uuid>.*#\1#'`
+        uuids="$uuids $uuid"
+    fi
 done
 
-for i in `ls -1 $PROFILES_DIR/libvirt-* 2>/dev/null` ; do
-    basename "$i" | egrep -q '\.' && continue
-    remove_if_unused "$i" || true
+for i in "$PROFILES_DIR"/libvirt-* ; do
+    if [ -r "$i" ]; then
+        basename "$i" | egrep -q '\.' && continue
+        remove_if_unused "$i" || true
+    fi
 done
