@@ -1,0 +1,62 @@
+Origin: 29318e177abd154850d3d030db1849461b425215
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: virt-aa-helper should require <uuid> in XML
+ When <uuid> is not in the XML, a virUUIDGenerate() ends up being called which
+ is unnecessary and can lead to crashes if /dev/urandom isn't available
+ because virRandomInitialize() is not called within virt-aa-helper. This patch
+ adds verify_xpath_context() and updates caps_mockup() to use it.
+Bug-Ubuntu: https://launchpad.net/bugs/672943
+
+Index: ubuntu-trunk/src/security/virt-aa-helper.c
+===================================================================
+--- ubuntu-trunk.orig/src/security/virt-aa-helper.c	2010-11-16 14:13:03.000000000 -0600
++++ ubuntu-trunk/src/security/virt-aa-helper.c	2010-11-16 14:13:10.000000000 -0600
+@@ -604,6 +604,37 @@
+     }
+ }
+ 
++static int
++verify_xpath_context(xmlXPathContextPtr ctxt)
++{
++    int rc = -1;
++    char *tmp = NULL;
++
++    if (!ctxt) {
++        vah_warning("Invalid context");
++        goto error;
++    }
++
++    /* check if have <name> */
++    if (!(tmp = virXPathString("string(./name[1])", ctxt))) {
++        vah_warning("Could not find <name>");
++        goto error;
++    }
++    VIR_FREE(tmp);
++
++    /* check if have <uuid> */
++    if (!(tmp = virXPathString("string(./uuid[1])", ctxt))) {
++        vah_warning("Could not find <uuid>");
++        goto error;
++    }
++    VIR_FREE(tmp);
++
++    rc = 0;
++
++  error:
++    return rc;
++}
++
+ /*
+  * Parse the xml we received to fill in the following:
+  * ctl->hvm
+@@ -652,6 +683,10 @@
+     }
+     ctxt->node = root;
+ 
++    /* Quick sanity check for some required elements */
++    if (verify_xpath_context(ctxt) != 0)
++        goto cleanup;
++
+     ctl->hvm = virXPathString("string(./os/type[1])", ctxt);
+     if (!ctl->hvm || STRNEQ(ctl->hvm, "hvm")) {
+         vah_error(ctl, 0, "os.type is not 'hvm'");

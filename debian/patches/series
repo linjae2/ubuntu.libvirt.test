@@ -18,3 +18,5 @@
 9014-skip-nodeinfotest.patch
 9020-lp545795.patch
 9021-fix-uint64_t.patch
+9022-build-cleanup-declaration-of-xen-tests.patch
+9023-vah-require-uuid.patch
