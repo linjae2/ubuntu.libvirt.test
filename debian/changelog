@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu27.8) lucid-proposed; urgency=low
+
+  * debian/patches/9903-lp668042.patch:  When libvirtd is restarted, do not 
+    remove network interface details from active domains. Patched based on
+    upstream git commit.  (LP: #668042)
+
+ -- Dave Walker (Daviey) <DaveWalker@ubuntu.com>  Thu, 25 Nov 2010 02:41:24 +0000
+
 libvirt (0.7.5-5ubuntu27.7) lucid-security; urgency=low
 
   * debian/patches/9902-lp665531.patch: restore use of '<driver name='qemu'
