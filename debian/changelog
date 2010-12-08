@@ -1,3 +1,9 @@
+libvirt (0.8.5-0ubuntu3) natty; urgency=low
+
+  * Rebuild with python 2.7 as the python default.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 08 Dec 2010 13:07:54 +0000
+
 libvirt (0.8.5-0ubuntu2) natty; urgency=low
 
   [ Serge Hallyn ]
