@@ -33,10 +33,10 @@
   # confining the guests
   /** rwmkl,
 
-  /bin/* Ux,
-  /sbin/* Ux,
-  /usr/bin/* Ux,
-  /usr/sbin/* Ux,
+  /bin/* PUx,
+  /sbin/* PUx,
+  /usr/bin/* PUx,
+  /usr/sbin/* PUx,
 
   # Required by nwfilter_ebiptables_driver.c:ebiptablesWriteToTempFile() to
   # write and run an ebtables script.
