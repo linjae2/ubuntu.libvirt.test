@@ -1028,28 +1028,10 @@ networkEnableIpForwarding(void)
 
 #define SYSCTL_PATH "/proc/sys"
 
-static int networkDisableIPV6(virNetworkObjPtr network)
+static int networkSetupIPV6(virNetworkObjPtr network)
 {
     char *field = NULL;
     int ret = -1;
-
-    if (virAsprintf(&field, SYSCTL_PATH "/net/ipv6/conf/%s/disable_ipv6", network->def->bridge) < 0) {
-        virReportOOMError();
-        goto cleanup;
-    }
-
-    if (access(field, W_OK) < 0 && errno == ENOENT) {
-        VIR_DEBUG("ipv6 appears to already be disabled on %s", network->def->bridge);
-        ret = 0;
-        goto cleanup;
-    }
-
-    if (virFileWriteStr(field, "1") < 0) {
-        virReportSystemError(errno,
-                             _("cannot enable %s"), field);
-        goto cleanup;
-    }
-    VIR_FREE(field);
 
     if (virAsprintf(&field, SYSCTL_PATH "/net/ipv6/conf/%s/accept_ra", network->def->bridge) < 0) {
         virReportOOMError();
@@ -1191,7 +1173,7 @@ static int networkStartNetworkDaemon(struct network_driver *driver,
         return -1;
     }
 
-    if (networkDisableIPV6(network) < 0)
+    if (networkSetupIPV6(network) < 0)
         goto err_delbr;
 
     if (brSetForwardDelay(driver->brctl, network->def->bridge, network->def->delay) < 0)
