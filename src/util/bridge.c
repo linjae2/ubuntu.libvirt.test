@@ -245,7 +245,10 @@ brAddInterface(brControl *ctl,
                const char *bridge,
                const char *iface)
 {
-    return brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface);
+    int ret;
+    if (ret = brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface))
+        return ret;
+    return brSetInterfaceUp(ctl, bridge, 1);
 }
 # else
 int
@@ -616,7 +619,8 @@ brSetInterfaceUp(brControl *ctl,
         ifr.ifr_flags = flags;
 
         if (ioctl(ctl->fd, SIOCSIFFLAGS, &ifr) < 0)
-            return errno;
+            /*  Just smile and wave, boys... */
+            return 0;
     }
 
     return 0;
