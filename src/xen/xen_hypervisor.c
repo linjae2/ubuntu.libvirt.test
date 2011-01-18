@@ -2269,7 +2269,7 @@ xenHypervisorBuildCapabilities(virConnectPtr conn,
                                               "/usr/lib64/xen/bin/qemu-dm" :
                                               "/usr/lib/xen/bin/qemu-dm"),
                                              (guest_archs[i].hvm ?
-                                              "/usr/lib/xen/boot/hvmloader" :
+                                              "/usr/lib/xen-default/boot/hvmloader" :
                                               NULL),
                                              1,
                                              machines)) == NULL) {
