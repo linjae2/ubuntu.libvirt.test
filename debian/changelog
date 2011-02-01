@@ -1,3 +1,12 @@
+libvirt (0.8.5-0ubuntu5) natty; urgency=low
+
+  * Have upstart job source /etc/default/libvirt-bin.  This is only a
+    temporary fix until upstart provides proper default override support
+    through /etc/init/libvirt-bin.override (or any other mechanism).
+    (LP: #708172)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 01 Feb 2011 13:30:02 +0100
+
 libvirt (0.8.5-0ubuntu4) natty; urgency=low
 
   * debian/apparmor/usr.sbin.libvirtd: use PUx instead of Ux for executables
