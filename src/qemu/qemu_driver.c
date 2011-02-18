@@ -12715,19 +12715,29 @@ static int
 qemudVMFilterRebuild(virConnectPtr conn ATTRIBUTE_UNUSED,
                      virHashIterator iter, void *data)
 {
-    struct qemud_driver *driver = qemu_driver;
-
-    qemuDriverLock(driver);
     virHashForEach(qemu_driver->domains.objs, iter, data);
-    qemuDriverUnlock(driver);
 
     return 0;
 }
 
 
+static void
+qemudVMDriverLock(void) {
+    qemuDriverLock(qemu_driver);
+};
+
+
+static void
+qemudVMDriverUnlock(void) {
+    qemuDriverUnlock(qemu_driver);
+};
+
+
 static virNWFilterCallbackDriver qemuCallbackDriver = {
     .name = "QEMU",
     .vmFilterRebuild = qemudVMFilterRebuild,
+    .vmDriverLock = qemudVMDriverLock,
+    .vmDriverUnlock = qemudVMDriverUnlock,
 };
 
 int qemuRegister(void) {
