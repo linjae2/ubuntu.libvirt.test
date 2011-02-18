@@ -1,3 +1,11 @@
+libvirt (0.8.3-5+squeeze0) stable; urgency=low
+
+  [ Laurent Léonard ]
+  * [6f95d48] Fix exit status codes in libvirt init script to comply with LSB
+    (Closes: #612305)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 18 Feb 2011 21:26:03 +0100
+
 libvirt (0.8.3-5) unstable; urgency=low
 
   [ Laurent Léonard ]
