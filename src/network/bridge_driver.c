@@ -468,7 +468,7 @@ networkBuildDnsmasqArgv(virNetworkObjPtr network,
     virCommandAddArgPair(cmd, "--pid-file", pidfile);
 
     /* *no* conf file */
-    virCommandAddArgList(cmd, "--conf-file=", "", NULL);
+    virCommandAddArgList(cmd, "--conf-file=", NULL);
 
     virCommandAddArgList(cmd,
                          "--except-interface", "lo",
