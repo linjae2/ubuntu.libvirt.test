@@ -870,7 +870,6 @@ iptablesOutputFixUdpChecksum(iptablesContext *ctx,
                              int port,
                              int action)
 {
-#if 0
     char portstr[32];
 
     snprintf(portstr, sizeof(portstr), "%d", port);
@@ -884,9 +883,6 @@ iptablesOutputFixUdpChecksum(iptablesContext *ctx,
                                  "--destination-port", portstr,
                                  "--jump", "CHECKSUM", "--checksum-fill",
                                  NULL);
-#else
-    return 0;
-#endif
 }
 
 /**

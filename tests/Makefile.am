@@ -77,7 +77,7 @@ EXTRA_DIST =		\
 
 check_PROGRAMS = virshtest conftest sockettest \
 	nodeinfotest qparamtest virbuftest \
-	commandtest commandhelper seclabeltest
+	commandhelper seclabeltest
 
 if WITH_XEN
 check_PROGRAMS += xml2sexprtest sexpr2xmltest \
@@ -157,7 +157,6 @@ TESTS = virshtest \
 	qparamtest \
 	virbuftest \
 	sockettest \
-	commandtest \
 	seclabeltest \
 	$(test_scripts)
 
@@ -350,11 +349,6 @@ conftest_LDADD = $(LDADDS)
 nodeinfotest_SOURCES = \
 	nodeinfotest.c testutils.h testutils.c
 nodeinfotest_LDADD = $(LDADDS)
-
-commandtest_SOURCES = \
-	commandtest.c testutils.h testutils.c
-commandtest_CFLAGS = -Dabs_builddir="\"`pwd`\""
-commandtest_LDADD = $(LDADDS)
 
 commandhelper_SOURCES = \
 	commandhelper.c
