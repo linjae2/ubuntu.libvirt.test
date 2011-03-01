@@ -27,8 +27,8 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, libvirt0 (= ${binary:Versi
  netcat-openbsd, bridge-utils, dnsmasq-base (>= 2.46-1), iptables
 Enhances: qemu, qemu-kvm, xen
 Section: admin
-Recommends: libxml2-utils, gawk, ebtables
-Suggests: policykit-1, apparmor, qemu-kvm | qemu (>= 0.9.1)
+Recommends: libxml2-utils, gawk
+Suggests: policykit-1, apparmor, qemu-kvm | qemu (>= 0.9.1), ebtables
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
