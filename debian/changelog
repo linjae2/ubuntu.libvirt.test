@@ -1,3 +1,10 @@
+libvirt (0.8.8-1ubuntu2) natty; urgency=low
+
+  * debian/control: Demoted package ebtables from Recommends 
+    to Suggests for binary package, libvirt-bin. 
+
+ -- Dave Walker (Daviey) <DaveWalker@ubuntu.com>  Tue, 01 Mar 2011 13:46:35 +0000
+
 libvirt (0.8.8-1ubuntu1) natty; urgency=low
 
   * Resynchronize and merge from Debian unstable. Remaining changes:
