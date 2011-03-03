@@ -1,3 +1,10 @@
+libvirt (0.8.8-1ubuntu3) natty; urgency=low
+
+  * 9025-Pass-virSecurityManagerPtr-to-virSecurityDAC-Set-Res.patch: Fix
+    ownership setting of chardevs.
+
+ -- Soren Hansen <soren@ubuntu.com>  Thu, 03 Mar 2011 15:48:45 +0100
+
 libvirt (0.8.8-1ubuntu2) natty; urgency=low
 
   * debian/control: Demoted package ebtables from Recommends 
