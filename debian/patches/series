@@ -22,3 +22,4 @@ Don-t-pass-empty-arguments-to-dnsmasq.patch
 9022-drop-booton-when-kernel-specified.patch
 9023-fix-lxc-console-hangup.patch
 9024-skip-broken-commandtest.patch
+9025-Pass-virSecurityManagerPtr-to-virSecurityDAC-Set-Res.patch
