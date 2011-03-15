@@ -33,3 +33,4 @@
 9026-Rebuild-network-filter-for-UML-guests-on-updates.patch
 9027-Make-newfilter-xml-transformations-endian-safe.patch
 9028-lp628055.patch
+9029-CVE-2011-1146.patch
