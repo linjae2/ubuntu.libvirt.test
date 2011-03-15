@@ -21,5 +21,7 @@ Don-t-pass-empty-arguments-to-dnsmasq.patch
 9021-fix-uint64_t.patch
 9022-drop-booton-when-kernel-specified.patch
 9023-fix-lxc-console-hangup.patch
-9024-skip-broken-commandtest.patch
+9024-fix-broken-commandtest.patch
 9025-Pass-virSecurityManagerPtr-to-virSecurityDAC-Set-Res.patch
+9026-security-avoid-memory-leak.patch
+9027-CVE-2011-1146.patch
