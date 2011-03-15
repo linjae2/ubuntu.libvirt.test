@@ -1,3 +1,11 @@
+libvirt (0.7.0-1ubuntu13.3) karmic-security; urgency=low
+
+  * SECURITY UPDATE: debian/patches/9902-CVE-2011-1146.patch: Add missing
+    checks for read only connections.
+    - CVE-2011-1146
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 15 Mar 2011 16:23:44 -0500
+
 libvirt (0.7.0-1ubuntu13.2) karmic-security; urgency=low
 
   * SECURITY UPDATE: force qemu-img backing stores creation to have a defined
