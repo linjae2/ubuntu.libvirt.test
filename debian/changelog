@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu27.9) lucid-security; urgency=low
+
+  * SECURITY UPDATE: debian/patches/9904-CVE-2011-1146.patch: Add missing
+    checks for read only connections.
+    - CVE-2011-1146
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 15 Mar 2011 16:21:40 -0500
+
 libvirt (0.7.5-5ubuntu27.8) lucid-proposed; urgency=low
 
   * debian/patches/9903-lp668042.patch:  When libvirtd is restarted, do not 
