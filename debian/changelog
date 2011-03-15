@@ -1,3 +1,11 @@
+libvirt (0.8.3-1ubuntu14.1) maverick-security; urgency=low
+
+  * SECURITY UPDATE: debian/patches/9029-CVE-2011-1146.patch: Add missing
+    checks for read only connections.
+    - CVE-2011-1146
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 15 Mar 2011 15:31:42 -0500
+
 libvirt (0.8.3-1ubuntu14) maverick; urgency=low
 
   * Let Apparmor allow libvirtd to create PF_PACKET sockets. Several
