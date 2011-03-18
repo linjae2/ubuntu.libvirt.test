@@ -1,3 +1,9 @@
+libvirt (0.8.8-1ubuntu5) natty; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: allow read access to '/' (LP: #727286)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 18 Mar 2011 08:02:32 -0500
+
 libvirt (0.8.8-1ubuntu4) natty; urgency=low
 
   [ Serge Hallyn ]
