@@ -326,7 +326,7 @@ static struct gcry_thread_cbs virTLSThreadImpl = {
         _domname = (dom)->name;                           \
     }                                                     \
                                                           \
-    DEBUG("dom=%p, (VM: name=%s, uuid=%s), " fmt,         \
+    VIR_DEBUG("dom=%p, (VM: name=%s, uuid=%s), " fmt,         \
           dom, NULLSTR(_domname), _uuidstr, __VA_ARGS__)
 
 #define VIR_DOMAIN_DEBUG0(dom) VIR_DOMAIN_DEBUG(dom, "%s", "")
@@ -358,7 +358,7 @@ virInitialize(void)
 
     virLogSetFromEnv();
 
-    DEBUG0("register drivers");
+    VIR_DEBUG0("register drivers");
 
 #if HAVE_WINSOCK2_H
     if (winsock_init () == -1) return -1;
@@ -529,7 +529,7 @@ virRegisterNetworkDriver(virNetworkDriverPtr driver)
         return -1;
     }
 
-    DEBUG ("registering %s as network driver %d",
+    VIR_DEBUG ("registering %s as network driver %d",
            driver->name, virNetworkDriverTabCount);
 
     virNetworkDriverTab[virNetworkDriverTabCount] = driver;
@@ -562,7 +562,7 @@ virRegisterInterfaceDriver(virInterfaceDriverPtr driver)
         return -1;
     }
 
-    DEBUG ("registering %s as interface driver %d",
+    VIR_DEBUG ("registering %s as interface driver %d",
            driver->name, virInterfaceDriverTabCount);
 
     virInterfaceDriverTab[virInterfaceDriverTabCount] = driver;
@@ -595,7 +595,7 @@ virRegisterStorageDriver(virStorageDriverPtr driver)
         return -1;
     }
 
-    DEBUG ("registering %s as storage driver %d",
+    VIR_DEBUG ("registering %s as storage driver %d",
            driver->name, virStorageDriverTabCount);
 
     virStorageDriverTab[virStorageDriverTabCount] = driver;
@@ -628,7 +628,7 @@ virRegisterDeviceMonitor(virDeviceMonitorPtr driver)
         return -1;
     }
 
-    DEBUG ("registering %s as device driver %d",
+    VIR_DEBUG ("registering %s as device driver %d",
            driver->name, virDeviceMonitorTabCount);
 
     virDeviceMonitorTab[virDeviceMonitorTabCount] = driver;
@@ -661,7 +661,7 @@ virRegisterSecretDriver(virSecretDriverPtr driver)
         return -1;
     }
 
-    DEBUG ("registering %s as secret driver %d",
+    VIR_DEBUG ("registering %s as secret driver %d",
            driver->name, virSecretDriverTabCount);
 
     virSecretDriverTab[virSecretDriverTabCount] = driver;
@@ -694,7 +694,7 @@ virRegisterNWFilterDriver(virNWFilterDriverPtr driver)
         return -1;
     }
 
-    DEBUG ("registering %s as network filter driver %d",
+    VIR_DEBUG ("registering %s as network filter driver %d",
            driver->name, virNWFilterDriverTabCount);
 
     virNWFilterDriverTab[virNWFilterDriverTabCount] = driver;
@@ -713,7 +713,7 @@ virRegisterNWFilterDriver(virNWFilterDriverPtr driver)
 int
 virRegisterDriver(virDriverPtr driver)
 {
-    DEBUG("driver=%p name=%s", driver, driver ? NULLSTR(driver->name) : "(null)");
+    VIR_DEBUG("driver=%p name=%s", driver, driver ? NULLSTR(driver->name) : "(null)");
 
     if (virInitialize() < 0)
         return -1;
@@ -736,7 +736,7 @@ virRegisterDriver(virDriverPtr driver)
         return -1;
     }
 
-    DEBUG ("registering %s as driver %d",
+    VIR_DEBUG ("registering %s as driver %d",
            driver->name, virDriverTabCount);
 
     virDriverTab[virDriverTabCount] = driver;
@@ -860,14 +860,15 @@ int virStateActive(void) {
 /**
  * virGetVersion:
  * @libVer: return value for the library version (OUT)
- * @type: the type of connection/driver looked at
- * @typeVer: return value for the version of the hypervisor (OUT)
+ * @type: the type of connection/driver looked at, if @typeVer is not NULL
+ * @typeVer: optional return value for the version of the hypervisor (OUT)
  *
- * Provides two information back, @libVer is the version of the library
- * while @typeVer will be the version of the hypervisor type @type against
- * which the library was compiled. If @type is NULL, "Xen" is assumed, if
- * @type is unknown or not available, an error code will be returned and
- * @typeVer will be 0.
+ * Provides information on up to two versions: @libVer is the version of the
+ * library and will always be set unless an error occurs, in which case an
+ * error code will be returned. If @typeVer is not NULL it will be set to the
+ * version of the hypervisor @type against which the library was compiled.
+ * If @type is NULL, "Xen" is assumed, if @type is unknown or not
+ * available, an error code will be returned and @typeVer will be 0.
  *
  * Returns -1 in case of failure, 0 otherwise, and values for @libVer and
  *       @typeVer have the format major * 1,000,000 + minor * 1,000 + release.
@@ -876,7 +877,7 @@ int
 virGetVersion(unsigned long *libVer, const char *type,
               unsigned long *typeVer)
 {
-    DEBUG("libVir=%p, type=%s, typeVer=%p", libVer, type, typeVer);
+    VIR_DEBUG("libVir=%p, type=%s, typeVer=%p", libVer, type, typeVer);
 
     if (!initialized)
         if (virInitialize() < 0)
@@ -910,6 +911,10 @@ virGetVersion(unsigned long *libVer, const char *type,
 # endif
 # if WITH_LXC
         if (STRCASEEQ(type, "LXC"))
+            *typeVer = LIBVIR_VERSION_NUMBER;
+# endif
+# if WITH_LIBXL
+        if (STRCASEEQ(type, "xenlight"))
             *typeVer = LIBVIR_VERSION_NUMBER;
 # endif
 # if WITH_PHYP
@@ -983,7 +988,7 @@ do_open (const char *name,
     if (!name || name[0] == '\0') {
         char *defname = getenv("LIBVIRT_DEFAULT_URI");
         if (defname && *defname) {
-            DEBUG("Using LIBVIRT_DEFAULT_URI %s", defname);
+            VIR_DEBUG("Using LIBVIRT_DEFAULT_URI %s", defname);
             name = defname;
         } else {
             name = NULL;
@@ -1008,7 +1013,7 @@ do_open (const char *name,
             goto failed;
         }
 
-        DEBUG("name \"%s\" to URI components:\n"
+        VIR_DEBUG("name \"%s\" to URI components:\n"
               "  scheme %s\n"
               "  opaque %s\n"
               "  authority %s\n"
@@ -1022,7 +1027,7 @@ do_open (const char *name,
               NULLSTR(ret->uri->user), ret->uri->port,
               NULLSTR(ret->uri->path));
     } else {
-        DEBUG0("no name, allowing driver auto-select");
+        VIR_DEBUG0("no name, allowing driver auto-select");
     }
 
     /* Cleansing flags */
@@ -1058,10 +1063,10 @@ do_open (const char *name,
             goto failed;
         }
 
-        DEBUG("trying driver %d (%s) ...",
+        VIR_DEBUG("trying driver %d (%s) ...",
               i, virDriverTab[i]->name);
         res = virDriverTab[i]->open (ret, auth, flags);
-        DEBUG("driver %d %s returned %s",
+        VIR_DEBUG("driver %d %s returned %s",
               i, virDriverTab[i]->name,
               res == VIR_DRV_OPEN_SUCCESS ? "SUCCESS" :
               (res == VIR_DRV_OPEN_DECLINED ? "DECLINED" :
@@ -1083,7 +1088,7 @@ do_open (const char *name,
 
     for (i = 0; i < virNetworkDriverTabCount; i++) {
         res = virNetworkDriverTab[i]->open (ret, auth, flags);
-        DEBUG("network driver %d %s returned %s",
+        VIR_DEBUG("network driver %d %s returned %s",
               i, virNetworkDriverTab[i]->name,
               res == VIR_DRV_OPEN_SUCCESS ? "SUCCESS" :
               (res == VIR_DRV_OPEN_DECLINED ? "DECLINED" :
@@ -1098,7 +1103,7 @@ do_open (const char *name,
 
     for (i = 0; i < virInterfaceDriverTabCount; i++) {
         res = virInterfaceDriverTab[i]->open (ret, auth, flags);
-        DEBUG("interface driver %d %s returned %s",
+        VIR_DEBUG("interface driver %d %s returned %s",
               i, virInterfaceDriverTab[i]->name,
               res == VIR_DRV_OPEN_SUCCESS ? "SUCCESS" :
               (res == VIR_DRV_OPEN_DECLINED ? "DECLINED" :
@@ -1114,7 +1119,7 @@ do_open (const char *name,
     /* Secondary driver for storage. Optional */
     for (i = 0; i < virStorageDriverTabCount; i++) {
         res = virStorageDriverTab[i]->open (ret, auth, flags);
-        DEBUG("storage driver %d %s returned %s",
+        VIR_DEBUG("storage driver %d %s returned %s",
               i, virStorageDriverTab[i]->name,
               res == VIR_DRV_OPEN_SUCCESS ? "SUCCESS" :
               (res == VIR_DRV_OPEN_DECLINED ? "DECLINED" :
@@ -1130,7 +1135,7 @@ do_open (const char *name,
     /* Node driver (optional) */
     for (i = 0; i < virDeviceMonitorTabCount; i++) {
         res = virDeviceMonitorTab[i]->open (ret, auth, flags);
-        DEBUG("node driver %d %s returned %s",
+        VIR_DEBUG("node driver %d %s returned %s",
               i, virDeviceMonitorTab[i]->name,
               res == VIR_DRV_OPEN_SUCCESS ? "SUCCESS" :
               (res == VIR_DRV_OPEN_DECLINED ? "DECLINED" :
@@ -1146,7 +1151,7 @@ do_open (const char *name,
     /* Secret manipulation driver. Optional */
     for (i = 0; i < virSecretDriverTabCount; i++) {
         res = virSecretDriverTab[i]->open (ret, auth, flags);
-        DEBUG("secret driver %d %s returned %s",
+        VIR_DEBUG("secret driver %d %s returned %s",
               i, virSecretDriverTab[i]->name,
               res == VIR_DRV_OPEN_SUCCESS ? "SUCCESS" :
               (res == VIR_DRV_OPEN_DECLINED ? "DECLINED" :
@@ -1162,7 +1167,7 @@ do_open (const char *name,
     /* Network filter driver. Optional */
     for (i = 0; i < virNWFilterDriverTabCount; i++) {
         res = virNWFilterDriverTab[i]->open (ret, auth, flags);
-        DEBUG("nwfilter driver %d %s returned %s",
+        VIR_DEBUG("nwfilter driver %d %s returned %s",
               i, virNWFilterDriverTab[i]->name,
               res == VIR_DRV_OPEN_SUCCESS ? "SUCCESS" :
               (res == VIR_DRV_OPEN_DECLINED ? "DECLINED" :
@@ -1213,7 +1218,7 @@ virConnectOpen (const char *name)
         if (virInitialize() < 0)
             goto error;
 
-    DEBUG("name=%s", name);
+    VIR_DEBUG("name=%s", name);
     ret = do_open (name, NULL, 0);
     if (!ret)
         goto error;
@@ -1247,7 +1252,7 @@ virConnectOpenReadOnly(const char *name)
         if (virInitialize() < 0)
             goto error;
 
-    DEBUG("name=%s", name);
+    VIR_DEBUG("name=%s", name);
     ret = do_open (name, NULL, VIR_CONNECT_RO);
     if (!ret)
         goto error;
@@ -1285,7 +1290,7 @@ virConnectOpenAuth(const char *name,
         if (virInitialize() < 0)
             goto error;
 
-    DEBUG("name=%s, auth=%p, flags=%d", NULLSTR(name), auth, flags);
+    VIR_DEBUG("name=%s, auth=%p, flags=%d", NULLSTR(name), auth, flags);
     ret = do_open (name, auth, flags);
     if (!ret)
         goto error;
@@ -1311,7 +1316,7 @@ int
 virConnectClose(virConnectPtr conn)
 {
     int ret = -1;
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -1356,7 +1361,7 @@ virConnectRef(virConnectPtr conn)
         return -1;
     }
     virMutexLock(&conn->lock);
-    DEBUG("conn=%p refs=%d", conn, conn->refs);
+    VIR_DEBUG("conn=%p refs=%d", conn, conn->refs);
     conn->refs++;
     virMutexUnlock(&conn->lock);
     return 0;
@@ -1370,7 +1375,7 @@ int
 virDrvSupportsFeature (virConnectPtr conn, int feature)
 {
     int ret;
-    DEBUG("conn=%p, feature=%d", conn, feature);
+    VIR_DEBUG("conn=%p, feature=%d", conn, feature);
 
     virResetLastError();
 
@@ -1406,7 +1411,7 @@ const char *
 virConnectGetType(virConnectPtr conn)
 {
     const char *ret;
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -1439,7 +1444,7 @@ virConnectGetType(virConnectPtr conn)
 int
 virConnectGetVersion(virConnectPtr conn, unsigned long *hvVer)
 {
-    DEBUG("conn=%p, hvVer=%p", conn, hvVer);
+    VIR_DEBUG("conn=%p, hvVer=%p", conn, hvVer);
 
     virResetLastError();
 
@@ -1483,7 +1488,7 @@ int
 virConnectGetLibVersion(virConnectPtr conn, unsigned long *libVer)
 {
     int ret = -1;
-    DEBUG("conn=%p, libVir=%p", conn, libVer);
+    VIR_DEBUG("conn=%p, libVir=%p", conn, libVer);
 
     virResetLastError();
 
@@ -1528,7 +1533,7 @@ error:
 char *
 virConnectGetHostname (virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -1571,7 +1576,7 @@ char *
 virConnectGetURI (virConnectPtr conn)
 {
     char *name;
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -1609,7 +1614,7 @@ error:
 char *
 virConnectGetSysinfo (virConnectPtr conn, unsigned int flags)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -1648,7 +1653,7 @@ int
 virConnectGetMaxVcpus(virConnectPtr conn,
                       const char *type)
 {
-    DEBUG("conn=%p, type=%s", conn, type);
+    VIR_DEBUG("conn=%p, type=%s", conn, type);
 
     virResetLastError();
 
@@ -1684,7 +1689,7 @@ error:
 int
 virConnectListDomains(virConnectPtr conn, int *ids, int maxids)
 {
-    DEBUG("conn=%p, ids=%p, maxids=%d", conn, ids, maxids);
+    VIR_DEBUG("conn=%p, ids=%p, maxids=%d", conn, ids, maxids);
 
     virResetLastError();
 
@@ -1723,7 +1728,7 @@ error:
 int
 virConnectNumOfDomains(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -1794,7 +1799,7 @@ virDomainPtr
 virDomainCreateXML(virConnectPtr conn, const char *xmlDesc,
                    unsigned int flags)
 {
-    DEBUG("conn=%p, xmlDesc=%s, flags=%d", conn, xmlDesc, flags);
+    VIR_DEBUG("conn=%p, xmlDesc=%s, flags=%d", conn, xmlDesc, flags);
 
     virResetLastError();
 
@@ -1860,7 +1865,7 @@ virDomainCreateLinux(virConnectPtr conn, const char *xmlDesc,
 virDomainPtr
 virDomainLookupByID(virConnectPtr conn, int id)
 {
-    DEBUG("conn=%p, id=%d", conn, id);
+    VIR_DEBUG("conn=%p, id=%d", conn, id);
 
     virResetLastError();
 
@@ -1905,7 +1910,7 @@ virDomainLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     char uuidstr[VIR_UUID_STRING_BUFLEN];
     virUUIDFormat(uuid, uuidstr);
 
-    DEBUG("conn=%p, uuid=%s", conn, uuidstr);
+    VIR_DEBUG("conn=%p, uuid=%s", conn, uuidstr);
 
     virResetLastError();
 
@@ -1948,7 +1953,7 @@ virDomainPtr
 virDomainLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
+    VIR_DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
 
     virResetLastError();
 
@@ -1987,7 +1992,7 @@ error:
 virDomainPtr
 virDomainLookupByName(virConnectPtr conn, const char *name)
 {
-    DEBUG("conn=%p, name=%s", conn, name);
+    VIR_DEBUG("conn=%p, name=%s", conn, name);
 
     virResetLastError();
 
@@ -2303,7 +2308,7 @@ int
 virDomainRestore(virConnectPtr conn, const char *from)
 {
     char filepath[4096];
-    DEBUG("conn=%p, from=%s", conn, from);
+    VIR_DEBUG("conn=%p, from=%s", conn, from);
 
     virResetLastError();
 
@@ -2547,7 +2552,7 @@ error:
 const char *
 virDomainGetName(virDomainPtr domain)
 {
-    DEBUG("domain=%p", domain);
+    VIR_DEBUG("domain=%p", domain);
 
     virResetLastError();
 
@@ -2846,6 +2851,69 @@ error:
     return -1;
 }
 
+/*
+ * virDomainSetMemoryFlags
+ * @domain: a domain object or NULL
+ * @memory: the memory size in kilobytes
+ * @flags: an OR'ed set of virDomainMemoryModFlags
+ *
+ * Dynamically change the target amount of physical memory allocated to a
+ * domain. If domain is NULL, then this change the amount of memory reserved
+ * to Domain0 i.e. the domain where the application runs.
+ * This funcation may requires privileged access to the hypervisor.
+ *
+ * @flags must include VIR_DOMAIN_MEM_LIVE to affect a running
+ * domain (which may fail if domain is not active), or
+ * VIR_DOMAIN_MEM_CONFIG to affect the next boot via the XML
+ * description of the domain. Both flags may be set.
+ *
+ * Returns 0 in case of success, -1 in case of failure.
+ */
+
+int
+virDomainSetMemoryFlags(virDomainPtr domain, unsigned long memory,
+                        unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "memory=%lu flags=%u", memory, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (domain->conn->flags & VIR_CONNECT_RO) {
+        virLibDomainError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        goto error;
+    }
+
+    if (memory < 4096 ||
+        (flags & (VIR_DOMAIN_MEM_LIVE | VIR_DOMAIN_MEM_CONFIG)) == 0) {
+        virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        goto error;
+    }
+
+    conn = domain->conn;
+
+    if (conn->driver->domainSetMemoryFlags) {
+        int ret;
+        ret = conn->driver->domainSetMemoryFlags(domain, memory, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
 /**
  * virDomainSetMemoryParameters:
  * @domain: pointer to domain object
@@ -2973,6 +3041,114 @@ error:
 }
 
 /**
+ * virDomainSetBlkioParameters:
+ * @domain: pointer to domain object
+ * @params: pointer to blkio parameter objects
+ * @nparams: number of blkio parameters (this value should be same or
+ *          less than the number of parameters supported)
+ * @flags: currently unused, for future extension
+ *
+ * Change the blkio tunables
+ * This function requires privileged access to the hypervisor.
+ *
+ * Returns -1 in case of error, 0 in case of success.
+ */
+int
+virDomainSetBlkioParameters(virDomainPtr domain,
+                             virBlkioParameterPtr params,
+                             int nparams, unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "params=%p, nparams=%d, flags=%u",
+                     params, nparams, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+    if (domain->conn->flags & VIR_CONNECT_RO) {
+        virLibDomainError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        goto error;
+    }
+    if ((nparams <= 0) || (params == NULL)) {
+        virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        goto error;
+    }
+    conn = domain->conn;
+
+    if (conn->driver->domainSetBlkioParameters) {
+        int ret;
+        ret = conn->driver->domainSetBlkioParameters (domain, params, nparams, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
+/**
+ * virDomainGetBlkioParameters:
+ * @domain: pointer to domain object
+ * @params: pointer to blkio parameter object
+ *          (return value, allocated by the caller)
+ * @nparams: pointer to number of blkio parameters
+ * @flags: currently unused, for future extension
+ *
+ * Get the blkio parameters, the @params array will be filled with the values
+ * equal to the number of parameters suggested by @nparams
+ *
+ * This function requires privileged access to the hypervisor. This function
+ * expects the caller to allocate the @params.
+ *
+ * Returns -1 in case of error, 0 in case of success.
+ */
+int
+virDomainGetBlkioParameters(virDomainPtr domain,
+                             virBlkioParameterPtr params,
+                             int *nparams, unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "params=%p, nparams=%d, flags=%u",
+                     params, (nparams) ? *nparams : -1, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+    if ((nparams == NULL) || (*nparams < 0)) {
+        virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        goto error;
+    }
+    conn = domain->conn;
+
+    if (conn->driver->domainGetBlkioParameters) {
+        int ret;
+        ret = conn->driver->domainGetBlkioParameters (domain, params, nparams, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+    virLibConnError (VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
+/**
  * virDomainGetInfo:
  * @domain: a domain object
  * @info: pointer to a virDomainInfo structure allocated by the user
@@ -3091,7 +3267,7 @@ char *virConnectDomainXMLFromNative(virConnectPtr conn,
                                     const char *nativeConfig,
                                     unsigned int flags)
 {
-    DEBUG("conn=%p, format=%s config=%s flags=%u", conn, nativeFormat, nativeConfig, flags);
+    VIR_DEBUG("conn=%p, format=%s config=%s flags=%u", conn, nativeFormat, nativeConfig, flags);
 
     virResetLastError();
 
@@ -3143,7 +3319,7 @@ char *virConnectDomainXMLToNative(virConnectPtr conn,
                                   const char *domainXml,
                                   unsigned int flags)
 {
-    DEBUG("conn=%p, format=%s xml=%s flags=%u", conn, nativeFormat, domainXml, flags);
+    VIR_DEBUG("conn=%p, format=%s xml=%s flags=%u", conn, nativeFormat, domainXml, flags);
 
     virResetLastError();
 
@@ -4015,7 +4191,7 @@ error:
 int
 virNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info)
 {
-    DEBUG("conn=%p, info=%p", conn, info);
+    VIR_DEBUG("conn=%p, info=%p", conn, info);
 
     virResetLastError();
 
@@ -4057,7 +4233,7 @@ error:
 char *
 virConnectGetCapabilities (virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -4072,7 +4248,7 @@ virConnectGetCapabilities (virConnectPtr conn)
         ret = conn->driver->getCapabilities (conn);
         if (!ret)
             goto error;
-        DEBUG("conn=%p ret=%s", conn, ret);
+        VIR_DEBUG("conn=%p ret=%s", conn, ret);
         return ret;
     }
 
@@ -4096,7 +4272,7 @@ error:
 unsigned long long
 virNodeGetFreeMemory(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -4730,7 +4906,7 @@ error:
  */
 virDomainPtr
 virDomainDefineXML(virConnectPtr conn, const char *xml) {
-    DEBUG("conn=%p, xml=%s", conn, xml);
+    VIR_DEBUG("conn=%p, xml=%s", conn, xml);
 
     virResetLastError();
 
@@ -4816,7 +4992,7 @@ error:
 int
 virConnectNumOfDefinedDomains(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -4855,7 +5031,7 @@ error:
 int
 virConnectListDefinedDomains(virConnectPtr conn, char **const names,
                              int maxnames) {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -5491,7 +5667,7 @@ error:
 int
 virNodeGetSecurityModel(virConnectPtr conn, virSecurityModelPtr secmodel)
 {
-    DEBUG("conn=%p secmodel=%p", conn, secmodel);
+    VIR_DEBUG("conn=%p secmodel=%p", conn, secmodel);
 
     if (!VIR_IS_CONNECT(conn)) {
         virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
@@ -5811,7 +5987,7 @@ int
 virNodeGetCellsFreeMemory(virConnectPtr conn, unsigned long long *freeMems,
                           int startCell, int maxCells)
 {
-    DEBUG("conn=%p, freeMems=%p, startCell=%d, maxCells=%d",
+    VIR_DEBUG("conn=%p, freeMems=%p, startCell=%d, maxCells=%d",
           conn, freeMems, startCell, maxCells);
 
     virResetLastError();
@@ -5859,7 +6035,7 @@ error:
 virConnectPtr
 virNetworkGetConnect (virNetworkPtr net)
 {
-    DEBUG("net=%p", net);
+    VIR_DEBUG("net=%p", net);
 
     virResetLastError();
 
@@ -5882,7 +6058,7 @@ virNetworkGetConnect (virNetworkPtr net)
 int
 virConnectNumOfNetworks(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -5920,7 +6096,7 @@ error:
 int
 virConnectListNetworks(virConnectPtr conn, char **const names, int maxnames)
 {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -5961,7 +6137,7 @@ error:
 int
 virConnectNumOfDefinedNetworks(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -6000,7 +6176,7 @@ int
 virConnectListDefinedNetworks(virConnectPtr conn, char **const names,
                               int maxnames)
 {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -6044,7 +6220,7 @@ error:
 virNetworkPtr
 virNetworkLookupByName(virConnectPtr conn, const char *name)
 {
-    DEBUG("conn=%p, name=%s", conn, name);
+    VIR_DEBUG("conn=%p, name=%s", conn, name);
 
     virResetLastError();
 
@@ -6089,7 +6265,7 @@ virNetworkLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     char uuidstr[VIR_UUID_STRING_BUFLEN];
     virUUIDFormat(uuid, uuidstr);
 
-    DEBUG("conn=%p, uuid=%s", conn, uuidstr);
+    VIR_DEBUG("conn=%p, uuid=%s", conn, uuidstr);
 
     virResetLastError();
 
@@ -6132,7 +6308,7 @@ virNetworkPtr
 virNetworkLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
+    VIR_DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
 
     virResetLastError();
 
@@ -6171,7 +6347,7 @@ error:
 virNetworkPtr
 virNetworkCreateXML(virConnectPtr conn, const char *xmlDesc)
 {
-    DEBUG("conn=%p, xmlDesc=%s", conn, xmlDesc);
+    VIR_DEBUG("conn=%p, xmlDesc=%s", conn, xmlDesc);
 
     virResetLastError();
 
@@ -6216,7 +6392,7 @@ error:
 virNetworkPtr
 virNetworkDefineXML(virConnectPtr conn, const char *xml)
 {
-    DEBUG("conn=%p, xml=%s", conn, xml);
+    VIR_DEBUG("conn=%p, xml=%s", conn, xml);
 
     virResetLastError();
 
@@ -6260,7 +6436,7 @@ error:
 int
 virNetworkUndefine(virNetworkPtr network) {
     virConnectPtr conn;
-    DEBUG("network=%p", network);
+    VIR_DEBUG("network=%p", network);
 
     virResetLastError();
 
@@ -6303,7 +6479,7 @@ int
 virNetworkCreate(virNetworkPtr network)
 {
     virConnectPtr conn;
-    DEBUG("network=%p", network);
+    VIR_DEBUG("network=%p", network);
 
     virResetLastError();
 
@@ -6348,7 +6524,7 @@ int
 virNetworkDestroy(virNetworkPtr network)
 {
     virConnectPtr conn;
-    DEBUG("network=%p", network);
+    VIR_DEBUG("network=%p", network);
 
     virResetLastError();
 
@@ -6391,7 +6567,7 @@ error:
 int
 virNetworkFree(virNetworkPtr network)
 {
-    DEBUG("network=%p", network);
+    VIR_DEBUG("network=%p", network);
 
     virResetLastError();
 
@@ -6433,7 +6609,7 @@ virNetworkRef(virNetworkPtr network)
         return -1;
     }
     virMutexLock(&network->conn->lock);
-    DEBUG("network=%p refs=%d", network, network->refs);
+    VIR_DEBUG("network=%p refs=%d", network, network->refs);
     network->refs++;
     virMutexUnlock(&network->conn->lock);
     return 0;
@@ -6451,7 +6627,7 @@ virNetworkRef(virNetworkPtr network)
 const char *
 virNetworkGetName(virNetworkPtr network)
 {
-    DEBUG("network=%p", network);
+    VIR_DEBUG("network=%p", network);
 
     virResetLastError();
 
@@ -6475,7 +6651,7 @@ virNetworkGetName(virNetworkPtr network)
 int
 virNetworkGetUUID(virNetworkPtr network, unsigned char *uuid)
 {
-    DEBUG("network=%p, uuid=%p", network, uuid);
+    VIR_DEBUG("network=%p, uuid=%p", network, uuid);
 
     virResetLastError();
 
@@ -6512,7 +6688,7 @@ int
 virNetworkGetUUIDString(virNetworkPtr network, char *buf)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("network=%p, buf=%p", network, buf);
+    VIR_DEBUG("network=%p, buf=%p", network, buf);
 
     virResetLastError();
 
@@ -6552,7 +6728,7 @@ char *
 virNetworkGetXMLDesc(virNetworkPtr network, int flags)
 {
     virConnectPtr conn;
-    DEBUG("network=%p, flags=%d", network, flags);
+    VIR_DEBUG("network=%p, flags=%d", network, flags);
 
     virResetLastError();
 
@@ -6597,7 +6773,7 @@ char *
 virNetworkGetBridgeName(virNetworkPtr network)
 {
     virConnectPtr conn;
-    DEBUG("network=%p", network);
+    VIR_DEBUG("network=%p", network);
 
     virResetLastError();
 
@@ -6640,7 +6816,7 @@ virNetworkGetAutostart(virNetworkPtr network,
                        int *autostart)
 {
     virConnectPtr conn;
-    DEBUG("network=%p, autostart=%p", network, autostart);
+    VIR_DEBUG("network=%p, autostart=%p", network, autostart);
 
     virResetLastError();
 
@@ -6686,7 +6862,7 @@ virNetworkSetAutostart(virNetworkPtr network,
                        int autostart)
 {
     virConnectPtr conn;
-    DEBUG("network=%p, autostart=%d", network, autostart);
+    VIR_DEBUG("network=%p, autostart=%d", network, autostart);
 
     virResetLastError();
 
@@ -6735,7 +6911,7 @@ error:
 virConnectPtr
 virInterfaceGetConnect (virInterfacePtr iface)
 {
-    DEBUG("iface=%p", iface);
+    VIR_DEBUG("iface=%p", iface);
 
     virResetLastError();
 
@@ -6758,7 +6934,7 @@ virInterfaceGetConnect (virInterfacePtr iface)
 int
 virConnectNumOfInterfaces(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -6797,7 +6973,7 @@ error:
 int
 virConnectListInterfaces(virConnectPtr conn, char **const names, int maxnames)
 {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -6838,7 +7014,7 @@ error:
 int
 virConnectNumOfDefinedInterfaces(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -6879,7 +7055,7 @@ virConnectListDefinedInterfaces(virConnectPtr conn,
                                 char **const names,
                                 int maxnames)
 {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -6922,7 +7098,7 @@ error:
 virInterfacePtr
 virInterfaceLookupByName(virConnectPtr conn, const char *name)
 {
-    DEBUG("conn=%p, name=%s", conn, name);
+    VIR_DEBUG("conn=%p, name=%s", conn, name);
 
     virResetLastError();
 
@@ -6964,7 +7140,7 @@ error:
 virInterfacePtr
 virInterfaceLookupByMACString(virConnectPtr conn, const char *macstr)
 {
-    DEBUG("conn=%p, macstr=%s", conn, macstr);
+    VIR_DEBUG("conn=%p, macstr=%s", conn, macstr);
 
     virResetLastError();
 
@@ -7005,7 +7181,7 @@ error:
 const char *
 virInterfaceGetName(virInterfacePtr iface)
 {
-    DEBUG("iface=%p", iface);
+    VIR_DEBUG("iface=%p", iface);
 
     virResetLastError();
 
@@ -7031,7 +7207,7 @@ virInterfaceGetName(virInterfacePtr iface)
 const char *
 virInterfaceGetMACString(virInterfacePtr iface)
 {
-    DEBUG("iface=%p", iface);
+    VIR_DEBUG("iface=%p", iface);
 
     virResetLastError();
 
@@ -7065,7 +7241,7 @@ char *
 virInterfaceGetXMLDesc(virInterfacePtr iface, unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("iface=%p, flags=%d", iface, flags);
+    VIR_DEBUG("iface=%p, flags=%d", iface, flags);
 
     virResetLastError();
 
@@ -7109,7 +7285,7 @@ error:
 virInterfacePtr
 virInterfaceDefineXML(virConnectPtr conn, const char *xml, unsigned int flags)
 {
-    DEBUG("conn=%p, xml=%s, flags=%d", conn, xml, flags);
+    VIR_DEBUG("conn=%p, xml=%s, flags=%d", conn, xml, flags);
 
     virResetLastError();
 
@@ -7154,7 +7330,7 @@ error:
 int
 virInterfaceUndefine(virInterfacePtr iface) {
     virConnectPtr conn;
-    DEBUG("iface=%p", iface);
+    VIR_DEBUG("iface=%p", iface);
 
     virResetLastError();
 
@@ -7197,7 +7373,7 @@ int
 virInterfaceCreate(virInterfacePtr iface, unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("iface=%p, flags=%d", iface, flags);
+    VIR_DEBUG("iface=%p, flags=%d", iface, flags);
 
     virResetLastError();
 
@@ -7242,7 +7418,7 @@ int
 virInterfaceDestroy(virInterfacePtr iface, unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("iface=%p, flags=%d", iface, flags);
+    VIR_DEBUG("iface=%p, flags=%d", iface, flags);
 
     virResetLastError();
 
@@ -7299,7 +7475,7 @@ virInterfaceRef(virInterfacePtr iface)
         return -1;
     }
     virMutexLock(&iface->conn->lock);
-    DEBUG("iface=%p refs=%d", iface, iface->refs);
+    VIR_DEBUG("iface=%p refs=%d", iface, iface->refs);
     iface->refs++;
     virMutexUnlock(&iface->conn->lock);
     return 0;
@@ -7317,7 +7493,7 @@ virInterfaceRef(virInterfacePtr iface)
 int
 virInterfaceFree(virInterfacePtr iface)
 {
-    DEBUG("iface=%p", iface);
+    VIR_DEBUG("iface=%p", iface);
 
     virResetLastError();
 
@@ -7351,7 +7527,7 @@ virInterfaceFree(virInterfacePtr iface)
 virConnectPtr
 virStoragePoolGetConnect (virStoragePoolPtr pool)
 {
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -7374,7 +7550,7 @@ virStoragePoolGetConnect (virStoragePoolPtr pool)
 int
 virConnectNumOfStoragePools	(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -7416,7 +7592,7 @@ virConnectListStoragePools	(virConnectPtr conn,
                              char **const names,
                              int maxnames)
 {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -7458,7 +7634,7 @@ error:
 int
 virConnectNumOfDefinedStoragePools(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -7501,7 +7677,7 @@ virConnectListDefinedStoragePools(virConnectPtr conn,
                                   char **const names,
                                   int maxnames)
 {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -7559,7 +7735,7 @@ virConnectFindStoragePoolSources(virConnectPtr conn,
                                  const char *srcSpec,
                                  unsigned int flags)
 {
-    DEBUG("conn=%p, type=%s, src=%s, flags=%u", conn, type ? type : "", srcSpec ? srcSpec : "", flags);
+    VIR_DEBUG("conn=%p, type=%s, src=%s, flags=%u", conn, type ? type : "", srcSpec ? srcSpec : "", flags);
 
     virResetLastError();
 
@@ -7607,7 +7783,7 @@ virStoragePoolPtr
 virStoragePoolLookupByName(virConnectPtr conn,
                            const char *name)
 {
-    DEBUG("conn=%p, name=%s", conn, name);
+    VIR_DEBUG("conn=%p, name=%s", conn, name);
 
     virResetLastError();
 
@@ -7650,7 +7826,7 @@ virStoragePoolPtr
 virStoragePoolLookupByUUID(virConnectPtr conn,
                            const unsigned char *uuid)
 {
-    DEBUG("conn=%p, uuid=%s", conn, uuid);
+    VIR_DEBUG("conn=%p, uuid=%s", conn, uuid);
 
     virResetLastError();
 
@@ -7694,7 +7870,7 @@ virStoragePoolLookupByUUIDString(virConnectPtr conn,
                                  const char *uuidstr)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
+    VIR_DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
 
     virResetLastError();
 
@@ -7732,7 +7908,7 @@ error:
 virStoragePoolPtr
 virStoragePoolLookupByVolume(virStorageVolPtr vol)
 {
-    DEBUG("vol=%p", vol);
+    VIR_DEBUG("vol=%p", vol);
 
     virResetLastError();
 
@@ -7774,7 +7950,7 @@ virStoragePoolCreateXML(virConnectPtr conn,
                         const char *xmlDesc,
                         unsigned int flags)
 {
-    DEBUG("conn=%p, xmlDesc=%s", conn, xmlDesc);
+    VIR_DEBUG("conn=%p, xmlDesc=%s", conn, xmlDesc);
 
     virResetLastError();
 
@@ -7823,7 +7999,7 @@ virStoragePoolDefineXML(virConnectPtr conn,
                         const char *xml,
                         unsigned int flags)
 {
-    DEBUG("conn=%p, xml=%s", conn, xml);
+    VIR_DEBUG("conn=%p, xml=%s", conn, xml);
 
     virResetLastError();
 
@@ -7870,7 +8046,7 @@ virStoragePoolBuild(virStoragePoolPtr pool,
                     unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p, flags=%u", pool, flags);
+    VIR_DEBUG("pool=%p, flags=%u", pool, flags);
 
     virResetLastError();
 
@@ -7913,7 +8089,7 @@ int
 virStoragePoolUndefine(virStoragePoolPtr pool)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -7958,7 +8134,7 @@ virStoragePoolCreate(virStoragePoolPtr pool,
                      unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -8005,7 +8181,7 @@ int
 virStoragePoolDestroy(virStoragePoolPtr pool)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -8052,7 +8228,7 @@ virStoragePoolDelete(virStoragePoolPtr pool,
                      unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p, flags=%u", pool, flags);
+    VIR_DEBUG("pool=%p, flags=%u", pool, flags);
 
     virResetLastError();
 
@@ -8096,7 +8272,7 @@ error:
 int
 virStoragePoolFree(virStoragePoolPtr pool)
 {
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -8140,7 +8316,7 @@ virStoragePoolRef(virStoragePoolPtr pool)
         return -1;
     }
     virMutexLock(&pool->conn->lock);
-    DEBUG("pool=%p refs=%d", pool, pool->refs);
+    VIR_DEBUG("pool=%p refs=%d", pool, pool->refs);
     pool->refs++;
     virMutexUnlock(&pool->conn->lock);
     return 0;
@@ -8162,7 +8338,7 @@ virStoragePoolRefresh(virStoragePoolPtr pool,
                       unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p flags=%u", pool, flags);
+    VIR_DEBUG("pool=%p flags=%u", pool, flags);
 
     virResetLastError();
 
@@ -8205,7 +8381,7 @@ error:
 const char*
 virStoragePoolGetName(virStoragePoolPtr pool)
 {
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -8231,7 +8407,7 @@ int
 virStoragePoolGetUUID(virStoragePoolPtr pool,
                       unsigned char *uuid)
 {
-    DEBUG("pool=%p, uuid=%p", pool, uuid);
+    VIR_DEBUG("pool=%p, uuid=%p", pool, uuid);
 
     virResetLastError();
 
@@ -8268,7 +8444,7 @@ virStoragePoolGetUUIDString(virStoragePoolPtr pool,
                             char *buf)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("pool=%p, buf=%p", pool, buf);
+    VIR_DEBUG("pool=%p, buf=%p", pool, buf);
 
     virResetLastError();
 
@@ -8309,7 +8485,7 @@ virStoragePoolGetInfo(virStoragePoolPtr pool,
                       virStoragePoolInfoPtr info)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p, info=%p", pool, info);
+    VIR_DEBUG("pool=%p, info=%p", pool, info);
 
     virResetLastError();
 
@@ -8359,7 +8535,7 @@ virStoragePoolGetXMLDesc(virStoragePoolPtr pool,
                          unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p, flags=%u", pool, flags);
+    VIR_DEBUG("pool=%p, flags=%u", pool, flags);
 
     virResetLastError();
 
@@ -8406,7 +8582,7 @@ virStoragePoolGetAutostart(virStoragePoolPtr pool,
                            int *autostart)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p, autostart=%p", pool, autostart);
+    VIR_DEBUG("pool=%p, autostart=%p", pool, autostart);
 
     virResetLastError();
 
@@ -8452,7 +8628,7 @@ virStoragePoolSetAutostart(virStoragePoolPtr pool,
                            int autostart)
 {
     virConnectPtr conn;
-    DEBUG("pool=%p, autostart=%d", pool, autostart);
+    VIR_DEBUG("pool=%p, autostart=%d", pool, autostart);
 
     virResetLastError();
 
@@ -8496,7 +8672,7 @@ error:
 int
 virStoragePoolNumOfVolumes(virStoragePoolPtr pool)
 {
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -8538,7 +8714,7 @@ virStoragePoolListVolumes(virStoragePoolPtr pool,
                           char **const names,
                           int maxnames)
 {
-    DEBUG("pool=%p, names=%p, maxnames=%d", pool, names, maxnames);
+    VIR_DEBUG("pool=%p, names=%p, maxnames=%d", pool, names, maxnames);
 
     virResetLastError();
 
@@ -8586,7 +8762,7 @@ error:
 virConnectPtr
 virStorageVolGetConnect (virStorageVolPtr vol)
 {
-    DEBUG("vol=%p", vol);
+    VIR_DEBUG("vol=%p", vol);
 
     virResetLastError();
 
@@ -8613,7 +8789,7 @@ virStorageVolPtr
 virStorageVolLookupByName(virStoragePoolPtr pool,
                           const char *name)
 {
-    DEBUG("pool=%p, name=%s", pool, name);
+    VIR_DEBUG("pool=%p, name=%s", pool, name);
 
     virResetLastError();
 
@@ -8658,7 +8834,7 @@ virStorageVolPtr
 virStorageVolLookupByKey(virConnectPtr conn,
                          const char *key)
 {
-    DEBUG("conn=%p, key=%s", conn, key);
+    VIR_DEBUG("conn=%p, key=%s", conn, key);
 
     virResetLastError();
 
@@ -8701,7 +8877,7 @@ virStorageVolPtr
 virStorageVolLookupByPath(virConnectPtr conn,
                           const char *path)
 {
-    DEBUG("conn=%p, path=%s", conn, path);
+    VIR_DEBUG("conn=%p, path=%s", conn, path);
 
     virResetLastError();
 
@@ -8743,7 +8919,7 @@ error:
 const char*
 virStorageVolGetName(virStorageVolPtr vol)
 {
-    DEBUG("vol=%p", vol);
+    VIR_DEBUG("vol=%p", vol);
 
     virResetLastError();
 
@@ -8769,7 +8945,7 @@ virStorageVolGetName(virStorageVolPtr vol)
 const char*
 virStorageVolGetKey(virStorageVolPtr vol)
 {
-    DEBUG("vol=%p", vol);
+    VIR_DEBUG("vol=%p", vol);
 
     virResetLastError();
 
@@ -8799,7 +8975,7 @@ virStorageVolCreateXML(virStoragePoolPtr pool,
                        const char *xmldesc,
                        unsigned int flags)
 {
-    DEBUG("pool=%p, flags=%u", pool, flags);
+    VIR_DEBUG("pool=%p, flags=%u", pool, flags);
 
     virResetLastError();
 
@@ -8850,7 +9026,7 @@ virStorageVolCreateXMLFrom(virStoragePoolPtr pool,
                            virStorageVolPtr clonevol,
                            unsigned int flags)
 {
-    DEBUG("pool=%p, flags=%u, clonevol=%p", pool, flags, clonevol);
+    VIR_DEBUG("pool=%p, flags=%u, clonevol=%p", pool, flags, clonevol);
 
     virResetLastError();
 
@@ -8903,7 +9079,7 @@ virStorageVolDelete(virStorageVolPtr vol,
                     unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("vol=%p, flags=%u", vol, flags);
+    VIR_DEBUG("vol=%p, flags=%u", vol, flags);
 
     virResetLastError();
 
@@ -8994,7 +9170,7 @@ error:
 int
 virStorageVolFree(virStorageVolPtr vol)
 {
-    DEBUG("vol=%p", vol);
+    VIR_DEBUG("vol=%p", vol);
 
     virResetLastError();
 
@@ -9037,7 +9213,7 @@ virStorageVolRef(virStorageVolPtr vol)
         return -1;
     }
     virMutexLock(&vol->conn->lock);
-    DEBUG("vol=%p refs=%d", vol, vol->refs);
+    VIR_DEBUG("vol=%p refs=%d", vol, vol->refs);
     vol->refs++;
     virMutexUnlock(&vol->conn->lock);
     return 0;
@@ -9058,7 +9234,7 @@ virStorageVolGetInfo(virStorageVolPtr vol,
                      virStorageVolInfoPtr info)
 {
     virConnectPtr conn;
-    DEBUG("vol=%p, info=%p", vol, info);
+    VIR_DEBUG("vol=%p, info=%p", vol, info);
 
     virResetLastError();
 
@@ -9107,7 +9283,7 @@ virStorageVolGetXMLDesc(virStorageVolPtr vol,
                         unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("vol=%p, flags=%u", vol, flags);
+    VIR_DEBUG("vol=%p, flags=%u", vol, flags);
 
     virResetLastError();
 
@@ -9155,7 +9331,7 @@ char *
 virStorageVolGetPath(virStorageVolPtr vol)
 {
     virConnectPtr conn;
-    DEBUG("vol=%p", vol);
+    VIR_DEBUG("vol=%p", vol);
 
     virResetLastError();
 
@@ -9199,7 +9375,7 @@ error:
 int
 virNodeNumOfDevices(virConnectPtr conn, const char *cap, unsigned int flags)
 {
-    DEBUG("conn=%p, cap=%s, flags=%d", conn, NULLSTR(cap), flags);
+    VIR_DEBUG("conn=%p, cap=%s, flags=%d", conn, NULLSTR(cap), flags);
 
     virResetLastError();
 
@@ -9250,7 +9426,7 @@ virNodeListDevices(virConnectPtr conn,
                    char **const names, int maxnames,
                    unsigned int flags)
 {
-    DEBUG("conn=%p, cap=%s, names=%p, maxnames=%d, flags=%d",
+    VIR_DEBUG("conn=%p, cap=%s, names=%p, maxnames=%d, flags=%d",
           conn, cap, names, maxnames, flags);
 
     virResetLastError();
@@ -9292,7 +9468,7 @@ error:
  */
 virNodeDevicePtr virNodeDeviceLookupByName(virConnectPtr conn, const char *name)
 {
-    DEBUG("conn=%p, name=%p", conn, name);
+    VIR_DEBUG("conn=%p, name=%p", conn, name);
 
     virResetLastError();
 
@@ -9335,7 +9511,7 @@ error:
  */
 char *virNodeDeviceGetXMLDesc(virNodeDevicePtr dev, unsigned int flags)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     virResetLastError();
 
@@ -9371,7 +9547,7 @@ error:
  */
 const char *virNodeDeviceGetName(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     if (!VIR_IS_CONNECTED_NODE_DEVICE(dev)) {
         virLibNodeDeviceError(VIR_ERR_INVALID_NODE_DEVICE, __FUNCTION__);
@@ -9393,7 +9569,7 @@ const char *virNodeDeviceGetName(virNodeDevicePtr dev)
  */
 const char *virNodeDeviceGetParent(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     virResetLastError();
 
@@ -9425,7 +9601,7 @@ const char *virNodeDeviceGetParent(virNodeDevicePtr dev)
  */
 int virNodeDeviceNumOfCaps(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     virResetLastError();
 
@@ -9464,7 +9640,7 @@ int virNodeDeviceListCaps(virNodeDevicePtr dev,
                           char **const names,
                           int maxnames)
 {
-    DEBUG("dev=%p, conn=%p, names=%p, maxnames=%d",
+    VIR_DEBUG("dev=%p, conn=%p, names=%p, maxnames=%d",
           dev, dev ? dev->conn : NULL, names, maxnames);
 
     virResetLastError();
@@ -9502,7 +9678,7 @@ error:
  */
 int virNodeDeviceFree(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     virResetLastError();
 
@@ -9545,7 +9721,7 @@ virNodeDeviceRef(virNodeDevicePtr dev)
         return -1;
     }
     virMutexLock(&dev->conn->lock);
-    DEBUG("dev=%p refs=%d", dev, dev->refs);
+    VIR_DEBUG("dev=%p refs=%d", dev, dev->refs);
     dev->refs++;
     virMutexUnlock(&dev->conn->lock);
     return 0;
@@ -9573,7 +9749,7 @@ virNodeDeviceRef(virNodeDevicePtr dev)
 int
 virNodeDeviceDettach(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     virResetLastError();
 
@@ -9621,7 +9797,7 @@ error:
 int
 virNodeDeviceReAttach(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     virResetLastError();
 
@@ -9671,7 +9847,7 @@ error:
 int
 virNodeDeviceReset(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
+    VIR_DEBUG("dev=%p, conn=%p", dev, dev ? dev->conn : NULL);
 
     virResetLastError();
 
@@ -9766,7 +9942,7 @@ error:
 int
 virNodeDeviceDestroy(virNodeDevicePtr dev)
 {
-    DEBUG("dev=%p", dev);
+    VIR_DEBUG("dev=%p", dev);
 
     virResetLastError();
 
@@ -9832,7 +10008,7 @@ virConnectDomainEventRegister(virConnectPtr conn,
                               void *opaque,
                               virFreeCallback freecb)
 {
-    DEBUG("conn=%p, cb=%p, opaque=%p, freecb=%p", conn, cb, opaque, freecb);
+    VIR_DEBUG("conn=%p, cb=%p, opaque=%p, freecb=%p", conn, cb, opaque, freecb);
     virResetLastError();
 
     if (!VIR_IS_CONNECT(conn)) {
@@ -9877,7 +10053,7 @@ int
 virConnectDomainEventDeregister(virConnectPtr conn,
                                 virConnectDomainEventCallback cb)
 {
-    DEBUG("conn=%p, cb=%p", conn, cb);
+    VIR_DEBUG("conn=%p, cb=%p", conn, cb);
 
     virResetLastError();
 
@@ -9919,7 +10095,7 @@ error:
 virConnectPtr
 virSecretGetConnect (virSecretPtr secret)
 {
-    DEBUG("secret=%p", secret);
+    VIR_DEBUG("secret=%p", secret);
 
     virResetLastError();
 
@@ -10026,7 +10202,7 @@ error:
 virSecretPtr
 virSecretLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
 {
-    DEBUG("conn=%p, uuid=%s", conn, uuid);
+    VIR_DEBUG("conn=%p, uuid=%s", conn, uuid);
 
     virResetLastError();
 
@@ -10071,7 +10247,7 @@ virSecretPtr
 virSecretLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
+    VIR_DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
 
     virResetLastError();
 
@@ -10116,7 +10292,7 @@ virSecretLookupByUsage(virConnectPtr conn,
                        int usageType,
                        const char *usageID)
 {
-    DEBUG("conn=%p, usageType=%d usageID=%s", conn, usageType, NULLSTR(usageID));
+    VIR_DEBUG("conn=%p, usageType=%d usageID=%s", conn, usageType, NULLSTR(usageID));
 
     virResetLastError();
 
@@ -10246,7 +10422,7 @@ int
 virSecretGetUUIDString(virSecretPtr secret, char *buf)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("secret=%p, buf=%p", secret, buf);
+    VIR_DEBUG("secret=%p, buf=%p", secret, buf);
 
     virResetLastError();
 
@@ -10287,7 +10463,7 @@ error:
 int
 virSecretGetUsageType(virSecretPtr secret)
 {
-    DEBUG("secret=%p", secret);
+    VIR_DEBUG("secret=%p", secret);
 
     virResetLastError();
 
@@ -10318,7 +10494,7 @@ virSecretGetUsageType(virSecretPtr secret)
 const char *
 virSecretGetUsageID(virSecretPtr secret)
 {
-    DEBUG("secret=%p", secret);
+    VIR_DEBUG("secret=%p", secret);
 
     virResetLastError();
 
@@ -10549,7 +10725,7 @@ virSecretRef(virSecretPtr secret)
         return -1;
     }
     virMutexLock(&secret->conn->lock);
-    DEBUG("secret=%p refs=%d", secret, secret->refs);
+    VIR_DEBUG("secret=%p refs=%d", secret, secret->refs);
     secret->refs++;
     virMutexUnlock(&secret->conn->lock);
     return 0;
@@ -10566,7 +10742,7 @@ virSecretRef(virSecretPtr secret)
 int
 virSecretFree(virSecretPtr secret)
 {
-    DEBUG("secret=%p", secret);
+    VIR_DEBUG("secret=%p", secret);
 
     virResetLastError();
 
@@ -10608,7 +10784,7 @@ virStreamNew(virConnectPtr conn,
 {
     virStreamPtr st;
 
-    DEBUG("conn=%p, flags=%u", conn, flags);
+    VIR_DEBUG("conn=%p, flags=%u", conn, flags);
 
     virResetLastError();
 
@@ -10646,7 +10822,7 @@ virStreamRef(virStreamPtr stream)
         return -1;
     }
     virMutexLock(&stream->conn->lock);
-    DEBUG("stream=%p refs=%d", stream, stream->refs);
+    VIR_DEBUG("stream=%p refs=%d", stream, stream->refs);
     stream->refs++;
     virMutexUnlock(&stream->conn->lock);
     return 0;
@@ -10721,7 +10897,7 @@ int virStreamSend(virStreamPtr stream,
                   const char *data,
                   size_t nbytes)
 {
-    DEBUG("stream=%p, data=%p, nbytes=%zi", stream, data, nbytes);
+    VIR_DEBUG("stream=%p, data=%p, nbytes=%zi", stream, data, nbytes);
 
     virResetLastError();
 
@@ -10816,7 +10992,7 @@ int virStreamRecv(virStreamPtr stream,
                   char *data,
                   size_t nbytes)
 {
-    DEBUG("stream=%p, data=%p, nbytes=%zi", stream, data, nbytes);
+    VIR_DEBUG("stream=%p, data=%p, nbytes=%zi", stream, data, nbytes);
 
     virResetLastError();
 
@@ -10892,7 +11068,7 @@ int virStreamSendAll(virStreamPtr stream,
     char *bytes = NULL;
     int want = 1024*64;
     int ret = -1;
-    DEBUG("stream=%p, handler=%p, opaque=%p", stream, handler, opaque);
+    VIR_DEBUG("stream=%p, handler=%p, opaque=%p", stream, handler, opaque);
 
     virResetLastError();
 
@@ -10989,7 +11165,7 @@ int virStreamRecvAll(virStreamPtr stream,
     char *bytes = NULL;
     int want = 1024*64;
     int ret = -1;
-    DEBUG("stream=%p, handler=%p, opaque=%p", stream, handler, opaque);
+    VIR_DEBUG("stream=%p, handler=%p, opaque=%p", stream, handler, opaque);
 
     virResetLastError();
 
@@ -11061,7 +11237,7 @@ int virStreamEventAddCallback(virStreamPtr stream,
                               void *opaque,
                               virFreeCallback ff)
 {
-    DEBUG("stream=%p, events=%d, cb=%p, opaque=%p, ff=%p", stream, events, cb, opaque, ff);
+    VIR_DEBUG("stream=%p, events=%d, cb=%p, opaque=%p, ff=%p", stream, events, cb, opaque, ff);
 
     virResetLastError();
 
@@ -11103,7 +11279,7 @@ error:
 int virStreamEventUpdateCallback(virStreamPtr stream,
                                  int events)
 {
-    DEBUG("stream=%p, events=%d", stream, events);
+    VIR_DEBUG("stream=%p, events=%d", stream, events);
 
     virResetLastError();
 
@@ -11139,7 +11315,7 @@ error:
  */
 int virStreamEventRemoveCallback(virStreamPtr stream)
 {
-    DEBUG("stream=%p", stream);
+    VIR_DEBUG("stream=%p", stream);
 
     virResetLastError();
 
@@ -11182,7 +11358,7 @@ error:
  */
 int virStreamFinish(virStreamPtr stream)
 {
-    DEBUG("stream=%p", stream);
+    VIR_DEBUG("stream=%p", stream);
 
     virResetLastError();
 
@@ -11223,7 +11399,7 @@ error:
  */
 int virStreamAbort(virStreamPtr stream)
 {
-    DEBUG("stream=%p", stream);
+    VIR_DEBUG("stream=%p", stream);
 
     virResetLastError();
 
@@ -11265,7 +11441,7 @@ error:
  */
 int virStreamFree(virStreamPtr stream)
 {
-    DEBUG("stream=%p", stream);
+    VIR_DEBUG("stream=%p", stream);
 
     virResetLastError();
 
@@ -11295,7 +11471,7 @@ int virStreamFree(virStreamPtr stream)
  */
 int virDomainIsActive(virDomainPtr dom)
 {
-    DEBUG("dom=%p", dom);
+    VIR_DEBUG("dom=%p", dom);
 
     virResetLastError();
 
@@ -11395,7 +11571,7 @@ error:
  */
 int virNetworkIsActive(virNetworkPtr net)
 {
-    DEBUG("net=%p", net);
+    VIR_DEBUG("net=%p", net);
 
     virResetLastError();
 
@@ -11430,7 +11606,7 @@ error:
  */
 int virNetworkIsPersistent(virNetworkPtr net)
 {
-    DEBUG("net=%p", net);
+    VIR_DEBUG("net=%p", net);
 
     virResetLastError();
 
@@ -11464,7 +11640,7 @@ error:
  */
 int virStoragePoolIsActive(virStoragePoolPtr pool)
 {
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -11499,7 +11675,7 @@ error:
  */
 int virStoragePoolIsPersistent(virStoragePoolPtr pool)
 {
-    DEBUG("pool=%p", pool);
+    VIR_DEBUG("pool=%p", pool);
 
     virResetLastError();
 
@@ -11535,7 +11711,7 @@ error:
 int
 virConnectNumOfNWFilters(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -11574,7 +11750,7 @@ error:
 int
 virConnectListNWFilters(virConnectPtr conn, char **const names, int maxnames)
 {
-    DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
+    VIR_DEBUG("conn=%p, names=%p, maxnames=%d", conn, names, maxnames);
 
     virResetLastError();
 
@@ -11618,7 +11794,7 @@ error:
 virNWFilterPtr
 virNWFilterLookupByName(virConnectPtr conn, const char *name)
 {
-    DEBUG("conn=%p, name=%s", conn, name);
+    VIR_DEBUG("conn=%p, name=%s", conn, name);
 
     virResetLastError();
 
@@ -11660,7 +11836,7 @@ error:
 virNWFilterPtr
 virNWFilterLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
 {
-    DEBUG("conn=%p, uuid=%s", conn, uuid);
+    VIR_DEBUG("conn=%p, uuid=%s", conn, uuid);
 
     virResetLastError();
 
@@ -11703,7 +11879,7 @@ virNWFilterPtr
 virNWFilterLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
+    VIR_DEBUG("conn=%p, uuidstr=%s", conn, uuidstr);
 
     virResetLastError();
 
@@ -11741,7 +11917,7 @@ error:
 int
 virNWFilterFree(virNWFilterPtr nwfilter)
 {
-    DEBUG("nwfilter=%p", nwfilter);
+    VIR_DEBUG("nwfilter=%p", nwfilter);
 
     virResetLastError();
 
@@ -11769,7 +11945,7 @@ virNWFilterFree(virNWFilterPtr nwfilter)
 const char *
 virNWFilterGetName(virNWFilterPtr nwfilter)
 {
-    DEBUG("nwfilter=%p", nwfilter);
+    VIR_DEBUG("nwfilter=%p", nwfilter);
 
     virResetLastError();
 
@@ -11793,7 +11969,7 @@ virNWFilterGetName(virNWFilterPtr nwfilter)
 int
 virNWFilterGetUUID(virNWFilterPtr nwfilter, unsigned char *uuid)
 {
-    DEBUG("nwfilter=%p, uuid=%p", nwfilter, uuid);
+    VIR_DEBUG("nwfilter=%p, uuid=%p", nwfilter, uuid);
 
     virResetLastError();
 
@@ -11830,7 +12006,7 @@ int
 virNWFilterGetUUIDString(virNWFilterPtr nwfilter, char *buf)
 {
     unsigned char uuid[VIR_UUID_BUFLEN];
-    DEBUG("nwfilter=%p, buf=%p", nwfilter, buf);
+    VIR_DEBUG("nwfilter=%p, buf=%p", nwfilter, buf);
 
     virResetLastError();
 
@@ -11869,7 +12045,7 @@ error:
 virNWFilterPtr
 virNWFilterDefineXML(virConnectPtr conn, const char *xmlDesc)
 {
-    DEBUG("conn=%p, xmlDesc=%s", conn, xmlDesc);
+    VIR_DEBUG("conn=%p, xmlDesc=%s", conn, xmlDesc);
 
     virResetLastError();
 
@@ -11917,7 +12093,7 @@ int
 virNWFilterUndefine(virNWFilterPtr nwfilter)
 {
     virConnectPtr conn;
-    DEBUG("nwfilter=%p", nwfilter);
+    VIR_DEBUG("nwfilter=%p", nwfilter);
 
     virResetLastError();
 
@@ -11964,7 +12140,7 @@ char *
 virNWFilterGetXMLDesc(virNWFilterPtr nwfilter, int flags)
 {
     virConnectPtr conn;
-    DEBUG("nwfilter=%p, flags=%d", nwfilter, flags);
+    VIR_DEBUG("nwfilter=%p, flags=%d", nwfilter, flags);
 
     virResetLastError();
 
@@ -12022,7 +12198,7 @@ virNWFilterRef(virNWFilterPtr nwfilter)
         return -1;
     }
     virMutexLock(&nwfilter->conn->lock);
-    DEBUG("nwfilter=%p refs=%d", nwfilter, nwfilter->refs);
+    VIR_DEBUG("nwfilter=%p refs=%d", nwfilter, nwfilter->refs);
     nwfilter->refs++;
     virMutexUnlock(&nwfilter->conn->lock);
     return 0;
@@ -12039,7 +12215,7 @@ virNWFilterRef(virNWFilterPtr nwfilter)
  */
 int virInterfaceIsActive(virInterfacePtr iface)
 {
-    DEBUG("iface=%p", iface);
+    VIR_DEBUG("iface=%p", iface);
 
     virResetLastError();
 
@@ -12073,7 +12249,7 @@ error:
  */
 int virConnectIsEncrypted(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -12110,7 +12286,7 @@ error:
  */
 int virConnectIsSecure(virConnectPtr conn)
 {
-    DEBUG("conn=%p", conn);
+    VIR_DEBUG("conn=%p", conn);
 
     virResetLastError();
 
@@ -12381,6 +12557,53 @@ error:
 }
 
 /**
+ * virDomainMigrateSetMaxSpeed:
+ * @domain: a domain object
+ * @bandwidth: migration bandwidth limit in Mbps
+ * @flags: fine-tuning flags, currently unused, use 0
+ *
+ * The maximum bandwidth (in Mbps) that will be used to do migration
+ * can be specified with the bandwidth parameter. Not all hypervisors
+ * will support a bandwidth cap
+ *
+ * Returns 0 in case of success, -1 otherwise.
+ */
+int
+virDomainMigrateSetMaxSpeed(virDomainPtr domain,
+                            unsigned long bandwidth,
+                            unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "bandwidth=%lu, flags=%u", bandwidth, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    conn = domain->conn;
+    if (conn->flags & VIR_CONNECT_RO) {
+        virLibDomainError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        goto error;
+    }
+
+    if (conn->driver->domainMigrateSetMaxSpeed) {
+        if (conn->driver->domainMigrateSetMaxSpeed(domain, bandwidth, flags) < 0)
+            goto error;
+        return 0;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+error:
+    virDispatchError(conn);
+    return -1;
+}
+
+/**
  * virConnectDomainEventRegisterAny:
  * @conn: pointer to the connection
  * @dom: pointer to the domain
@@ -12470,7 +12693,7 @@ int
 virConnectDomainEventDeregisterAny(virConnectPtr conn,
                                    int callbackID)
 {
-    DEBUG("conn=%p, callbackID=%d", conn, callbackID);
+    VIR_DEBUG("conn=%p, callbackID=%d", conn, callbackID);
 
     virResetLastError();
 
@@ -12700,7 +12923,7 @@ virDomainSnapshotGetXMLDesc(virDomainSnapshotPtr snapshot,
                             unsigned int flags)
 {
     virConnectPtr conn;
-    DEBUG("snapshot=%p, flags=%d", snapshot, flags);
+    VIR_DEBUG("snapshot=%p, flags=%d", snapshot, flags);
 
     virResetLastError();
 
@@ -12969,7 +13192,7 @@ virDomainRevertToSnapshot(virDomainSnapshotPtr snapshot,
 {
     virConnectPtr conn;
 
-    DEBUG("snapshot=%p, flags=%u", snapshot, flags);
+    VIR_DEBUG("snapshot=%p, flags=%u", snapshot, flags);
 
     virResetLastError();
 
@@ -13019,7 +13242,7 @@ virDomainSnapshotDelete(virDomainSnapshotPtr snapshot,
 {
     virConnectPtr conn;
 
-    DEBUG("snapshot=%p, flags=%u", snapshot, flags);
+    VIR_DEBUG("snapshot=%p, flags=%u", snapshot, flags);
 
     virResetLastError();
 
@@ -13061,7 +13284,7 @@ error:
 int
 virDomainSnapshotFree(virDomainSnapshotPtr snapshot)
 {
-    DEBUG("snapshot=%p", snapshot);
+    VIR_DEBUG("snapshot=%p", snapshot);
 
     virResetLastError();
 
