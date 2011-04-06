@@ -39,3 +39,5 @@
 9902-lp665531.patch
 9903-lp668042.patch
 9904-CVE-2011-1146.patch
+9905-lp748834.patch
+9906-handle-no-ip.patch

@@ -1,0 +1,33 @@
+Description: Handle missing ip address and stop on no macaddr.
+  This is a cherrypick of the parts of the upstream commit which are
+  relevant to fixing the bug.
+Origin: upstream, commit 6741ca36bd260691362c3198b59554855e879f8c
+Bug-Ubuntu: https://bugs.launchpad.net/fedora/+source/libvirt/+bug/748834
+Forwarded: not-needed
+
+Index: ls/src/conf/network_conf.c
+===================================================================
+--- ls.orig/src/conf/network_conf.c	2011-04-06 14:07:22.418713000 -0500
++++ ls/src/conf/network_conf.c	2011-04-06 14:10:15.264323772 -0500
+@@ -314,17 +314,17 @@
+                 VIR_FREE(name);
+                 cur = cur->next;
+                 continue;
++                return -1;
+             }
+             ip = xmlGetProp(cur, BAD_CAST "ip");
+-            if (inet_pton(AF_INET, (const char *) ip, &inaddress) <= 0) {
++            if ((ip == NULL) || inet_pton(AF_INET, (const char *) ip, &inaddress) <= 0) {
+                 virNetworkReportError(conn, VIR_ERR_INTERNAL_ERROR,
+-                                      _("cannot parse IP address '%s'"),
+-                                      ip);
++                                      _("cannot parse IP address"));
+                 VIR_FREE(ip);
+                 VIR_FREE(mac);
+                 VIR_FREE(name);
+                 cur = cur->next;
+-                continue;
++                return -1;
+             }
+             if (VIR_REALLOC_N(def->hosts, def->nhosts + 1) < 0) {
+                 VIR_FREE(ip);
