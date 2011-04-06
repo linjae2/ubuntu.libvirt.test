@@ -1,0 +1,27 @@
+Description: Avoid segfault on networkIsActive
+Origin: upstream, http://libvirt.org/git/?p=libvirt.git;a=commitdiff;h=6d4bd59cf82d96531abe1527bc80caa2ba86249e;hp=bf6789d913a5edb029af8fe959c0d54ede2a2719#patch1
+Bug-Ubuntu: https://bugs.launchpad.net/fedora/+source/libvirt/+bug/748834
+Forwarded: not-needed
+
+Index: ls/src/network/bridge_driver.c
+===================================================================
+--- ls.orig/src/network/bridge_driver.c	2011-04-06 14:10:15.054323772 -0500
++++ ls/src/network/bridge_driver.c	2011-04-06 14:10:15.234323772 -0500
+@@ -1242,7 +1242,7 @@
+ 
+ static int networkIsActive(virNetworkPtr net)
+ {
+-    struct network_driver *driver = net->conn->privateData;
++    struct network_driver *driver = net->conn->networkPrivateData;
+     virNetworkObjPtr obj;
+     int ret = -1;
+ 
+@@ -1263,7 +1263,7 @@
+ 
+ static int networkIsPersistent(virNetworkPtr net)
+ {
+-    struct network_driver *driver = net->conn->privateData;
++    struct network_driver *driver = net->conn->networkPrivateData;
+     virNetworkObjPtr obj;
+     int ret = -1;
+ 

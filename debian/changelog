@@ -1,3 +1,13 @@
+libvirt (0.7.5-5ubuntu27.10) lucid-proposed; urgency=low
+
+  * debian/patches/9904-lp748834.patch: Avoid segfault on network restart
+    if the network configuration is invalid.  (LP: #748834)  Thanks to
+    pdf for the fix.
+  * debian/patches/9905-handle-no-ip.patch: Additional patch cherrypick
+    to handle no ip address in the network configuration. (LP: #748834)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 06 Apr 2011 14:10:37 -0500
+
 libvirt (0.7.5-5ubuntu27.9) lucid-security; urgency=low
 
   * SECURITY UPDATE: debian/patches/9904-CVE-2011-1146.patch: Add missing
