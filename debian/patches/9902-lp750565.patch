@@ -1,0 +1,19 @@
+Description: Fix nitialization error of controller in QEmu SCSI hotplug
+Author: Wen Congyang <wency@cn.fujitsu.com>
+Origin: Upstream, http://osdir.com/ml/libvir-list/2011-01/msg01268.html
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/750565
+Forwarded: not-needed
+
+Index: libvirt-mav/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-mav.orig/src/qemu/qemu_driver.c	2011-04-05 11:44:44.040772559 -0500
++++ libvirt-mav/src/qemu/qemu_driver.c	2011-04-05 11:45:33.950772568 -0500
+@@ -7547,7 +7547,7 @@
+         return NULL;
+     }
+     cont->type = VIR_DOMAIN_CONTROLLER_TYPE_SCSI;
+-    cont->idx = 0;
++    cont->idx = controller;
+     cont->model = -1;
+ 
+     VIR_INFO0("No SCSI controller present, hotplugging one");

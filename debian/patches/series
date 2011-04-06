@@ -34,3 +34,5 @@
 9027-Make-newfilter-xml-transformations-endian-safe.patch
 9028-lp628055.patch
 9029-CVE-2011-1146.patch
+9901-handle-no-ip.patch
+9902-lp750565.patch
