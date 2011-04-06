@@ -1,3 +1,18 @@
+libvirt (0.8.3-1ubuntu16) maverick-proposed; urgency=low
+
+  * debian/patches/9029-lp750565.patch
+    Fix initialization error of controller in QEmu SCSI hotplug.
+    (LP: #750565)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 06 Apr 2011 13:57:14 -0500
+
+libvirt (0.8.3-1ubuntu15) maverick-proposed; urgency=low
+
+  * debian/patches/9901-handle-no-ip.patch: Additional patch cherrypick
+    to handle no ip address in the network configuration. (LP: #748834)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 06 Apr 2011 13:15:41 -0500
+
 libvirt (0.8.3-1ubuntu14.1) maverick-security; urgency=low
 
   * SECURITY UPDATE: debian/patches/9029-CVE-2011-1146.patch: Add missing
