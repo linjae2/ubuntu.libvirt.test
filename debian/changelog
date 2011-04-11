@@ -1,3 +1,11 @@
+libvirt (0.8.8-1ubuntu6) natty; urgency=low
+
+  * debian/patches/allows-lxc-containers-with-lxcguest.patch:
+    Pass "libvirt" to lxc containers, so that libvirt can 
+    work with lxcguest. (LP: #757752)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 11 Apr 2011 13:44:03 -0400
+
 libvirt (0.8.8-1ubuntu5) natty; urgency=low
 
   * debian/apparmor/usr.sbin.libvirtd: allow read access to '/' (LP: #727286)

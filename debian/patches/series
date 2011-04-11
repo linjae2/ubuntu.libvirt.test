@@ -25,3 +25,4 @@ Don-t-pass-empty-arguments-to-dnsmasq.patch
 9025-Pass-virSecurityManagerPtr-to-virSecurityDAC-Set-Res.patch
 9026-security-avoid-memory-leak.patch
 9027-CVE-2011-1146.patch
+allows-lxc-containers-with-lxcguest.patch
