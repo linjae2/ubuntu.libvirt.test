@@ -1,3 +1,11 @@
+libvirt (0.7.5-5ubuntu27.11) lucid-proposed; urgency=low
+
+  * add debian/patches/fix-tap-interfaces-mac-addrs.patch to prevent
+    network freezes due to badly chosen tap interface macaddrs.
+    (LP: #584048)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 20 Apr 2011 08:14:10 -0500
+
 libvirt (0.7.5-5ubuntu27.10) lucid-proposed; urgency=low
 
   * debian/patches/9904-lp748834.patch: Avoid segfault on network restart
