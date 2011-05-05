@@ -310,18 +310,17 @@ virNetworkDHCPRangeDefParseXML(virNetworkDefPtr def,
                 VIR_FREE(mac);
                 VIR_FREE(name);
                 cur = cur->next;
-                continue;
+                return -1;
             }
             ip = xmlGetProp(cur, BAD_CAST "ip");
-            if (inet_pton(AF_INET, (const char *) ip, &inaddress) <= 0) {
+            if ((ip == NULL) ||inet_pton(AF_INET, (const char *) ip, &inaddress) <= 0) {
                 virNetworkReportError(VIR_ERR_INTERNAL_ERROR,
-                                      _("cannot parse IP address '%s'"),
-                                      ip);
+                                      _("cannot parse IP address"));
                 VIR_FREE(ip);
                 VIR_FREE(mac);
                 VIR_FREE(name);
                 cur = cur->next;
-                continue;
+                return -1;
             }
             if (VIR_REALLOC_N(def->hosts, def->nhosts + 1) < 0) {
                 VIR_FREE(ip);
