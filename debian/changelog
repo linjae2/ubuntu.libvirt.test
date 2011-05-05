@@ -1,3 +1,9 @@
+libvirt (0.7.5-5ubuntu27.12) lucid-proposed; urgency=low
+
+  * add parted to build-depends (LP: #697046)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 05 May 2011 09:13:25 -0500
+
 libvirt (0.7.5-5ubuntu27.11) lucid-proposed; urgency=low
 
   * add debian/patches/fix-tap-interfaces-mac-addrs.patch to prevent
