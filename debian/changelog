@@ -1,3 +1,9 @@
+libvirt (0.8.8-1ubuntu6.1) natty-proposed; urgency=low
+
+  * add parted to build-depends (LP: #697046)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 05 May 2011 09:31:55 -0500
+
 libvirt (0.8.8-1ubuntu6) natty; urgency=low
 
   * debian/patches/allows-lxc-containers-with-lxcguest.patch:
