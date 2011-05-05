@@ -110,6 +110,7 @@ static int lxcContainerExecInit(virDomainDefPtr vmDef)
     const char *const envp[] = {
         "PATH=/bin:/sbin",
         "TERM=linux",
+		"container=libvirt",
         NULL,
     };
 
