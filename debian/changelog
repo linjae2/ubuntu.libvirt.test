@@ -1,3 +1,9 @@
+libvirt (0.8.3-1ubuntu17) maverick-proposed; urgency=low
+
+  * add parted to build-depends (LP: #697046)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 05 May 2011 09:19:18 -0500
+
 libvirt (0.8.3-1ubuntu16) maverick-proposed; urgency=low
 
   * debian/patches/9029-lp750565.patch
