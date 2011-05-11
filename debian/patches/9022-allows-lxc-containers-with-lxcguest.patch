@@ -1,0 +1,19 @@
+Description: send 'container=libvirt' in env to container init
+  This allows upstart scripts to detect that they are in a container
+  and modify their behavior accordingly.  This needs to be sent
+  upstream.
+Author: Chuck Short <zulcss@ubuntu.com>
+Forwarded: no
+
+Index: libvirt-0.9.1/src/lxc/lxc_container.c
+===================================================================
+--- libvirt-0.9.1.orig/src/lxc/lxc_container.c	2011-05-11 13:53:10.000000000 -0500
++++ libvirt-0.9.1/src/lxc/lxc_container.c	2011-05-11 13:54:18.889254466 -0500
+@@ -125,6 +125,7 @@
+     const char *const envp[] = {
+         "PATH=/bin:/sbin",
+         "TERM=linux",
++        "container=libvirt",
+         uuidenv,
+         nameenv,
+         NULL,

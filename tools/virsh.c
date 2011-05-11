@@ -66,6 +66,8 @@ static char *progname;
 #define VSH_PROMPT_RW    "virsh # "
 #define VSH_PROMPT_RO    "virsh > "
 
+#include "remote_driver.h"
+
 #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
 #define DIFF_MSEC(T, U) \
         ((((int) ((T)->tv_sec - (U)->tv_sec)) * 1000000.0 + \
@@ -12838,6 +12840,10 @@ main(int argc, char **argv)
 
     if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
         ctl->name = vshStrdup(ctl, defaultConn);
+    } else if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
+        ctl->name = vshStrdup(ctl, "qemu:///system");
+    } else {
+        ctl->name = vshStrdup(ctl, "qemu:///session");
     }
 
     if (!vshParseArgv(ctl, argc, argv)) {
