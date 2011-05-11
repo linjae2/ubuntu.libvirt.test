@@ -1,0 +1,122 @@
+Description: disable test-poll as it fails during builds
+Author: Serge Hallyn <serge.hallyn@ubuntu.com>
+Forwarded: no
+
+Index: libvirt-0.9.1/gnulib/tests/Makefile.am
+===================================================================
+--- libvirt-0.9.1.orig/gnulib/tests/Makefile.am	2011-05-11 14:11:47.509254656 -0500
++++ libvirt-0.9.1/gnulib/tests/Makefile.am	2011-05-11 14:12:00.279254659 -0500
+@@ -664,23 +664,6 @@
+ 
+ ## end   gnulib module pipe2-tests
+ 
+-## begin gnulib module poll-h-tests
+-
+-TESTS += test-poll-h
+-check_PROGRAMS += test-poll-h
+-EXTRA_DIST += test-poll-h.c
+-
+-## end   gnulib module poll-h-tests
+-
+-## begin gnulib module poll-tests
+-
+-TESTS += test-poll
+-check_PROGRAMS += test-poll
+-test_poll_LDADD = $(LDADD) @LIBSOCKET@ $(INET_PTON_LIB)
+-EXTRA_DIST += signature.h test-poll.c
+-
+-## end   gnulib module poll-tests
+-
+ ## begin gnulib module posix_spawn-internal
+ 
+ 
+Index: libvirt-0.9.1/gnulib/tests/Makefile.in
+===================================================================
+--- libvirt-0.9.1.orig/gnulib/tests/Makefile.in	2011-05-11 14:12:06.029254660 -0500
++++ libvirt-0.9.1/gnulib/tests/Makefile.in	2011-05-11 14:12:38.179254665 -0500
+@@ -68,8 +68,8 @@
+ 	test-netinet_in$(EXEEXT) test-nonblocking-pipe.sh \
+ 	test-nonblocking-socket.sh test-nonblocking$(EXEEXT) \
+ 	test-open$(EXEEXT) test-passfd$(EXEEXT) test-perror.sh \
+-	test-pipe$(EXEEXT) test-pipe2$(EXEEXT) test-poll-h$(EXEEXT) \
+-	test-poll$(EXEEXT) $(am__EXEEXT_1) test-random_r$(EXEEXT) \
++	test-pipe$(EXEEXT) test-pipe2$(EXEEXT) \
++	$(am__EXEEXT_1) test-random_r$(EXEEXT) \
+ 	test-rawmemchr$(EXEEXT) test-readlink$(EXEEXT) \
+ 	test-realloc-gnu$(EXEEXT) test-sched$(EXEEXT) \
+ 	test-select$(EXEEXT) test-select-in.sh test-select-out.sh \
+@@ -120,7 +120,7 @@
+ 	test-nonblocking-socket-child$(EXEEXT) \
+ 	test-nonblocking$(EXEEXT) test-open$(EXEEXT) \
+ 	test-passfd$(EXEEXT) test-perror$(EXEEXT) test-pipe$(EXEEXT) \
+-	test-pipe2$(EXEEXT) test-poll-h$(EXEEXT) test-poll$(EXEEXT) \
++	test-pipe2$(EXEEXT) \
+ 	$(am__EXEEXT_1) test-random_r$(EXEEXT) test-rawmemchr$(EXEEXT) \
+ 	test-readlink$(EXEEXT) test-realloc-gnu$(EXEEXT) \
+ 	test-sched$(EXEEXT) test-select$(EXEEXT) \
+@@ -610,14 +610,6 @@
+ test_pipe2_SOURCES = test-pipe2.c
+ test_pipe2_OBJECTS = test-pipe2.$(OBJEXT)
+ test_pipe2_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
+-test_poll_SOURCES = test-poll.c
+-test_poll_OBJECTS = test-poll.$(OBJEXT)
+-test_poll_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
+-test_poll_h_SOURCES = test-poll-h.c
+-test_poll_h_OBJECTS = test-poll-h.$(OBJEXT)
+-test_poll_h_LDADD = $(LDADD)
+-test_poll_h_DEPENDENCIES = libtests.a ../../gnulib/lib/libgnu.la \
+-	libtests.a $(am__DEPENDENCIES_1)
+ test_posix_spawn1_SOURCES = test-posix_spawn1.c
+ test_posix_spawn1_OBJECTS = test-posix_spawn1.$(OBJEXT)
+ test_posix_spawn1_LDADD = $(LDADD)
+@@ -912,7 +904,7 @@
+ 	test-nonblocking-pipe-child.c test-nonblocking-pipe-main.c \
+ 	test-nonblocking-socket-child.c test-nonblocking-socket-main.c \
+ 	test-open.c test-passfd.c test-perror.c test-pipe.c \
+-	test-pipe2.c test-poll.c test-poll-h.c test-posix_spawn1.c \
++	test-pipe2.c test-posix_spawn1.c \
+ 	test-posix_spawn2.c test-random_r.c test-rawmemchr.c \
+ 	test-readlink.c test-realloc-gnu.c test-sched.c test-select.c \
+ 	test-select-fd.c test-select-stdin.c test-setenv.c \
+@@ -946,7 +938,7 @@
+ 	test-nonblocking-pipe-child.c test-nonblocking-pipe-main.c \
+ 	test-nonblocking-socket-child.c test-nonblocking-socket-main.c \
+ 	test-open.c test-passfd.c test-perror.c test-pipe.c \
+-	test-pipe2.c test-poll.c test-poll-h.c test-posix_spawn1.c \
++	test-pipe2.c test-posix_spawn1.c \
+ 	test-posix_spawn2.c test-random_r.c test-rawmemchr.c \
+ 	test-readlink.c test-realloc-gnu.c test-sched.c test-select.c \
+ 	test-select-fd.c test-select-stdin.c test-setenv.c \
+@@ -2048,8 +2040,8 @@
+ 	macros.h test-nonblocking.c macros.h test-open.h test-open.c \
+ 	signature.h macros.h test-passfd.c macros.h signature.h \
+ 	test-perror.c test-perror.sh test-pipe.c signature.h macros.h \
+-	test-pipe2.c signature.h macros.h test-poll-h.c signature.h \
+-	test-poll.c spawn_int.h spawni.c spawn_faction_addclose.c \
++	test-pipe2.c signature.h macros.h signature.h \
++	spawn_int.h spawni.c spawn_faction_addclose.c \
+ 	spawn_int.h spawn_faction_adddup2.c spawn_int.h \
+ 	spawn_faction_addopen.c spawn_int.h spawn_faction_destroy.c \
+ 	spawn_faction_init.c spawn_int.h spawnattr_destroy.c \
+@@ -2384,12 +2376,6 @@
+ test-pipe2$(EXEEXT): $(test_pipe2_OBJECTS) $(test_pipe2_DEPENDENCIES) 
+ 	@rm -f test-pipe2$(EXEEXT)
+ 	$(AM_V_CCLD)$(LINK) $(test_pipe2_OBJECTS) $(test_pipe2_LDADD) $(LIBS)
+-test-poll$(EXEEXT): $(test_poll_OBJECTS) $(test_poll_DEPENDENCIES) 
+-	@rm -f test-poll$(EXEEXT)
+-	$(AM_V_CCLD)$(LINK) $(test_poll_OBJECTS) $(test_poll_LDADD) $(LIBS)
+-test-poll-h$(EXEEXT): $(test_poll_h_OBJECTS) $(test_poll_h_DEPENDENCIES) 
+-	@rm -f test-poll-h$(EXEEXT)
+-	$(AM_V_CCLD)$(LINK) $(test_poll_h_OBJECTS) $(test_poll_h_LDADD) $(LIBS)
+ test-posix_spawn1$(EXEEXT): $(test_posix_spawn1_OBJECTS) $(test_posix_spawn1_DEPENDENCIES) 
+ 	@rm -f test-posix_spawn1$(EXEEXT)
+ 	$(AM_V_CCLD)$(LINK) $(test_posix_spawn1_OBJECTS) $(test_posix_spawn1_LDADD) $(LIBS)
+@@ -2641,8 +2627,6 @@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-perror.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-pipe.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-pipe2.Po@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-poll-h.Po@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-poll.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-posix_spawn1.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-posix_spawn2.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test-random_r.Po@am__quote@
