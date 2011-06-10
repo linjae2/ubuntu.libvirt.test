@@ -1,3 +1,12 @@
+libvirt (0.8.3-1ubuntu18) maverick-security; urgency=low
+
+  * SECURITY UPDATE:
+    - 9030-CVE-2011-1486.patch: update daemon/dispatch.c and daemon/remote.c
+      to call virDomainFree() after remoteDispatchConnError()
+    - CVE-2011-1486
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 10 Jun 2011 17:25:26 -0500
+
 libvirt (0.8.3-1ubuntu14.1) maverick-security; urgency=low
 
   * SECURITY UPDATE: debian/patches/9029-CVE-2011-1146.patch: Add missing
