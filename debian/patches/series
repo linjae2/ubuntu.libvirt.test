@@ -42,3 +42,4 @@
 9905-lp748834.patch
 9906-handle-no-ip.patch
 fix-tap-interfaces-mac-addrs.patch
+9908-CVE-2011-1486.patch
