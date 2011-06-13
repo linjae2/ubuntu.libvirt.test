@@ -14,7 +14,7 @@ Build-Depends: cdbs (>= 0.4.90~),
  python-dev (>= 2.6.6-3~),
  libavahi-client-dev,
  libsasl2-dev,
- libxen3-dev [i386 amd64],
+ libxen-dev [i386 amd64],
  lvm2,
  qemu-kvm [amd64 i386 powerpc sparc],
  open-iscsi-utils,
@@ -95,7 +95,7 @@ Description: documentation for the libvirt library
 Package: libvirt-dev
 Architecture: any
 Section: libdevel
-Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen3-dev [i386 amd64]
+Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64]
 Recommends: pkg-config
 Description: development files for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities

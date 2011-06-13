@@ -1,3 +1,9 @@
+libvirt (0.9.1-1ubuntu2) oneiric; urgency=low
+
+  * Depend on libxen-dev rather than libxen3-dev. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 13 Jun 2011 12:48:52 -0400
+
 libvirt (0.9.1-1ubuntu1) oneiric; urgency=low
 
   * Resynchronize and merge from Debian unstable (LP: #794378). Remaining
