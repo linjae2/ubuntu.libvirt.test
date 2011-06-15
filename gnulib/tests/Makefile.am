@@ -664,23 +664,6 @@ EXTRA_DIST += test-pipe2.c signature.h macros.h
 
 ## end   gnulib module pipe2-tests
 
-## begin gnulib module poll-h-tests
-
-TESTS += test-poll-h
-check_PROGRAMS += test-poll-h
-EXTRA_DIST += test-poll-h.c
-
-## end   gnulib module poll-h-tests
-
-## begin gnulib module poll-tests
-
-TESTS += test-poll
-check_PROGRAMS += test-poll
-test_poll_LDADD = $(LDADD) @LIBSOCKET@ $(INET_PTON_LIB)
-EXTRA_DIST += signature.h test-poll.c
-
-## end   gnulib module poll-tests
-
 ## begin gnulib module posix_spawn-internal
 
 
