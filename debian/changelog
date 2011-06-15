@@ -1,3 +1,9 @@
+libvirt (0.9.1-1ubuntu3) oneiric; urgency=low
+
+  * debian/patches/9024-ftbfs-with-arm.patch: Fix FTBFS with arm.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 14 Jun 2011 21:33:15 -0400
+
 libvirt (0.9.1-1ubuntu2) oneiric; urgency=low
 
   * Depend on libxen-dev rather than libxen3-dev. 

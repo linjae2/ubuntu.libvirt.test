@@ -1,0 +1,37 @@
+diff -Naurp libvirt-0.9.1.orig//src/nodeinfo.c libvirt-0.9.1//src/nodeinfo.c
+--- libvirt-0.9.1.orig//src/nodeinfo.c	2011-04-27 02:39:49.000000000 -0400
++++ libvirt-0.9.1//src/nodeinfo.c	2011-06-14 21:31:36.173621745 -0400
+@@ -167,7 +167,8 @@ static int parse_socket(unsigned int cpu
+ # if defined(__powerpc__) || \
+     defined(__powerpc64__) || \
+     defined(__s390__) || \
+-    defined(__s390x__)
++    defined(__s390x__) || \
++    defined(__armv7l__) 
+     /* ppc and s390(x) has -1 */
+     if (ret < 0)
+         ret = 0;
+@@ -267,6 +268,23 @@ int linuxNodeInfoCPUPopulate(FILE *cpuin
+                 && (*p == '\0' || *p == '.' || c_isspace(*p)))
+                 nodeinfo->mhz = ui;
+         }
++# elif defined (__armv7l__)
++	} else if (STRPEFIX(buf, "BogoMIPS")) {
++		char *p;
++		unsigned int ui;
++		buf += 5;
++		while ( *buf && c_isspace(*buf))
++			buf++;
++		if (*buf != ':' || !buf[1]) {
++			nodeReportError(VIR_ERR_INETERNAL_ERROR,
++				"%s", _("parsing cpuinfo BogoMIPS"));
++			return -1;
++		}
++		if (virStrToLong_ui(buf+1, &p, 10, &ui) == 0
++			/* Accept trailing fractional part. */
++			&& (*p == '\0' || *p == '.' || c_isspace(*p)))
++			nodinfo=>mhz = ui
++		} 
+ # elif defined(__s390__) || \
+         defined(__s390x__)
+         } else if (STRPREFIX(buf, "# processors")) {

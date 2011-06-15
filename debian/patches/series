@@ -21,3 +21,4 @@ Disable-daemon-start-test.patch
 9021-fix-uint64_t.patch
 9022-allows-lxc-containers-with-lxcguest.patch
 9023-disable-test-poll.patch
+9024-ftbfs-with-arm.patch
