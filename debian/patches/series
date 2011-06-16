@@ -22,3 +22,5 @@ Disable-daemon-start-test.patch
 9022-allows-lxc-containers-with-lxcguest.patch
 9023-disable-test-poll.patch
 9024-ftbfs-with-arm.patch
+9025-CVE-2011-2178.patch
+9026-lp795800.patch
