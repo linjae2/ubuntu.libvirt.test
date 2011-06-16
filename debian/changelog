@@ -1,3 +1,18 @@
+libvirt (0.9.1-1ubuntu4) oneiric; urgency=low
+
+  * SECURITY UPDATE: 0.8.8 regression which reopens disk probing
+    (CVE-2010-2238). This can be dropped in 0.9.2.
+    - 9025-CVE-2011-2178.patch: use correct pointer address in
+      virSecurityManagerGetPrivateData()
+    - CVE-2011-2178
+  * fix virsh save when AppArmor driver is enabled
+    - 9026-lp795800.patch: src/security/security_apparmor.c: implement
+      AppArmorSetFDLabel(), which is now used by qemuMigrationToFile() if
+      our version of qemu supports fd migraton. This can be dropped in 0.9.3.
+    - LP: #795800
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 16 Jun 2011 14:16:00 -0500
+
 libvirt (0.9.1-1ubuntu3) oneiric; urgency=low
 
   * debian/patches/9024-ftbfs-with-arm.patch: Fix FTBFS with arm.
