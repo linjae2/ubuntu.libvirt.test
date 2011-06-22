@@ -1,0 +1,50 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: implement AppArmorSetFDLabel()
+ During a savevm operation, libvirt will now use fd migration if qemu supports
+ it. When the AppArmor driver is enabled, AppArmorSetFDLabel() is used but
+ since this function simply returns '0', the dynamic AppArmor profile is not
+ updated and AppArmor blocks access to the save file. This patch implements
+ AppArmorSetFDLabel() to get the pathname of the file by resolving the fd
+ symlink in /proc, and then gives that pathname to reload_profile(), which
+ fixes 'virsh save' when AppArmor is enabled.
+Bug-Ubuntu: https://launchpad.net/bugs/795800
+
+diff -Naurp libvirt.orig/src/security/security_apparmor.c libvirt/src/security/security_apparmor.c
+--- libvirt.orig/src/security/security_apparmor.c	2011-06-16 12:05:46.000000000 -0500
++++ libvirt/src/security/security_apparmor.c	2011-06-16 13:38:09.000000000 -0500
+@@ -757,11 +757,31 @@ AppArmorRestoreSavedStateLabel(virSecuri
+ }
+ 
+ static int
+-AppArmorSetFDLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+-                   virDomainObjPtr vm ATTRIBUTE_UNUSED,
+-                   int fd ATTRIBUTE_UNUSED)
++AppArmorSetFDLabel(virSecurityManagerPtr mgr,
++                   virDomainObjPtr vm,
++                   int fd)
+ {
+-    return 0;
++    int rc = -1;
++    char *proc = NULL;
++    char *fd_path = NULL;
++
++    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
++
++    if (secdef->imagelabel == NULL)
++        return 0;
++
++    if (virAsprintf(&proc, "/proc/self/fd/%d", fd) == -1) {
++        virReportOOMError();
++        return rc;
++    }
++
++    if (virFileResolveLink(proc, &fd_path) < 0) {
++        virSecurityReportError(VIR_ERR_INTERNAL_ERROR,
++                               "%s", _("could not find path for descriptor"));
++        return rc;
++    }
++
++    return reload_profile(mgr, vm, fd_path, true);
+ }
+ 
+ virSecurityDriver virAppArmorSecurityDriver = {
