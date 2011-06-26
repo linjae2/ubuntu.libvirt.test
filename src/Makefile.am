@@ -10,6 +10,7 @@ INCLUDES =							\
 		-I@top_srcdir@/src/util				\
 		-I@top_srcdir@/include				\
 		$(DRIVER_MODULE_CFLAGS)				\
+		$(DLOPEN_CFLAGS)				\
 		$(LIBXML_CFLAGS)				\
 		$(WARN_CFLAGS)					\
 		$(LOCK_CHECKING_CFLAGS)			\
@@ -1141,6 +1142,7 @@ libvirt_la_LDFLAGS = $(VERSION_SCRIPT_FLAGS)$(LIBVIRT_SYMBOL_FILE) \
 libvirt_la_BUILT_LIBADD += ../gnulib/lib/libgnu.la
 libvirt_la_LIBADD += $(LIBXML_LIBS) \
 		    $(DRIVER_MODULE_LIBS) \
+		    $(DLOPEN_LIBS) \
 		    $(CYGWIN_EXTRA_LIBADD)
 libvirt_la_CFLAGS = -DIN_LIBVIRT $(AM_CFLAGS)
 # Because we specify libvirt_la_DEPENDENCIES for $(LIBVIRT_SYMBOL_FILE), we
