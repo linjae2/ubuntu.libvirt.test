@@ -20,6 +20,7 @@ Disable-daemon-start-test.patch
 9021-fix-uint64_t.patch
 9026-lp795800.patch
 9027-move-apparmor-load-to-genlabel.patch
+9028-linux-3-0-no-micro.patch
 nodeinfo-remove-superfluous-braces.patch
 Skip-nodeinfo-test-on-non-intel-architectures.patch
 Split-out-dlopen-detection.patch

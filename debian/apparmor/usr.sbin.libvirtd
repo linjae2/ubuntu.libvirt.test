@@ -22,6 +22,7 @@
   capability setpcap,
   capability mknod,
   capability fsetid,
+  capability ipc_lock,
 
   network inet stream,
   network inet dgram,
