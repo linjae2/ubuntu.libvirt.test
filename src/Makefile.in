@@ -1260,11 +1260,11 @@ DEPDIR = @DEPDIR@
 DEVMAPPER_CFLAGS = @DEVMAPPER_CFLAGS@
 DEVMAPPER_LIBS = @DEVMAPPER_LIBS@
 DLLTOOL = @DLLTOOL@
+DLOPEN_CFLAGS = @DLOPEN_CFLAGS@
 DLOPEN_LIBS = @DLOPEN_LIBS@
 DMSETUP = @DMSETUP@
 DNSMASQ = @DNSMASQ@
 DRIVER_MODULE_CFLAGS = @DRIVER_MODULE_CFLAGS@
-DRIVER_MODULE_LIBS = @DRIVER_MODULE_LIBS@
 DSYMUTIL = @DSYMUTIL@
 DTRACE = @DTRACE@
 DUMPBIN = @DUMPBIN@
@@ -2263,6 +2263,7 @@ INCLUDES = \
 		-I@top_srcdir@/src/util				\
 		-I@top_srcdir@/include				\
 		$(DRIVER_MODULE_CFLAGS)				\
+		$(DLOPEN_CFLAGS)				\
 		$(LIBXML_CFLAGS)				\
 		$(WARN_CFLAGS)					\
 		$(LOCK_CHECKING_CFLAGS)			\
@@ -2716,7 +2717,7 @@ noinst_LTLIBRARIES = libvirt_util.la libvirt_conf.la libvirt_cpu.la \
 	$(am__append_74) $(am__append_78) $(am__append_90) \
 	$(am__append_101) libvirt_driver_security.la libvirt_test.la
 libvirt_la_LIBADD = $(libvirt_la_BUILT_LIBADD) $(LIBXML_LIBS) \
-	$(DRIVER_MODULE_LIBS) $(CYGWIN_EXTRA_LIBADD)
+	$(DRIVER_MODULE_LIBS) $(DLOPEN_LIBS) $(CYGWIN_EXTRA_LIBADD)
 libvirt_la_BUILT_LIBADD = libvirt_util.la libvirt_conf.la \
 	libvirt_cpu.la $(am__append_3) $(am__append_5) \
 	libvirt_driver.la $(am__append_8) $(am__append_11) \
