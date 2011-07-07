@@ -1,3 +1,11 @@
+libvirt (0.8.3-1ubuntu19) maverick-proposed; urgency=low
+
+  * Fix /etc/init/libvirt-bin.conf start on to wait until networking.conf
+    has stopped with success, meaning ifup -a completed successfully and
+    all auto-started network devices are up.  (LP: #495394)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 07 Jul 2011 16:48:36 -0500
+
 libvirt (0.8.3-1ubuntu18) maverick-security; urgency=low
 
   * SECURITY UPDATE:
