@@ -1,3 +1,11 @@
+libvirt (0.8.8-1ubuntu6.3) natty-proposed; urgency=low
+
+  * Fix /etc/init/libvirt-bin.conf start on to wait until networking.conf
+    has stopped with success, meaning ifup -a completed successfully and
+    all auto-started network devices are up.  (LP: #495394)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 07 Jul 2011 16:54:35 -0500
+
 libvirt (0.8.8-1ubuntu6.2) natty-security; urgency=low
 
   * SECURITY UPDATE: 0.8.8 regression which reopens disk probing
