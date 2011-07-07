@@ -1017,8 +1017,11 @@ qemuSecurityInit(struct qemud_driver *driver)
             goto error;
 
         if (!(driver->securityManager = virSecurityManagerNewStack(mgr,
-                                                                   dac)))
+                                                                   dac))) {
+
+            virSecurityManagerFree(dac);
             goto error;
+        }
     } else {
         driver->securityManager = mgr;
     }
