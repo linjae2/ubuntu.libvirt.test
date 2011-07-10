@@ -596,9 +596,30 @@ int virNetSocketNewConnectSSH(const char *nodename,
     if (noTTY)
         virCommandAddArgList(cmd, "-T", "-o", "BatchMode=yes",
                              "-e", "none", NULL);
-    virCommandAddArgList(cmd, nodename,
-                         netcat ? netcat : "nc",
-                         "-U", path, NULL);
+
+    virCommandAddArgList(cmd, nodename, "sh -c", NULL);
+    /*
+     * This ugly thing is a shell script to detect availability of
+     * the -q option for 'nc': debian and suse based distros need this
+     * flag to ensure the remote nc will exit on EOF, so it will go away
+     * when we close the VNC tunnel. If it doesn't go away, subsequent
+     * VNC connection attempts will hang.
+     *
+     * Fedora's 'nc' doesn't have this option, and apparently defaults
+     * to the desired behavior.
+     */
+    virCommandAddArgFormat(cmd, "'%s -q 2>&1 | grep -q \"requires an argument\";"
+                           "if [ $? -eq 0 ] ; then"
+                           "   CMD=\"%s -q 0 -U %s\";"
+                           "else"
+                           "   CMD=\"%s -U %s\";"
+                           "fi;"
+                           "eval \"$CMD\";'",
+                           netcat ? netcat : "nc",
+                           netcat ? netcat : "nc",
+                           path,
+                           netcat ? netcat : "nc",
+                           path);
 
     return virNetSocketNewConnectCommand(cmd, retsock);
 }
