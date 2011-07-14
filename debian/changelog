@@ -1,3 +1,12 @@
+libvirt (0.9.2-4ubuntu4) oneiric; urgency=low
+
+  * debian/apparmor/libvirt-qemu: adjust for /dev/shm -> /run/shm transition
+  * debian/patches/lp810270.patch: adjust AppArmor profile for /var/run ->
+    /run
+    - LP: #810270
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 14 Jul 2011 08:46:32 -0500
+
 libvirt (0.9.2-4ubuntu3) oneiric; urgency=low
 
   * Fix /etc/init/libvirt-bin.conf start on to wait until networking.conf
