@@ -2130,6 +2130,28 @@ esac
 AM_CONDITIONAL([WITH_WIN_ICON], [test "$WINDRES" != ""])
 
 
+# Check for dlopen needed for the locking manager and driver-modules
+DLOPEN_CFLAGS=
+DLOPEN_LIBS=
+old_cflags="$CFLAGS"
+old_libs="$LIBS"
+have_dlopen="yes"
+AC_CHECK_HEADER([dlfcn.h],[],[have_dlopen="no"])
+AC_SEARCH_LIBS([dlopen], [dl], [], [have_dlopen="no"])
+CFLAGS="$old_cflags"
+LIBS="$old_libs"
+
+if test "$have_dlopen" != "no"; then
+  case $ac_cv_search_dlopen in
+    no*) DLOPEN_LIBS= ;;
+    *) DLOPEN_LIBS=$ac_cv_search_dlopen ;;
+  esac
+fi
+AM_CONDITIONAL([HAVE_DLOPEN], [test "$have_dlopen" != "no"])
+AC_SUBST([DLOPEN_CFLAGS])
+AC_SUBST([DLOPEN_LIBS])
+
+
 dnl Driver-Modules library
 AC_ARG_WITH([driver-modules],
   AC_HELP_STRING([--with-driver-modules], [build drivers as loadable modules @<:@default=no@:>@]),
@@ -2137,30 +2159,16 @@ AC_ARG_WITH([driver-modules],
   [with_driver_modules=no])
 
 DRIVER_MODULE_CFLAGS=
-DRIVER_MODULE_LIBS=
 if test "x$with_driver_modules" = "xyes" ; then
-  old_cflags="$CFLAGS"
-  old_libs="$LIBS"
-  fail=0
-  AC_CHECK_HEADER([dlfcn.h],[],[fail=1])
-  AC_SEARCH_LIBS([dlopen], [dl], [], [fail=1])
-  test $fail = 1 &&
+  test $have_dlopen != "yes" &&
       AC_MSG_ERROR([You must have dlfcn.h / dlopen() support to build driver modules])
-
-  CFLAGS="$old_cflags"
-  LIBS="$old_libs"
 fi
 if test "$with_driver_modules" = "yes"; then
   DRIVER_MODULE_CFLAGS="-export-dynamic"
-  case $ac_cv_search_dlopen in
-    no*) DRIVER_MODULE_LIBS= ;;
-    *) DRIVER_MODULE_LIBS=$ac_cv_search_dlopen ;;
-  esac
   AC_DEFINE_UNQUOTED([WITH_DRIVER_MODULES], 1, [whether to build drivers as modules])
 fi
 AM_CONDITIONAL([WITH_DRIVER_MODULES], [test "$with_driver_modules" != "no"])
 AC_SUBST([DRIVER_MODULE_CFLAGS])
-AC_SUBST([DRIVER_MODULE_LIBS])
 
 
 # Set LV_LIBTOOL_OBJDIR to "." or $lt_cv_objdir, depending on whether
@@ -2455,10 +2463,10 @@ AC_MSG_NOTICE([])
 AC_MSG_NOTICE([ SELinux: $with_secdriver_selinux])
 AC_MSG_NOTICE([AppArmor: $with_secdriver_apparmor])
 AC_MSG_NOTICE([])
-AC_MSG_NOTICE([Driver Loadable Modules])
+AC_MSG_NOTICE([Driver Loadable Modules / Dlopen])
 AC_MSG_NOTICE([])
-if test "$with_driver_modules" != "no" ; then
-AC_MSG_NOTICE([  dlopen: $DRIVER_MODULE_CFLAGS $DRIVER_MODULE_LIBS])
+if test "$have_dlopen" != "no" ; then
+AC_MSG_NOTICE([  dlopen: $DRIVER_MODULE_CFLAGS $DLOPEN_CFLAGS $DLOPEN_LIBS])
 else
 AC_MSG_NOTICE([  dlopen: no])
 fi
