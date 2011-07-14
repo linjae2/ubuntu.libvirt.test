@@ -1,0 +1,21 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: Adjust for /var/run -> /run udev transition. For now, allow
+ both LOCALSTATEDIR/run/... and /run/.... While the profile is not as
+ precise, LOCALSTATEDIR/run/ is typically a symlink to /run/ anyway, so
+ there is no additional access.
+Bug-Ubuntu: https://launchpad.net/bugs/810270
+Forwarded: yes
+
+Index: libvirt-0.9.2/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-0.9.2.orig/src/security/virt-aa-helper.c	2011-07-14 08:42:32.000000000 -0500
++++ libvirt-0.9.2/src/security/virt-aa-helper.c	2011-07-14 08:43:23.000000000 -0500
+@@ -1165,6 +1165,8 @@
+                               LOCALSTATEDIR, ctl->def->name);
+             virBufferAsprintf(&buf, "  \"%s/run/libvirt/**/%s.pid\" rwk,\n",
+                               LOCALSTATEDIR, ctl->def->name);
++            virBufferAsprintf(&buf, "  \"/run/libvirt/**/%s.pid\" rwk,\n",
++                              ctl->def->name);
+             if (ctl->files)
+                 virBufferAdd(&buf, ctl->files, -1);
+         }
