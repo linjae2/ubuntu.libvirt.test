@@ -1,3 +1,10 @@
+libvirt (0.9.2-4ubuntu5) oneiric; urgency=low
+
+  * debian/libvirt-bin.apport: use new apport MAC function instead of
+    parsing and attaching AppArmor events here.
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Fri, 15 Jul 2011 08:36:56 -0400
+
 libvirt (0.9.2-4ubuntu4) oneiric; urgency=low
 
   * debian/apparmor/libvirt-qemu: adjust for /dev/shm -> /run/shm transition
