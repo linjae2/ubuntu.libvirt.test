@@ -26,3 +26,4 @@ Skip-nodeinfo-test-on-non-intel-architectures.patch
 Split-out-dlopen-detection.patch
 Update-generated-autoconf-files.patch
 lp810270.patch
+CVE-2011-2511.patch
