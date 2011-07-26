@@ -82,6 +82,7 @@
 #include "util.h"
 #include "event.h"
 #include "ignore-value.h"
+#include "intprops.h"
 
 #define VIR_FROM_THIS VIR_FROM_REMOTE
 
@@ -2500,7 +2501,8 @@ remoteDomainGetVcpus (virDomainPtr domain,
                     maxinfo, REMOTE_VCPUINFO_MAX);
         goto done;
     }
-    if (maxinfo * maplen > REMOTE_CPUMAPS_MAX) {
+    if (INT_MULTIPLY_OVERFLOW(maxinfo, maplen) ||
+        maxinfo * maplen > REMOTE_CPUMAPS_MAX) {
         remoteError(VIR_ERR_RPC,
                     _("vCPU map buffer length exceeds maximum: %d > %d"),
                     maxinfo * maplen, REMOTE_CPUMAPS_MAX);
