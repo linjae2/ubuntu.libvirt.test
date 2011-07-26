@@ -8,7 +8,7 @@
 # - ignore  libvirt-guests init script won't start any guest on boot, however,
 #           guests marked as autostart will still be automatically started by
 #           libvirtd
-#ON_BOOT=start
+#ON_BOOT=ignore
 
 # number of seconds to wait between each guest start
 #START_DELAY=0
@@ -21,10 +21,10 @@
 #             which just needs a long time to shutdown. When setting
 #             ON_SHUTDOWN=shutdown, you must also set SHUTDOWN_TIMEOUT to a
 #             value suitable for your guests.
-#ON_SHUTDOWN=suspend
+#ON_SHUTDOWN=shutdown
 
 # number of seconds we're willing to wait for a guest to shut down
-#SHUTDOWN_TIMEOUT=0
+#SHUTDOWN_TIMEOUT=30
 
 # If non-zero, try to bypass the file system cache when saving and
 # restoring guests, even though this may give slower operation for
