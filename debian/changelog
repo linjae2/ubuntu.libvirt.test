@@ -1,3 +1,12 @@
+libvirt (0.7.5-5ubuntu27.16) lucid-security; urgency=low
+
+  * SECURITY UPDATE: integer overflow in virDomainGetVcpus()
+    - debian/patches/9909-CVE-2011-2511.patch: use INT_MULTIPLY_OVERFLOW() to
+      verify maxinfo * maplen < REMOTE_CPUMAPS_MAX
+    - CVE-2011-2511
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 26 Jul 2011 07:12:28 -0500
+
 libvirt (0.7.5-5ubuntu27.14) lucid-proposed; urgency=low
 
   * Fix /etc/init/libvirt-bin.conf start on to wait until networking.conf
