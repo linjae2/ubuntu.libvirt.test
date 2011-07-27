@@ -484,6 +484,7 @@ mymain(void)
     if (virtTestRun("Socket UNIX Addrs", 1, testSocketUNIXAddrs, NULL) < 0)
         ret = -1;
 
+#if 0
     if (virtTestRun("Socket External Command /dev/zero", 1, testSocketCommandNormal, NULL) < 0)
         ret = -1;
     if (virtTestRun("Socket External Command /dev/does-not-exist", 1, testSocketCommandFail, NULL) < 0)
@@ -525,6 +526,7 @@ mymain(void)
     };
     if (virtTestRun("SSH test 4", 1, testSocketSSH, &sshData4) < 0)
         ret = -1;
+#endif
 
 #endif
 
