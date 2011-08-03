@@ -1,3 +1,10 @@
+libvirt (0.9.2-4ubuntu7) oneiric; urgency=low
+
+  * libvirt-bin.upstart: add a pre-stop script to shut down running VMs
+    before the host shuts down.  (LP: #350936)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 02 Aug 2011 19:49:40 -0500
+
 libvirt (0.9.2-4ubuntu6) oneiric; urgency=low
 
   * SECURITY UPDATE: integer overflow in virDomainGetVcpus()
