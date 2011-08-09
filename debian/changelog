@@ -1,3 +1,9 @@
+libvirt (0.9.2-4ubuntu8) oneiric; urgency=low
+
+  * Port to libnl3.
+
+ -- Colin Watson <cjwatson@ubuntu.com>  Tue, 09 Aug 2011 11:36:08 +0100
+
 libvirt (0.9.2-4ubuntu7) oneiric; urgency=low
 
   * libvirt-bin.upstart: add a pre-stop script to shut down running VMs
