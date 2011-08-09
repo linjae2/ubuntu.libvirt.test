@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 DEB_BUILD_PARALLEL = yes
+export VIR_TEST_DEBUG=1
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
@@ -44,6 +45,10 @@ else
   WITH_LXC            = --without-lxc
 endif
 
+ifneq (,$(findstring ${DEB_BUILD_ARCH}, m68k))
+	CFLAGS = -fwrapv -DWRAPV
+endif
+
 
 DEB_CONFIGURE_EXTRA_FLAGS :=     \
 	--disable-rpath          \
@@ -53,6 +58,7 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
         $(WITH_OPENVZ)		 \
 	--with-avahi             \
 	--with-sasl              \
+	--with-yajl              \
 	$(WITH_POLKIT)		 \
 	$(WITH_UDEV)		 \
 	--with-storage-fs        \

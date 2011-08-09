@@ -345,8 +345,8 @@ int virNetSocketNewListenUNIX(const char *path,
      */
     if (grp != 0 && chown(path, -1, grp)) {
         virReportSystemError(errno,
-                             _("Failed to change group ID of '%s' to %d"),
-                             path, grp);
+                             _("Failed to change group ID of '%s' to %u"),
+                             path, (unsigned int) grp);
         goto error;
     }
 
@@ -629,29 +629,25 @@ int virNetSocketNewConnectSSH(const char *nodename,
     if (noVerify)
         virCommandAddArgList(cmd, "-o", "StrictHostKeyChecking=no", NULL);
 
-    virCommandAddArgList(cmd, nodename, "sh -c", NULL);
+    virCommandAddArgList(cmd, nodename, "sh", "-c", NULL);
     /*
      * This ugly thing is a shell script to detect availability of
      * the -q option for 'nc': debian and suse based distros need this
      * flag to ensure the remote nc will exit on EOF, so it will go away
-     * when we close the VNC tunnel. If it doesn't go away, subsequent
-     * VNC connection attempts will hang.
+     * when we close the connection tunnel. If it doesn't go away, subsequent
+     * connection attempts will hang.
      *
-     * Fedora's 'nc' doesn't have this option, and apparently defaults
-     * to the desired behavior.
+     * Fedora's 'nc' doesn't have this option, and defaults to the desired
+     * behavior.
      */
-    virCommandAddArgFormat(cmd, "'%s -q 2>&1 | grep -q \"requires an argument\";"
-                           "if [ $? -eq 0 ] ; then"
-                           "   CMD=\"%s -q 0 -U %s\";"
-                           "else"
-                           "   CMD=\"%s -U %s\";"
-                           "fi;"
-                           "eval \"$CMD\";'",
-                           netcat ? netcat : "nc",
-                           netcat ? netcat : "nc",
-                           path,
-                           netcat ? netcat : "nc",
-                           path);
+    virCommandAddArgFormat(cmd,
+         "'if %s -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then"
+         "     ARG=-q0;"
+         "fi;"
+         "%s $ARG -U %s'",
+         netcat ? netcat : "nc",
+         netcat ? netcat : "nc",
+         path);
 
     return virNetSocketNewConnectCommand(cmd, retsock);
 }
@@ -758,7 +754,7 @@ int virNetSocketGetLocalIdentity(virNetSocketPtr sock,
                                  pid_t *pid)
 {
     struct ucred cr;
-    unsigned int cr_len = sizeof (cr);
+    socklen_t cr_len = sizeof (cr);
     virMutexLock(&sock->lock);
 
     if (getsockopt(sock->fd, SOL_SOCKET, SO_PEERCRED, &cr, &cr_len) < 0) {
