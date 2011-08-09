@@ -27,7 +27,7 @@ Build-Depends: cdbs (>= 0.4.90~),
  parted,
  policykit-1,
  libcap-ng-dev,
- libnl-dev,
+ libnl3-dev,
 # For "make check"
  libxml2-utils,
  libapparmor-dev

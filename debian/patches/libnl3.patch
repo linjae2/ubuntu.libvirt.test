@@ -1,0 +1,123 @@
+Description: Port to libnl3
+Author: Colin Watson <cjwatson@ubuntu.com>
+
+Index: b/configure.ac
+===================================================================
+--- a/configure.ac
++++ b/configure.ac
+@@ -2376,7 +2376,7 @@
+ LIBNL_LIBS=""
+ 
+ if test "$with_macvtap" = "yes"; then
+-    PKG_CHECK_MODULES([LIBNL], [libnl-1 >= $LIBNL_REQUIRED], [
++    PKG_CHECK_MODULES([LIBNL], [libnl-3.0 >= $LIBNL_REQUIRED], [
+     ], [
+         AC_MSG_ERROR([libnl-devel >= $LIBNL_REQUIRED is required for macvtap support])
+     ])
+Index: b/configure
+===================================================================
+--- a/configure
++++ b/configure
+@@ -54399,12 +54399,12 @@
+     pkg_cv_LIBNL_CFLAGS="$LIBNL_CFLAGS"
+  elif test -n "$PKG_CONFIG"; then
+     if test -n "$PKG_CONFIG" && \
+-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-1 >= \$LIBNL_REQUIRED\""; } >&5
+-  ($PKG_CONFIG --exists --print-errors "libnl-1 >= $LIBNL_REQUIRED") 2>&5
++    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-3.0 >= \$LIBNL_REQUIRED\""; } >&5
++  ($PKG_CONFIG --exists --print-errors "libnl-3.0 >= $LIBNL_REQUIRED") 2>&5
+   ac_status=$?
+   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+   test $ac_status = 0; }; then
+-  pkg_cv_LIBNL_CFLAGS=`$PKG_CONFIG --cflags "libnl-1 >= $LIBNL_REQUIRED" 2>/dev/null`
++  pkg_cv_LIBNL_CFLAGS=`$PKG_CONFIG --cflags "libnl-3.0 >= $LIBNL_REQUIRED" 2>/dev/null`
+ 		      test "x$?" != "x0" && pkg_failed=yes
+ else
+   pkg_failed=yes
+@@ -54416,12 +54416,12 @@
+     pkg_cv_LIBNL_LIBS="$LIBNL_LIBS"
+  elif test -n "$PKG_CONFIG"; then
+     if test -n "$PKG_CONFIG" && \
+-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-1 >= \$LIBNL_REQUIRED\""; } >&5
+-  ($PKG_CONFIG --exists --print-errors "libnl-1 >= $LIBNL_REQUIRED") 2>&5
++    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-3.0 >= \$LIBNL_REQUIRED\""; } >&5
++  ($PKG_CONFIG --exists --print-errors "libnl-3.0 >= $LIBNL_REQUIRED") 2>&5
+   ac_status=$?
+   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+   test $ac_status = 0; }; then
+-  pkg_cv_LIBNL_LIBS=`$PKG_CONFIG --libs "libnl-1 >= $LIBNL_REQUIRED" 2>/dev/null`
++  pkg_cv_LIBNL_LIBS=`$PKG_CONFIG --libs "libnl-3.0 >= $LIBNL_REQUIRED" 2>/dev/null`
+ 		      test "x$?" != "x0" && pkg_failed=yes
+ else
+   pkg_failed=yes
+@@ -54442,9 +54442,9 @@
+         _pkg_short_errors_supported=no
+ fi
+         if test $_pkg_short_errors_supported = yes; then
+-	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libnl-1 >= $LIBNL_REQUIRED" 2>&1`
++	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libnl-3.0 >= $LIBNL_REQUIRED" 2>&1`
+         else
+-	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libnl-1 >= $LIBNL_REQUIRED" 2>&1`
++	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libnl-3.0 >= $LIBNL_REQUIRED" 2>&1`
+         fi
+ 	# Put the nasty error message in config.log where it belongs
+ 	echo "$LIBNL_PKG_ERRORS" >&5
+Index: b/src/util/macvtap.c
+===================================================================
+--- a/src/util/macvtap.c
++++ b/src/util/macvtap.c
+@@ -127,15 +127,15 @@
+     int fd;
+     int n;
+     struct nlmsghdr *nlmsg = nlmsg_hdr(nl_msg);
+-    struct nl_handle *nlhandle = nl_handle_alloc();
++    struct nl_sock *nlsock = nl_socket_alloc();
+ 
+-    if (!nlhandle) {
++    if (!nlsock) {
+         virReportSystemError(errno,
+                              "%s", _("cannot allocate nlhandle for netlink"));
+         return -1;
+     }
+ 
+-    if (nl_connect(nlhandle, NETLINK_ROUTE) < 0) {
++    if (nl_connect(nlsock, NETLINK_ROUTE) < 0) {
+         virReportSystemError(errno,
+                              "%s", _("cannot connect to netlink socket"));
+         rc = -1;
+@@ -146,7 +146,7 @@
+ 
+     nlmsg->nlmsg_pid = getpid();
+ 
+-    nbytes = nl_send_auto_complete(nlhandle, nl_msg);
++    nbytes = nl_send_auto_complete(nlsock, nl_msg);
+     if (nbytes < 0) {
+         virReportSystemError(errno,
+                              "%s", _("cannot send to netlink socket"));
+@@ -154,7 +154,7 @@
+         goto err_exit;
+     }
+ 
+-    fd = nl_socket_get_fd(nlhandle);
++    fd = nl_socket_get_fd(nlsock);
+ 
+     FD_ZERO(&readfds);
+     FD_SET(fd, &readfds);
+@@ -171,7 +171,7 @@
+         goto err_exit;
+     }
+ 
+-    *respbuflen = nl_recv(nlhandle, &nladdr, respbuf, NULL);
++    *respbuflen = nl_recv(nlsock, &nladdr, respbuf, NULL);
+     if (*respbuflen <= 0) {
+         virReportSystemError(errno,
+                              "%s", _("nl_recv failed"));
+@@ -184,7 +184,7 @@
+         *respbuflen = 0;
+     }
+ 
+-    nl_handle_destroy(nlhandle);
++    nl_socket_free(nlsock);
+     return rc;
+ }
+ 
