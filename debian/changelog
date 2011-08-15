@@ -1,3 +1,12 @@
+libvirt (0.7.5-5ubuntu27.17) lucid-proposed; urgency=low
+
+  * debian/libvirt-bin.upstart: add a pre-stop script to shut down running VMs
+    before the host shuts down.  (LP: #350936)
+  * debian/libvirt-bin.default: add a comment that this file is not actually
+    used at startup.  (LP: #823638)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 15 Aug 2011 15:20:37 -0500
+
 libvirt (0.7.5-5ubuntu27.16) lucid-security; urgency=low
 
   * SECURITY UPDATE: integer overflow in virDomainGetVcpus()
