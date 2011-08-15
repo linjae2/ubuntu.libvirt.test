@@ -1,3 +1,11 @@
+libvirt (0.8.8-1ubuntu6.6) natty-proposed; urgency=low
+
+  * libvirt-bin.upstart: add a pre-stop script to shut down running VMs
+    before the host shuts down.  (LP: #350936)
+  * Source /etc/default/libvirt-bin at the upstart 'start' section (LP: #823638)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 15 Aug 2011 17:57:01 -0500
+
 libvirt (0.8.8-1ubuntu6.5) natty-security; urgency=low
 
   * SECURITY UPDATE: integer overflow in virDomainGetVcpus()
