@@ -79,6 +79,10 @@ pre-stop script
 	log_msg "libvirt-bin: exiting pre-stop at $(date)"
 end script
 
+# /etc/default/libvirt-bin will be deprecated soon.
 # If you used to set $libvirtd_opts in /etc/default/libvirt-bin,
 # change the 'exec' line here instead.
-exec /usr/sbin/libvirtd $libvirtd_opts
+script
+	[ -r /etc/default/libvirt-bin ] && . /etc/default/libvirt-bin
+	exec /usr/sbin/libvirtd $libvirtd_opts
+end script
