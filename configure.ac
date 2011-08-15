@@ -2382,6 +2382,12 @@ if test "$with_macvtap" = "yes"; then
     ])
 fi
 
+# see https://bugs.launchpad.net/bugs/823711
+case "$host" in
+  arm*-*linux* )
+    LIBNL_LIBS=`echo $LIBNL_LIBS | sed 's/ *-lnl-@<:@^ @:>@*//g'`
+    ;;
+esac
 AC_SUBST([LIBNL_CFLAGS])
 AC_SUBST([LIBNL_LIBS])
 
