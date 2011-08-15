@@ -1,6 +1,10 @@
 # Defaults for libvirt-bin initscript (/etc/init.d/libvirt-bin)
 # This is a POSIX shell fragment
 
+# IMPORTANT: This file is not consulted by the libvirt-bin upstart
+# job.  if you wish to change how libvirt is started, please edit
+# /etc/init/libvirt-bin directly.
+
 # Start libvirtd to handle qemu/kvm:
 start_libvirtd="yes"
 
