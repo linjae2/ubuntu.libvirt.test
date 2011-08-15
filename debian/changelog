@@ -1,3 +1,9 @@
+libvirt (0.9.2-4ubuntu9) oneiric; urgency=low
+
+  * Fix build failure on ARM, working around a GCC issue. LP: #823711.
+
+ -- Matthias Klose <doko@ubuntu.com>  Mon, 15 Aug 2011 16:00:53 +0200
+
 libvirt (0.9.2-4ubuntu8) oneiric; urgency=low
 
   * Port to libnl3.

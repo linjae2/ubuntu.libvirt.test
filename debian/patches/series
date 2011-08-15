@@ -28,3 +28,4 @@ Update-generated-autoconf-files.patch
 lp810270.patch
 CVE-2011-2511.patch
 libnl3.patch
+arm-gcc-workaround.patch
