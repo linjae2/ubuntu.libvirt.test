@@ -787,7 +787,7 @@ doRemoteOpen (virConnectPtr conn,
          * Fedora's 'nc' doesn't have this option, and apparently defaults
          * to the desired behavior.
          */
-        virCommandAddArgFormat(cmd, "'%s -q 2>&1 | grep -q \"requires an argument\";"
+        virCommandAddArgFormat(cmd, "'%s -q 2>&1 | grep \"requires an argument\" >/dev/null;"
                                "if [ $? -eq 0 ] ; then"
                                "   CMD=\"%s -q 0 -U %s\";"
                                "else"

@@ -7,19 +7,21 @@ Origin: other, based on http://hg.fedorahosted.org/hg/virt-manager/rev/1f781890e
 Origin: other, based on http://hg.fedorahosted.org/hg/virt-manager/rev/f09702cfdb03
 Origin: other, based on http://hg.fedorahosted.org/hg/virt-manager/rev/907ee61e5558
 Origin: other, based on http://hg.fedorahosted.org/hg/virt-manager/rev/16fcbf77e47e
+Origin: other, based on http://git.fedorahosted.org/git/?p=virt-manager.git;a=commit;h=d078def94fda124304da95733d41844384e739ad
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/517478
-Ubuntu-Bug: https://bugs.launchpad.net/ubuntu/+source/virt-manager/+bug/605172
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/virt-manager/+bug/605172
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/792985
 Bug: https://bugzilla.redhat.com/show_bug.cgi?id=562176
 Bug: https://bugzilla.redhat.com/show_bug.cgi?id=614420
 ---
  src/remote/remote_driver.c |   34 +++++++++++++++++++++++++++++-----
  1 files changed, 29 insertions(+), 5 deletions(-)
 
-diff --git a/src/remote/remote_driver.c b/src/remote/remote_driver.c
-index 8335a1a..3058381 100644
---- a/src/remote/remote_driver.c
-+++ b/src/remote/remote_driver.c
-@@ -774,12 +774,36 @@ doRemoteOpen (virConnectPtr conn,
+Index: libvirt-0.9.2/src/remote/remote_driver.c
+===================================================================
+--- libvirt-0.9.2.orig/src/remote/remote_driver.c	2011-08-16 13:27:54.922550114 -0400
++++ libvirt-0.9.2/src/remote/remote_driver.c	2011-08-16 13:28:46.252550463 -0400
+@@ -774,12 +774,36 @@
              virCommandAddArgList(cmd, "-T", "-o", "BatchMode=yes", "-e",
                                   "none", NULL);
          }
@@ -40,7 +42,7 @@ index 8335a1a..3058381 100644
 +         * Fedora's 'nc' doesn't have this option, and apparently defaults
 +         * to the desired behavior.
 +         */
-+        virCommandAddArgFormat(cmd, "'%s -q 2>&1 | grep -q \"requires an argument\";"
++        virCommandAddArgFormat(cmd, "'%s -q 2>&1 | grep \"requires an argument\" >/dev/null;"
 +                               "if [ $? -eq 0 ] ; then"
 +                               "   CMD=\"%s -q 0 -U %s\";"
 +                               "else"
@@ -61,4 +63,3 @@ index 8335a1a..3058381 100644
          priv->is_secure = 1;
      }
  
--- 
