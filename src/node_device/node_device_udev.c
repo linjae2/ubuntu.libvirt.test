@@ -1423,7 +1423,7 @@ static int udevDeviceMonitorShutdown(void)
         ret = -1;
     }
 
-#if defined __s390__ || defined __s390x_
+#if defined __s390__ || defined __s390x_ || defined __arm__
     /* Nothing was initialized, nothing needs to be cleaned up */
 #else
     /* pci_system_cleanup returns void */
@@ -1478,6 +1478,8 @@ out:
 }
 
 
+/* DMI is intel-compatible specific */
+#if defined(__x86_64__) || defined(__i386__) || defined(__amd64__)
 static void
 udevGetDMIData(union _virNodeDevCapData *data)
 {
@@ -1550,7 +1552,7 @@ out:
     }
     return;
 }
-
+#endif
 
 static int udevSetupSystemDev(void)
 {
@@ -1574,7 +1576,9 @@ static int udevSetupSystemDev(void)
         goto out;
     }
 
+#if defined(__x86_64__) || defined(__i386__) || defined(__amd64__)
     udevGetDMIData(&def->caps->data);
+#endif
 
     dev = virNodeDeviceAssignDef(&driverState->devs, def);
     if (dev == NULL) {

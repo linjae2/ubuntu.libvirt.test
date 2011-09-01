@@ -29,3 +29,6 @@ lp810270.patch
 CVE-2011-2511.patch
 libnl3.patch
 arm-gcc-workaround.patch
+lxc-do-not-require-ifconfig-or-ip-commands-in-guest.patch
+0001-make-ptmx-a-bind-mount-rather-than-symlink.patch
+arm-startup-fixes.patch
