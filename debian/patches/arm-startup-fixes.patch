@@ -1,0 +1,73 @@
+diff -Naurp libvirt-0.9.2.orig//src/node_device/node_device_udev.c libvirt-0.9.2//src/node_device/node_device_udev.c
+--- libvirt-0.9.2.orig//src/node_device/node_device_udev.c	2011-05-26 10:10:00.000000000 -0400
++++ libvirt-0.9.2//src/node_device/node_device_udev.c	2011-09-01 15:25:35.763234379 -0400
+@@ -1423,7 +1423,7 @@ static int udevDeviceMonitorShutdown(voi
+         ret = -1;
+     }
+ 
+-#if defined __s390__ || defined __s390x_
++#if defined __s390__ || defined __s390x_ || defined __arm__
+     /* Nothing was initialized, nothing needs to be cleaned up */
+ #else
+     /* pci_system_cleanup returns void */
+@@ -1478,6 +1478,8 @@ out:
+ }
+ 
+ 
++/* DMI is intel-compatible specific */
++#if defined(__x86_64__) || defined(__i386__) || defined(__amd64__)
+ static void
+ udevGetDMIData(union _virNodeDevCapData *data)
+ {
+@@ -1550,7 +1552,7 @@ out:
+     }
+     return;
+ }
+-
++#endif
+ 
+ static int udevSetupSystemDev(void)
+ {
+@@ -1574,7 +1576,9 @@ static int udevSetupSystemDev(void)
+         goto out;
+     }
+ 
++#if defined(__x86_64__) || defined(__i386__) || defined(__amd64__)
+     udevGetDMIData(&def->caps->data);
++#endif
+ 
+     dev = virNodeDeviceAssignDef(&driverState->devs, def);
+     if (dev == NULL) {
+diff -Naurp libvirt-0.9.2.orig//src/util/sysinfo.c libvirt-0.9.2//src/util/sysinfo.c
+--- libvirt-0.9.2.orig//src/util/sysinfo.c	2011-06-05 20:15:13.000000000 -0400
++++ libvirt-0.9.2//src/util/sysinfo.c	2011-09-01 15:23:36.763235815 -0400
+@@ -82,7 +82,10 @@ void virSysinfoDefFree(virSysinfoDefPtr
+  *
+  * Returns: a filled up sysinfo structure or NULL in case of error
+  */
+-#ifdef WIN32
++#ifdef defined(WIN32) || \
++	   !(defined((__x86_64__) || \
++	   defined(__i386__) || \
++	   defined(__amd64__))
+ virSysinfoDefPtr
+ virSysinfoRead(void) {
+     /*
+@@ -94,7 +97,7 @@ virSysinfoRead(void) {
+     return NULL;
+ }
+ 
+-#else /* !WIN32 */
++#else /* !WIN32 && !X86 */
+ 
+ virSysinfoDefPtr
+ virSysinfoRead(void) {
+@@ -211,7 +214,7 @@ no_memory:
+     ret = NULL;
+     goto cleanup;
+ }
+-#endif /* !WIN32 */
++#endif /* !WIN32I && !X86 */
+ 
+ /**
+  * virSysinfoFormat:
