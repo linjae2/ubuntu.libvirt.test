@@ -1477,7 +1477,6 @@ out:
     return;
 }
 
-
 /* DMI is intel-compatible specific */
 #if defined(__x86_64__) || defined(__i386__) || defined(__amd64__)
 static void
@@ -1554,6 +1553,7 @@ out:
 }
 #endif
 
+
 static int udevSetupSystemDev(void)
 {
     virNodeDeviceDefPtr def = NULL;
@@ -1604,7 +1604,7 @@ static int udevDeviceMonitorStartup(int privileged)
     struct udev *udev = NULL;
     int ret = 0;
 
-#if defined __s390__ || defined __s390x_
+#if defined __s390__ || defined __s390x_ || defined __arm__
     /* On s390(x) system there is no PCI bus.
      * Therefore there is nothing to initialize here. */
 #else
