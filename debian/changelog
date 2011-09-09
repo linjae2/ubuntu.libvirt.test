@@ -1,3 +1,10 @@
+libvirt (0.9.2-4ubuntu13) oneiric; urgency=low
+
+  * debian/patches/arm-startup-fies.patch: Fix typo in patch. 
+    (LP: #845764) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 09 Sep 2011 14:41:53 -0400
+
 libvirt (0.9.2-4ubuntu12) oneiric; urgency=low
 
   [Serge Hallyn]
