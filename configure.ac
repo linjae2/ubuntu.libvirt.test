@@ -2376,7 +2376,7 @@ LIBNL_CFLAGS=""
 LIBNL_LIBS=""
 
 if test "$with_macvtap" = "yes"; then
-    PKG_CHECK_MODULES([LIBNL], [libnl-1 >= $LIBNL_REQUIRED], [
+    PKG_CHECK_MODULES([LIBNL], [libnl-3.0 >= $LIBNL_REQUIRED], [
     ], [
         AC_MSG_ERROR([libnl-devel >= $LIBNL_REQUIRED is required for macvtap support])
     ])
