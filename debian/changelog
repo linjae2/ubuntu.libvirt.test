@@ -1,3 +1,11 @@
+libvirt (0.9.2-4ubuntu15) oneiric; urgency=low
+
+  * Pull patches from upstream which prevent a race between lxc driver and
+    controller while a container is started, easily exposed by nova.
+    (LP: #842845)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 03 Oct 2011 14:39:05 -0500
+
 libvirt (0.9.2-4ubuntu14) oneiric; urgency=low
 
   * debian/patches/lp832507.patch: update virt-aa-helper to use the correct
