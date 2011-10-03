@@ -12759,6 +12759,9 @@ vshInit(vshControl *ctl)
     /* set up the signals handlers to catch disconnections */
     vshSetupSignals();
 
+    if (virInitialize() < 0)
+        return false;
+
     if (virEventRegisterDefaultImpl() < 0)
         return false;
 
