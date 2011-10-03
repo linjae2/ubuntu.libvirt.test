@@ -54468,6 +54468,12 @@ $as_echo "yes" >&6; }
 fi
 fi
 
+# see https://bugs.launchpad.net/bugs/823711
+case "$host" in
+  arm*-*linux* )
+    LIBNL_LIBS=`echo $LIBNL_LIBS | sed 's/ *-lnl-[^ ]*//g'`
+    ;;
+esac
 
 
 
