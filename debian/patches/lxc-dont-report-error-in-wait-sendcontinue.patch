@@ -1,0 +1,80 @@
+commit 6973594ca8c868a6e6c976035b37d60ed9b42500
+Author: Cole Robinson <crobinso@redhat.com>
+Date:   Thu Jun 2 11:18:14 2011 -0400
+
+    lxc: Don't report error in Wait/SendContinue
+    
+    We will reuse these shortly, and each use should have a different error
+    message.
+
+Index: libvirt-0.9.2/src/lxc/lxc_container.c
+===================================================================
+--- libvirt-0.9.2.orig/src/lxc/lxc_container.c	2011-10-03 14:56:33.303616491 -0500
++++ libvirt-0.9.2/src/lxc/lxc_container.c	2011-10-03 14:56:36.475632257 -0500
+@@ -196,13 +196,10 @@
+ 
+     writeCount = safewrite(control, &msg, sizeof(msg));
+     if (writeCount != sizeof(msg)) {
+-        virReportSystemError(errno, "%s",
+-                             _("Unable to send container continue message"));
+         goto error_out;
+     }
+ 
+     rc = 0;
+-
+ error_out:
+     return rc;
+ }
+@@ -225,13 +222,8 @@
+     readLen = saferead(control, &msg, sizeof(msg));
+     if (readLen != sizeof(msg) ||
+         msg != LXC_CONTINUE_MSG) {
+-        virReportSystemError(errno, "%s",
+-                             _("Failed to read the container continue message"));
+         return -1;
+     }
+-    VIR_FORCE_CLOSE(control);
+-
+-    VIR_DEBUG("Received container continue message");
+ 
+     return 0;
+ }
+@@ -794,8 +786,12 @@
+         goto cleanup;
+ 
+     /* Wait for interface devices to show up */
+-    if (lxcContainerWaitForContinue(argv->monitor) < 0)
++    if (lxcContainerWaitForContinue(argv->monitor) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("Failed to read the container continue message"));
+         goto cleanup;
++    }
++    VIR_DEBUG("Received container continue message");
+ 
+     /* rename and enable interfaces */
+     if (lxcContainerRenameAndEnableInterfaces(argv->nveths,
+@@ -815,6 +811,7 @@
+ cleanup:
+     VIR_FREE(ttyPath);
+     VIR_FORCE_CLOSE(ttyfd);
++    VIR_FORCE_CLOSE(argv->monitor);
+ 
+     if (ret == 0) {
+         /* this function will only return if an error occured */
+Index: libvirt-0.9.2/src/lxc/lxc_controller.c
+===================================================================
+--- libvirt-0.9.2.orig/src/lxc/lxc_controller.c	2011-05-26 09:10:00.000000000 -0500
++++ libvirt-0.9.2/src/lxc/lxc_controller.c	2011-10-03 14:56:36.479632253 -0500
+@@ -731,8 +731,11 @@
+     if (lxcControllerMoveInterfaces(nveths, veths, container) < 0)
+         goto cleanup;
+ 
+-    if (lxcContainerSendContinue(control[0]) < 0)
++    if (lxcContainerSendContinue(control[0]) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("Unable to send container continue message"));
+         goto cleanup;
++    }
+ 
+     /* Now the container is running, there's no need for us to keep
+        any elevated capabilities */

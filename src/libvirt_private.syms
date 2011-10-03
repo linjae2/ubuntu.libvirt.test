@@ -133,6 +133,8 @@ virCommandTransferFD;
 virCommandTranslateStatus;
 virCommandWait;
 virCommandWriteArgLog;
+virFork;
+virRun;
 
 
 # conf.h
@@ -969,7 +971,6 @@ virEnumToString;
 virEventAddHandle;
 virEventRemoveHandle;
 virExec;
-virExecWithHook;
 virFileAbsPath;
 virFileBuildPath;
 virFileDeletePid;
@@ -992,7 +993,6 @@ virFileStripSuffix;
 virFileWaitForDevices;
 virFileWriteStr;
 virFindFileInPath;
-virFork;
 virFormatMacAddr;
 virGenerateMacAddr;
 virGetGroupID;
@@ -1011,7 +1011,6 @@ virParseVersionString;
 virPipeReadUntilEOF;
 virRandom;
 virRandomInitialize;
-virRun;
 virSetBlocking;
 virSetCloseExec;
 virSetInherit;

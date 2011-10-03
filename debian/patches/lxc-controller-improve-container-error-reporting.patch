@@ -1,0 +1,150 @@
+commit a7e2dd1c32c0173972f09504512fa421ee583e92
+Author: Cole Robinson <crobinso@redhat.com>
+Date:   Thu Jun 2 11:52:32 2011 -0400
+
+    lxc: controller: Improve container error reporting
+    
+    Add a handshake with the cloned container process to try and detect
+    if it fails to start.
+
+Index: libvirt-0.9.2/src/lxc/lxc_container.c
+===================================================================
+--- libvirt-0.9.2.orig/src/lxc/lxc_container.c	2011-10-03 14:56:42.991664538 -0500
++++ libvirt-0.9.2/src/lxc/lxc_container.c	2011-10-03 14:56:45.651677729 -0500
+@@ -91,6 +91,7 @@
+     char **veths;
+     int monitor;
+     char *ttyPath;
++    int handshakefd;
+ };
+ 
+ 
+@@ -129,7 +130,7 @@
+  *
+  * Returns 0 on success or -1 in case of error
+  */
+-static int lxcContainerSetStdio(int control, int ttyfd)
++static int lxcContainerSetStdio(int control, int ttyfd, int handshakefd)
+ {
+     int rc = -1;
+     int open_max, i;
+@@ -150,7 +151,7 @@
+      * close all FDs before executing the container */
+     open_max = sysconf (_SC_OPEN_MAX);
+     for (i = 0; i < open_max; i++)
+-        if (i != ttyfd && i != control) {
++        if (i != ttyfd && i != control && i != handshakefd) {
+             int tmpfd = i;
+             VIR_FORCE_CLOSE(tmpfd);
+         }
+@@ -803,7 +804,13 @@
+     if (lxcContainerDropCapabilities() < 0)
+         goto cleanup;
+ 
+-    if (lxcContainerSetStdio(argv->monitor, ttyfd) < 0) {
++    if (lxcContainerSendContinue(argv->handshakefd) < 0) {
++        virReportSystemError(errno, "%s",
++                            _("failed to send continue signal to controller"));
++        goto cleanup;
++    }
++
++    if (lxcContainerSetStdio(argv->monitor, ttyfd, argv->handshakefd) < 0) {
+         goto cleanup;
+     }
+ 
+@@ -812,6 +819,7 @@
+     VIR_FREE(ttyPath);
+     VIR_FORCE_CLOSE(ttyfd);
+     VIR_FORCE_CLOSE(argv->monitor);
++    VIR_FORCE_CLOSE(argv->handshakefd);
+ 
+     if (ret == 0) {
+         /* this function will only return if an error occured */
+@@ -871,13 +879,15 @@
+                       unsigned int nveths,
+                       char **veths,
+                       int control,
++                      int handshakefd,
+                       char *ttyPath)
+ {
+     pid_t pid;
+     int flags;
+     int stacksize = getpagesize() * 4;
+     char *stack, *stacktop;
+-    lxc_child_argv_t args = { def, nveths, veths, control, ttyPath };
++    lxc_child_argv_t args = { def, nveths, veths, control, ttyPath,
++                              handshakefd};
+ 
+     /* allocate a stack for the container */
+     if (VIR_ALLOC_N(stack, stacksize) < 0) {
+Index: libvirt-0.9.2/src/lxc/lxc_container.h
+===================================================================
+--- libvirt-0.9.2.orig/src/lxc/lxc_container.h	2011-10-03 14:56:42.991664538 -0500
++++ libvirt-0.9.2/src/lxc/lxc_container.h	2011-10-03 14:56:45.651677729 -0500
+@@ -52,6 +52,7 @@
+                       unsigned int nveths,
+                       char **veths,
+                       int control,
++                      int handshakefd,
+                       char *ttyPath);
+ 
+ int lxcContainerAvailable(int features);
+Index: libvirt-0.9.2/src/lxc/lxc_controller.c
+===================================================================
+--- libvirt-0.9.2.orig/src/lxc/lxc_controller.c	2011-10-03 14:56:42.995664568 -0500
++++ libvirt-0.9.2/src/lxc/lxc_controller.c	2011-10-03 14:56:45.651677729 -0500
+@@ -617,6 +617,7 @@
+ {
+     int rc = -1;
+     int control[2] = { -1, -1};
++    int containerhandshake[2] = { -1, -1 };
+     int containerPty = -1;
+     char *containerPtyPath = NULL;
+     pid_t container = -1;
+@@ -630,6 +631,12 @@
+         goto cleanup;
+     }
+ 
++    if (socketpair(PF_UNIX, SOCK_STREAM, 0, containerhandshake) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("socketpair failed"));
++        goto cleanup;
++    }
++
+     root = virDomainGetRootFilesystem(def);
+ 
+     if (lxcSetContainerResources(def) < 0)
+@@ -725,9 +732,11 @@
+                                        nveths,
+                                        veths,
+                                        control[1],
++                                       containerhandshake[1],
+                                        containerPtyPath)) < 0)
+         goto cleanup;
+     VIR_FORCE_CLOSE(control[1]);
++    VIR_FORCE_CLOSE(containerhandshake[1]);
+ 
+     if (lxcControllerMoveInterfaces(nveths, veths, container) < 0)
+         goto cleanup;
+@@ -738,6 +747,12 @@
+         goto cleanup;
+     }
+ 
++    if (lxcContainerWaitForContinue(containerhandshake[0]) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("error receiving signal from container"));
++        goto cleanup;
++    }
++
+     /* Now the container is running, there's no need for us to keep
+        any elevated capabilities */
+     if (lxcControllerClearCapabilities() < 0)
+@@ -760,6 +775,8 @@
+     VIR_FREE(containerPtyPath);
+     VIR_FORCE_CLOSE(containerPty);
+     VIR_FORCE_CLOSE(handshakefd);
++    VIR_FORCE_CLOSE(containerhandshake[0]);
++    VIR_FORCE_CLOSE(containerhandshake[1]);
+ 
+     if (container > 1) {
+         int status;

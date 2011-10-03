@@ -33,3 +33,9 @@ lxc-do-not-require-ifconfig-or-ip-commands-in-guest.patch
 0001-make-ptmx-a-bind-mount-rather-than-symlink.patch
 arm-startup-fixes.patch
 lp832507.patch
+lxc-move-virrun-etc-to-util-command.patch
+lxc-drop-container-stdio-as-late-as-possible.patch
+lxc-dont-report-error-in-wait-sendcontinue.patch
+lxc-refactor-controller-command-building.patch
+lxc-improve-guest-startup-error-reporting.patch
+lxc-controller-improve-container-error-reporting.patch
