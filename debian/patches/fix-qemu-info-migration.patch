@@ -1,0 +1,41 @@
+Author: Daniel P. Berrange <berrange@redhat.com>
+Description: Fix parsing of 'info migration' reply
+ .
+ This patch is only a portion of the upstream git commit
+ 0d3eee7fe8bcaa49 by Daniel P. Berrange
+
+Index: libvirt-0.7.5/src/qemu/qemu_monitor_text.c
+===================================================================
+--- libvirt-0.7.5.orig/src/qemu/qemu_monitor_text.c	2011-11-18 18:49:20.000000000 +0000
++++ libvirt-0.7.5/src/qemu/qemu_monitor_text.c	2011-11-18 19:01:42.000000000 +0000
+@@ -977,18 +977,19 @@
+                 goto done;
+             tmp += strlen(MIGRATION_TRANSFER_PREFIX);
+ 
+-            if (virStrToLong_ull(tmp, NULL, 10, transferred) < 0) {
++            if (virStrToLong_ull(tmp, &end, 10, transferred) < 0 || !end) {
+                 qemudReportError(NULL, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot parse migration data transferred statistic %s"), tmp);
+                 goto cleanup;
+             }
+             *transferred *= 1024;
++            tmp = end;
+ 
+             if (!(tmp = strstr(tmp, MIGRATION_REMAINING_PREFIX)))
+                 goto done;
+             tmp += strlen(MIGRATION_REMAINING_PREFIX);
+ 
+-            if (virStrToLong_ull(tmp, NULL, 10, remaining) < 0) {
++            if (virStrToLong_ull(tmp, &end, 10, remaining) < 0 || !end) {
+                 qemudReportError(NULL, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot parse migration data remaining statistic %s"), tmp);
+                 goto cleanup;
+@@ -999,7 +1000,7 @@
+                 goto done;
+             tmp += strlen(MIGRATION_TOTAL_PREFIX);
+ 
+-            if (virStrToLong_ull(tmp, NULL, 10, total) < 0) {
++            if (virStrToLong_ull(tmp, &end, 10, total) < 0 || !end) {
+                 qemudReportError(NULL, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot parse migration data total statistic %s"), tmp);
+                 goto cleanup;
