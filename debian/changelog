@@ -1,3 +1,9 @@
+libvirt (0.7.5-5ubuntu27.20) lucid-proposed; urgency=low
+
+  * Fix parsing of 'info migration' from upstream git. (LP: #869590)
+
+ -- Simon Deziel <simon.deziel@gmail.com>  Thu, 06 Oct 2011 23:14:08 +0000
+
 libvirt (0.7.5-5ubuntu27.19) lucid-proposed; urgency=low
 
   * New version of debian/patches/lxc-use-own-ptyfns.patch.  Previous version
