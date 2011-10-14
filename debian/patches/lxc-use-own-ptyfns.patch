@@ -1,0 +1,113 @@
+Description: lxc: use our own hand-rolled code in place of unlockpt and grantpt
+ The glibc ones cannot handle ptys opened in a devpts not mounted at /dev/pts.
+Author: Serge Hallyn <serge.hallyn@canonical.com>
+Forwarded: yes
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/863629
+
+Index: libvirt-0.9.2/src/lxc/lxc_controller.c
+===================================================================
+--- libvirt-0.9.2.orig/src/lxc/lxc_controller.c	2011-10-14 09:39:57.679384039 -0500
++++ libvirt-0.9.2/src/lxc/lxc_controller.c	2011-10-14 10:38:55.036924897 -0500
+@@ -39,6 +39,8 @@
+ #include <getopt.h>
+ #include <sys/mount.h>
+ #include <locale.h>
++#include <grp.h>
++#include <sys/stat.h>
+ 
+ #if HAVE_CAPNG
+ # include <cap-ng.h>
+@@ -607,6 +609,81 @@
+ #endif
+ 
+ static int
++lxcGetTtyGid(void) {
++    char *grtmpbuf;
++    struct group grbuf;
++    size_t grbuflen = sysconf(_SC_GETGR_R_SIZE_MAX);
++    struct group *p;
++    int ret;
++    gid_t tty_gid = -1;
++
++    /* Get the group ID of the special `tty' group.  */
++    if (grbuflen == (size_t) -1L)
++        /* `sysconf' does not support _SC_GETGR_R_SIZE_MAX.
++           Try a moderate value.  */
++        grbuflen = 1024;
++
++    grtmpbuf = (char *) alloca (grbuflen);
++    ret = getgrnam_r("tty", &grbuf, grtmpbuf, grbuflen, &p);
++    if (ret || p != NULL)
++        tty_gid = p->gr_gid;
++
++    return tty_gid == -1 ? getgid() : tty_gid;
++}
++
++#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO) /* 0777 */
++
++/* heavily borrowed from glibc, but don't assume devpts == "/dev/pts" */
++static int
++lxcCreateTty(char *ptmx, int *ttymaster, char **ttyName)
++{
++    int rc = -1;
++    int ret;
++    int ptyno;
++    uid_t uid;
++    gid_t gid;
++    struct stat st;
++    int unlock = 0;
++
++    if ((*ttymaster = open(ptmx, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0)
++        goto cleanup;
++
++    if (ioctl(*ttymaster, TIOCSPTLCK, &unlock) < 0)
++        goto cleanup;
++
++    ret = ioctl(*ttymaster, TIOCGPTN, &ptyno);
++    if (ret < 0)
++        goto cleanup;
++
++    ret = fstat(*ttymaster, &st);
++
++    uid = getuid();
++    gid = lxcGetTtyGid();
++    if (st.st_uid != uid || st.st_gid != gid)
++        if (fchown(*ttymaster, uid, gid) < 0)
++            goto cleanup;
++
++    if ((st.st_mode & ACCESSPERMS) != (S_IRUSR|S_IWUSR|S_IWGRP))
++        if (fchmod(*ttymaster, S_IRUSR|S_IWUSR|S_IWGRP) < 0)
++            goto cleanup;
++
++    if (VIR_ALLOC_N(*ttyName, PATH_MAX) < 0) {
++        errno = ENOMEM;
++        goto cleanup;
++    }
++
++    snprintf(*ttyName, PATH_MAX, "/dev/pts/%d", ptyno);
++
++    rc = 0;
++
++cleanup:
++    if (rc != 0)
++        VIR_FORCE_CLOSE(*ttymaster);
++
++    return rc;
++}
++
++static int
+ lxcControllerRun(virDomainDefPtr def,
+                  unsigned int nveths,
+                  char **veths,
+@@ -706,10 +783,7 @@
+ 
+     if (devptmx) {
+         VIR_DEBUG("Opening tty on private %s", devptmx);
+-        if (virFileOpenTtyAt(devptmx,
+-                             &containerPty,
+-                             &containerPtyPath,
+-                             0) < 0) {
++        if (lxcCreateTty(devptmx, &containerPty, &containerPtyPath) < 0) {
+             virReportSystemError(errno, "%s",
+                                  _("Failed to allocate tty"));
+             goto cleanup;
