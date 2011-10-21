@@ -1,3 +1,9 @@
+libvirt (0.9.6-1ubuntu2) precise; urgency=low
+
+  * debian/patches/lxc-use-own-ptyfns.patch: Re-add dropped patch. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 21 Oct 2011 10:30:36 -0400
+
 libvirt (0.9.6-1ubuntu1) precise; urgency=low
 
   * Merged from debian unstable, remaning changes are:
