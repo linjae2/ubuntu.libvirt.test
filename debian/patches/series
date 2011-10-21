@@ -24,3 +24,4 @@ libnl3.patch
 arm-gcc-workaround.patch
 lp832507.patch
 9029-skip-tests.patch
+lxc-use-own-ptyfns.patch
