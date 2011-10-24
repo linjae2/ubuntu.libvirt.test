@@ -3719,7 +3719,7 @@ ebiptablesDriverInit(bool privileged)
     if (virMutexInit(&execCLIMutex))
         return EINVAL;
 
-    gawk_cmd_path = virFindFileInPath("gawk");
+    gawk_cmd_path = virFindFileInPath("awk");
     grep_cmd_path = virFindFileInPath("grep");
 
     ebtables_cmd_path = virFindFileInPath("ebtables");
