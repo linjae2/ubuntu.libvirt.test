@@ -1,3 +1,13 @@
+libvirt (0.9.6-1ubuntu3) precise; urgency=low
+
+  * debian/control: - add radvd to build-depends (LP: #862136)
+  * debian/control: remove moved relations from original:
+    - libvirt-bin Depends: move netcat-openbsd, bridge-utils, dnsmasq-base
+      (>= 2.46-1), and iptables from Recommends to Depends
+    - libvirt-bin Recommends: move qemu to Suggests
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 24 Oct 2011 08:54:14 -0500
+
 libvirt (0.9.6-1ubuntu2) precise; urgency=low
 
   * debian/patches/lxc-use-own-ptyfns.patch: Re-add dropped patch. 
