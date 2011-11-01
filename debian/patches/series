@@ -39,3 +39,4 @@ lxc-dont-report-error-in-wait-sendcontinue.patch
 lxc-refactor-controller-command-building.patch
 lxc-improve-guest-startup-error-reporting.patch
 lxc-controller-improve-container-error-reporting.patch
+lxc-use-own-ptyfns.patch
