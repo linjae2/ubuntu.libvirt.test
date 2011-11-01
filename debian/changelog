@@ -1,3 +1,11 @@
+libvirt (0.8.8-1ubuntu6.7) natty-proposed; urgency=low
+
+  * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which
+    can't handle opening a pty in a devpts not mounted at /dev/pts.
+    (LP: #863629)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 01 Nov 2011 18:00:51 +0000
+
 libvirt (0.8.8-1ubuntu6.6) natty-proposed; urgency=low
 
   * libvirt-bin.upstart: add a pre-stop script to shut down running VMs
