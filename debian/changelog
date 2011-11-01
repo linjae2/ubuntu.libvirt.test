@@ -1,3 +1,11 @@
+libvirt (0.8.3-1ubuntu19.3) maverick-proposed; urgency=low
+
+  * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which
+    can't handle opening a pty in a devpts not mounted at /dev/pts.
+    (LP: #863629)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 01 Nov 2011 18:03:04 +0000
+
 libvirt (0.8.3-1ubuntu19.2) maverick-proposed; urgency=low
 
   * debian/libvirt-bin.upstart: add a pre-stop script to shut down running VMs
