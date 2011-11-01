@@ -1,3 +1,11 @@
+libvirt (0.9.2-4ubuntu15.1) oneiric-proposed; urgency=low
+
+  * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which
+    can't handle opening a pty in a devpts not mounted at /dev/pts.
+    (LP: #863629)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 01 Nov 2011 17:52:53 +0000
+
 libvirt (0.9.2-4ubuntu15) oneiric; urgency=low
 
   * Pull patches from upstream which prevent a race between lxc driver and
