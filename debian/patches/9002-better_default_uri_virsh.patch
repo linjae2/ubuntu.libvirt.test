@@ -1,0 +1,61 @@
+Description: Make virsh connect to qemu:///system by default if the user
+  has write access to /var/run/libvirt/libvirt-sock and qemu:///session if
+  not.
+Author: Soren Hansen <soren@ubuntu.com>
+Forwarded: no
+
+Index: libvirt-0.8.7/tools/virsh.c
+===================================================================
+diff -Naurp libvirt-0.9.6.orig//tools/Makefile.am libvirt-0.9.6//tools/Makefile.am
+--- libvirt-0.9.6.orig//tools/Makefile.am	2011-07-31 21:32:35.000000000 -0400
++++ libvirt-0.9.6//tools/Makefile.am	2011-10-09 21:31:31.767799919 -0400
+@@ -5,8 +5,10 @@ INCLUDES = \
+ 	-I../include -I$(top_srcdir)/include \
+ 	-I$(top_srcdir)/gnulib/lib -I../gnulib/lib	\
+ 	-I$(top_srcdir)/src				\
++	-I$(top_srcdir)/src/remote                      \
+ 	-I$(top_srcdir)/src/util			\
+ 	-I$(top_srcdir)					\
++	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"        \
+ 	$(GETTEXT_CPPFLAGS)
+ 
+ POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
+diff -Naurp libvirt-0.9.6.orig//tools/Makefile.in libvirt-0.9.6//tools/Makefile.in
+--- libvirt-0.9.6.orig//tools/Makefile.in	2011-09-22 02:49:53.000000000 -0400
++++ libvirt-0.9.6//tools/Makefile.in	2011-10-09 21:35:46.075800045 -0400
+@@ -1390,8 +1390,10 @@ INCLUDES = \
+ 	-I../include -I$(top_srcdir)/include \
+ 	-I$(top_srcdir)/gnulib/lib -I../gnulib/lib	\
+ 	-I$(top_srcdir)/src				\
++	-I$(top_srcdir)/src/remote                        \
+ 	-I$(top_srcdir)/src/util			\
+ 	-I$(top_srcdir)					\
++	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"        \
+ 	$(GETTEXT_CPPFLAGS)
+ 
+ POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
+diff -Naurp libvirt-0.9.6.orig//tools/virsh.c libvirt-0.9.6//tools/virsh.c
+--- libvirt-0.9.6.orig//tools/virsh.c	2011-09-22 01:41:15.000000000 -0400
++++ libvirt-0.9.6//tools/virsh.c	2011-10-09 21:30:34.343799800 -0400
+@@ -60,6 +60,8 @@
+ #include "command.h"
+ #include "virkeycode.h"
+ 
++#include "remote_driver.h"
++
+ static char *progname;
+ 
+ #define VIRSH_MAX_XML_FILE 10*1024*1024
+@@ -16195,7 +16197,11 @@ main(int argc, char **argv)
+ 
+     if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
+         ctl->name = vshStrdup(ctl, defaultConn);
+-    }
++    } else if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
++		ctl->name = vshStrdup(ctl, "qemu:///system");
++	} else {
++		ctl->name = vshStrdup(ctl, "qemu:///session");
++	}
+ 
+     if (!vshParseArgv(ctl, argc, argv)) {
+         vshDeinit(ctl);
