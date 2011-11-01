@@ -1,0 +1,184 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: fix AppArmor driver for pipe character devices
+ The AppArmor security driver adds only the path specified in the domain XML
+ for character devices of type 'pipe'. It should be using <path>.in and
+ <path>.out. We do this by creating a new vah_add_file_chardev() and use
+ it for char devices instead of vah_add_file(). Also adjust valid_path() to
+ accept S_FIFO (since qemu chardevs of type 'pipe' use fifos).
+Bug-Ubuntu: https://launchpad.net/bugs/832507
+
+======================================================================================
+diff -Naurp libvirt-0.9.6.orig//src/security/virt-aa-helper.c libvirt-0.9.6//src/security/virt-aa-helper.c
+--- libvirt-0.9.6.orig//src/security/virt-aa-helper.c	2011-09-16 08:37:07.000000000 -0400
++++ libvirt-0.9.6//src/security/virt-aa-helper.c	2011-10-09 22:33:49.035801734 -0400
+@@ -3,7 +3,7 @@
+  * virt-aa-helper: wrapper program used by AppArmor security driver.
+  *
+  * Copyright (C) 2010-2011 Red Hat, Inc.
+- * Copyright (C) 2009-2010 Canonical Ltd.
++ * Copyright (C) 2009-2011 Canonical Ltd.
+  *
+  * See COPYING.LIB for the License of this software
+  *
+@@ -568,9 +568,6 @@ valid_path(const char *path, const bool
+             case S_IFDIR:
+                 return 1;
+                 break;
+-            case S_IFIFO:
+-                return 1;
+-                break;
+             case S_IFSOCK:
+                 return 1;
+                 break;
+@@ -796,6 +793,51 @@ vah_add_file(virBufferPtr buf, const cha
+ }
+ 
+ static int
++vah_add_file_chardev(virBufferPtr buf,
++                     const char *path,
++                     const char *perms,
++                     const int type)
++{
++    char *pipe_in;
++    char *pipe_out;
++    int rc = -1;
++
++    if (type == VIR_DOMAIN_CHR_TYPE_PIPE) {
++        /* add the pipe input */
++        if (virAsprintf(&pipe_in, "%s.in", path) == -1) {
++            vah_error(NULL, 0, _("could not allocate memory"));
++            goto clean;
++        }
++
++        if (vah_add_file(buf, pipe_in, perms) != 0)
++            goto clean_pipe_in;
++
++        /* add the pipe output */
++        if (virAsprintf(&pipe_out, "%s.out", path) == -1) {
++            vah_error(NULL, 0, _("could not allocate memory"));
++            goto clean_pipe_in;
++        }
++
++        if (vah_add_file(buf, pipe_out, perms) != 0)
++            goto clean_pipe_out;
++
++        rc = 0;
++      clean_pipe_out:
++        VIR_FREE(pipe_out);
++      clean_pipe_in:
++        VIR_FREE(pipe_in);
++    } else {
++        /* add the file */
++        if (vah_add_file(buf, path, perms) != 0)
++            goto clean;
++        rc = 0;
++    }
++
++  clean:
++    return rc;
++}
++
++static int
+ file_iterate_hostdev_cb(usbDevice *dev ATTRIBUTE_UNUSED,
+                         const char *file, void *opaque)
+ {
+@@ -835,7 +877,6 @@ add_file_path(virDomainDiskDefPtr disk,
+     return ret;
+ }
+ 
+-
+ static int
+ get_files(vahControl * ctl)
+ {
+@@ -878,12 +919,17 @@ get_files(vahControl * ctl)
+              ctl->def->serials[i]->source.type == VIR_DOMAIN_CHR_TYPE_FILE ||
+              ctl->def->serials[i]->source.type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
+             ctl->def->serials[i]->source.data.file.path)
+-            if (vah_add_file(&buf,
+-                             ctl->def->serials[i]->source.data.file.path, "rw") != 0)
++            if (vah_add_file_chardev(&buf,
++                                     ctl->def->serials[i]->source.data.file.path,
++                                     "rw",
++                                     ctl->def->serials[i]->source.type) != 0)
+                 goto clean;
+ 
+     if (ctl->def->console && ctl->def->console->source.data.file.path)
+-        if (vah_add_file(&buf, ctl->def->console->source.data.file.path, "rw") != 0)
++        if (vah_add_file_chardev(&buf,
++                                 ctl->def->console->source.data.file.path,
++                                 "rw",
++                                 ctl->def->console->source.type) != 0)
+             goto clean;
+ 
+     for (i = 0 ; i < ctl->def->nparallels; i++)
+@@ -893,9 +939,10 @@ get_files(vahControl * ctl)
+              ctl->def->parallels[i]->source.type == VIR_DOMAIN_CHR_TYPE_FILE ||
+              ctl->def->parallels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
+             ctl->def->parallels[i]->source.data.file.path)
+-            if (vah_add_file(&buf,
+-                             ctl->def->parallels[i]->source.data.file.path,
+-                             "rw") != 0)
++            if (vah_add_file_chardev(&buf,
++                                     ctl->def->parallels[i]->source.data.file.path,
++                                     "rw",
++                                     ctl->def->parallels[i]->source.type) != 0)
+                 goto clean;
+ 
+     for (i = 0 ; i < ctl->def->nchannels; i++)
+@@ -905,9 +952,10 @@ get_files(vahControl * ctl)
+              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_FILE ||
+              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
+             ctl->def->channels[i]->source.data.file.path)
+-            if (vah_add_file(&buf,
+-                             ctl->def->channels[i]->source.data.file.path,
+-                             "rw") != 0)
++            if (vah_add_file_chardev(&buf,
++                                     ctl->def->channels[i]->source.data.file.path,
++                                     "rw",
++                                     ctl->def->channels[i]->source.type) != 0)
+                 goto clean;
+ 
+     if (ctl->def->os.kernel)
+diff -Naurp libvirt-0.9.6.orig//tests/virt-aa-helper-test libvirt-0.9.6//tests/virt-aa-helper-test
+--- libvirt-0.9.6.orig//tests/virt-aa-helper-test	2011-06-10 02:50:15.000000000 -0400
++++ libvirt-0.9.6//tests/virt-aa-helper-test	2011-10-09 22:33:49.035801734 -0400
+@@ -1,4 +1,10 @@
+ #!/bin/sh
++#
++# virt-aa-helper needs a working locale system. If testing this in a chroot
++# system, need to make sure these are setup properly. On Debian-based systems
++# this can be done with something like (as root):
++#  locale-gen en_US.UTF-8
++
+ set -e
+ 
+ test_hostdev="no"
+@@ -255,6 +261,10 @@ testme "0" "serial (pty)" "-r -u $valid_
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<serial type='dev'><source path='/dev/ttyS0'/><target port='0'/></serial></devices>,g" "$template_xml" > "$test_xml"
+ testme "0" "serial (dev)" "-r -u $valid_uuid" "$test_xml"
+ 
++sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<serial type='pipe'><source path='$tmpdir/serial.pipe'/><target port='0'/></serial></devices>,g" "$template_xml" > "$test_xml"
++mkfifo "$tmpdir/serial.pipe.in" "$tmpdir/serial.pipe.out"
++testme "0" "serial (pipe)" "-r -u $valid_uuid" "$test_xml"
++
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<console type='file'><source path='$tmpdir/console.log'/><target port='0'/></console></devices>,g" "$template_xml" > "$test_xml"
+ touch "$tmpdir/console.log"
+ testme "0" "console" "-r -u $valid_uuid" "$test_xml"
+@@ -262,9 +272,17 @@ testme "0" "console" "-r -u $valid_uuid"
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<console type='pty'><target port='0'/></console></devices>,g" "$template_xml" > "$test_xml"
+ testme "0" "console (pty)" "-r -u $valid_uuid" "$test_xml"
+ 
++sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<console type='pipe'><source path='$tmpdir/console.pipe'/><target port='0'/></console></devices>,g" "$template_xml" > "$test_xml"
++mkfifo "$tmpdir/console.pipe.in" "$tmpdir/console.pipe.out"
++testme "0" "console (pipe)" "-r -u $valid_uuid" "$test_xml"
++
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<parallel type='pty'><source path='/dev/pts/0'/><target port='0'/></parallel></devices>,g" "$template_xml" > "$test_xml"
+ testme "0" "parallel (pty)" "-r -u $valid_uuid" "$test_xml"
+ 
++sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<parallel type='pipe'><source path='$tmpdir/parallel.pipe'/><target port='0'/></parallel></devices>,g" "$template_xml" > "$test_xml"
++mkfifo "$tmpdir/parallel.pipe.in" "$tmpdir/parallel.pipe.out"
++testme "0" "parallel (pipe)" "-r -u $valid_uuid" "$test_xml"
++
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<channel type='unix'><source mode='bind' path='$tmpdir/guestfwd'/><target type='guestfwd' address='10.0.2.1' port='4600'/></channel></devices>,g" "$template_xml" > "$test_xml"
+ touch "$tmpdir/guestfwd"
+ testme "0" "channel (unix)" "-r -u $valid_uuid" "$test_xml"
