@@ -1,0 +1,145 @@
+Description: lxc: use our own hand-rolled code in place of unlockpt and grantpt
+ The glibc ones cannot handle ptys opened in a devpts not mounted at /dev/pts.
+Author: Serge Hallyn <serge.hallyn@canonical.com>
+Forwarded: yes
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/863629
+
+Index: libvirt-0.8.8/src/lxc/lxc_controller.c
+===================================================================
+--- libvirt-0.8.8.orig/src/lxc/lxc_controller.c	2011-11-01 17:44:49.000000000 +0000
++++ libvirt-0.8.8/src/lxc/lxc_controller.c	2011-11-01 18:00:33.444798114 +0000
+@@ -36,6 +36,8 @@
+ #include <getopt.h>
+ #include <sys/mount.h>
+ #include <locale.h>
++#include <grp.h>
++#include <sys/stat.h>
+ 
+ #if HAVE_CAPNG
+ # include <cap-ng.h>
+@@ -574,6 +576,50 @@
+ # define MS_SLAVE              (1<<19)
+ #endif
+ 
++/* Create a private tty using the private devpts at PTMX, returning
++ * the master in *TTYMASTER and the name of the slave, _from the
++ * perspective of the guest after remounting file systems_, in
++ * *TTYNAME.  Heavily borrowed from glibc, but doesn't require that
++ * devpts == "/dev/pts" */
++static int
++lxcCreateTty(char *ptmx, int *ttymaster, char **ttyName)
++{
++    int ret = -1;
++    int ptyno;
++    int unlock = 0;
++
++    if ((*ttymaster = open(ptmx, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0)
++        goto cleanup;
++
++    if (ioctl(*ttymaster, TIOCSPTLCK, &unlock) < 0)
++        goto cleanup;
++
++    if (ioctl(*ttymaster, TIOCGPTN, &ptyno) < 0)
++        goto cleanup;
++
++    /* If mount() succeeded at honoring newinstance, then the kernel
++     * was new enough to also honor the mode=0620,gid=5 options, which
++     * guarantee that the new pty already has correct permissions; so
++     * while glibc has to fstat(), fchmod(), and fchown() for older
++     * kernels, we can skip those steps.  ptyno shouldn't currently be
++     * anything other than 0, but let's play it safe.  */
++    if (virAsprintf(ttyName, "/dev/pts/%d", ptyno) < 0) {
++        virReportOOMError();
++        errno = ENOMEM;
++        goto cleanup;
++    }
++
++    ret = 0;
++
++cleanup:
++    if (ret != 0) {
++        VIR_FORCE_CLOSE(*ttymaster);
++        VIR_FREE(*ttyName);
++    }
++
++    return ret;
++}
++
+ static int
+ lxcControllerRun(virDomainDefPtr def,
+                  unsigned int nveths,
+@@ -649,6 +695,8 @@
+             goto cleanup;
+         }
+ 
++		/* XXX show we support gid=X or X!=5 for distros which use
++		* a different gid for tty? */
+         VIR_DEBUG("Mouting 'devpts' on %s", devpts);
+         if (mount("devpts", devpts, "devpts", 0, "newinstance,ptmxmode=0666") < 0) {
+             virReportSystemError(errno,
+@@ -665,10 +713,7 @@
+ 
+     if (devptmx) {
+         VIR_DEBUG("Opening tty on private %s", devptmx);
+-        if (virFileOpenTtyAt(devptmx,
+-                             &containerPty,
+-                             &containerPtyPath,
+-                             0) < 0) {
++        if (lxcCreateTty(devptmx, &containerPty, &containerPtyPath) < 0) {
+             virReportSystemError(errno, "%s",
+                                  _("Failed to allocate tty"));
+             goto cleanup;
+Index: libvirt-0.8.8/src/util/util.c
+===================================================================
+--- libvirt-0.8.8.orig/src/util/util.c	2011-02-10 03:08:11.000000000 +0000
++++ libvirt-0.8.8/src/util/util.c	2011-11-01 18:00:33.444798114 +0000
+@@ -1777,21 +1777,16 @@
+                    char **ttyName,
+                    int rawmode)
+ {
+-    return virFileOpenTtyAt("/dev/ptmx",
+-                            ttymaster,
+-                            ttyName,
+-                            rawmode);
+-}
+-
+-#ifdef __linux__
+-int virFileOpenTtyAt(const char *ptmx,
+-                     int *ttymaster,
+-                     char **ttyName,
+-                     int rawmode)
+-{
+     int rc = -1;
+ 
+-    if ((*ttymaster = open(ptmx, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0)
++#ifdef WIN32
++    /* mingw completely lacks pseudo-terminals, and the gnulib
++     * replacements are not (yet) license compatible.  */
++    errno = ENOSYS;
++
++#else /* !WIN32 */
++
++    if ((*ttymaster = posix_openpt(O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0)
+         goto cleanup;
+ 
+     if (unlockpt(*ttymaster) < 0)
+@@ -1828,18 +1823,9 @@
+     if (rc != 0)
+         VIR_FORCE_CLOSE(*ttymaster);
+ 
++#endif /* !WIN32 */
+     return rc;
+-
+-}
+-#else
+-int virFileOpenTtyAt(const char *ptmx ATTRIBUTE_UNUSED,
+-                     int *ttymaster ATTRIBUTE_UNUSED,
+-                     char **ttyName ATTRIBUTE_UNUSED,
+-                     int rawmode ATTRIBUTE_UNUSED)
+-{
+-    return -1;
+ }
+-#endif
+ 
+ char* virFilePid(const char *dir, const char* name)
+ {
