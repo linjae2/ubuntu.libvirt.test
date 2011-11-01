@@ -44,3 +44,4 @@
 fix-tap-interfaces-mac-addrs.patch
 9908-CVE-2011-1486.patch
 9909-CVE-2011-2511.patch
+lxc-use-own-ptyfns.patch
