@@ -205,11 +205,13 @@ static int testSocketUNIXAccept(const void *data ATTRIBUTE_UNUSED)
     if (progname[0] == '/') {
         if (virAsprintf(&path, "%s-test.sock", progname) < 0) {
             virReportOOMError();
+            ret = EXIT_AM_SKIP;
             goto cleanup;
         }
     } else {
         if (virAsprintf(&path, "%s/%s-test.sock", abs_builddir, progname) < 0) {
             virReportOOMError();
+            ret = EXIT_AM_SKIP;
             goto cleanup;
         }
     }
@@ -254,11 +256,13 @@ static int testSocketUNIXAddrs(const void *data ATTRIBUTE_UNUSED)
     if (progname[0] == '/') {
         if (virAsprintf(&path, "%s-test.sock", progname) < 0) {
             virReportOOMError();
+            ret = EXIT_AM_SKIP;
             goto cleanup;
         }
     } else {
         if (virAsprintf(&path, "%s/%s-test.sock", abs_builddir, progname) < 0) {
             virReportOOMError();
+            ret = EXIT_AM_SKIP;
             goto cleanup;
         }
     }
