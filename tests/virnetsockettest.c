@@ -498,7 +498,12 @@ mymain(void)
     struct testSSHData sshData1 = {
         .nodename = "somehost",
         .path = "/tmp/socket",
-        .expectOut = "somehost sh -c 'if nc -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then     ARG=-q0;fi;nc $ARG -U /tmp/socket'\n",
+        .expectOut = "somehost sh -c 'if 'nc' -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then "
+                                         "ARG=-q0;"
+                                     "else "
+                                         "ARG=;"
+                                     "fi;"
+                                     "'nc' $ARG -U /tmp/socket'\n",
     };
     if (virtTestRun("SSH test 1", 1, testSocketSSH, &sshData1) < 0)
         ret = -1;
@@ -511,7 +516,13 @@ mymain(void)
         .noTTY = true,
         .noVerify = false,
         .path = "/tmp/socket",
-        .expectOut = "-p 9000 -l fred -T -o BatchMode=yes -e none somehost sh -c 'if netcat -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then     ARG=-q0;fi;netcat $ARG -U /tmp/socket'\n",
+        .expectOut = "-p 9000 -l fred -T -o BatchMode=yes -e none somehost sh -c '"
+                     "if 'netcat' -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then "
+                         "ARG=-q0;"
+                     "else "
+                         "ARG=;"
+                     "fi;"
+                     "'netcat' $ARG -U /tmp/socket'\n",
     };
     if (virtTestRun("SSH test 2", 1, testSocketSSH, &sshData2) < 0)
         ret = -1;
@@ -524,7 +535,13 @@ mymain(void)
         .noTTY = false,
         .noVerify = true,
         .path = "/tmp/socket",
-        .expectOut = "-p 9000 -l fred -o StrictHostKeyChecking=no somehost sh -c 'if netcat -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then     ARG=-q0;fi;netcat $ARG -U /tmp/socket'\n",
+        .expectOut = "-p 9000 -l fred -o StrictHostKeyChecking=no somehost sh -c '"
+                     "if 'netcat' -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then "
+                         "ARG=-q0;"
+                     "else "
+                         "ARG=;"
+                     "fi;"
+                     "'netcat' $ARG -U /tmp/socket'\n",
     };
     if (virtTestRun("SSH test 3", 1, testSocketSSH, &sshData3) < 0)
         ret = -1;
@@ -540,8 +557,13 @@ mymain(void)
     struct testSSHData sshData5 = {
         .nodename = "crashyhost",
         .path = "/tmp/socket",
-        .expectOut = "crashyhost sh -c 'if nc -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then     ARG=-q0;fi;nc $ARG -U /tmp/socket'\n",
-
+        .expectOut = "crashyhost sh -c "
+                     "'if 'nc' -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then "
+                         "ARG=-q0;"
+                     "else "
+                         "ARG=;"
+                     "fi;"
+                     "'nc' $ARG -U /tmp/socket'\n",
         .dieEarly = true,
     };
     if (virtTestRun("SSH test 5", 1, testSocketSSH, &sshData5) < 0)
@@ -552,9 +574,29 @@ mymain(void)
         .path = "/tmp/socket",
         .keyfile = "/root/.ssh/example_key",
         .noVerify = true,
-        .expectOut = "-i /root/.ssh/example_key -o StrictHostKeyChecking=no example.com sh -c 'if nc -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then     ARG=-q0;fi;nc $ARG -U /tmp/socket'\n",
+        .expectOut = "-i /root/.ssh/example_key -o StrictHostKeyChecking=no example.com sh -c '"
+                     "if 'nc' -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then "
+                         "ARG=-q0;"
+                     "else "
+                         "ARG=;"
+                     "fi;"
+                     "'nc' $ARG -U /tmp/socket'\n",
     };
     if (virtTestRun("SSH test 6", 1, testSocketSSH, &sshData6) < 0)
+        ret = -1;
+
+    struct testSSHData sshData7 = {
+        .nodename = "somehost",
+        .netcat = "nc -4",
+        .path = "/tmp/socket",
+        .expectOut = "somehost sh -c 'if ''nc -4'' -q 2>&1 | grep \"requires an argument\" >/dev/null 2>&1; then "
+                                         "ARG=-q0;"
+                                     "else "
+                                         "ARG=;"
+                                     "fi;"
+                                     "''nc -4'' $ARG -U /tmp/socket'\n",
+    };
+    if (virtTestRun("SSH test 7", 1, testSocketSSH, &sshData7) < 0)
         ret = -1;
 
 #endif
