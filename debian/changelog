@@ -1,3 +1,14 @@
+libvirt (0.9.6-2ubuntu2) precise; urgency=low
+
+  * Move creation of /var/log/libvirt/{lxc,uml,qemu} dirs from libvirt-bin.dirs
+    to libvirt-bin.postinst.  Otherwise after a 'apt-get remove libvirt-bin',
+    that dir will be removed (if empty) but /etc/logrotate.d/libvirtd will 
+    still try to rotate it and raise errors. (LP: #886770)
+  * debian/rules: Fix a bug in the new logic for installing upstream-supplied
+    logrotate files.  (LP: #887312)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 07 Nov 2011 12:58:49 -0600
+
 libvirt (0.9.6-2ubuntu1) precise; urgency=low
 
   * Sync changes from 0.9.6-2 to install the libvirtd manpage (LP: #522710)
