@@ -116,6 +116,10 @@ case "$1" in
                 apparmor_parser -r "$profile" || true
             fi
         done
+
+	for dir in qemu uml lxc; do
+	    mkdir -p /var/log/libvirt/$dir
+	done
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
