@@ -6,8 +6,8 @@ Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/863629
 
 Index: libvirt-0.7.5/src/lxc/lxc_controller.c
 ===================================================================
---- libvirt-0.7.5.orig/src/lxc/lxc_controller.c	2009-12-22 09:37:57.000000000 +0000
-+++ libvirt-0.7.5/src/lxc/lxc_controller.c	2011-11-01 18:09:01.884640447 +0000
+--- libvirt-0.7.5.orig/src/lxc/lxc_controller.c	2009-12-22 03:37:57.000000000 -0600
++++ libvirt-0.7.5/src/lxc/lxc_controller.c	2011-11-14 14:45:38.387123200 -0600
 @@ -34,6 +34,8 @@
  #include <signal.h>
  #include <getopt.h>
@@ -49,7 +49,7 @@ Index: libvirt-0.7.5/src/lxc/lxc_controller.c
 +     * kernels, we can skip those steps.  ptyno shouldn't currently be
 +     * anything other than 0, but let's play it safe.  */
 +    if (virAsprintf(ttyName, "/dev/pts/%d", ptyno) < 0) {
-+        virReportOOMError();
++        virReportOOMError(NULL);
 +        errno = ENOMEM;
 +        goto cleanup;
 +    }
@@ -58,7 +58,7 @@ Index: libvirt-0.7.5/src/lxc/lxc_controller.c
 +
 +cleanup:
 +    if (ret != 0) {
-+        VIR_FORCE_CLOSE(*ttymaster);
++        close(*ttymaster);
 +        VIR_FREE(*ttyName);
 +    }
 +
@@ -91,8 +91,8 @@ Index: libvirt-0.7.5/src/lxc/lxc_controller.c
              goto cleanup;
 Index: libvirt-0.7.5/src/util/util.c
 ===================================================================
---- libvirt-0.7.5.orig/src/util/util.c	2009-12-22 09:37:57.000000000 +0000
-+++ libvirt-0.7.5/src/util/util.c	2011-11-01 18:10:25.634868420 +0000
+--- libvirt-0.7.5.orig/src/util/util.c	2009-12-22 03:37:57.000000000 -0600
++++ libvirt-0.7.5/src/util/util.c	2011-11-14 14:40:21.471119103 -0600
 @@ -1167,21 +1167,16 @@
                     char **ttyName,
                     int rawmode)
