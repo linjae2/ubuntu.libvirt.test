@@ -1,3 +1,10 @@
+libvirt (0.7.5-5ubuntu27.19) lucid-proposed; urgency=low
+
+  * New version of debian/patches/lxc-use-own-ptyfns.patch.  Previous version
+    failed to build.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 14 Nov 2011 15:11:24 -0600
+
 libvirt (0.7.5-5ubuntu27.18) lucid-proposed; urgency=low
 
   * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which
