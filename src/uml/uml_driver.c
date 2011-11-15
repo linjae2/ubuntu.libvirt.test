@@ -2195,6 +2195,18 @@ static virDriver umlDriver = {
     NULL, /* qemuDomainMonitorCommand */
 };
 
+static int
+umlVMFilterRebuild(virConnectPtr conn ATTRIBUTE_UNUSED,
+                   virHashIterator iter, void *data)
+{
+    struct uml_driver *driver = uml_driver;
+
+    umlDriverLock(driver);
+    virHashForEach(uml_driver->domains.objs, iter, data);
+    umlDriverUnlock(driver);
+
+    return 0;
+}
 
 static virStateDriver umlStateDriver = {
     .name = "UML",
@@ -2204,8 +2216,14 @@ static virStateDriver umlStateDriver = {
     .active = umlActive,
 };
 
+static virNWFilterCallbackDriver umlCallbackDriver = {
+    .name = "UML",
+    .vmFilterRebuild = umlVMFilterRebuild,
+};
+
 int umlRegister(void) {
     virRegisterDriver(&umlDriver);
     virRegisterStateDriver(&umlStateDriver);
+    virNWFilterRegisterCallbackDriver(&umlCallbackDriver);
     return 0;
 }
