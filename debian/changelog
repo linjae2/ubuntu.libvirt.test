@@ -1,3 +1,10 @@
+libvirt (0.8.3-1ubuntu19.4) maverick-proposed; urgency=low
+
+  * New version of debian/patches/lxc-use-own-ptyfns.patch.  Previous version
+    failed to build.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 15 Nov 2011 08:06:57 -0600
+
 libvirt (0.8.3-1ubuntu19.3) maverick-proposed; urgency=low
 
   * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which

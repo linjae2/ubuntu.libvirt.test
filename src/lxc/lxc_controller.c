@@ -550,7 +550,7 @@ lxcCreateTty(char *ptmx, int *ttymaster, char **ttyName)
 
 cleanup:
     if (ret != 0) {
-        VIR_FORCE_CLOSE(*ttymaster);
+        close(*ttymaster);
         VIR_FREE(*ttyName);
     }
 
