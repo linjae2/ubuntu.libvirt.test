@@ -1,3 +1,13 @@
+libvirt (0.9.7-2ubuntu2) precise; urgency=low
+
+  * apparmor-allow-tunnelled-migration.patch: adjust virt-aa-helper to
+    allow tunnelled migration (LP: #869553)
+    (Thanks to Simon Deziel <simon.deziel@gmail.com>)
+  * fix break in last upload: *really* don't apply patch
+    debian/Don-t-enable-default-network-on-boot.patch
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 18 Nov 2011 15:52:38 -0600
+
 libvirt (0.9.7-2ubuntu1) precise; urgency=low
 
   * Merged from debian unstable (LP: #889104) (LP: #890036).

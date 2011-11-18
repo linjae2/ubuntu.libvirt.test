@@ -1,0 +1,20 @@
+Author: Simon Deziel <simon.deziel@gmail.com>
+Description: adjust virt-aa-helper to allow tunnelled migrations.
+Bug-Ubuntu: https://launchpad.net/bugs/869553
+Forwarded: yes
+
+Index: libvirt-0.9.7/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-0.9.7.orig/src/security/virt-aa-helper.c	2011-11-08 03:53:30.000000000 +0000
++++ libvirt-0.9.7/src/security/virt-aa-helper.c	2011-11-18 23:12:34.586147906 +0000
+@@ -1220,6 +1220,10 @@
+                               LOCALSTATEDIR, ctl->def->name);
+             virBufferAsprintf(&buf, "  \"/run/libvirt/**/%s.pid\" rwk,\n",
+                               ctl->def->name);
++            virBufferAsprintf(&buf, "  \"%s/run/libvirt/**/*.tunnelmigrate.dest.%s\" rw,\n",
++                              LOCALSTATEDIR, ctl->def->name);
++            virBufferAsprintf(&buf, "  \"/run/libvirt/**/*.tunnelmigrate.dest.%s\" rw,\n",
++                              ctl->def->name);
+             if (ctl->files)
+                 virBufferAdd(&buf, ctl->files, -1);
+         }
