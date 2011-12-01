@@ -122,6 +122,12 @@ case "$1" in
 	for dir in qemu uml lxc; do
 	    touch /var/log/libvirt/"${dir}"/.placeholder
 	done
+
+    # install default net on first install
+    if [ -z $2 ]; then
+        ln -s /etc/libvirt/qemu/networks/default.xml \
+            /etc/libvirt/qemu/networks/autostart/
+    fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
