@@ -38,6 +38,7 @@
 #include "virfile.h"
 #include "configmake.h"
 #include "command.h"
+#include "logging.h"
 
 #define VIR_FROM_THIS VIR_FROM_SECURITY
 #define SECURITY_APPARMOR_VOID_DOI      "0"

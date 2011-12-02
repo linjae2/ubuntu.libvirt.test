@@ -1,3 +1,9 @@
+libvirt (0.9.7-2ubuntu5) precise; urgency=low
+
+  * Fix compile failure (VIR_WARN needs logging.h)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 02 Dec 2011 13:50:12 -0600
+
 libvirt (0.9.7-2ubuntu4) precise; urgency=low
 
   * debian/apparmor/usr.sbin.libvirtd:

@@ -13,8 +13,16 @@ Forwarded: yes
 Index: libvirt-0.9.7/src/security/security_apparmor.c
 ===================================================================
 --- libvirt-0.9.7.orig/src/security/security_apparmor.c	2011-09-01 03:01:48.000000000 -0500
-+++ libvirt-0.9.7/src/security/security_apparmor.c	2011-12-02 12:43:28.030701460 -0600
-@@ -791,9 +791,9 @@
++++ libvirt-0.9.7/src/security/security_apparmor.c	2011-12-02 13:49:59.866633870 -0600
+@@ -38,6 +38,7 @@
+ #include "virfile.h"
+ #include "configmake.h"
+ #include "command.h"
++#include "logging.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_SECURITY
+ #define SECURITY_APPARMOR_VOID_DOI      "0"
+@@ -791,9 +792,9 @@
      }
  
      if (virFileResolveLink(proc, &fd_path) < 0) {
