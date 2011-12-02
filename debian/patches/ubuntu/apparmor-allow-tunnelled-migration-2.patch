@@ -1,0 +1,29 @@
+Description: Don't fail if we can't resolve a filename
+ The pipe for tunnelled migration appears to be unresolvable, causing
+ migration to fail.  If we can't resolve the path, the worst that can
+ happen is that we should have given permission to the file but didn't.
+ Otherwise (especially since this is a /proc/$$/fd/N file) the file
+ is already open and libvirt won't be refused access by apparmor
+ anyway.
+ (Changelog: Dec 2: per jdstrand comment, also change the Error to a Warn)
+Author: Serge Hallyn <serge.hallyn@ubuntu.com>
+Bug-Ubuntu: https://launchpad.net/bugs/869553
+Forwarded: yes
+
+Index: libvirt-0.9.7/src/security/security_apparmor.c
+===================================================================
+--- libvirt-0.9.7.orig/src/security/security_apparmor.c	2011-09-01 03:01:48.000000000 -0500
++++ libvirt-0.9.7/src/security/security_apparmor.c	2011-12-02 12:43:28.030701460 -0600
+@@ -791,9 +791,9 @@
+     }
+ 
+     if (virFileResolveLink(proc, &fd_path) < 0) {
+-        virSecurityReportError(VIR_ERR_INTERNAL_ERROR,
+-                               "%s", _("could not find path for descriptor"));
+-        return rc;
++        /* it's a deleted file, presumably.  Ignore? */
++        VIR_WARN("could not find path for descriptor %s, skipping", proc);
++        return 0;
+     }
+ 
+     return reload_profile(mgr, vm, fd_path, true);

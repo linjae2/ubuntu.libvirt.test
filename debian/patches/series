@@ -22,3 +22,4 @@ ubuntu/9021-fix-uint64_t.patch
 ubuntu/libnl3.patch
 ubuntu/arm-gcc-workaround.patch
 ubuntu/apparmor-allow-tunnelled-migration.patch
+ubuntu/apparmor-allow-tunnelled-migration-2.patch

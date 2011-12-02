@@ -4,6 +4,8 @@
 
 /usr/sbin/libvirtd {
   #include <abstractions/base>
+  # Site-specific additions and overrides. See local/README for details.
+  #include <local/usr.sbin.libvirtd>
 
   capability kill,
   capability net_admin,
@@ -52,6 +54,7 @@
   audit deny /sys/kernel/security/apparmor/.* rwxl,
   /sys/kernel/security/apparmor/profiles r,
   /usr/lib/libvirt/* PUxr,
+  /etc/libvirt/hooks/** rmix,
 
   # allow changing to our UUID-based named profiles
   change_profile -> @{LIBVIRT}-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*,
