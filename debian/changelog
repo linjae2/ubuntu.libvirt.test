@@ -1,3 +1,11 @@
+libvirt (0.9.7-2ubuntu6) precise; urgency=low
+
+  * debian/rules, libvirt-bin.dirs and libvirt-bin.install: put
+    /etc/apparmor.d/local/usr.sbin.libvirtd into place.  (fixes break since
+    0.9.7-2ubuntu4)  (LP: #900857)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 06 Dec 2011 11:03:16 -0600
+
 libvirt (0.9.7-2ubuntu5) precise; urgency=low
 
   * Fix compile failure (VIR_WARN needs logging.h)

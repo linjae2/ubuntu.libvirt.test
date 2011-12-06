@@ -2,6 +2,7 @@
 /etc/apparmor.d/disable
 /etc/apparmor.d/force-complain
 /etc/apparmor.d/libvirt
+/etc/apparmor.d/local
 /etc/cron.daily
 /usr/share/apport/package-hooks
 /var/lib/libvirt/boot
