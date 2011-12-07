@@ -123,8 +123,26 @@ case "$1" in
 	    touch /var/log/libvirt/"${dir}"/.placeholder
 	done
 
-    # install default net on first install
+    # 1. On an initial package install, create the default network autostart
+    #    symlink.
+    # 2. If the default.xml existed before upgrade, make sure it is recreated.
+    #    This won't be a problem on most upgrades, but when upgrading from a
+    #    version where the symlink came with the package, it will.
+    # 3. If upgrading from one of the bad libvirt versions which deleted the
+    #    symlink wrongly, recreate it
+    #
+    EXISTED="/etc/libvirt/qemu/networks/autostart/TMP_defaultexisted"
     if [ -z $2 ]; then
+        ln -s /etc/libvirt/qemu/networks/default.xml \
+            /etc/libvirt/qemu/networks/autostart/
+    elif [ -e "$EXISTED" ]; then
+    	rm -f "$EXISTED"
+	if [ ! -e /etc/libvirt/qemu/networks/autostart/default.xml ]; then
+		ln -s /etc/libvirt/qemu/networks/default.xml \
+		    /etc/libvirt/qemu/networks/autostart/
+	fi
+    elif [ $2 = "0.9.7-2ubuntu6" -o $2 = "0.9.7-2ubuntu5" -o \
+           $2 = "0.9.7-2ubuntu4" -o $2 = "0.9.7-2ubuntu3" ]; then
         ln -s /etc/libvirt/qemu/networks/default.xml \
             /etc/libvirt/qemu/networks/autostart/
     fi
