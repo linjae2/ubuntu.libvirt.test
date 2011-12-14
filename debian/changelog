@@ -1,3 +1,9 @@
+libvirt (0.8.8-1ubuntu6.8) natty-proposed; urgency=low
+
+  * add parted to build-depends (LP: #697046)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 14 Dec 2011 09:37:48 -0600
+
 libvirt (0.8.8-1ubuntu6.7) natty-proposed; urgency=low
 
   * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which
