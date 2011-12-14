@@ -1,3 +1,9 @@
+libvirt (0.7.5-5ubuntu27.21) lucid-proposed; urgency=low
+
+  * add parted to build-depends (LP: #697046)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 14 Dec 2011 09:24:00 -0600
+
 libvirt (0.7.5-5ubuntu27.20) lucid-proposed; urgency=low
 
   * Fix parsing of 'info migration' from upstream git. (LP: #869590)
