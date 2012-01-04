@@ -112,3 +112,7 @@
   /bin/dash rmix,
   /bin/dd rmix,
   /bin/cat rmix,
+  /etc/pki/CA/ r,
+  /etc/pki/CA/* r,
+  /etc/pki/libvirt/ r,
+  /etc/pki/libvirt/** r,
