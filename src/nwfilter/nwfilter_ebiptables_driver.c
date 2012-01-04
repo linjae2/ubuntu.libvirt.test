@@ -40,7 +40,7 @@
 #include "nwfilter_ebiptables_driver.h"
 #include "virfile.h"
 #include "command.h"
-
+#include "configmake.h"
 
 #define VIR_FROM_THIS VIR_FROM_NWFILTER
 
@@ -2489,7 +2489,7 @@ ebiptablesDisplayRuleInstance(virConnectPtr conn ATTRIBUTE_UNUSED,
  */
 static char *
 ebiptablesWriteToTempFile(const char *string) {
-    char filename[] = "/tmp/virtdXXXXXX";
+    char filename[] = LOCALSTATEDIR "/lib/libvirt/virtdXXXXXX";
     int len;
     char *filnam;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
