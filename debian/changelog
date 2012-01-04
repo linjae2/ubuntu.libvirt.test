@@ -1,3 +1,10 @@
+libvirt (0.9.7-2ubuntu8) precise; urgency=low
+
+  * debian/apparmor/libvirt-qemu: add /etc/pki/CA/* and /etc/pki/libvirt/**
+    (LP: #901272)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 04 Jan 2012 13:18:50 -0600
+
 libvirt (0.9.7-2ubuntu7) precise; urgency=low
 
   * Fix default network autostart symlink disappearing on upgrade (LP: #901298)
