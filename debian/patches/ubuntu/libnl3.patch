@@ -1,7 +1,7 @@
 Index: libvirt-0.9.7/configure
 ===================================================================
---- libvirt-0.9.7.orig/configure	2011-11-08 00:53:45.000000000 -0600
-+++ libvirt-0.9.7/configure	2011-11-16 07:38:46.364557529 -0600
+--- libvirt-0.9.7.orig/configure	2012-01-04 21:58:24.000000000 +0000
++++ libvirt-0.9.7/configure	2012-01-04 22:08:48.078244343 +0000
 @@ -59198,12 +59198,12 @@
      pkg_cv_LIBNL_CFLAGS="$LIBNL_CFLAGS"
   elif test -n "$PKG_CONFIG"; then
@@ -48,8 +48,8 @@ Index: libvirt-0.9.7/configure
  	echo "$LIBNL_PKG_ERRORS" >&5
 Index: libvirt-0.9.7/configure.ac
 ===================================================================
---- libvirt-0.9.7.orig/configure.ac	2011-11-08 00:30:57.000000000 -0600
-+++ libvirt-0.9.7/configure.ac	2011-11-16 07:38:46.376557527 -0600
+--- libvirt-0.9.7.orig/configure.ac	2012-01-04 21:58:24.000000000 +0000
++++ libvirt-0.9.7/configure.ac	2012-01-04 22:08:48.070244343 +0000
 @@ -2432,7 +2432,7 @@
  have_libnl=no
  
@@ -61,8 +61,8 @@ Index: libvirt-0.9.7/configure.ac
      ], [
 Index: libvirt-0.9.7/src/util/netlink.c
 ===================================================================
---- libvirt-0.9.7.orig/src/util/netlink.c	2011-06-24 02:21:07.000000000 -0500
-+++ libvirt-0.9.7/src/util/netlink.c	2011-11-16 07:38:46.392557528 -0600
+--- libvirt-0.9.7.orig/src/util/netlink.c	2012-01-04 21:58:24.000000000 +0000
++++ libvirt-0.9.7/src/util/netlink.c	2012-01-04 22:08:44.534244343 +0000
 @@ -74,15 +74,15 @@
      int fd;
      int n;
@@ -119,3 +119,29 @@ Index: libvirt-0.9.7/src/util/netlink.c
      return rc;
  }
  
+Index: libvirt-0.9.7/src/Makefile.am
+===================================================================
+--- libvirt-0.9.7.orig/src/Makefile.am	2012-01-04 22:08:44.374244341 +0000
++++ libvirt-0.9.7/src/Makefile.am	2012-01-04 22:09:09.226242179 +0000
+@@ -1481,7 +1481,7 @@
+ 		$(SECRET_CONF_SOURCES)				\
+ 		$(CPU_CONF_SOURCES)				\
+ 		$(NWFILTER_PARAM_CONF_SOURCES)
+-libvirt_lxc_LDFLAGS = $(WARN_CFLAGS) $(AM_LDFLAGS)
++libvirt_lxc_LDFLAGS = $(WARN_CFLAGS) $(AM_LDFLAGS) $(LIBNL_CFLAGS)
+ libvirt_lxc_LDADD = $(CAPNG_LIBS) $(YAJL_LIBS) \
+ 		$(LIBXML_LIBS) $(NUMACTL_LIBS) $(THREAD_LIBS) \
+ 		$(LIBNL_LIBS) $(AUDIT_LIBS) $(DEVMAPPER_LIBS) \
+Index: libvirt-0.9.7/src/Makefile.in
+===================================================================
+--- libvirt-0.9.7.orig/src/Makefile.in	2012-01-04 22:08:44.374244341 +0000
++++ libvirt-0.9.7/src/Makefile.in	2012-01-04 22:09:26.570235863 +0000
+@@ -3429,7 +3429,7 @@
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(LIBPARTED_CFLAGS) \
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(NUMACTL_CFLAGS) \
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(CAPNG_CFLAGS) \
+-@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(YAJL_CFLAGS) \
++@WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(YAJL_CFLAGS) $(LIBNL_CFLAGS) \
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(AUDIT_CFLAGS) \
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	-I@top_srcdir@/src/conf \
+ @WITH_LIBVIRTD_TRUE@@WITH_LXC_TRUE@	$(AM_CFLAGS) \
