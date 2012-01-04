@@ -19,7 +19,12 @@ grep '^#define WITH_QEMU 1' "$CONFIG_HEADER" > /dev/null ||
 conf="$abs_top_srcdir/daemon/libvirtd.conf"
 
 # Ensure that each commented out PARAMETER = VALUE line has the expected form.
-grep -v '\"PARAMETER = VALUE\"' "$conf" | grep '[a-z_]  *=  *[^ ]' | grep -vE '^#[a-z_]+ = ' \
+grep -v -e '\"PARAMETER = VALUE\"' \
+     -e 'unix_sock_group = \"libvirt\"' \
+     -e 'unix_sock_rw_perms = \"0770\"' \
+     -e 'auth_unix_ro = \"none\"' \
+     -e 'auth_unix_rw = \"none\"' \
+  "$conf" | grep '[a-z_]  *=  *[^ ]' | grep -vE '^#[a-z_]+ = ' \
   && { echo "$0: found unexpected lines (above) in $conf" 1>&2; exit 1; }
 
 # Start with the sample libvirtd.conf file, uncommenting all real directives.
