@@ -1,3 +1,10 @@
+libvirt (0.9.7-2ubuntu9) precise; urgency=low
+
+  * Build-Depend on libnl-3-dev. (LP: #908581)
+  * Update libnl3 patch to also pass LIBNL_CFLAGS in the LXC target.
+
+ -- Andreas Moog <amoog@ubuntu.com>  Wed, 04 Jan 2012 21:56:55 +0000
+
 libvirt (0.9.7-2ubuntu8) precise; urgency=low
 
   * debian/apparmor/libvirt-qemu: add /etc/pki/CA/* and /etc/pki/libvirt/**
