@@ -130,7 +130,6 @@ case "$1" in
     #    version where the symlink came with the package, it will.
     # 3. If upgrading from one of the bad libvirt versions which deleted the
     #    symlink wrongly, recreate it
-    #
     EXISTED="/etc/libvirt/qemu/networks/autostart/TMP_defaultexisted"
     if [ -z $2 ]; then
         ln -s /etc/libvirt/qemu/networks/default.xml \
@@ -143,6 +142,7 @@ case "$1" in
 	fi
     elif [ $2 = "0.9.7-2ubuntu6" -o $2 = "0.9.7-2ubuntu5" -o \
            $2 = "0.9.7-2ubuntu4" -o $2 = "0.9.7-2ubuntu3" ]; then
+        # This particular check can be removed at first upload to precise+1.
         ln -s /etc/libvirt/qemu/networks/default.xml \
             /etc/libvirt/qemu/networks/autostart/
     fi

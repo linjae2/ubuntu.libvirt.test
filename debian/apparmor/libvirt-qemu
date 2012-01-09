@@ -38,6 +38,7 @@
   /{dev,run}/shm r,
   /{dev,run}/shmpulse-shm* r,
   /{dev,run}/shmpulse-shm* rwk,
+  /run/shm/spice.* rw,
   /dev/snd/* rw,
   capability ipc_lock,
   # 'kill' is not required for sound and is a security risk. Do not enable
@@ -89,6 +90,7 @@
   /usr/bin/qemu-system-sparc rmix,
   /usr/bin/qemu-system-sparc64 rmix,
   /usr/bin/qemu-system-x86_64 rmix,
+  /usr/bin/qemu-system-x86_64-spice rmix,
   /usr/bin/qemu-alpha rmix,
   /usr/bin/qemu-arm rmix,
   /usr/bin/qemu-armeb rmix,

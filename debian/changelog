@@ -1,3 +1,15 @@
+libvirt (0.9.7-2ubuntu10) precise; urgency=low
+
+  * debian/control: move (cgroup-lite | cgroup-bin) from Suggests to Depends.
+    Libvirt-lxc is broken without it.
+  * apparmor/usr.lib.libvirt.virt-aa-helper: add 'deny /dev/dm-*' to silence
+    warnings about lvm backing stores (LP: #912007)
+  [ Peter Silva ]
+  * apparmor/libvirt-qemu: add rules to enable spice audio
+    (LP: #913023)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 09 Jan 2012 10:15:57 +0100
+
 libvirt (0.9.7-2ubuntu9) precise; urgency=low
 
   * Build-Depend on libnl-3-dev. (LP: #908581)
