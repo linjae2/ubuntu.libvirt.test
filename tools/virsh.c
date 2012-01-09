@@ -61,6 +61,8 @@
 #include "virkeycode.h"
 #include "network.h"
 
+#include "remote_driver.h"
+
 static char *progname;
 
 #define VIRSH_MAX_XML_FILE 10*1024*1024
@@ -16693,7 +16695,11 @@ main(int argc, char **argv)
 
     if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
         ctl->name = vshStrdup(ctl, defaultConn);
-    }
+    } else if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
+		ctl->name = vshStrdup(ctl, "qemu:///system");
+	} else {
+		ctl->name = vshStrdup(ctl, "qemu:///session");
+	}
 
     if (!vshParseArgv(ctl, argc, argv)) {
         vshDeinit(ctl);
