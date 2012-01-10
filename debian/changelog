@@ -1,3 +1,16 @@
+libvirt (0.9.7-2ubuntu12) precise; urgency=low
+
+  * enable use of libvirt with kvm-spice (LP: #903962):
+    . src/qemu/qemu_capabilities.c: search for 'kvm-spice' before
+      'kvm' (debian/patches/ubuntu/enable-kvm-spice.patch)
+    . debian/apparmor/libvirt-qemu:
+      * prepend 'owner' to /run/shm/spice.* rule
+      * add more needed spice perms
+  * move cgroup-lite | cgroup-bin to depends, now that cgroup-lite is in
+    main.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 10 Jan 2012 12:06:13 +0100
+
 libvirt (0.9.7-2ubuntu11) precise; urgency=low
 
   * debian/control: Revert cgroup-lite | cgroup-bin move from suggests to

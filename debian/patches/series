@@ -24,3 +24,4 @@ ubuntu/arm-gcc-workaround.patch
 ubuntu/apparmor-allow-tunnelled-migration.patch
 ubuntu/apparmor-allow-tunnelled-migration-2.patch
 fix-qemu-1.0.patch
+ubuntu/enable-kvm-spice.patch
