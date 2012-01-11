@@ -1,3 +1,10 @@
+libvirt (0.9.7-2ubuntu13) precise; urgency=low
+
+  * move cgroup-lite | cgroup-bin to depends, now that cgroup-lite is in
+    main.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 11 Jan 2012 14:02:40 +0100
+
 libvirt (0.9.7-2ubuntu12) precise; urgency=low
 
   * enable use of libvirt with kvm-spice (LP: #903962):

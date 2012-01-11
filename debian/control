@@ -50,6 +50,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
  adduser,
  bridge-utils,
+ cgroup-lite | cgroup-bin,
  dnsmasq-base (>= 2.46-1),
  gettext-base,
  iptables (>= 1.4.10),
@@ -65,7 +66,7 @@ Recommends:
  dmidecode,
  iproute,
  parted
-Suggests: policykit-1, apparmor, cgroup-lite | cgroup-bin, qemu-kvm | qemu (>= 0.9.1), radvd
+Suggests: policykit-1, apparmor, qemu-kvm | qemu (>= 0.9.1), radvd
 Description: programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
