@@ -1,3 +1,10 @@
+libvirt (0.9.7-2ubuntu14) precise; urgency=low
+
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: Update for nova.
+    (LP: #907269) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 11 Jan 2012 09:50:26 -0500
+
 libvirt (0.9.7-2ubuntu13) precise; urgency=low
 
   * move cgroup-lite | cgroup-bin to depends, now that cgroup-lite is in
