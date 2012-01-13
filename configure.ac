@@ -2477,14 +2477,20 @@ fi
 AM_CONDITIONAL([WITH_VIRTUALPORT], [test "$with_virtualport" = "yes"])
 
 
-dnl netlink library
 
+dnl netlink library
+# see https://bugs.launchpad.net/bugs/823711
+case "$host" in
+	arm*-*linux* )
+		LIBNL_LIBS=`echo $LIBNL_LIBS | sed 's/ *-lnl-@<:@^ @:>@*//g'`
+	;;
+esac
 LIBNL_CFLAGS=""
 LIBNL_LIBS=""
 have_libnl=no
 
 if test "$with_linux" = "yes"; then
-    PKG_CHECK_MODULES([LIBNL], [libnl-1 >= $LIBNL_REQUIRED], [
+    PKG_CHECK_MODULES([LIBNL], [libnl-3.0 >= $LIBNL_REQUIRED], [
         have_libnl=yes
         AC_DEFINE_UNQUOTED([HAVE_LIBNL], 1, [whether the netlink library is available])
     ], [
