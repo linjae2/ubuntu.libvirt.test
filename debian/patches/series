@@ -25,4 +25,4 @@ ubuntu/apparmor-allow-tunnelled-migration.patch
 ubuntu/apparmor-allow-tunnelled-migration-2.patch
 fix-qemu-1.0.patch
 ubuntu/enable-kvm-spice.patch
-ubuntu/conf-dont-drop-console-def-ondomain-restart.patch
+#ubuntu/conf-dont-drop-console-def-ondomain-restart.patch
