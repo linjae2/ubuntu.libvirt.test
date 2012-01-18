@@ -1,3 +1,11 @@
+libvirt (0.9.8-2ubuntu2) precise; urgency=low
+
+  * debian/patches/fix-ubuntu-xen-qemu-dm-path.patch:
+    Fix qemu-dm paths so Xen can be used with libvirt.
+    (LP: #914788)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 18 Jan 2012 14:31:27 -0500
+
 libvirt (0.9.8-2ubuntu1) precise; urgency=low
 
   * Merge from Debian Unstable, remaining changes are: 
