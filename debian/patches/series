@@ -19,3 +19,4 @@ ubuntu/9021-fix-uint64_t.patch
 ubuntu/libnl3.patch
 ubuntu/arm-gcc-workaround.patch
 ubuntu/enable-kvm-spice.patch
+ubuntu/fix-ubuntu-xen-qemu-dm-path.patch
