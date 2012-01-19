@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu3) precise; urgency=low
+
+  * debian/control: add dbus to libvirt-bin depends.  It fails to start
+    otherwise.  (LP: #918343)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 19 Jan 2012 16:11:44 -0600
+
 libvirt (0.9.8-2ubuntu2) precise; urgency=low
 
   * debian/patches/fix-ubuntu-xen-qemu-dm-path.patch:
