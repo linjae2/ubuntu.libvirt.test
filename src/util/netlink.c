@@ -74,15 +74,15 @@ int nlComm(struct nl_msg *nl_msg,
     int fd;
     int n;
     struct nlmsghdr *nlmsg = nlmsg_hdr(nl_msg);
-    struct nl_handle *nlhandle = nl_handle_alloc();
+    struct nl_sock *nlsock = nl_socket_alloc();
 
-    if (!nlhandle) {
+    if (!nlsock) {
         virReportSystemError(errno,
-                             "%s", _("cannot allocate nlhandle for netlink"));
+                             "%s", _("cannot allocate nlsock for netlink"));
         return -1;
     }
 
-    if (nl_connect(nlhandle, NETLINK_ROUTE) < 0) {
+    if (nl_connect(nlsock, NETLINK_ROUTE) < 0) {
         virReportSystemError(errno,
                              "%s", _("cannot connect to netlink socket"));
         rc = -1;
@@ -93,7 +93,7 @@ int nlComm(struct nl_msg *nl_msg,
 
     nlmsg->nlmsg_pid = getpid();
 
-    nbytes = nl_send_auto_complete(nlhandle, nl_msg);
+    nbytes = nl_send_auto_complete(nlsock, nl_msg);
     if (nbytes < 0) {
         virReportSystemError(errno,
                              "%s", _("cannot send to netlink socket"));
@@ -101,7 +101,7 @@ int nlComm(struct nl_msg *nl_msg,
         goto err_exit;
     }
 
-    fd = nl_socket_get_fd(nlhandle);
+    fd = nl_socket_get_fd(nlsock);
 
     FD_ZERO(&readfds);
     FD_SET(fd, &readfds);
@@ -118,7 +118,7 @@ int nlComm(struct nl_msg *nl_msg,
         goto err_exit;
     }
 
-    *respbuflen = nl_recv(nlhandle, &nladdr, respbuf, NULL);
+    *respbuflen = nl_recv(nlsock, &nladdr, respbuf, NULL);
     if (*respbuflen <= 0) {
         virReportSystemError(errno,
                              "%s", _("nl_recv failed"));
@@ -131,7 +131,7 @@ err_exit:
         *respbuflen = 0;
     }
 
-    nl_handle_destroy(nlhandle);
+    nl_socket_free(nlsock);
     return rc;
 }
 
