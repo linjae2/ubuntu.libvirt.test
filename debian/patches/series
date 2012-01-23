@@ -1,5 +1,5 @@
 remove-RHism.diff.patch
-#qemu-disable-network.diff.patch
+qemu-disable-network.diff.patch
 allow-libvirt-group-to-access-the-socket.patch
 fix-Debian-specific-path-to-hvm-loader.patch
 Autodetect-if-the-remote-nc-command-supports-the-q-o.patch
