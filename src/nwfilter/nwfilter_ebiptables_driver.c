@@ -40,6 +40,7 @@
 #include "nwfilter_ebiptables_driver.h"
 #include "files.h"
 #include "configmake.h"
+#include "command.h"
 
 
 #define VIR_FROM_THIS VIR_FROM_NWFILTER
