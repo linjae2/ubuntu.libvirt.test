@@ -28,6 +28,12 @@ if [ "$1" = "upgrade" ]; then
             ln -sf $APP_CONFFILE $APP_COMPLAIN
         fi
     fi
+    # If the default network autostart symlink existed, then note
+    # that here so we can recreate it at postinst.
+    EXISTED="/etc/libvirt/qemu/networks/autostart/TMP_defaultexisted"
+    if [ -e /etc/libvirt/qemu/networks/autostart/default.xml ]; then
+        touch "$EXISTED"
+    fi
 fi
 
 # dh_installdeb will replace this with shell code automatically
