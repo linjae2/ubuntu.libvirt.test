@@ -1,3 +1,15 @@
+libvirt (0.9.2-4ubuntu15.2) oneiric-proposed; urgency=low
+
+  * Don't override local removal of default network autostart on upgrades
+      (LP: #372001)
+    - re-enable debian/Don-t-enable-default-network-on-boot.patch
+    - debian/libvirt-bin.preinst: note if the symlink exists
+    - debian/libvirt-bin.postinst: if symlink existed, OR if we are upgrading
+      from one of the broken versions, then recreate the symlink.  (Continue
+      to create the symlink on new installs.)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 23 Jan 2012 11:12:51 -0600
+
 libvirt (0.9.2-4ubuntu15.1) oneiric-proposed; urgency=low
 
   * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which
