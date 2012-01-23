@@ -1,3 +1,11 @@
+libvirt (0.9.8-2ubuntu5) precise; urgency=low
+
+  * debian/libvirt-bin.postinst: even if we think it's a new install, don't
+    assume that /etc/libvirt/qemu/networks/autostart/default.xml doesn't
+    exist.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 23 Jan 2012 12:43:02 -0600
+
 libvirt (0.9.8-2ubuntu4) precise; urgency=low
 
   * debian/patches/fix-ubuntu-xen-qemu-dm-patch.patch:
