@@ -20,3 +20,4 @@ ubuntu/libnl3.patch
 ubuntu/arm-gcc-workaround.patch
 ubuntu/enable-kvm-spice.patch
 ubuntu/fix-ubuntu-xen-qemu-dm-path.patch
+ubuntu/fix-lxc-startup-error.patch

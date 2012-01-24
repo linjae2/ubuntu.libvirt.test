@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu6) precise; urgency=low
+
+  * debian/patches/fix-lxc-startup-error.patch: Fix lxc start up error.
+    (LP: #921004)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 24 Jan 2012 10:05:29 -0500
+
 libvirt (0.9.8-2ubuntu5) precise; urgency=low
 
   * debian/libvirt-bin.postinst: even if we think it's a new install, don't
