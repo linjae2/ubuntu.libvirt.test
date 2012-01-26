@@ -1,3 +1,13 @@
+libvirt (0.9.8-2ubuntu7) precise; urgency=low
+
+  [ David weber ]
+  * debian/patches/fix-block-migration.patch: Fix block-migration for large images.
+
+  [ Guilhem Lettron ]
+  * debian/apparmor/libvirt-qemu: add apparmor rule for mavtap  (LP: #921870)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 26 Jan 2012 11:22:04 -0600
+
 libvirt (0.9.8-2ubuntu6) precise; urgency=low
 
   * debian/patches/fix-lxc-startup-error.patch: Fix lxc start up error.
