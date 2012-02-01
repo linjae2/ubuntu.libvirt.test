@@ -22,3 +22,4 @@ ubuntu/enable-kvm-spice.patch
 ubuntu/fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu/fix-lxc-startup-error.patch
 fix-block-migration.patch
+ubuntu/fix-bridge-fd.patch
