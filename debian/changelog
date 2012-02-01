@@ -1,3 +1,11 @@
+libvirt (0.9.8-2ubuntu8) precise; urgency=low
+
+  * ubuntu/fix-bridge-fd.patch: cherrypick commit
+    2d5046d31f4f5c961fc4aa6b415a00bb9eadae2b from upstream to write the
+    bridge delay to the right file.  (LP: #924446)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 01 Feb 2012 11:13:23 -0600
+
 libvirt (0.9.8-2ubuntu7) precise; urgency=low
 
   [ David weber ]
