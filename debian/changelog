@@ -1,3 +1,15 @@
+libvirt (0.9.8-2ubuntu9) precise; urgency=low
+
+  [ Stefan Bader ]
+  * xen_hypervisor: libvirtd can be started before xenfs has been loaded
+    as a module. A missing privcmd file is not necessarily a permanent
+    error. (LP: #922486)
+
+  [ Serge Hallyn ]
+  * debian/libvirt-bin.upstart: start on just 'runlevel [2345]'
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 08 Feb 2012 11:20:35 -0600
+
 libvirt (0.9.8-2ubuntu8) precise; urgency=low
 
   * ubuntu/fix-bridge-fd.patch: cherrypick commit

@@ -23,3 +23,4 @@ ubuntu/fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu/fix-lxc-startup-error.patch
 fix-block-migration.patch
 ubuntu/fix-bridge-fd.patch
+ubuntu/xen_hypervisor-treat-missing-privcmd-file-as-temporary.patch
