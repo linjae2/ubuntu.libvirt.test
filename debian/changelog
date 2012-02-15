@@ -1,3 +1,9 @@
+libvirt (0.9.8-2ubuntu10) precise; urgency=low
+
+  * debian/control: add libgcrypt11-dev to build-depends (LP: #932889)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 15 Feb 2012 13:13:09 -0600
+
 libvirt (0.9.8-2ubuntu9) precise; urgency=low
 
   [ Stefan Bader ]
