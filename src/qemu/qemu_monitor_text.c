@@ -1632,7 +1632,15 @@ int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
             }
             *total += disk_total * 1024;
         }
-    }
+    } else if (strstr(reply, "info migration") != NULL) {
+        /* 'info migrate' returned help for info commands and the help page
+         * advertises 'info migration' command. Therefore we have an old
+         * command implementation installed and this must be kvm 72 on debian */
+        qemuReportError(VIR_ERR_INTERNAL_ERROR,
+                        _("command 'info migrate' is not implemented in kvm,"
+                          " please update to qemu-kvm"));
+        goto cleanup;
+   }
 
 done:
     ret = 0;
