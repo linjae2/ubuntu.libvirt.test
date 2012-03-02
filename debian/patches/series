@@ -24,3 +24,5 @@ ubuntu/fix-lxc-startup-error.patch
 fix-block-migration.patch
 ubuntu/fix-bridge-fd.patch
 ubuntu/xen_hypervisor-treat-missing-privcmd-file-as-temporary.patch
+ubuntu/dnsmasq-as-priv-user
+rewrite-lxc-controller-eof-handling-yet-again
