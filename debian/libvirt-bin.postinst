@@ -44,6 +44,18 @@ add_users_groups()
             -gecos "Libvirt Qemu" \
             libvirt-qemu
     fi
+    if ! getent passwd libvirt-dnsmasq >/dev/null; then
+        adduser --quiet \
+            --system \
+            --ingroup libvirtd \
+            --quiet \
+            --disabled-login \
+            --disabled-password \
+            --home /var/lib/libvirt/dnsmasq \
+            --no-create-home \
+            -gecos "Libvirt Dnsmasq" \
+            libvirt-dnsmasq
+    fi
 }
 
 

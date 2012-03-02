@@ -1,3 +1,18 @@
+libvirt (0.9.8-2ubuntu11) precise; urgency=low
+
+  [ Serge Hallyn ]
+  * run dnsmasq as a new libvirt-dnsmasq user (LP: #938255)
+    - ubuntu/dnsmasq-as-priv-user: add '-u libvirt-dnsmasq' to dnsmasq args
+    - debian/libvirt-bin.postinst: create libvirt-dnsmasq user
+    - tests/networkxml2argvdata/*.argv: update expected dnsmasq command lines
+      to include '-u libvirt-dnsmasq'.
+
+  [ Chuck Short ]
+  * cherry-pick rewrite-lxc-controller-eof-handling-yet-again (commit
+    9130396214975ba2251082f943c9717281039050) from upstream.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 02 Mar 2012 08:49:41 -0600
+
 libvirt (0.9.8-2ubuntu10) precise; urgency=low
 
   * debian/control: add libgcrypt11-dev to build-depends (LP: #932889)
