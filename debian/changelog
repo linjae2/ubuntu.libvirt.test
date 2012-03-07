@@ -1,3 +1,12 @@
+libvirt (0.9.8-2ubuntu12) precise; urgency=low
+
+  [ Stefan Bader ]
+  * Never use type=ioemu for NIC definitions. It is not needed
+    and actually breaks the paravirt interface which always gets
+    created in parallel.
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Wed, 07 Mar 2012 15:08:55 +0100
+
 libvirt (0.9.8-2ubuntu11) precise; urgency=low
 
   [ Serge Hallyn ]
