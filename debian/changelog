@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu13) precise; urgency=low
+
+  * ubuntu/skip-labelling-network-disks.patch: don't try to label network
+    drives with apparmor.  It fails.  (LP: #949428)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 12 Mar 2012 14:20:05 -0500
+
 libvirt (0.9.8-2ubuntu12) precise; urgency=low
 
   [ Stefan Bader ]

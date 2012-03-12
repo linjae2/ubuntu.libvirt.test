@@ -27,3 +27,4 @@ ubuntu/xen_hypervisor-treat-missing-privcmd-file-as-temporary.patch
 ubuntu/dnsmasq-as-priv-user
 rewrite-lxc-controller-eof-handling-yet-again
 ubuntu/xen-vif-ioemu-deprecated.patch
+ubuntu/skip-labelling-network-disks.patch
