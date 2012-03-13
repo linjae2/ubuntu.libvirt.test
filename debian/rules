@@ -25,7 +25,11 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_NETWORK        = --with-network
   WITH_QEMU           = --with-qemu
   WITH_OPENVZ         = --with-openvz
-  WITH_NUMA           = --without-numactl
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 i386 ia64 mips mipsel powerpc))
+      WITH_NUMA       = --with-numactl
+  else
+      WITH_NUMA       = --without-numactl
+  endif
   ifneq (,$(findstring $(DEB_HOST_ARCH), ia64))
       WITH_LXC        = --without-lxc
   else
