@@ -1,3 +1,11 @@
+libvirt (0.9.8-2ubuntu14) precise; urgency=low
+
+  * re-enable numa (undo delta against debian)  (LP: #614322):
+    - debian/control: remove from dependencies
+    - debian/rules: turn it off
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 13 Mar 2012 11:25:53 -0500
+
 libvirt (0.9.8-2ubuntu13) precise; urgency=low
 
   * ubuntu/skip-labelling-network-disks.patch: don't try to label network

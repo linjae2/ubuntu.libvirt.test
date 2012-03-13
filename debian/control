@@ -31,6 +31,7 @@ Build-Depends: cdbs (>= 0.4.90~),
  libnl-3-dev,
  libyajl-dev,
  libpcap0.8-dev,
+ libnuma-dev [amd64 i386 ia64 mips mipsel powerpc],
  radvd [linux-any],
 # For "make check"
  libxml2-utils,
