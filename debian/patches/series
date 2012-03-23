@@ -28,3 +28,5 @@ ubuntu/dnsmasq-as-priv-user
 rewrite-lxc-controller-eof-handling-yet-again
 ubuntu/xen-vif-ioemu-deprecated.patch
 ubuntu/skip-labelling-network-disks.patch
+ubuntu/xen-xend-shutdown-detection.patch
+ubuntu/xen-hypervisor-getvcpus-may-not-find-domid.patch
