@@ -1,3 +1,14 @@
+libvirt (0.9.8-2ubuntu15) precise; urgency=low
+
+  [ Stefan Bader ]
+  * Use domain/status to check for inactive domains in the xend sub-
+    driver. (LP: #929626)
+  * Prevent the hypervisor sub-driver from logging an internal error
+    just because it cannot find a certain domain when looking for
+    the number of vcpus. (LP: #963006)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Fri, 23 Mar 2012 11:38:24 +0100
+
 libvirt (0.9.8-2ubuntu14) precise; urgency=low
 
   * re-enable numa (undo delta against debian)  (LP: #614322):
