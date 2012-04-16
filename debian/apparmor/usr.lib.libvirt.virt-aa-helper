@@ -55,6 +55,7 @@
 
   /**.img r,
   /**.qcow{,2} r,
+  /**.qed r,
   /**.vmdk r,
   /**.[iI][sS][oO] r,
   /**/disk{,.*} r,
