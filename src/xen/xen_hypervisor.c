@@ -3612,8 +3612,11 @@ xenHypervisorGetVcpus(virDomainPtr domain, virVcpuInfoPtr info, int maxinfo,
                                &dominfo);
 
     if ((ret < 0) || (XEN_GETDOMAININFO_DOMAIN(dominfo) != domain->id)) {
-        virXenErrorFunc(VIR_ERR_INTERNAL_ERROR, __FUNCTION__,
-                        _("cannot get domain details"), 0);
+        /* This can happen if an instance is just shut down. It is probably
+         * better to leave the shouting to the unified caller.
+         * virXenErrorFunc(VIR_ERR_INTERNAL_ERROR, __FUNCTION__,
+         *                 _("cannot get domain details"), 0);
+         */
         return (-1);
     }
     nbinfo = XEN_GETDOMAININFO_CPUCOUNT(dominfo) + 1;
