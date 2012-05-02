@@ -481,6 +481,11 @@ networkBuildDnsmasqArgv(virNetworkObjPtr network,
      */
 
     /*
+     * Run as user libvirt-dnsmasq
+     */
+    virCommandAddArgList(cmd, "-u", "libvirt-dnsmasq", NULL);
+
+    /*
      * Needed to ensure dnsmasq uses same algorithm for processing
      * multiple namedriver entries in /etc/resolv.conf as GLibC.
      */
