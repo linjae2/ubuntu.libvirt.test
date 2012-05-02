@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu18) quantal; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: allow execution of /lib/udev/scsi_id
+    (LP: #992378)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 02 May 2012 14:02:32 -0500
+
 libvirt (0.9.8-2ubuntu17) precise; urgency=low
 
   * debian/apparmor/usr.lib.libvirt.virt-aa-helper: add /**.qed r so qed
