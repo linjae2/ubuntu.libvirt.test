@@ -23,7 +23,9 @@ case "$1" in
     purge)
     	if getent group libvirtd >/dev/null; then
     		delgroup libvirtd || true
-	fi
+	    fi
+
+      rm -rf /var/log/libvirt
 
         for f in usr.sbin.libvirtd usr.lib.libvirt.virt-aa-helper ; do
             rm -f /etc/apparmor.d/force-complain/$f >/dev/null 2>&1 || true

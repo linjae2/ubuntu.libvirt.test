@@ -1,7 +1,5 @@
-/* -*- buffer-read-only: t -*- vi: set ro: */
-/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* POSIX compatible FILE stream read function.
-   Copyright (C) 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2011.
 
    This program is free software: you can redistribute it and/or modify
@@ -133,13 +131,7 @@ fgets (char *s, int n, FILE *stream)
   CALL_WITH_ERRNO_FIX (char *, fgets (s, n, stream), ret == NULL)
 }
 
-char *
-gets (char *s)
-#undef gets
-{
-  FILE *stream = stdin;
-  CALL_WITH_ERRNO_FIX (char *, gets (s), ret == NULL)
-}
+/* We intentionally don't bother to fix gets.  */
 
 size_t
 fread (void *ptr, size_t s, size_t n, FILE *stream)

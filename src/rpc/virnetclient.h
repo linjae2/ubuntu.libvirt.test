@@ -76,6 +76,9 @@ int virNetClientSendNoReply(virNetClientPtr client,
 int virNetClientSendNonBlock(virNetClientPtr client,
                              virNetMessagePtr msg);
 
+int virNetClientSendWithReplyStream(virNetClientPtr client,
+                                    virNetMessagePtr msg,
+                                    virNetClientStreamPtr st);
 
 # ifdef HAVE_SASL
 void virNetClientSetSASLSession(virNetClientPtr client,
@@ -100,5 +103,7 @@ bool virNetClientKeepAliveIsSupported(virNetClientPtr client);
 int virNetClientKeepAliveStart(virNetClientPtr client,
                                int interval,
                                unsigned int count);
+
+void virNetClientKeepAliveStop(virNetClientPtr client);
 
 #endif /* __VIR_NET_CLIENT_H__ */
