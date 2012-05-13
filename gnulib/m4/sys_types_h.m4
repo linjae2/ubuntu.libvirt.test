@@ -1,7 +1,5 @@
-# -*- buffer-read-only: t -*- vi: set ro:
-# DO NOT EDIT! GENERATED AUTOMATICALLY!
-# sys_types_h.m4 serial 2
-dnl Copyright (C) 2011 Free Software Foundation, Inc.
+# sys_types_h.m4 serial 3
+dnl Copyright (C) 2011-2012 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -16,6 +14,14 @@ AC_DEFUN([gl_SYS_TYPES_H],
 
   dnl Ensure the type mode_t gets defined.
   AC_REQUIRE([AC_TYPE_MODE_T])
+
+  dnl Whether to override the 'off_t' type.
+  m4_ifdef([gl_LARGEFILE], [
+    AC_REQUIRE([gl_LARGEFILE])
+  ], [
+    WINDOWS_64_BIT_OFF_T=0
+  ])
+  AC_SUBST([WINDOWS_64_BIT_OFF_T])
 ])
 
 AC_DEFUN([gl_SYS_TYPES_H_DEFAULTS],

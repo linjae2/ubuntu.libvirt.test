@@ -13,8 +13,8 @@
 
 m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
-m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.66],,
-[m4_warning([this file was generated for autoconf 2.66.
+m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.68],,
+[m4_warning([this file was generated for autoconf 2.68.
 You have another version of autoconf.  It may work, but is not guaranteed to.
 If you have problems, you may need to regenerate the build system entirely.
 To do so, use the procedure documented by the package, typically `autoreconf'.])])
@@ -997,32 +997,6 @@ AC_DEFUN([_AM_SET_OPTIONS],
 AC_DEFUN([_AM_IF_OPTION],
 [m4_ifset(_AM_MANGLE_OPTION([$1]), [$2], [$3])])
 
-# Copyright (C) 1996, 1997, 1998, 2000, 2001, 2002, 2003, 2005, 2006
-# Free Software Foundation, Inc.
-#
-# This file is free software; the Free Software Foundation
-# gives unlimited permission to copy and/or distribute it,
-# with or without modifications, as long as this notice is preserved.
-
-# serial 5
-
-AC_DEFUN([AM_C_PROTOTYPES],
-[AC_REQUIRE([AC_C_PROTOTYPES])
-if test "$ac_cv_prog_cc_stdc" != no; then
-  U= ANSI2KNR=
-else
-  U=_ ANSI2KNR=./ansi2knr
-fi
-# Ensure some checks needed by ansi2knr itself.
-AC_REQUIRE([AC_HEADER_STDC])
-AC_CHECK_HEADERS([string.h])
-AC_SUBST([U])dnl
-AC_SUBST([ANSI2KNR])dnl
-_AM_SUBST_NOTMAKE([ANSI2KNR])dnl
-])
-
-AU_DEFUN([fp_C_PROTOTYPES], [AM_C_PROTOTYPES])
-
 # Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
 # Free Software Foundation, Inc.
 #
@@ -1227,6 +1201,23 @@ minverhex = 0
 for i in list(range(0, 4)): minverhex = (minverhex << 8) + minver[[i]]
 sys.exit(sys.hexversion < minverhex)"
   AS_IF([AM_RUN_LOG([$1 -c "$prog"])], [$3], [$4])])
+
+# Copyright (C) 2001, 2003, 2005  Free Software Foundation, Inc.
+#
+# This file is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# AM_RUN_LOG(COMMAND)
+# -------------------
+# Run COMMAND, save the exit status in ac_status, and log it.
+# (This has been adapted from Autoconf's _AC_RUN_LOG macro.)
+AC_DEFUN([AM_RUN_LOG],
+[{ echo "$as_me:$LINENO: $1" >&AS_MESSAGE_LOG_FD
+   ($1) >&AS_MESSAGE_LOG_FD 2>&AS_MESSAGE_LOG_FD
+   ac_status=$?
+   echo "$as_me:$LINENO: \$? = $ac_status" >&AS_MESSAGE_LOG_FD
+   (exit $ac_status); }])
 
 # Check to make sure that the build environment is sane.    -*- Autoconf -*-
 
@@ -1530,6 +1521,7 @@ m4_include([gnulib/m4/inline.m4])
 m4_include([gnulib/m4/intmax_t.m4])
 m4_include([gnulib/m4/inttypes.m4])
 m4_include([gnulib/m4/ioctl.m4])
+m4_include([gnulib/m4/langinfo_h.m4])
 m4_include([gnulib/m4/largefile.m4])
 m4_include([gnulib/m4/localcharset.m4])
 m4_include([gnulib/m4/locale-fr.m4])
@@ -1537,6 +1529,7 @@ m4_include([gnulib/m4/locale-ja.m4])
 m4_include([gnulib/m4/locale-tr.m4])
 m4_include([gnulib/m4/locale-zh.m4])
 m4_include([gnulib/m4/locale_h.m4])
+m4_include([gnulib/m4/localeconv.m4])
 m4_include([gnulib/m4/localename.m4])
 m4_include([gnulib/m4/lseek.m4])
 m4_include([gnulib/m4/lstat.m4])
@@ -1561,6 +1554,7 @@ m4_include([gnulib/m4/msvc-nothrow.m4])
 m4_include([gnulib/m4/multiarch.m4])
 m4_include([gnulib/m4/netdb_h.m4])
 m4_include([gnulib/m4/netinet_in_h.m4])
+m4_include([gnulib/m4/nl_langinfo.m4])
 m4_include([gnulib/m4/nocrash.m4])
 m4_include([gnulib/m4/nonblocking.m4])
 m4_include([gnulib/m4/onceonly.m4])
@@ -1590,6 +1584,7 @@ m4_include([gnulib/m4/rawmemchr.m4])
 m4_include([gnulib/m4/read.m4])
 m4_include([gnulib/m4/readlink.m4])
 m4_include([gnulib/m4/realloc.m4])
+m4_include([gnulib/m4/regex.m4])
 m4_include([gnulib/m4/sched_h.m4])
 m4_include([gnulib/m4/select.m4])
 m4_include([gnulib/m4/servent.m4])
@@ -1667,7 +1662,6 @@ m4_include([gnulib/m4/wctomb.m4])
 m4_include([gnulib/m4/wctype_h.m4])
 m4_include([gnulib/m4/write.m4])
 m4_include([gnulib/m4/xalloc.m4])
-m4_include([gnulib/m4/yield.m4])
 m4_include([m4/codeset.m4])
 m4_include([m4/gettext.m4])
 m4_include([m4/glibc21.m4])

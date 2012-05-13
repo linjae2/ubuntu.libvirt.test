@@ -52,6 +52,9 @@
 # define NUMA_VERSION1_COMPATIBILITY 1
 # include <numa.h>
 #endif
+#if HAVE_SELINUX
+# include <selinux/selinux.h>
+#endif
 
 #include "virterror_internal.h"
 #include "logging.h"
@@ -954,7 +957,7 @@ static void lxcEpollIO(int watch, int fd, int events, void *opaque)
         int ret;
         ret = epoll_wait(console->epollFd, &event, 1, 0);
         if (ret < 0) {
-            if (ret == EINTR)
+            if (errno == EINTR)
                 continue;
             virReportSystemError(errno, "%s",
                                  _("Unable to wait on epoll"));
@@ -1098,7 +1101,7 @@ static int lxcControllerMain(int serverFd,
                              size_t nFds,
                              pid_t container)
 {
-    struct lxcConsole *consoles;
+    struct lxcConsole *consoles = NULL;
     struct lxcMonitor monitor = {
         .serverFd = serverFd,
         .clientFd = clientFd,
@@ -1361,6 +1364,7 @@ cleanup:
 
 static int
 lxcControllerRun(virDomainDefPtr def,
+                 virSecurityManagerPtr securityDriver,
                  unsigned int nveths,
                  char **veths,
                  int monitor,
@@ -1432,6 +1436,12 @@ lxcControllerRun(virDomainDefPtr def,
      * marked as shared
      */
     if (root) {
+#if HAVE_SELINUX
+        security_context_t con;
+#else
+        bool con = false;
+#endif
+        char *opts;
         VIR_DEBUG("Setting up private /dev/pts");
 
         if (!virFileExists(root->src)) {
@@ -1466,16 +1476,35 @@ lxcControllerRun(virDomainDefPtr def,
             goto cleanup;
         }
 
+#if HAVE_SELINUX
+        if (getfilecon(root->src, &con) < 0 &&
+            errno != ENOTSUP) {
+            virReportSystemError(errno,
+                                 _("Failed to query file context on %s"),
+                                 root->src);
+            goto cleanup;
+        }
+#endif
         /* XXX should we support gid=X for X!=5 for distros which use
          * a different gid for tty?  */
-        VIR_DEBUG("Mounting 'devpts' on %s", devpts);
-        if (mount("devpts", devpts, "devpts", 0,
-                  "newinstance,ptmxmode=0666,mode=0620,gid=5") < 0) {
+        if (virAsprintf(&opts, "newinstance,ptmxmode=0666,mode=0620,gid=5%s%s%s",
+                        con ? ",context=\"" : "",
+                        con ? (const char *)con : "",
+                        con ? "\"" : "") < 0) {
+            virReportOOMError();
+            goto cleanup;
+        }
+
+        VIR_DEBUG("Mount devpts on %s type=tmpfs flags=%x, opts=%s",
+                  devpts, MS_NOSUID, opts);
+        if (mount("devpts", devpts, "devpts", MS_NOSUID, opts) < 0) {
+            VIR_FREE(opts);
             virReportSystemError(errno,
                                  _("Failed to mount devpts on %s"),
                                  devpts);
             goto cleanup;
         }
+        VIR_FREE(opts);
 
         if (access(devptmx, R_OK) < 0) {
             VIR_WARN("Kernel does not support private devpts, using shared devpts");
@@ -1515,6 +1544,7 @@ lxcControllerRun(virDomainDefPtr def,
         goto cleanup;
 
     if ((container = lxcContainerStart(def,
+                                       securityDriver,
                                        nveths,
                                        veths,
                                        control[1],
@@ -1561,14 +1591,14 @@ lxcControllerRun(virDomainDefPtr def,
     if (virSetBlocking(monitor, false) < 0 ||
         virSetBlocking(client, false) < 0) {
         virReportSystemError(errno, "%s",
-                             _("Unable to set file descriptor non blocking"));
+                             _("Unable to set file descriptor non-blocking"));
         goto cleanup;
     }
     for (i = 0 ; i < nttyFDs ; i++) {
         if (virSetBlocking(ttyFDs[i], false) < 0 ||
             virSetBlocking(containerTtyFDs[i], false) < 0) {
             virReportSystemError(errno, "%s",
-                                 _("Unable to set file descriptor non blocking"));
+                                 _("Unable to set file descriptor non-blocking"));
             goto cleanup;
         }
     }
@@ -1623,11 +1653,13 @@ int main(int argc, char *argv[])
         { "veth",   1, NULL, 'v' },
         { "console", 1, NULL, 'c' },
         { "handshakefd", 1, NULL, 's' },
+        { "security", 1, NULL, 'S' },
         { "help", 0, NULL, 'h' },
         { 0, 0, 0, 0 },
     };
     int *ttyFDs = NULL;
     size_t nttyFDs = 0;
+    virSecurityManagerPtr securityDriver = NULL;
 
     if (setlocale(LC_ALL, "") == NULL ||
         bindtextdomain(PACKAGE, LOCALEDIR) == NULL ||
@@ -1636,10 +1668,13 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    /* Initialize logging */
+    virLogSetFromEnv();
+
     while (1) {
         int c;
 
-        c = getopt_long(argc, argv, "dn:v:m:c:s:h",
+        c = getopt_long(argc, argv, "dn:v:m:c:s:h:S:",
                        options, NULL);
 
         if (c == -1)
@@ -1687,6 +1722,14 @@ int main(int argc, char *argv[])
             }
             break;
 
+        case 'S':
+            if (!(securityDriver = virSecurityManagerNew(optarg, false, false, false))) {
+                fprintf(stderr, "Cannot create security manager '%s'",
+                        optarg);
+                goto cleanup;
+            }
+            break;
+
         case 'h':
         case '?':
             fprintf(stderr, "\n");
@@ -1699,8 +1742,16 @@ int main(int argc, char *argv[])
             fprintf(stderr, "  -c FD, --console FD\n");
             fprintf(stderr, "  -v VETH, --veth VETH\n");
             fprintf(stderr, "  -s FD, --handshakefd FD\n");
+            fprintf(stderr, "  -S NAME, --security NAME\n");
             fprintf(stderr, "  -h, --help\n");
             fprintf(stderr, "\n");
+            goto cleanup;
+        }
+    }
+
+    if (securityDriver == NULL) {
+        if (!(securityDriver = virSecurityManagerNew("none", false, false, false))) {
+            fprintf(stderr, "%s: cannot initialize nop security manager", argv[0]);
             goto cleanup;
         }
     }
@@ -1724,7 +1775,7 @@ int main(int argc, char *argv[])
 
     virEventRegisterDefaultImpl();
 
-    if ((caps = lxcCapsInit()) == NULL)
+    if ((caps = lxcCapsInit(NULL)) == NULL)
         goto cleanup;
 
     if ((configFile = virDomainConfigFile(LXC_STATE_DIR,
@@ -1733,8 +1784,14 @@ int main(int argc, char *argv[])
 
     if ((def = virDomainDefParseFile(caps, configFile,
                                      1 << VIR_DOMAIN_VIRT_LXC,
-                                     VIR_DOMAIN_XML_INACTIVE)) == NULL)
+                                     0)) == NULL)
         goto cleanup;
+
+    VIR_DEBUG("Security model %s type %s label %s imagelabel %s",
+              NULLSTR(def->seclabel.model),
+              virDomainSeclabelTypeToString(def->seclabel.type),
+              NULLSTR(def->seclabel.label),
+              NULLSTR(def->seclabel.imagelabel));
 
     if (def->nnets != nveths) {
         fprintf(stderr, "%s: expecting %d veths, but got %d\n",
@@ -1780,9 +1837,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Initialize logging */
-    virLogSetFromEnv();
-
     /* Accept initial client which is the libvirtd daemon */
     if ((client = accept(monitor, NULL, 0)) < 0) {
         virReportSystemError(errno, "%s",
@@ -1790,9 +1844,9 @@ int main(int argc, char *argv[])
         goto cleanup;
     }
 
-    rc = lxcControllerRun(def, nveths, veths, monitor, client,
+    rc = lxcControllerRun(def, securityDriver,
+                          nveths, veths, monitor, client,
                           ttyFDs, nttyFDs, handshakefd);
-
 
 cleanup:
     if (def)

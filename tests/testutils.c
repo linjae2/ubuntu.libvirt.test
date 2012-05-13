@@ -1,7 +1,7 @@
 /*
  * testutils.c: basic test utils
  *
- * Copyright (C) 2005-2011 Red Hat, Inc.
+ * Copyright (C) 2005-2012 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
@@ -34,6 +34,7 @@
 #include "buf.h"
 #include "logging.h"
 #include "command.h"
+#include "virrandom.h"
 
 #if TEST_OOM_TRACE
 # include <execinfo.h>
@@ -71,7 +72,7 @@ virtTestCountAverage(double *items, int nitems)
     return (double) (sum / nitems);
 }
 
-ATTRIBUTE_FMT_PRINTF(3,4)
+
 void virtTestResult(const char *name, int ret, const char *msg, ...)
 {
     va_list vargs;
@@ -88,7 +89,11 @@ void virtTestResult(const char *name, int ret, const char *msg, ...)
         else {
             fprintf(stderr, "FAILED\n");
             if (msg) {
-                vfprintf(stderr, msg, vargs);
+                char *str;
+                if (virVasprintf(&str, msg, vargs) == 0) {
+                    fprintf(stderr, "%s", str);
+                    VIR_FREE(str);
+                }
             }
         }
     } else {
@@ -127,8 +132,7 @@ virtTestRun(const char *title, int nloops, int (*body)(const void *data), const 
             fprintf(stderr, "%2d) %-65s ... ", testCounter, title);
     }
 
-    if (nloops > 1 && (ts = calloc(nloops,
-                                   sizeof(double)))==NULL)
+    if (nloops > 1 && (VIR_ALLOC_N(ts, nloops) < 0))
         return -1;
 
     for (i=0; i < nloops; i++) {
@@ -180,7 +184,7 @@ virtTestRun(const char *title, int nloops, int (*body)(const void *data), const 
         }
     }
 
-    free(ts);
+    VIR_FREE(ts);
     return ret;
 }
 
@@ -235,7 +239,7 @@ virtTestLoadFile(const char *file, char **buf)
         if (ferror(fp)) {
             fprintf (stderr, "%s: read failed: %s\n", file, strerror(errno));
             VIR_FORCE_FCLOSE(fp);
-            free(*buf);
+            VIR_FREE(*buf);
             return -1;
         }
     }
@@ -294,7 +298,7 @@ virtTestCaptureProgramOutput(const char *const argv[], char **buf, int maxlen)
     if (pipe(pipefd) < 0)
         return -1;
 
-    int pid = fork();
+    pid_t pid = fork();
     switch (pid) {
     case 0:
         VIR_FORCE_CLOSE(pipefd[0]);
@@ -511,7 +515,7 @@ virtTestErrorHook(int n, void *data ATTRIBUTE_UNUSED)
             if (symbols[i])
                 fprintf(stderr, "  TRACE:  %s\n", symbols[i]);
         }
-        free(symbols);
+        VIR_FREE(symbols);
     }
 }
 #endif
@@ -573,6 +577,10 @@ int virtTestMain(int argc,
         progname += 2;
     if (argc > 1) {
         fprintf(stderr, "Usage: %s\n", argv[0]);
+        fputs("effective environment variables:\n"
+              "VIR_TEST_VERBOSE set to show names of individual tests\n"
+              "VIR_TEST_DEBUG set to show information for debugging failures\n",
+              stderr);
         return EXIT_FAILURE;
     }
     fprintf(stderr, "TEST: %s\n", progname);
