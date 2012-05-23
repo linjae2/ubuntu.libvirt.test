@@ -120,6 +120,7 @@ build/libvirt-bin::
 	cp -f debian/libvirt-bin.apport debian/tmp/usr/share/apport/package-hooks/source_libvirt-bin.py
 	mkdir -p debian/tmp/usr/sbin
 	cp -f debian/libvirt-migrate-qemu-disks debian/tmp/usr/sbin
+	cp -f debian/libvirt-migrate-qemu-machinetype debian/tmp/usr/sbin
 
 
 binary-install/libvirt-doc::

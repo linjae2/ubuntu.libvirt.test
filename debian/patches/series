@@ -35,3 +35,4 @@ ubuntu/9023-qemu-change-rbd-auth_supported-separation-character-.patch
 ubuntu/9024-qemu-allow-snapshotting-of-sheepdog-and-rbd-disks.patch
 ubuntu/9025-qemu-change-rbd-auth_supported-separation-character-.patch
 ubuntu/xen-config-no-vfb-for-hvm.patch
+ubuntu/qemu-warn-on-pc-0.12.patch
