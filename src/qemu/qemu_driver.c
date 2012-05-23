@@ -4787,6 +4787,14 @@ qemudCanonicalizeMachineFromInfo(virDomainDefPtr def,
 {
     int i;
 
+    if (def->os.machine) {
+        if (STREQ(def->os.machine, "pc-0.12")) {
+            VIR_WARN("Defining machine %s as type %s.  We suggest a newer type.",
+                def->name, def->os.machine);
+            VIR_WARN("Please see the libvirt-migrate-qemu-machinetype(1) manpage.");
+        }
+    }
+
     *canonical = NULL;
 
     for (i = 0; i < info->nmachines; i++) {
