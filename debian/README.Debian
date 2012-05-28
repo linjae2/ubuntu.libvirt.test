@@ -190,3 +190,23 @@ This command will be run automatically on upgrade to 0.8.3-1ubuntu1. See
 'man 1 libvirt-migrate-qemu-disks' for details.
 
  -- Jamie Strandboge <jamie@canonical.com>  Thu, 12 Aug 2010 15:03:07 -0500
+
+QEMU/kvm Machine Type migration
+===============================
+QEMU/kvm is a full virtualization implementation supported by libvirt.  As
+new QEMU versions are released, the pc machine type for that release is
+frozen and encoded with the QEMU version.  For instance, the pc-0.10
+machine type should never change, and always have the same features as the
+pc machine type did in QEMU version 0.10.
+
+In QEMU 1.0, the pc-0.12 machine type has become particularly buggy.  To
+help users to automatically convert VMs which are using a bad machine
+type, but which do not specifically need to be, the
+libvirt-migrate-qemu-machinetype program has been provided.  This command
+will not be automatically run, because some VMs may in fact depend on
+the pc-0.12 machine type.  However, whenever a VM with a known troublesome
+machine type is defined or started, a message will be printed to the
+libvirt log.  Users can update the VM definition by hand, or use the
+libvirt-migrate-qemu-machinetype program to do it for them.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 22 May 2012 17:34:00 +0000
