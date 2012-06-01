@@ -162,6 +162,9 @@ case "$1" in
                 /etc/libvirt/qemu/networks/autostart/
         fi
     fi
+    # Try to restart a potential system wide dnsmasq
+    invoke-rc.d dnsmasq restart 2>/dev/null || true
+
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
