@@ -1,3 +1,16 @@
+libvirt (0.9.12-0ubuntu3) quantal; urgency=low
+
+  * install apport hook as right name - libvirt-bin is the binary package,
+    the source package name is libvirt.  (LP: #1007405)
+  * install /etc/dnsmasq.d/libvirt to configure system wide dnsmasq to not
+    listen on the libvirt bridge.  (Following Stéphane's lxc example)
+    (LP: #928524) (LP: #231060)
+    - postinst: restart dnsmasq; postrm: remove dnsmasq.d/libvirt file and
+      restart dnsmasq;  rules, libvirt-bin.dirs and libvirt-bin.install:
+      install new debian/libvirt-bin.dnsmasq file.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 01 Jun 2012 09:36:58 -0500
+
 libvirt (0.9.12-0ubuntu2) quantal; urgency=low
 
   * Warn user about bad pc-0.12 machine type, and help user transition.
