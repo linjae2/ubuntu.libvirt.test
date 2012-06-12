@@ -1,4 +1,4 @@
-'''apport package hook for libvirt-bin
+'''apport package hook for libvirt
 
 (c) 2009-2011 Canonical Ltd.
 Author:
