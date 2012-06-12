@@ -5,6 +5,7 @@ etc/apparmor.d/libvirt/TEMPLATE
 etc/apparmor.d/usr.lib.libvirt.virt-aa-helper
 etc/apparmor.d/usr.sbin.libvirtd
 etc/apparmor.d/local/usr.sbin.libvirtd
+etc/dnsmasq.d/libvirt-bin
 etc/libvirt/*
 etc/sasl2/*
 usr/share/polkit-1
@@ -12,4 +13,4 @@ usr/lib/libvirt/*
 usr/share/augeas/*
 usr/share/libvirt/*
 usr/share/man/man8/*
-usr/share/apport/package-hooks/source_libvirt-bin.py
+usr/share/apport/package-hooks/source_libvirt.py
