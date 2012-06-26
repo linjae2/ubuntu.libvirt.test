@@ -21,9 +21,9 @@
 # define __VIR_NETLINK_H__
 
 # include "config.h"
-# include <stdint.h>
 # include "internal.h"
 
+# include <stdint.h>
 
 # if defined(__linux__) && defined(HAVE_LIBNL)
 
