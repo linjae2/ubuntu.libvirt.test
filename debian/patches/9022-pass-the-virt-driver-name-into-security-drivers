@@ -1,0 +1,370 @@
+commit 73580c60d1003c7d93125a0f62b673818a5da9c9
+Author: Daniel Walsh <dwalsh@redhat.com>
+Date:   Thu May 10 17:49:29 2012 +0100
+
+    Pass the virt driver name into security drivers
+    
+    To allow the security drivers to apply different configuration
+    information per hypervisor, pass the virtualization driver name
+    into the security manager constructor.
+    
+    Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+
+Index: libvirt-0.9.12/src/lxc/lxc_conf.h
+===================================================================
+--- libvirt-0.9.12.orig/src/lxc/lxc_conf.h	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/lxc/lxc_conf.h	2012-06-29 18:16:10.988256316 -0500
+@@ -36,6 +36,8 @@
+ # include "security/security_manager.h"
+ # include "configmake.h"
+ 
++# define LXC_DRIVER_NAME "LXC"
++
+ # define LXC_CONFIG_DIR SYSCONFDIR "/libvirt/lxc"
+ # define LXC_STATE_DIR LOCALSTATEDIR "/run/libvirt/lxc"
+ # define LXC_LOG_DIR LOCALSTATEDIR "/log/libvirt/lxc"
+Index: libvirt-0.9.12/src/lxc/lxc_controller.c
+===================================================================
+--- libvirt-0.9.12.orig/src/lxc/lxc_controller.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/lxc/lxc_controller.c	2012-06-29 18:16:10.992256316 -0500
+@@ -1723,7 +1723,9 @@
+             break;
+ 
+         case 'S':
+-            if (!(securityDriver = virSecurityManagerNew(optarg, false, false, false))) {
++            if (!(securityDriver = virSecurityManagerNew(optarg,
++                                                         LXC_DRIVER_NAME,
++                                                         false, false, false))) {
+                 fprintf(stderr, "Cannot create security manager '%s'",
+                         optarg);
+                 goto cleanup;
+@@ -1750,7 +1752,9 @@
+     }
+ 
+     if (securityDriver == NULL) {
+-        if (!(securityDriver = virSecurityManagerNew("none", false, false, false))) {
++        if (!(securityDriver = virSecurityManagerNew("none",
++                                                     LXC_DRIVER_NAME,
++                                                     false, false, false))) {
+             fprintf(stderr, "%s: cannot initialize nop security manager", argv[0]);
+             goto cleanup;
+         }
+Index: libvirt-0.9.12/src/lxc/lxc_driver.c
+===================================================================
+--- libvirt-0.9.12.orig/src/lxc/lxc_driver.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/lxc/lxc_driver.c	2012-06-29 18:16:10.992256316 -0500
+@@ -2533,7 +2533,9 @@
+ static int
+ lxcSecurityInit(lxc_driver_t *driver)
+ {
++    VIR_INFO("lxcSecurityInit %s", driver->securityDriverName);
+     virSecurityManagerPtr mgr = virSecurityManagerNew(driver->securityDriverName,
++                                                      LXC_DRIVER_NAME,
+                                                       false,
+                                                       driver->securityDefaultConfined,
+                                                       driver->securityRequireConfined);
+@@ -3851,7 +3853,7 @@
+ /* Function Tables */
+ static virDriver lxcDriver = {
+     .no = VIR_DRV_LXC,
+-    .name = "LXC",
++    .name = LXC_DRIVER_NAME,
+     .open = lxcOpen, /* 0.4.2 */
+     .close = lxcClose, /* 0.4.2 */
+     .version = lxcVersion, /* 0.4.6 */
+@@ -3915,7 +3917,7 @@
+ };
+ 
+ static virStateDriver lxcStateDriver = {
+-    .name = "LXC",
++    .name = LXC_DRIVER_NAME,
+     .initialize = lxcStartup,
+     .cleanup = lxcShutdown,
+     .active = lxcActive,
+Index: libvirt-0.9.12/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-0.9.12.orig/src/qemu/qemu_driver.c	2012-06-29 18:16:10.964256316 -0500
++++ libvirt-0.9.12/src/qemu/qemu_driver.c	2012-06-29 18:16:11.000256316 -0500
+@@ -95,6 +95,8 @@
+ 
+ #define VIR_FROM_THIS VIR_FROM_QEMU
+ 
++#define QEMU_DRIVER_NAME "QEMU"
++
+ #define QEMU_NB_MEM_PARAM  3
+ 
+ #define QEMU_NB_BLOCK_IO_TUNE_PARAM  6
+@@ -213,6 +215,7 @@
+ qemuSecurityInit(struct qemud_driver *driver)
+ {
+     virSecurityManagerPtr mgr = virSecurityManagerNew(driver->securityDriverName,
++                                                      QEMU_DRIVER_NAME,
+                                                       driver->allowDiskFormatProbing,
+                                                       driver->securityDefaultConfined,
+                                                       driver->securityRequireConfined);
+@@ -221,7 +224,8 @@
+         goto error;
+ 
+     if (driver->privileged) {
+-        virSecurityManagerPtr dac = virSecurityManagerNewDAC(driver->user,
++        virSecurityManagerPtr dac = virSecurityManagerNewDAC(QEMU_DRIVER_NAME,
++                                                             driver->user,
+                                                              driver->group,
+                                                              driver->allowDiskFormatProbing,
+                                                              driver->securityDefaultConfined,
+@@ -12836,7 +12840,7 @@
+ 
+ static virDriver qemuDriver = {
+     .no = VIR_DRV_QEMU,
+-    .name = "QEMU",
++    .name = QEMU_DRIVER_NAME,
+     .open = qemudOpen, /* 0.2.0 */
+     .close = qemudClose, /* 0.2.0 */
+     .supports_feature = qemudSupportsFeature, /* 0.5.0 */
+@@ -13027,7 +13031,7 @@
+ }
+ 
+ static virNWFilterCallbackDriver qemuCallbackDriver = {
+-    .name = "QEMU",
++    .name = QEMU_DRIVER_NAME,
+     .vmFilterRebuild = qemuVMFilterRebuild,
+     .vmDriverLock = qemuVMDriverLock,
+     .vmDriverUnlock = qemuVMDriverUnlock,
+Index: libvirt-0.9.12/src/security/security_apparmor.c
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_apparmor.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_apparmor.c	2012-06-29 18:16:12.892256359 -0500
+@@ -328,7 +328,7 @@
+ 
+ /* Called on libvirtd startup to see if AppArmor is available */
+ static int
+-AppArmorSecurityManagerProbe(void)
++AppArmorSecurityManagerProbe(const char *virtDriver ATTRIBUTE_UNUSED)
+ {
+     char *template = NULL;
+     int rc = SECURITY_DRIVER_DISABLE;
+Index: libvirt-0.9.12/src/security/security_dac.c
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_dac.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_dac.c	2012-06-29 18:16:11.000256316 -0500
+@@ -65,7 +65,7 @@
+ }
+ 
+ static virSecurityDriverStatus
+-virSecurityDACProbe(void)
++virSecurityDACProbe(const char *virtDriver ATTRIBUTE_UNUSED)
+ {
+     return SECURITY_DRIVER_ENABLE;
+ }
+Index: libvirt-0.9.12/src/security/security_driver.c
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_driver.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_driver.c	2012-06-29 18:16:11.000256316 -0500
+@@ -37,7 +37,8 @@
+     &virSecurityDriverNop, /* Must always be last, since it will always probe */
+ };
+ 
+-virSecurityDriverPtr virSecurityDriverLookup(const char *name)
++virSecurityDriverPtr virSecurityDriverLookup(const char *name,
++                                             const char *virtDriver)
+ {
+     virSecurityDriverPtr drv = NULL;
+     int i;
+@@ -51,7 +52,7 @@
+             STRNEQ(tmp->name, name))
+             continue;
+ 
+-        switch (tmp->probe()) {
++        switch (tmp->probe(virtDriver)) {
+         case SECURITY_DRIVER_ENABLE:
+             VIR_DEBUG("Probed name=%s", tmp->name);
+             drv = tmp;
+Index: libvirt-0.9.12/src/security/security_driver.h
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_driver.h	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_driver.h	2012-06-29 18:16:11.000256316 -0500
+@@ -31,7 +31,7 @@
+ typedef struct _virSecurityDriver virSecurityDriver;
+ typedef virSecurityDriver *virSecurityDriverPtr;
+ 
+-typedef virSecurityDriverStatus (*virSecurityDriverProbe) (void);
++typedef virSecurityDriverStatus (*virSecurityDriverProbe) (const char *virtDriver);
+ typedef int (*virSecurityDriverOpen) (virSecurityManagerPtr mgr);
+ typedef int (*virSecurityDriverClose) (virSecurityManagerPtr mgr);
+ 
+@@ -125,6 +125,7 @@
+     virSecurityDomainSetImageFDLabel domainSetSecurityImageFDLabel;
+ };
+ 
+-virSecurityDriverPtr virSecurityDriverLookup(const char *name);
++virSecurityDriverPtr virSecurityDriverLookup(const char *name,
++                                             const char *virtDriver);
+ 
+ #endif /* __VIR_SECURITY_H__ */
+Index: libvirt-0.9.12/src/security/security_manager.c
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_manager.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_manager.c	2012-06-29 18:16:11.000256316 -0500
+@@ -38,9 +38,11 @@
+     bool allowDiskFormatProbing;
+     bool defaultConfined;
+     bool requireConfined;
++    const char *virtDriver;
+ };
+ 
+ static virSecurityManagerPtr virSecurityManagerNewDriver(virSecurityDriverPtr drv,
++                                                         const char *virtDriver,
+                                                          bool allowDiskFormatProbing,
+                                                          bool defaultConfined,
+                                                          bool requireConfined)
+@@ -56,6 +58,7 @@
+     mgr->allowDiskFormatProbing = allowDiskFormatProbing;
+     mgr->defaultConfined = defaultConfined;
+     mgr->requireConfined = requireConfined;
++    mgr->virtDriver = virtDriver;
+ 
+     if (drv->open(mgr) < 0) {
+         virSecurityManagerFree(mgr);
+@@ -70,6 +73,7 @@
+ {
+     virSecurityManagerPtr mgr =
+         virSecurityManagerNewDriver(&virSecurityDriverStack,
++                                    virSecurityManagerGetDriver(primary),
+                                     virSecurityManagerGetAllowDiskFormatProbing(primary),
+                                     virSecurityManagerGetDefaultConfined(primary),
+                                     virSecurityManagerGetRequireConfined(primary));
+@@ -83,7 +87,8 @@
+     return mgr;
+ }
+ 
+-virSecurityManagerPtr virSecurityManagerNewDAC(uid_t user,
++virSecurityManagerPtr virSecurityManagerNewDAC(const char *virtDriver,
++                                               uid_t user,
+                                                gid_t group,
+                                                bool allowDiskFormatProbing,
+                                                bool defaultConfined,
+@@ -92,6 +97,7 @@
+ {
+     virSecurityManagerPtr mgr =
+         virSecurityManagerNewDriver(&virSecurityDriverDAC,
++                                    virtDriver,
+                                     allowDiskFormatProbing,
+                                     defaultConfined,
+                                     requireConfined);
+@@ -107,11 +113,12 @@
+ }
+ 
+ virSecurityManagerPtr virSecurityManagerNew(const char *name,
++                                            const char *virtDriver,
+                                             bool allowDiskFormatProbing,
+                                             bool defaultConfined,
+                                             bool requireConfined)
+ {
+-    virSecurityDriverPtr drv = virSecurityDriverLookup(name);
++    virSecurityDriverPtr drv = virSecurityDriverLookup(name, virtDriver);
+     if (!drv)
+         return NULL;
+ 
+@@ -136,6 +143,7 @@
+     }
+ 
+     return virSecurityManagerNewDriver(drv,
++                                       virtDriver,
+                                        allowDiskFormatProbing,
+                                        defaultConfined,
+                                        requireConfined);
+@@ -162,6 +170,12 @@
+ }
+ 
+ const char *
++virSecurityManagerGetDriver(virSecurityManagerPtr mgr)
++{
++    return mgr->virtDriver;
++}
++
++const char *
+ virSecurityManagerGetDOI(virSecurityManagerPtr mgr)
+ {
+     if (mgr->drv->getDOI)
+Index: libvirt-0.9.12/src/security/security_manager.h
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_manager.h	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_manager.h	2012-06-29 18:16:11.004256316 -0500
+@@ -32,6 +32,7 @@
+ typedef virSecurityManager *virSecurityManagerPtr;
+ 
+ virSecurityManagerPtr virSecurityManagerNew(const char *name,
++                                            const char *virtDriver,
+                                             bool allowDiskFormatProbing,
+                                             bool defaultConfined,
+                                             bool requireConfined);
+@@ -39,7 +40,8 @@
+ virSecurityManagerPtr virSecurityManagerNewStack(virSecurityManagerPtr primary,
+                                                  virSecurityManagerPtr secondary);
+ 
+-virSecurityManagerPtr virSecurityManagerNewDAC(uid_t user,
++virSecurityManagerPtr virSecurityManagerNewDAC(const char *virtDriver,
++                                               uid_t user,
+                                                gid_t group,
+                                                bool allowDiskFormatProbing,
+                                                bool defaultConfined,
+@@ -50,6 +52,7 @@
+ 
+ void virSecurityManagerFree(virSecurityManagerPtr mgr);
+ 
++const char *virSecurityManagerGetDriver(virSecurityManagerPtr mgr);
+ const char *virSecurityManagerGetDOI(virSecurityManagerPtr mgr);
+ const char *virSecurityManagerGetModel(virSecurityManagerPtr mgr);
+ bool virSecurityManagerGetAllowDiskFormatProbing(virSecurityManagerPtr mgr);
+Index: libvirt-0.9.12/src/security/security_nop.c
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_nop.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_nop.c	2012-06-29 18:16:11.004256316 -0500
+@@ -21,7 +21,7 @@
+ 
+ #include "security_nop.h"
+ 
+-static virSecurityDriverStatus virSecurityDriverProbeNop(void)
++static virSecurityDriverStatus virSecurityDriverProbeNop(const char *virtDriver ATTRIBUTE_UNUSED)
+ {
+     return SECURITY_DRIVER_ENABLE;
+ }
+Index: libvirt-0.9.12/src/security/security_selinux.c
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_selinux.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_selinux.c	2012-06-29 18:16:11.004256316 -0500
+@@ -346,7 +346,7 @@
+ 
+ 
+ static int
+-SELinuxSecurityDriverProbe(void)
++SELinuxSecurityDriverProbe(const char *virtDriver ATTRIBUTE_UNUSED)
+ {
+     return is_selinux_enabled() ? SECURITY_DRIVER_ENABLE : SECURITY_DRIVER_DISABLE;
+ }
+Index: libvirt-0.9.12/src/security/security_stack.c
+===================================================================
+--- libvirt-0.9.12.orig/src/security/security_stack.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/src/security/security_stack.c	2012-06-29 18:16:11.004256316 -0500
+@@ -49,7 +49,7 @@
+ }
+ 
+ static virSecurityDriverStatus
+-virSecurityStackProbe(void)
++virSecurityStackProbe(const char *virtDriver ATTRIBUTE_UNUSED)
+ {
+     return SECURITY_DRIVER_ENABLE;
+ }
+Index: libvirt-0.9.12/tests/seclabeltest.c
+===================================================================
+--- libvirt-0.9.12.orig/tests/seclabeltest.c	2012-06-29 18:16:00.000000000 -0500
++++ libvirt-0.9.12/tests/seclabeltest.c	2012-06-29 18:16:11.004256316 -0500
+@@ -13,7 +13,7 @@
+     virSecurityManagerPtr mgr;
+     const char *doi, *model;
+ 
+-    mgr = virSecurityManagerNew(NULL, false, true, false);
++    mgr = virSecurityManagerNew(NULL, "QEMU", false, true, false);
+     if (mgr == NULL) {
+         fprintf (stderr, "Failed to start security driver");
+         exit (-1);
