@@ -1,3 +1,11 @@
+libvirt (0.9.12-0ubuntu4) quantal; urgency=low
+
+  * 9022-pass-the-virt-driver-name-into-security-drivers and
+    9023-dont-enable-apparmor-driver-with-lxc: fix libvirt-lxc breakages
+    due to incomplete apparmor security driver for lxc.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 29 Jun 2012 18:15:04 -0500
+
 libvirt (0.9.12-0ubuntu3) quantal; urgency=low
 
   * install apport hook as right name - libvirt-bin is the binary package,
