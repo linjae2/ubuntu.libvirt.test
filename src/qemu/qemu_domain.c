@@ -32,7 +32,6 @@
 #include "virterror_internal.h"
 #include "c-ctype.h"
 #include "cpu/cpu.h"
-#include "ignore-value.h"
 #include "uuid.h"
 #include "virfile.h"
 #include "domain_event.h"
@@ -160,6 +159,7 @@ qemuDomainObjResetAsyncJob(qemuDomainObjPrivatePtr priv)
     job->phase = 0;
     job->mask = DEFAULT_JOB_MASK;
     job->start = 0;
+    job->dump_memory_only = false;
     memset(&job->info, 0, sizeof(job->info));
 }
 

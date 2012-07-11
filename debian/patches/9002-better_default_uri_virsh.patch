@@ -1,6 +1,6 @@
-diff -Naurp libvirt-0.9.12.orig/tools/Makefile.am libvirt-0.9.12/tools/Makefile.am
---- libvirt-0.9.12.orig/tools/Makefile.am	2012-02-05 21:50:50.000000000 -0500
-+++ libvirt-0.9.12/tools/Makefile.am	2012-05-14 11:00:41.415698873 -0400
+diff -Naurp libvirt-0.9.13.orig/tools/Makefile.am libvirt-0.9.13/tools/Makefile.am
+--- libvirt-0.9.13.orig/tools/Makefile.am	2012-06-26 21:44:39.000000000 -0400
++++ libvirt-0.9.13/tools/Makefile.am	2012-07-03 12:53:09.531221393 -0400
 @@ -5,8 +5,10 @@ INCLUDES = \
  	-I$(top_builddir)/include -I$(top_srcdir)/include	\
  	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
@@ -12,10 +12,10 @@ diff -Naurp libvirt-0.9.12.orig/tools/Makefile.am libvirt-0.9.12/tools/Makefile.
  	$(GETTEXT_CPPFLAGS)
  
  POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
-diff -Naurp libvirt-0.9.12.orig/tools/Makefile.in libvirt-0.9.12/tools/Makefile.in
---- libvirt-0.9.12.orig/tools/Makefile.in	2012-05-13 22:55:28.000000000 -0400
-+++ libvirt-0.9.12/tools/Makefile.in	2012-05-14 11:01:39.039700253 -0400
-@@ -1504,8 +1504,10 @@ INCLUDES = \
+diff -Naurp libvirt-0.9.13.orig/tools/Makefile.in libvirt-0.9.13/tools/Makefile.in
+--- libvirt-0.9.13.orig/tools/Makefile.in	2012-07-01 23:26:48.000000000 -0400
++++ libvirt-0.9.13/tools/Makefile.in	2012-07-03 12:53:09.535221407 -0400
+@@ -1509,8 +1509,10 @@ INCLUDES = \
  	-I$(top_builddir)/include -I$(top_srcdir)/include	\
  	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
  	-I$(top_builddir)/src -I$(top_srcdir)/src		\
@@ -26,19 +26,19 @@ diff -Naurp libvirt-0.9.12.orig/tools/Makefile.in libvirt-0.9.12/tools/Makefile.
  	$(GETTEXT_CPPFLAGS)
  
  POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
-diff -Naurp libvirt-0.9.12.orig/tools/virsh.c libvirt-0.9.12/tools/virsh.c
---- libvirt-0.9.12.orig/tools/virsh.c	2012-05-08 21:21:54.000000000 -0400
-+++ libvirt-0.9.12/tools/virsh.c	2012-05-14 11:03:41.807703076 -0400
-@@ -64,6 +64,8 @@
- #include "conf/domain_conf.h"
- #include "virtypedparam.h"
+diff -Naurp libvirt-0.9.13.orig/tools/virsh.c libvirt-0.9.13/tools/virsh.c
+--- libvirt-0.9.13.orig/tools/virsh.c	2012-07-01 21:45:49.000000000 -0400
++++ libvirt-0.9.13/tools/virsh.c	2012-07-03 12:53:09.539221409 -0400
+@@ -67,6 +67,8 @@
+ #include "intprops.h"
+ #include "conf/virdomainlist.h"
  
 +#include "remote_driver.h"
 +
  static char *progname;
  
  #define VIRSH_MAX_XML_FILE 10*1024*1024
-@@ -20309,6 +20311,10 @@ main(int argc, char **argv)
+@@ -21047,6 +21049,10 @@ main(int argc, char **argv)
  
      if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
          ctl->name = vshStrdup(ctl, defaultConn);

@@ -7,7 +7,7 @@ patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
 virsh-Initialize-library-before-calling-virResetLast.patch
 Disable-failing-virnetsockettest.patch
 Don-t-fail-if-we-can-t-setup-avahi.patch
-9002-better_default_uri_virsh.patch
+#9002-better_default_uri_virsh.patch
 9003-better-default-arch.patch
 9004-libvirtd-group-name.patch
 9005-increase-unix-socket-timeout.patch
@@ -18,6 +18,5 @@ fix-ubuntu-xen-qemu-dm-path.patch
 dnsmasq-as-priv-user
 libnl3-build-fix.patch
 qemu-warn-on-pc-0.12.patch
-9022-pass-the-virt-driver-name-into-security-drivers
-9023-dont-enable-apparmor-driver-with-lxc
-9024-initialize-random-generator-in-lxc
+fix-lxc-container-unmounting.patch
+add-libvirt-highbank-support.patch
