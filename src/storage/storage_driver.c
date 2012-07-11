@@ -145,20 +145,12 @@ storageDriverStartup(int privileged)
         if ((base = strdup (SYSCONFDIR "/libvirt")) == NULL)
             goto out_of_memory;
     } else {
-        uid_t uid = geteuid();
-        char *userdir = virGetUserDirectory(uid);
-
-        if (!userdir)
+        base = virGetUserConfigDirectory();
+        if (!base)
             goto error;
-
-        if (virAsprintf(&base, "%s/.libvirt", userdir) == -1) {
-            VIR_FREE(userdir);
-            goto out_of_memory;
-        }
-        VIR_FREE(userdir);
     }
 
-    /* Configuration paths are either ~/.libvirt/storage/... (session) or
+    /* Configuration paths are either $USER_CONFIG_HOME/libvirt/storage/... (session) or
      * /etc/libvirt/storage/... (system).
      */
     if (virAsprintf(&driverState->configDir,
@@ -802,6 +794,10 @@ storagePoolDestroy(virStoragePoolPtr obj) {
     if (pool->configFile == NULL) {
         virStoragePoolObjRemove(&driver->pools, pool);
         pool = NULL;
+    } else if (pool->newDef) {
+        virStoragePoolDefFree(pool->def);
+        pool->def = pool->newDef;
+        pool->newDef = NULL;
     }
     ret = 0;
 
@@ -811,7 +807,6 @@ cleanup:
     storageDriverUnlock(driver);
     return ret;
 }
-
 
 static int
 storagePoolDelete(virStoragePoolPtr obj,
@@ -965,9 +960,10 @@ storagePoolGetXMLDesc(virStoragePoolPtr obj,
 {
     virStorageDriverStatePtr driver = obj->conn->storagePrivateData;
     virStoragePoolObjPtr pool;
+    virStoragePoolDefPtr def;
     char *ret = NULL;
 
-    virCheckFlags(0, NULL);
+    virCheckFlags(VIR_STORAGE_XML_INACTIVE, NULL);
 
     storageDriverLock(driver);
     pool = virStoragePoolObjFindByUUID(&driver->pools, obj->uuid);
@@ -979,7 +975,12 @@ storagePoolGetXMLDesc(virStoragePoolPtr obj,
         goto cleanup;
     }
 
-    ret = virStoragePoolDefFormat(pool->def);
+    if ((flags & VIR_STORAGE_XML_INACTIVE) && pool->newDef)
+        def = pool->newDef;
+    else
+        def = pool->def;
+
+    ret = virStoragePoolDefFormat(def);
 
 cleanup:
     if (pool)

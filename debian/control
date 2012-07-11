@@ -43,8 +43,6 @@ Build-Depends: cdbs (>= 0.4.90~),
  openssh-client,
  netcat-openbsd,
 Build-Conflicts: dpkg-dev (= 1.15.3)
-XS-Debian-Vcs-Git: git://git.debian.org/git/pkg-libvirt/libvirt.git
-XS-Debian-Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/libvirt.git
 Homepage: http://libvirt.org
 Standards-Version: 3.9.3
 DM-Upload-Allowed: yes
