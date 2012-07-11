@@ -1,3 +1,10 @@
+libvirt (0.9.12-0ubuntu5) quantal; urgency=low
+
+  * 9024-initialize-random-generator-in-lxc: invoke virRandomInitialize()
+    to prevent segfaults when lxc uses virRandomBits().  (LP: #1023205)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 11 Jul 2012 07:59:03 -0500
+
 libvirt (0.9.12-0ubuntu4) quantal; urgency=low
 
   * 9022-pass-the-virt-driver-name-into-security-drivers and

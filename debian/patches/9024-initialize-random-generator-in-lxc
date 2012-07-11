@@ -1,0 +1,70 @@
+commit 57349ffc10290eed2cb25ca7cfb4b34ab5003156
+Author: Jim Fehlig <jfehlig@suse.com>
+Date:   Wed Jun 20 23:28:09 2012 -0600
+
+    Initialize random generator in lxc controller
+    
+    The lxc contoller eventually makes use of virRandomBits(), which was
+    segfaulting since virRandomInitialize() is never invoked.
+    
+    Program received signal SIGSEGV, Segmentation fault.
+    0x00007ffff554d560 in random_r () from /lib64/libc.so.6
+    (gdb) bt
+    0  0x00007ffff554d560 in random_r () from /lib64/libc.so.6
+    1  0x0000000000469eaa in virRandomBits (nbits=32) at util/virrandom.c:80
+    2  0x000000000045bf69 in virHashCreateFull (size=256,
+        dataFree=0x4aa2a2 <hashDataFree>, keyCode=0x45bd40 <virHashStrCode>,
+        keyEqual=0x45bdad <virHashStrEqual>, keyCopy=0x45bdfa <virHashStrCopy>,
+        keyFree=0x45be37 <virHashStrFree>) at util/virhash.c:134
+    3  0x000000000045c069 in virHashCreate (size=0, dataFree=0x4aa2a2 <hashDataFree>)
+        at util/virhash.c:164
+    4  0x00000000004aa562 in virNWFilterHashTableCreate (n=0)
+        at conf/nwfilter_params.c:686
+    5  0x00000000004aa95b in virNWFilterParseParamAttributes (cur=0x711d30)
+        at conf/nwfilter_params.c:793
+    6  0x0000000000481a7f in virDomainNetDefParseXML (caps=0x702c90, node=0x7116b0,
+        ctxt=0x7101b0, bootMap=0x0, flags=0) at conf/domain_conf.c:4589
+    7  0x000000000048cc36 in virDomainDefParseXML (caps=0x702c90, xml=0x710040,
+        root=0x7103b0, ctxt=0x7101b0, expectedVirtTypes=16, flags=0)
+        at conf/domain_conf.c:8658
+    8  0x000000000048f011 in virDomainDefParseNode (caps=0x702c90, xml=0x710040,
+        root=0x7103b0, expectedVirtTypes=16, flags=0) at conf/domain_conf.c:9360
+    9  0x000000000048ee30 in virDomainDefParse (xmlStr=0x0,
+        filename=0x702ae0 "/var/run/libvirt/lxc/x.xml", caps=0x702c90,
+        expectedVirtTypes=16, flags=0) at conf/domain_conf.c:9310
+    10 0x000000000048ef00 in virDomainDefParseFile (caps=0x702c90,
+        filename=0x702ae0 "/var/run/libvirt/lxc/x.xml", expectedVirtTypes=16, flags=0)
+        at conf/domain_conf.c:9332
+    11 0x0000000000425053 in main (argc=5, argv=0x7fffffffe2b8)
+        at lxc/lxc_controller.c:1773
+
+Index: libvirt-0.9.12/src/lxc/lxc_controller.c
+===================================================================
+--- libvirt-0.9.12.orig/src/lxc/lxc_controller.c	2012-07-11 07:52:33.000000000 -0500
++++ libvirt-0.9.12/src/lxc/lxc_controller.c	2012-07-11 07:58:56.330499453 -0500
+@@ -43,6 +43,7 @@
+ #include <dirent.h>
+ #include <grp.h>
+ #include <sys/stat.h>
++#include <time.h>
+ 
+ #if HAVE_CAPNG
+ # include <cap-ng.h>
+@@ -71,6 +72,7 @@
+ #include "command.h"
+ #include "processinfo.h"
+ #include "nodeinfo.h"
++#include "virrandom.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_LXC
+ 
+@@ -1663,7 +1665,8 @@
+ 
+     if (setlocale(LC_ALL, "") == NULL ||
+         bindtextdomain(PACKAGE, LOCALEDIR) == NULL ||
+-        textdomain(PACKAGE) == NULL) {
++        textdomain(PACKAGE) == NULL ||
++        virRandomInitialize(time(NULL) ^ getpid())) {
+         fprintf(stderr, _("%s: initialization failed\n"), argv[0]);
+         exit(EXIT_FAILURE);
+     }
