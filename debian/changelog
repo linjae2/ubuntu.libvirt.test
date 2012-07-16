@@ -1,3 +1,12 @@
+libvirt (0.9.13-0ubuntu2) quantal; urgency=low
+
+  * Apply upstream patch to switch default storage pool dir perms from 0700
+    to 0755.  Then push our own patch to change that to 0711.  We'll get the
+    upstream patch on 0.9.14 merge, but we'll want to keep our patch on top
+    of that.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 16 Jul 2012 18:06:43 +0000
+
 libvirt (0.9.13-0ubuntu1) quantal; urgency=low
 
   * New upstream version: 

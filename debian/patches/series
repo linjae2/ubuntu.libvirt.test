@@ -20,3 +20,5 @@ libnl3-build-fix.patch
 qemu-warn-on-pc-0.12.patch
 fix-lxc-container-unmounting.patch
 add-libvirt-highbank-support.patch
+storage-default-pool-permission-mode-to-0755
+storage-default-permission-mode-to-0711
