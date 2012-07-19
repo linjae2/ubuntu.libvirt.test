@@ -22,3 +22,5 @@ fix-lxc-container-unmounting.patch
 add-libvirt-highbank-support.patch
 storage-default-pool-permission-mode-to-0755
 storage-default-permission-mode-to-0711
+add-armhf-sysinfo-infomration.patch
+add-armhf-cpuinfo-parser.patch
