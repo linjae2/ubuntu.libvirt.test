@@ -1,3 +1,12 @@
+libvirt (0.9.13-0ubuntu4) quantal; urgency=low
+
+  * debian/patches/add-armhf-sysinfo-infomration.patch:
+    Provides cpuinfo for armhf cpus.
+  * debian/patches/add-armhf-cpuinfo-parser.patch:
+    Fixes compile time warning about armhf cpus.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 19 Jul 2012 14:54:47 -0500
+
 libvirt (0.9.13-0ubuntu3) quantal; urgency=low
 
   * debian/apparmor/libvirt-qemu: add ceph.conf (LP: #1026404)
