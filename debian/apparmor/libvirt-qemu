@@ -123,3 +123,6 @@
   /etc/pki/CA/* r,
   /etc/pki/libvirt/ r,
   /etc/pki/libvirt/** r,
+
+  # for rbd
+  /etc/ceph/ceph.conf r,

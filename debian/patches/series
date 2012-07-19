@@ -7,7 +7,7 @@ patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
 virsh-Initialize-library-before-calling-virResetLast.patch
 Disable-failing-virnetsockettest.patch
 Don-t-fail-if-we-can-t-setup-avahi.patch
-#9002-better_default_uri_virsh.patch
+9002-better_default_uri_virsh.patch
 9003-better-default-arch.patch
 9004-libvirtd-group-name.patch
 9005-increase-unix-socket-timeout.patch
