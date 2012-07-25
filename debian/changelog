@@ -1,3 +1,9 @@
+libvirt (0.9.8-2ubuntu17.3) precise-proposed; urgency=low
+
+  * debian/apparmor/libvirt-qemu: add ceph.conf (LP: #1026404)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 25 Jul 2012 07:02:47 -0500
+
 libvirt (0.9.8-2ubuntu17.2) precise-proposed; urgency=low
 
   * debian/libvirt-bin.install, debian/rules: name the apport file
