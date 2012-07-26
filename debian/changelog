@@ -1,3 +1,12 @@
+libvirt (0.9.13-0ubuntu5) quantal; urgency=low
+
+  * add patch Reduce-udevadm-settle-timeout-to-10-seconds.patch (copied from
+    Debian tree) to fix 3 minute hang during pool-refresh when using LVM
+    backed pools.  (LP: #1027987)
+  * debian/control: add pm-utils to libvirt-bin Suggests.  (LP: #994476)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 26 Jul 2012 11:05:18 -0500
+
 libvirt (0.9.13-0ubuntu4) quantal; urgency=low
 
   * debian/patches/add-armhf-sysinfo-infomration.patch:
