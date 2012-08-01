@@ -8,8 +8,8 @@ Description=Virtualization daemon
 Before=libvirt-guests.service
 
 [Service]
-EnvironmentFile=-/etc/sysconfig/libvirtd
-ExecStart=@sbindir@/libvirtd $LIBVIRTD_ARGS
+EnvironmentFile=-/etc/default/libvirt-bin
+ExecStart=@sbindir@/libvirtd $libvirtd_opts
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 # Override the maximum number of opened files
