@@ -25,3 +25,4 @@ storage-default-permission-mode-to-0711
 add-armhf-sysinfo-infomration.patch
 add-armhf-cpuinfo-parser.patch
 Reduce-udevadm-settle-timeout-to-10-seconds.patch
+netcf-daemon-fix-wrong-macro-name
