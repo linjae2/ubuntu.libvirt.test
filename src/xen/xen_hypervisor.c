@@ -2021,6 +2021,9 @@ xenHypervisorInit(struct xenHypervisorVersions *override_versions)
     ret = open(XEN_HYPERVISOR_SOCKET, O_RDWR);
     if (ret < 0) {
         hv_versions.hypervisor = -1;
+	in_init = 0;
+	/* Missing socket may appear after xenfs is loaded as a module */
+	initialized = 0;
         return(-1);
     }
     fd = ret;
