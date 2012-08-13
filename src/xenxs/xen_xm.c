@@ -1669,7 +1669,7 @@ virConfPtr xenFormatXM(virConnectPtr conn,
     }
 
     if (def->ngraphics == 1) {
-        if (xendConfigVersion < (hvm ? 4 : XEND_CONFIG_MIN_VERS_PVFB_NEWCONF)) {
+        if (hvm || (xendConfigVersion < XEND_CONFIG_MIN_VERS_PVFB_NEWCONF)) {
             if (def->graphics[0]->type == VIR_DOMAIN_GRAPHICS_TYPE_SDL) {
                 if (xenXMConfigSetInt(conf, "sdl", 1) < 0)
                     goto no_memory;
