@@ -1,3 +1,9 @@
+libvirt (0.9.13-0ubuntu7) quantal; urgency=low
+
+  * debian/apparmor/libvirt-qemu: allow owner read access to @{PROC}/*/auxv
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 14 Aug 2012 16:44:30 -0500
+
 libvirt (0.9.13-0ubuntu6) quantal; urgency=low
 
   * enable netcf support (LP: #520386)
