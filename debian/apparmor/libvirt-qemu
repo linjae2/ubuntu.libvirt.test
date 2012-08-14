@@ -26,6 +26,7 @@
   /dev/ptmx rw,
   /dev/kqemu rw,
   @{PROC}/*/status r,
+  owner @{PROC}/*/auxv r,
 
   # For hostdev access. The actual devices will be added dynamically
   /sys/bus/usb/devices/ r,
