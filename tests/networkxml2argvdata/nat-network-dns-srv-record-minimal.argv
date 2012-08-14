@@ -1,4 +1,4 @@
-@DNSMASQ@ \
+@DNSMASQ@ -u libvirt-dnsmasq \
 --strict-order \
 --bind-interfaces \
 --conf-file= \
