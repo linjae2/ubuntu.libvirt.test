@@ -16,5 +16,7 @@ def add_info(report):
         'libapparmor-perl', 'apparmor-utils', 'auditd', 'libaudit0'])
 
     # get apparmor stuff.
-    attach_mac_events(report)
+    attach_mac_events(report, ['/usr/lib/libvirt/virt-aa-helper',
+                               '/usr/sbin/libvirtd',
+                               'libvirt-.*'])
 

@@ -1,3 +1,10 @@
+libvirt (0.9.13-0ubuntu8) quantal-proposed; urgency=low
+
+  * debian/libvirt-bin.apport: add filter on AppArmor profile names to
+    prevent false positives from denials originating in other packages.
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 20 Aug 2012 10:49:17 -0400
+
 libvirt (0.9.13-0ubuntu7) quantal; urgency=low
 
   * debian/apparmor/libvirt-qemu: allow owner read access to @{PROC}/*/auxv
