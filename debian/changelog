@@ -1,3 +1,10 @@
+libvirt (0.9.13-0ubuntu9) quantal; urgency=low
+
+  * debian/patches/lp1039678.patch: fix segfault in 'snapshot-list'
+    - LP: #1039678
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Tue, 21 Aug 2012 13:59:34 -0500
+
 libvirt (0.9.13-0ubuntu8) quantal-proposed; urgency=low
 
   * debian/libvirt-bin.apport: add filter on AppArmor profile names to
