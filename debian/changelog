@@ -1,3 +1,11 @@
+libvirt (0.9.13-0ubuntu10) quantal; urgency=high
+
+  * apply fix-cve-2012-4423 from upstream to prevent potential daemon
+    segfaults with newer virsh.
+    - Fixes: CVE-2012-4423.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 14 Sep 2012 11:05:40 -0500
+
 libvirt (0.9.13-0ubuntu9) quantal; urgency=low
 
   * debian/patches/lp1039678.patch: fix segfault in 'snapshot-list'
