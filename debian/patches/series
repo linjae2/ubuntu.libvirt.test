@@ -28,3 +28,4 @@ Reduce-udevadm-settle-timeout-to-10-seconds.patch
 netcf-daemon-fix-wrong-macro-name
 lp1039678.patch
 fix-cve-2012-4423
+CVE-2012-3445.patch
