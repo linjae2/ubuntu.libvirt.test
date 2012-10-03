@@ -37,3 +37,5 @@ ubuntu/9025-qemu-change-rbd-auth_supported-separation-character-.patch
 ubuntu/xen-config-no-vfb-for-hvm.patch
 ubuntu/qemu-warn-on-pc-0.12.patch
 ubuntu/storage-fix-a-potential-crash-when-creating-vol-object
+Reduce-udevadm-settle-timeout-to-10-seconds.patch
+command-avoid-double-close-bugs

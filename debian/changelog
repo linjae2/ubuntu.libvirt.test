@@ -1,3 +1,13 @@
+libvirt (0.9.8-2ubuntu17.5) precise-proposed; urgency=low
+
+  * add patch Reduce-udevadm-settle-timeout-to-10-seconds.patch (copied from
+    Debian tree) to fix 3 minute hang during pool-refresh when using LVM
+    backed pools.  (LP: #1027987)
+  * add upstream patch command-avoid-double-close-bugs toi avoid a race when
+    starting multiple VMs concurrently.  (LP: #1055658)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 03 Oct 2012 11:48:31 -0500
+
 libvirt (0.9.8-2ubuntu17.4) precise-proposed; urgency=low
 
   * storage-fix-a-potential-crash-when-creating-vol-object: avoid a crash
