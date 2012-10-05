@@ -1,3 +1,13 @@
+libvirt (0.9.13-0ubuntu12) quantal; urgency=low
+
+  * Refresh fix-ubuntu-xen-qemu-dm-path.patch to only use executable
+    names and let the toolchain find out the right paths (LP: #914788).
+    Thanks George Dunlap.
+  * Refresh and re-activate xen_hypervisor-treat-missing-privcmd-file-
+    as-temporary.patch (LP: #922486)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Fri, 05 Oct 2012 11:35:43 +0200
+
 libvirt (0.9.13-0ubuntu11) quantal-proposed; urgency=low
 
   * SECURITY UPDATE: denial of service via invalid RPC command

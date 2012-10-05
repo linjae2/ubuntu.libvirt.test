@@ -14,7 +14,6 @@ Don-t-fail-if-we-can-t-setup-avahi.patch
 9020-lp545795.patch
 9021-fix-uint64_t.patch
 enable-kvm-spice.patch
-fix-ubuntu-xen-qemu-dm-path.patch
 dnsmasq-as-priv-user
 libnl3-build-fix.patch
 qemu-warn-on-pc-0.12.patch
@@ -29,3 +28,5 @@ netcf-daemon-fix-wrong-macro-name
 lp1039678.patch
 fix-cve-2012-4423
 CVE-2012-3445.patch
+xen_hypervisor-treat-missing-privcmd-file-as-temporary.patch
+fix-ubuntu-xen-qemu-dm-path.patch

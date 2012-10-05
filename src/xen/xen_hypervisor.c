@@ -2034,6 +2034,9 @@ xenHypervisorInit(struct xenHypervisorVersions *override_versions)
     ret = open(XEN_HYPERVISOR_SOCKET, O_RDWR);
     if (ret < 0) {
         hv_versions.hypervisor = -1;
+        in_init = 0;
+        /* Missing socket may appear after xenfs is loaded as a module */
+        initialized = 0;
         return -1;
     }
     fd = ret;
@@ -2356,10 +2359,10 @@ xenHypervisorBuildCapabilities(virConnectPtr conn,
                                              guest_archs[i].model,
                                              guest_archs[i].bits,
                                              (STREQ(hostmachine, "x86_64") ?
-                                              "/usr/lib/xen-default/bin/qemu-dm" :
-                                              "/usr/lib/xen-default/bin/qemu-dm"),
+                                              "qemu-dm" :
+                                              "qemu-dm"),
                                              (guest_archs[i].hvm ?
-                                              "/usr/lib/xen-default/boot/hvmloader" :
+                                              "hvmloader" :
                                               NULL),
                                              1,
                                              machines)) == NULL) {
