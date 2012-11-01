@@ -423,7 +423,7 @@ static qemuMonitorCallbacks qemuCallbacks = {
 
 qemuMonitorTestPtr qemuMonitorTestNew(bool json, virCapsPtr caps)
 {
-    qemuMonitorTestPtr test;
+    qemuMonitorTestPtr test = NULL;
     virDomainChrSourceDef src;
 
     char *tmpdir = NULL, *path = NULL;
@@ -432,7 +432,7 @@ qemuMonitorTestPtr qemuMonitorTestNew(bool json, virCapsPtr caps)
     tmpdir = mkdtemp(template);
     if (tmpdir == NULL) {
         virReportSystemError(errno, "%s",
-                             _("Failed to create temporary directory"));
+                             "Failed to create temporary directory");
         goto error;
     }
 
@@ -510,7 +510,8 @@ qemuMonitorTestPtr qemuMonitorTestNew(bool json, virCapsPtr caps)
 
 cleanup:
     if (tmpdir)
-        rmdir(tmpdir);
+        if (rmdir(tmpdir) < 0)
+            VIR_WARN("Failed to remove tempdir: %s", strerror(errno));
     VIR_FREE(path);
     return test;
 
