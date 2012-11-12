@@ -4,7 +4,19 @@
  *
  * Copyright (C) 2005-2006, 2008-2012 Red Hat, Inc.
  *
- * See COPYING.LIB for the License of this software
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * Daniel Veillard <veillard@redhat.com>
  */
@@ -29,6 +41,10 @@
 # include <winsock2.h>
 #endif
 
+#ifdef HAVE_LIBCURL
+# include <curl/curl.h>
+#endif
+
 #include "virterror_internal.h"
 #include "logging.h"
 #include "datatypes.h"
@@ -41,9 +57,9 @@
 #include "conf.h"
 #include "rpc/virnettlscontext.h"
 #include "command.h"
-#include "virnodesuspend.h"
 #include "virrandom.h"
 #include "viruri.h"
+#include "threads.h"
 
 #ifdef WITH_TEST
 # include "test/test_driver.h"
@@ -71,6 +87,9 @@
 #endif
 #ifdef WITH_XENAPI
 # include "xenapi/xenapi_driver.h"
+#endif
+#ifdef WITH_PARALLELS
+# include "parallels/parallels_driver.h"
 #endif
 
 #define VIR_FROM_THIS VIR_FROM_NONE
@@ -101,7 +120,7 @@ static int virNWFilterDriverTabCount = 0;
 static virStateDriverPtr virStateDriverTab[MAX_DRIVERS];
 static int virStateDriverTabCount = 0;
 #endif
-static int initialized = 0;
+
 
 #if defined(POLKIT_AUTH)
 static int virConnectAuthGainPolkit(const char *privilege) {
@@ -373,31 +392,16 @@ static struct gcry_thread_cbs virTLSThreadImpl = {
         }                                                       \
     } while (0)
 
-/**
- * virInitialize:
- *
- * Initialize the library. It's better to call this routine at startup
- * in multithreaded applications to avoid potential race when initializing
- * the library.
- *
- * Calling virInitialize is mandatory, unless your first API call is one of
- * virConnectOpen*.
- *
- * Returns 0 in case of success, -1 in case of error
- */
-int
-virInitialize(void)
+
+static bool virGlobalError = false;
+static virOnceControl virGlobalOnce = VIR_ONCE_CONTROL_INITIALIZER;
+
+static void
+virGlobalInit(void)
 {
-    if (initialized)
-        return 0;
-
-    initialized = 1;
-
     if (virThreadInitialize() < 0 ||
-        virErrorInitialize() < 0 ||
-        virRandomInitialize(time(NULL) ^ getpid()) ||
-        virNodeSuspendInit() < 0)
-        return -1;
+        virErrorInitialize() < 0)
+        goto error;
 
     gcry_control(GCRYCTL_SET_THREAD_CBS, &virTLSThreadImpl);
     gcry_check_version(NULL);
@@ -406,47 +410,94 @@ virInitialize(void)
 
     virNetTLSInit();
 
+#if HAVE_LIBCURL
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+#endif
+
     VIR_DEBUG("register drivers");
 
 #if HAVE_WINSOCK2_H
-    if (winsock_init () == -1) return -1;
+    if (winsock_init () == -1)
+        goto error;
 #endif
 
     if (!bindtextdomain(PACKAGE, LOCALEDIR))
-        return -1;
+        goto error;
 
     /*
      * Note that the order is important: the first ones have a higher
      * priority when calling virConnectOpen.
      */
 #ifdef WITH_TEST
-    if (testRegister() == -1) return -1;
+    if (testRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_OPENVZ
-    if (openvzRegister() == -1) return -1;
+    if (openvzRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_VMWARE
-    if (vmwareRegister() == -1) return -1;
+    if (vmwareRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_PHYP
-    if (phypRegister() == -1) return -1;
+    if (phypRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_VBOX
-    if (vboxRegister() == -1) return -1;
+    if (vboxRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_ESX
-    if (esxRegister() == -1) return -1;
+    if (esxRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_HYPERV
-    if (hypervRegister() == -1) return -1;
+    if (hypervRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_XENAPI
-    if (xenapiRegister() == -1) return -1;
+    if (xenapiRegister() == -1)
+        goto error;
+#endif
+#ifdef WITH_PARALLELS
+    if (parallelsRegister() == -1)
+        goto error;
 #endif
 #ifdef WITH_REMOTE
-    if (remoteRegister () == -1) return -1;
+    if (remoteRegister () == -1)
+        goto error;
 #endif
 
+    return;
+
+error:
+    virGlobalError = true;
+}
+
+/**
+ * virInitialize:
+ *
+ * Initialize the library.
+ *
+ * This method is invoked automatically by any of the virConnectOpen API
+ * calls. Since release 1.0.0, there is no need to call this method even
+ * in a multithreaded application, since initialization is performed in
+ * a thread safe manner.
+ *
+ * The only time it would be necessary to call virInitialize is if the
+ * application did not invoke virConnectOpen as its first API call.
+ *
+ * Returns 0 in case of success, -1 in case of error
+ */
+int
+virInitialize(void)
+{
+    if (virOnce(&virGlobalOnce, virGlobalInit) < 0)
+        return -1;
+
+    if (virGlobalError)
+        return -1;
     return 0;
 }
 
@@ -530,9 +581,6 @@ DllMain (HINSTANCE instance ATTRIBUTE_UNUSED,
 int
 virRegisterNetworkDriver(virNetworkDriverPtr driver)
 {
-    if (virInitialize() < 0)
-      return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virNetworkDriverTabCount >= MAX_DRIVERS) {
@@ -560,9 +608,6 @@ virRegisterNetworkDriver(virNetworkDriverPtr driver)
 int
 virRegisterInterfaceDriver(virInterfaceDriverPtr driver)
 {
-    if (virInitialize() < 0)
-      return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virInterfaceDriverTabCount >= MAX_DRIVERS) {
@@ -590,9 +635,6 @@ virRegisterInterfaceDriver(virInterfaceDriverPtr driver)
 int
 virRegisterStorageDriver(virStorageDriverPtr driver)
 {
-    if (virInitialize() < 0)
-      return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virStorageDriverTabCount >= MAX_DRIVERS) {
@@ -620,9 +662,6 @@ virRegisterStorageDriver(virStorageDriverPtr driver)
 int
 virRegisterDeviceMonitor(virDeviceMonitorPtr driver)
 {
-    if (virInitialize() < 0)
-      return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virDeviceMonitorTabCount >= MAX_DRIVERS) {
@@ -650,9 +689,6 @@ virRegisterDeviceMonitor(virDeviceMonitorPtr driver)
 int
 virRegisterSecretDriver(virSecretDriverPtr driver)
 {
-    if (virInitialize() < 0)
-      return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virSecretDriverTabCount >= MAX_DRIVERS) {
@@ -680,9 +716,6 @@ virRegisterSecretDriver(virSecretDriverPtr driver)
 int
 virRegisterNWFilterDriver(virNWFilterDriverPtr driver)
 {
-    if (virInitialize() < 0)
-      return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virNWFilterDriverTabCount >= MAX_DRIVERS) {
@@ -713,9 +746,6 @@ virRegisterDriver(virDriverPtr driver)
 {
     VIR_DEBUG("driver=%p name=%s", driver, driver ? NULLSTR(driver->name) : "(null)");
 
-    if (virInitialize() < 0)
-        return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virDriverTabCount >= MAX_DRIVERS) {
@@ -744,9 +774,6 @@ virRegisterDriver(virDriverPtr driver)
 int
 virRegisterStateDriver(virStateDriverPtr driver)
 {
-    if (virInitialize() < 0)
-      return -1;
-
     virCheckNonNullArgReturn(driver, -1);
 
     if (virStateDriverTabCount >= MAX_DRIVERS) {
@@ -872,9 +899,8 @@ virGetVersion(unsigned long *libVer, const char *type ATTRIBUTE_UNUSED,
 {
     VIR_DEBUG("libVir=%p, type=%s, typeVer=%p", libVer, type, typeVer);
 
-    if (!initialized)
-        if (virInitialize() < 0)
-            goto error;
+    if (virInitialize() < 0)
+        goto error;
 
     if (libVer == NULL)
         goto error;
@@ -1144,6 +1170,9 @@ do_open (const char *name,
 #ifndef WITH_XENAPI
              STRCASEEQ(ret->uri->scheme, "xenapi") ||
 #endif
+#ifndef WITH_PARALLELS
+             STRCASEEQ(ret->uri->scheme, "parallels") ||
+#endif
              false)) {
             virReportErrorHelper(VIR_FROM_NONE, VIR_ERR_CONFIG_UNSUPPORTED,
                                  __FILE__, __FUNCTION__, __LINE__,
@@ -1275,7 +1304,7 @@ do_open (const char *name,
 
 failed:
     virConfFree(conf);
-    virUnrefConnect(ret);
+    virObjectUnref(ret);
 
     return NULL;
 }
@@ -1306,11 +1335,12 @@ virConnectPtr
 virConnectOpen (const char *name)
 {
     virConnectPtr ret = NULL;
-    if (!initialized)
-        if (virInitialize() < 0)
-            goto error;
+
+    if (virInitialize() < 0)
+        goto error;
 
     VIR_DEBUG("name=%s", name);
+    virResetLastError();
     ret = do_open (name, NULL, 0);
     if (!ret)
         goto error;
@@ -1340,11 +1370,12 @@ virConnectPtr
 virConnectOpenReadOnly(const char *name)
 {
     virConnectPtr ret = NULL;
-    if (!initialized)
-        if (virInitialize() < 0)
-            goto error;
+
+    if (virInitialize() < 0)
+        goto error;
 
     VIR_DEBUG("name=%s", name);
+    virResetLastError();
     ret = do_open (name, NULL, VIR_CONNECT_RO);
     if (!ret)
         goto error;
@@ -1378,11 +1409,12 @@ virConnectOpenAuth(const char *name,
                    unsigned int flags)
 {
     virConnectPtr ret = NULL;
-    if (!initialized)
-        if (virInitialize() < 0)
-            goto error;
+
+    if (virInitialize() < 0)
+        goto error;
 
     VIR_DEBUG("name=%s, auth=%p, flags=%x", NULLSTR(name), auth, flags);
+    virResetLastError();
     ret = do_open (name, auth, flags);
     if (!ret)
         goto error;
@@ -1410,14 +1442,16 @@ error:
  * matching virConnectClose, and all other references will be released
  * after the corresponding operation completes.
  *
- * Returns the number of remaining references on success
- * (positive implies that some other call still has a reference open,
- * 0 implies that no references remain and the connection is closed),
- * or -1 on failure.  It is possible for the last virConnectClose to
- * return a positive value if some other object still has a temporary
- * reference to the connection, but the application should not try to
- * further use a connection after the virConnectClose that matches the
- * initial open.
+ * Returns a positive number if at least 1 reference remains on
+ * success. The returned value should not be assumed to be the total
+ * reference count. A return of 0 implies no references remain and
+ * the connection is closed and memory has been freed. A return of -1
+ * implies a failure.
+ *
+ * It is possible for the last virConnectClose to return a positive
+ * value if some other object still has a temporary reference to the
+ * connection, but the application should not try to further use a
+ * connection after the virConnectClose that matches the initial open.
  */
 int
 virConnectClose(virConnectPtr conn)
@@ -1432,10 +1466,9 @@ virConnectClose(virConnectPtr conn)
         goto error;
     }
 
-    ret = virUnrefConnect(conn);
-    if (ret < 0)
-        goto error;
-    return ret;
+    if (!virObjectUnref(conn))
+        return 0;
+    return 1;
 
 error:
     virDispatchError(NULL);
@@ -1467,10 +1500,8 @@ virConnectRef(virConnectPtr conn)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&conn->lock);
-    VIR_DEBUG("conn=%p refs=%d", conn, conn->refs);
-    conn->refs++;
-    virMutexUnlock(&conn->lock);
+    VIR_DEBUG("conn=%p refs=%d", conn, conn->object.refs);
+    virObjectRef(conn);
     return 0;
 }
 
@@ -2267,10 +2298,7 @@ virDomainFree(virDomainPtr domain)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefDomain(domain) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(domain);
     return 0;
 }
 
@@ -2299,10 +2327,9 @@ virDomainRef(virDomainPtr domain)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&domain->conn->lock);
-    VIR_DOMAIN_DEBUG(domain, "refs=%d", domain->refs);
-    domain->refs++;
-    virMutexUnlock(&domain->conn->lock);
+
+    VIR_DOMAIN_DEBUG(domain, "refs=%d", domain->object.refs);
+    virObjectRef(domain);
     return 0;
 }
 
@@ -2316,6 +2343,8 @@ virDomainRef(virDomainPtr domain)
  * hypervisor level will stay allocated. Use virDomainResume() to reactivate
  * the domain.
  * This function may require privileged access.
+ * Moreover, suspend may not be supported if domain is in some
+ * special state like VIR_DOMAIN_PMSUSPENDED.
  *
  * Returns 0 in case of success and -1 in case of failure.
  */
@@ -2362,6 +2391,8 @@ error:
  * Resume a suspended domain, the process is restarted from the state where
  * it was frozen by calling virDomainSuspend().
  * This function may require privileged access
+ * Moreover, resume may not be supported if domain is in some
+ * special state like VIR_DOMAIN_PMSUSPENDED.
  *
  * Returns 0 in case of success and -1 in case of failure.
  */
@@ -2555,7 +2586,7 @@ virDomainSave(virDomainPtr domain, const char *to)
 
         /* We must absolutize the file path as the save is done out of process */
         if (virFileAbsPath(to, &absolute_to) < 0) {
-            virLibConnError(VIR_ERR_INTERNAL_ERROR,
+            virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                             _("could not build absolute output file path"));
             goto error;
         }
@@ -2650,7 +2681,7 @@ virDomainSaveFlags(virDomainPtr domain, const char *to,
 
         /* We must absolutize the file path as the save is done out of process */
         if (virFileAbsPath(to, &absolute_to) < 0) {
-            virLibConnError(VIR_ERR_INTERNAL_ERROR,
+            virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                             _("could not build absolute output file path"));
             goto error;
         }
@@ -2706,7 +2737,7 @@ virDomainRestore(virConnectPtr conn, const char *from)
 
         /* We must absolutize the file path as the restore is done out of process */
         if (virFileAbsPath(from, &absolute_from) < 0) {
-            virLibConnError(VIR_ERR_INTERNAL_ERROR,
+            virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                             _("could not build absolute input file path"));
             goto error;
         }
@@ -2788,7 +2819,7 @@ virDomainRestoreFlags(virConnectPtr conn, const char *from, const char *dxml,
 
         /* We must absolutize the file path as the restore is done out of process */
         if (virFileAbsPath(from, &absolute_from) < 0) {
-            virLibConnError(VIR_ERR_INTERNAL_ERROR,
+            virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                             _("could not build absolute input file path"));
             goto error;
         }
@@ -2845,7 +2876,7 @@ virDomainSaveImageGetXMLDesc(virConnectPtr conn, const char *file,
     virCheckNonNullArgGoto(file, error);
 
     if ((conn->flags & VIR_CONNECT_RO) && (flags & VIR_DOMAIN_XML_SECURE)) {
-        virLibConnError(VIR_ERR_OPERATION_DENIED,
+        virLibConnError(VIR_ERR_OPERATION_DENIED, "%s",
                         _("virDomainSaveImageGetXMLDesc with secure flag"));
         goto error;
     }
@@ -2856,7 +2887,7 @@ virDomainSaveImageGetXMLDesc(virConnectPtr conn, const char *file,
 
         /* We must absolutize the file path as the read is done out of process */
         if (virFileAbsPath(file, &absolute_file) < 0) {
-            virLibConnError(VIR_ERR_INTERNAL_ERROR,
+            virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                             _("could not build absolute input file path"));
             goto error;
         }
@@ -2937,7 +2968,7 @@ virDomainSaveImageDefineXML(virConnectPtr conn, const char *file,
 
         /* We must absolutize the file path as the read is done out of process */
         if (virFileAbsPath(file, &absolute_file) < 0) {
-            virLibConnError(VIR_ERR_INTERNAL_ERROR,
+            virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                             _("could not build absolute input file path"));
             goto error;
         }
@@ -3029,7 +3060,7 @@ virDomainCoreDump(virDomainPtr domain, const char *to, unsigned int flags)
 
         /* We must absolutize the file path as the save is done out of process */
         if (virFileAbsPath(to, &absolute_to) < 0) {
-            virLibConnError(VIR_ERR_INTERNAL_ERROR,
+            virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                             _("could not build absolute core file path"));
             goto error;
         }
@@ -3063,7 +3094,7 @@ error:
  *
  * This call sets up a stream; subsequent use of stream API is necessary
  * to transfer actual data, determine how much data is successfully
- * transfered, and detect any errors.
+ * transferred, and detect any errors.
  *
  * The screen ID is the sequential number of screen. In case of multiple
  * graphics cards, heads are enumerated before devices, e.g. having
@@ -3722,15 +3753,15 @@ error:
 /* Helper function called to validate incoming client array on any
  * interface that sets typed parameters in the hypervisor.  */
 static int
-virTypedParameterValidateSet(virDomainPtr domain,
+virTypedParameterValidateSet(virConnectPtr conn,
                              virTypedParameterPtr params,
                              int nparams)
 {
     bool string_okay;
     int i;
 
-    string_okay = VIR_DRV_SUPPORTS_FEATURE(domain->conn->driver,
-                                           domain->conn,
+    string_okay = VIR_DRV_SUPPORTS_FEATURE(conn->driver,
+                                           conn,
                                            VIR_DRV_FEATURE_TYPED_PARAM_STRING);
     for (i = 0; i < nparams; i++) {
         if (strnlen(params[i].field, VIR_TYPED_PARAM_FIELD_LENGTH) ==
@@ -3797,7 +3828,7 @@ virDomainSetMemoryParameters(virDomainPtr domain,
     virCheckNonNullArgGoto(params, error);
     virCheckPositiveArgGoto(nparams, error);
 
-    if (virTypedParameterValidateSet(domain, params, nparams) < 0)
+    if (virTypedParameterValidateSet(domain->conn, params, nparams) < 0)
         goto error;
 
     conn = domain->conn;
@@ -3938,7 +3969,7 @@ virDomainSetNumaParameters(virDomainPtr domain,
     }
     virCheckNonNullArgGoto(params, error);
     virCheckPositiveArgGoto(nparams, error);
-    if (virTypedParameterValidateSet(domain, params, nparams) < 0)
+    if (virTypedParameterValidateSet(domain->conn, params, nparams) < 0)
         goto error;
 
     conn = domain->conn;
@@ -4066,7 +4097,7 @@ virDomainSetBlkioParameters(virDomainPtr domain,
     virCheckNonNullArgGoto(params, error);
     virCheckNonNegativeArgGoto(nparams, error);
 
-    if (virTypedParameterValidateSet(domain, params, nparams) < 0)
+    if (virTypedParameterValidateSet(domain->conn, params, nparams) < 0)
         goto error;
 
     conn = domain->conn;
@@ -4341,7 +4372,7 @@ virDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
     conn = domain->conn;
 
     if ((conn->flags & VIR_CONNECT_RO) && (flags & VIR_DOMAIN_XML_SECURE)) {
-        virLibConnError(VIR_ERR_OPERATION_DENIED,
+        virLibConnError(VIR_ERR_OPERATION_DENIED, "%s",
                         _("virDomainGetXMLDesc with secure flag"));
         goto error;
     }
@@ -4523,7 +4554,7 @@ virDomainMigrateVersion1 (virDomainPtr domain,
         goto done;
 
     if (uri == NULL && uri_out == NULL) {
-        virLibConnError(VIR_ERR_INTERNAL_ERROR,
+        virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                          _("domainMigratePrepare did not set uri"));
         goto done;
     }
@@ -4589,6 +4620,7 @@ virDomainMigrateVersion2 (virDomainPtr domain,
     int cookielen = 0, ret;
     virDomainInfo info;
     virErrorPtr orig_err = NULL;
+    unsigned int getxml_flags = 0;
     int cancelled;
     VIR_DOMAIN_DEBUG(domain,
                      "dconn=%p, flags=%lx, dname=%s, uri=%s, bandwidth=%lu",
@@ -4615,9 +4647,15 @@ virDomainMigrateVersion2 (virDomainPtr domain,
         virDispatchError(domain->conn);
         return NULL;
     }
-    dom_xml = domain->conn->driver->domainGetXMLDesc(domain,
-                                                     VIR_DOMAIN_XML_SECURE |
-                                                     VIR_DOMAIN_XML_UPDATE_CPU);
+
+    if (VIR_DRV_SUPPORTS_FEATURE(domain->conn->driver, domain->conn,
+                                 VIR_DRV_FEATURE_XML_MIGRATABLE)) {
+        getxml_flags |= VIR_DOMAIN_XML_MIGRATABLE;
+    } else {
+        getxml_flags |= VIR_DOMAIN_XML_SECURE | VIR_DOMAIN_XML_UPDATE_CPU;
+    }
+
+    dom_xml = domain->conn->driver->domainGetXMLDesc(domain, getxml_flags);
     if (!dom_xml)
         return NULL;
 
@@ -4635,7 +4673,7 @@ virDomainMigrateVersion2 (virDomainPtr domain,
         goto done;
 
     if (uri == NULL && uri_out == NULL) {
-        virLibConnError(VIR_ERR_INTERNAL_ERROR,
+        virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                          _("domainMigratePrepare2 did not set uri"));
         virDispatchError(domain->conn);
         cancelled = 1;
@@ -4781,7 +4819,7 @@ virDomainMigrateVersion3(virDomainPtr domain,
     }
 
     if (uri == NULL && uri_out == NULL) {
-        virLibConnError(VIR_ERR_INTERNAL_ERROR,
+        virLibConnError(VIR_ERR_INTERNAL_ERROR, "%s",
                         _("domainMigratePrepare3 did not set uri"));
         virDispatchError(domain->conn);
         goto finish;
@@ -5198,7 +5236,7 @@ virDomainMigrate (virDomainPtr domain,
         }
         flags &= ~VIR_MIGRATE_CHANGE_PROTECTION;
         if (flags & VIR_MIGRATE_TUNNELLED) {
-            virLibConnError(VIR_ERR_OPERATION_INVALID,
+            virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
                             _("cannot perform tunnelled migration without using peer2peer flag"));
             goto error;
         }
@@ -5400,7 +5438,7 @@ virDomainMigrate2(virDomainPtr domain,
         }
         flags &= ~VIR_MIGRATE_CHANGE_PROTECTION;
         if (flags & VIR_MIGRATE_TUNNELLED) {
-            virLibConnError(VIR_ERR_OPERATION_INVALID,
+            virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
                             _("cannot perform tunnelled migration without using peer2peer flag"));
             goto error;
         }
@@ -5562,7 +5600,9 @@ virDomainMigrateToURI (virDomainPtr domain,
                 goto error;
         } else {
             /* Cannot do a migration with only the perform step */
-            virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+            virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
+                            _("direct migration is not supported by the"
+                              " connection driver"));
             goto error;
         }
     }
@@ -5696,7 +5736,9 @@ virDomainMigrateToURI2(virDomainPtr domain,
                 goto error;
         } else {
             /* Cannot do a migration with only the perform step */
-            virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+            virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
+                            _("direct migration is not supported by the"
+                              " connection driver"));
             goto error;
         }
     }
@@ -6696,6 +6738,133 @@ error:
     return -1;
 }
 
+/*
+ * virNodeGetMemoryParameters:
+ * @conn: pointer to the hypervisor connection
+ * @params: pointer to memory parameter object
+ *          (return value, allocated by the caller)
+ * @nparams: pointer to number of memory parameters; input and output
+ * @flags: extra flags; not used yet, so callers should always pass 0
+ *
+ * Get all node memory parameters.  On input, @nparams gives the size
+ * of the @params array; on output, @nparams gives how many slots were
+ * filled with parameter information, which might be less but will
+ * not exceed the input value.
+ *
+ * As a special case, calling with @params as NULL and @nparams as 0 on
+ * input will cause @nparams on output to contain the number of parameters
+ * supported by the hypervisor. The caller should then allocate @params
+ * array, i.e. (sizeof(@virTypedParameter) * @nparams) bytes and call the API
+ * again.  See virDomainGetMemoryParameters() for an equivalent usage
+ * example.
+ *
+ * Returns 0 in case of success, and -1 in case of failure.
+ */
+int
+virNodeGetMemoryParameters(virConnectPtr conn,
+                           virTypedParameterPtr params,
+                           int *nparams,
+                           unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, params=%p, nparams=%p, flags=%x",
+              conn, params, nparams, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    virCheckNonNullArgGoto(nparams, error);
+    virCheckNonNegativeArgGoto(*nparams, error);
+    if (*nparams != 0)
+        virCheckNonNullArgGoto(params, error);
+
+    if (VIR_DRV_SUPPORTS_FEATURE(conn->driver, conn,
+                                 VIR_DRV_FEATURE_TYPED_PARAM_STRING))
+        flags |= VIR_TYPED_PARAM_STRING_OKAY;
+
+    if (conn->driver->nodeGetMemoryParameters) {
+        int ret;
+        ret = conn->driver->nodeGetMemoryParameters(conn, params,
+                                                    nparams, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
+
+/*
+ * virNodeSetMemoryParameters:
+ * @conn: pointer to the hypervisor connection
+ * @params: pointer to scheduler parameter objects
+ * @nparams: number of scheduler parameter objects
+ *          (this value can be the same or less than the returned
+ *           value nparams of virDomainGetSchedulerType)
+ * @flags: extra flags; not used yet, so callers should always pass 0
+ *
+ * Change all or a subset of the node memory tunables.
+ *
+ * Note that it's not recommended to use this function while the
+ * outside tuning program is running (such as ksmtuned under Linux),
+ * as they could change the tunables in parallel, which could cause
+ * conflicts.
+ *
+ * This function may require privileged access to the hypervisor.
+ *
+ * Returns 0 in case of success, -1 in case of failure.
+ */
+int
+virNodeSetMemoryParameters(virConnectPtr conn,
+                           virTypedParameterPtr params,
+                           int nparams,
+                           unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, params=%p, nparams=%d, flags=%x",
+              conn, params, nparams, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->flags & VIR_CONNECT_RO) {
+        virLibConnError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        goto error;
+    }
+
+    virCheckNonNullArgGoto(params, error);
+    virCheckNonNegativeArgGoto(nparams, error);
+
+    if (virTypedParameterValidateSet(conn, params, nparams) < 0)
+        goto error;
+
+    if (conn->driver->nodeSetMemoryParameters) {
+        int ret;
+        ret = conn->driver->nodeSetMemoryParameters(conn, params,
+                                                          nparams, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
 
 /**
  * virDomainGetSchedulerType:
@@ -6917,7 +7086,7 @@ virDomainSetSchedulerParameters(virDomainPtr domain,
     virCheckNonNullArgGoto(params, error);
     virCheckNonNegativeArgGoto(nparams, error);
 
-    if (virTypedParameterValidateSet(domain, params, nparams) < 0)
+    if (virTypedParameterValidateSet(domain->conn, params, nparams) < 0)
         goto error;
 
     conn = domain->conn;
@@ -6981,7 +7150,7 @@ virDomainSetSchedulerParametersFlags(virDomainPtr domain,
     virCheckNonNullArgGoto(params, error);
     virCheckNonNegativeArgGoto(nparams, error);
 
-    if (virTypedParameterValidateSet(domain, params, nparams) < 0)
+    if (virTypedParameterValidateSet(domain->conn, params, nparams) < 0)
         goto error;
 
     conn = domain->conn;
@@ -7262,7 +7431,7 @@ virDomainSetInterfaceParameters(virDomainPtr domain,
     virCheckNonNullArgGoto(params, error);
     virCheckPositiveArgGoto(nparams, error);
 
-    if (virTypedParameterValidateSet(domain, params, nparams) < 0)
+    if (virTypedParameterValidateSet(domain->conn, params, nparams) < 0)
         goto error;
 
     conn = domain->conn;
@@ -8841,6 +9010,148 @@ error:
 }
 
 /**
+ * virDomainPinEmulator:
+ * @domain: pointer to domain object, or NULL for Domain0
+ * @cpumap: pointer to a bit map of real CPUs (in 8-bit bytes) (IN)
+ *      Each bit set to 1 means that corresponding CPU is usable.
+ *      Bytes are stored in little-endian order: CPU0-7, 8-15...
+ *      In each byte, lowest CPU number is least significant bit.
+ * @maplen: number of bytes in cpumap, from 1 up to size of CPU map in
+ *      underlying virtualization system (Xen...).
+ *      If maplen < size, missing bytes are set to zero.
+ *      If maplen > size, failure code is returned.
+ * @flags: bitwise-OR of virDomainModificationImpact
+ *
+ * Dynamically change the real CPUs which can be allocated to all emulator
+ * threads. This function may require privileged access to the hypervisor.
+ *
+ * @flags may include VIR_DOMAIN_AFFECT_LIVE or VIR_DOMAIN_AFFECT_CONFIG.
+ * Both flags may be set.
+ * If VIR_DOMAIN_AFFECT_LIVE is set, the change affects a running domain
+ * and may fail if domain is not alive.
+ * If VIR_DOMAIN_AFFECT_CONFIG is set, the change affects persistent state,
+ * and will fail for transient domains. If neither flag is specified (that is,
+ * @flags is VIR_DOMAIN_AFFECT_CURRENT), then an inactive domain modifies
+ * persistent setup, while an active domain is hypervisor-dependent on whether
+ * just live or both live and persistent state is changed.
+ * Not all hypervisors can support all flag combinations.
+ *
+ * See also virDomainGetEmulatorPinInfo for querying this information.
+ *
+ * Returns 0 in case of success, -1 in case of failure.
+ *
+ */
+int
+virDomainPinEmulator(virDomainPtr domain, unsigned char *cpumap,
+                     int maplen, unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "cpumap=%p, maplen=%d, flags=%x",
+                     cpumap, maplen, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (domain->conn->flags & VIR_CONNECT_RO) {
+        virLibDomainError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        goto error;
+    }
+
+    if ((cpumap == NULL) || (maplen < 1)) {
+        virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        goto error;
+    }
+
+    conn = domain->conn;
+
+    if (conn->driver->domainPinEmulator) {
+        int ret;
+        ret = conn->driver->domainPinEmulator (domain, cpumap, maplen, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
+/**
+ * virDomainGetEmulatorPinInfo:
+ * @domain: pointer to domain object, or NULL for Domain0
+ * @cpumap: pointer to a bit map of real CPUs for all emulator threads of
+ *     this domain (in 8-bit bytes) (OUT)
+ *     There is only one cpumap for all emulator threads.
+ *     Must not be NULL.
+ * @maplen: the number of bytes in one cpumap, from 1 up to size of CPU map.
+ *     Must be positive.
+ * @flags: bitwise-OR of virDomainModificationImpact
+ *     Must not be VIR_DOMAIN_AFFECT_LIVE and
+ *     VIR_DOMAIN_AFFECT_CONFIG concurrently.
+ *
+ * Query the CPU affinity setting of all emulator threads of domain, store
+ * it in cpumap.
+ *
+ * Returns 1 in case of success,
+ * 0 in case of no emulator threads are pined to pcpus,
+ * -1 in case of failure.
+ */
+int
+virDomainGetEmulatorPinInfo(virDomainPtr domain, unsigned char *cpumap,
+                            int maplen, unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "cpumap=%p, maplen=%d, flags=%x",
+                     cpumap, maplen, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (!cpumap || maplen <= 0) {
+        virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        goto error;
+    }
+
+    /* At most one of these two flags should be set.  */
+    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
+        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
+        virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        goto error;
+    }
+    conn = domain->conn;
+
+    if (conn->driver->domainGetEmulatorPinInfo) {
+        int ret;
+        ret = conn->driver->domainGetEmulatorPinInfo(domain, cpumap,
+                                                     maplen, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
+/**
  * virDomainGetVcpus:
  * @domain: pointer to domain object, or NULL for Domain0
  * @info: pointer to an array of virVcpuInfo structures (OUT)
@@ -9003,6 +9314,53 @@ error:
     return -1;
 }
 
+/**
+ * virDomainGetSecurityLabelList:
+ * @domain: a domain object
+ * @seclabels: will be auto-allocated and filled with domains' security labels.
+ * Caller must free memory on return.
+ *
+ * Extract the security labels of an active domain. The 'label' field
+ * in the @seclabels argument will be initialized to the empty
+ * string if the domain is not running under a security model.
+ *
+ * Returns number of elemnets in @seclabels on success, -1 in case of failure.
+ */
+int
+virDomainGetSecurityLabelList(virDomainPtr domain,
+                              virSecurityLabelPtr* seclabels)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "seclabels=%p", seclabels);
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (seclabels == NULL) {
+        virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+        goto error;
+    }
+
+    conn = domain->conn;
+
+    if (conn->driver->domainGetSecurityLabelList) {
+        int ret;
+        ret = conn->driver->domainGetSecurityLabelList(domain, seclabels);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(domain->conn);
+    return -1;
+}
 /**
  * virDomainSetMetadata:
  * @domain: a domain object
@@ -9584,6 +9942,76 @@ virNetworkGetConnect (virNetworkPtr net)
 }
 
 /**
+ * virConnectListAllNetworks:
+ * @conn: Pointer to the hypervisor connection.
+ * @nets: Pointer to a variable to store the array containing the network
+ *        objects or NULL if the list is not required (just returns number
+ *        of networks).
+ * @flags: bitwise-OR of virConnectListAllNetworksFlags.
+ *
+ * Collect the list of networks, and allocate an array to store those
+ * objects. This API solves the race inherent between virConnectListNetworks
+ * and virConnectListDefinedNetworks.
+ *
+ * Normally, all networks are returned; however, @flags can be used to
+ * filter the results for a smaller list of targeted networks.  The valid
+ * flags are divided into groups, where each group contains bits that
+ * describe mutually exclusive attributes of a network, and where all bits
+ * within a group describe all possible networks.
+ *
+ * The first group of @flags is VIR_CONNECT_LIST_NETWORKS_ACTIVE (up) and
+ * VIR_CONNECT_LIST_NETWORKS_INACTIVE (down) to filter the networks by state.
+ *
+ * The second group of @flags is VIR_CONNECT_LIST_NETWORKS_PERSISTENT (defined)
+ * and VIR_CONNECT_LIST_NETWORKS_TRANSIENT (running but not defined), to filter
+ * the networks by whether they have persistent config or not.
+ *
+ * The third group of @flags is VIR_CONNECT_LIST_NETWORKS_AUTOSTART
+ * and VIR_CONNECT_LIST_NETWORKS_NO_AUTOSTART, to filter the networks by
+ * whether they are marked as autostart or not.
+ *
+ * Returns the number of networks found or -1 and sets @nets to  NULL in case
+ * of error.  On success, the array stored into @nets is guaranteed to have an
+ * extra allocated element set to NULL but not included in the return count,
+ * to make iteration easier.  The caller is responsible for calling
+ * virNetworkFree() on each array element, then calling free() on @nets.
+ */
+int
+virConnectListAllNetworks(virConnectPtr conn,
+                          virNetworkPtr **nets,
+                          unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, nets=%p, flags=%x", conn, nets, flags);
+
+    virResetLastError();
+
+    if (nets)
+        *nets = NULL;
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->networkDriver &&
+        conn->networkDriver->listAllNetworks) {
+        int ret;
+        ret = conn->networkDriver->listAllNetworks(conn, nets, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
+
+
+/**
  * virConnectNumOfNetworks:
  * @conn: pointer to the hypervisor connection
  *
@@ -9627,7 +10055,13 @@ error:
  *
  * Collect the list of active networks, and store their names in @names
  *
- * Returns the number of networks found or -1 in case of error
+ * For more control over the results, see virConnectListAllNetworks().
+ *
+ * Returns the number of networks found or -1 in case of error.  Note that
+ * this command is inherently racy; a network can be started between a call
+ * to virConnectNumOfNetworks() and this call; you are only guaranteed that
+ * all currently active networks were listed if the return is less than
+ * @maxnames.
  */
 int
 virConnectListNetworks(virConnectPtr conn, char **const names, int maxnames)
@@ -9704,7 +10138,13 @@ error:
  *
  * list the inactive networks, stores the pointers to the names in @names
  *
- * Returns the number of names provided in the array or -1 in case of error
+ * For more control over the results, see virConnectListAllNetworks().
+ *
+ * Returns the number of names provided in the array or -1 in case of error.
+ * Note that this command is inherently racy; a network can be defined between
+ * a call to virConnectNumOfDefinedNetworks() and this call; you are only
+ * guaranteed that all currently defined networks were listed if the return
+ * is less than @maxnames.  The client must call free() on each returned name.
  */
 int
 virConnectListDefinedNetworks(virConnectPtr conn, char **const names,
@@ -9986,6 +10426,68 @@ error:
 }
 
 /**
+ * virNetworkUpdate:
+ * @network: pointer to a defined network
+ * @section: which section of the network to update
+ *           (see virNetworkUpdateSection for descriptions)
+ * @command: what action to perform (add/delete/modify)
+ *           (see virNetworkUpdateCommand for descriptions)
+ * @parentIndex: which parent element, if there are multiple parents
+ *           of the same type (e.g. which <ip> element when modifying
+ *           a <dhcp>/<host> element), or "-1" for "don't care" or
+ *           "automatically find appropriate one".
+ * @xml: the XML description for the network, preferably in UTF-8
+ * @flags: bitwise OR of virNetworkUpdateFlags.
+ *
+ * Update the definition of an existing network, either its live
+ * running state, its persistent configuration, or both.
+ *
+ * Returns 0 in case of success, -1 in case of error
+ */
+int
+virNetworkUpdate(virNetworkPtr network,
+                 unsigned int command, /* virNetworkUpdateCommand */
+                 unsigned int section, /* virNetworkUpdateSection */
+                 int parentIndex,
+                 const char *xml,
+                 unsigned int flags)
+{
+    virConnectPtr conn;
+    VIR_DEBUG("network=%p, section=%d, parentIndex=%d, xml=%s, flags=0x%x",
+              network, section, parentIndex, xml, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_NETWORK(network)) {
+        virLibNetworkError(VIR_ERR_INVALID_NETWORK, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+    conn = network->conn;
+    if (conn->flags & VIR_CONNECT_RO) {
+        virLibNetworkError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        goto error;
+    }
+
+    virCheckNonNullArgGoto(xml, error);
+
+    if (conn->networkDriver && conn->networkDriver->networkUpdate) {
+        int ret;
+        ret = conn->networkDriver->networkUpdate(network, section, command,
+                                                 parentIndex, xml, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(network->conn);
+    return -1;
+}
+
+/**
  * virNetworkCreate:
  * @network: pointer to a defined network
  *
@@ -10095,10 +10597,7 @@ virNetworkFree(virNetworkPtr network)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefNetwork(network) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(network);
     return 0;
 }
 
@@ -10127,10 +10626,8 @@ virNetworkRef(virNetworkPtr network)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&network->conn->lock);
-    VIR_DEBUG("network=%p refs=%d", network, network->refs);
-    network->refs++;
-    virMutexUnlock(&network->conn->lock);
+    VIR_DEBUG("network=%p refs=%d", network, network->object.refs);
+    virObjectRef(network);
     return 0;
 }
 
@@ -10435,6 +10932,67 @@ virInterfaceGetConnect (virInterfacePtr iface)
 }
 
 /**
+ * virConnectListAllInterfaces:
+ * @conn: Pointer to the hypervisor connection.
+ * @ifaces: Pointer to a variable to store the array containing the interface
+ *          objects or NULL if the list is not required (just returns number
+ *          of interfaces).
+ * @flags: bitwise-OR of virConnectListAllInterfacesFlags.
+ *
+ * Collect the list of interfaces, and allocate an array to store those
+ * objects. This API solves the race inherent between virConnectListInterfaces
+ * and virConnectListDefinedInterfaces.
+ *
+ * Normally, all interfaces are returned; however, @flags can be used to
+ * filter the results for a smaller list of targeted interfaces.  The valid
+ * flags are divided into groups, where each group contains bits that
+ * describe mutually exclusive attributes of a interface, and where all bits
+ * within a group describe all possible interfaces.
+ *
+ * The only group of @flags is VIR_CONNECT_LIST_INTERFACES_ACTIVE (up) and
+ * VIR_CONNECT_LIST_INTERFACES_INACTIVE (down) to filter the interfaces by state.
+ *
+ * Returns the number of interfaces found or -1 and sets @ifaces to  NULL in case
+ * of error.  On success, the array stored into @ifaces is guaranteed to have an
+ * extra allocated element set to NULL but not included in the return count,
+ * to make iteration easier.  The caller is responsible for calling
+ * virStorageInterfaceFree() on each array element, then calling free() on @ifaces.
+ */
+int
+virConnectListAllInterfaces(virConnectPtr conn,
+                            virInterfacePtr **ifaces,
+                            unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, ifaces=%p, flags=%x", conn, ifaces, flags);
+
+    virResetLastError();
+
+    if (ifaces)
+        *ifaces = NULL;
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->interfaceDriver &&
+        conn->interfaceDriver->listAllInterfaces) {
+        int ret;
+        ret = conn->interfaceDriver->listAllInterfaces(conn, ifaces, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
+
+/**
  * virConnectNumOfInterfaces:
  * @conn: pointer to the hypervisor connection
  *
@@ -10479,7 +11037,13 @@ error:
  * Collect the list of active physical host interfaces,
  * and store their names in @names
  *
- * Returns the number of interfaces found or -1 in case of error
+ * For more control over the results, see virConnectListAllInterfaces().
+ *
+ * Returns the number of interfaces found or -1 in case of error.  Note that
+ * this command is inherently racy; a interface can be started between a call
+ * to virConnectNumOfInterfaces() and this call; you are only guaranteed that
+ * all currently active interfaces were listed if the return is less than
+ * @maxnames.
  */
 int
 virConnectListInterfaces(virConnectPtr conn, char **const names, int maxnames)
@@ -10557,7 +11121,13 @@ error:
  * Collect the list of defined (inactive) physical host interfaces,
  * and store their names in @names.
  *
- * Returns the number of interfaces found or -1 in case of error
+ * For more control over the results, see virConnectListAllInterfaces().
+ *
+ * Returns the number of names provided in the array or -1 in case of error.
+ * Note that this command is inherently racy; a interface can be defined between
+ * a call to virConnectNumOfDefinedInterfaces() and this call; you are only
+ * guaranteed that all currently defined interfaces were listed if the return
+ * is less than @maxnames.  The client must call free() on each returned name.
  */
 int
 virConnectListDefinedInterfaces(virConnectPtr conn,
@@ -11000,10 +11570,8 @@ virInterfaceRef(virInterfacePtr iface)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&iface->conn->lock);
-    VIR_DEBUG("iface=%p refs=%d", iface, iface->refs);
-    iface->refs++;
-    virMutexUnlock(&iface->conn->lock);
+    VIR_DEBUG("iface=%p refs=%d", iface, iface->object.refs);
+    virObjectRef(iface);
     return 0;
 }
 
@@ -11028,10 +11596,7 @@ virInterfaceFree(virInterfacePtr iface)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefInterface(iface) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(iface);
     return 0;
 }
 
@@ -11211,6 +11776,90 @@ virStoragePoolGetConnect (virStoragePoolPtr pool)
 }
 
 /**
+ * virConnectListAllStoragePools:
+ * @conn: Pointer to the hypervisor connection.
+ * @pools: Pointer to a variable to store the array containing storage pool
+ *         objects or NULL if the list is not required (just returns number
+ *         of pools).
+ * @flags: bitwise-OR of virConnectListAllStoragePoolsFlags.
+ *
+ * Collect the list of storage pools, and allocate an array to store those
+ * objects. This API solves the race inherent between
+ * virConnectListStoragePools and virConnectListDefinedStoragePools.
+ *
+ * Normally, all storage pools are returned; however, @flags can be used to
+ * filter the results for a smaller list of targeted pools.  The valid
+ * flags are divided into groups, where each group contains bits that
+ * describe mutually exclusive attributes of a pool, and where all bits
+ * within a group describe all possible pools.
+ *
+ * The first group of @flags is VIR_CONNECT_LIST_STORAGE_POOLS_ACTIVE (online)
+ * and VIR_CONNECT_LIST_STORAGE_POOLS_INACTIVE (offline) to filter the pools
+ * by state.
+ *
+ * The second group of @flags is VIR_CONNECT_LIST_STORAGE_POOLS_PERSITENT
+ * (defined) and VIR_CONNECT_LIST_STORAGE_POOLS_TRANSIENT (running but not
+ * defined), to filter the pools by whether they have persistent config or not.
+ *
+ * The third group of @flags is VIR_CONNECT_LIST_STORAGE_POOLS_AUTOSTART
+ * and VIR_CONNECT_LIST_STORAGE_POOLS_NO_AUTOSTART, to filter the pools by
+ * whether they are marked as autostart or not.
+ *
+ * The last group of @flags is provided to filter the pools by the types,
+ * the flags include:
+ * VIR_CONNECT_LIST_STORAGE_POOLS_DIR
+ * VIR_CONNECT_LIST_STORAGE_POOLS_FS
+ * VIR_CONNECT_LIST_STORAGE_POOLS_NETFS
+ * VIR_CONNECT_LIST_STORAGE_POOLS_LOGICAL
+ * VIR_CONNECT_LIST_STORAGE_POOLS_DISK
+ * VIR_CONNECT_LIST_STORAGE_POOLS_ISCSI
+ * VIR_CONNECT_LIST_STORAGE_POOLS_SCSI
+ * VIR_CONNECT_LIST_STORAGE_POOLS_MPATH
+ * VIR_CONNECT_LIST_STORAGE_POOLS_RBD
+ * VIR_CONNECT_LIST_STORAGE_POOLS_SHEEPDOG
+ *
+ * Returns the number of storage pools found or -1 and sets @pools to
+ * NULL in case of error.  On success, the array stored into @pools is
+ * guaranteed to have an extra allocated element set to NULL but not included
+ * in the return count, to make iteration easier.  The caller is responsible
+ * for calling virStoragePoolFree() on each array element, then calling
+ * free() on @pools.
+ */
+int
+virConnectListAllStoragePools(virConnectPtr conn,
+                              virStoragePoolPtr **pools,
+                              unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, pools=%p, flags=%x", conn, pools, flags);
+
+    virResetLastError();
+
+    if (pools)
+        *pools = NULL;
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->storageDriver &&
+        conn->storageDriver->listAllPools) {
+        int ret;
+        ret = conn->storageDriver->listAllPools(conn, pools, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
+
+/**
  * virConnectNumOfStoragePools:
  * @conn: pointer to hypervisor connection
  *
@@ -11252,11 +11901,17 @@ error:
  * @names: array of char * to fill with pool names (allocated by caller)
  * @maxnames: size of the names array
  *
- * Provides the list of names of active storage pools
- * upto maxnames. If there are more than maxnames, the
- * remaining names will be silently ignored.
+ * Provides the list of names of active storage pools up to maxnames.
+ * If there are more than maxnames, the remaining names will be silently
+ * ignored.
  *
- * Returns 0 on success, -1 on error
+ * For more control over the results, see virConnectListAllStoragePools().
+ *
+ * Returns the number of pools found or -1 in case of error.  Note that
+ * this command is inherently racy; a pool can be started between a call to
+ * virConnectNumOfStoragePools() and this call; you are only guaranteed
+ * that all currently active pools were listed if the return is less than
+ * @maxnames.
  */
 int
 virConnectListStoragePools(virConnectPtr conn,
@@ -11335,11 +11990,17 @@ error:
  * @names: array of char * to fill with pool names (allocated by caller)
  * @maxnames: size of the names array
  *
- * Provides the list of names of inactive storage pools
- * upto maxnames. If there are more than maxnames, the
- * remaining names will be silently ignored.
+ * Provides the list of names of inactive storage pools up to maxnames.
+ * If there are more than maxnames, the remaining names will be silently
+ * ignored.
  *
- * Returns 0 on success, -1 on error
+ * For more control over the results, see virConnectListAllStoragePools().
+ *
+ * Returns the number of names provided in the array or -1 in case of error.
+ * Note that this command is inherently racy; a pool can be defined between
+ * a call to virConnectNumOfDefinedStoragePools() and this call; you are only
+ * guaranteed that all currently defined pools were listed if the return
+ * is less than @maxnames.  The client must call free() on each returned name.
  */
 int
 virConnectListDefinedStoragePools(virConnectPtr conn,
@@ -11937,10 +12598,7 @@ virStoragePoolFree(virStoragePoolPtr pool)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefStoragePool(pool) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(pool);
     return 0;
 
 }
@@ -11971,10 +12629,8 @@ virStoragePoolRef(virStoragePoolPtr pool)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&pool->conn->lock);
-    VIR_DEBUG("pool=%p refs=%d", pool, pool->refs);
-    pool->refs++;
-    virMutexUnlock(&pool->conn->lock);
+    VIR_DEBUG("pool=%p refs=%d", pool, pool->object.refs);
+    virObjectRef(pool);
     return 0;
 }
 
@@ -12300,6 +12956,54 @@ error:
     return -1;
 }
 
+/**
+ * virStoragePoolListAllVolumes:
+ * @pool: Pointer to storage pool
+ * @vols: Pointer to a variable to store the array containing storage volume
+ *        objects or NULL if the list is not required (just returns number
+ *        of volumes).
+ * @flags: extra flags; not used yet, so callers should always pass 0
+ *
+ * Collect the list of storage volumes, and allocate an array to store those
+ * objects.
+ *
+ * Returns the number of storage volumes found or -1 and sets @vols to
+ * NULL in case of error.  On success, the array stored into @vols is
+ * guaranteed to have an extra allocated element set to NULL but not included
+ * in the return count, to make iteration easier.  The caller is responsible
+ * for calling virStorageVolFree() on each array element, then calling
+ * free() on @vols.
+ */
+int
+virStoragePoolListAllVolumes(virStoragePoolPtr pool,
+                             virStorageVolPtr **vols,
+                             unsigned int flags)
+{
+    VIR_DEBUG("pool=%p, vols=%p, flags=%x", pool, vols, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_STORAGE_POOL(pool)) {
+        virLibConnError(VIR_ERR_INVALID_STORAGE_POOL, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (pool->conn->storageDriver &&
+        pool->conn->storageDriver->poolListAllVolumes) {
+        int ret;
+        ret = pool->conn->storageDriver->poolListAllVolumes(pool, vols, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(pool->conn);
+    return -1;
+}
 
 /**
  * virStoragePoolNumOfVolumes:
@@ -12346,6 +13050,8 @@ error:
  *
  * Fetch list of storage volume names, limiting to
  * at most maxnames.
+ *
+ * To list the volume objects directly, see virStoragePoolListAllVolumes().
  *
  * Returns the number of names fetched, or -1 on error
  */
@@ -12592,7 +13298,7 @@ virStorageVolGetKey(virStorageVolPtr vol)
 /**
  * virStorageVolCreateXML:
  * @pool: pointer to storage pool
- * @xmldesc: description of volume to create
+ * @xmlDesc: description of volume to create
  * @flags: extra flags; not used yet, so callers should always pass 0
  *
  * Create a storage volume within a pool based
@@ -12603,10 +13309,10 @@ virStorageVolGetKey(virStorageVolPtr vol)
  */
 virStorageVolPtr
 virStorageVolCreateXML(virStoragePoolPtr pool,
-                       const char *xmldesc,
+                       const char *xmlDesc,
                        unsigned int flags)
 {
-    VIR_DEBUG("pool=%p, flags=%x", pool, flags);
+    VIR_DEBUG("pool=%p, xmlDesc=%s, flags=%x", pool, xmlDesc, flags);
 
     virResetLastError();
 
@@ -12616,7 +13322,7 @@ virStorageVolCreateXML(virStoragePoolPtr pool,
         return NULL;
     }
 
-    virCheckNonNullArgGoto(xmldesc, error);
+    virCheckNonNullArgGoto(xmlDesc, error);
 
     if (pool->conn->flags & VIR_CONNECT_RO) {
         virLibConnError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
@@ -12625,7 +13331,7 @@ virStorageVolCreateXML(virStoragePoolPtr pool,
 
     if (pool->conn->storageDriver && pool->conn->storageDriver->volCreateXML) {
         virStorageVolPtr ret;
-        ret = pool->conn->storageDriver->volCreateXML (pool, xmldesc, flags);
+        ret = pool->conn->storageDriver->volCreateXML (pool, xmlDesc, flags);
         if (!ret)
             goto error;
         return ret;
@@ -12642,7 +13348,7 @@ error:
 /**
  * virStorageVolCreateXMLFrom:
  * @pool: pointer to parent pool for the new volume
- * @xmldesc: description of volume to create
+ * @xmlDesc: description of volume to create
  * @clonevol: storage volume to use as input
  * @flags: extra flags; not used yet, so callers should always pass 0
  *
@@ -12655,11 +13361,12 @@ error:
  */
 virStorageVolPtr
 virStorageVolCreateXMLFrom(virStoragePoolPtr pool,
-                           const char *xmldesc,
+                           const char *xmlDesc,
                            virStorageVolPtr clonevol,
                            unsigned int flags)
 {
-    VIR_DEBUG("pool=%p, flags=%x, clonevol=%p", pool, flags, clonevol);
+    VIR_DEBUG("pool=%p, xmlDesc=%s, clonevol=%p, flags=%x",
+              pool, xmlDesc, clonevol, flags);
 
     virResetLastError();
 
@@ -12674,7 +13381,7 @@ virStorageVolCreateXMLFrom(virStoragePoolPtr pool,
         goto error;
     }
 
-    virCheckNonNullArgGoto(xmldesc, error);
+    virCheckNonNullArgGoto(xmlDesc, error);
 
     if (pool->conn->flags & VIR_CONNECT_RO ||
         clonevol->conn->flags & VIR_CONNECT_RO) {
@@ -12685,7 +13392,7 @@ virStorageVolCreateXMLFrom(virStoragePoolPtr pool,
     if (pool->conn->storageDriver &&
         pool->conn->storageDriver->volCreateXMLFrom) {
         virStorageVolPtr ret;
-        ret = pool->conn->storageDriver->volCreateXMLFrom (pool, xmldesc,
+        ret = pool->conn->storageDriver->volCreateXMLFrom (pool, xmlDesc,
                                                            clonevol, flags);
         if (!ret)
             goto error;
@@ -13003,10 +13710,7 @@ virStorageVolFree(virStorageVolPtr vol)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefStorageVol(vol) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(vol);
     return 0;
 }
 
@@ -13036,10 +13740,8 @@ virStorageVolRef(virStorageVolPtr vol)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&vol->conn->lock);
-    VIR_DEBUG("vol=%p refs=%d", vol, vol->refs);
-    vol->refs++;
-    virMutexUnlock(&vol->conn->lock);
+    VIR_DEBUG("vol=%p refs=%d", vol, vol->object.refs);
+    virObjectRef(vol);
     return 0;
 }
 
@@ -13297,6 +13999,75 @@ error:
     return -1;
 }
 
+/**
+ * virConnectListAllNodeDevices:
+ * @conn: Pointer to the hypervisor connection.
+ * @devices: Pointer to a variable to store the array containing the node
+ *           device objects or NULL if the list is not required (just returns
+ *           number of node devices).
+ * @flags: bitwise-OR of virConnectListAllNodeDevices.
+ *
+ * Collect the list of node devices, and allocate an array to store those
+ * objects.
+ *
+ * Normally, all node devices are returned; however, @flags can be used to
+ * filter the results for a smaller list of targeted node devices.  The valid
+ * flags are divided into groups, where each group contains bits that
+ * describe mutually exclusive attributes of a node device, and where all bits
+ * within a group describe all possible node devices.
+ *
+ * Only one group of the @flags is provided to filter the node devices by
+ * capability type, flags include:
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_SYSTEM
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_PCI_DEV
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_USB_DEV
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_USB_INTERFACE
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_NET
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_SCSI_HOST
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_SCSI_TARGET
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_SCSI
+ *   VIR_CONNECT_LIST_NODE_DEVICES_CAP_STORAGE
+ *
+ * Returns the number of node devices found or -1 and sets @devices to NULL in
+ * case of error.  On success, the array stored into @devices is guaranteed to
+ * have an extra allocated element set to NULL but not included in the return
+ * count, to make iteration easier.  The caller is responsible for calling
+ * virNodeDeviceFree() on each array element, then calling free() on
+ * @devices.
+ */
+int
+virConnectListAllNodeDevices(virConnectPtr conn,
+                             virNodeDevicePtr **devices,
+                             unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, devices=%p, flags=%x", conn, devices, flags);
+
+    virResetLastError();
+
+    if (devices)
+        *devices = NULL;
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->deviceMonitor &&
+        conn->deviceMonitor->listAllNodeDevices) {
+        int ret;
+        ret = conn->deviceMonitor->listAllNodeDevices(conn, devices, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
 
 /**
  * virNodeListDevices:
@@ -13307,6 +14078,8 @@ error:
  * @flags: extra flags; not used yet, so callers should always pass 0
  *
  * Collect the list of node devices, and store their names in @names
+ *
+ * For more control over the results, see virConnectListAllNodeDevices().
  *
  * If the optional 'cap'  argument is non-NULL, then the count
  * will be restricted to devices with the specified capability
@@ -13578,10 +14351,7 @@ int virNodeDeviceFree(virNodeDevicePtr dev)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefNodeDevice(dev) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(dev);
     return 0;
 }
 
@@ -13611,10 +14381,8 @@ virNodeDeviceRef(virNodeDevicePtr dev)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&dev->conn->lock);
-    VIR_DEBUG("dev=%p refs=%d", dev, dev->refs);
-    dev->refs++;
-    virMutexUnlock(&dev->conn->lock);
+    VIR_DEBUG("dev=%p refs=%d", dev, dev->object.refs);
+    virObjectRef(dev);
     return 0;
 }
 
@@ -13926,7 +14694,7 @@ error:
  * @cb: callback to the function handling domain events
  *
  * Removes a callback previously registered with the virConnectDomainEventRegister
- * funtion.
+ * function.
  *
  * Use of this method is no longer recommended. Instead applications
  * should try virConnectDomainEventUnregisterAny which has a more flexible
@@ -14016,6 +14784,73 @@ virConnectNumOfSecrets(virConnectPtr conn)
         int ret;
 
         ret = conn->secretDriver->numOfSecrets(conn);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
+
+/**
+ * virConnectListAllSecrets:
+ * @conn: Pointer to the hypervisor connection.
+ * @secrets: Pointer to a variable to store the array containing the secret
+ *           objects or NULL if the list is not required (just returns the
+ *           number of secrets).
+ * @flags: extra flags; not used yet, so callers should always pass 0
+ *
+ * Collect the list of secrets, and allocate an array to store those
+ * objects.
+ *
+ * Normally, all secrets are returned; however, @flags can be used to
+ * filter the results for a smaller list of targeted secrets. The valid
+ * flags are divided into groups, where each group contains bits that
+ * describe mutually exclusive attributes of a secret, and where all bits
+ * within a group describe all possible secrets.
+ *
+ * The first group of @flags is used to filter secrets by its storage
+ * location. Flag VIR_CONNECT_LIST_SECRETS_EPHEMERAL selects secrets that
+ * are kept only in memory. Flag VIR_CONNECT_LIST_SECRETS_NO_EPHEMERAL
+ * selects secrets that are kept in persistent storage.
+ *
+ * The second group of @flags is used to filter secrets by privacy. Flag
+ * VIR_CONNECT_LIST_SECRETS_PRIVATE seclets secrets that are never revealed
+ * to any caller of libvirt nor to any other node. Flag
+ * VIR_CONNECT_LIST_SECRETS_NO_PRIVATE selects non-private secrets.
+ *
+ * Returns the number of secrets found or -1 and sets @secrets to NULL in case
+ * of error.  On success, the array stored into @secrets is guaranteed to
+ * have an extra allocated element set to NULL but not included in the return count,
+ * to make iteration easier.  The caller is responsible for calling
+ * virSecretFree() on each array element, then calling free() on @secrets.
+ */
+int
+virConnectListAllSecrets(virConnectPtr conn,
+                         virSecretPtr **secrets,
+                         unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, secrets=%p, flags=%x", conn, secrets, flags);
+
+    virResetLastError();
+
+    if (secrets)
+        *secrets = NULL;
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->secretDriver &&
+        conn->secretDriver->listAllSecrets) {
+        int ret;
+        ret = conn->secretDriver->listAllSecrets(conn, secrets, flags);
         if (ret < 0)
             goto error;
         return ret;
@@ -14584,10 +15419,8 @@ virSecretRef(virSecretPtr secret)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&secret->conn->lock);
-    VIR_DEBUG("secret=%p refs=%d", secret, secret->refs);
-    secret->refs++;
-    virMutexUnlock(&secret->conn->lock);
+    VIR_DEBUG("secret=%p refs=%d", secret, secret->object.refs);
+    virObjectRef(secret);
     return 0;
 }
 
@@ -14611,10 +15444,7 @@ virSecretFree(virSecretPtr secret)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefSecret(secret) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(secret);
     return 0;
 }
 
@@ -14683,10 +15513,8 @@ virStreamRef(virStreamPtr stream)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&stream->conn->lock);
-    VIR_DEBUG("stream=%p refs=%d", stream, stream->refs);
-    stream->refs++;
-    virMutexUnlock(&stream->conn->lock);
+    VIR_DEBUG("stream=%p refs=%d", stream, stream->object.refs);
+    virObjectRef(stream);
     return 0;
 }
 
@@ -14947,7 +15775,7 @@ int virStreamSendAll(virStreamPtr stream,
     virCheckNonNullArgGoto(handler, cleanup);
 
     if (stream->flags & VIR_STREAM_NONBLOCK) {
-        virLibConnError(VIR_ERR_OPERATION_INVALID,
+        virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
                         _("data sources cannot be used for non-blocking streams"));
         goto cleanup;
     }
@@ -15046,7 +15874,7 @@ int virStreamRecvAll(virStreamPtr stream,
     virCheckNonNullArgGoto(handler, cleanup);
 
     if (stream->flags & VIR_STREAM_NONBLOCK) {
-        virLibConnError(VIR_ERR_OPERATION_INVALID,
+        virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
                         _("data sinks cannot be used for non-blocking streams"));
         goto cleanup;
     }
@@ -15327,10 +16155,7 @@ int virStreamFree(virStreamPtr stream)
 
     /* XXX Enforce shutdown before free'ing resources ? */
 
-    if (virUnrefStream(stream) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(stream);
     return 0;
 }
 
@@ -15610,6 +16435,56 @@ error:
     return -1;
 }
 
+/**
+ * virConnectListAllNWFilters:
+ * @conn: Pointer to the hypervisor connection.
+ * @filters: Pointer to a variable to store the array containing the network
+ *           filter objects or NULL if the list is not required (just returns
+ *           number of network filters).
+ * @flags: extra flags; not used yet, so callers should always pass 0
+ *
+ * Collect the list of network filters, and allocate an array to store those
+ * objects.
+ *
+ * Returns the number of network filters found or -1 and sets @filters to  NULL
+ * in case of error.  On success, the array stored into @filters is guaranteed to
+ * have an extra allocated element set to NULL but not included in the return count,
+ * to make iteration easier.  The caller is responsible for calling
+ * virNWFilterFree() on each array element, then calling free() on @filters.
+ */
+int
+virConnectListAllNWFilters(virConnectPtr conn,
+                           virNWFilterPtr **filters,
+                           unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, filters=%p, flags=%x", conn, filters, flags);
+
+    virResetLastError();
+
+    if (filters)
+        *filters = NULL;
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->nwfilterDriver &&
+        conn->nwfilterDriver->listAllNWFilters) {
+        int ret;
+        ret = conn->nwfilterDriver->listAllNWFilters(conn, filters, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
+    return -1;
+}
 
 /**
  * virConnectListNWFilters:
@@ -15791,10 +16666,8 @@ virNWFilterFree(virNWFilterPtr nwfilter)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefNWFilter(nwfilter) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+
+    virObjectUnref(nwfilter);
     return 0;
 }
 
@@ -16050,10 +16923,8 @@ virNWFilterRef(virNWFilterPtr nwfilter)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&nwfilter->conn->lock);
-    VIR_DEBUG("nwfilter=%p refs=%d", nwfilter, nwfilter->refs);
-    nwfilter->refs++;
-    virMutexUnlock(&nwfilter->conn->lock);
+    VIR_DEBUG("nwfilter=%p refs=%d", nwfilter, nwfilter->object.refs);
+    virObjectRef(nwfilter);
     return 0;
 }
 
@@ -17036,7 +17907,7 @@ virDomainSnapshotGetXMLDesc(virDomainSnapshotPtr snapshot,
     conn = snapshot->domain->conn;
 
     if ((conn->flags & VIR_CONNECT_RO) && (flags & VIR_DOMAIN_XML_SECURE)) {
-        virLibConnError(VIR_ERR_OPERATION_DENIED,
+        virLibConnError(VIR_ERR_OPERATION_DENIED, "%s",
                         _("virDomainSnapshotGetXMLDesc with secure flag"));
         goto error;
     }
@@ -17937,10 +18808,8 @@ virDomainSnapshotRef(virDomainSnapshotPtr snapshot)
         virDispatchError(NULL);
         return -1;
     }
-    virMutexLock(&snapshot->domain->conn->lock);
-    VIR_DEBUG("snapshot=%p, refs=%d", snapshot, snapshot->refs);
-    snapshot->refs++;
-    virMutexUnlock(&snapshot->domain->conn->lock);
+    VIR_DEBUG("snapshot=%p, refs=%d", snapshot, snapshot->object.refs);
+    virObjectRef(snapshot);
     return 0;
 }
 
@@ -17966,10 +18835,7 @@ virDomainSnapshotFree(virDomainSnapshotPtr snapshot)
         virDispatchError(NULL);
         return -1;
     }
-    if (virUnrefDomainSnapshot(snapshot) < 0) {
-        virDispatchError(NULL);
-        return -1;
-    }
+    virObjectUnref(snapshot);
     return 0;
 }
 
@@ -18177,7 +19043,7 @@ error:
  * virDomainBlockJobSetSpeed:
  * @dom: pointer to domain object
  * @disk: path to the block device, or device shorthand
- * @bandwidth: specify bandwidth limit in Mbps
+ * @bandwidth: specify bandwidth limit in MiB/s
  * @flags: extra flags; not used yet, so callers should always pass 0
  *
  * Set the maximimum allowable bandwidth that a block job may consume.  If
@@ -18235,7 +19101,7 @@ error:
  * virDomainBlockPull:
  * @dom: pointer to domain object
  * @disk: path to the block device, or device shorthand
- * @bandwidth: (optional) specify copy bandwidth limit in Mbps
+ * @bandwidth: (optional) specify copy bandwidth limit in MiB/s
  * @flags: extra flags; not used yet, so callers should always pass 0
  *
  * Populate a disk image with data from its backing image.  Once all data from
@@ -18243,7 +19109,8 @@ error:
  * image.  This function pulls data for the entire device in the background.
  * Progress of the operation can be checked with virDomainGetBlockJobInfo() and
  * the operation can be aborted with virDomainBlockJobAbort().  When finished,
- * an asynchronous event is raised to indicate the final status.
+ * an asynchronous event is raised to indicate the final status.  To move
+ * data in the opposite direction, see virDomainBlockCommit().
  *
  * The @disk parameter is either an unambiguous source name of the
  * block device (the <source file='...'/> sub-element, such as
@@ -18252,7 +19119,7 @@ error:
  * can be found by calling virDomainGetXMLDesc() and inspecting
  * elements within //domain/devices/disk.
  *
- * The maximum bandwidth (in Mbps) that will be used to do the copy can be
+ * The maximum bandwidth (in MiB/s) that will be used to do the copy can be
  * specified with the bandwidth parameter.  If set to 0, libvirt will choose a
  * suitable default.  Some hypervisors do not support this feature and will
  * return an error if bandwidth is not 0; in this case, it might still be
@@ -18308,7 +19175,7 @@ error:
  * @dom: pointer to domain object
  * @disk: path to the block device, or device shorthand
  * @base: path to backing file to keep, or NULL for no backing file
- * @bandwidth: (optional) specify copy bandwidth limit in Mbps
+ * @bandwidth: (optional) specify copy bandwidth limit in MiB/s
  * @flags: bitwise-OR of virDomainBlockRebaseFlags
  *
  * Populate a disk image with data from its backing image chain, and
@@ -18353,9 +19220,10 @@ error:
  * mirror all further changes to both source and destination.  The user
  * must call virDomainBlockJobAbort() to end the mirroring while choosing
  * whether to revert to source or pivot to the destination.  An event is
- * issued when the job ends, and in the future, an event may be added when
- * the job transitions from pulling to mirroring.  If the job is aborted,
- * a new job will have to start over from the beginning of the first phase.
+ * issued when the job ends, and depending on the hypervisor, an event may
+ * also be issued when the job transitions from pulling to mirroring.  If
+ * the job is aborted, a new job will have to start over from the beginning
+ * of the first phase.
  *
  * Some hypervisors will restrict certain actions, such as virDomainSave()
  * or virDomainDetachDevice(), while a copy job is active; they may
@@ -18368,7 +19236,7 @@ error:
  * can be found by calling virDomainGetXMLDesc() and inspecting
  * elements within //domain/devices/disk.
  *
- * The maximum bandwidth (in Mbps) that will be used to do the copy can be
+ * The maximum bandwidth (in MiB/s) that will be used to do the copy can be
  * specified with the bandwidth parameter.  If set to 0, libvirt will choose a
  * suitable default.  Some hypervisors do not support this feature and will
  * return an error if bandwidth is not 0; in this case, it might still be
@@ -18386,7 +19254,7 @@ int virDomainBlockRebase(virDomainPtr dom, const char *disk,
 {
     virConnectPtr conn;
 
-    VIR_DOMAIN_DEBUG(dom, "disk=%s, base=%s bandwidth=%lu, flags=%x",
+    VIR_DOMAIN_DEBUG(dom, "disk=%s, base=%s, bandwidth=%lu, flags=%x",
                      disk, NULLSTR(base), bandwidth, flags);
 
     virResetLastError();
@@ -18419,6 +19287,113 @@ int virDomainBlockRebase(virDomainPtr dom, const char *disk,
     if (conn->driver->domainBlockRebase) {
         int ret;
         ret = conn->driver->domainBlockRebase(dom, disk, base, bandwidth,
+                                              flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibDomainError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(dom->conn);
+    return -1;
+}
+
+
+/**
+ * virDomainBlockCommit:
+ * @dom: pointer to domain object
+ * @disk: path to the block device, or device shorthand
+ * @base: path to backing file to merge into, or NULL for default
+ * @top: path to file within backing chain that contains data to be merged,
+ *       or NULL to merge all possible data
+ * @bandwidth: (optional) specify commit bandwidth limit in MiB/s
+ * @flags: bitwise-OR of virDomainBlockCommitFlags
+ *
+ * Commit changes that were made to temporary top-level files within a disk
+ * image backing file chain into a lower-level base file.  In other words,
+ * take all the difference between @base and @top, and update @base to contain
+ * that difference; after the commit, any portion of the chain that previously
+ * depended on @top will now depend on @base, and all files after @base up
+ * to and including @top will now be invalidated.  A typical use of this
+ * command is to reduce the length of a backing file chain after taking an
+ * external disk snapshot.  To move data in the opposite direction, see
+ * virDomainBlockPull().
+ *
+ * This command starts a long-running commit block job, whose status may
+ * be tracked by virDomainBlockJobInfo() with a job type of
+ * VIR_DOMAIN_BLOCK_JOB_TYPE_COMMIT, and the operation can be aborted with
+ * virDomainBlockJobAbort().  When finished, an asynchronous event is
+ * raised to indicate the final status, and the job no longer exists.  If
+ * the job is aborted, it is up to the hypervisor whether starting a new
+ * job will resume from the same point, or start over.
+ *
+ * Be aware that this command may invalidate files even if it is aborted;
+ * the user is cautioned against relying on the contents of invalidated
+ * intermediate files such as @top without manually rebasing those files
+ * to use a backing file of a read-only copy of @base prior to the point
+ * where the commit operation was started (although such a rebase cannot
+ * be safely done until the commit has successfully completed).  However,
+ * the domain itself will not have any issues; the active layer remains
+ * valid throughout the entire commit operation.  As a convenience,
+ * if @flags contains VIR_DOMAIN_BLOCK_COMMIT_DELETE, this command will
+ * unlink all files that were invalidated, after the commit successfully
+ * completes.
+ *
+ * By default, if @base is NULL, the commit target will be the bottom of
+ * the backing chain; if @flags contains VIR_DOMAIN_BLOCK_COMMIT_SHALLOW,
+ * then the immediate backing file of @top will be used instead.  If @top
+ * is NULL, the active image at the top of the chain will be used.  Some
+ * hypervisors place restrictions on how much can be committed, and might
+ * fail if @base is not the immediate backing file of @top, or if @top is
+ * the active layer in use by a running domain, or if @top is not the
+ * top-most file; restrictions may differ for online vs. offline domains.
+ *
+ * The @disk parameter is either an unambiguous source name of the
+ * block device (the <source file='...'/> sub-element, such as
+ * "/path/to/image"), or the device target shorthand (the
+ * <target dev='...'/> sub-element, such as "xvda").  Valid names
+ * can be found by calling virDomainGetXMLDesc() and inspecting
+ * elements within //domain/devices/disk.
+ *
+ * The maximum bandwidth (in MiB/s) that will be used to do the commit can be
+ * specified with the bandwidth parameter.  If set to 0, libvirt will choose a
+ * suitable default.  Some hypervisors do not support this feature and will
+ * return an error if bandwidth is not 0; in this case, it might still be
+ * possible for a later call to virDomainBlockJobSetSpeed() to succeed.
+ * The actual speed can be determined with virDomainGetBlockJobInfo().
+ *
+ * Returns 0 if the operation has started, -1 on failure.
+ */
+int virDomainBlockCommit(virDomainPtr dom, const char *disk,
+                         const char *base, const char *top,
+                         unsigned long bandwidth, unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(dom, "disk=%s, base=%s, top=%s, bandwidth=%lu, flags=%x",
+                     disk, NULLSTR(base), NULLSTR(top), bandwidth, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(dom)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+    conn = dom->conn;
+
+    if (dom->conn->flags & VIR_CONNECT_RO) {
+        virLibDomainError(VIR_ERR_OPERATION_DENIED, __FUNCTION__);
+        goto error;
+    }
+
+    virCheckNonNullArgGoto(disk, error);
+
+    if (conn->driver->domainBlockCommit) {
+        int ret;
+        ret = conn->driver->domainBlockCommit(dom, disk, base, top, bandwidth,
                                               flags);
         if (ret < 0)
             goto error;
@@ -18609,6 +19584,121 @@ error:
 
 
 /**
+ * virConnectRegisterCloseCallback:
+ * @conn: pointer to connection object
+ * @cb: callback to invoke upon close
+ * @opaque: user data to pass to @cb
+ * @freecb: callback to free @opaque
+ *
+ * Registers a callback to be invoked when the connection
+ * is closed. This callback is invoked when there is any
+ * condition that causes the socket connection to the
+ * hypervisor to be closed.
+ *
+ * This function is only applicable to hypervisor drivers
+ * which maintain a persistent open connection. Drivers
+ * which open a new connection for every operation will
+ * not invoke this.
+ *
+ * The @freecb must not invoke any other libvirt public
+ * APIs, since it is not called from a re-entrant safe
+ * context.
+ *
+ * Returns 0 on success, -1 on error
+ */
+int virConnectRegisterCloseCallback(virConnectPtr conn,
+                                    virConnectCloseFunc cb,
+                                    void *opaque,
+                                    virFreeCallback freecb)
+{
+    VIR_DEBUG("conn=%p", conn);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    virMutexLock(&conn->lock);
+
+    virCheckNonNullArgGoto(cb, error);
+
+    if (conn->closeCallback) {
+        virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
+                        _("A close callback is already registered"));
+        goto error;
+    }
+
+    conn->closeCallback = cb;
+    conn->closeOpaque = opaque;
+    conn->closeFreeCallback = freecb;
+
+    virMutexUnlock(&conn->lock);
+
+    return 0;
+
+error:
+    virMutexUnlock(&conn->lock);
+    virDispatchError(NULL);
+    return -1;
+}
+
+/**
+ * virConnectUnregisterCloseCallback:
+ * @conn: pointer to connection object
+ * @cb: pointer to the current registered callback
+ *
+ * Unregisters the callback previously set with the
+ * virConnectRegisterCloseCallback method. The callback
+ * will no longer receive notifications when the connection
+ * closes. If a virFreeCallback was provided at time of
+ * registration, it will be invoked
+ *
+ * Returns 0 on success, -1 on error
+ */
+int virConnectUnregisterCloseCallback(virConnectPtr conn,
+                                      virConnectCloseFunc cb)
+{
+    VIR_DEBUG("conn=%p", conn);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    virMutexLock(&conn->lock);
+
+    virCheckNonNullArgGoto(cb, error);
+
+    if (conn->closeCallback != cb) {
+        virLibConnError(VIR_ERR_OPERATION_INVALID, "%s",
+                        _("A different callback was requested"));
+        goto error;
+    }
+
+    conn->closeCallback = NULL;
+    conn->closeUnregisterCount++;
+    if (!conn->closeDispatch && conn->closeFreeCallback)
+        conn->closeFreeCallback(conn->closeOpaque);
+    conn->closeFreeCallback = NULL;
+    conn->closeOpaque = NULL;
+
+    virMutexUnlock(&conn->lock);
+
+    return 0;
+
+error:
+    virMutexUnlock(&conn->lock);
+    virDispatchError(NULL);
+    return -1;
+}
+
+/**
  * virDomainSetBlockIoTune:
  * @dom: pointer to domain object
  * @disk: path to the block device, or device shorthand
@@ -18656,7 +19746,7 @@ int virDomainSetBlockIoTune(virDomainPtr dom,
     virCheckPositiveArgGoto(nparams, error);
     virCheckNonNullArgGoto(params, error);
 
-    if (virTypedParameterValidateSet(dom, params, nparams) < 0)
+    if (virTypedParameterValidateSet(dom->conn, params, nparams) < 0)
         goto error;
 
     conn = dom->conn;
@@ -18971,5 +20061,101 @@ virDomainGetDiskErrors(virDomainPtr dom,
 
 error:
     virDispatchError(dom->conn);
+    return -1;
+}
+
+/**
+ * virDomainGetHostname:
+ * @domain: a domain object
+ * @flags: extra flags; not used yet, so callers should always pass 0
+ *
+ * Get the hostname for that domain.
+ *
+ * Dependent on hypervisor used, this may require a guest agent to be
+ * available.
+ *
+ * Returns the hostname which must be freed by the caller, or
+ * NULL if there was an error.
+ */
+char *
+virDomainGetHostname(virDomainPtr domain, unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        virDispatchError(NULL);
+        return NULL;
+    }
+
+    conn = domain->conn;
+
+    if (conn->driver->domainGetHostname) {
+        char *ret;
+        ret = conn->driver->domainGetHostname (domain, flags);
+        if (!ret)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(domain->conn);
+    return NULL;
+}
+
+/**
+ * virNodeGetCPUMap:
+ * @conn: pointer to the hypervisor connection
+ * @cpumap: optional pointer to a bit map of real CPUs on the host node
+ *      (in 8-bit bytes) (OUT)
+ *      In case of success each bit set to 1 means that corresponding
+ *      CPU is online.
+ *      Bytes are stored in little-endian order: CPU0-7, 8-15...
+ *      In each byte, lowest CPU number is least significant bit.
+ *      The bit map is allocated by virNodeGetCPUMap and needs
+ *      to be released using free() by the caller.
+ * @online: optional number of online CPUs in cpumap (OUT)
+ *      Contains the number of online CPUs if the call was successful.
+ * @flags: extra flags; not used yet, so callers should always pass 0
+ *
+ * Get CPU map of host node CPUs.
+ *
+ * Returns number of CPUs present on the host node,
+ * or -1 if there was an error.
+ */
+int
+virNodeGetCPUMap(virConnectPtr conn,
+                 unsigned char **cpumap,
+                 unsigned int *online,
+                 unsigned int flags)
+{
+    VIR_DEBUG("conn=%p, cpumap=%p, online=%p, flags=%x",
+              conn, cpumap, online, flags);
+
+    virResetLastError();
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(VIR_ERR_INVALID_CONN, __FUNCTION__);
+        virDispatchError(NULL);
+        return -1;
+    }
+
+    if (conn->driver->nodeGetCPUMap) {
+        int ret = conn->driver->nodeGetCPUMap(conn, cpumap, online, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virLibConnError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+error:
+    virDispatchError(conn);
     return -1;
 }

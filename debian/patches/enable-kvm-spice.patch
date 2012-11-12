@@ -3,15 +3,14 @@ Author: Serge Hallyn <serge.hallyn@ubuntu.com>
 Forwarded: no
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/903962
 
-Index: libvirt-0.9.7/src/qemu/qemu_capabilities.c
-===================================================================
---- libvirt-0.9.7.orig/src/qemu/qemu_capabilities.c	2012-01-09 08:41:14.000000000 +0100
-+++ libvirt-0.9.7/src/qemu/qemu_capabilities.c	2012-01-10 12:09:16.579059044 +0100
-@@ -569,6 +569,7 @@
-         if (access("/dev/kvm", F_OK) == 0) {
-             const char *const kvmbins[] = { "/usr/libexec/qemu-kvm", /* RHEL */
-                                             "qemu-kvm", /* Fedora */
-+					    "kvm-spice", /* qemu-kvm-spice Ubuntu package */
-                                             "kvm" }; /* Upstream .spec */
+diff -Naurp libvirt-1.0.0.orig/src/qemu/qemu_capabilities.c libvirt-1.0.0/src/qemu/qemu_capabilities.c
+--- libvirt-1.0.0.orig/src/qemu/qemu_capabilities.c	2012-11-01 21:23:33.000000000 -0500
++++ libvirt-1.0.0/src/qemu/qemu_capabilities.c	2012-11-04 07:34:19.154189209 -0600
+@@ -633,6 +633,7 @@ qemuCapsInitGuest(virCapsPtr caps,
+     if (qemuCapsIsValidForKVM(hostarch, guestarch)) {
+         const char *const kvmbins[] = { "/usr/libexec/qemu-kvm", /* RHEL */
+                                         "qemu-kvm", /* Fedora */
++										"kvm-spice", /* qemu-kvm-spice Ubuntu package */
+                                         "kvm" }; /* Upstream .spec */
  
-             for (i = 0; i < ARRAY_CARDINALITY(kvmbins); ++i) {
+         for (i = 0; i < ARRAY_CARDINALITY(kvmbins); ++i) {

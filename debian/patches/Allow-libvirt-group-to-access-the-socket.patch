@@ -1,6 +1,15 @@
-diff -Naurp libvirt-0.9.12.orig/daemon/libvirtd.conf libvirt-0.9.12/daemon/libvirtd.conf
---- libvirt-0.9.12.orig/daemon/libvirtd.conf	2012-03-29 22:45:28.000000000 -0400
-+++ libvirt-0.9.12/daemon/libvirtd.conf	2012-05-13 20:38:54.170466034 -0400
+From: Guido Guenther <agx@sigxcpu.org>
+Date: Thu, 26 Jun 2008 20:01:38 +0200
+Subject: Allow libvirt group to access the socket
+
+---
+ daemon/libvirtd.conf |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/daemon/libvirtd.conf b/daemon/libvirtd.conf
+index 47da520..bf0b92a 100644
+--- a/daemon/libvirtd.conf
++++ b/daemon/libvirtd.conf
 @@ -78,7 +78,7 @@
  # without becoming root.
  #

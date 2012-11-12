@@ -89,9 +89,17 @@ test_programs = virshtest sockettest \
 	nodeinfotest virbuftest \
 	commandtest seclabeltest \
 	virhashtest virnetmessagetest virnetsockettest \
+	viratomictest \
 	utiltest virnettlscontexttest shunloadtest \
 	virtimetest viruritest virkeyfiletest \
-	virauthconfigtest
+	virauthconfigtest \
+	virbitmaptest \
+	virlockspacetest \
+	$(NULL)
+
+if WITH_SECDRIVER_SELINUX
+test_programs += securityselinuxtest
+endif
 
 if WITH_DRIVER_MODULES
 test_programs += virdrivermoduletest
@@ -108,7 +116,7 @@ endif
 if WITH_QEMU
 test_programs += qemuxml2argvtest qemuxml2xmltest qemuxmlnstest \
 	qemuargv2xmltest qemuhelptest domainsnapshotxml2xmltest \
-	qemumonitortest
+	qemumonitortest qemumonitorjsontest
 endif
 
 if WITH_LXC
@@ -139,6 +147,10 @@ test_programs += networkxml2xmltest
 
 if WITH_NETWORK
 test_programs += networkxml2argvtest
+endif
+
+if WITH_STORAGE_SHEEPDOG
+test_programs += storagebackendsheepdogtest
 endif
 
 test_programs += nwfilterxml2xmltest
@@ -173,12 +185,13 @@ test_scripts +=				\
 	read-bufsiz			\
 	read-non-seekable		\
 	start				\
-	undefine			\
 	vcpupin				\
 	virsh-all			\
 	virsh-optparse			\
 	virsh-schedinfo			\
-	virsh-synopsis
+	virsh-synopsis			\
+	virsh-undefine			\
+	$(NULL)
 
 test_programs += 			\
 	eventtest			\
@@ -194,12 +207,13 @@ EXTRA_DIST += 				\
 	read-bufsiz			\
 	read-non-seekable		\
 	start				\
-	undefine			\
 	vcpupin				\
 	virsh-all			\
 	virsh-optparse			\
 	virsh-schedinfo			\
-	virsh-synopsis
+	virsh-synopsis			\
+	virsh-undefine			\
+	$(NULL)
 endif
 
 if WITH_SECDRIVER_APPARMOR
@@ -210,12 +224,17 @@ endif
 
 EXTRA_DIST += $(test_scripts)
 
+test_libraries = libshunload.la
+if WITH_QEMU
+test_libraries += libqemumonitortestutils.la
+endif
+
 if WITH_TESTS
 noinst_PROGRAMS = $(test_programs) $(test_helpers)
-noinst_LTLIBRARIES = libshunload.la
+noinst_LTLIBRARIES = $(test_libraries)
 else
 check_PROGRAMS = $(test_programs) $(test_helpers)
-check_LTLIBRARIES = libshunload.la
+check_LTLIBRARIES = $(test_libraries)
 endif
 
 TESTS = $(test_programs) \
@@ -239,6 +258,7 @@ TESTS_ENVIRONMENT =				\
   PATH="$(path_add)$(PATH_SEPARATOR)$$PATH"	\
   SHELL="$(SHELL)"				\
   LIBVIRT_DRIVER_DIR="$(abs_top_builddir)/src/.libs" \
+  LIBVIRT_AUTOSTART=0				\
   LC_ALL=C					\
   $(VG)
 
@@ -288,7 +308,17 @@ EXTRA_DIST += xml2sexprtest.c sexpr2xmltest.c xmconfigtest.c \
 	testutilsxen.c testutilsxen.h
 endif
 
+QEMUMONITORTESTUTILS_SOURCES = \
+	qemumonitortestutils.c \
+	qemumonitortestutils.h \
+	$(NULL)
+
 if WITH_QEMU
+
+libqemumonitortestutils_la_SOURCES = $(QEMUMONITORTESTUTILS_SOURCES)
+libqemumonitortestutils_la_CFLAGS = \
+	-Dabs_builddir="\"`pwd`\"" $(AM_CFLAGS)
+
 
 qemu_LDADDS = ../src/libvirt_driver_qemu_impl.la
 if WITH_NETWORK
@@ -325,6 +355,14 @@ qemuhelptest_LDADD = $(qemu_LDADDS)
 qemumonitortest_SOURCES = qemumonitortest.c testutils.c testutils.h
 qemumonitortest_LDADD = $(qemu_LDADDS)
 
+qemumonitorjsontest_SOURCES = \
+	qemumonitorjsontest.c \
+	testutils.c testutils.h \
+	testutilsqemu.c testutilsqemu.h \
+	$(NULL)
+qemumonitorjsontest_LDADD = $(qemu_LDADDS) libqemumonitortestutils.la
+qemumonitorjsontest_CFLAGS = -Dabs_builddir="\"$(abs_builddir)\""  $(AM_CFLAGS)
+
 domainsnapshotxml2xmltest_SOURCES = \
 	domainsnapshotxml2xmltest.c testutilsqemu.c testutilsqemu.h \
 	testutils.c testutils.h
@@ -332,7 +370,9 @@ domainsnapshotxml2xmltest_LDADD = $(qemu_LDADDS)
 else
 EXTRA_DIST += qemuxml2argvtest.c qemuxml2xmltest.c qemuargv2xmltest.c \
 	qemuxmlnstest.c qemuhelptest.c domainsnapshotxml2xmltest.c \
-	qemumonitortest.c testutilsqemu.c testutilsqemu.h
+	qemumonitortest.c testutilsqemu.c testutilsqemu.h \
+	qemumonitorjsontest.c \
+	$(QEMUMONITORTESTUTILS_SOURCES)
 endif
 
 if WITH_LXC
@@ -396,6 +436,16 @@ networkxml2argvtest_SOURCES = \
 networkxml2argvtest_LDADD = ../src/libvirt_driver_network_impl.la $(LDADDS)
 else
 EXTRA_DIST += networkxml2argvtest.c
+endif
+
+if WITH_STORAGE_SHEEPDOG
+storagebackendsheepdogtest_SOURCES = \
+	storagebackendsheepdogtest.c \
+	testutils.c testutils.h
+storagebackendsheepdogtest_LDADD = \
+	../src/libvirt_driver_storage_impl.la $(LDADDS)
+else
+EXTRA_DIST += storagebackendsheepdogtest.c
 endif
 
 nwfilterxml2xmltest_SOURCES = \
@@ -489,6 +539,11 @@ virtimetest_SOURCES = \
 virtimetest_CFLAGS = -Dabs_builddir="\"$(abs_builddir)\"" $(AM_CFLAGS)
 virtimetest_LDADD = $(LDADDS)
 
+virlockspacetest_SOURCES = \
+	virlockspacetest.c testutils.h testutils.c
+virlockspacetest_CFLAGS = -Dabs_builddir="\"$(abs_builddir)\"" $(AM_CFLAGS)
+virlockspacetest_LDADD = $(LDADDS)
+
 viruritest_SOURCES = \
 	viruritest.c testutils.h testutils.c
 viruritest_CFLAGS = -Dabs_builddir="\"$(abs_builddir)\"" $(AM_CFLAGS)
@@ -508,6 +563,28 @@ seclabeltest_SOURCES = \
 	seclabeltest.c
 seclabeltest_LDADD = $(LDADDS)
 
+if WITH_SECDRIVER_SELINUX
+if WITH_TESTS
+noinst_LTLIBRARIES += libsecurityselinuxhelper.la
+else
+check_LTLIBRARIES += libsecurityselinuxhelper.la
+endif
+
+libsecurityselinuxhelper_la_SOURCES = \
+	securityselinuxhelper.c
+libsecurityselinuxhelper_la_CFLAGS = $(AM_CFLAGS)
+libsecurityselinuxhelper_la_LDFLAGS = -module -avoid-version \
+        -rpath /evil/libtool/hack/to/force/shared/lib/creation
+
+securityselinuxtest_SOURCES = \
+	securityselinuxtest.c testutils.h testutils.c
+securityselinuxtest_CFLAGS = -Dabs_builddir="\"$(abs_builddir)\"" $(AM_CFLAGS)
+securityselinuxtest_LDADD = $(LDADDS)
+securityselinuxtest_DEPENDENCIES = libsecurityselinuxhelper.la
+else
+EXTRA_DIST += securityselinuxtest.c securityselinuxhelper.c
+endif
+
 virbuftest_SOURCES = \
 	virbuftest.c testutils.h testutils.c
 virbuftest_LDADD = $(LDADDS)
@@ -515,6 +592,14 @@ virbuftest_LDADD = $(LDADDS)
 virhashtest_SOURCES = \
 	virhashtest.c virhashdata.h testutils.h testutils.c
 virhashtest_LDADD = $(LDADDS)
+
+viratomictest_SOURCES = \
+	viratomictest.c testutils.h testutils.c
+viratomictest_LDADD = $(LDADDS)
+
+virbitmaptest_SOURCES = \
+	virbitmaptest.c testutils.h testutils.c
+virbitmaptest_LDADD = $(LDADDS)
 
 jsontest_SOURCES = \
 	jsontest.c testutils.h testutils.c

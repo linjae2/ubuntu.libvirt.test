@@ -43,6 +43,7 @@ Build-Depends: cdbs (>= 0.4.90~),
  dnsmasq-base,
  openssh-client,
  netcat-openbsd,
+ librbd-dev
 Build-Conflicts: dpkg-dev (= 1.15.3)
 Homepage: http://libvirt.org
 Standards-Version: 3.9.3

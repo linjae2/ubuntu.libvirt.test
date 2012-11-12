@@ -1,4 +1,4 @@
-# serial 22
+# serial 24
 dnl Copyright (C) 2002-2003, 2005-2007, 2009-2012 Free Software Foundation,
 dnl Inc.
 dnl This file is free software; the Free Software Foundation
@@ -17,7 +17,7 @@ AC_DEFUN([gl_FUNC_MKTIME],
   AC_CHECK_FUNCS_ONCE([alarm])
   AC_REQUIRE([gl_MULTIARCH])
   if test $APPLE_UNIVERSAL_BUILD = 1; then
-    # A universal build on Apple MacOS X platforms.
+    # A universal build on Apple Mac OS X platforms.
     # The test result would be 'yes' in 32-bit mode and 'no' in 64-bit mode.
     # But we need a configuration result that is valid in both modes.
     gl_cv_func_working_mktime=no
@@ -247,7 +247,4 @@ AC_DEFUN([gl_FUNC_MKTIME_INTERNAL], [
 ])
 
 # Prerequisites of lib/mktime.c.
-AC_DEFUN([gl_PREREQ_MKTIME],
-[
-  AC_REQUIRE([AC_C_INLINE])
-])
+AC_DEFUN([gl_PREREQ_MKTIME], [:])

@@ -35,8 +35,7 @@ EXTRA_DIST =						\
 	libvirtd.conf					\
 	libvirtd.init.in				\
 	libvirtd.upstart				\
-	libvirtd.policy-0				\
-	libvirtd.policy-1				\
+	libvirtd.policy.in				\
 	libvirtd.sasl					\
 	libvirtd.sysconf				\
 	libvirtd.sysctl					\
@@ -58,12 +57,12 @@ QEMU_PROTOCOL = $(top_srcdir)/src/remote/qemu_protocol.x
 
 $(srcdir)/remote_dispatch.h: $(srcdir)/../src/rpc/gendispatch.pl \
 		$(REMOTE_PROTOCOL)
-	$(AM_V_GEN)$(PERL) -w $(srcdir)/../src/rpc/gendispatch.pl -b remote \
+	$(AM_V_GEN)$(PERL) -w $(srcdir)/../src/rpc/gendispatch.pl -b remote REMOTE \
 	  $(REMOTE_PROTOCOL) > $@
 
 $(srcdir)/qemu_dispatch.h: $(srcdir)/../src/rpc/gendispatch.pl \
 		$(QEMU_PROTOCOL)
-	$(AM_V_GEN)$(PERL) -w $(srcdir)/../src/rpc/gendispatch.pl -b qemu \
+	$(AM_V_GEN)$(PERL) -w $(srcdir)/../src/rpc/gendispatch.pl -b qemu QEMU \
 	  $(QEMU_PROTOCOL) > $@
 
 if WITH_LIBVIRTD
@@ -84,11 +83,10 @@ augeastests_DATA = test_libvirtd.aug
 CLEANFILES += test_libvirtd.aug
 
 libvirtd.8: $(srcdir)/libvirtd.8.in
-	sed \
-	    -e 's![@]sysconfdir[@]!$(sysconfdir)!g' \
-	    -e 's![@]localstatedir[@]!$(localstatedir)!g' \
-	    -e 's![@]remote_pid_file[@]!$(REMOTE_PID_FILE)!g' \
-	    < $< > $@-t
+	$(AM_V_GEN)sed \
+	    -e 's!SYSCONFDIR!$(sysconfdir)!g' \
+	    -e 's!LOCALSTATEDIR!$(localstatedir)!g' \
+	    < $< > $@-t && \
 	mv $@-t $@
 
 libvirtd_SOURCES = $(DAEMON_SOURCES)
@@ -96,11 +94,10 @@ libvirtd_SOURCES = $(DAEMON_SOURCES)
 #-D_XOPEN_SOURCE=600 -D_XOPEN_SOURCE_EXTENDED=1 -D_POSIX_C_SOURCE=199506L
 libvirtd_CFLAGS = \
 	$(LIBXML_CFLAGS) $(GNUTLS_CFLAGS) $(SASL_CFLAGS) \
-	$(XDR_CFLAGS) $(POLKIT_CFLAGS) $(DBUS_CFLAGS) \
+	$(XDR_CFLAGS) $(POLKIT_CFLAGS) $(DBUS_CFLAGS) $(LIBNL_CFLAGS) \
 	$(WARN_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
-	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\"" \
-	-DREMOTE_PID_FILE="\"$(REMOTE_PID_FILE)\""
+	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\""
 
 libvirtd_LDFLAGS =					\
 	$(WARN_CFLAGS)					\
@@ -111,7 +108,8 @@ libvirtd_LDADD =					\
 	$(GNUTLS_LIBS)					\
 	$(SASL_LIBS)					\
 	$(DBUS_LIBS)					\
-	$(POLKIT_LIBS)
+	$(POLKIT_LIBS)					\
+	$(LIBNL_LIBS)
 
 if WITH_DTRACE_PROBES
 libvirtd_LDADD += ../src/libvirt_probes.lo
@@ -132,6 +130,10 @@ if WITH_LXC
     libvirtd_LDADD += ../src/libvirt_driver_lxc.la
 endif
 
+if WITH_XEN
+    libvirtd_LDADD += ../src/libvirt_driver_xen.la
+endif
+
 if WITH_LIBXL
     libvirtd_LDADD += ../src/libvirt_driver_libxl.la
 endif
@@ -148,7 +150,7 @@ if WITH_NETWORK
     libvirtd_LDADD += ../src/libvirt_driver_network.la
 endif
 
-if WITH_NETCF
+if WITH_INTERFACE
     libvirtd_LDADD += ../src/libvirt_driver_interface.la
 endif
 
@@ -170,12 +172,19 @@ libvirtd_LDADD += ../src/libvirt.la
 if HAVE_POLKIT
 if HAVE_POLKIT0
 policydir = $(datadir)/PolicyKit/policy
-policyfile = libvirtd.policy-0
+policyauth = auth_admin_keep_session
 else
 policydir = $(datadir)/polkit-1/actions
-policyfile = libvirtd.policy-1
+policyauth = auth_admin_keep
 endif
 endif
+
+libvirtd.policy: libvirtd.policy.in $(top_builddir)/config.status
+	$(AM_V_GEN) sed \
+	    -e 's![@]authaction[@]!$(policyauth)!g' \
+	    < $< > $@-t && \
+	mv $@-t $@
+BUILT_SOURCES += libvirtd.policy
 
 install-data-local: install-init-redhat install-init-systemd install-init-upstart \
 		install-data-sasl install-data-polkit \
@@ -194,7 +203,7 @@ uninstall-local:: uninstall-init-redhat uninstall-init-systemd uninstall-init-up
 if HAVE_POLKIT
 install-data-polkit::
 	$(MKDIR_P) $(DESTDIR)$(policydir)
-	$(INSTALL_DATA) $(srcdir)/$(policyfile) $(DESTDIR)$(policydir)/org.libvirt.unix.policy
+	$(INSTALL_DATA) libvirtd.policy $(DESTDIR)$(policydir)/org.libvirt.unix.policy
 uninstall-data-polkit::
 	rm -f $(DESTDIR)$(policydir)/org.libvirt.unix.policy
 	rmdir $(DESTDIR)$(policydir) || :
@@ -212,15 +221,15 @@ LOGROTATE_CONFS = libvirtd.qemu.logrotate libvirtd.lxc.logrotate \
 BUILT_SOURCES += $(LOGROTATE_CONFS)
 
 libvirtd.logrotate: libvirtd.logrotate.in
-	sed							\
+	$(AM_V_GEN)sed						\
 	    -e 's![@]localstatedir[@]!$(localstatedir)!g'	\
-	    < $< > $@-t
+	    < $< > $@-t && \
 	mv $@-t $@
 
 libvirtd.qemu.logrotate: libvirtd.qemu.logrotate.in
-	sed							\
+	$(AM_V_GEN)sed						\
 	    -e 's![@]localstatedir[@]!$(localstatedir)!g'	\
-	    < $< > $@-t
+	    < $< > $@-t && \
 	mv $@-t $@
 
 libvirtd.lxc.logrotate: libvirtd.lxc.logrotate.in
@@ -375,7 +384,8 @@ POD2MAN = pod2man -c "Virtualization Support" \
 			-r "$(PACKAGE)-$(VERSION)" -s 8
 
 $(srcdir)/libvirtd.8.in: libvirtd.pod.in
-	$(AM_V_GEN)$(POD2MAN) $< $@
+	$(AM_V_GEN)$(POD2MAN) --name LIBVIRTD $< $@ \
+	    && if grep 'POD ERROR' $@ ; then rm $@; exit 1; fi
 
 # This is needed for clients too, so can't wrap in
 # the WITH_LIBVIRTD conditional

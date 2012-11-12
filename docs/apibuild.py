@@ -1759,6 +1759,7 @@ class CParser:
         "virDomainSetMaxMemory"          : (False, ("memory")),
         "virDomainSetMemory"             : (False, ("memory")),
         "virDomainSetMemoryFlags"        : (False, ("memory")),
+        "virDomainBlockCommit"           : (False, ("bandwidth")),
         "virDomainBlockJobSetSpeed"      : (False, ("bandwidth")),
         "virDomainBlockPull"             : (False, ("bandwidth")),
         "virDomainBlockRebase"           : (False, ("bandwidth")),
@@ -1960,6 +1961,11 @@ class docBuilder:
         self.xref = {}
         self.index = {}
         self.basename = name
+
+    def warning(self, msg):
+        global warnings
+        warnings = warnings + 1
+        print msg
 
     def indexString(self, id, str):
         if str == None:
@@ -2468,7 +2474,7 @@ class docBuilder:
 
 def rebuild(name):
     if name not in ["libvirt", "libvirt-qemu"]:
-        self.warning("rebuild() failed, unkown module %s") % name
+        self.warning("rebuild() failed, unknown module %s") % name
         return None
     builder = None
     srcdir = os.environ["srcdir"]
