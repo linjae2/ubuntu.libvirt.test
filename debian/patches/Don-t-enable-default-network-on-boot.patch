@@ -4,17 +4,16 @@ Subject: Don't enable default network on boot
 
 to not interfere with existing network configurations
 
-
 ---
  src/Makefile.am |    3 ---
  src/Makefile.in |    3 ---
- 2 files changed, 0 insertions(+), 6 deletions(-)
+ 2 files changed, 6 deletions(-)
 
 diff --git a/src/Makefile.am b/src/Makefile.am
-index a2aae9d..6860e21 100644
+index 187663f..94f807e 100644
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
-@@ -1622,9 +1622,6 @@ if WITH_NETWORK
+@@ -1768,9 +1768,6 @@ if WITH_NETWORK
  	    cp $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml.t \
  	      $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml && \
  	    rm $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml.t; }
@@ -25,10 +24,10 @@ index a2aae9d..6860e21 100644
  
  uninstall-local::
 diff --git a/src/Makefile.in b/src/Makefile.in
-index 26b9dce..34c96a8 100644
+index 230e879..cd3e29f 100644
 --- a/src/Makefile.in
 +++ b/src/Makefile.in
-@@ -7423,9 +7423,6 @@ install-data-local:
+@@ -6907,9 +6907,6 @@ install-data-local:
  @WITH_NETWORK_TRUE@	    cp $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml.t \
  @WITH_NETWORK_TRUE@	      $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml && \
  @WITH_NETWORK_TRUE@	    rm $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml.t; }

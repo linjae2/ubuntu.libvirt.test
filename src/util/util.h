@@ -16,8 +16,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * File created Jul 18, 2007 - Shuveb Hussain <shuveb@binarykarma.com>
  */
@@ -115,6 +115,8 @@ enum {
 int virDirCreate(const char *path, mode_t mode, uid_t uid, gid_t gid,
                  unsigned int flags) ATTRIBUTE_RETURN_CHECK;
 int virFileMakePath(const char *path) ATTRIBUTE_RETURN_CHECK;
+int virFileMakePathWithMode(const char *path,
+                            mode_t mode) ATTRIBUTE_RETURN_CHECK;
 
 char *virFileBuildPath(const char *dir,
                        const char *name,
@@ -207,6 +209,12 @@ char *virStrcpy(char *dest, const char *src, size_t destbytes)
     ATTRIBUTE_RETURN_CHECK;
 # define virStrcpyStatic(dest, src) virStrcpy((dest), (src), sizeof(dest))
 
+int virDoubleToStr(char **strp, double number)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
+
+char *virFormatIntDecimal(char *buf, size_t buflen, int val)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
+
 int virDiskNameToIndex(const char* str);
 char *virIndexToDiskName(int idx, const char *prefix);
 
@@ -250,8 +258,6 @@ static inline int getgid (void) { return 0; }
 
 char *virGetHostname(virConnectPtr conn);
 
-int virKillProcess(pid_t pid, int sig);
-
 char *virGetUserDirectory(void);
 char *virGetUserConfigDirectory(void);
 char *virGetUserCacheDirectory(void);
@@ -271,5 +277,7 @@ void virFileWaitForDevices(void);
 int virBuildPathInternal(char **path, ...) ATTRIBUTE_SENTINEL;
 
 bool virIsDevMapperDevice(const char *dev_name) ATTRIBUTE_NONNULL(1);
+
+bool virValidateWWN(const char *wwn);
 
 #endif /* __VIR_UTIL_H__ */

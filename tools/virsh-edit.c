@@ -3,7 +3,19 @@
  *
  * Copyright (C) 2012 Red Hat, Inc.
  *
- * See COPYING.LIB for the License of this software.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * Usage:
  * Define macros:
@@ -56,6 +68,7 @@ do {
     char *doc_edited = NULL;
     char *doc_reread = NULL;
     const char *msg = NULL;
+    bool edit_success = false;
 
     /* Get the XML configuration of the object. */
     doc = (EDIT_GET_XML);
@@ -63,17 +76,17 @@ do {
         goto edit_cleanup;
 
     /* Create and open the temporary file. */
-    tmp = editWriteToTempFile(ctl, doc);
+    tmp = vshEditWriteToTempFile(ctl, doc);
     if (!tmp)
         goto edit_cleanup;
 
 reedit:
     /* Start the editor. */
-    if (editFile(ctl, tmp) == -1)
+    if (vshEditFile(ctl, tmp) == -1)
         goto edit_cleanup;
 
     /* Read back the edited file. */
-    doc_edited = editReadBackFile(ctl, tmp);
+    doc_edited = vshEditReadBackFile(ctl, tmp);
     if (!doc_edited)
         goto edit_cleanup;
 
@@ -127,7 +140,7 @@ redefine:
         }
     }
 
-    break;
+    edit_success = true;
 
 edit_cleanup:
     VIR_FREE(doc);
@@ -137,7 +150,9 @@ edit_cleanup:
         unlink (tmp);
         VIR_FREE(tmp);
     }
-    goto cleanup;
+
+    if (!edit_success)
+        goto cleanup;
 
 } while (0);
 

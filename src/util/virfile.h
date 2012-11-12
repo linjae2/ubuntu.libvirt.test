@@ -17,8 +17,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -90,6 +90,8 @@ int virFileWrapperFdClose(virFileWrapperFdPtr dfd);
 
 void virFileWrapperFdFree(virFileWrapperFdPtr dfd);
 
+void virFileWrapperFdCatchError(virFileWrapperFdPtr dfd);
+
 int virFileLock(int fd, bool shared, off_t start, off_t len);
 int virFileUnlock(int fd, off_t start, off_t len);
 
@@ -104,5 +106,8 @@ int virFileTouch(const char *path, mode_t mode);
 int virFileUpdatePerm(const char *path,
                       mode_t mode_remove,
                       mode_t mode_add);
+
+int virFileLoopDeviceAssociate(const char *file,
+                               char **dev);
 
 #endif /* __VIR_FILES_H */

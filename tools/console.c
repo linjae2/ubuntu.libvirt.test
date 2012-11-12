@@ -1,7 +1,7 @@
 /*
  * console.c: A dumb serial console client
  *
- * Copyright (C) 2007-2008, 2010-2011 Red Hat, Inc.
+ * Copyright (C) 2007-2008, 2010-2012 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * Daniel Berrange <berrange@redhat.com>
  */
@@ -101,6 +101,7 @@ virConsoleShutdown(virConsolePtr con)
         virStreamEventRemoveCallback(con->st);
         virStreamAbort(con->st);
         virStreamFree(con->st);
+        con->st = NULL;
     }
     VIR_FREE(con->streamToTerminal.data);
     VIR_FREE(con->terminalToStream.data);
@@ -298,13 +299,16 @@ vshGetEscapeChar(const char *s)
     return *s;
 }
 
-int vshMakeStdinRaw(struct termios *ttyattr, bool report_errors) {
+int
+vshMakeStdinRaw(struct termios *ttyattr, bool report_errors)
+{
     struct termios rawattr;
+    char ebuf[1024];
 
     if (tcgetattr(STDIN_FILENO, ttyattr) < 0) {
         if (report_errors)
             VIR_ERROR(_("unable to get tty attributes: %s"),
-                      strerror(errno));
+                      virStrerror(errno, ebuf, sizeof(ebuf)));
         return -1;
     }
 
@@ -314,7 +318,7 @@ int vshMakeStdinRaw(struct termios *ttyattr, bool report_errors) {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &rawattr) < 0) {
         if (report_errors)
             VIR_ERROR(_("unable to set tty attributes: %s"),
-                      strerror(errno));
+                      virStrerror(errno, ebuf, sizeof(ebuf)));
         return -1;
     }
 

@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  */
 
 #include <config.h>
@@ -331,7 +331,9 @@ static int test8(const void *unused ATTRIBUTE_UNUSED)
 {
     virCommandPtr cmd = virCommandNew(abs_builddir "/commandhelper");
 
+    virCommandAddEnvString(cmd, "USER=bogus");
     virCommandAddEnvString(cmd, "LANG=C");
+    virCommandAddEnvPair(cmd, "USER", "also bogus");
     virCommandAddEnvPair(cmd, "USER", "test");
 
     if (virCommandRun(cmd, NULL) < 0) {
@@ -607,12 +609,14 @@ static int test16(const void *unused ATTRIBUTE_UNUSED)
 {
     virCommandPtr cmd = virCommandNew("true");
     char *outactual = NULL;
-    const char *outexpect = "A=B true C";
+    const char *outexpect = "A=B C='D  E' true F 'G  H'";
     int ret = -1;
     int fd = -1;
 
     virCommandAddEnvPair(cmd, "A", "B");
-    virCommandAddArg(cmd, "C");
+    virCommandAddEnvPair(cmd, "C", "D  E");
+    virCommandAddArg(cmd, "F");
+    virCommandAddArg(cmd, "G  H");
 
     if ((outactual = virCommandToString(cmd)) == NULL) {
         virErrorPtr err = virGetLastError();

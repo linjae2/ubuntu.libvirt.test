@@ -5,10 +5,10 @@ INCLUDES = \
 	-I$(top_builddir)/include -I$(top_srcdir)/include	\
 	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
 	-I$(top_builddir)/src -I$(top_srcdir)/src		\
-	-I$(top_srcdir)/src/remote                      	\
+	-I$(top_srcdir)/src/remote				\
 	-I$(top_srcdir)/src/util				\
 	-I$(top_srcdir)						\
-	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"        	\
+	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"                \
 	$(GETTEXT_CPPFLAGS)
 
 POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
@@ -27,8 +27,17 @@ EXTRA_DIST = \
 	virt-sanlock-cleanup.in				\
 	virt-sanlock-cleanup.8				\
 	virsh.pod					\
-	libvirt-guests.sysconf		\
-	virsh-edit.c
+	libvirt-guests.sysconf				\
+	virsh-edit.c					\
+	virsh-domain.c					\
+	virsh-domain-monitor.c				\
+	virsh-host.c virsh-interface.c			\
+	virsh-network.c virsh-nodedev.c			\
+	virsh-nwfilter.c virsh-pool.c			\
+	virsh-secret.c virsh-snapshot.c			\
+	virsh-volume.c
+
+
 
 DISTCLEANFILES =
 
@@ -54,17 +63,23 @@ virt-xml-validate: virt-xml-validate.in Makefile
 	    || (rm $@ && exit 1) && chmod +x $@
 
 virt-xml-validate.1: virt-xml-validate.in
-	$(AM_V_GEN)$(POD2MAN) $< $(srcdir)/$@
+	$(AM_V_GEN)$(POD2MAN) --name VIRT-XML-VALIDATE $< $(srcdir)/$@ \
+	    && if grep 'POD ERROR' $(srcdir)/$@ ; then \
+		rm $(srcdir)/$@; exit 1; fi
 
 virt-pki-validate: virt-pki-validate.in Makefile
 	$(AM_V_GEN)sed -e 's,[@]SYSCONFDIR@,$(sysconfdir),' < $< > $@ \
 	    || (rm $@ && exit 1) && chmod +x $@
 
 virt-pki-validate.1: virt-pki-validate.in
-	$(AM_V_GEN)$(POD2MAN) $< $(srcdir)/$@
+	$(AM_V_GEN)$(POD2MAN) --name VIRT-PKI-VALIDATE $< $(srcdir)/$@ \
+	    && if grep 'POD ERROR' $(srcdir)/$@ ; then \
+		rm $(srcdir)/$@; exit 1; fi
 
 virt-host-validate.1: virt-host-validate.c
-	$(AM_V_GEN)$(POD2MAN) $< $(srcdir)/$@
+	$(AM_V_GEN)$(POD2MAN) --name VIRT-HOST-VALIDATE $< $(srcdir)/$@ \
+	    && if grep 'POD ERROR' $(srcdir)/$@ ; then \
+		rm $(srcdir)/$@; exit 1; fi
 
 virt-sanlock-cleanup: virt-sanlock-cleanup.in Makefile
 	$(AM_V_GEN)sed -e 's,[@]SYSCONFDIR@,$(sysconfdir),' \
@@ -72,7 +87,9 @@ virt-sanlock-cleanup: virt-sanlock-cleanup.in Makefile
 	    || (rm $@ && exit 1) && chmod +x $@
 
 virt-sanlock-cleanup.8: virt-sanlock-cleanup.in
-	$(AM_V_GEN)$(POD2MAN) $< $(srcdir)/$@
+	$(AM_V_GEN)$(POD2MAN) --name VIRT-SANLOCK-CLEANUP $< $(srcdir)/$@ \
+	    && if grep 'POD ERROR' $(srcdir)/$@ ; then \
+		rm $(srcdir)/$@; exit 1; fi
 
 virt_host_validate_SOURCES = \
 		virt-host-validate.c \
@@ -98,7 +115,19 @@ virt_host_validate_CFLAGS = \
 
 virsh_SOURCES =							\
 		console.c console.h				\
-		virsh.c
+		virsh.c virsh.h					\
+		virsh-domain.c virsh-domain.h			\
+		virsh-domain-monitor.c virsh-domain-monitor.h	\
+		virsh-host.c virsh-host.h			\
+		virsh-interface.c virsh-interface.h		\
+		virsh-network.c virsh-network.h			\
+		virsh-nodedev.c virsh-nodedev.h			\
+		virsh-nwfilter.c virsh-nwfilter.h		\
+		virsh-pool.c virsh-pool.h			\
+		virsh-secret.c virsh-secret.h			\
+		virsh-snapshot.c virsh-snapshot.h		\
+		virsh-volume.c virsh-volume.h			\
+		$(NULL)
 
 virsh_LDFLAGS = $(WARN_LDFLAGS) $(COVERAGE_LDFLAGS)
 virsh_LDADD =							\
@@ -143,7 +172,9 @@ virsh_win_icon.$(OBJEXT): virsh_win_icon.rc
 endif
 
 virsh.1: virsh.pod
-	$(AM_V_GEN)$(POD2MAN) $< $(srcdir)/$@
+	$(AM_V_GEN)$(POD2MAN) $< $(srcdir)/$@ \
+	    && if grep 'POD ERROR' $(srcdir)/$@ ; then \
+		rm $(srcdir)/$@; exit 1; fi
 
 install-data-local: install-init install-systemd
 

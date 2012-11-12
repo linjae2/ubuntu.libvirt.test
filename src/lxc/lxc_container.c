@@ -19,8 +19,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  */
 
 #include <config.h>
@@ -36,6 +36,8 @@
 #include <unistd.h>
 #include <mntent.h>
 #include <dirent.h>
+#include <sys/reboot.h>
+#include <linux/reboot.h>
 
 /* Yes, we want linux private one, for _syscall2() macro */
 #include <linux/unistd.h>
@@ -62,6 +64,7 @@
 #include "virfile.h"
 #include "command.h"
 #include "virnetdev.h"
+#include "virprocess.h"
 
 #define VIR_FROM_THIS VIR_FROM_LXC
 
@@ -94,13 +97,87 @@ typedef struct __lxc_child_argv lxc_child_argv_t;
 struct __lxc_child_argv {
     virDomainDefPtr config;
     virSecurityManagerPtr securityDriver;
-    unsigned int nveths;
+    size_t nveths;
     char **veths;
     int monitor;
     char **ttyPaths;
     size_t nttyPaths;
     int handshakefd;
 };
+
+
+/*
+ * reboot(LINUX_REBOOT_CMD_CAD_ON) will return -EINVAL
+ * in a child pid namespace if container reboot support exists.
+ * Otherwise, it will either succeed or return -EPERM.
+ */
+ATTRIBUTE_NORETURN static int
+lxcContainerRebootChild(void *argv)
+{
+    int *cmd = argv;
+    int ret;
+
+    ret = reboot(*cmd);
+    if (ret == -1 && errno == EINVAL)
+        _exit(1);
+    _exit(0);
+}
+
+
+static
+int lxcContainerHasReboot(void)
+{
+    int flags = CLONE_NEWPID|CLONE_NEWNS|CLONE_NEWUTS|
+        CLONE_NEWIPC|SIGCHLD;
+    int cpid;
+    char *childStack;
+    char *stack;
+    char *buf;
+    int cmd, v;
+    int status;
+    char *tmp;
+
+    if (virFileReadAll("/proc/sys/kernel/ctrl-alt-del", 10, &buf) < 0)
+        return -1;
+
+    if ((tmp = strchr(buf, '\n')))
+        *tmp = '\0';
+
+    if (virStrToLong_i(buf, NULL, 10, &v) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Malformed ctrl-alt-del setting '%s'"), buf);
+        VIR_FREE(buf);
+        return -1;
+    }
+    VIR_FREE(buf);
+    cmd = v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF;
+
+    if (VIR_ALLOC_N(stack, getpagesize() * 4) < 0) {
+        virReportOOMError();
+        return -1;
+    }
+
+    childStack = stack + (getpagesize() * 4);
+
+    cpid = clone(lxcContainerRebootChild, childStack, flags, &cmd);
+    VIR_FREE(stack);
+    if (cpid < 0) {
+        virReportSystemError(errno, "%s",
+                             _("Unable to clone to check reboot support"));
+        return -1;
+    } else if (virProcessWait(cpid, &status) < 0) {
+        return -1;
+    }
+
+    if (WEXITSTATUS(status) != 1) {
+        VIR_DEBUG("Containerized reboot support is missing "
+                  "(kernel probably too old < 3.4)");
+        return 0;
+    }
+
+    VIR_DEBUG("Containerized reboot support is available");
+    return 1;
+}
 
 
 /**
@@ -263,15 +340,15 @@ int lxcContainerWaitForContinue(int control)
  * Returns 0 on success or nonzero in case of error
  */
 static int lxcContainerRenameAndEnableInterfaces(bool privNet,
-                                                 unsigned int nveths,
+                                                 size_t nveths,
                                                  char **veths)
 {
     int rc = 0;
-    unsigned int i;
+    size_t i;
     char *newname = NULL;
 
     for (i = 0 ; i < nveths ; i++) {
-        if (virAsprintf(&newname, "eth%d", i) < 0) {
+        if (virAsprintf(&newname, "eth%zu", i) < 0) {
             virReportOOMError();
             rc = -1;
             goto error_out;
@@ -426,9 +503,8 @@ err:
 }
 
 
-static int lxcContainerMountBasicFS(virDomainDefPtr def,
-                                    bool pivotRoot,
-                                    virSecurityManagerPtr securityDriver)
+static int lxcContainerMountBasicFS(bool pivotRoot,
+                                    char *sec_mount_options)
 {
     const struct {
         const char *src;
@@ -482,8 +558,9 @@ static int lxcContainerMountBasicFS(virDomainDefPtr def,
                   srcpath, mnts[i].dst, mnts[i].type, mnts[i].mflags, mnts[i].opts);
         if (mount(srcpath, mnts[i].dst, mnts[i].type, mnts[i].mflags, mnts[i].opts) < 0) {
             virReportSystemError(errno,
-                                 _("Failed to mount %s on %s type %s"),
-                                 mnts[i].src, mnts[i].dst, NULLSTR(mnts[i].type));
+                                 _("Failed to mount %s on %s type %s flags=%x opts=%s"),
+                                 srcpath, mnts[i].dst, NULLSTR(mnts[i].type),
+                                 mnts[i].mflags, NULLSTR(mnts[i].opts));
             goto cleanup;
         }
     }
@@ -494,10 +571,8 @@ static int lxcContainerMountBasicFS(virDomainDefPtr def,
          * and don't want to DOS the entire OS RAM usage
          */
 
-        char *mount_options = virSecurityManagerGetMountOptions(securityDriver, def);
         ignore_value(virAsprintf(&opts,
-                                 "mode=755,size=65536%s",(mount_options ? mount_options : "")));
-        VIR_FREE(mount_options);
+                                 "mode=755,size=65536%s",(sec_mount_options ? sec_mount_options : "")));
         if (!opts) {
             virReportOOMError();
             goto cleanup;
@@ -507,8 +582,8 @@ static int lxcContainerMountBasicFS(virDomainDefPtr def,
                   MS_NOSUID, opts);
         if (mount("devfs", "/dev", "tmpfs", MS_NOSUID, opts) < 0) {
             virReportSystemError(errno,
-                                 _("Failed to mount %s on %s type %s"),
-                                 "devfs", "/dev", "tmpfs");
+                                 _("Failed to mount %s on %s type %s (%s)"),
+                                 "devfs", "/dev", "tmpfs", opts);
             goto cleanup;
         }
     }
@@ -876,9 +951,9 @@ retry:
          * /etc/filesystems is only allowed to contain '*' on the last line
          */
         if (gotStar && !tryProc) {
-            lxcError(VIR_ERR_INTERNAL_ERROR,
-                     _("%s has unexpected '*' before last line"),
-                     fslist);
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("%s has unexpected '*' before last line"),
+                           fslist);
             goto cleanup;
         }
 
@@ -1002,12 +1077,14 @@ cleanup:
 }
 
 
-static int lxcContainerMountFSTmpfs(virDomainFSDefPtr fs)
+static int lxcContainerMountFSTmpfs(virDomainFSDefPtr fs,
+                                    char *sec_mount_options)
 {
     int ret = -1;
     char *data = NULL;
 
-    if (virAsprintf(&data, "size=%lldk", fs->usage) < 0) {
+    if (virAsprintf(&data,
+                    "size=%lldk%s", fs->usage, (sec_mount_options ? sec_mount_options : "")) < 0) {
         virReportOOMError();
         goto cleanup;
     }
@@ -1044,7 +1121,8 @@ cleanup:
 
 
 static int lxcContainerMountFS(virDomainFSDefPtr fs,
-                               const char *srcprefix)
+                               const char *srcprefix,
+                               char *sec_mount_options)
 {
     switch (fs->type) {
     case VIR_DOMAIN_FS_TYPE_MOUNT:
@@ -1056,7 +1134,7 @@ static int lxcContainerMountFS(virDomainFSDefPtr fs,
             return -1;
         break;
     case VIR_DOMAIN_FS_TYPE_RAM:
-        if (lxcContainerMountFSTmpfs(fs) < 0)
+        if (lxcContainerMountFSTmpfs(fs, sec_mount_options) < 0)
             return -1;
         break;
     case VIR_DOMAIN_FS_TYPE_BIND:
@@ -1067,14 +1145,14 @@ static int lxcContainerMountFS(virDomainFSDefPtr fs,
         /* We do actually support this, but the lxc controller
          * should have associated the file with a loopback
          * device and changed this to TYPE_BLOCK for us */
-        lxcError(VIR_ERR_INTERNAL_ERROR,
-                 _("Unexpected filesystem type %s"),
-                 virDomainFSTypeToString(fs->type));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Unexpected filesystem type %s"),
+                       virDomainFSTypeToString(fs->type));
         break;
     default:
-        lxcError(VIR_ERR_CONFIG_UNSUPPORTED,
-                 _("Cannot mount filesystem type %s"),
-                 virDomainFSTypeToString(fs->type));
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                       _("Cannot mount filesystem type %s"),
+                       virDomainFSTypeToString(fs->type));
         break;
     }
     return 0;
@@ -1083,7 +1161,8 @@ static int lxcContainerMountFS(virDomainFSDefPtr fs,
 
 static int lxcContainerMountAllFS(virDomainDefPtr vmDef,
                                   const char *dstprefix,
-                                  bool skipRoot)
+                                  bool skipRoot,
+                                  char *sec_mount_options)
 {
     size_t i;
     VIR_DEBUG("Mounting %s %d", dstprefix, skipRoot);
@@ -1094,7 +1173,7 @@ static int lxcContainerMountAllFS(virDomainDefPtr vmDef,
             STREQ(vmDef->fss[i]->dst, "/"))
             continue;
 
-        if (lxcContainerMountFS(vmDef->fss[i], dstprefix) < 0)
+        if (lxcContainerMountFS(vmDef->fss[i], dstprefix, sec_mount_options) < 0)
             return -1;
     }
 
@@ -1113,6 +1192,8 @@ static int lxcContainerGetSubtree(const char *prefix,
     int ret = -1;
     char **mounts = NULL;
     size_t nmounts = 0;
+
+    VIR_DEBUG("prefix=%s", prefix);
 
     *mountsret = NULL;
     *nmountsret = 0;
@@ -1231,7 +1312,8 @@ static void lxcContainerCGroupFree(struct lxcContainerCGroup *mounts,
 
 
 static int lxcContainerIdentifyCGroups(struct lxcContainerCGroup **mountsret,
-                                       size_t *nmountsret)
+                                       size_t *nmountsret,
+                                       char **root)
 {
     FILE *procmnt = NULL;
     struct mntent mntent;
@@ -1245,8 +1327,9 @@ static int lxcContainerIdentifyCGroups(struct lxcContainerCGroup **mountsret,
 
     *mountsret = NULL;
     *nmountsret = 0;
+    *root = NULL;
 
-    VIR_DEBUG("Finding cgroups mount points under %s", VIR_CGROUP_SYSFS_MOUNT);
+    VIR_DEBUG("Finding cgroups mount points of type cgroup");
 
     if (!(procmnt = setmntent("/proc/mounts", "r"))) {
         virReportSystemError(errno, "%s",
@@ -1256,9 +1339,23 @@ static int lxcContainerIdentifyCGroups(struct lxcContainerCGroup **mountsret,
 
     while (getmntent_r(procmnt, &mntent, mntbuf, sizeof(mntbuf)) != NULL) {
         VIR_DEBUG("Got %s", mntent.mnt_dir);
-        if (STRNEQ(mntent.mnt_type, "cgroup") ||
-            !STRPREFIX(mntent.mnt_dir, VIR_CGROUP_SYSFS_MOUNT))
+        if (STRNEQ(mntent.mnt_type, "cgroup"))
             continue;
+
+        if (!*root) {
+            char *tmp;
+            if (!(*root = strdup(mntent.mnt_dir))) {
+                virReportOOMError();
+                goto cleanup;
+            }
+            tmp = strrchr(*root, '/');
+            *tmp = '\0';
+        } else if (!STRPREFIX(mntent.mnt_dir, *root)) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("Cgroup %s is not mounted under %s"),
+                           mntent.mnt_dir, *root);
+            goto cleanup;
+        }
 
         /* Skip named mounts with no controller since they're
          * for application use only ie systemd */
@@ -1273,14 +1370,14 @@ static int lxcContainerIdentifyCGroups(struct lxcContainerCGroup **mountsret,
             virReportOOMError();
             goto cleanup;
         }
-        VIR_DEBUG("Grabbed %s", mntent.mnt_dir);
+        VIR_DEBUG("Grabbed '%s'", mntent.mnt_dir);
     }
 
-    VIR_DEBUG("Checking for symlinks in %s", VIR_CGROUP_SYSFS_MOUNT);
-    if (!(dh = opendir(VIR_CGROUP_SYSFS_MOUNT))) {
+    VIR_DEBUG("Checking for symlinks in %s", *root);
+    if (!(dh = opendir(*root))) {
         virReportSystemError(errno,
                              _("Unable to read directory %s"),
-                             VIR_CGROUP_SYSFS_MOUNT);
+                             *root);
         goto cleanup;
     }
 
@@ -1294,7 +1391,7 @@ static int lxcContainerIdentifyCGroups(struct lxcContainerCGroup **mountsret,
             continue;
 
         VIR_DEBUG("Checking entry %s", dent->d_name);
-        if (virAsprintf(&path, "%s/%s", VIR_CGROUP_SYSFS_MOUNT, dent->d_name) < 0) {
+        if (virAsprintf(&path, "%s/%s", *root, dent->d_name) < 0) {
             virReportOOMError();
             goto cleanup;
         }
@@ -1334,32 +1431,45 @@ cleanup:
     endmntent(procmnt);
     VIR_FREE(path);
 
-    if (ret < 0)
+    if (ret < 0) {
         lxcContainerCGroupFree(mounts, nmounts);
+        VIR_FREE(*root);
+    }
     return ret;
 }
 
 
 static int lxcContainerMountCGroups(struct lxcContainerCGroup *mounts,
-                                    size_t nmounts)
+                                    size_t nmounts,
+                                    const char *root,
+                                    char *sec_mount_options)
 {
     size_t i;
+    char *opts = NULL;
 
-    VIR_DEBUG("Mounting cgroups at '%s'", VIR_CGROUP_SYSFS_MOUNT);
+    VIR_DEBUG("Mounting cgroups at '%s'", root);
 
-    if (virFileMakePath(VIR_CGROUP_SYSFS_MOUNT) < 0) {
+    if (virFileMakePath(root) < 0) {
         virReportSystemError(errno,
                              _("Unable to create directory %s"),
-                             VIR_CGROUP_SYSFS_MOUNT);
+                             root);
         return -1;
     }
 
-    if (mount("tmpfs", VIR_CGROUP_SYSFS_MOUNT, "tmpfs", MS_NOSUID|MS_NODEV|MS_NOEXEC, "mode=755") < 0) {
-        virReportSystemError(errno,
-                             _("Failed to mount %s on %s type %s"),
-                             "tmpfs", VIR_CGROUP_SYSFS_MOUNT, "tmpfs");
+    if (virAsprintf(&opts,
+                    "mode=755,size=65536%s",(sec_mount_options ? sec_mount_options : "")) < 0 ) {
+        virReportOOMError();
         return -1;
     }
+
+    if (mount("tmpfs", root, "tmpfs", MS_NOSUID|MS_NODEV|MS_NOEXEC, opts) < 0) {
+        VIR_FREE(opts);
+        virReportSystemError(errno,
+                             _("Failed to mount %s on %s type %s"),
+                             "tmpfs", root, "tmpfs");
+        return -1;
+    }
+    VIR_FREE(opts);
 
     for (i = 0 ; i < nmounts ; i++) {
         if (mounts[i].linkDest) {
@@ -1381,10 +1491,10 @@ static int lxcContainerMountCGroups(struct lxcContainerCGroup *mounts,
             }
 
             if (mount("cgroup", mounts[i].dir, "cgroup",
-                      0, mounts[i].dir + strlen(VIR_CGROUP_SYSFS_MOUNT) + 1) < 0) {
+                      0, mounts[i].dir + strlen(root) + 1) < 0) {
                 virReportSystemError(errno,
-                                     _("Failed to mount %s on %s"),
-                                     "cgroup", mounts[i].dir);
+                                     _("Failed to mount cgroup on '%s'"),
+                                     mounts[i].dir);
                 return -1;
             }
         }
@@ -1402,20 +1512,30 @@ static int lxcContainerSetupPivotRoot(virDomainDefPtr vmDef,
                                       virDomainFSDefPtr root,
                                       char **ttyPaths,
                                       size_t nttyPaths,
-                                      virSecurityManagerPtr securityDriver)
+                                      char *sec_mount_options)
 {
     struct lxcContainerCGroup *mounts = NULL;
     size_t nmounts = 0;
     int ret = -1;
+    char *cgroupRoot;
 
     /* Before pivoting we need to identify any
      * cgroups controllers that are mounted */
-    if (lxcContainerIdentifyCGroups(&mounts, &nmounts) < 0)
+    if (lxcContainerIdentifyCGroups(&mounts, &nmounts, &cgroupRoot) < 0)
         return -1;
 
     /* Gives us a private root, leaving all parent OS mounts on /.oldroot */
     if (lxcContainerPivotRoot(root) < 0)
         goto cleanup;
+
+#if HAVE_SELINUX
+    /* Some versions of Linux kernel don't let you overmount
+     * the selinux filesystem, so make sure we kill it first
+     */
+    if (STREQ(root->src, "/") &&
+        lxcContainerUnmountSubtree(SELINUX_MOUNT, false) < 0)
+        goto cleanup;
+#endif
 
     /* If we have the root source being '/', then we need to
      * get rid of any existing stuff under /proc, /sys & /tmp.
@@ -1428,12 +1548,13 @@ static int lxcContainerSetupPivotRoot(virDomainDefPtr vmDef,
         goto cleanup;
 
     /* Mounts the core /proc, /sys, etc filesystems */
-    if (lxcContainerMountBasicFS(vmDef, true, securityDriver) < 0)
+    if (lxcContainerMountBasicFS(true, sec_mount_options) < 0)
         goto cleanup;
 
     /* Now we can re-mount the cgroups controllers in the
      * same configuration as before */
-    if (lxcContainerMountCGroups(mounts, nmounts) < 0)
+    if (lxcContainerMountCGroups(mounts, nmounts,
+                                 cgroupRoot, sec_mount_options) < 0)
         goto cleanup;
 
     /* Mounts /dev/pts */
@@ -1445,7 +1566,7 @@ static int lxcContainerSetupPivotRoot(virDomainDefPtr vmDef,
         goto cleanup;
 
     /* Sets up any non-root mounts from guest config */
-    if (lxcContainerMountAllFS(vmDef, "/.oldroot", true) < 0)
+    if (lxcContainerMountAllFS(vmDef, "/.oldroot", true, sec_mount_options) < 0)
         goto cleanup;
 
     /* Gets rid of all remaining mounts from host OS, including /.oldroot itself */
@@ -1456,6 +1577,7 @@ static int lxcContainerSetupPivotRoot(virDomainDefPtr vmDef,
 
 cleanup:
     lxcContainerCGroupFree(mounts, nmounts);
+    VIR_FREE(cgroupRoot);
     return ret;
 }
 
@@ -1464,11 +1586,12 @@ cleanup:
    but with extra stuff mapped in */
 static int lxcContainerSetupExtraMounts(virDomainDefPtr vmDef,
                                         virDomainFSDefPtr root,
-                                        virSecurityManagerPtr securityDriver)
+                                        char *sec_mount_options)
 {
     int ret = -1;
     struct lxcContainerCGroup *mounts = NULL;
     size_t nmounts = 0;
+    char *cgroupRoot;
 
     VIR_DEBUG("def=%p", vmDef);
     /*
@@ -1491,13 +1614,21 @@ static int lxcContainerSetupExtraMounts(virDomainDefPtr vmDef,
     }
 
     VIR_DEBUG("Mounting config FS");
-    if (lxcContainerMountAllFS(vmDef, "", false) < 0)
+    if (lxcContainerMountAllFS(vmDef, "", false, sec_mount_options) < 0)
         return -1;
 
     /* Before replacing /sys we need to identify any
      * cgroups controllers that are mounted */
-    if (lxcContainerIdentifyCGroups(&mounts, &nmounts) < 0)
+    if (lxcContainerIdentifyCGroups(&mounts, &nmounts, &cgroupRoot) < 0)
         return -1;
+
+#if HAVE_SELINUX
+    /* Some versions of Linux kernel don't let you overmount
+     * the selinux filesystem, so make sure we kill it first
+     */
+    if (lxcContainerUnmountSubtree(SELINUX_MOUNT, false) < 0)
+        goto cleanup;
+#endif
 
     /* Gets rid of any existing stuff under /proc, since we need new
      * namespace aware versions of those. We must do /proc second
@@ -1507,12 +1638,13 @@ static int lxcContainerSetupExtraMounts(virDomainDefPtr vmDef,
         goto cleanup;
 
     /* Mounts the core /proc, /sys, etc filesystems */
-    if (lxcContainerMountBasicFS(vmDef, false, securityDriver) < 0)
+    if (lxcContainerMountBasicFS(false, sec_mount_options) < 0)
         goto cleanup;
 
     /* Now we can re-mount the cgroups controllers in the
      * same configuration as before */
-    if (lxcContainerMountCGroups(mounts, nmounts) < 0)
+    if (lxcContainerMountCGroups(mounts, nmounts,
+                                 cgroupRoot, sec_mount_options) < 0)
         goto cleanup;
 
     VIR_DEBUG("Mounting completed");
@@ -1521,6 +1653,7 @@ static int lxcContainerSetupExtraMounts(virDomainDefPtr vmDef,
 
 cleanup:
     lxcContainerCGroupFree(mounts, nmounts);
+    VIR_FREE(cgroupRoot);
     return ret;
 }
 
@@ -1552,13 +1685,19 @@ static int lxcContainerSetupMounts(virDomainDefPtr vmDef,
                                    size_t nttyPaths,
                                    virSecurityManagerPtr securityDriver)
 {
+    int rc = -1;
+    char *sec_mount_options = NULL;
     if (lxcContainerResolveSymlinks(vmDef) < 0)
         return -1;
 
+    sec_mount_options = virSecurityManagerGetMountOptions(securityDriver, vmDef);
     if (root && root->src)
-        return lxcContainerSetupPivotRoot(vmDef, root, ttyPaths, nttyPaths, securityDriver);
+        rc =  lxcContainerSetupPivotRoot(vmDef, root, ttyPaths, nttyPaths, sec_mount_options);
     else
-        return lxcContainerSetupExtraMounts(vmDef, root, securityDriver);
+        rc = lxcContainerSetupExtraMounts(vmDef, root, sec_mount_options);
+
+    VIR_FREE(sec_mount_options);
+    return rc;
 }
 
 
@@ -1567,7 +1706,7 @@ static int lxcContainerSetupMounts(virDomainDefPtr vmDef,
  * It removes some capabilities that could be dangerous to
  * host system, since they are not currently "containerized"
  */
-static int lxcContainerDropCapabilities(void)
+static int lxcContainerDropCapabilities(bool keepReboot ATTRIBUTE_UNUSED)
 {
 #if HAVE_CAPNG
     int ret;
@@ -1577,20 +1716,21 @@ static int lxcContainerDropCapabilities(void)
     if ((ret = capng_updatev(CAPNG_DROP,
                              CAPNG_EFFECTIVE | CAPNG_PERMITTED |
                              CAPNG_INHERITABLE | CAPNG_BOUNDING_SET,
-                             CAP_SYS_BOOT, /* No use of reboot */
                              CAP_SYS_MODULE, /* No kernel module loading */
                              CAP_SYS_TIME, /* No changing the clock */
+                             CAP_MKNOD, /* No creating device nodes */
                              CAP_AUDIT_CONTROL, /* No messing with auditing status */
                              CAP_MAC_ADMIN, /* No messing with LSM config */
+                             keepReboot ? -1 : CAP_SYS_BOOT, /* No use of reboot */
                              -1 /* sentinal */)) < 0) {
-        lxcError(VIR_ERR_INTERNAL_ERROR,
-                 _("Failed to remove capabilities: %d"), ret);
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Failed to remove capabilities: %d"), ret);
         return -1;
     }
 
     if ((ret = capng_apply(CAPNG_SELECT_BOTH)) < 0) {
-        lxcError(VIR_ERR_INTERNAL_ERROR,
-                 _("Failed to apply capabilities: %d"), ret);
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Failed to apply capabilities: %d"), ret);
         return -1;
     }
 
@@ -1628,12 +1768,16 @@ static int lxcContainerChild( void *data )
     char *ttyPath = NULL;
     virDomainFSDefPtr root;
     virCommandPtr cmd = NULL;
+    int hasReboot;
 
     if (NULL == vmDef) {
-        lxcError(VIR_ERR_INTERNAL_ERROR,
-                 "%s", _("lxcChild() passed invalid vm definition"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("lxcChild() passed invalid vm definition"));
         goto cleanup;
     }
+
+    if ((hasReboot = lxcContainerHasReboot()) < 0)
+        goto cleanup;
 
     cmd = lxcContainerBuildInitCmd(vmDef);
     virCommandWriteArgLog(cmd, 1);
@@ -1698,7 +1842,7 @@ static int lxcContainerChild( void *data )
     }
 
     /* drop a set of root capabilities */
-    if (lxcContainerDropCapabilities() < 0)
+    if (lxcContainerDropCapabilities(!!hasReboot) < 0)
         goto cleanup;
 
     if (lxcContainerSendContinue(argv->handshakefd) < 0) {
@@ -1778,7 +1922,7 @@ const char *lxcContainerGetAlt32bitArch(const char *arch)
  */
 int lxcContainerStart(virDomainDefPtr def,
                       virSecurityManagerPtr securityDriver,
-                      unsigned int nveths,
+                      size_t nveths,
                       char **veths,
                       int control,
                       int handshakefd,
@@ -1860,7 +2004,7 @@ int lxcContainerAvailable(int features)
         VIR_DEBUG("clone call returned %s, container support is not enabled",
                   virStrerror(errno, ebuf, sizeof(ebuf)));
         return -1;
-    } else if (virPidWait(cpid, NULL) < 0) {
+    } else if (virProcessWait(cpid, NULL) < 0) {
         return -1;
     }
 
