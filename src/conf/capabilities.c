@@ -536,6 +536,13 @@ virCapabilitiesSupportsGuestOSType(virCapsPtr caps,
                                    const char *ostype)
 {
     int i;
+    /* Let's first see if we can match the host arch */
+    for (i = 0 ; i < caps->nguests ; i++) {
+        if (STREQ(caps->guests[i]->ostype, ostype) 
+              && STREQ(caps->guests[i]->arch.name, caps->host.arch))
+            return caps->guests[i]->arch.name;
+    }
+    /* If we couldn't we just grab the first match */
     for (i = 0 ; i < caps->nguests ; i++) {
         if (STREQ(caps->guests[i]->ostype, ostype))
             return 1;
