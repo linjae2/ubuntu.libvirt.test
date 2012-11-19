@@ -259,7 +259,7 @@ qemuMonitorOpenUnix(const char *monitor, pid_t cpid)
 {
     struct sockaddr_un addr;
     int monfd;
-    int timeout = 3; /* In seconds */
+    int timeout = 30; /* In seconds */
     int ret, i = 0;
 
     if ((monfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
