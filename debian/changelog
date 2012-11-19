@@ -1,3 +1,10 @@
+libvirt (1.0.0-0ubuntu2) raring; urgency=low
+
+  * debian/patches/add-armhf-sysinfo-infomration.patch: Disable
+    to fix FTBFS on arm.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 19 Nov 2012 10:41:02 -0600
+
 libvirt (1.0.0-0ubuntu1) raring; urgency=low
 
   [ Chuck Short ]
