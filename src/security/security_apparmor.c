@@ -435,8 +435,7 @@ AppArmorGenSecurityLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
         return rc;
     }
 
-    if ((secdef->label) ||
-        (secdef->model) || (secdef->imagelabel)) {
+    if ((secdef->label) || (secdef->imagelabel)) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        "%s",
                        _("security label already defined for VM"));
@@ -460,8 +459,8 @@ AppArmorGenSecurityLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
         goto err;
     }
 
-    secdef->model = strdup(SECURITY_APPARMOR_NAME);
-    if (!secdef->model) {
+    if (!secdef->model &&
+        !(secdef->model = strdup(SECURITY_APPARMOR_NAME))) {
         virReportOOMError();
         goto err;
     }
