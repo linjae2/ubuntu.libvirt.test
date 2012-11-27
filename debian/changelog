@@ -1,3 +1,11 @@
+libvirt (1.0.0-0ubuntu3) raring; urgency=low
+
+  * libvirt-bin.postinst: on first install, don't autostart virbr0 if
+    192.168.122.0 already is in use.  On upgrade, always autostart
+    virbr0 if and only if it was autostarted before the upgrade.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 27 Nov 2012 00:25:11 -0600
+
 libvirt (1.0.0-0ubuntu2) raring; urgency=low
 
   * debian/patches/add-armhf-sysinfo-infomration.patch: Disable
