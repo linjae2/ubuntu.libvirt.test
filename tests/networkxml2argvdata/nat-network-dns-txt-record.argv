@@ -1,4 +1,4 @@
-@DNSMASQ@ --strict-order --bind-interfaces \
+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces \
 --local=// --domain-needed --conf-file= \
 --except-interface lo '--txt-record=example,example value' \
 --listen-address 192.168.122.1 --listen-address 192.168.123.1 \

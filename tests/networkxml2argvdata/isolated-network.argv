@@ -1,4 +1,4 @@
-@DNSMASQ@ --strict-order --bind-interfaces \
+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces \
 --local=// --domain-needed --conf-file= \
 --except-interface lo --dhcp-option=3 --no-resolv \
 --listen-address 192.168.152.1 \
