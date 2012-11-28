@@ -1,3 +1,10 @@
+libvirt (0.9.13-0ubuntu12.1) quantal-proposed; urgency=low
+
+  * git_set_xdg_env.patch: correctly define the xdg environment,
+    otherwise the clients can fail to locate the service (lp: #1074418)
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Wed, 28 Nov 2012 15:06:10 +0100
+
 libvirt (0.9.13-0ubuntu12) quantal; urgency=low
 
   * Refresh fix-ubuntu-xen-qemu-dm-path.patch to only use executable
