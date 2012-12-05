@@ -1,3 +1,12 @@
+libvirt (1.0.0-0ubuntu4) raring; urgency=low
+
+  * debian/patches/apparmor-allow-hugepages: update apparmor policies to
+    allow use of hugepages.  (LP: #646468)
+  * debian/patches/vnc-socket.patch: If a vnc socket is in use, add it's
+    path to the apparmor policy.  (LP: #1069534)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 05 Dec 2012 16:43:04 -0600
+
 libvirt (1.0.0-0ubuntu3) raring; urgency=low
 
   * libvirt-bin.postinst: on first install, don't autostart virbr0 if
