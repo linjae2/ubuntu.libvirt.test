@@ -19,3 +19,5 @@ Reduce-udevadm-settle-timeout-to-10-seconds.patch
 fix-ubuntu-xen-qemu-dm-path.patch
 apparmor-no-need-to-check-security-model
 apparmor-use-apparmor-setfdlabel
+apparmor-allow-hugepages
+vnc-socket.patch

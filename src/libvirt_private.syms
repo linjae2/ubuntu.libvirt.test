@@ -1052,6 +1052,7 @@ virSecurityManagerSetTapFDLabel;
 virSecurityManagerStackAddNested;
 virSecurityManagerVerify;
 virSecurityManagerGetMountOptions;
+virSecurityManagerSetHugepages;
 
 # sexpr.h
 sexpr_append;

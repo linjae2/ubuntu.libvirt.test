@@ -840,6 +840,31 @@ AppArmorRestoreSavedStateLabel(virSecurityManagerPtr mgr,
 }
 
 static int
+ApparmorSetHugepages(virSecurityManagerPtr mgr,
+                        virDomainDefPtr def,
+                        const char *path)
+{
+    const virSecurityLabelDefPtr secdef =
+        virDomainDefGetSecurityLabelDef(def, SECURITY_APPARMOR_NAME);
+    int ret = -1;
+    virBuffer buf = VIR_BUFFER_INITIALIZER;
+    char *newpath;
+
+    if (!secdef)
+        return -1;
+
+    if (secdef->imagelabel == NULL)
+        return 0;
+
+    virBufferAsprintf(&buf, "%s/**", path);
+    newpath = virBufferCurrentContent(&buf);
+    if (newpath)
+        ret = reload_profile(mgr, def, newpath, true);
+    virBufferFreeAndReset(&buf);
+    return ret;
+}
+
+static int
 AppArmorSetFDLabel(virSecurityManagerPtr mgr,
                         virDomainDefPtr def,
                         int fd)
@@ -908,4 +933,6 @@ virSecurityDriver virAppArmorSecurityDriver = {
 
     .domainSetSecurityImageFDLabel      = AppArmorSetFDLabel,
     .domainSetSecurityTapFDLabel        = AppArmorSetFDLabel,
+
+    .domainSetSecurityHugepages         = ApparmorSetHugepages,
 };
