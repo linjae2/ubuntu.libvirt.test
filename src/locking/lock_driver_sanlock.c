@@ -338,6 +338,9 @@ retry:
     if ((rv = sanlock_add_lockspace(&ls, 0)) < 0) {
         if (-rv == EINPROGRESS) {
 #ifdef HAVE_SANLOCK_INQ_LOCKSPACE
+#  ifndef SANLK_INQ_WAIT
+#    define SANLK_INQ_WAIT 0x00000001
+#  endif
             /* we have this function which blocks until lockspace change the
              * state. It returns 0 if lockspace has been added, -ENOENT if it
              * hasn't. XXX should we goto retry? */
