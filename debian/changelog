@@ -1,3 +1,12 @@
+libvirt (1.0.0-0ubuntu5) raring; urgency=low
+
+  * handle_resume_1.0.0-0ubuntu4.patch: Add RESUME event listener to qemu
+    monitor (LP: #1097824)
+  * build-work-around-broken-kernel-header: work around FTBFS due to a
+    broken linux/if_bridge.h.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 16 Jan 2013 09:15:20 -0600
+
 libvirt (1.0.0-0ubuntu4) raring; urgency=low
 
   * debian/patches/apparmor-allow-hugepages: update apparmor policies to
