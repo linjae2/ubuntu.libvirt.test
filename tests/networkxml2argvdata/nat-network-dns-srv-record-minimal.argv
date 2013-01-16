@@ -1,4 +1,5 @@
 @DNSMASQ@ \
+-u libvirt-dnsmasq \
 --strict-order \
 --bind-interfaces \
 --local=// --domain-needed --conf-file= \
