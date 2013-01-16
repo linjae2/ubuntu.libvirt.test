@@ -21,3 +21,5 @@ apparmor-no-need-to-check-security-model
 apparmor-use-apparmor-setfdlabel
 apparmor-allow-hugepages
 vnc-socket.patch
+handle_resume_1.0.0-0ubuntu4.patch
+build-work-around-broken-kernel-header
