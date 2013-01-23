@@ -12,11 +12,11 @@ Closes: #517059
  tests/xencapsdata/xen-x86_64-hvm.xml   |    4 ++--
  5 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/src/xen/xen_hypervisor.c b/src/xen/xen_hypervisor.c
-index 406079b..81fbf99 100644
---- a/src/xen/xen_hypervisor.c
-+++ b/src/xen/xen_hypervisor.c
-@@ -2362,7 +2362,7 @@ xenHypervisorBuildCapabilities(virConnectPtr conn,
+Index: libvirt-1.0.1/src/xen/xen_hypervisor.c
+===================================================================
+--- libvirt-1.0.1.orig/src/xen/xen_hypervisor.c	2013-01-22 10:43:02.276737386 -0600
++++ libvirt-1.0.1/src/xen/xen_hypervisor.c	2013-01-22 10:43:02.268737387 -0600
+@@ -2363,7 +2363,7 @@
                                                "/usr/lib64/xen/bin/qemu-dm" :
                                                "/usr/lib/xen/bin/qemu-dm"),
                                               (guest_archs[i].hvm ?
@@ -25,10 +25,10 @@ index 406079b..81fbf99 100644
                                                NULL),
                                               1,
                                               machines)) == NULL) {
-diff --git a/tests/xencapsdata/xen-i686-pae-hvm.xml b/tests/xencapsdata/xen-i686-pae-hvm.xml
-index 872e5f6..7cde6df 100644
---- a/tests/xencapsdata/xen-i686-pae-hvm.xml
-+++ b/tests/xencapsdata/xen-i686-pae-hvm.xml
+Index: libvirt-1.0.1/tests/xencapsdata/xen-i686-pae-hvm.xml
+===================================================================
+--- libvirt-1.0.1.orig/tests/xencapsdata/xen-i686-pae-hvm.xml	2013-01-22 10:43:02.276737386 -0600
++++ libvirt-1.0.1/tests/xencapsdata/xen-i686-pae-hvm.xml	2013-01-22 10:43:02.272737387 -0600
 @@ -35,7 +35,7 @@
      <arch name='i686'>
        <wordsize>32</wordsize>
@@ -38,10 +38,10 @@ index 872e5f6..7cde6df 100644
        <machine>xenfv</machine>
        <domain type='xen'>
        </domain>
-diff --git a/tests/xencapsdata/xen-ia64-be-hvm.xml b/tests/xencapsdata/xen-ia64-be-hvm.xml
-index 222de1d..e56e306 100644
---- a/tests/xencapsdata/xen-ia64-be-hvm.xml
-+++ b/tests/xencapsdata/xen-ia64-be-hvm.xml
+Index: libvirt-1.0.1/tests/xencapsdata/xen-ia64-be-hvm.xml
+===================================================================
+--- libvirt-1.0.1.orig/tests/xencapsdata/xen-ia64-be-hvm.xml	2013-01-22 10:43:02.276737386 -0600
++++ libvirt-1.0.1/tests/xencapsdata/xen-ia64-be-hvm.xml	2013-01-22 10:43:02.272737387 -0600
 @@ -32,7 +32,7 @@
      <arch name='ia64'>
        <wordsize>64</wordsize>
@@ -51,10 +51,10 @@ index 222de1d..e56e306 100644
        <machine>xenfv</machine>
        <domain type='xen'>
        </domain>
-diff --git a/tests/xencapsdata/xen-ia64-hvm.xml b/tests/xencapsdata/xen-ia64-hvm.xml
-index 33c4946..25617fc 100644
---- a/tests/xencapsdata/xen-ia64-hvm.xml
-+++ b/tests/xencapsdata/xen-ia64-hvm.xml
+Index: libvirt-1.0.1/tests/xencapsdata/xen-ia64-hvm.xml
+===================================================================
+--- libvirt-1.0.1.orig/tests/xencapsdata/xen-ia64-hvm.xml	2013-01-22 10:43:02.276737386 -0600
++++ libvirt-1.0.1/tests/xencapsdata/xen-ia64-hvm.xml	2013-01-22 10:43:02.272737387 -0600
 @@ -29,7 +29,7 @@
      <arch name='ia64'>
        <wordsize>64</wordsize>
@@ -64,10 +64,10 @@ index 33c4946..25617fc 100644
        <machine>xenfv</machine>
        <domain type='xen'>
        </domain>
-diff --git a/tests/xencapsdata/xen-x86_64-hvm.xml b/tests/xencapsdata/xen-x86_64-hvm.xml
-index 8de8cf4..493d1ea 100644
---- a/tests/xencapsdata/xen-x86_64-hvm.xml
-+++ b/tests/xencapsdata/xen-x86_64-hvm.xml
+Index: libvirt-1.0.1/tests/xencapsdata/xen-x86_64-hvm.xml
+===================================================================
+--- libvirt-1.0.1.orig/tests/xencapsdata/xen-x86_64-hvm.xml	2013-01-22 10:43:02.276737386 -0600
++++ libvirt-1.0.1/tests/xencapsdata/xen-x86_64-hvm.xml	2013-01-22 10:43:02.272737387 -0600
 @@ -32,7 +32,7 @@
      <arch name='i686'>
        <wordsize>32</wordsize>

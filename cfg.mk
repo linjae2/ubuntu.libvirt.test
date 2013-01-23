@@ -314,7 +314,7 @@ sc_flags_usage:
 
 # Avoid functions that should only be called via macro counterparts.
 sc_prohibit_internal_functions:
-	@prohibit='vir(Free|AllocN?|ReallocN|File(Close|Fclose|Fdopen)) *\(' \
+	@prohibit='vir(Free|AllocN?|ReallocN|(Insert|Delete)ElementsN|File(Close|Fclose|Fdopen)) *\(' \
 	halt='use VIR_ macros instead of internal functions'		\
 	  $(_sc_search_regexp)
 
@@ -655,6 +655,8 @@ sc_prohibit_cross_inclusion:
 	@for dir in $(cross_dirs); do					\
 	  case $$dir in							\
 	    util/) safe="util";;					\
+	    locking/)							\
+	      safe="($$dir|util|conf|rpc)";;				\
 	    cpu/ | locking/ | network/ | rpc/ | security/)		\
 	      safe="($$dir|util|conf)";;				\
 	    xenapi/ | xenxs/ ) safe="($$dir|util|conf|xen)";;		\
@@ -691,11 +693,14 @@ ifeq (0,$(MAKELEVEL))
   #  b653eda3ac4864de205419d9f41eec267cb89eeb .gnulib (v0.0-2286-gb653eda)
   # $ cat .git-module-status
   # b653eda3ac4864de205419d9f41eec267cb89eeb
+  #
+  # Keep this logic in sync with autogen.sh.
   _submodule_hash = sed 's/^[ +-]//;s/ .*//'
   _update_required := $(shell						\
       cd '$(srcdir)';							\
       test -d .git || { echo 0; exit; };				\
       test -f po/Makevars || { echo 1; exit; };				\
+      test -f AUTHORS || { echo 1; exit; };				\
       actual=$$(git submodule status | $(_submodule_hash);		\
 		git hash-object bootstrap.conf;				\
 		git ls-tree -d HEAD gnulib/local | awk '{print $$3}';	\
@@ -718,7 +723,12 @@ _autogen:
 	./config.status
 
 # regenerate HACKING as part of the syntax-check
-syntax-check: $(top_srcdir)/HACKING
+syntax-check: $(top_srcdir)/HACKING bracket-spacing-check
+
+bracket-spacing-check:
+	$(AM_V_GEN)files=`$(VC_LIST) | grep '\.c$$'`; \
+	$(PERL) $(top_srcdir)/build-aux/bracket-spacing.pl $$files || \
+          (echo $(ME): incorrect whitespace around brackets, see HACKING for rules && exit 1)
 
 # sc_po_check can fail if generated files are not built first
 sc_po_check: \
@@ -735,7 +745,7 @@ $(srcdir)/src/remote/remote_client_bodies.h: $(srcdir)/src/remote/remote_protoco
 # List all syntax-check exemptions:
 exclude_file_name_regexp--sc_avoid_strcase = ^tools/virsh\.h$$
 
-_src1=libvirt|fdstream|qemu/qemu_monitor|util/(command|util)|xen/xend_internal|rpc/virnetsocket|lxc/lxc_controller
+_src1=libvirt|fdstream|qemu/qemu_monitor|util/(command|util)|xen/xend_internal|rpc/virnetsocket|lxc/lxc_controller|locking/lock_daemon
 exclude_file_name_regexp--sc_avoid_write = \
   ^(src/($(_src1))|daemon/libvirtd|tools/console|tests/(shunload|virnettlscontext)test)\.c$$
 
@@ -768,7 +778,7 @@ exclude_file_name_regexp--sc_prohibit_close = \
 exclude_file_name_regexp--sc_prohibit_empty_lines_at_EOF = \
   (^tests/(qemuhelp|nodeinfo)data/|\.(gif|ico|png|diff)$$)
 
-_src2=src/(util/command|libvirt|lxc/lxc_controller)
+_src2=src/(util/command|libvirt|lxc/lxc_controller|locking/lock_daemon)
 exclude_file_name_regexp--sc_prohibit_fork_wrappers = \
   (^($(_src2)|tests/testutils|daemon/libvirtd)\.c$$)
 
@@ -817,3 +827,6 @@ exclude_file_name_regexp--sc_unmarked_diagnostics = \
   ^(docs/apibuild.py|tests/virt-aa-helper-test)$$
 
 exclude_file_name_regexp--sc_size_of_brackets = cfg.mk
+
+exclude_file_name_regexp--sc_correct_id_types = \
+  (^src/locking/lock_protocol.x$$)

@@ -42,7 +42,6 @@
 #include <sys/stat.h>
 #include <inttypes.h>
 #include <strings.h>
-#include <termios.h>
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -170,7 +169,9 @@ vshPrettyCapacity(unsigned long long val, const char **unit)
 
 /*
  * Convert the strings separated by ',' into array. The caller
- * must free the returned array after use.
+ * must free the first array element and the returned array after
+ * use (all other array elements belong to the memory allocated
+ * for the first array element).
  *
  * Returns the length of the filled array on success, or -1
  * on error.
@@ -181,35 +182,46 @@ vshStringToArray(const char *str,
 {
     char *str_copied = vshStrdup(NULL, str);
     char *str_tok = NULL;
+    char *tmp;
     unsigned int nstr_tokens = 0;
     char **arr = NULL;
+    size_t len = strlen(str_copied);
 
-    /* tokenize the string from user and save it's parts into an array */
-    if (str_copied) {
-        nstr_tokens = 1;
+    /* tokenize the string from user and save its parts into an array */
+    nstr_tokens = 1;
 
-        /* count the delimiters */
-        str_tok = str_copied;
-        while (*str_tok) {
-            if (*str_tok == ',')
-                nstr_tokens++;
+    /* count the delimiters, recognizing ,, as an escape for a
+     * literal comma */
+    str_tok = str_copied;
+    while ((str_tok = strchr(str_tok, ','))) {
+        if (str_tok[1] == ',')
             str_tok++;
-        }
-
-        if (VIR_ALLOC_N(arr, nstr_tokens) < 0) {
-            virReportOOMError();
-            VIR_FREE(str_copied);
-            return -1;
-        }
-
-        /* tokenize the input string */
-        nstr_tokens = 0;
-        str_tok = str_copied;
-        do {
-            arr[nstr_tokens] = strsep(&str_tok, ",");
+        else
             nstr_tokens++;
-        } while (str_tok);
+        str_tok++;
     }
+
+    if (VIR_ALLOC_N(arr, nstr_tokens) < 0) {
+        virReportOOMError();
+        VIR_FREE(str_copied);
+        return -1;
+    }
+
+    /* tokenize the input string, while treating ,, as a literal comma */
+    nstr_tokens = 0;
+    tmp = str_tok = str_copied;
+    while ((tmp = strchr(tmp, ','))) {
+        if (tmp[1] == ',') {
+            memmove(&tmp[1], &tmp[2], len - (tmp - str_copied) - 2 + 1);
+            len--;
+            tmp++;
+            continue;
+        }
+        *tmp++ = '\0';
+        arr[nstr_tokens++] = str_tok;
+        str_tok = tmp;
+    }
+    arr[nstr_tokens++] = str_tok;
 
     *array = arr;
     return nstr_tokens;
@@ -227,6 +239,15 @@ virshErrorHandler(void *unused ATTRIBUTE_UNUSED, virErrorPtr error)
     last_error = virSaveLastError();
     if (getenv("VIRSH_DEBUG") != NULL)
         virDefaultErrorFunc(error);
+}
+
+/* Store a libvirt error that is from a helper API that doesn't raise errors
+ * so it doesn't get overwritten */
+void
+vshSaveLibvirtError(void)
+{
+    virFreeError(last_error);
+    last_error = virSaveLastError();
 }
 
 /*
@@ -312,7 +333,10 @@ vshReconnect(vshControl *ctl)
                                    virConnectAuthPtrDefault,
                                    ctl->readonly ? VIR_CONNECT_RO : 0);
     if (!ctl->conn) {
-        vshError(ctl, "%s", _("Failed to reconnect to the hypervisor"));
+        if (disconnected)
+            vshError(ctl, "%s", _("Failed to reconnect to the hypervisor"));
+        else
+            vshError(ctl, "%s", _("failed to connect to the hypervisor"));
     } else {
         if (virConnectRegisterCloseCallback(ctl->conn, vshCatchDisconnect,
                                             NULL, NULL) < 0)
@@ -561,7 +585,7 @@ vshEditWriteToTempFile(vshControl *ctl, const char *doc)
     int fd;
     char ebuf[1024];
 
-    tmpdir = getenv ("TMPDIR");
+    tmpdir = getenv("TMPDIR");
     if (!tmpdir) tmpdir = "/tmp";
     if (virAsprintf(&ret, "%s/virshXXXXXX.xml", tmpdir) < 0) {
         vshError(ctl, "%s", _("out of memory"));
@@ -1551,19 +1575,19 @@ vshCommandRun(vshControl *ctl, const vshCmd *cmd)
             !(cmd->def->flags & VSH_CMD_FLAG_NOCONNECT))
             vshReconnect(ctl);
 
+        if (enable_timing)
+            GETTIMEOFDAY(&before);
+
         if ((cmd->def->flags & VSH_CMD_FLAG_NOCONNECT) ||
             vshConnectionUsability(ctl, ctl->conn)) {
-            if (enable_timing)
-                GETTIMEOFDAY(&before);
-
             ret = cmd->def->handler(ctl, cmd);
-
-            if (enable_timing)
-                GETTIMEOFDAY(&after);
         } else {
             /* connection is not usable, return error */
             ret = false;
         }
+
+        if (enable_timing)
+            GETTIMEOFDAY(&after);
 
         /* try to automatically catch disconnections */
         if (!ret &&
@@ -1961,7 +1985,7 @@ vshGetTypedParamValue(vshControl *ctl, virTypedParameterPtr item)
     int ret = 0;
     char *str = NULL;
 
-    switch(item->type) {
+    switch (item->type) {
     case VIR_TYPED_PARAM_INT:
         ret = virAsprintf(&str, "%d", item->value.i);
         break;
@@ -2167,10 +2191,7 @@ vshInit(vshControl *ctl)
     ctl->eventLoopStarted = true;
 
     if (ctl->name) {
-        ctl->conn = virConnectOpenAuth(ctl->name,
-                                       virConnectAuthPtrDefault,
-                                       ctl->readonly ? VIR_CONNECT_RO : 0);
-
+        vshReconnect(ctl);
         /* Connecting to a named connection must succeed, but we delay
          * connecting to the default connection until we need it
          * (since the first command might be 'connect' which allows a
@@ -2179,7 +2200,6 @@ vshInit(vshControl *ctl)
          */
         if (!ctl->conn) {
             vshReportError(ctl);
-            vshError(ctl, "%s", _("failed to connect to the hypervisor"));
             return false;
         }
     }

@@ -1,96 +1,158 @@
-diff -Naurp libvirt-1.0.0.orig/src/network/bridge_driver.c libvirt-1.0.0/src/network/bridge_driver.c
---- libvirt-1.0.0.orig/src/network/bridge_driver.c	2012-10-30 22:53:52.000000000 -0500
-+++ libvirt-1.0.0/src/network/bridge_driver.c	2012-11-04 07:42:27.078200820 -0600
-@@ -595,6 +595,11 @@ networkBuildDnsmasqArgv(virNetworkObjPtr
-      * very explicit on this.
-      */
+Index: libvirt-1.0.1/src/network/bridge_driver.c
+===================================================================
+--- libvirt-1.0.1.orig/src/network/bridge_driver.c	2013-01-22 12:32:15.272626431 -0600
++++ libvirt-1.0.1/src/network/bridge_driver.c	2013-01-22 12:32:15.264626431 -0600
+@@ -672,7 +672,8 @@
+                               "## or other application using the libvirt API.\n"
+                               "##\n## dnsmasq conf file created by libvirt\n"
+                               "strict-order\n"
+-                              "domain-needed\n",
++                              "domain-needed\n"
++                              "user=libvirt-dnsmasq\n",
+                               network->def->name);
  
-+	/*
-+	 * Run as user libvirt-dnsmasq
-+	 */
-+	virCommandAddArgList(cmd, "-u", "libvirt-dnsmasq", NULL);
-+
-     /*
-      * Needed to ensure dnsmasq uses same algorithm for processing
-      * multiple namedriver entries in /etc/resolv.conf as GLibC.
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/isolated-network.argv libvirt-1.0.0/tests/networkxml2argvdata/isolated-network.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/isolated-network.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/isolated-network.argv	2012-11-04 07:43:03.098201687 -0600
-@@ -1,4 +1,4 @@
--@DNSMASQ@ --strict-order --bind-interfaces \
-+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces \
- --local=// --domain-needed --conf-file= \
- --except-interface lo --dhcp-option=3 --no-resolv \
- --listen-address 192.168.152.1 \
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network.argv libvirt-1.0.0/tests/networkxml2argvdata/nat-network.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/nat-network.argv	2012-11-04 07:43:20.822202069 -0600
-@@ -1,4 +1,4 @@
--@DNSMASQ@ --strict-order --bind-interfaces \
-+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces \
- --local=// --domain-needed --conf-file= \
- --except-interface lo --listen-address 192.168.122.1 \
- --listen-address 192.168.123.1 --listen-address 2001:db8:ac10:fe01::1 \
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-hosts.argv libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-hosts.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-hosts.argv	2012-09-12 04:15:43.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-hosts.argv	2012-11-04 07:43:51.462202947 -0600
-@@ -1,4 +1,4 @@
--@DNSMASQ@ --strict-order --bind-interfaces --domain=example.com \
-+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces --domain=example.com \
- --local=/example.com/ --domain-needed \
- --conf-file= --except-interface lo --listen-address 192.168.122.1 \
- --expand-hosts --addn-hosts=/var/lib/libvirt/dnsmasq/default.addnhosts\
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-srv-record.argv libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-srv-record.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-srv-record.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-srv-record.argv	2012-11-04 07:44:06.162203309 -0600
-@@ -1,4 +1,5 @@
- @DNSMASQ@ \
-+-u libvirt-dnsmasq \
- --strict-order \
- --bind-interfaces \
- --local=// --domain-needed --conf-file= \
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-srv-record-minimal.argv libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-srv-record-minimal.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-srv-record-minimal.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-srv-record-minimal.argv	2012-11-04 07:44:22.490203579 -0600
-@@ -1,4 +1,5 @@
- @DNSMASQ@ \
-+-u libvirt-dnsmasq \
- --strict-order \
- --bind-interfaces \
- --local=// --domain-needed --conf-file= \
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-txt-record.argv libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-txt-record.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/nat-network-dns-txt-record.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/nat-network-dns-txt-record.argv	2012-11-04 07:48:57.130210126 -0600
-@@ -1,4 +1,4 @@
--@DNSMASQ@ --strict-order --bind-interfaces \
-+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces \
- --local=// --domain-needed --conf-file= \
- --except-interface lo '--txt-record=example,example value' \
- --listen-address 192.168.122.1 --listen-address 192.168.123.1 \
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/netboot-network.argv libvirt-1.0.0/tests/networkxml2argvdata/netboot-network.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/netboot-network.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/netboot-network.argv	2012-11-04 07:49:15.874210579 -0600
-@@ -1,4 +1,4 @@
--@DNSMASQ@ --strict-order --bind-interfaces --domain=example.com \
-+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces --domain=example.com \
- --local=/example.com/ --domain-needed --conf-file= \
- --except-interface lo --listen-address 192.168.122.1 \
- --dhcp-range 192.168.122.2,192.168.122.254 \
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/netboot-proxy-network.argv libvirt-1.0.0/tests/networkxml2argvdata/netboot-proxy-network.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/netboot-proxy-network.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/netboot-proxy-network.argv	2012-11-04 07:49:35.314211000 -0600
-@@ -1,4 +1,4 @@
--@DNSMASQ@ --strict-order --bind-interfaces --domain=example.com \
-+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces --domain=example.com \
- --local=/example.com/ --domain-needed --conf-file= \
- --except-interface lo --listen-address 192.168.122.1 \
- --dhcp-range 192.168.122.2,192.168.122.254 \
-diff -Naurp libvirt-1.0.0.orig/tests/networkxml2argvdata/routed-network.argv libvirt-1.0.0/tests/networkxml2argvdata/routed-network.argv
---- libvirt-1.0.0.orig/tests/networkxml2argvdata/routed-network.argv	2012-10-23 22:20:35.000000000 -0500
-+++ libvirt-1.0.0/tests/networkxml2argvdata/routed-network.argv	2012-11-04 07:49:52.194211440 -0600
-@@ -1,4 +1,4 @@
--@DNSMASQ@ --strict-order --bind-interfaces \
-+@DNSMASQ@ -u libvirt-dnsmasq --strict-order --bind-interfaces \
- --local=// --domain-needed --conf-file= \
- --except-interface lo --listen-address 192.168.122.1 \
- --addn-hosts=/var/lib/libvirt/dnsmasq/local.addnhosts\
+      if (network->def->domain) {
+Index: libvirt-1.0.1/tests/networkxml2confdata/dhcp6-nat-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/dhcp6-nat-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/dhcp6-nat-network.conf	2013-01-22 13:52:26.144544973 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-dynamic
+Index: libvirt-1.0.1/tests/networkxml2confdata/dhcp6-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/dhcp6-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/dhcp6-network.conf	2013-01-22 13:52:28.232544938 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ domain=mynet
+ expand-hosts
+ local=/mynet/
+Index: libvirt-1.0.1/tests/networkxml2confdata/dhcp6host-routed-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/dhcp6host-routed-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/dhcp6host-routed-network.conf	2013-01-22 13:52:20.072545076 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-dynamic
+Index: libvirt-1.0.1/tests/networkxml2confdata/isolated-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/isolated-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/isolated-network.conf	2013-01-22 13:52:29.960544909 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-interfaces
+Index: libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-hosts.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/nat-network-dns-hosts.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-hosts.conf	2013-01-22 13:52:33.168544854 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ local=/example.com/
+Index: libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf	2013-01-22 13:52:36.484544798 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-interfaces
+Index: libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-srv-record.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/nat-network-dns-srv-record.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-srv-record.conf	2013-01-22 13:52:34.876544825 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-dynamic
+Index: libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-txt-record.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/nat-network-dns-txt-record.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/nat-network-dns-txt-record.conf	2013-01-22 13:52:38.256544768 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-dynamic
+Index: libvirt-1.0.1/tests/networkxml2confdata/nat-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/nat-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/nat-network.conf	2013-01-22 13:52:31.560544882 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-dynamic
+Index: libvirt-1.0.1/tests/networkxml2confdata/netboot-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/netboot-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/netboot-network.conf	2013-01-22 13:52:39.864544741 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ local=/example.com/
+Index: libvirt-1.0.1/tests/networkxml2confdata/netboot-proxy-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/netboot-proxy-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/netboot-proxy-network.conf	2013-01-22 13:52:41.656544711 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ local=/example.com/
+Index: libvirt-1.0.1/tests/networkxml2confdata/routed-network.conf
+===================================================================
+--- libvirt-1.0.1.orig/tests/networkxml2confdata/routed-network.conf	2012-12-14 02:45:29.000000000 -0600
++++ libvirt-1.0.1/tests/networkxml2confdata/routed-network.conf	2013-01-22 13:52:43.252544684 -0600
+@@ -6,6 +6,7 @@
+ ## dnsmasq conf file created by libvirt
+ strict-order
+ domain-needed
++user=libvirt-dnsmasq
+ local=//
+ except-interface=lo
+ bind-dynamic

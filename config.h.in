@@ -787,6 +787,10 @@
    don't. */
 #undef HAVE_DECL_PUTC_UNLOCKED
 
+/* Define to 1 if you have the declaration of `SANLK_INQ_WAIT', and to 0 if
+   you don't. */
+#undef HAVE_DECL_SANLK_INQ_WAIT
+
 /* Define to 1 if you have the declaration of `setenv', and to 0 if you don't.
    */
 #undef HAVE_DECL_SETENV
@@ -905,6 +909,9 @@
 
 /* Define to 1 if you have the `funlockfile' function. */
 #undef HAVE_FUNLOCKFILE
+
+/* whether fuse is available for libvirt lxc */
+#undef HAVE_FUSE
 
 /* Define to 1 if you have the 'getcwd' function. */
 #undef HAVE_GETCWD
@@ -1370,6 +1377,9 @@
 /* whether Sanlock plugin for lock management is available */
 #undef HAVE_SANLOCK
 
+/* whether sanlock supports sanlock_inq_lockspace */
+#undef HAVE_SANLOCK_INQ_LOCKSPACE
+
 /* whether Sanlock supports sanlock_killpath */
 #undef HAVE_SANLOCK_KILLPATH
 
@@ -1642,6 +1652,9 @@
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <sys/ucred.h> header file. */
+#undef HAVE_SYS_UCRED_H
 
 /* Define to 1 if you have the <sys/uio.h> header file. */
 #undef HAVE_SYS_UIO_H

@@ -50,13 +50,16 @@
 typedef struct _qemuDriverCloseDef qemuDriverCloseDef;
 typedef qemuDriverCloseDef *qemuDriverCloseDefPtr;
 
+typedef struct _virQEMUDriver virQEMUDriver;
+typedef virQEMUDriver *virQEMUDriverPtr;
+
 /* Main driver state */
-struct qemud_driver {
+struct _virQEMUDriver {
     virMutex lock;
 
     virThreadPoolPtr workerPool;
 
-    int privileged;
+    bool privileged;
     const char *uri;
 
     uid_t user;
@@ -70,10 +73,15 @@ struct qemud_driver {
     int cgroupControllers;
     char **cgroupDeviceACL;
 
+    size_t nactive;
+    virStateInhibitCallback inhibitCallback;
+    void *inhibitOpaque;
+
     virDomainObjList domains;
 
-    /* These four directories are ones libvirtd uses (so must be root:root
+    /* These five directories are ones libvirtd uses (so must be root:root
      * to avoid security risk from QEMU processes */
+    char *configBaseDir;
     char *configDir;
     char *autostartDir;
     char *logDir;
@@ -174,10 +182,10 @@ struct _qemuDomainCmdlineDef {
 # define QEMUD_MIGRATION_NUM_PORTS 64
 
 
-void qemuDriverLock(struct qemud_driver *driver);
-void qemuDriverUnlock(struct qemud_driver *driver);
-int qemudLoadDriverConfig(struct qemud_driver *driver,
-                          const char *filename);
+void qemuDriverLock(virQEMUDriverPtr driver);
+void qemuDriverUnlock(virQEMUDriverPtr driver);
+int qemuLoadDriverConfig(virQEMUDriverPtr driver,
+                         const char *filename);
 
 struct qemuDomainDiskInfo {
     bool removable;
@@ -186,22 +194,22 @@ struct qemuDomainDiskInfo {
     int io_status;
 };
 
-typedef virDomainObjPtr (*qemuDriverCloseCallback)(struct qemud_driver *driver,
+typedef virDomainObjPtr (*qemuDriverCloseCallback)(virQEMUDriverPtr driver,
                                                    virDomainObjPtr vm,
                                                    virConnectPtr conn);
-int qemuDriverCloseCallbackInit(struct qemud_driver *driver);
-void qemuDriverCloseCallbackShutdown(struct qemud_driver *driver);
-int qemuDriverCloseCallbackSet(struct qemud_driver *driver,
+int qemuDriverCloseCallbackInit(virQEMUDriverPtr driver);
+void qemuDriverCloseCallbackShutdown(virQEMUDriverPtr driver);
+int qemuDriverCloseCallbackSet(virQEMUDriverPtr driver,
                                virDomainObjPtr vm,
                                virConnectPtr conn,
                                qemuDriverCloseCallback cb);
-int qemuDriverCloseCallbackUnset(struct qemud_driver *driver,
+int qemuDriverCloseCallbackUnset(virQEMUDriverPtr driver,
                                  virDomainObjPtr vm,
                                  qemuDriverCloseCallback cb);
-qemuDriverCloseCallback qemuDriverCloseCallbackGet(struct qemud_driver *driver,
+qemuDriverCloseCallback qemuDriverCloseCallbackGet(virQEMUDriverPtr driver,
                                                    virDomainObjPtr vm,
                                                    virConnectPtr conn);
-void qemuDriverCloseCallbackRunAll(struct qemud_driver *driver,
+void qemuDriverCloseCallbackRunAll(virQEMUDriverPtr driver,
                                    virConnectPtr conn);
 
 #endif /* __QEMUD_CONF_H */

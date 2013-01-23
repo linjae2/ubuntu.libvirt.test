@@ -54,11 +54,11 @@ The last line is for the tapfd relabelling.
  src/security/security_apparmor.c |   15 +++------------
  1 files changed, 3 insertions(+), 12 deletions(-)
 
-diff --git a/src/security/security_apparmor.c b/src/security/security_apparmor.c
-index 1972ab0..953775c 100644
---- a/src/security/security_apparmor.c
-+++ b/src/security/security_apparmor.c
-@@ -840,7 +840,7 @@ AppArmorRestoreSavedStateLabel(virSecurityManagerPtr mgr,
+Index: libvirt-1.0.1/src/security/security_apparmor.c
+===================================================================
+--- libvirt-1.0.1.orig/src/security/security_apparmor.c	2013-01-22 10:43:07.128737304 -0600
++++ libvirt-1.0.1/src/security/security_apparmor.c	2013-01-22 10:43:07.124737304 -0600
+@@ -840,7 +840,7 @@
  }
  
  static int
@@ -67,7 +67,7 @@ index 1972ab0..953775c 100644
                          virDomainDefPtr def,
                          int fd)
  {
-@@ -871,15 +871,6 @@ AppArmorSetImageFDLabel(virSecurityManagerPtr mgr,
+@@ -871,16 +871,6 @@
      return reload_profile(mgr, def, fd_path, true);
  }
  
@@ -80,10 +80,11 @@ index 1972ab0..953775c 100644
 -    return 0;
 -}
 -
- virSecurityDriver virAppArmorSecurityDriver = {
-     .privateDataLen                     = 0,
-     .name                               = SECURITY_APPARMOR_NAME,
-@@ -915,6 +906,6 @@ virSecurityDriver virAppArmorSecurityDriver = {
+-
+ static char *
+ AppArmorGetMountOptions(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+                         virDomainDefPtr vm ATTRIBUTE_UNUSED)
+@@ -930,8 +920,8 @@
      .domainSetSavedStateLabel           = AppArmorSetSavedStateLabel,
      .domainRestoreSavedStateLabel       = AppArmorRestoreSavedStateLabel,
  
@@ -91,7 +92,6 @@ index 1972ab0..953775c 100644
 -    .domainSetSecurityTapFDLabel        = AppArmorSetTapFDLabel,
 +    .domainSetSecurityImageFDLabel      = AppArmorSetFDLabel,
 +    .domainSetSecurityTapFDLabel        = AppArmorSetFDLabel,
+ 
+     .domainGetSecurityMountOptions      = AppArmorGetMountOptions,
  };
--- 
-1.7.3.4
-
