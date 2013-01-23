@@ -85,6 +85,8 @@
 #include "virsh-snapshot.h"
 #include "virsh-volume.h"
 
+#include "remote_driver.h"
+
 static char *progname;
 
 static const vshCmdGrp cmdGroups[];
@@ -2978,7 +2980,11 @@ main(int argc, char **argv)
 
     if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
         ctl->name = vshStrdup(ctl, defaultConn);
-    }
+    } else if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
+		 ctl->name = vshStrdup(ctl, "qemu:///system");
+	} else {
+		ctl->name = vshStrdup(ctl, "qemu:///session");
+	}
 
     if (!vshParseArgv(ctl, argc, argv)) {
         vshDeinit(ctl);
