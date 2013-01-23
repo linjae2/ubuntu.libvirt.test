@@ -3,11 +3,11 @@ Description: increase timeout for waiting on a Unix socket to avoid
 Author: Jamie Strandboge <jamie@ubuntu.com>
 Forwarded: no
 
-Index: libvirt-0.9.7/src/qemu/qemu_monitor.c
+Index: libvirt-1.0.1/src/qemu/qemu_monitor.c
 ===================================================================
---- libvirt-0.9.7.orig/src/qemu/qemu_monitor.c	2011-10-30 22:46:04.000000000 -0500
-+++ libvirt-0.9.7/src/qemu/qemu_monitor.c	2011-11-16 07:38:33.104557753 -0600
-@@ -218,7 +218,7 @@
+--- libvirt-1.0.1.orig/src/qemu/qemu_monitor.c	2013-01-22 10:43:04.376737351 -0600
++++ libvirt-1.0.1/src/qemu/qemu_monitor.c	2013-01-22 10:43:04.372737351 -0600
+@@ -259,7 +259,7 @@
  {
      struct sockaddr_un addr;
      int monfd;

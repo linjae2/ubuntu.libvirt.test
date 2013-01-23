@@ -6,10 +6,10 @@ Subject: Allow libvirt group to access the socket
  daemon/libvirtd.conf |    8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/daemon/libvirtd.conf b/daemon/libvirtd.conf
-index 47da520..bf0b92a 100644
---- a/daemon/libvirtd.conf
-+++ b/daemon/libvirtd.conf
+Index: libvirt-1.0.1/daemon/libvirtd.conf
+===================================================================
+--- libvirt-1.0.1.orig/daemon/libvirtd.conf	2013-01-22 10:43:01.992737391 -0600
++++ libvirt-1.0.1/daemon/libvirtd.conf	2013-01-22 10:43:01.984737391 -0600
 @@ -78,7 +78,7 @@
  # without becoming root.
  #

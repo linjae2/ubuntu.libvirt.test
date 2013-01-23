@@ -42,11 +42,11 @@ The patch is to remove the checking of its value in If condition clause
  src/security/security_apparmor.c |    7 +++----
  1 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/src/security/security_apparmor.c b/src/security/security_apparmor.c
-index 1315fe1..1972ab0 100644
---- a/src/security/security_apparmor.c
-+++ b/src/security/security_apparmor.c
-@@ -435,8 +435,7 @@ AppArmorGenSecurityLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+Index: libvirt-1.0.1/src/security/security_apparmor.c
+===================================================================
+--- libvirt-1.0.1.orig/src/security/security_apparmor.c	2013-01-22 10:43:06.848737309 -0600
++++ libvirt-1.0.1/src/security/security_apparmor.c	2013-01-22 10:43:06.844737309 -0600
+@@ -435,8 +435,7 @@
          return rc;
      }
  
@@ -56,7 +56,7 @@ index 1315fe1..1972ab0 100644
          virReportError(VIR_ERR_INTERNAL_ERROR,
                         "%s",
                         _("security label already defined for VM"));
-@@ -460,8 +459,8 @@ AppArmorGenSecurityLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+@@ -460,8 +459,8 @@
          goto err;
      }
  
@@ -67,6 +67,3 @@ index 1315fe1..1972ab0 100644
          virReportOOMError();
          goto err;
      }
--- 
-1.7.3.4
-

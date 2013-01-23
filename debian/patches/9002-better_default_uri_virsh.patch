@@ -1,7 +1,8 @@
-diff -Naurp libvirt-1.0.0.orig/tools/Makefile.am libvirt-1.0.0/tools/Makefile.am
---- libvirt-1.0.0.orig/tools/Makefile.am	2012-10-28 21:13:43.000000000 -0500
-+++ libvirt-1.0.0/tools/Makefile.am	2012-11-04 06:34:42.254104099 -0600
-@@ -5,8 +5,10 @@ INCLUDES = \
+Index: libvirt-1.0.1/tools/Makefile.am
+===================================================================
+--- libvirt-1.0.1.orig/tools/Makefile.am	2013-01-22 10:43:03.488737366 -0600
++++ libvirt-1.0.1/tools/Makefile.am	2013-01-22 10:43:03.480737366 -0600
+@@ -5,8 +5,10 @@
  	-I$(top_builddir)/include -I$(top_srcdir)/include	\
  	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
  	-I$(top_builddir)/src -I$(top_srcdir)/src		\
@@ -12,10 +13,11 @@ diff -Naurp libvirt-1.0.0.orig/tools/Makefile.am libvirt-1.0.0/tools/Makefile.am
  	$(GETTEXT_CPPFLAGS)
  
  POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
-diff -Naurp libvirt-1.0.0.orig/tools/Makefile.in libvirt-1.0.0/tools/Makefile.in
---- libvirt-1.0.0.orig/tools/Makefile.in	2012-11-01 23:06:48.000000000 -0500
-+++ libvirt-1.0.0/tools/Makefile.in	2012-11-04 06:38:23.890109183 -0600
-@@ -1823,8 +1823,10 @@ INCLUDES = \
+Index: libvirt-1.0.1/tools/Makefile.in
+===================================================================
+--- libvirt-1.0.1.orig/tools/Makefile.in	2013-01-22 10:43:03.488737366 -0600
++++ libvirt-1.0.1/tools/Makefile.in	2013-01-22 10:43:03.484737366 -0600
+@@ -1826,8 +1826,10 @@
  	-I$(top_builddir)/include -I$(top_srcdir)/include	\
  	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
  	-I$(top_builddir)/src -I$(top_srcdir)/src		\
@@ -26,10 +28,11 @@ diff -Naurp libvirt-1.0.0.orig/tools/Makefile.in libvirt-1.0.0/tools/Makefile.in
  	$(GETTEXT_CPPFLAGS)
  
  POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
-diff -Naurp libvirt-1.0.0.orig/tools/virsh.c libvirt-1.0.0/tools/virsh.c
---- libvirt-1.0.0.orig/tools/virsh.c	2012-11-01 08:17:04.000000000 -0500
-+++ libvirt-1.0.0/tools/virsh.c	2012-11-04 06:39:40.466110787 -0600
-@@ -86,6 +86,8 @@
+Index: libvirt-1.0.1/tools/virsh.c
+===================================================================
+--- libvirt-1.0.1.orig/tools/virsh.c	2013-01-22 10:43:03.488737366 -0600
++++ libvirt-1.0.1/tools/virsh.c	2013-01-22 10:43:03.484737366 -0600
+@@ -85,6 +85,8 @@
  #include "virsh-snapshot.h"
  #include "virsh-volume.h"
  
@@ -38,7 +41,7 @@ diff -Naurp libvirt-1.0.0.orig/tools/virsh.c libvirt-1.0.0/tools/virsh.c
  static char *progname;
  
  static const vshCmdGrp cmdGroups[];
-@@ -2958,7 +2960,11 @@ main(int argc, char **argv)
+@@ -2978,7 +2980,11 @@
  
      if ((defaultConn = getenv("VIRSH_DEFAULT_CONNECT_URI"))) {
          ctl->name = vshStrdup(ctl, defaultConn);

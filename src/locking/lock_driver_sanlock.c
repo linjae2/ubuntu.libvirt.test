@@ -164,8 +164,8 @@ static int virLockManagerSanlockLoadConfig(const char *configFile)
         VIR_FREE(tmp);
     }
 
-    p = virConfGetValue (conf, "group");
-    CHECK_TYPE ("group", VIR_CONF_STRING);
+    p = virConfGetValue(conf, "group");
+    CHECK_TYPE("group", VIR_CONF_STRING);
     if (p) {
         if (!(tmp = strdup(p->str))) {
             virReportOOMError();
@@ -184,6 +184,11 @@ static int virLockManagerSanlockLoadConfig(const char *configFile)
     return 0;
 }
 
+/* How much ms sleep before retrying to add a lockspace? */
+#define LOCKSPACE_SLEEP 100
+/* How many times try adding a lockspace? */
+#define LOCKSPACE_RETRIES 10
+
 static int virLockManagerSanlockSetupLockspace(void)
 {
     int fd = -1;
@@ -192,6 +197,7 @@ static int virLockManagerSanlockSetupLockspace(void)
     struct sanlk_lockspace ls;
     char *path = NULL;
     char *dir = NULL;
+    int retries = LOCKSPACE_RETRIES;
 
     if (virAsprintf(&path, "%s/%s",
                     driver->autoDiskLeasePath,
@@ -318,11 +324,30 @@ static int virLockManagerSanlockSetupLockspace(void)
     }
 
     ls.host_id = driver->hostID;
-    /* Stage 2: Try to register the lockspace with the daemon.
-     * If the lockspace is already registered, we should get EEXIST back
-     * in which case we can just carry on with life
+    /* Stage 2: Try to register the lockspace with the daemon.  If the lockspace
+     * is already registered, we should get EEXIST back in which case we can
+     * just carry on with life. If EINPROGRESS is returned, we have two options:
+     * either call a sanlock API that blocks us until lockspace changes state,
+     * or we can fallback to polling.
      */
+retry:
     if ((rv = sanlock_add_lockspace(&ls, 0)) < 0) {
+        if (-rv == EINPROGRESS && --retries) {
+#ifdef HAVE_SANLOCK_INQ_LOCKSPACE
+            /* we have this function which blocks until lockspace change the
+             * state. It returns 0 if lockspace has been added, -ENOENT if it
+             * hasn't. */
+            VIR_DEBUG("Inquiring lockspace");
+            if (sanlock_inq_lockspace(&ls, SANLK_INQ_WAIT) < 0)
+                VIR_DEBUG("Unable to inquire lockspace");
+#else
+            /* fall back to polling */
+            VIR_DEBUG("Sleeping for %dms", LOCKSPACE_SLEEP);
+            usleep(LOCKSPACE_SLEEP * 1000);
+#endif
+            VIR_DEBUG("Retrying to add lockspace (left %d)", retries);
+            goto retry;
+        }
         if (-rv != EEXIST) {
             if (rv <= -200)
                 virReportError(VIR_ERR_INTERNAL_ERROR,
