@@ -1,3 +1,10 @@
+libvirt (1.0.1-0ubuntu2) raring; urgency=low
+
+  * add qemu-relax-hard-rss-limit.rss to avoid OOM kills (LP: #1102290)
+  * debian/rules: replace --without-vbox with --with-vbox (LP: #1103721)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 24 Jan 2013 13:00:48 -0600
+
 libvirt (1.0.1-0ubuntu1) raring; urgency=low
 
   * New upstream version.  (LP: #1102487)

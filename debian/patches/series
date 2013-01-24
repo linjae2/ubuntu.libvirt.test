@@ -23,3 +23,4 @@ vnc-socket.patch
 Add_RESUME_event_listener_to_qemu_monitor.patch
 build-work-around-broken-kernel-header
 bridge-fix-persistent-networks.patch
+qemu-relax-hard-rss-limit.patch
