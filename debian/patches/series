@@ -39,3 +39,6 @@ ubuntu/qemu-warn-on-pc-0.12.patch
 ubuntu/storage-fix-a-potential-crash-when-creating-vol-object
 Reduce-udevadm-settle-timeout-to-10-seconds.patch
 command-avoid-double-close-bugs
+CVE-2012-4423.patch
+CVE-2013-0170.patch
+
