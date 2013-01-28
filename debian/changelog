@@ -1,3 +1,13 @@
+libvirt (0.9.13-0ubuntu12.2) quantal-security; urgency=low
+
+  * SECURITY UPDATE: denial of service and possible code execution via
+    uninitialized pointer
+    - debian/patches/CVE-2013-0170.patch: remove message from queue before
+      freeing in src/rpc/virnetserverclient.c.
+    - CVE-2013-0170
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 28 Jan 2013 15:20:54 -0500
+
 libvirt (0.9.13-0ubuntu12.1) quantal-proposed; urgency=low
 
   * git_set_xdg_env.patch: correctly define the xdg environment,
