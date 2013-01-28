@@ -1,3 +1,17 @@
+libvirt (0.9.8-2ubuntu17.7) precise-security; urgency=low
+
+  * SECURITY UPDATE: denial of service via invalid RPC call
+    - debian/patches/CVE-2012-4423.patch: properly check func in
+      src/rpc/virnetserverprogram.c.
+    - CVE-2012-4423
+  * SECURITY UPDATE: denial of service and possible code execution via
+    uninitialized pointer
+    - debian/patches/CVE-2013-0170.patch: remove message from queue before
+      freeing in src/rpc/virnetserverclient.c.
+    - CVE-2013-0170
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 28 Jan 2013 16:00:15 -0500
+
 libvirt (0.9.8-2ubuntu17.5) precise-proposed; urgency=low
 
   * add patch Reduce-udevadm-settle-timeout-to-10-seconds.patch (copied from
