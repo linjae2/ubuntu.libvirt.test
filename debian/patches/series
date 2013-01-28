@@ -32,3 +32,4 @@ xen_hypervisor-treat-missing-privcmd-file-as-temporary.patch
 fix-ubuntu-xen-qemu-dm-path.patch
 git_set_xdg_env.patch
 
+CVE-2013-0170.patch
