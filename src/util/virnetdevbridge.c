@@ -32,6 +32,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <netinet/in.h>
 
 #ifdef __linux__
 # include <linux/sockios.h>
