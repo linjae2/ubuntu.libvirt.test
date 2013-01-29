@@ -1,3 +1,13 @@
+libvirt (1.0.1-0ubuntu4) raring; urgency=low
+
+  * SECURITY UPDATE: denial of service and possible code execution via
+    uninitialized pointer
+    - debian/patches/CVE-2013-0170.patch: remove message from queue before
+      freeing in src/rpc/virnetserverclient.c.
+    - CVE-2013-0170
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Tue, 29 Jan 2013 15:19:54 -0500
+
 libvirt (1.0.1-0ubuntu3) raring; urgency=low
 
   * debian/apparmor/libvirt-qemu: add /usr/share/ovmf/** r (LP: #1074207)
