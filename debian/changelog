@@ -1,3 +1,9 @@
+libvirt (1.0.1-0ubuntu3) raring; urgency=low
+
+  * debian/apparmor/libvirt-qemu: add /usr/share/ovmf/** r (LP: #1074207)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 29 Jan 2013 11:55:19 -0600
+
 libvirt (1.0.1-0ubuntu2) raring; urgency=low
 
   * add qemu-relax-hard-rss-limit.rss to avoid OOM kills (LP: #1102290)
