@@ -1,3 +1,12 @@
+libvirt (1.0.2-1) experimental; urgency=low
+
+  * [7adf6b4] New upstream version 1.0.2
+  * [1156772] Drop Don-t-fail-the-build-without-libcurl-and-esx.patch
+    applied upstream
+  * [5d66d5a] Rediff patches
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 30 Jan 2013 21:06:02 +0100
+
 libvirt (1.0.2~rc1-1) experimental; urgency=low
 
   * [5ce607c] Make python-libvirt depend on the exact same libvirt0 version
@@ -156,6 +165,14 @@ libvirt (0.10.1-1) experimental; urgency=low
 
  -- Guido Günther <agx@sigxcpu.org>  Thu, 06 Sep 2012 13:06:02 +0200
 
+libvirt (1.0.0-2) unstable; urgency=low
+
+  * Upload to unstable
+  * [dca42fb] Rely on DBus activation for hal (Closes: #694020)
+  * [cbb8fd5] Disable firewalld since this would make us hard depend on DBus
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 26 Nov 2012 22:10:17 +0100
+
 libvirt (0.10.0-1) experimental; urgency=low
 
   * [b3ae724] New upstream version 0.10.0
@@ -207,6 +224,23 @@ libvirt (0.9.13~rc1-1) experimental; urgency=low
   * [5f715ed] Install systemd init scripts on Linux
 
  -- Guido Günther <agx@sigxcpu.org>  Tue, 26 Jun 2012 15:29:27 +0200
+
+libvirt (0.9.12-5) unstable; urgency=high
+
+  * Setting urgency to high since it's a security only fix
+  * [c0f4995] New patch security-Fix-libvirtd-crash-possibility.patch.
+    Fix libvirtd crash possibility (CVE-2012-4423)
+    Thanks to Martin Kletzander (Closes: #687598)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 14 Sep 2012 22:35:08 +0200
+
+libvirt (0.9.12-4) unstable; urgency=low
+
+  * [80ac2a6] Fix CVE-2012-3445 with upstream commit
+    6039a2cb49c8af4c68460d2faf365a7e1c686c7b (Closes: #683483)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 01 Aug 2012 21:12:13 +0200
+
 
 libvirt (0.9.12-3) unstable; urgency=low
 
