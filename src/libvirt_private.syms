@@ -56,6 +56,7 @@ virCapabilitiesAddHostFeature;
 virCapabilitiesAddHostMigrateTransport;
 virCapabilitiesAddHostNUMACell;
 virCapabilitiesAllocMachines;
+virCapabilitiesClearHostNUMACellCPUTopology;
 virCapabilitiesDefaultGuestArch;
 virCapabilitiesDefaultGuestEmulator;
 virCapabilitiesDefaultGuestMachine;
@@ -293,6 +294,8 @@ virDomainChrConsoleTargetTypeToString;
 virDomainChrDefForeach;
 virDomainChrDefFree;
 virDomainChrDefNew;
+virDomainChrSerialTargetTypeFromString;
+virDomainChrSerialTargetTypeToString;
 virDomainChrSourceDefCopy;
 virDomainChrSourceDefFree;
 virDomainChrSpicevmcTypeFromString;
@@ -412,6 +415,7 @@ virDomainGraphicsSpiceZlibCompressionTypeToString;
 virDomainGraphicsTypeFromString;
 virDomainGraphicsTypeToString;
 virDomainHasDiskMirror;
+virDomainHostdevCapsTypeToString;
 virDomainHostdevDefAlloc;
 virDomainHostdevDefClear;
 virDomainHostdevDefFree;
@@ -478,18 +482,18 @@ virDomainObjListGetActiveIDs;
 virDomainObjListGetInactiveNames;
 virDomainObjListInit;
 virDomainObjListNumOfDomains;
-virDomainObjLock;
 virDomainObjNew;
 virDomainObjSetDefTransient;
 virDomainObjSetState;
 virDomainObjTaint;
-virDomainObjUnlock;
 virDomainPausedReasonTypeFromString;
 virDomainPausedReasonTypeToString;
 virDomainPciRombarModeTypeFromString;
 virDomainPciRombarModeTypeToString;
 virDomainPMStateTypeFromString;
 virDomainPMStateTypeToString;
+virDomainPMSuspendedReasonTypeFromString;
+virDomainPMSuspendedReasonTypeToString;
 virDomainRedirdevBusTypeFromString;
 virDomainRedirdevBusTypeToString;
 virDomainRemoveInactive;
@@ -1027,11 +1031,6 @@ pciResetDevice;
 pciWaitForDeviceCleanup;
 
 
-# processinfo.h
-virProcessInfoGetAffinity;
-virProcessInfoSetAffinity;
-
-
 # secret_conf.h
 virSecretDefFormat;
 virSecretDefFree;
@@ -1101,6 +1100,7 @@ virDomainSnapshotAlignDisks;
 virDomainSnapshotAssignDef;
 virDomainSnapshotDefFormat;
 virDomainSnapshotDefFree;
+virDomainSnapshotDefIsExternal;
 virDomainSnapshotDefParseString;
 virDomainSnapshotDropParent;
 virDomainSnapshotFindByName;
@@ -1186,6 +1186,7 @@ virStorageFileResize;
 virSysinfoDefFree;
 virSysinfoFormat;
 virSysinfoRead;
+virSysinfoSetup;
 
 
 # threadpool.h
@@ -1281,9 +1282,12 @@ virFileWaitForDevices;
 virFileWriteStr;
 virFindFileInPath;
 virFormatIntDecimal;
+virGetDeviceID;
+virGetDeviceUnprivSGIO;
 virGetGroupID;
 virGetGroupName;
 virGetHostname;
+virGetUnprivSGIOSysfsPath;
 virGetUserCacheDirectory;
 virGetUserConfigDirectory;
 virGetUserDirectory;
@@ -1299,6 +1303,7 @@ virPipeReadUntilEOF;
 virScaleInteger;
 virSetBlocking;
 virSetCloseExec;
+virSetDeviceUnprivSGIO;
 virSetInherit;
 virSetNonBlock;
 virSetUIDGID;
@@ -1350,10 +1355,18 @@ virAuditOpen;
 virAuditSend;
 
 
-# virconsole.h
-virConsoleAlloc;
-virConsoleFree;
-virConsoleOpen;
+# virarch.h
+virArchFromHost;
+virArchFromString;
+virArchGetEndian;
+virArchGetWordSize;
+virArchToString;
+
+
+# virchrdev.h
+virChrdevAlloc;
+virChrdevFree;
+virChrdevOpen;
 
 
 # virdbus.h
@@ -1757,12 +1770,18 @@ virNodeSuspendGetTargetMask;
 
 
 # virobject.h
+virClassForObject;
+virClassForObjectLockable;
+virClassIsDerivedFrom;
 virClassName;
 virClassNew;
 virObjectFreeCallback;
 virObjectIsClass;
+virObjectLock;
+virObjectLockableNew;
 virObjectNew;
 virObjectRef;
+virObjectUnlock;
 virObjectUnref;
 
 
@@ -1782,10 +1801,20 @@ virPidFileWrite;
 virPidFileWritePath;
 
 
+# virportallocator.h
+virPortAllocatorAcquire;
+virPortAllocatorNew;
+virPortAllocatorRelease;
+
+
 # virprocess.h
 virProcessAbort;
+virProcessGetAffinity;
+virProcessGetNamespaces;
 virProcessKill;
 virProcessKillPainfully;
+virProcessSetAffinity;
+virProcessSetNamespaces;
 virProcessTranslateStatus;
 virProcessWait;
 
@@ -1850,7 +1879,6 @@ virTimeStringThenRaw;
 
 
 # virtypedparam.h
-virTypedParameterArrayClear;
 virTypedParameterArrayValidate;
 virTypedParameterAssign;
 virTypedParameterAssignFromStr;
@@ -1883,3 +1911,8 @@ virXPathUInt;
 virXPathULong;
 virXPathULongHex;
 virXPathULongLong;
+
+# Let emacs know we want case-insensitive sorting
+# Local Variables:
+# sort-fold-case: t
+# End:

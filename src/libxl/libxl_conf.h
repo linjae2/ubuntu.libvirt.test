@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------*/
-/*  Copyright (c) 2011 SUSE LINUX Products GmbH, Nuernberg, Germany.
+/*  Copyright (C) 2011-2013 SUSE LINUX Products GmbH, Nuernberg, Germany.
  *  Copyright (C) 2011 Univention GmbH.
  *
  * This library is free software; you can redistribute it and/or
@@ -34,7 +34,8 @@
 # include "domain_event.h"
 # include "capabilities.h"
 # include "configmake.h"
-# include "bitmap.h"
+# include "virportallocator.h"
+# include "virobject.h"
 
 
 # define LIBXL_VNC_PORT_MIN  5900
@@ -60,7 +61,7 @@ struct _libxlDriverPrivate {
     /* libxl ctx for driver wide ops; getVersion, getNodeInfo, ... */
     libxl_ctx *ctx;
 
-    virBitmapPtr reservedVNCPorts;
+    virPortAllocatorPtr reservedVNCPorts;
 
     size_t nactive;
     virStateInhibitCallback inhibitCallback;
@@ -78,12 +79,20 @@ struct _libxlDriverPrivate {
     char *saveDir;
 };
 
+typedef struct _libxlEventHookInfo libxlEventHookInfo;
+typedef libxlEventHookInfo *libxlEventHookInfoPtr;
+
 typedef struct _libxlDomainObjPrivate libxlDomainObjPrivate;
 typedef libxlDomainObjPrivate *libxlDomainObjPrivatePtr;
 struct _libxlDomainObjPrivate {
+    virObjectLockable parent;
+
     /* per domain libxl ctx */
     libxl_ctx *ctx;
     libxl_evgen_domain_death *deathW;
+
+    /* list of libxl timeout registrations */
+    libxlEventHookInfoPtr timerRegistrations;
 };
 
 # define LIBXL_SAVE_MAGIC "libvirt-xml\n \0 \r"

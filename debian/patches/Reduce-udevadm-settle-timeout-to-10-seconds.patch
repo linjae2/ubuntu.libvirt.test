@@ -5,15 +5,10 @@ Subject: Reduce udevadm settle timeout to 10 seconds
 This isn't a proper fix but it will make virt-manager at least start.
 
 Closes: #663931
----
- src/util/util.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-Index: libvirt-1.0.1/src/util/util.c
-===================================================================
---- libvirt-1.0.1.orig/src/util/util.c	2013-01-22 10:43:06.064737322 -0600
-+++ libvirt-1.0.1/src/util/util.c	2013-01-22 10:43:06.056737322 -0600
-@@ -3031,7 +3031,7 @@
+diff -Naurp libvirt-1.0.2.orig/src/util/virutil.c libvirt-1.0.2/src/util/virutil.c
+--- libvirt-1.0.2.orig/src/util/virutil.c	2013-01-24 10:18:58.000000000 -0600
++++ libvirt-1.0.2/src/util/virutil.c	2013-01-30 09:45:18.516909704 -0600
+@@ -3039,7 +3039,7 @@ virFileFindMountPoint(const char *type A
  void virFileWaitForDevices(void)
  {
  # ifdef UDEVADM

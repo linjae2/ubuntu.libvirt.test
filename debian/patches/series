@@ -6,7 +6,6 @@ patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
 Disable-failing-virnetsockettest.patch
 Don-t-fail-if-we-can-t-setup-avahi.patch
 9002-better_default_uri_virsh.patch
-9003-better-default-arch.patch
 9004-libvirtd-group-name.patch
 9005-increase-unix-socket-timeout.patch
 9020-lp545795.patch
@@ -16,12 +15,8 @@ dnsmasq-as-priv-user
 storage-default-permission-mode-to-0711
 #add-armhf-sysinfo-infomration.patch
 Reduce-udevadm-settle-timeout-to-10-seconds.patch
-fix-ubuntu-xen-qemu-dm-path.patch
+#fix-ubuntu-xen-qemu-dm-path.patch
 apparmor-no-need-to-check-security-model
 apparmor-use-apparmor-setfdlabel
 vnc-socket.patch
-Add_RESUME_event_listener_to_qemu_monitor.patch
-build-work-around-broken-kernel-header
-bridge-fix-persistent-networks.patch
-qemu-relax-hard-rss-limit.patch
-CVE-2013-0170.patch
+fix-virterror-namechange
