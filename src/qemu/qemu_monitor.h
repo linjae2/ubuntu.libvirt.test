@@ -28,9 +28,9 @@
 # include "internal.h"
 
 # include "domain_conf.h"
-# include "bitmap.h"
+# include "virbitmap.h"
 # include "virhash.h"
-# include "json.h"
+# include "virjson.h"
 # include "device_conf.h"
 
 typedef struct _qemuMonitor qemuMonitor;
@@ -159,9 +159,6 @@ qemuMonitorPtr qemuMonitorOpenFD(virDomainObjPtr vm,
 void qemuMonitorClose(qemuMonitorPtr mon);
 
 int qemuMonitorSetCapabilities(qemuMonitorPtr mon);
-
-void qemuMonitorLock(qemuMonitorPtr mon);
-void qemuMonitorUnlock(qemuMonitorPtr mon);
 
 int qemuMonitorSetLink(qemuMonitorPtr mon,
                        const char *name,

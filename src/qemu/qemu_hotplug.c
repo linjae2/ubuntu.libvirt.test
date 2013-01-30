@@ -32,11 +32,11 @@
 #include "qemu_hostdev.h"
 #include "domain_audit.h"
 #include "domain_nwfilter.h"
-#include "logging.h"
+#include "virlog.h"
 #include "datatypes.h"
-#include "virterror_internal.h"
-#include "memory.h"
-#include "pci.h"
+#include "virerror.h"
+#include "viralloc.h"
+#include "virpci.h"
 #include "virfile.h"
 #include "qemu_cgroup.h"
 #include "locking/domain_lock.h"
@@ -45,9 +45,10 @@
 #include "virnetdevbridge.h"
 #include "virnetdevtap.h"
 #include "device_conf.h"
-#include "storage_file.h"
+#include "virstoragefile.h"
 
 #define VIR_FROM_THIS VIR_FROM_QEMU
+#define CHANGE_MEDIA_RETRIES 10
 
 int qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
                                    virDomainObjPtr vm,
@@ -59,6 +60,7 @@ int qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
     int ret;
     char *driveAlias = NULL;
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    int retries = CHANGE_MEDIA_RETRIES;
 
     for (i = 0 ; i < vm->def->ndisks ; i++) {
         if (vm->def->disks[i]->bus == disk->bus &&
@@ -86,7 +88,7 @@ int qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
         origdisk->device != VIR_DOMAIN_DISK_DEVICE_CDROM) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Removable media not supported for %s device"),
-                        virDomainDiskDeviceTypeToString(disk->device));
+                       virDomainDiskDeviceTypeToString(disk->device));
         return -1;
     }
 
@@ -105,8 +107,31 @@ int qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
         goto error;
 
     qemuDomainObjEnterMonitorWithDriver(driver, vm);
+    ret = qemuMonitorEjectMedia(priv->mon, driveAlias, force);
+
+    /* we don't want to report errors from media tray_open polling */
+    while (retries--) {
+        if (origdisk->tray_status == VIR_DOMAIN_DISK_TRAY_OPEN)
+            break;
+
+        VIR_DEBUG("Waiting 500ms for tray to open. Retries left %d", retries);
+        usleep(500 * 1000); /* sleep 500ms */
+    }
+
     if (disk->src) {
+        /* deliberately don't depend on 'ret' as 'eject' may have failed for the
+         * fist time and we are gonna check the drive state anyway */
         const char *format = NULL;
+
+        /* We haven't succeeded yet */
+        ret = -1;
+
+        if (retries <= 0) {
+            virReportError(VIR_ERR_OPERATION_FAILED, "%s",
+                           _("Unable to eject media before changing it"));
+            goto exit_monitor;
+        }
+
         if (disk->type != VIR_DOMAIN_DISK_TYPE_DIR) {
             if (disk->format > 0)
                 format = virStorageFileFormatTypeToString(disk->format);
@@ -116,9 +141,8 @@ int qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
         ret = qemuMonitorChangeMedia(priv->mon,
                                      driveAlias,
                                      disk->src, format);
-    } else {
-        ret = qemuMonitorEjectMedia(priv->mon, driveAlias, force);
     }
+exit_monitor:
     qemuDomainObjExitMonitorWithDriver(driver, vm);
 
     virDomainAuditDisk(vm, origdisk->src, disk->src, "update", ret >= 0);
@@ -1105,7 +1129,8 @@ int qemuDomainAttachHostUsbDevice(virQEMUDriverPtr driver,
         }
 
         if ((usb = usbGetDevice(hostdev->source.subsys.u.usb.bus,
-                                hostdev->source.subsys.u.usb.device)) == NULL)
+                                hostdev->source.subsys.u.usb.device,
+                                NULL)) == NULL)
             goto error;
 
         data.vm = vm;
@@ -1173,7 +1198,7 @@ int qemuDomainAttachHostDevice(virQEMUDriverPtr driver,
     }
 
     if (virSecurityManagerSetHostdevLabel(driver->securityManager,
-                                          vm->def, hostdev) < 0)
+                                          vm->def, hostdev, NULL) < 0)
         goto cleanup;
 
     switch (hostdev->source.subsys.type) {
@@ -1201,7 +1226,7 @@ int qemuDomainAttachHostDevice(virQEMUDriverPtr driver,
 
 error:
     if (virSecurityManagerRestoreHostdevLabel(driver->securityManager,
-                                              vm->def, hostdev) < 0)
+                                              vm->def, hostdev, NULL) < 0)
         VIR_WARN("Unable to restore host device labelling on hotplug fail");
 
 cleanup:
@@ -2394,7 +2419,7 @@ qemuDomainDetachHostUsbDevice(virQEMUDriverPtr driver,
     if (ret < 0)
         return -1;
 
-    usb = usbGetDevice(subsys->u.usb.bus, subsys->u.usb.device);
+    usb = usbGetDevice(subsys->u.usb.bus, subsys->u.usb.device, NULL);
     if (usb) {
         usbDeviceListDel(driver->activeUsbHostdevs, usb);
         usbFreeDevice(usb);
@@ -2445,7 +2470,7 @@ int qemuDomainDetachThisHostDevice(virQEMUDriverPtr driver,
 
     if (!ret) {
         if (virSecurityManagerRestoreHostdevLabel(driver->securityManager,
-                                                  vm->def, detach) < 0) {
+                                                  vm->def, detach, NULL) < 0) {
             VIR_WARN("Failed to restore host device labelling");
         }
         virDomainHostdevRemove(vm->def, idx);
@@ -2538,6 +2563,7 @@ qemuDomainDetachNetDevice(virQEMUDriverPtr driver,
     detach = vm->def->nets[detachidx];
 
     if (virDomainNetGetActualType(detach) == VIR_DOMAIN_NET_TYPE_HOSTDEV) {
+        /* coverity[negative_returns] */
         ret = qemuDomainDetachThisHostDevice(driver, vm,
                                              virDomainNetGetActualHostdev(detach),
                                              -1);

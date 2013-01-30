@@ -35,12 +35,12 @@
 #include "qemu_monitor_json.h"
 #include "qemu_command.h"
 #include "qemu_capabilities.h"
-#include "memory.h"
-#include "logging.h"
+#include "viralloc.h"
+#include "virlog.h"
 #include "driver.h"
 #include "datatypes.h"
-#include "virterror_internal.h"
-#include "json.h"
+#include "virerror.h"
+#include "virjson.h"
 
 #ifdef WITH_DTRACE_PROBES
 # include "libvirt_qemu_probes.h"
@@ -1585,10 +1585,10 @@ int qemuMonitorJSONGetBlockInfo(qemuMonitorPtr mon,
             goto cleanup;
         }
 
-        /* Don't check for success here, because 'tray-open' is presented iff
+        /* Don't check for success here, because 'tray_open' is presented iff
          * medium is ejected.
          */
-        ignore_value(virJSONValueObjectGetBoolean(dev, "tray-open",
+        ignore_value(virJSONValueObjectGetBoolean(dev, "tray_open",
                                                   &info->tray_open));
 
         /* Missing io-status indicates no error */
