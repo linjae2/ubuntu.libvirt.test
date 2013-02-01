@@ -1,3 +1,10 @@
+libvirt (1.0.2-0ubuntu2) raring; urgency=low
+
+  * debian/patches/fix-virterror-namechange: Include virterror otherwise
+    python-libvirt wont be able to find any error codes. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 01 Feb 2013 13:10:58 -0600
+
 libvirt (1.0.2-0ubuntu1) raring; urgency=low
 
   [ Chuck Short ]
