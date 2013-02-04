@@ -1,3 +1,10 @@
+libvirt (1.0.2-0ubuntu3) raring; urgency=low
+
+  * libvirt-bin.postrm: only remove /etc/dnsmasq.d/libvirt-bin during
+    remove.  (LP: #1113821)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 04 Feb 2013 10:35:47 -0600
+
 libvirt (1.0.2-0ubuntu2) raring; urgency=low
 
   * debian/patches/fix-virterror-namechange: Include virterror otherwise
