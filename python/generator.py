@@ -124,7 +124,7 @@ class docParser(xml.sax.handler.ContentHandler):
         elif tag == 'enum':
             # enums come from header files, hence virterror.h
             if (attrs['file'] == "libvirt" or
-                attrs['file'] == "virterror"):
+                attrs['file'] == "virerror"):
                 enum(attrs['type'],attrs['name'],attrs['value'])
             elif attrs['file'] == "libvirt-lxc":
                 lxc_enum(attrs['type'],attrs['name'],attrs['value'])
@@ -139,7 +139,7 @@ class docParser(xml.sax.handler.ContentHandler):
             if self.function != None:
                 if (self.function_module == "libvirt" or
                     self.function_module == "virevent" or
-                    self.function_module == "virterror"):
+                    self.function_module == "virerror"):
                     function(self.function, self.function_descr,
                              self.function_return, self.function_args,
                              self.function_file, self.function_module,
