@@ -23,8 +23,8 @@ add_users_groups()
         addgroup --system libvirtd
     fi
 
-    # Add each admin user to the libvirtd group
-    for u in $(grep "^admin:" /etc/group | sed -e "s/^.*://" -e "s/,/ /g"); do
+    # Add each sudo user to the libvirtd group
+    for u in $(grep "^sudo:" /etc/group | sed -e "s/^.*://" -e "s/,/ /g"); do
         adduser "$u" libvirtd >/dev/null || true
     done
 

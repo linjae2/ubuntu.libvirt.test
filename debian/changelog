@@ -1,3 +1,13 @@
+libvirt (1.0.2-0ubuntu4) raring; urgency=low
+
+  * Update Readme.Debian
+    - we use libvirtd, not libvirt group (LP: #1095140)
+    - we add users from sudo, not admin group, to libvirtd.
+  * libvirt-bin.postinst: put users from sudo, not admin group, into group
+    libvirtd. (LP: #1124127)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 13 Feb 2013 09:47:58 -0600
+
 libvirt (1.0.2-0ubuntu3) raring; urgency=low
 
   * libvirt-bin.postrm: only remove /etc/dnsmasq.d/libvirt-bin during
