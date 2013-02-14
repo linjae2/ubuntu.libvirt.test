@@ -27,6 +27,7 @@
   /dev/kqemu rw,
   @{PROC}/*/status r,
   owner @{PROC}/*/auxv r,
+  @{PROC}/sys/vm/overcommit_memory r,
 
   # For hostdev access. The actual devices will be added dynamically
   /sys/bus/usb/devices/ r,
