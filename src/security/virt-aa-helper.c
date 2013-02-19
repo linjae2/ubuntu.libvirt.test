@@ -996,6 +996,13 @@ get_files(vahControl * ctl)
             goto clean;
     }
 
+    for (i = 0; i < ctl->def->ngraphics; i++) {
+        if (ctl->def->graphics[i]->type == VIR_DOMAIN_GRAPHICS_TYPE_VNC &&
+                    ctl->def->graphics[i]->data.vnc.socket &&
+                    vah_add_file(&buf, ctl->def->graphics[i]->data.vnc.socket, "rw"))
+                goto clean;
+    }
+
     if (ctl->def->ngraphics == 1 &&
         ctl->def->graphics[0]->type == VIR_DOMAIN_GRAPHICS_TYPE_SDL)
         if (vah_add_file(&buf, ctl->def->graphics[0]->data.sdl.xauth,
