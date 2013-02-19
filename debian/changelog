@@ -1,3 +1,10 @@
+libvirt (1.0.2-0ubuntu6) raring; urgency=low
+
+  * Really refresh debian/patches/fix-ubuntu-xen-qemu-dm-path.patch and
+    not only claim to and disable it.
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Tue, 19 Feb 2013 15:00:27 +0100
+
 libvirt (1.0.2-0ubuntu5) raring; urgency=low
 
   * debian/apparmor/libvirt-qemu: allow qemu read access to
