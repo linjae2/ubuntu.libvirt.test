@@ -36,6 +36,7 @@ Build-Depends: cdbs (>= 0.4.90~),
  libnuma-dev [amd64 i386 ia64 mips mipsel powerpc],
  radvd [linux-any],
  libnetcf-dev [linux-any],
+ libaudit-dev [linux-any],
 # For "make check"
  dwarves,
  libxml2-utils,
