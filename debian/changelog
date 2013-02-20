@@ -1,3 +1,13 @@
+libvirt (1.0.2-0ubuntu7) raring; urgency=low
+
+  * libvirt-bin.postinst: also put admin group members into the libvirtd
+    group, to support systems installed before precise.  (LP: #1124127)
+  * libvirt-bin.postinst: use getent group instead of grep /etc/group
+  * rules: pass path to collie to enable sheepdog backend (LP: #1129107)
+  * control, rules: enable building against libaudit, which is in main.
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Wed, 20 Feb 2013 15:50:47 -0700
+
 libvirt (1.0.2-0ubuntu6) raring; urgency=low
 
   * Really refresh debian/patches/fix-ubuntu-xen-qemu-dm-path.patch and
