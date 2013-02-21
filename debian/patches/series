@@ -41,4 +41,8 @@ Reduce-udevadm-settle-timeout-to-10-seconds.patch
 command-avoid-double-close-bugs
 CVE-2012-4423.patch
 CVE-2013-0170.patch
-
+ubuntu/handle_resume.patch
+ubuntu/fix-poll.patch
+ubuntu/qemu-Keep-list-of-USB-devices-attached-to-domains
+ubuntu/usb-create-functions-to-search-usb-device
+ubuntu/qemu-call-usb-search-function-for-hostdev
