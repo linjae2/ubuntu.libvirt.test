@@ -346,12 +346,18 @@ qemuPrepareHostdevUSBDevices(struct qemud_driver *driver,
 
         /* Resolve a vendor/product to bus/device */
         if (hostdev->source.subsys.u.usb.vendor) {
-            usbDevice *usb
-                = usbFindDevice(hostdev->source.subsys.u.usb.vendor,
-                                hostdev->source.subsys.u.usb.product);
+            usbDevice *usb;
+            usbDeviceList *devs;
 
-            if (!usb)
-                return -1;
+            devs = usbFindDeviceByVendor(hostdev->source.subsys.u.usb.vendor,
+                                         hostdev->source.subsys.u.usb.product);
+
+            if (!devs)
+                 goto cleanup;
+
+            usb = usbDeviceListGet(devs, 0);
+            usbDeviceListSteal(devs, usb);
+            usbDeviceListFree(devs);
 
             hostdev->source.subsys.u.usb.bus = usbDeviceGetBus(usb);
             hostdev->source.subsys.u.usb.device = usbDeviceGetDevno(usb);
