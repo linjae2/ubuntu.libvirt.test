@@ -314,38 +314,149 @@ qemuPrepareHostPCIDevices(struct qemud_driver *driver,
 }
 
 
-static int
-qemuPrepareHostUSBDevices(struct qemud_driver *driver ATTRIBUTE_UNUSED,
-                          virDomainDefPtr def)
+int
+qemuPrepareHostdevUSBDevices(struct qemud_driver *driver,
+                             const char *name,
+                             usbDeviceList *list)
 {
     int i;
-    for (i = 0 ; i < def->nhostdevs ; i++) {
-        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
+    unsigned int count;
+    usbDevice *tmp;
+
+    count = usbDeviceListCount(list);
+
+    for (i = 0; i < count; i++) {
+        usbDevice *usb = usbDeviceListGet(list, i);
+        if ((tmp = usbDeviceListFind(driver->activeUsbHostdevs, usb))) {
+            const char *other_name = usbDeviceGetUsedBy(tmp);
+
+            if (other_name)
+                qemuReportError(VIR_ERR_OPERATION_INVALID,
+                                _("USB device %s is in use by domain %s"),
+                                usbDeviceGetName(tmp), other_name);
+            else
+                qemuReportError(VIR_ERR_OPERATION_INVALID,
+                                _("USB device %s is already in use"),
+                                usbDeviceGetName(tmp));
+            return -1;
+        }
+
+        usbDeviceSetUsedBy(usb, name);
+        VIR_DEBUG("Adding %03d.%03d dom=%s to activeUsbHostdevs",
+                  usbDeviceGetBus(usb), usbDeviceGetDevno(usb), name);
+        /*
+         * The caller is responsible to steal these usb devices
+         * from the usbDeviceList that passed in on success,
+         * perform rollback on failure.
+         */
+        if (usbDeviceListAdd(driver->activeUsbHostdevs, usb) < 0)
+            return -1;
+    }
+    return 0;
+}
+
+static int
+qemuPrepareHostUSBDevices(struct qemud_driver *driver,
+                          virDomainDefPtr def)
+{
+    int i, ret = -1;
+    usbDeviceList *list;
+    usbDevice *tmp;
+    virDomainHostdevDefPtr *hostdevs = def->hostdevs;
+    int nhostdevs = def->nhostdevs;
+
+    /* To prevent situation where USB device is assigned to two domains
+     * we need to keep a list of currently assigned USB devices.
+     * This is done in several loops which cannot be joined into one big
+     * loop. See qemuPrepareHostdevPCIDevices()
+     */
+    if (!(list = usbDeviceListNew()))
+        goto cleanup;
+
+    /* Loop 1: build temporary list and validate no usb device
+     * is already taken
+     */
+    for (i = 0 ; i < nhostdevs ; i++) {
+        virDomainHostdevDefPtr hostdev = hostdevs[i];
+        usbDevice *usb = NULL;
 
         if (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS)
             continue;
         if (hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB)
             continue;
 
-        /* Resolve a vendor/product to bus/device */
-        if (hostdev->source.subsys.u.usb.vendor) {
-            usbDevice *usb
-                = usbFindDevice(hostdev->source.subsys.u.usb.vendor,
-                                hostdev->source.subsys.u.usb.product);
+        unsigned vendor = hostdev->source.subsys.u.usb.vendor;
+        unsigned product = hostdev->source.subsys.u.usb.product;
+        unsigned bus = hostdev->source.subsys.u.usb.bus;
+        unsigned device = hostdev->source.subsys.u.usb.device;
 
-            if (!usb)
-                return -1;
+        if (vendor && bus) {
+            usb = usbFindDevice(vendor, product, bus, device);
+
+        } else if (vendor && !bus) {
+            usbDeviceList *devs = usbFindDeviceByVendor(vendor, product);
+            if (!devs)
+                 goto cleanup;
+
+            if (usbDeviceListCount(devs) > 1) {
+                qemuReportError(VIR_ERR_OPERATION_FAILED,
+                                _("multiple USB devices for %x:%x, "
+                                  "use <address> to specify one"), vendor, product);
+                usbDeviceListFree(devs);
+                goto cleanup;
+            }
+            usb = usbDeviceListGet(devs, 0);
+            usbDeviceListSteal(devs, usb);
+            usbDeviceListFree(devs);
 
             hostdev->source.subsys.u.usb.bus = usbDeviceGetBus(usb);
             hostdev->source.subsys.u.usb.device = usbDeviceGetDevno(usb);
 
+        } else if (!vendor && bus) {
+            usb = usbFindDeviceByBus(bus, device);
+        }
+
+        if (!usb)
+            goto cleanup;
+
+        if (usbDeviceListAdd(list, usb) < 0) {
             usbFreeDevice(usb);
+            goto cleanup;
         }
     }
 
-    return 0;
-}
+    /* Mark devices in temporary list as used by @name
+     * and add them do driver list. However, if something goes
+     * wrong, perform rollback.
+     */
+    if (qemuPrepareHostdevUSBDevices(driver, def->name, list) < 0)
+        goto inactivedevs;
 
+    /* Loop 2: Temporary list was successfully merged with
+     * driver list, so steal all items to avoid freeing them
+     * in cleanup label.
+     */
+    while (usbDeviceListCount(list) > 0) {
+        tmp = usbDeviceListGet(list, 0);
+        usbDeviceListSteal(list, tmp);
+    }
+
+    ret = 0;
+    goto cleanup;
+
+inactivedevs:
+    /* Steal devices from driver->activeUsbHostdevs.
+     * We will free them later.
+     */
+    for (i = 0; i < usbDeviceListCount(list); i++) {
+        tmp = usbDeviceListGet(list, i);
+        usbDeviceListSteal(driver->activeUsbHostdevs, tmp);
+    }
+
+cleanup:
+    usbDeviceListFree(list);
+    return ret;
+}
 
 int qemuPrepareHostDevices(struct qemud_driver *driver,
                            virDomainDefPtr def)

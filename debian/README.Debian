@@ -14,7 +14,7 @@ For xend HTTP access (not recommended) you also have to set:
 
 Note that *every* user on the system has access to xend then. Better use
 libvirtd to access xen with unprivileged users and add the users to the
-"libvirt" group (see "Access Control" below).
+"libvirtd" group (see "Access Control" below).
 
 Debugging
 =========
@@ -53,7 +53,7 @@ can handle the virtual bridges.
 
 Access Control
 ==============
-Access to the libvirt socket is controlled by membership in the "libvirt" group.
+Access to the libvirt socket is controlled by membership in the "libvirtd" group.
 If you want to manage VMs as non root you need to add a user to that group.
 
 QEMU/KVM: Dropping Capabilties
@@ -139,8 +139,8 @@ against this software.
 qemu:///system
 --------------
 Adding users to the libvirtd group effectively grants them root access. In
-Ubuntu, users in the admin group (who already have 'sudo' access) are added to
-this group automatically.
+Ubuntu, users in the admin and sudo groups (who already have 'sudo' access)
+are added to this group automatically.
 
 Virtual machines started from qemu:///system may run with or without root
 privileges. As discussed above, in Ubuntu Qemu/KVM virtual machines are fully
