@@ -1,3 +1,11 @@
+libvirt (1.0.2-0ubuntu8) raring; urgency=low
+
+  * put libvirt-bin dnsmasq file into /etc/dnsmasq.d-available, and
+    create a symlink in /etc/dnsmasq.d, to avoid problems when removing
+    and re-installing libvirt-bin.  (LP: #1113821)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 26 Feb 2013 12:09:37 -0600
+
 libvirt (1.0.2-0ubuntu7) raring; urgency=low
 
   * libvirt-bin.postinst: also put admin group members into the libvirtd

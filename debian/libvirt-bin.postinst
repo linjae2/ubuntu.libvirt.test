@@ -208,8 +208,6 @@ case "$1" in
     	rm -f "$EXISTED"
 	set_autostart
     fi
-    # Try to restart a potential system wide dnsmasq
-    invoke-rc.d dnsmasq restart 2>/dev/null || true
 
     ;;
 
@@ -227,6 +225,21 @@ esac
 
 #DEBHELPER#
 
+# We need this after the debhelper generated code so that dpkg-maintscript
+# can do its renamming first.
+if [ "$1" = "configure" ]; then
+    # Configure dnsmasq
+    if [ -f /etc/dnsmasq.d-available/libvirt-bin ]; then
+        echo "Setting up libvirt-bin dnsmasq configuration."
+        mkdir -p /etc/dnsmasq.d
+        if [ ! -e /etc/dnsmasq.d/libvirt-bin ]; then
+            ln -s /etc/dnsmasq.d-available/libvirt-bin /etc/dnsmasq.d/libvirt-bin
+        fi
+
+        # Try to restart a potential system wide dnsmasq
+        invoke-rc.d dnsmasq restart 2>/dev/null || true
+    fi
+fi
 # This must run after libvirt-bin has started
 if [ "$1" = "configure" ]; then
     if dpkg --compare-versions "$2" lt-nl "0.8.3-1ubuntu1" ; then
