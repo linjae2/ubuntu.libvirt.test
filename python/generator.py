@@ -122,6 +122,7 @@ class docParser(xml.sax.handler.ContentHandler):
                 if attrs.has_key('field'):
                     self.function_return_field = attrs['field']
         elif tag == 'enum':
+            # enums come from header files, hence virterror.h
             if (attrs['file'] == "libvirt" or
                 attrs['file'] == "virterror"):
                 enum(attrs['type'],attrs['name'],attrs['value'])
@@ -134,6 +135,7 @@ class docParser(xml.sax.handler.ContentHandler):
         if debug:
             print "end %s" % tag
         if tag == 'function':
+            # fuctions come from source files, hence 'virerror.c'
             if self.function != None:
                 if (self.function_module == "libvirt" or
                     self.function_module == "virevent" or
