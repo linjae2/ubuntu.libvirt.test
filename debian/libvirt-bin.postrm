@@ -33,10 +33,13 @@ case "$1" in
         done
     ;;
     remove)
-        rm -f /etc/dnsmasq.d/libvirt-bin 2>/dev/null || true
+        if [ -L /etc/dnsmasq.d/libvirt-bin ]; then
+            echo "Removing libvirt-bin dnsmasq configuration"
+            rm -f /etc/dnsmasq.d/libvirt-bin 2>/dev/null || true
 
-        # Try to restart a potential system wide dnsmasq
-        invoke-rc.d dnsmasq restart 2>/dev/null || true
+            # Try to restart a potential system wide dnsmasq
+            invoke-rc.d dnsmasq restart 2>/dev/null || true
+        fi
     ;;
     upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;

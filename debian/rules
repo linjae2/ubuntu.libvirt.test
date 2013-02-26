@@ -133,8 +133,8 @@ build/libvirt-bin::
 	cp -f debian/libvirt-migrate-qemu-disks debian/tmp/usr/sbin
 	cp -f debian/libvirt-migrate-qemu-machinetype debian/tmp/usr/sbin
 	# copy dnsmasq configuration
-	mkdir -p debian/tmp/etc/dnsmasq.d
-	cp debian/libvirt-bin.dnsmasq debian/tmp/etc/dnsmasq.d/libvirt-bin
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-bin.dnsmasq debian/tmp/etc/dnsmasq.d-available/libvirt-bin
 
 binary-install/libvirt-doc::
 	find $(EXAMPLES_DIR) -name "*.o" -type f -delete -o -name .libs -type d -exec rm -rf {} \;
