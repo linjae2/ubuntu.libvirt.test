@@ -4,8 +4,8 @@
 #
 ### BEGIN INIT INFO
 # Provides: libvirt-guests
-# Required-Start: libvirtd
-# Required-Stop: libvirtd
+# Required-Start: $remote_fs libvirt-bin
+# Required-Stop: $remote_fs libvirt-bin
 # Default-Start: 2 3 4 5
 # Default-Stop: 0 1 6
 # Short-Description: suspend/resume libvirt guests on shutdown/boot
@@ -14,43 +14,29 @@
 #              See http://libvirt.org
 ### END INIT INFO
 
-# the following is chkconfig init header
-#
-# libvirt-guests:   suspend/resume libvirt guests on shutdown/boot
-#
-# chkconfig: 345 99 01
-# description:  This is a script for suspending active libvirt guests \
-#               on shutdown and resuming them on next boot \
-#               See http://libvirt.org
-#
-
-sysconfdir="@sysconfdir@"
-localstatedir="@localstatedir@"
-libvirtd="@sbindir@"/libvirtd
-
-# Source function library.
-test ! -r "$sysconfdir"/rc.d/init.d/functions ||
-    . "$sysconfdir"/rc.d/init.d/functions
+sysconfdir=/etc
+localstatedir=/var
+libvirtd=/usr/sbin/libvirtd
 
 # Source gettext library.
 # Make sure this file is recognized as having translations: _("dummy")
-. "@bindir@"/gettext.sh
+. /usr/bin/gettext.sh
 
-export TEXTDOMAIN="@PACKAGE@" TEXTDOMAINDIR="@localedir@"
+export TEXTDOMAIN="libvirt" TEXTDOMAINDIR="/usr/share/locale"
 
 URIS=default
-ON_BOOT=start
-ON_SHUTDOWN=suspend
+ON_BOOT=ignore
+ON_SHUTDOWN=shutdown
 SHUTDOWN_TIMEOUT=300
 PARALLEL_SHUTDOWN=0
 START_DELAY=0
 BYPASS_CACHE=0
 
-test -f "$sysconfdir"/sysconfig/libvirt-guests &&
-    . "$sysconfdir"/sysconfig/libvirt-guests
+test -f "$sysconfdir"/default/libvirt-guests &&
+    . "$sysconfdir"/default/libvirt-guests
 
 LISTFILE="$localstatedir"/lib/libvirt/libvirt-guests
-VAR_SUBSYS_LIBVIRT_GUESTS="$localstatedir"/lock/subsys/libvirt-guests
+VAR_SUBSYS_LIBVIRT_GUESTS="$localstatedir"/lock/libvirt-guests
 
 RETVAL=0
 
@@ -499,8 +485,7 @@ gueststatus() {
 
 # rh_status
 # Display current status: whether saved state exists, and whether start
-# has been executed.  We cannot use status() from the functions library,
-# since there is no external daemon process matching this init script.
+# has been executed.
 rh_status() {
     if [ -f "$LISTFILE" ]; then
         gettext "stopped, with saved guests"; echo
