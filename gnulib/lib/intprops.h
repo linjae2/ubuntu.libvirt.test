@@ -82,4 +82,65 @@
    including the terminating null.  */
 # define INT_BUFSIZE_BOUND(t) (INT_STRLEN_BOUND (t) + 1)
 
+#define INT_MULTIPLY_OVERFLOW(a, b) \
+  _GL_BINARY_OP_OVERFLOW (a, b, _GL_MULTIPLY_OVERFLOW)
+
+/* Return 1 if the expression A <op> B would overflow,
+   where OP_RESULT_OVERFLOW (A, B, MIN, MAX) does the actual test,
+   assuming MIN and MAX are the minimum and maximum for the result type.
+   Arguments should be free of side effects.  */
+#define _GL_BINARY_OP_OVERFLOW(a, b, op_result_overflow)        \
+  op_result_overflow (a, b,                                     \
+                      _GL_INT_MINIMUM (0 * (b) + (a)),          \
+                      _GL_INT_MAXIMUM (0 * (b) + (a)))
+
+/* The maximum and minimum values for the type of the expression E,
+   after integer promotion.  E should not have side effects.  */
+#define _GL_INT_MINIMUM(e)                                              \
+  (_GL_INT_SIGNED (e)                                                   \
+   ? - _GL_INT_TWOS_COMPLEMENT (e) - _GL_SIGNED_INT_MAXIMUM (e)         \
+   : _GL_INT_CONVERT (e, 0))
+#define _GL_INT_MAXIMUM(e)                                              \
+  (_GL_INT_SIGNED (e)                                                   \
+   ? _GL_SIGNED_INT_MAXIMUM (e)                                         \
+   : _GL_INT_NEGATE_CONVERT (e, 1))
+#define _GL_SIGNED_INT_MAXIMUM(e)                                       \
+  (((_GL_INT_CONVERT (e, 1) << (sizeof ((e) + 0) * CHAR_BIT - 2)) - 1) * 2 + 1)
+
+/* Return 1 if the integer expression E, after integer promotion, has
+   a signed type.  */
+#define _GL_INT_SIGNED(e) (_GL_INT_NEGATE_CONVERT (e, 1) < 0)
+
+/* Act like _GL_INT_CONVERT (E, -V) but work around a bug in IRIX 6.5 cc; see
+   <http://lists.gnu.org/archive/html/bug-gnulib/2011-05/msg00406.html>.  */
+#define _GL_INT_NEGATE_CONVERT(e, v) (0 * (e) - (v))
+
+/* Return an integer value, converted to the same type as the integer
+   expression E after integer type promotion.  V is the unconverted value.  */
+#define _GL_INT_CONVERT(e, v) (0 * (e) + (v))
+
+/* True if the signed integer expression E uses two's complement.  */
+#define _GL_INT_TWOS_COMPLEMENT(e) (~ _GL_INT_CONVERT (e, 0) == -1)
+
+#define _GL_MULTIPLY_OVERFLOW(a, b, min, max)                           \
+  (((min) == 0 && (((a) < 0 && 0 < (b)) || ((b) < 0 && 0 < (a))))       \
+   || INT_MULTIPLY_RANGE_OVERFLOW (a, b, min, max))
+
+/* Return 1 if A * B would overflow in [MIN,MAX] arithmetic.
+   See above for restrictions.  Avoid && and || as they tickle
+   bugs in Sun C 5.11 2010/08/13 and other compilers; see
+   <http://lists.gnu.org/archive/html/bug-gnulib/2011-05/msg00401.html>.  */
+#define INT_MULTIPLY_RANGE_OVERFLOW(a, b, min, max)     \
+  ((b) < 0                                              \
+   ? ((a) < 0                                           \
+      ? (a) < (max) / (b)                               \
+      : (b) == -1                                       \
+      ? 0                                               \
+      : (min) / (b) < (a))                              \
+   : (b) == 0                                           \
+   ? 0                                                  \
+   : ((a) < 0                                           \
+      ? (a) < (min) / (b)                               \
+      : (max) / (b) < (a)))
+
 #endif /* GL_INTPROPS_H */

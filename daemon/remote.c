@@ -58,6 +58,7 @@
 #include "util.h"
 #include "stream.h"
 #include "libvirt/libvirt-qemu.h"
+#include "intprops.h"
 
 #define VIR_FROM_THIS VIR_FROM_REMOTE
 #define REMOTE_DEBUG(fmt, ...) DEBUG(fmt, __VA_ARGS__)
@@ -1697,7 +1698,8 @@ remoteDispatchDomainGetVcpus (struct qemud_server *server ATTRIBUTE_UNUSED,
         return -1;
     }
 
-    if (args->maxinfo * args->maplen > REMOTE_CPUMAPS_MAX) {
+    if (INT_MULTIPLY_OVERFLOW(args->maxinfo, args->maplen) ||
+        args->maxinfo * args->maplen > REMOTE_CPUMAPS_MAX) {
         virDomainFree(dom);
         remoteDispatchFormatError (rerr, "%s", _("maxinfo * maplen > REMOTE_CPUMAPS_MAX"));
         return -1;
