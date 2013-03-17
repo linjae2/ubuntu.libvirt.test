@@ -1172,9 +1172,6 @@ if WITH_NETWORK
 	test -z "$(UUID)" || \
 	  sed -i -e "s,</name>,</name>\n  <uuid>$(UUID)</uuid>," \
 	    $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml
-	test -e $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml || \
-           ln -s ../default.xml \
-	    $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml
 endif
 
 uninstall-local::
