@@ -533,6 +533,8 @@ virNWFilterConfLayerInit;
 virNWFilterConfLayerShutdown;
 virNWFilterLockFilterUpdates;
 virNWFilterUnlockFilterUpdates;
+virNWFilterCallbackDriversLock;
+virNWFilterCallbackDriversUnlock;
 
 
 # nwfilter_params.h

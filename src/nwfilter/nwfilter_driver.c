@@ -34,6 +34,7 @@
 #include "memory.h"
 #include "domain_conf.h"
 #include "domain_nwfilter.h"
+#include "nwfilter_conf.h"
 #include "nwfilter_driver.h"
 #include "nwfilter_gentech_driver.h"
 
@@ -148,9 +149,13 @@ nwfilterDriverReload(void) {
     }
 
     nwfilterDriverLock(driverState);
+    virNWFilterCallbackDriversLock();
+
     virNWFilterPoolLoadAllConfigs(NULL,
                                   &driverState->pools,
                                   driverState->configDir);
+
+    virNWFilterCallbackDriversUnlock();
     nwfilterDriverUnlock(driverState);
 
     return 0;
@@ -321,6 +326,8 @@ nwfilterDefine(virConnectPtr conn,
     virNWFilterPtr ret = NULL;
 
     nwfilterDriverLock(driver);
+    virNWFilterCallbackDriversLock();
+
     if (!(def = virNWFilterDefParseString(conn, xml)))
         goto cleanup;
 
@@ -340,6 +347,8 @@ cleanup:
     virNWFilterDefFree(def);
     if (pool)
         virNWFilterPoolObjUnlock(pool);
+
+    virNWFilterCallbackDriversUnlock();
     nwfilterDriverUnlock(driver);
     return ret;
 }
@@ -352,6 +361,8 @@ nwfilterUndefine(virNWFilterPtr obj) {
     int ret = -1;
 
     nwfilterDriverLock(driver);
+    virNWFilterCallbackDriversLock();
+
     pool = virNWFilterPoolObjFindByUUID(&driver->pools, obj->uuid);
     if (!pool) {
         virNWFilterReportError(VIR_ERR_INVALID_NWFILTER,
@@ -378,6 +389,8 @@ nwfilterUndefine(virNWFilterPtr obj) {
 cleanup:
     if (pool)
         virNWFilterPoolObjUnlock(pool);
+
+    virNWFilterCallbackDriversUnlock();
     nwfilterDriverUnlock(driver);
     return ret;
 }

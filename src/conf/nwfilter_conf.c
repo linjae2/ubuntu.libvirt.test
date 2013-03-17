@@ -2083,6 +2083,24 @@ virNWFilterRegisterCallbackDriver(virNWFilterCallbackDriverPtr cbd)
     }
 }
 
+void
+virNWFilterCallbackDriversLock(void)
+{
+    int i;
+
+    for (i = 0; i < nCallbackDriver; i++)
+        callbackDrvArray[i]->vmDriverLock();
+}
+
+void
+virNWFilterCallbackDriversUnlock(void)
+{
+    int i;
+
+    for (i = 0; i < nCallbackDriver; i++)
+        callbackDrvArray[i]->vmDriverUnlock();
+}
+
 
 static virHashIterator virNWFilterDomainFWUpdateCB;
 
