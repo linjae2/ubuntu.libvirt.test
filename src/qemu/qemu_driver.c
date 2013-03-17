@@ -40,7 +40,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <paths.h>
-#include <pwd.h>
 #include <stdio.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
@@ -6241,7 +6240,9 @@ cleanup:
    after it's finished reading (to avoid a zombie, if nothing
    else). */
 
-static int qemudOpenAsUID(const char *path, uid_t uid, pid_t *child_pid) {
+static int
+qemudOpenAsUID(const char *path, uid_t uid, gid_t gid, pid_t *child_pid)
+{
     int pipefd[2];
     int fd = -1;
 
@@ -6320,13 +6321,11 @@ parent_cleanup:
         goto child_cleanup;
     }
 
-    if (setuid(uid) != 0) {
-        exit_code = errno;
-        virReportSystemError(errno,
-                             _("cannot setuid(%d) to read '%s'"),
-                             uid, path);
-        goto child_cleanup;
+    if (virSetUIDGID(uid, gid) < 0) {
+       exit_code = errno;
+       goto child_cleanup;
     }
+
     if ((fd = open(path, O_RDONLY)) < 0) {
         exit_code = errno;
         virReportSystemError(errno,
@@ -6334,6 +6333,7 @@ parent_cleanup:
                              path, uid);
         goto child_cleanup;
     }
+
     if (VIR_ALLOC_N(buf, bufsize) < 0) {
         exit_code = ENOMEM;
         virReportOOMError();
@@ -6411,7 +6411,8 @@ qemudDomainSaveImageOpen(struct qemud_driver *driver,
            that might have better luck. Create a pipe, then fork a
            child process to run as the qemu user, which will hopefully
            have the necessary authority to read the file. */
-        if ((fd = qemudOpenAsUID(path, driver->user, &read_pid)) < 0) {
+        if ((fd = qemudOpenAsUID(path,
+                                 driver->user, driver->group, &read_pid)) < 0) {
             /* error already reported */
             goto error;
         }

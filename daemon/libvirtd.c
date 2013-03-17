@@ -1820,6 +1820,7 @@ readmore:
         if (remoteDecodeClientMessageHeader(msg) < 0) {
             VIR_FREE(msg);
             qemudDispatchClientFailure(client);
+            return;
         }
 
         /* Check if any filters match this message */
