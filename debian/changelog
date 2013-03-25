@@ -1,3 +1,10 @@
+libvirt (1.0.2-0ubuntu9) raring; urgency=low
+
+  * debian/patches/prevent-lxc-shutdown-host.patch: Backport fix
+    from upstream to prevent lxc-containets shutting down the host. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 25 Mar 2013 09:28:47 -0500
+
 libvirt (1.0.2-0ubuntu8b1) raring; urgency=low
 
   * No-change rebuild against libudev1
