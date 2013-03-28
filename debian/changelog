@@ -1,3 +1,10 @@
+libvirt (1.0.2-0ubuntu10) raring; urgency=low
+
+  * Add code to postinst to fix any double-migration of /etc/dnsmasq.
+    (LP: #1157332)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 28 Mar 2013 09:11:04 -0500
+
 libvirt (1.0.2-0ubuntu9) raring; urgency=low
 
   * debian/patches/prevent-lxc-shutdown-host.patch: Backport fix
