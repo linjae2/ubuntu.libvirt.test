@@ -2068,9 +2068,6 @@ if WITH_NETWORK
 	    cp $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml.t \
 	      $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml && \
 	    rm $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/default.xml.t; }
-	test -e $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml || \
-	   ln -s ../default.xml \
-	    $(DESTDIR)$(sysconfdir)/libvirt/qemu/networks/autostart/default.xml
 endif
 
 uninstall-local:: uninstall-init uninstall-systemd
