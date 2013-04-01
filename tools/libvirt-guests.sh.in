@@ -278,6 +278,7 @@ shutdown_guest()
         else
             eval_gettext "Shutdown of guest \$name complete."
         fi
+        echo
     fi
 }
 
