@@ -15,4 +15,4 @@
 /var/log/libvirt/uml
 /var/log/libvirt/lxc
 /etc/libvirt/hooks
-/etc/dnsmasq.d
+/etc/dnsmasq.d-available
