@@ -1190,6 +1190,8 @@ xenUnifiedDomainGetVcpus (virDomainPtr dom,
             if (ret > 0)
                 return ret;
         }
+
+    xenUnifiedError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
