@@ -1,3 +1,14 @@
+libvirt (0.9.13-0ubuntu12.3) quantal-proposed; urgency=low
+
+  * put libvirt-bin dnsmasq file into /etc/dnsmasq.d-available, and
+    create a symlink in /etc/dnsmasq.d, to avoid problems when removing
+    and re-installing libvirt-bin.  (LP: #1113821)
+  * Add code to postinst to fix any double-migration of /etc/dnsmasq.
+    (LP: #1157332)
+  * debian/libvirt-bin.{dirs,install}: install dnsmasq.d-available/libvirt-bin
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 16 Apr 2013 07:11:17 -0500
+
 libvirt (0.9.13-0ubuntu12.2) quantal-security; urgency=low
 
   * SECURITY UPDATE: denial of service and possible code execution via
