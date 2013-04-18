@@ -21,3 +21,4 @@ vnc-socket.patch
 fix-virterror-namechange
 fix-ubuntu-xen-qemu-dm-path.patch
 prevent-lxc-shutdown-host.patch
+nonblock-fix.patch

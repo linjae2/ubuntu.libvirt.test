@@ -1,3 +1,11 @@
+libvirt (1.0.2-0ubuntu11) raring; urgency=low
+
+  * debian/patches/nonblock-fix.patch: cherrypicked upstream patch to
+    not mark qemu migration fd non-blocking.  This fixes tcp live
+    migration. (LP: #1157626)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 18 Apr 2013 10:43:26 -0500
+
 libvirt (1.0.2-0ubuntu10) raring; urgency=low
 
   * Add code to postinst to fix any double-migration of /etc/dnsmasq.
