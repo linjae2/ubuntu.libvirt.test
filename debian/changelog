@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu17.10) precise-proposed; urgency=low
+
+  * debian/libvirt-bin.{dirs,install}: install dnsmasq.d-available/libvirt-bin
+    (LP: #1113821)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 24 Apr 2013 15:49:38 +0000
+
 libvirt (0.9.8-2ubuntu17.9) precise-proposed; urgency=low
 
   * put libvirt-bin dnsmasq file into /etc/dnsmasq.d-available, and
