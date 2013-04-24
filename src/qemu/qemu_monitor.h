@@ -127,6 +127,7 @@ struct _qemuMonitorCallbacks {
 
 
 char *qemuMonitorEscapeArg(const char *in);
+char *qemuMonitorUnescapeArg(const char *in);
 
 qemuMonitorPtr qemuMonitorOpen(virDomainObjPtr vm,
                                virDomainChrSourceDefPtr config,
