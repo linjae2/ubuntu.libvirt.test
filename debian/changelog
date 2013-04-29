@@ -1,3 +1,10 @@
+libvirt (1.0.2-0ubuntu12) saucy; urgency=low
+
+  * debian/libvirt-bin.{dirs,install}: install dnsmasq.d-available/libvirt-bin
+    (LP: #1113821)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 29 Apr 2013 07:38:07 -0500
+
 libvirt (1.0.2-0ubuntu11) raring; urgency=low
 
   * debian/patches/nonblock-fix.patch: cherrypicked upstream patch to
