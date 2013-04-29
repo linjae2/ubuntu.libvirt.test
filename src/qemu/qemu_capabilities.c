@@ -697,6 +697,7 @@ qemuCapsInitGuest(virCapsPtr caps,
     if (qemuCapsIsValidForKVM(hostarch, guestarch)) {
         const char *const kvmbins[] = { "/usr/libexec/qemu-kvm", /* RHEL */
                                         "qemu-kvm", /* Fedora */
+										"kvm-spice", /* qemu-kvm-spice Ubuntu package */
                                         "kvm" }; /* Upstream .spec */
 
         for (i = 0; i < ARRAY_CARDINALITY(kvmbins); ++i) {
