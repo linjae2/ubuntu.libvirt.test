@@ -37,7 +37,6 @@
 # include "virhash.h"
 # include "virsocketaddr.h"
 # include "nwfilter_params.h"
-# include "nwfilter_conf.h"
 # include "virnetdevmacvlan.h"
 # include "virsysinfo.h"
 # include "virnetdevvportprofile.h"
@@ -48,6 +47,7 @@
 # include "device_conf.h"
 # include "virbitmap.h"
 # include "virstoragefile.h"
+# include "virnuma.h"
 
 /* forward declarations of all device types, required by
  * virDomainDeviceDef
@@ -109,11 +109,17 @@ typedef virDomainChrDef *virDomainChrDefPtr;
 typedef struct _virDomainMemballoonDef virDomainMemballoonDef;
 typedef virDomainMemballoonDef *virDomainMemballoonDefPtr;
 
+typedef struct _virDomainNVRAMDef virDomainNVRAMDef;
+typedef virDomainNVRAMDef *virDomainNVRAMDefPtr;
+
 typedef struct _virDomainSnapshotObj virDomainSnapshotObj;
 typedef virDomainSnapshotObj *virDomainSnapshotObjPtr;
 
 typedef struct _virDomainSnapshotObjList virDomainSnapshotObjList;
 typedef virDomainSnapshotObjList *virDomainSnapshotObjListPtr;
+
+typedef struct _virDomainRNGDef virDomainRNGDef;
+typedef virDomainRNGDef *virDomainRNGDefPtr;
 
 /* Flags for the 'type' field in virDomainDeviceDef */
 typedef enum {
@@ -134,6 +140,8 @@ typedef enum {
     VIR_DOMAIN_DEVICE_SMARTCARD,
     VIR_DOMAIN_DEVICE_CHR,
     VIR_DOMAIN_DEVICE_MEMBALLOON,
+    VIR_DOMAIN_DEVICE_NVRAM,
+    VIR_DOMAIN_DEVICE_RNG,
 
     VIR_DOMAIN_DEVICE_LAST
 } virDomainDeviceType;
@@ -159,6 +167,8 @@ struct _virDomainDeviceDef {
         virDomainSmartcardDefPtr smartcard;
         virDomainChrDefPtr chr;
         virDomainMemballoonDefPtr memballoon;
+        virDomainNVRAMDefPtr nvram;
+        virDomainRNGDefPtr rng;
     } data;
 };
 
@@ -191,6 +201,7 @@ enum virDomainDeviceAddressType {
     VIR_DOMAIN_DEVICE_ADDRESS_TYPE_USB,
     VIR_DOMAIN_DEVICE_ADDRESS_TYPE_SPAPRVIO,
     VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390,
+    VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW,
 
     VIR_DOMAIN_DEVICE_ADDRESS_TYPE_LAST
 };
@@ -218,6 +229,19 @@ struct _virDomainDeviceVirtioSerialAddress {
     unsigned int controller;
     unsigned int bus;
     unsigned int port;
+};
+
+# define VIR_DOMAIN_DEVICE_CCW_MAX_CSSID    254
+# define VIR_DOMAIN_DEVICE_CCW_MAX_SSID       3
+# define VIR_DOMAIN_DEVICE_CCW_MAX_DEVNO  65535
+
+typedef struct _virDomainDeviceCCWAddress virDomainDeviceCCWAddress;
+typedef virDomainDeviceCCWAddress *virDomainDeviceCCWAddressPtr;
+struct _virDomainDeviceCCWAddress {
+    unsigned int cssid;
+    unsigned int ssid;
+    unsigned int devno;
+    bool         assigned;
 };
 
 typedef struct _virDomainDeviceCcidAddress virDomainDeviceCcidAddress;
@@ -270,6 +294,7 @@ struct _virDomainDeviceInfo {
         virDomainDeviceCcidAddress ccid;
         virDomainDeviceUSBAddress usb;
         virDomainDeviceSpaprVioAddress spaprvio;
+        virDomainDeviceCCWAddress ccw;
     } addr;
     int mastertype;
     union {
@@ -325,17 +350,17 @@ struct _virDomainHostdevOrigStates {
             /* Does the device need to unbind from stub when
              * reattaching to host?
              */
-            unsigned int unbind_from_stub : 1;
+            bool unbind_from_stub;
 
             /* Does it need to use remove_slot when reattaching
              * the device to host?
              */
-            unsigned int remove_slot : 1;
+            bool remove_slot;
 
             /* Does it need to reprobe driver for the device when
              * reattaching to host?
              */
-            unsigned int reprobe :1;
+            bool reprobe;
         } pci;
 
         /* Perhaps 'usb' in future */
@@ -364,6 +389,16 @@ enum virDomainHostdevSubsysType {
     VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_LAST
 };
 
+/* the backend driver used for PCI hostdev devices */
+typedef enum {
+    VIR_DOMAIN_HOSTDEV_PCI_BACKEND_DEFAULT, /* currently kvm, could change */
+    VIR_DOMAIN_HOSTDEV_PCI_BACKEND_KVM,    /* force legacy kvm style */
+    VIR_DOMAIN_HOSTDEV_PCI_BACKEND_VFIO,   /* force vfio */
+
+    VIR_DOMAIN_HOSTDEV_PCI_BACKEND_TYPE_LAST
+} virDomainHostdevSubsysPciBackendType;
+
+VIR_ENUM_DECL(virDomainHostdevSubsysPciBackend)
 
 typedef struct _virDomainHostdevSubsys virDomainHostdevSubsys;
 typedef virDomainHostdevSubsys *virDomainHostdevSubsysPtr;
@@ -379,7 +414,10 @@ struct _virDomainHostdevSubsys {
             unsigned vendor;
             unsigned product;
         } usb;
-        virDevicePCIAddress pci; /* host address */
+        struct {
+            virDevicePCIAddress addr; /* host address */
+            int backend; /* enum virDomainHostdevSubsysPciBackendType */
+        } pci;
     } u;
 };
 
@@ -387,6 +425,7 @@ struct _virDomainHostdevSubsys {
 enum virDomainHostdevCapsType {
     VIR_DOMAIN_HOSTDEV_CAPS_TYPE_STORAGE,
     VIR_DOMAIN_HOSTDEV_CAPS_TYPE_MISC,
+    VIR_DOMAIN_HOSTDEV_CAPS_TYPE_NET,
 
     VIR_DOMAIN_HOSTDEV_CAPS_TYPE_LAST
 };
@@ -402,6 +441,9 @@ struct _virDomainHostdevCaps {
         struct {
             char *chardev;
         } misc;
+        struct {
+            char *iface;
+        } net;
     } u;
 };
 
@@ -411,8 +453,8 @@ struct _virDomainHostdevDef {
     virDomainDeviceDef parent; /* higher level Def containing this */
     int mode; /* enum virDomainHostdevMode */
     int startupPolicy; /* enum virDomainStartupPolicy */
-    unsigned int managed : 1;
-    unsigned int missing : 1;
+    bool managed;
+    bool missing;
     union {
         virDomainHostdevSubsys subsys;
         virDomainHostdevCaps caps;
@@ -427,6 +469,7 @@ enum virDomainDiskType {
     VIR_DOMAIN_DISK_TYPE_FILE,
     VIR_DOMAIN_DISK_TYPE_DIR,
     VIR_DOMAIN_DISK_TYPE_NETWORK,
+    VIR_DOMAIN_DISK_TYPE_VOLUME,
 
     VIR_DOMAIN_DISK_TYPE_LAST
 };
@@ -480,6 +523,7 @@ enum virDomainDiskProtocol {
     VIR_DOMAIN_DISK_PROTOCOL_RBD,
     VIR_DOMAIN_DISK_PROTOCOL_SHEEPDOG,
     VIR_DOMAIN_DISK_PROTOCOL_GLUSTER,
+    VIR_DOMAIN_DISK_PROTOCOL_ISCSI,
 
     VIR_DOMAIN_DISK_PROTOCOL_LAST
 };
@@ -585,6 +629,14 @@ struct _virDomainBlockIoTuneInfo {
 };
 typedef virDomainBlockIoTuneInfo *virDomainBlockIoTuneInfoPtr;
 
+typedef struct _virDomainDiskSourcePoolDef virDomainDiskSourcePoolDef;
+struct _virDomainDiskSourcePoolDef {
+    char *pool; /* pool name */
+    char *volume; /* volume name */
+    int voltype; /* enum virStorageVolType, internal only */
+};
+typedef virDomainDiskSourcePoolDef *virDomainDiskSourcePoolDefPtr;
+
 /* Stores the virtual disk configuration */
 struct _virDomainDiskDef {
     int type;
@@ -596,6 +648,7 @@ struct _virDomainDiskDef {
     int protocol;
     size_t nhosts;
     virDomainDiskHostDefPtr hosts;
+    virDomainDiskSourcePoolDefPtr srcpool;
     struct {
         char *username;
         int secretType; /* enum virDomainDiskSecretType */
@@ -639,9 +692,9 @@ struct _virDomainDiskDef {
     int copy_on_read;
     int snapshot; /* enum virDomainSnapshotLocation, snapshot_conf.h */
     int startupPolicy; /* enum virDomainStartupPolicy */
-    unsigned int readonly : 1;
-    unsigned int shared : 1;
-    unsigned int transient : 1;
+    bool readonly;
+    bool shared;
+    bool transient;
     virDomainDeviceInfo info;
     virStorageEncryptionPtr encryption;
     bool rawio_specified;
@@ -661,10 +714,18 @@ enum virDomainControllerType {
     VIR_DOMAIN_CONTROLLER_TYPE_VIRTIO_SERIAL,
     VIR_DOMAIN_CONTROLLER_TYPE_CCID,
     VIR_DOMAIN_CONTROLLER_TYPE_USB,
+    VIR_DOMAIN_CONTROLLER_TYPE_PCI,
 
     VIR_DOMAIN_CONTROLLER_TYPE_LAST
 };
 
+
+enum virDomainControllerModelPCI {
+    VIR_DOMAIN_CONTROLLER_MODEL_PCI_ROOT,
+    VIR_DOMAIN_CONTROLLER_MODEL_PCI_BRIDGE,
+
+    VIR_DOMAIN_CONTROLLER_MODEL_PCI_LAST
+};
 
 enum virDomainControllerModelSCSI {
     VIR_DOMAIN_CONTROLLER_MODEL_SCSI_AUTO,
@@ -674,6 +735,7 @@ enum virDomainControllerModelSCSI {
     VIR_DOMAIN_CONTROLLER_MODEL_SCSI_VMPVSCSI,
     VIR_DOMAIN_CONTROLLER_MODEL_SCSI_IBMVSCSI,
     VIR_DOMAIN_CONTROLLER_MODEL_SCSI_VIRTIO_SCSI,
+    VIR_DOMAIN_CONTROLLER_MODEL_SCSI_LSISAS1078,
 
     VIR_DOMAIN_CONTROLLER_MODEL_SCSI_LAST
 };
@@ -706,6 +768,7 @@ struct _virDomainControllerDef {
     int type;
     int idx;
     int model; /* -1 == undef */
+    unsigned int queues;
     union {
         virDomainVirtioSerialOpts vioserial;
     } opts;
@@ -762,14 +825,14 @@ struct _virDomainFSDef {
     unsigned long long usage;
     char *src;
     char *dst;
-    unsigned int readonly : 1;
+    bool readonly;
     virDomainDeviceInfo info;
     unsigned long long space_hard_limit; /* in bytes */
     unsigned long long space_soft_limit; /* in bytes */
 };
 
 
-/* 5 different types of networking config */
+/* network config types */
 enum virDomainNetType {
     VIR_DOMAIN_NET_TYPE_USER,
     VIR_DOMAIN_NET_TYPE_ETHERNET,
@@ -934,7 +997,8 @@ enum virDomainChrChannelTargetType {
 };
 
 enum virDomainChrConsoleTargetType {
-    VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_SERIAL = 0,
+    VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_NONE  = 0,
+    VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_SERIAL,
     VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_XEN,
     VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_UML,
     VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_VIRTIO,
@@ -1059,6 +1123,33 @@ struct _virDomainHubDef {
     virDomainDeviceInfo info;
 };
 
+enum virDomainTPMModel {
+    VIR_DOMAIN_TPM_MODEL_TIS,
+
+    VIR_DOMAIN_TPM_MODEL_LAST
+};
+
+enum virDomainTPMBackendType {
+    VIR_DOMAIN_TPM_TYPE_PASSTHROUGH,
+
+    VIR_DOMAIN_TPM_TYPE_LAST
+};
+
+# define VIR_DOMAIN_TPM_DEFAULT_DEVICE "/dev/tpm0"
+
+typedef struct _virDomainTPMDef virDomainTPMDef;
+typedef virDomainTPMDef *virDomainTPMDefPtr;
+struct _virDomainTPMDef {
+    enum virDomainTPMBackendType type;
+    virDomainDeviceInfo info;
+    enum virDomainTPMModel model;
+    union {
+        struct {
+            virDomainChrSourceDef source;
+        } passthrough;
+    } data;
+};
+
 enum virDomainInputType {
     VIR_DOMAIN_INPUT_TYPE_MOUSE,
     VIR_DOMAIN_INPUT_TYPE_TABLET,
@@ -1150,8 +1241,8 @@ enum virDomainVideoType {
 typedef struct _virDomainVideoAccelDef virDomainVideoAccelDef;
 typedef virDomainVideoAccelDef *virDomainVideoAccelDefPtr;
 struct _virDomainVideoAccelDef {
-    unsigned int support3d :1;
-    unsigned int support2d :1;
+    bool support3d;
+    bool support2d;
 };
 
 
@@ -1165,7 +1256,7 @@ struct _virDomainVideoDef {
     virDomainDeviceInfo info;
 };
 
-/* 3 possible graphics console modes */
+/* graphics console modes */
 enum virDomainGraphicsType {
     VIR_DOMAIN_GRAPHICS_TYPE_SDL,
     VIR_DOMAIN_GRAPHICS_TYPE_VNC,
@@ -1189,7 +1280,7 @@ typedef struct _virDomainGraphicsAuthDef virDomainGraphicsAuthDef;
 typedef virDomainGraphicsAuthDef *virDomainGraphicsAuthDefPtr;
 struct _virDomainGraphicsAuthDef {
     char *passwd;
-    unsigned int expires: 1; /* Whether there is an expiry time set */
+    bool expires; /* Whether there is an expiry time set */
     time_t validTo;  /* seconds since epoch */
     int connected; /* action if connected */
 };
@@ -1310,7 +1401,7 @@ struct _virDomainGraphicsDef {
     union {
         struct {
             int port;
-            unsigned int autoport :1;
+            bool autoport;
             char *keymap;
             char *socket;
             virDomainGraphicsAuthDef auth;
@@ -1318,17 +1409,17 @@ struct _virDomainGraphicsDef {
         struct {
             char *display;
             char *xauth;
-            int fullscreen;
+            bool fullscreen;
         } sdl;
         struct {
             int port;
-            unsigned int autoport :1;
-            unsigned int replaceUser :1;
-            unsigned int multiUser :1;
+            bool autoport;
+            bool replaceUser;
+            bool multiUser;
         } rdp;
         struct {
             char *display;
-            unsigned int fullscreen :1;
+            bool fullscreen;
         } desktop;
         struct {
             int port;
@@ -1336,7 +1427,7 @@ struct _virDomainGraphicsDef {
             int mousemode;
             char *keymap;
             virDomainGraphicsAuthDef auth;
-            unsigned int autoport :1;
+            bool autoport;
             int channels[VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_LAST];
             int defaultMode; /* enum virDomainGraphicsSpiceChannelMode */
             int image;
@@ -1375,7 +1466,7 @@ struct _virDomainRedirFilterUsbDevDef {
     int vendor;
     int product;
     int version;
-    unsigned int allow :1;
+    bool allow;
 };
 
 struct _virDomainRedirFilterDef {
@@ -1404,9 +1495,12 @@ struct _virDomainMemballoonDef {
     virDomainDeviceInfo info;
 };
 
+struct _virDomainNVRAMDef {
+    virDomainDeviceInfo info;
+};
 
 enum virDomainSmbiosMode {
-    VIR_DOMAIN_SMBIOS_NONE,
+    VIR_DOMAIN_SMBIOS_NONE = 0,
     VIR_DOMAIN_SMBIOS_EMULATE,
     VIR_DOMAIN_SMBIOS_HOST,
     VIR_DOMAIN_SMBIOS_SYSINFO,
@@ -1531,6 +1625,7 @@ struct _virDomainOSDef {
     char *kernel;
     char *initrd;
     char *cmdline;
+    char *dtb;
     char *root;
     char *loader;
     char *bootloader;
@@ -1583,14 +1678,6 @@ enum virDomainCpuPlacementMode {
     VIR_DOMAIN_CPU_PLACEMENT_MODE_AUTO,
 
     VIR_DOMAIN_CPU_PLACEMENT_MODE_LAST
-};
-
-enum virDomainNumatuneMemPlacementMode {
-    VIR_DOMAIN_NUMATUNE_MEM_PLACEMENT_MODE_DEFAULT = 0,
-    VIR_DOMAIN_NUMATUNE_MEM_PLACEMENT_MODE_STATIC,
-    VIR_DOMAIN_NUMATUNE_MEM_PLACEMENT_MODE_AUTO,
-
-    VIR_DOMAIN_NUMATUNE_MEM_PLACEMENT_MODE_LAST
 };
 
 typedef struct _virDomainTimerCatchupDef virDomainTimerCatchupDef;
@@ -1681,18 +1768,6 @@ virDomainVcpuPinDefPtr virDomainVcpuPinFindByVcpu(virDomainVcpuPinDefPtr *def,
                                                   int nvcpupin,
                                                   int vcpu);
 
-typedef struct _virDomainNumatuneDef virDomainNumatuneDef;
-typedef virDomainNumatuneDef *virDomainNumatuneDefPtr;
-struct _virDomainNumatuneDef {
-    struct {
-        virBitmapPtr nodemask;
-        int mode;
-        int placement_mode; /* enum virDomainNumatuneMemPlacementMode */
-    } memory;
-
-    /* Future NUMA tuning related stuff should go here. */
-};
-
 typedef struct _virBlkioDeviceWeight virBlkioDeviceWeight;
 typedef virBlkioDeviceWeight *virBlkioDeviceWeightPtr;
 struct _virBlkioDeviceWeight {
@@ -1700,9 +1775,43 @@ struct _virBlkioDeviceWeight {
     unsigned int weight;
 };
 
+enum virDomainRNGModel {
+    VIR_DOMAIN_RNG_MODEL_VIRTIO,
+
+    VIR_DOMAIN_RNG_MODEL_LAST
+};
+
+enum virDomainRNGBackend {
+    VIR_DOMAIN_RNG_BACKEND_RANDOM,
+    VIR_DOMAIN_RNG_BACKEND_EGD,
+    /* VIR_DOMAIN_RNG_BACKEND_POOL, */
+
+    VIR_DOMAIN_RNG_BACKEND_LAST
+};
+
+struct _virDomainRNGDef {
+    int model;
+    int backend;
+    unsigned int rate; /* bytes per period */
+    unsigned int period; /* milliseconds */
+
+    union {
+        char *file; /* file name for 'random' source */
+        virDomainChrSourceDefPtr chardev; /* a char backend for
+                                             the EGD source */
+    } source;
+
+    virDomainDeviceInfo info;
+};
+
 void virBlkioDeviceWeightArrayClear(virBlkioDeviceWeightPtr deviceWeights,
                                     int ndevices);
 
+typedef struct _virDomainResourceDef virDomainResourceDef;
+typedef virDomainResourceDef *virDomainResourceDefPtr;
+struct _virDomainResourceDef {
+    char *partition;
+};
 
 /*
  * Guest VM main configuration
@@ -1753,7 +1862,8 @@ struct _virDomainDef {
         virDomainVcpuPinDefPtr emulatorpin;
     } cputune;
 
-    virDomainNumatuneDef numatune;
+    virNumaTuneDef numatune;
+    virDomainResourceDefPtr resource;
 
     /* These 3 are based on virDomainLifeCycleAction enum flags */
     int onReboot;
@@ -1835,9 +1945,12 @@ struct _virDomainDef {
     /* Only 1 */
     virDomainWatchdogDefPtr watchdog;
     virDomainMemballoonDefPtr memballoon;
+    virDomainNVRAMDefPtr nvram;
+    virDomainTPMDefPtr tpm;
     virCPUDefPtr cpu;
     virSysinfoDefPtr sysinfo;
     virDomainRedirFilterDefPtr redirfilter;
+    virDomainRNGDefPtr rng;
 
     void *namespaceData;
     virDomainXMLNamespace ns;
@@ -1893,11 +2006,65 @@ struct _virDomainObj {
 
 typedef struct _virDomainObjList virDomainObjList;
 typedef virDomainObjList *virDomainObjListPtr;
-struct _virDomainObjList {
-    /* uuid string -> virDomainObj  mapping
-     * for O(1), lockless lookup-by-uuid */
-    virHashTable *objs;
+
+
+/* This structure holds various callbacks and data needed
+ * while parsing and creating domain XMLs */
+typedef struct _virDomainXMLOption virDomainXMLOption;
+typedef virDomainXMLOption *virDomainXMLOptionPtr;
+
+typedef void *(*virDomainXMLPrivateDataAllocFunc)(void);
+typedef void (*virDomainXMLPrivateDataFreeFunc)(void *);
+typedef int (*virDomainXMLPrivateDataFormatFunc)(virBufferPtr, void *);
+typedef int (*virDomainXMLPrivateDataParseFunc)(xmlXPathContextPtr, void *);
+
+typedef int (*virDomainDefPostParseCallback)(virDomainDefPtr def,
+                                             virCapsPtr caps,
+                                             void *opaque);
+typedef int (*virDomainDeviceDefPostParseCallback)(virDomainDeviceDefPtr dev,
+                                                   virDomainDefPtr def,
+                                                   virCapsPtr caps,
+                                                   void *opaque);
+
+typedef struct _virDomainDefParserConfig virDomainDefParserConfig;
+typedef virDomainDefParserConfig *virDomainDefParserConfigPtr;
+struct _virDomainDefParserConfig {
+    /* driver domain definition callbacks */
+    virDomainDefPostParseCallback domainPostParseCallback;
+    virDomainDeviceDefPostParseCallback devicesPostParseCallback;
+
+    /* private data for the callbacks */
+    void *priv;
+    virFreeCallback privFree;
+
+    /* data */
+    bool hasWideScsiBus;
+    unsigned char macPrefix[VIR_MAC_PREFIX_BUFLEN];
 };
+
+typedef struct _virDomainXMLPrivateDataCallbacks virDomainXMLPrivateDataCallbacks;
+typedef virDomainXMLPrivateDataCallbacks *virDomainXMLPrivateDataCallbacksPtr;
+struct _virDomainXMLPrivateDataCallbacks {
+    virDomainXMLPrivateDataAllocFunc  alloc;
+    virDomainXMLPrivateDataFreeFunc   free;
+    virDomainXMLPrivateDataFormatFunc format;
+    virDomainXMLPrivateDataParseFunc  parse;
+};
+
+virDomainXMLOptionPtr virDomainXMLOptionNew(virDomainDefParserConfigPtr config,
+                                            virDomainXMLPrivateDataCallbacksPtr priv,
+                                            virDomainXMLNamespacePtr xmlns);
+
+void virDomainNetGenerateMAC(virDomainXMLOptionPtr xmlopt, virMacAddrPtr mac);
+
+virDomainXMLNamespacePtr
+virDomainXMLOptionGetNamespace(virDomainXMLOptionPtr xmlopt)
+    ATTRIBUTE_NONNULL(1);
+
+int
+virDomainDefPostParse(virDomainDefPtr def,
+                      virCapsPtr caps,
+                      virDomainXMLOptionPtr xmlopt);
 
 static inline bool
 virDomainObjIsActive(virDomainObjPtr dom)
@@ -1905,29 +2072,33 @@ virDomainObjIsActive(virDomainObjPtr dom)
     return dom->def->id != -1;
 }
 
-virDomainObjPtr virDomainObjNew(virCapsPtr caps);
+virDomainObjPtr virDomainObjNew(virDomainXMLOptionPtr caps)
+    ATTRIBUTE_NONNULL(1);
 
-int virDomainObjListInit(virDomainObjListPtr objs);
-void virDomainObjListDeinit(virDomainObjListPtr objs);
+virDomainObjListPtr virDomainObjListNew(void);
 
-virDomainObjPtr virDomainFindByID(const virDomainObjListPtr doms,
-                                  int id);
-virDomainObjPtr virDomainFindByUUID(const virDomainObjListPtr doms,
-                                    const unsigned char *uuid);
-virDomainObjPtr virDomainFindByName(const virDomainObjListPtr doms,
-                                    const char *name);
+virDomainObjPtr virDomainObjListFindByID(const virDomainObjListPtr doms,
+                                         int id);
+virDomainObjPtr virDomainObjListFindByUUID(const virDomainObjListPtr doms,
+                                           const unsigned char *uuid);
+virDomainObjPtr virDomainObjListFindByName(const virDomainObjListPtr doms,
+                                           const char *name);
 
 bool virDomainObjTaint(virDomainObjPtr obj,
                        enum virDomainTaintFlags taint);
 
+void virDomainResourceDefFree(virDomainResourceDefPtr resource);
 void virDomainGraphicsDefFree(virDomainGraphicsDefPtr def);
 void virDomainInputDefFree(virDomainInputDefPtr def);
 void virDomainDiskDefFree(virDomainDiskDefPtr def);
 void virDomainLeaseDefFree(virDomainLeaseDefPtr def);
 void virDomainDiskHostDefFree(virDomainDiskHostDefPtr def);
-int virDomainDiskFindControllerModel(virDomainDefPtr def,
-                                     virDomainDiskDefPtr disk,
-                                     int controllerType);
+int virDomainDeviceFindControllerModel(virDomainDefPtr def,
+                                       virDomainDeviceInfoPtr info,
+                                       int controllerType);
+virDomainDiskDefPtr virDomainDiskFindByBusAndDst(virDomainDefPtr def,
+                                                 int bus,
+                                                 char *dst);
 void virDomainControllerDefFree(virDomainControllerDefPtr def);
 void virDomainFSDefFree(virDomainFSDefPtr def);
 void virDomainActualNetDefFree(virDomainActualNetDefPtr def);
@@ -1940,6 +2111,7 @@ int virDomainChrSourceDefCopy(virDomainChrSourceDefPtr src,
 void virDomainSoundCodecDefFree(virDomainSoundCodecDefPtr def);
 void virDomainSoundDefFree(virDomainSoundDefPtr def);
 void virDomainMemballoonDefFree(virDomainMemballoonDefPtr def);
+void virDomainNVRAMDefFree(virDomainNVRAMDefPtr def);
 void virDomainWatchdogDefFree(virDomainWatchdogDefPtr def);
 void virDomainVideoDefFree(virDomainVideoDefPtr def);
 virDomainHostdevDefPtr virDomainHostdevDefAlloc(void);
@@ -1949,16 +2121,19 @@ void virDomainHubDefFree(virDomainHubDefPtr def);
 void virDomainRedirdevDefFree(virDomainRedirdevDefPtr def);
 void virDomainRedirFilterDefFree(virDomainRedirFilterDefPtr def);
 void virDomainDeviceDefFree(virDomainDeviceDefPtr def);
-virDomainDeviceDefPtr virDomainDeviceDefCopy(virCapsPtr caps,
+virDomainDeviceDefPtr virDomainDeviceDefCopy(virDomainDeviceDefPtr src,
                                              const virDomainDefPtr def,
-                                             virDomainDeviceDefPtr src);
+                                             virCapsPtr caps,
+                                             virDomainXMLOptionPtr xmlopt);
 int virDomainDeviceAddressIsValid(virDomainDeviceInfoPtr info,
                                   int type);
 int virDomainDeviceInfoCopy(virDomainDeviceInfoPtr dst,
                             virDomainDeviceInfoPtr src);
 void virDomainDeviceInfoClear(virDomainDeviceInfoPtr info);
 void virDomainDefClearPCIAddresses(virDomainDefPtr def);
+void virDomainDefClearCCWAddresses(virDomainDefPtr def);
 void virDomainDefClearDeviceAliases(virDomainDefPtr def);
+void virDomainTPMDefFree(virDomainTPMDefPtr def);
 
 typedef int (*virDomainDeviceInfoCallback)(virDomainDefPtr def,
                                            virDomainDeviceDefPtr dev,
@@ -1973,51 +2148,65 @@ void virDomainDefFree(virDomainDefPtr vm);
 
 virDomainChrDefPtr virDomainChrDefNew(void);
 
-/* live == true means def describes an active domain (being migrated or
- * restored) as opposed to a new persistent configuration of the domain */
-virDomainObjPtr virDomainAssignDef(virCapsPtr caps,
-                                   virDomainObjListPtr doms,
-                                   const virDomainDefPtr def,
-                                   bool live);
+enum {
+    VIR_DOMAIN_OBJ_LIST_ADD_LIVE = (1 << 0),
+    VIR_DOMAIN_OBJ_LIST_ADD_CHECK_LIVE = (1 << 1),
+};
+virDomainObjPtr virDomainObjListAdd(virDomainObjListPtr doms,
+                                    const virDomainDefPtr def,
+                                    virDomainXMLOptionPtr xmlopt,
+                                    unsigned int flags,
+                                    virDomainDefPtr *oldDef);
 void virDomainObjAssignDef(virDomainObjPtr domain,
                            const virDomainDefPtr def,
-                           bool live);
+                           bool live,
+                           virDomainDefPtr *oldDef);
 int virDomainObjSetDefTransient(virCapsPtr caps,
+                                virDomainXMLOptionPtr xmlopt,
                                 virDomainObjPtr domain,
                                 bool live);
 virDomainDefPtr
 virDomainObjGetPersistentDef(virCapsPtr caps,
+                             virDomainXMLOptionPtr xmlopt,
                              virDomainObjPtr domain);
 
 int
 virDomainLiveConfigHelperMethod(virCapsPtr caps,
+                                virDomainXMLOptionPtr xmlopt,
                                 virDomainObjPtr dom,
                                 unsigned int *flags,
                                 virDomainDefPtr *persistentDef);
 
-virDomainDefPtr virDomainDefCopy(virCapsPtr caps, virDomainDefPtr src,
+virDomainDefPtr virDomainDefCopy(virDomainDefPtr src,
+                                 virCapsPtr caps,
+                                 virDomainXMLOptionPtr xmlopt,
                                  bool migratable);
-virDomainDefPtr
-virDomainObjCopyPersistentDef(virCapsPtr caps, virDomainObjPtr dom);
+virDomainDefPtr virDomainObjCopyPersistentDef(virDomainObjPtr dom,
+                                              virCapsPtr caps,
+                                              virDomainXMLOptionPtr xmlopt);
 
-void virDomainRemoveInactive(virDomainObjListPtr doms,
-                             virDomainObjPtr dom);
+void virDomainObjListRemove(virDomainObjListPtr doms,
+                            virDomainObjPtr dom);
 
-virDomainDeviceDefPtr virDomainDeviceDefParse(virCapsPtr caps,
+virDomainDeviceDefPtr virDomainDeviceDefParse(const char *xmlStr,
                                               virDomainDefPtr def,
-                                              const char *xmlStr,
+                                              virCapsPtr caps,
+                                              virDomainXMLOptionPtr xmlopt,
                                               unsigned int flags);
-virDomainDefPtr virDomainDefParseString(virCapsPtr caps,
-                                        const char *xmlStr,
+virDomainDefPtr virDomainDefParseString(const char *xmlStr,
+                                        virCapsPtr caps,
+                                        virDomainXMLOptionPtr xmlopt,
                                         unsigned int expectedVirtTypes,
                                         unsigned int flags);
-virDomainDefPtr virDomainDefParseFile(virCapsPtr caps,
-                                      const char *filename,
+virDomainDefPtr virDomainDefParseFile(const char *filename,
+                                      virCapsPtr caps,
+                                      virDomainXMLOptionPtr xmlopt,
                                       unsigned int expectedVirtTypes,
                                       unsigned int flags);
-virDomainDefPtr virDomainDefParseNode(virCapsPtr caps,
-                                      xmlDocPtr doc,
+virDomainDefPtr virDomainDefParseNode(xmlDocPtr doc,
                                       xmlNodePtr root,
+                                      virCapsPtr caps,
+                                      virDomainXMLOptionPtr xmlopt,
                                       unsigned int expectedVirtTypes,
                                       unsigned int flags);
 
@@ -2049,6 +2238,8 @@ int virDomainEmulatorPinAdd(virDomainDefPtr def,
 
 int virDomainEmulatorPinDel(virDomainDefPtr def);
 
+void virDomainRNGDefFree(virDomainRNGDefPtr def);
+
 int virDomainDiskIndexByName(virDomainDefPtr def, const char *name,
                              bool allow_ambiguous);
 const char *virDomainDiskPathByName(virDomainDefPtr, const char *name);
@@ -2056,7 +2247,8 @@ int virDomainDiskInsert(virDomainDefPtr def,
                         virDomainDiskDefPtr disk);
 void virDomainDiskInsertPreAlloced(virDomainDefPtr def,
                                    virDomainDiskDefPtr disk);
-int virDomainDiskDefAssignAddress(virCapsPtr caps, virDomainDiskDefPtr def);
+int virDomainDiskDefAssignAddress(virDomainXMLOptionPtr xmlopt,
+                                  virDomainDiskDefPtr def);
 
 virDomainDiskDefPtr
 virDomainDiskRemove(virDomainDefPtr def, size_t i);
@@ -2130,7 +2322,7 @@ int virDomainSaveXML(const char *configDir,
 
 int virDomainSaveConfig(const char *configDir,
                         virDomainDefPtr def);
-int virDomainSaveStatus(virCapsPtr caps,
+int virDomainSaveStatus(virDomainXMLOptionPtr xmlopt,
                         const char *statusDir,
                         virDomainObjPtr obj) ATTRIBUTE_RETURN_CHECK;
 
@@ -2138,14 +2330,15 @@ typedef void (*virDomainLoadConfigNotify)(virDomainObjPtr dom,
                                           int newDomain,
                                           void *opaque);
 
-int virDomainLoadAllConfigs(virCapsPtr caps,
-                            virDomainObjListPtr doms,
-                            const char *configDir,
-                            const char *autostartDir,
-                            int liveStatus,
-                            unsigned int expectedVirtTypes,
-                            virDomainLoadConfigNotify notify,
-                            void *opaque);
+int virDomainObjListLoadAllConfigs(virDomainObjListPtr doms,
+                                   const char *configDir,
+                                   const char *autostartDir,
+                                   int liveStatus,
+                                   virCapsPtr caps,
+                                   virDomainXMLOptionPtr xmlopt,
+                                   unsigned int expectedVirtTypes,
+                                   virDomainLoadConfigNotify notify,
+                                   void *opaque);
 
 int virDomainDeleteConfig(const char *configDir,
                           const char *autostartDir,
@@ -2163,10 +2356,6 @@ int virDomainFSIndexByName(virDomainDefPtr def, const char *name);
 int virDomainVideoDefaultType(virDomainDefPtr def);
 int virDomainVideoDefaultRAM(virDomainDefPtr def, int type);
 
-int virDomainObjIsDuplicate(virDomainObjListPtr doms,
-                            virDomainDefPtr def,
-                            unsigned int check_active);
-
 int virDomainObjListNumOfDomains(virDomainObjListPtr doms, int active);
 
 int virDomainObjListGetActiveIDs(virDomainObjListPtr doms,
@@ -2175,6 +2364,13 @@ int virDomainObjListGetActiveIDs(virDomainObjListPtr doms,
 int virDomainObjListGetInactiveNames(virDomainObjListPtr doms,
                                      char **const names,
                                      int maxnames);
+
+typedef int (*virDomainObjListIterator)(virDomainObjPtr dom,
+                                        void *opaque);
+
+int virDomainObjListForEach(virDomainObjListPtr doms,
+                            virDomainObjListIterator callback,
+                            void *opaque);
 
 typedef int (*virDomainSmartcardDefIterator)(virDomainDefPtr def,
                                              virDomainSmartcardDefPtr dev,
@@ -2221,10 +2417,13 @@ virSecurityDeviceLabelDefPtr
 virDomainChrDefGetSecurityLabelDef(virDomainChrDefPtr def, const char *model);
 
 virSecurityLabelDefPtr
-virDomainDefAddSecurityLabelDef(virDomainDefPtr def, const char *model);
+virDomainDefGenSecurityLabelDef(const char *model);
 
 virSecurityDeviceLabelDefPtr
-virDomainDiskDefAddSecurityLabelDef(virDomainDiskDefPtr def, const char *model);
+virDomainDiskDefGenSecurityLabelDef(const char *model);
+
+void virSecurityLabelDefFree(virSecurityLabelDefPtr def);
+void virSecurityDeviceLabelDefFree(virSecurityDeviceLabelDefPtr def);
 
 typedef const char* (*virEventActionToStringFunc)(int type);
 typedef int (*virEventActionFromStringFunc)(const char *type);
@@ -2257,6 +2456,7 @@ VIR_ENUM_DECL(virDomainIoEventFd)
 VIR_ENUM_DECL(virDomainVirtioEventIdx)
 VIR_ENUM_DECL(virDomainDiskCopyOnRead)
 VIR_ENUM_DECL(virDomainController)
+VIR_ENUM_DECL(virDomainControllerModelPCI)
 VIR_ENUM_DECL(virDomainControllerModelSCSI)
 VIR_ENUM_DECL(virDomainControllerModelUSB)
 VIR_ENUM_DECL(virDomainFS)
@@ -2303,9 +2503,11 @@ VIR_ENUM_DECL(virDomainGraphicsSpicePlaybackCompression)
 VIR_ENUM_DECL(virDomainGraphicsSpiceStreamingMode)
 VIR_ENUM_DECL(virDomainGraphicsSpiceClipboardCopypaste)
 VIR_ENUM_DECL(virDomainGraphicsSpiceMouseMode)
-VIR_ENUM_DECL(virDomainNumatuneMemMode)
-VIR_ENUM_DECL(virDomainNumatuneMemPlacementMode)
 VIR_ENUM_DECL(virDomainHyperv)
+VIR_ENUM_DECL(virDomainRNGModel)
+VIR_ENUM_DECL(virDomainRNGBackend)
+VIR_ENUM_DECL(virDomainTPMModel)
+VIR_ENUM_DECL(virDomainTPMBackend)
 /* from libvirt.h */
 VIR_ENUM_DECL(virDomainState)
 VIR_ENUM_DECL(virDomainNostateReason)
@@ -2366,10 +2568,20 @@ VIR_ENUM_DECL(virDomainStartupPolicy)
                  VIR_CONNECT_LIST_DOMAINS_FILTERS_AUTOSTART   | \
                  VIR_CONNECT_LIST_DOMAINS_FILTERS_SNAPSHOT)
 
-int virDomainList(virConnectPtr conn, virHashTablePtr domobjs,
-                  virDomainPtr **domains, unsigned int flags);
+int virDomainObjListExport(virDomainObjListPtr doms,
+                           virConnectPtr conn,
+                           virDomainPtr **domains,
+                           unsigned int flags);
 
 virDomainVcpuPinDefPtr virDomainLookupVcpuPin(virDomainDefPtr def,
                                               int vcpuid);
+
+int
+virDomainDefMaybeAddController(virDomainDefPtr def,
+                               int type,
+                               int idx,
+                               int model);
+
+char *virDomainDefGetDefaultEmulator(virDomainDefPtr def, virCapsPtr caps);
 
 #endif /* __DOMAIN_CONF_H */

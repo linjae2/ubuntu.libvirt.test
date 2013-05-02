@@ -51,7 +51,7 @@ struct uml_driver {
     unsigned long umlVersion;
     int nextvmid;
 
-    virDomainObjList domains;
+    virDomainObjListPtr domains;
     size_t nactive;
 
     char *configDir;
@@ -63,6 +63,7 @@ struct uml_driver {
     int inotifyWatch;
 
     virCapsPtr caps;
+    virDomainXMLOptionPtr xmlopt;
 
     /* Event handling */
     virDomainEventStatePtr domainEventState;

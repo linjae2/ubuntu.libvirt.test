@@ -149,6 +149,17 @@
                   </attribute>
                 </element>
               </optional>
+              <optional>
+                <element name="driver">
+                  <attribute name="name">
+                    <choice>
+                      <value>kvm</value>
+                      <value>vfio</value>
+                    </choice>
+                  </attribute>
+                  <empty/>
+                </element>
+              </optional>
             </interleave>
           </element>
         </optional>
@@ -278,10 +289,18 @@
                 </zeroOrMore>
                 <zeroOrMore>
                   <element name="host">
-                    <optional>
-                      <attribute name="mac"><ref name="uniMacAddr"/></attribute>
-                    </optional>
-                    <attribute name="name"><text/></attribute>
+                    <choice>
+                      <group>
+                        <choice>
+                          <attribute name="mac"><ref name="uniMacAddr"/></attribute>
+                          <attribute name="id"><ref name="DUID"/></attribute>
+                        </choice>
+                        <optional>
+                          <attribute name="name"><text/></attribute>
+                        </optional>
+                      </group>
+                      <attribute name="name"><text/></attribute>
+                    </choice>
                     <attribute name="ip"><ref name="ipAddr"/></attribute>
                   </element>
                 </zeroOrMore>

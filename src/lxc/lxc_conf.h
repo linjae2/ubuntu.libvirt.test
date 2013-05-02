@@ -32,9 +32,10 @@
 # include "domain_event.h"
 # include "capabilities.h"
 # include "virthread.h"
-# include "vircgroup.h"
 # include "security/security_manager.h"
 # include "configmake.h"
+# include "vircgroup.h"
+# include "virsysinfo.h"
 # include "virusb.h"
 
 # define LXC_DRIVER_NAME "LXC"
@@ -51,14 +52,17 @@ struct _virLXCDriver {
     virMutex lock;
 
     virCapsPtr caps;
+    virDomainXMLOptionPtr xmlopt;
 
     virCgroupPtr cgroup;
+
+    virSysinfoDefPtr hostsysinfo;
 
     size_t nactive;
     virStateInhibitCallback inhibitCallback;
     void *inhibitOpaque;
 
-    virDomainObjList domains;
+    virDomainObjListPtr domains;
     char *configDir;
     char *autostartDir;
     char *stateDir;
@@ -66,7 +70,7 @@ struct _virLXCDriver {
     int log_libvirtd;
     int have_netns;
 
-    usbDeviceList *activeUsbHostdevs;
+    virUSBDeviceListPtr activeUsbHostdevs;
 
     virDomainEventStatePtr domainEventState;
 
@@ -83,6 +87,7 @@ struct _virLXCDriver {
 
 int lxcLoadDriverConfig(virLXCDriverPtr driver);
 virCapsPtr lxcCapsInit(virLXCDriverPtr driver);
+virDomainXMLOptionPtr lxcDomainXMLConfInit(void);
 
 static inline void lxcDriverLock(virLXCDriverPtr driver)
 {

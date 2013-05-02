@@ -1,7 +1,7 @@
 /*
  * capabilities.c: hypervisor capabilities
  *
- * Copyright (C) 2006-2008, 2010-2011 Red Hat, Inc.
+ * Copyright (C) 2006-2008, 2010-2011, 2013 Red Hat, Inc.
  * Copyright (C) 2006-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -40,6 +40,22 @@ VIR_ENUM_DECL(virCapsHostPMTarget)
 VIR_ENUM_IMPL(virCapsHostPMTarget, VIR_NODE_SUSPEND_TARGET_LAST,
               "suspend_mem", "suspend_disk", "suspend_hybrid");
 
+static virClassPtr virCapsClass;
+static void virCapabilitiesDispose(void *obj);
+
+static int virCapabilitiesOnceInit(void)
+{
+    if (!(virCapsClass = virClassNew(virClassForObject(),
+                                     "virCaps",
+                                     sizeof(virCaps),
+                                     virCapabilitiesDispose)))
+        return -1;
+
+    return 0;
+}
+
+VIR_ONCE_GLOBAL_INIT(virCapabilities)
+
 /**
  * virCapabilitiesNew:
  * @hostarch: host machine architecture
@@ -55,7 +71,10 @@ virCapabilitiesNew(virArch hostarch,
 {
     virCapsPtr caps;
 
-    if (VIR_ALLOC(caps) < 0)
+    if (virCapabilitiesInitialize() < 0)
+        return NULL;
+
+    if (!(caps = virObjectNew(virCapsClass)))
         return NULL;
 
     caps->host.arch = hostarch;
@@ -165,17 +184,11 @@ virCapabilitiesFreeNUMAInfo(virCapsPtr caps)
     caps->host.nnumaCell = 0;
 }
 
-/**
- * virCapabilitiesFree:
- * @caps: object to free
- *
- * Free all memory associated with capabilities
- */
-void
-virCapabilitiesFree(virCapsPtr caps) {
+static void
+virCapabilitiesDispose(void *object)
+{
+    virCapsPtr caps = object;
     int i;
-    if (caps == NULL)
-        return;
 
     for (i = 0 ; i < caps->nguests ; i++)
         virCapabilitiesFreeGuest(caps->guests[i]);
@@ -198,8 +211,6 @@ virCapabilitiesFree(virCapsPtr caps) {
     VIR_FREE(caps->host.secModels);
 
     virCPUDefFree(caps->host.cpu);
-
-    VIR_FREE(caps);
 }
 
 
@@ -262,6 +273,7 @@ int
 virCapabilitiesAddHostNUMACell(virCapsPtr caps,
                                int num,
                                int ncpus,
+                               unsigned long long mem,
                                virCapsHostNUMACellCPUPtr cpus)
 {
     virCapsHostNUMACellPtr cell;
@@ -275,6 +287,7 @@ virCapabilitiesAddHostNUMACell(virCapsPtr caps,
 
     cell->ncpus = ncpus;
     cell->num = num;
+    cell->mem = mem;
     cell->cpus = cpus;
 
     caps->host.numaCell[caps->host.nnumaCell++] = cell;
@@ -701,6 +714,13 @@ virCapabilitiesFormatNUMATopology(virBufferPtr xml,
     virBufferAsprintf(xml, "      <cells num='%zu'>\n", ncells);
     for (i = 0; i < ncells; i++) {
         virBufferAsprintf(xml, "        <cell id='%d'>\n", cells[i]->num);
+
+        /* Print out the numacell memory total if it is available */
+        if (cells[i]->mem)
+            virBufferAsprintf(xml,
+                              "          <memory unit='KiB'>%llu</memory>\n",
+                              cells[i]->mem);
+
         virBufferAsprintf(xml, "          <cpus num='%d'>\n", cells[i]->ncpus);
         for (j = 0; j < cells[i]->ncpus; j++) {
             virBufferAsprintf(xml, "            <cpu id='%d'",
@@ -900,28 +920,4 @@ virCapabilitiesFormatXML(virCapsPtr caps)
     }
 
     return virBufferContentAndReset(&xml);
-}
-
-extern void
-virCapabilitiesSetMacPrefix(virCapsPtr caps,
-                            const unsigned char prefix[VIR_MAC_PREFIX_BUFLEN])
-{
-    memcpy(caps->macPrefix, prefix, sizeof(caps->macPrefix));
-}
-
-extern void
-virCapabilitiesGenerateMac(virCapsPtr caps,
-                           virMacAddrPtr mac)
-{
-    virMacAddrGenerate(caps->macPrefix, mac);
-}
-
-extern void
-virCapabilitiesSetEmulatorRequired(virCapsPtr caps) {
-    caps->emulatorRequired = 1;
-}
-
-extern unsigned int
-virCapabilitiesIsEmulatorRequired(virCapsPtr caps) {
-    return caps->emulatorRequired;
 }

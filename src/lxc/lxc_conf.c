@@ -27,6 +27,7 @@
 #include <config.h>
 
 #include "lxc_conf.h"
+#include "lxc_domain.h"
 #include "nodeinfo.h"
 #include "virerror.h"
 #include "virconf.h"
@@ -40,12 +41,6 @@
 
 #define VIR_FROM_THIS VIR_FROM_LXC
 
-static int lxcDefaultConsoleType(const char *ostype ATTRIBUTE_UNUSED,
-                                 virArch arch ATTRIBUTE_UNUSED)
-{
-    return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_LXC;
-}
-
 
 /* Functions */
 virCapsPtr lxcCapsInit(virLXCDriverPtr driver)
@@ -57,8 +52,6 @@ virCapsPtr lxcCapsInit(virLXCDriverPtr driver)
     if ((caps = virCapabilitiesNew(virArchFromHost(),
                                    0, 0)) == NULL)
         goto error;
-
-    caps->defaultConsoleTargetType = lxcDefaultConsoleType;
 
     /* Some machines have problematic NUMA toplogy causing
      * unexpected failures. We don't want to break the QEMU
@@ -77,9 +70,6 @@ virCapsPtr lxcCapsInit(virLXCDriverPtr driver)
                        "%s", _("cannot get the host uuid"));
         goto error;
     }
-
-    /* XXX shouldn't 'borrow' KVM's prefix */
-    virCapabilitiesSetMacPrefix(caps, (unsigned char []){ 0x52, 0x54, 0x00 });
 
     if ((guest = virCapabilitiesAddGuest(caps,
                                          "exe",
@@ -118,9 +108,6 @@ virCapsPtr lxcCapsInit(virLXCDriverPtr driver)
             goto error;
     }
 
-    /* LXC Requires an emulator in the XML */
-    virCapabilitiesSetEmulatorRequired(caps);
-
     if (driver) {
         /* Security driver data */
         const char *doi, *model;
@@ -150,9 +137,19 @@ no_memory:
     virReportOOMError();
 
 error:
-    virCapabilitiesFree(caps);
+    virObjectUnref(caps);
     return NULL;
 }
+
+
+virDomainXMLOptionPtr
+lxcDomainXMLConfInit(void)
+{
+    return virDomainXMLOptionNew(&virLXCDriverDomainDefParserConfig,
+                                 &virLXCDriverPrivateDataCallbacks,
+                                 NULL);
+}
+
 
 int lxcLoadDriverConfig(virLXCDriverPtr driver)
 {

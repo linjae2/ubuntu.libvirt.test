@@ -43,9 +43,13 @@
  * "capabilities" command
  */
 static const vshCmdInfo info_capabilities[] = {
-    {"help", N_("capabilities")},
-    {"desc", N_("Returns capabilities of hypervisor/driver.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("capabilities")
+    },
+    {.name = "desc",
+     .data = N_("Returns capabilities of hypervisor/driver.")
+    },
+    {.name = NULL}
 };
 
 static bool
@@ -64,82 +68,25 @@ cmdCapabilities(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
 }
 
 /*
- * "connect" command
- */
-static const vshCmdInfo info_connect[] = {
-    {"help", N_("(re)connect to hypervisor")},
-    {"desc",
-     N_("Connect to local hypervisor. This is built-in command after shell start up.")},
-    {NULL, NULL}
-};
-
-static const vshCmdOptDef opts_connect[] = {
-    {.name = "name",
-     .type = VSH_OT_DATA,
-     .flags = VSH_OFLAG_EMPTY_OK,
-     .help = N_("hypervisor connection URI")
-    },
-    {.name = "readonly",
-     .type = VSH_OT_BOOL,
-     .flags = 0,
-     .help = N_("read-only connection")
-    },
-    {.name = NULL}
-};
-
-static bool
-cmdConnect(vshControl *ctl, const vshCmd *cmd)
-{
-    bool ro = vshCommandOptBool(cmd, "readonly");
-    const char *name = NULL;
-
-    if (ctl->conn) {
-        int ret;
-        if ((ret = virConnectClose(ctl->conn)) != 0) {
-            vshError(ctl, _("Failed to disconnect from the hypervisor, %d leaked reference(s)"), ret);
-            return false;
-        }
-        ctl->conn = NULL;
-    }
-
-    VIR_FREE(ctl->name);
-    if (vshCommandOptString(cmd, "name", &name) < 0) {
-        vshError(ctl, "%s", _("Please specify valid connection URI"));
-        return false;
-    }
-    ctl->name = vshStrdup(ctl, name);
-
-    ctl->useGetInfo = false;
-    ctl->useSnapshotOld = false;
-    ctl->readonly = ro;
-
-    ctl->conn = virConnectOpenAuth(ctl->name, virConnectAuthPtrDefault,
-                                   ctl->readonly ? VIR_CONNECT_RO : 0);
-
-    if (!ctl->conn)
-        vshError(ctl, "%s", _("Failed to connect to the hypervisor"));
-
-    return !!ctl->conn;
-}
-
-/*
  * "freecell" command
  */
 static const vshCmdInfo info_freecell[] = {
-    {"help", N_("NUMA free memory")},
-    {"desc", N_("display available free memory for the NUMA cell.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("NUMA free memory")
+    },
+    {.name = "desc",
+     .data = N_("display available free memory for the NUMA cell.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_freecell[] = {
     {.name = "cellno",
      .type = VSH_OT_INT,
-     .flags = 0,
      .help = N_("NUMA cell number")
     },
     {.name = "all",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("show free memory for all NUMA cells")
     },
     {.name = NULL}
@@ -148,35 +95,29 @@ static const vshCmdOptDef opts_freecell[] = {
 static bool
 cmdFreecell(vshControl *ctl, const vshCmd *cmd)
 {
-    bool func_ret = false;
-    int ret;
-    int cell = -1, cell_given;
-    unsigned long long memory;
+    bool ret = false;
+    int cell = -1;
+    unsigned long long memory = 0;
     xmlNodePtr *nodes = NULL;
     unsigned long nodes_cnt;
     unsigned long *nodes_id = NULL;
     unsigned long long *nodes_free = NULL;
-    int all_given;
+    bool all = vshCommandOptBool(cmd, "all");
+    bool cellno = vshCommandOptBool(cmd, "cellno");
     int i;
     char *cap_xml = NULL;
     xmlDocPtr xml = NULL;
     xmlXPathContextPtr ctxt = NULL;
 
-    if ((cell_given = vshCommandOptInt(cmd, "cellno", &cell)) < 0) {
+    VSH_EXCLUSIVE_OPTIONS_VAR(all, cellno);
+
+    if (cellno && vshCommandOptInt(cmd, "cellno", &cell) < 0) {
         vshError(ctl, "%s", _("cell number has to be a number"));
-        goto cleanup;
-    }
-    all_given = vshCommandOptBool(cmd, "all");
-
-    if (all_given && cell_given) {
-        vshError(ctl, "%s", _("--cellno and --all are mutually exclusive. "
-                              "Please choose only one."));
-        goto cleanup;
+        return false;
     }
 
-    if (all_given) {
-        cap_xml = virConnectGetCapabilities(ctl->conn);
-        if (!cap_xml) {
+    if (all) {
+        if (!(cap_xml = virConnectGetCapabilities(ctl->conn))) {
             vshError(ctl, "%s", _("unable to get node capabilities"));
             goto cleanup;
         }
@@ -186,6 +127,7 @@ cmdFreecell(vshControl *ctl, const vshCmd *cmd)
             vshError(ctl, "%s", _("unable to get node capabilities"));
             goto cleanup;
         }
+
         nodes_cnt = virXPathNodeSet("/capabilities/host/topology/cells/cell",
                                     ctxt, &nodes);
 
@@ -208,15 +150,14 @@ cmdFreecell(vshControl *ctl, const vshCmd *cmd)
             }
             VIR_FREE(val);
             nodes_id[i]=id;
-            ret = virNodeGetCellsFreeMemory(ctl->conn, &(nodes_free[i]), id, 1);
-            if (ret != 1) {
+            if (virNodeGetCellsFreeMemory(ctl->conn, &(nodes_free[i]),
+                                          id, 1) != 1) {
                 vshError(ctl, _("failed to get free memory for NUMA node "
                                 "number: %lu"), id);
                 goto cleanup;
             }
         }
 
-        memory = 0;
         for (cell = 0; cell < nodes_cnt; cell++) {
             vshPrint(ctl, "%5lu: %10llu KiB\n", nodes_id[cell],
                     (nodes_free[cell]/1024));
@@ -226,23 +167,20 @@ cmdFreecell(vshControl *ctl, const vshCmd *cmd)
         vshPrintExtra(ctl, "--------------------\n");
         vshPrintExtra(ctl, "%5s: %10llu KiB\n", _("Total"), memory/1024);
     } else {
-        if (!cell_given) {
-            memory = virNodeGetFreeMemory(ctl->conn);
-            if (memory == 0)
+        if (cellno) {
+            if (virNodeGetCellsFreeMemory(ctl->conn, &memory, cell, 1) != 1)
                 goto cleanup;
-        } else {
-            ret = virNodeGetCellsFreeMemory(ctl->conn, &memory, cell, 1);
-            if (ret != 1)
-                goto cleanup;
-        }
 
-        if (cell == -1)
-            vshPrint(ctl, "%s: %llu KiB\n", _("Total"), (memory/1024));
-        else
             vshPrint(ctl, "%d: %llu KiB\n", cell, (memory/1024));
+        } else {
+            if ((memory = virNodeGetFreeMemory(ctl->conn)) == 0)
+                goto cleanup;
+
+            vshPrint(ctl, "%s: %llu KiB\n", _("Total"), (memory/1024));
+        }
     }
 
-    func_ret = true;
+    ret = true;
 
 cleanup:
     xmlXPathFreeContext(ctxt);
@@ -251,16 +189,20 @@ cleanup:
     VIR_FREE(nodes_free);
     VIR_FREE(nodes_id);
     VIR_FREE(cap_xml);
-    return func_ret;
+    return ret;
 }
 
 /*
  * "nodeinfo" command
  */
 static const vshCmdInfo info_nodeinfo[] = {
-    {"help", N_("node information")},
-    {"desc", N_("Returns basic information about the node.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("node information")
+    },
+    {.name = "desc",
+     .data = N_("Returns basic information about the node.")
+    },
+    {.name = NULL}
 };
 
 static bool
@@ -288,10 +230,14 @@ cmdNodeinfo(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
  * "nodecpumap" command
  */
 static const vshCmdInfo info_node_cpumap[] = {
-    {"help", N_("node cpu map")},
-    {"desc", N_("Displays the node's total number of CPUs, the number of"
-                " online CPUs and the list of online CPUs.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("node cpu map")
+    },
+    {.name = "desc",
+     .data = N_("Displays the node's total number of CPUs, the number of"
+                " online CPUs and the list of online CPUs.")
+    },
+    {.name = NULL}
 };
 
 static bool
@@ -327,20 +273,22 @@ cmdNodeCpuMap(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
  * "nodecpustats" command
  */
 static const vshCmdInfo info_nodecpustats[] = {
-    {"help", N_("Prints cpu stats of the node.")},
-    {"desc", N_("Returns cpu stats of the node, in nanoseconds.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("Prints cpu stats of the node.")
+    },
+    {.name = "desc",
+     .data = N_("Returns cpu stats of the node, in nanoseconds.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_node_cpustats[] = {
     {.name = "cpu",
      .type = VSH_OT_INT,
-     .flags = 0,
      .help = N_("prints specified cpu statistics only.")
     },
     {.name = "percent",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("prints by percentage during 1 second.")
     },
     {.name = NULL}
@@ -460,15 +408,18 @@ cmdNodeCpuStats(vshControl *ctl, const vshCmd *cmd)
  * "nodememstats" command
  */
 static const vshCmdInfo info_nodememstats[] = {
-    {"help", N_("Prints memory stats of the node.")},
-    {"desc", N_("Returns memory stats of the node, in kilobytes.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("Prints memory stats of the node.")
+    },
+    {.name = "desc",
+     .data = N_("Returns memory stats of the node, in kilobytes.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_node_memstats[] = {
     {.name = "cell",
      .type = VSH_OT_INT,
-     .flags = 0,
      .help = N_("prints specified cell statistics only.")
     },
     {.name = NULL}
@@ -522,10 +473,14 @@ cmdNodeMemStats(vshControl *ctl, const vshCmd *cmd)
  * "nodesuspend" command
  */
 static const vshCmdInfo info_nodesuspend[] = {
-    {"help", N_("suspend the host node for a given time duration")},
-    {"desc", N_("Suspend the host node for a given time duration "
-                               "and attempt to resume thereafter.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("suspend the host node for a given time duration")
+    },
+    {.name = "desc",
+     .data = N_("Suspend the host node for a given time duration "
+                               "and attempt to resume thereafter.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_node_suspend[] = {
@@ -550,10 +505,8 @@ cmdNodeSuspend(vshControl *ctl, const vshCmd *cmd)
     unsigned int suspendTarget;
     long long duration;
 
-    if (vshCommandOptString(cmd, "target", &target) < 0) {
-        vshError(ctl, _("Invalid target argument"));
+    if (vshCommandOptStringReq(ctl, cmd, "target", &target) < 0)
         return false;
-    }
 
     if (vshCommandOptLongLong(cmd, "duration", &duration) < 0) {
         vshError(ctl, _("Invalid duration argument"));
@@ -587,10 +540,13 @@ cmdNodeSuspend(vshControl *ctl, const vshCmd *cmd)
  * "sysinfo" command
  */
 static const vshCmdInfo info_sysinfo[] = {
-    {"help", N_("print the hypervisor sysinfo")},
-    {"desc",
-     N_("output an XML string for the hypervisor sysinfo, if available")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("print the hypervisor sysinfo")
+    },
+    {.name = "desc",
+     .data = N_("output an XML string for the hypervisor sysinfo, if available")
+    },
+    {.name = NULL}
 };
 
 static bool
@@ -614,9 +570,13 @@ cmdSysinfo(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
  * "hostname" command
  */
 static const vshCmdInfo info_hostname[] = {
-    {"help", N_("print the hypervisor hostname")},
-    {"desc", ""},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("print the hypervisor hostname")
+    },
+    {.name = "desc",
+     .data = ""
+    },
+    {.name = NULL}
 };
 
 static bool
@@ -640,9 +600,13 @@ cmdHostname(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
  * "uri" command
  */
 static const vshCmdInfo info_uri[] = {
-    {"help", N_("print the hypervisor canonical URI")},
-    {"desc", ""},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("print the hypervisor canonical URI")
+    },
+    {.name = "desc",
+     .data = ""
+    },
+    {.name = NULL}
 };
 
 static bool
@@ -666,15 +630,18 @@ cmdURI(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
  * "version" command
  */
 static const vshCmdInfo info_version[] = {
-    {"help", N_("show version")},
-    {"desc", N_("Display the system version information.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("show version")
+    },
+    {.name = "desc",
+     .data = N_("Display the system version information.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_version[] = {
     {.name = "daemon",
      .type = VSH_OT_BOOL,
-     .flags = VSH_OFLAG_NONE,
      .help = N_("report daemon version too")
     },
     {.name = NULL}
@@ -773,19 +740,16 @@ static const vshCmdInfo info_node_memory_tune[] = {
 static const vshCmdOptDef opts_node_memory_tune[] = {
     {.name = "shm-pages-to-scan",
      .type = VSH_OT_INT,
-     .flags = VSH_OFLAG_NONE,
      .help =  N_("number of pages to scan before the shared memory service "
                  "goes to sleep")
     },
     {.name = "shm-sleep-millisecs",
      .type = VSH_OT_INT,
-     .flags = VSH_OFLAG_NONE,
      .help =  N_("number of millisecs the shared memory service should "
                  "sleep before next scan")
     },
     {.name = "shm-merge-across-nodes",
      .type = VSH_OT_INT,
-     .flags = VSH_OFLAG_NONE,
      .help =  N_("Specifies if pages from different numa nodes can be merged")
     },
     {.name = NULL}
@@ -881,20 +845,77 @@ error:
 }
 
 const vshCmdDef hostAndHypervisorCmds[] = {
-    {"capabilities", cmdCapabilities, NULL, info_capabilities, 0},
-    {"connect", cmdConnect, opts_connect, info_connect,
-     VSH_CMD_FLAG_NOCONNECT},
-    {"freecell", cmdFreecell, opts_freecell, info_freecell, 0},
-    {"hostname", cmdHostname, NULL, info_hostname, 0},
-    {"node-memory-tune", cmdNodeMemoryTune,
-     opts_node_memory_tune, info_node_memory_tune, 0},
-    {"nodecpumap", cmdNodeCpuMap, NULL, info_node_cpumap, 0},
-    {"nodecpustats", cmdNodeCpuStats, opts_node_cpustats, info_nodecpustats, 0},
-    {"nodeinfo", cmdNodeinfo, NULL, info_nodeinfo, 0},
-    {"nodememstats", cmdNodeMemStats, opts_node_memstats, info_nodememstats, 0},
-    {"nodesuspend", cmdNodeSuspend, opts_node_suspend, info_nodesuspend, 0},
-    {"sysinfo", cmdSysinfo, NULL, info_sysinfo, 0},
-    {"uri", cmdURI, NULL, info_uri, 0},
-    {"version", cmdVersion, opts_version, info_version, 0},
-    {NULL, NULL, NULL, NULL, 0}
+    {.name = "capabilities",
+     .handler = cmdCapabilities,
+     .opts = NULL,
+     .info = info_capabilities,
+     .flags = 0
+    },
+    {.name = "freecell",
+     .handler = cmdFreecell,
+     .opts = opts_freecell,
+     .info = info_freecell,
+     .flags = 0
+    },
+    {.name = "hostname",
+     .handler = cmdHostname,
+     .opts = NULL,
+     .info = info_hostname,
+     .flags = 0
+    },
+    {.name = "node-memory-tune",
+     .handler = cmdNodeMemoryTune,
+     .opts = opts_node_memory_tune,
+     .info = info_node_memory_tune,
+     .flags = 0
+    },
+    {.name = "nodecpumap",
+     .handler = cmdNodeCpuMap,
+     .opts = NULL,
+     .info = info_node_cpumap,
+     .flags = 0
+    },
+    {.name = "nodecpustats",
+     .handler = cmdNodeCpuStats,
+     .opts = opts_node_cpustats,
+     .info = info_nodecpustats,
+     .flags = 0
+    },
+    {.name = "nodeinfo",
+     .handler = cmdNodeinfo,
+     .opts = NULL,
+     .info = info_nodeinfo,
+     .flags = 0
+    },
+    {.name = "nodememstats",
+     .handler = cmdNodeMemStats,
+     .opts = opts_node_memstats,
+     .info = info_nodememstats,
+     .flags = 0
+    },
+    {.name = "nodesuspend",
+     .handler = cmdNodeSuspend,
+     .opts = opts_node_suspend,
+     .info = info_nodesuspend,
+     .flags = 0
+    },
+    {.name = "sysinfo",
+     .handler = cmdSysinfo,
+     .opts = NULL,
+     .info = info_sysinfo,
+     .flags = 0
+    },
+    {.name = "uri",
+     .handler = cmdURI,
+     .opts = NULL,
+     .info = info_uri,
+     .flags = 0
+    },
+    {.name = "version",
+     .handler = cmdVersion,
+     .opts = opts_version,
+     .info = info_version,
+     .flags = 0
+    },
+    {.name = NULL}
 };

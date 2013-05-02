@@ -2,26 +2,26 @@
    This file is part of the GNU C Library.
 
    This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3 of the License, or
+   it under the terms of the GNU Lesser General Public License as published by
+   the Free Software Foundation; either version 2.1 of the License, or
    (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU Lesser General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
+   You should have received a copy of the GNU Lesser General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #if !_LIBC
+/* Don't use __attribute__ __nonnull__ in this compilation unit.  Otherwise gcc
+   optimizes away the name == NULL test below.  */
+# define _GL_ARG_NONNULL(params)
+
 # define _GL_USE_STDLIB_ALLOC 1
 # include <config.h>
 #endif
-
-/* Don't use __attribute__ __nonnull__ in this compilation unit.  Otherwise gcc
-   optimizes away the name == NULL test below.  */
-#define _GL_ARG_NONNULL(params)
 
 #include <alloca.h>
 

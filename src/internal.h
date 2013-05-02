@@ -181,9 +181,22 @@
 #   endif
 #  endif
 
+/* gcc's handling of attribute nonnull is less than stellar - it does
+ * NOT improve diagnostics, and merely allows gcc to optimize away
+ * null code checks even when the caller manages to pass null in spite
+ * of the attribute, leading to weird crashes.  Coverity, on the other
+ * hand, knows how to do better static analysis based on knowing
+ * whether a parameter is nonnull.  Make this attribute conditional
+ * based on whether we are compiling for real or for analysis, while
+ * still requiring correct gcc syntax when it is turned off.  See also
+ * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=17308 */
 #  ifndef ATTRIBUTE_NONNULL
-#   if __GNUC_PREREQ (3, 3) && STATIC_ANALYSIS
-#    define ATTRIBUTE_NONNULL(m) __attribute__((__nonnull__(m)))
+#   if __GNUC_PREREQ (3, 3)
+#    if STATIC_ANALYSIS
+#     define ATTRIBUTE_NONNULL(m) __attribute__((__nonnull__(m)))
+#    else
+#     define ATTRIBUTE_NONNULL(m) __attribute__(())
+#    endif
 #   else
 #    define ATTRIBUTE_NONNULL(m)
 #   endif
@@ -200,6 +213,19 @@
 #   define ATTRIBUTE_RETURN_CHECK
 #  endif
 # endif				/* __GNUC__ */
+
+
+# if __GNUC_PREREQ (4, 6)
+#  define VIR_WARNINGS_NO_CAST_ALIGN \
+    _Pragma ("GCC diagnostic push") \
+    _Pragma ("GCC diagnostic ignored \"-Wcast-align\"")
+
+#  define VIR_WARNINGS_RESET \
+    _Pragma ("GCC diagnostic pop")
+# else
+#  define VIR_WARNINGS_NO_CAST_ALIGN
+#  define VIR_WARNINGS_RESET
+# endif
 
 /*
  * Use this when passing possibly-NULL strings to printf-a-likes.

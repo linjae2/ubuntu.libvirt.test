@@ -55,15 +55,6 @@ static virCapsGuestMachinePtr *testQemuAllocNewerMachines(int *nmachines)
     return machines;
 }
 
-static int testQemuDefaultConsoleType(const char *ostype ATTRIBUTE_UNUSED,
-                                      virArch arch)
-{
-    if (arch == VIR_ARCH_S390 ||
-        arch == VIR_ARCH_S390X)
-        return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_VIRTIO;
-    else
-        return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_SERIAL;
-}
 
 static int testQemuAddPPC64Guest(virCapsPtr caps)
 {
@@ -92,9 +83,40 @@ error:
     return -1;
 }
 
+static int testQemuAddPPCGuest(virCapsPtr caps)
+{
+    static const char *machine[] = { "g3beige",
+                                     "mac99",
+                                     "prep",
+                                     "ppce500v2" };
+    virCapsGuestMachinePtr *machines = NULL;
+    virCapsGuestPtr guest;
+
+    machines = virCapabilitiesAllocMachines(machine, 1);
+    if (!machines)
+        goto error;
+
+    guest = virCapabilitiesAddGuest(caps, "hvm", VIR_ARCH_PPC,
+                                    "/usr/bin/qemu-system-ppc", NULL,
+                                     1, machines);
+    if (!guest)
+        goto error;
+
+    if (!virCapabilitiesAddGuestDomain(guest, "qemu", NULL, NULL, 0, NULL))
+        goto error;
+
+    return 0;
+
+error:
+    /* No way to free a guest? */
+    virCapabilitiesFreeMachines(machines, 1);
+    return -1;
+}
+
 static int testQemuAddS390Guest(virCapsPtr caps)
 {
-    static const char *s390_machines[] = { "s390-virtio"};
+    static const char *s390_machines[] = { "s390-virtio",
+                                           "s390-ccw-virtio" };
     virCapsGuestMachinePtr *machines = NULL;
     virCapsGuestPtr guest;
 
@@ -119,6 +141,7 @@ error:
     virCapabilitiesFreeMachines(machines, ARRAY_CARDINALITY(s390_machines));
     return -1;
 }
+
 
 virCapsPtr testQemuCapsInit(void) {
     virCapsPtr caps;
@@ -168,13 +191,9 @@ virCapsPtr testQemuCapsInit(void) {
                                    0, 0)) == NULL)
         return NULL;
 
-    caps->defaultConsoleTargetType = testQemuDefaultConsoleType;
-
     if ((caps->host.cpu = virCPUDefCopy(&host_cpu)) == NULL ||
         (machines = testQemuAllocMachines(&nmachines)) == NULL)
         goto cleanup;
-
-    qemuDomainSetNamespaceHooks(caps);
 
     if ((guest = virCapabilitiesAddGuest(caps, "hvm", VIR_ARCH_I686,
                                          "/usr/bin/qemu", NULL,
@@ -242,6 +261,9 @@ virCapsPtr testQemuCapsInit(void) {
     if (testQemuAddPPC64Guest(caps))
         goto cleanup;
 
+    if (testQemuAddPPCGuest(caps))
+        goto cleanup;
+
     if (testQemuAddS390Guest(caps))
         goto cleanup;
 
@@ -261,7 +283,7 @@ virCapsPtr testQemuCapsInit(void) {
 
 cleanup:
     virCapabilitiesFreeMachines(machines, nmachines);
-    virCapabilitiesFree(caps);
+    virObjectUnref(caps);
     return NULL;
 }
 #endif

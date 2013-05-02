@@ -1,7 +1,7 @@
 /*
  * AppArmor security driver for libvirt
  *
- * Copyright (C) 2011 Red Hat, Inc.
+ * Copyright (C) 2011-2013 Red Hat, Inc.
  * Copyright (C) 2009-2010 Canonical Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -306,7 +306,7 @@ reload_profile(virSecurityManagerPtr mgr,
 }
 
 static int
-AppArmorSetSecurityUSBLabel(usbDevice *dev ATTRIBUTE_UNUSED,
+AppArmorSetSecurityUSBLabel(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
                            const char *file, void *opaque)
 {
     struct SDPDOP *ptr = opaque;
@@ -328,8 +328,8 @@ AppArmorSetSecurityUSBLabel(usbDevice *dev ATTRIBUTE_UNUSED,
 }
 
 static int
-AppArmorSetSecurityPCILabel(pciDevice *dev ATTRIBUTE_UNUSED,
-                           const char *file, void *opaque)
+AppArmorSetSecurityPCILabel(virPCIDevicePtr dev ATTRIBUTE_UNUSED,
+                            const char *file, void *opaque)
 {
     struct SDPDOP *ptr = opaque;
     virDomainDefPtr def = ptr->def;
@@ -436,8 +436,7 @@ AppArmorGenSecurityLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
         return rc;
     }
 
-    if ((secdef->label) ||
-        (secdef->model) || (secdef->imagelabel)) {
+    if (secdef->label || secdef->imagelabel) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        "%s",
                        _("security label already defined for VM"));
@@ -461,8 +460,7 @@ AppArmorGenSecurityLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
         goto err;
     }
 
-    secdef->model = strdup(SECURITY_APPARMOR_NAME);
-    if (!secdef->model) {
+    if (!secdef->model && !(secdef->model = strdup(SECURITY_APPARMOR_NAME))) {
         virReportOOMError();
         goto err;
     }
@@ -590,7 +588,8 @@ AppArmorRestoreSecurityAllLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
  * LOCALSTATEDIR/log/libvirt/qemu/<vm name>.log
  */
 static int
-AppArmorSetSecurityProcessLabel(virSecurityManagerPtr mgr, virDomainDefPtr def)
+AppArmorSetSecurityProcessLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+                                virDomainDefPtr def)
 {
     int rc = -1;
     char *profile_name = NULL;
@@ -603,12 +602,12 @@ AppArmorSetSecurityProcessLabel(virSecurityManagerPtr mgr, virDomainDefPtr def)
     if ((profile_name = get_profile_name(def)) == NULL)
         return rc;
 
-    if (STRNEQ(virSecurityManagerGetModel(mgr), secdef->model)) {
+    if (STRNEQ(SECURITY_APPARMOR_NAME, secdef->model)) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("security label driver mismatch: "
                          "\'%s\' model configured for domain, but "
                          "hypervisor driver is \'%s\'."),
-                       secdef->model, virSecurityManagerGetModel(mgr));
+                       secdef->model, SECURITY_APPARMOR_NAME);
         if (use_apparmor() > 0)
             goto clean;
     }
@@ -623,6 +622,45 @@ AppArmorSetSecurityProcessLabel(virSecurityManagerPtr mgr, virDomainDefPtr def)
   clean:
     VIR_FREE(profile_name);
 
+    return rc;
+}
+
+/* Called directly by API user prior to virCommandRun().
+ * virCommandRun() will then call aa_change_profile() (if a
+ * cmd->appArmorProfile has been set) *after forking the child
+ * process*.
+ */
+static int
+AppArmorSetSecurityChildProcessLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+                                     virDomainDefPtr def,
+                                     virCommandPtr cmd)
+{
+    int rc = -1;
+    char *profile_name = NULL;
+    const virSecurityLabelDefPtr secdef =
+        virDomainDefGetSecurityLabelDef(def, SECURITY_APPARMOR_NAME);
+
+    if (!secdef)
+        goto cleanup;
+
+    if (STRNEQ(SECURITY_APPARMOR_NAME, secdef->model)) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("security label driver mismatch: "
+                         "\'%s\' model configured for domain, but "
+                         "hypervisor driver is \'%s\'."),
+                       secdef->model, SECURITY_APPARMOR_NAME);
+        if (use_apparmor() > 0)
+            goto cleanup;
+    }
+
+    if ((profile_name = get_profile_name(def)) == NULL)
+        goto cleanup;
+
+    virCommandSetAppArmorProfile(cmd, profile_name);
+    rc = 0;
+
+  cleanup:
+    VIR_FREE(profile_name);
     return rc;
 }
 
@@ -770,29 +808,43 @@ AppArmorSetSecurityHostdevLabel(virSecurityManagerPtr mgr,
 
     switch (dev->source.subsys.type) {
     case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB: {
-        usbDevice *usb = usbGetDevice(dev->source.subsys.u.usb.bus,
-                                      dev->source.subsys.u.usb.device,
-                                      vroot);
+        virUSBDevicePtr usb =
+            virUSBDeviceNew(dev->source.subsys.u.usb.bus,
+                            dev->source.subsys.u.usb.device,
+                            vroot);
 
         if (!usb)
             goto done;
 
-        ret = usbDeviceFileIterate(usb, AppArmorSetSecurityUSBLabel, ptr);
-        usbFreeDevice(usb);
+        ret = virUSBDeviceFileIterate(usb, AppArmorSetSecurityUSBLabel, ptr);
+        virUSBDeviceFree(usb);
         break;
     }
 
     case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
-        pciDevice *pci = pciGetDevice(dev->source.subsys.u.pci.domain,
-                                      dev->source.subsys.u.pci.bus,
-                                      dev->source.subsys.u.pci.slot,
-                                      dev->source.subsys.u.pci.function);
+        virPCIDevicePtr pci =
+            virPCIDeviceNew(dev->source.subsys.u.pci.addr.domain,
+                            dev->source.subsys.u.pci.addr.bus,
+                            dev->source.subsys.u.pci.addr.slot,
+                            dev->source.subsys.u.pci.addr.function);
 
         if (!pci)
             goto done;
 
-        ret = pciDeviceFileIterate(pci, AppArmorSetSecurityPCILabel, ptr);
-        pciFreeDevice(pci);
+        if (dev->source.subsys.u.pci.backend
+            == VIR_DOMAIN_HOSTDEV_PCI_BACKEND_VFIO) {
+            char *vfioGroupDev = virPCIDeviceGetVFIOGroupDev(pci);
+
+            if (!vfioGroupDev) {
+                virPCIDeviceFree(pci);
+                goto done;
+            }
+            ret = AppArmorSetSecurityPCILabel(pci, vfioGroupDev, ptr);
+            VIR_FREE(vfioGroupDev);
+        } else {
+            ret = virPCIDeviceFileIterate(pci, AppArmorSetSecurityPCILabel, ptr);
+        }
+        virPCIDeviceFree(pci);
         break;
     }
 
@@ -844,9 +896,9 @@ AppArmorRestoreSavedStateLabel(virSecurityManagerPtr mgr,
 }
 
 static int
-AppArmorSetImageFDLabel(virSecurityManagerPtr mgr,
-                        virDomainDefPtr def,
-                        int fd)
+AppArmorSetFDLabel(virSecurityManagerPtr mgr,
+                   virDomainDefPtr def,
+                   int fd)
 {
     int rc = -1;
     char *proc = NULL;
@@ -874,16 +926,6 @@ AppArmorSetImageFDLabel(virSecurityManagerPtr mgr,
 
     return reload_profile(mgr, def, fd_path, true);
 }
-
-/* TODO need code here */
-static int
-AppArmorSetTapFDLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
-                      virDomainDefPtr def ATTRIBUTE_UNUSED,
-                      int fd ATTRIBUTE_UNUSED)
-{
-    return 0;
-}
-
 
 static char *
 AppArmorGetMountOptions(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
@@ -924,6 +966,7 @@ virSecurityDriver virAppArmorSecurityDriver = {
 
     .domainGetSecurityProcessLabel      = AppArmorGetSecurityProcessLabel,
     .domainSetSecurityProcessLabel      = AppArmorSetSecurityProcessLabel,
+    .domainSetSecurityChildProcessLabel = AppArmorSetSecurityChildProcessLabel,
 
     .domainSetSecurityAllLabel          = AppArmorSetSecurityAllLabel,
     .domainRestoreSecurityAllLabel      = AppArmorRestoreSecurityAllLabel,
@@ -934,8 +977,8 @@ virSecurityDriver virAppArmorSecurityDriver = {
     .domainSetSavedStateLabel           = AppArmorSetSavedStateLabel,
     .domainRestoreSavedStateLabel       = AppArmorRestoreSavedStateLabel,
 
-    .domainSetSecurityImageFDLabel      = AppArmorSetImageFDLabel,
-    .domainSetSecurityTapFDLabel        = AppArmorSetTapFDLabel,
+    .domainSetSecurityImageFDLabel      = AppArmorSetFDLabel,
+    .domainSetSecurityTapFDLabel        = AppArmorSetFDLabel,
 
     .domainGetSecurityMountOptions      = AppArmorGetMountOptions,
 };

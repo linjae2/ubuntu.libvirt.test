@@ -50,7 +50,7 @@ vshCommandOptNetworkBy(vshControl *ctl, const vshCmd *cmd,
     if (!vshCmdHasOption(ctl, cmd, optname))
         return NULL;
 
-    if (vshCommandOptString(cmd, optname, &n) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, optname, &n) < 0)
         return NULL;
 
     vshDebug(ctl, VSH_ERR_INFO, "%s: found option <%s>: %s\n",
@@ -82,10 +82,13 @@ vshCommandOptNetworkBy(vshControl *ctl, const vshCmd *cmd,
  * "net-autostart" command
  */
 static const vshCmdInfo info_network_autostart[] = {
-    {"help", N_("autostart a network")},
-    {"desc",
-     N_("Configure a network to be automatically started at boot.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("autostart a network")
+    },
+    {.name = "desc",
+     .data = N_("Configure a network to be automatically started at boot.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_autostart[] = {
@@ -96,7 +99,6 @@ static const vshCmdOptDef opts_network_autostart[] = {
     },
     {.name = "disable",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("disable autostarting")
     },
     {.name = NULL}
@@ -136,9 +138,13 @@ cmdNetworkAutostart(vshControl *ctl, const vshCmd *cmd)
  * "net-create" command
  */
 static const vshCmdInfo info_network_create[] = {
-    {"help", N_("create a network from an XML file")},
-    {"desc", N_("Create a network.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("create a network from an XML file")
+    },
+    {.name = "desc",
+     .data = N_("Create a network.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_create[] = {
@@ -158,7 +164,7 @@ cmdNetworkCreate(vshControl *ctl, const vshCmd *cmd)
     bool ret = true;
     char *buffer;
 
-    if (vshCommandOptString(cmd, "file", &from) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, "file", &from) < 0)
         return false;
 
     if (virFileReadAll(from, VSH_MAX_XML_FILE, &buffer) < 0)
@@ -182,9 +188,13 @@ cmdNetworkCreate(vshControl *ctl, const vshCmd *cmd)
  * "net-define" command
  */
 static const vshCmdInfo info_network_define[] = {
-    {"help", N_("define (but don't start) a network from an XML file")},
-    {"desc", N_("Define a network.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("define (but don't start) a network from an XML file")
+    },
+    {.name = "desc",
+     .data = N_("Define a network.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_define[] = {
@@ -204,7 +214,7 @@ cmdNetworkDefine(vshControl *ctl, const vshCmd *cmd)
     bool ret = true;
     char *buffer;
 
-    if (vshCommandOptString(cmd, "file", &from) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, "file", &from) < 0)
         return false;
 
     if (virFileReadAll(from, VSH_MAX_XML_FILE, &buffer) < 0)
@@ -228,9 +238,13 @@ cmdNetworkDefine(vshControl *ctl, const vshCmd *cmd)
  * "net-destroy" command
  */
 static const vshCmdInfo info_network_destroy[] = {
-    {"help", N_("destroy (stop) a network")},
-    {"desc", N_("Forcefully stop a given network.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("destroy (stop) a network")
+    },
+    {.name = "desc",
+     .data = N_("Forcefully stop a given network.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_destroy[] = {
@@ -267,9 +281,13 @@ cmdNetworkDestroy(vshControl *ctl, const vshCmd *cmd)
  * "net-dumpxml" command
  */
 static const vshCmdInfo info_network_dumpxml[] = {
-    {"help", N_("network information in XML")},
-    {"desc", N_("Output the network information as an XML dump to stdout.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("network information in XML")
+    },
+    {.name = "desc",
+     .data = N_("Output the network information as an XML dump to stdout.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_dumpxml[] = {
@@ -280,7 +298,6 @@ static const vshCmdOptDef opts_network_dumpxml[] = {
     },
     {.name = "inactive",
      .type = VSH_OT_BOOL,
-     .flags = VSH_OFLAG_NONE,
      .help = N_("network information of an inactive domain")
     },
     {.name = NULL}
@@ -319,9 +336,13 @@ cmdNetworkDumpXML(vshControl *ctl, const vshCmd *cmd)
  * "net-info" command
  */
 static const vshCmdInfo info_network_info[] = {
-    {"help", N_("network information")},
-    {"desc", N_("Returns basic information about the network")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("network information")
+    },
+    {.name = "desc",
+     .data = N_("Returns basic information about the network")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_info[] = {
@@ -596,40 +617,38 @@ cleanup:
  * "net-list" command
  */
 static const vshCmdInfo info_network_list[] = {
-    {"help", N_("list networks")},
-    {"desc", N_("Returns list of networks.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("list networks")
+    },
+    {.name = "desc",
+     .data = N_("Returns list of networks.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_list[] = {
     {.name = "inactive",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("list inactive networks")
     },
     {.name = "all",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("list inactive & active networks")
     },
     {.name = "persistent",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("list persistent networks")
     },
     {.name = "transient",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("list transient networks")
     },
     {.name = "autostart",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("list networks with autostart enabled")
     },
     {.name = "no-autostart",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("list networks with autostart disabled")
     },
     {.name = NULL}
@@ -700,9 +719,13 @@ cmdNetworkList(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
  * "net-name" command
  */
 static const vshCmdInfo info_network_name[] = {
-    {"help", N_("convert a network UUID to network name")},
-    {"desc", ""},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("convert a network UUID to network name")
+    },
+    {.name = "desc",
+     .data = ""
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_name[] = {
@@ -732,9 +755,13 @@ cmdNetworkName(vshControl *ctl, const vshCmd *cmd)
  * "net-start" command
  */
 static const vshCmdInfo info_network_start[] = {
-    {"help", N_("start a (previously defined) inactive network")},
-    {"desc", N_("Start a network.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("start a (previously defined) inactive network")
+    },
+    {.name = "desc",
+     .data = N_("Start a network.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_start[] = {
@@ -770,9 +797,13 @@ cmdNetworkStart(vshControl *ctl, const vshCmd *cmd)
  * "net-undefine" command
  */
 static const vshCmdInfo info_network_undefine[] = {
-    {"help", N_("undefine an inactive network")},
-    {"desc", N_("Undefine the configuration for an inactive network.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("undefine an inactive network")
+    },
+    {.name = "desc",
+     .data = N_("Undefine the configuration for an inactive network.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_undefine[] = {
@@ -809,9 +840,13 @@ cmdNetworkUndefine(vshControl *ctl, const vshCmd *cmd)
  * "net-update" command
  */
 static const vshCmdInfo info_network_update[] = {
-    {"help", N_("update parts of an existing network's configuration")},
-    {"desc", ""},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("update parts of an existing network's configuration")
+    },
+    {.name = "desc",
+     .data = ""
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_update[] = {
@@ -838,22 +873,18 @@ static const vshCmdOptDef opts_network_update[] = {
     },
     {.name = "parent-index",
      .type = VSH_OT_INT,
-     .flags = 0,
      .help = N_("which parent object to search through")
     },
     {.name = "config",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("affect next network startup")
     },
     {.name = "live",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("affect running network")
     },
     {.name = "current",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("affect current state of network")
     },
     {.name = NULL}
@@ -889,10 +920,8 @@ cmdNetworkUpdate(vshControl *ctl, const vshCmd *cmd)
     if (!(network = vshCommandOptNetwork(ctl, cmd, NULL)))
         goto cleanup;
 
-    if (vshCommandOptString(cmd, "command", &commandStr) < 0) {
-        vshError(ctl, "%s", _("missing or malformed command argument"));
+    if (vshCommandOptStringReq(ctl, cmd, "command", &commandStr) < 0)
         goto cleanup;
-    }
 
     if (STREQ(commandStr, "add")) {
         /* "add" is a synonym for "add-last" */
@@ -905,10 +934,9 @@ cmdNetworkUpdate(vshControl *ctl, const vshCmd *cmd)
         }
     }
 
-    if (vshCommandOptString(cmd, "section", &sectionStr) < 0) {
-        vshError(ctl, "%s", _("missing or malformed section argument"));
+    if (vshCommandOptStringReq(ctl, cmd, "section", &sectionStr) < 0)
         goto cleanup;
-    }
+
     section = virNetworkSectionTypeFromString(sectionStr);
     if (section <= 0 || section >= VIR_NETWORK_SECTION_LAST) {
         vshError(ctl, _("unrecognized section name '%s'"), sectionStr);
@@ -927,10 +955,8 @@ cmdNetworkUpdate(vshControl *ctl, const vshCmd *cmd)
      * the desired xml.
      */
 
-    if (vshCommandOptString(cmd, "xml", &xml) < 0) {
-        vshError(ctl, "%s", _("malformed or missing xml argument"));
+    if (vshCommandOptStringReq(ctl, cmd, "xml", &xml) < 0)
         goto cleanup;
-    }
 
     if (*xml != '<') {
         /* contents of xmldata is actually the name of a file that
@@ -992,9 +1018,13 @@ cleanup:
  * "net-uuid" command
  */
 static const vshCmdInfo info_network_uuid[] = {
-    {"help", N_("convert a network name to network UUID")},
-    {"desc", ""},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("convert a network name to network UUID")
+    },
+    {.name = "desc",
+     .data = ""
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_uuid[] = {
@@ -1029,9 +1059,13 @@ cmdNetworkUuid(vshControl *ctl, const vshCmd *cmd)
  * "net-edit" command
  */
 static const vshCmdInfo info_network_edit[] = {
-    {"help", N_("edit XML configuration for a network")},
-    {"desc", N_("Edit the XML configuration for a network.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("edit XML configuration for a network")
+    },
+    {.name = "desc",
+     .data = N_("Edit the XML configuration for a network.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_network_edit[] = {
@@ -1097,24 +1131,83 @@ cmdNetworkEdit(vshControl *ctl, const vshCmd *cmd)
 }
 
 const vshCmdDef networkCmds[] = {
-    {"net-autostart", cmdNetworkAutostart, opts_network_autostart,
-     info_network_autostart, 0},
-    {"net-create", cmdNetworkCreate, opts_network_create,
-     info_network_create, 0},
-    {"net-define", cmdNetworkDefine, opts_network_define,
-     info_network_define, 0},
-    {"net-destroy", cmdNetworkDestroy, opts_network_destroy,
-     info_network_destroy, 0},
-    {"net-dumpxml", cmdNetworkDumpXML, opts_network_dumpxml,
-     info_network_dumpxml, 0},
-    {"net-edit", cmdNetworkEdit, opts_network_edit, info_network_edit, 0},
-    {"net-info", cmdNetworkInfo, opts_network_info, info_network_info, 0},
-    {"net-list", cmdNetworkList, opts_network_list, info_network_list, 0},
-    {"net-name", cmdNetworkName, opts_network_name, info_network_name, 0},
-    {"net-start", cmdNetworkStart, opts_network_start, info_network_start, 0},
-    {"net-undefine", cmdNetworkUndefine, opts_network_undefine,
-     info_network_undefine, 0},
-    {"net-update", cmdNetworkUpdate, opts_network_update, info_network_update, 0},
-    {"net-uuid", cmdNetworkUuid, opts_network_uuid, info_network_uuid, 0},
-    {NULL, NULL, NULL, NULL, 0}
+    {.name = "net-autostart",
+     .handler = cmdNetworkAutostart,
+     .opts = opts_network_autostart,
+     .info = info_network_autostart,
+     .flags = 0
+    },
+    {.name = "net-create",
+     .handler = cmdNetworkCreate,
+     .opts = opts_network_create,
+     .info = info_network_create,
+     .flags = 0
+    },
+    {.name = "net-define",
+     .handler = cmdNetworkDefine,
+     .opts = opts_network_define,
+     .info = info_network_define,
+     .flags = 0
+    },
+    {.name = "net-destroy",
+     .handler = cmdNetworkDestroy,
+     .opts = opts_network_destroy,
+     .info = info_network_destroy,
+     .flags = 0
+    },
+    {.name = "net-dumpxml",
+     .handler = cmdNetworkDumpXML,
+     .opts = opts_network_dumpxml,
+     .info = info_network_dumpxml,
+     .flags = 0
+    },
+    {.name = "net-edit",
+     .handler = cmdNetworkEdit,
+     .opts = opts_network_edit,
+     .info = info_network_edit,
+     .flags = 0
+    },
+    {.name = "net-info",
+     .handler = cmdNetworkInfo,
+     .opts = opts_network_info,
+     .info = info_network_info,
+     .flags = 0
+    },
+    {.name = "net-list",
+     .handler = cmdNetworkList,
+     .opts = opts_network_list,
+     .info = info_network_list,
+     .flags = 0
+    },
+    {.name = "net-name",
+     .handler = cmdNetworkName,
+     .opts = opts_network_name,
+     .info = info_network_name,
+     .flags = 0
+    },
+    {.name = "net-start",
+     .handler = cmdNetworkStart,
+     .opts = opts_network_start,
+     .info = info_network_start,
+     .flags = 0
+    },
+    {.name = "net-undefine",
+     .handler = cmdNetworkUndefine,
+     .opts = opts_network_undefine,
+     .info = info_network_undefine,
+     .flags = 0
+    },
+    {.name = "net-update",
+     .handler = cmdNetworkUpdate,
+     .opts = opts_network_update,
+     .info = info_network_update,
+     .flags = 0
+    },
+    {.name = "net-uuid",
+     .handler = cmdNetworkUuid,
+     .opts = opts_network_uuid,
+     .info = info_network_uuid,
+     .flags = 0
+    },
+    {.name = NULL}
 };

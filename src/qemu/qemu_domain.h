@@ -1,7 +1,7 @@
 /*
  * qemu_domain.h: QEMU domain private state
  *
- * Copyright (C) 2006-2012 Red Hat, Inc.
+ * Copyright (C) 2006-2013 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -25,6 +25,7 @@
 # define __QEMU_DOMAIN_H__
 
 # include "virthread.h"
+# include "vircgroup.h"
 # include "domain_conf.h"
 # include "snapshot_conf.h"
 # include "qemu_monitor.h"
@@ -110,7 +111,8 @@ struct qemuDomainJobObj {
     unsigned long long mask;            /* Jobs allowed during async job */
     unsigned long long start;           /* When the async job started */
     bool dump_memory_only;              /* use dump-guest-memory to do dump */
-    virDomainJobInfo info;              /* Async job progress data */
+    qemuMonitorMigrationStatus status;  /* Raw async job progress data */
+    virDomainJobInfo info;              /* Processed async job progress data */
     bool asyncAbort;                    /* abort of async job requested */
 };
 
@@ -119,6 +121,8 @@ typedef qemuDomainPCIAddressSet *qemuDomainPCIAddressSetPtr;
 
 typedef void (*qemuDomainCleanupCallback)(virQEMUDriverPtr driver,
                                           virDomainObjPtr vm);
+typedef struct _qemuDomainCCWAddressSet qemuDomainCCWAddressSet;
+typedef qemuDomainCCWAddressSet *qemuDomainCCWAddressSetPtr;
 
 typedef struct _qemuDomainObjPrivate qemuDomainObjPrivate;
 typedef qemuDomainObjPrivate *qemuDomainObjPrivatePtr;
@@ -143,9 +147,10 @@ struct _qemuDomainObjPrivate {
     int *vcpupids;
 
     qemuDomainPCIAddressSetPtr pciaddrs;
+    qemuDomainCCWAddressSetPtr ccwaddrs;
     int persistentAddrs;
 
-    qemuCapsPtr caps;
+    virQEMUCapsPtr qemuCaps;
     char *lockState;
 
     bool fakeReboot;
@@ -154,12 +159,15 @@ struct _qemuDomainObjPrivate {
 
     unsigned long migMaxBandwidth;
     char *origname;
+    int nbdPort; /* Port used for migration with NBD */
 
     virChrdevsPtr devs;
 
     qemuDomainCleanupCallback *cleanupCallbacks;
     size_t ncleanupCallbacks;
     size_t ncleanupCallbacks_max;
+
+    virCgroupPtr cgroup;
 };
 
 struct qemuDomainWatchdogEvent
@@ -175,12 +183,8 @@ int qemuDomainAsyncJobPhaseFromString(enum qemuDomainAsyncJob job,
 
 void qemuDomainEventFlush(int timer, void *opaque);
 
-/* driver must be locked before calling */
 void qemuDomainEventQueue(virQEMUDriverPtr driver,
                           virDomainEventPtr event);
-
-void qemuDomainSetPrivateDataHooks(virCapsPtr caps);
-void qemuDomainSetNamespaceHooks(virCapsPtr caps);
 
 int qemuDomainObjBeginJob(virQEMUDriverPtr driver,
                           virDomainObjPtr obj,
@@ -190,13 +194,9 @@ int qemuDomainObjBeginAsyncJob(virQEMUDriverPtr driver,
                                virDomainObjPtr obj,
                                enum qemuDomainAsyncJob asyncJob)
     ATTRIBUTE_RETURN_CHECK;
-int qemuDomainObjBeginJobWithDriver(virQEMUDriverPtr driver,
-                                    virDomainObjPtr obj,
-                                    enum qemuDomainJob job)
-    ATTRIBUTE_RETURN_CHECK;
-int qemuDomainObjBeginAsyncJobWithDriver(virQEMUDriverPtr driver,
-                                         virDomainObjPtr obj,
-                                         enum qemuDomainAsyncJob asyncJob)
+int qemuDomainObjBeginNestedJob(virQEMUDriverPtr driver,
+                                virDomainObjPtr obj,
+                                enum qemuDomainAsyncJob asyncJob)
     ATTRIBUTE_RETURN_CHECK;
 
 bool qemuDomainObjEndJob(virQEMUDriverPtr driver,
@@ -224,38 +224,22 @@ void qemuDomainObjEnterMonitor(virQEMUDriverPtr driver,
 void qemuDomainObjExitMonitor(virQEMUDriverPtr driver,
                               virDomainObjPtr obj)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-void qemuDomainObjEnterMonitorWithDriver(virQEMUDriverPtr driver,
-                                         virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
 int qemuDomainObjEnterMonitorAsync(virQEMUDriverPtr driver,
                                    virDomainObjPtr obj,
                                    enum qemuDomainAsyncJob asyncJob)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_RETURN_CHECK;
-void qemuDomainObjExitMonitorWithDriver(virQEMUDriverPtr driver,
-                                        virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
 
 
-void qemuDomainObjEnterAgent(virQEMUDriverPtr driver,
-                             virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-void qemuDomainObjExitAgent(virQEMUDriverPtr driver,
-                            virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-void qemuDomainObjEnterAgentWithDriver(virQEMUDriverPtr driver,
-                                       virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-void qemuDomainObjExitAgentWithDriver(virQEMUDriverPtr driver,
-                                      virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+void qemuDomainObjEnterAgent(virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1);
+void qemuDomainObjExitAgent(virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1);
 
 
-void qemuDomainObjEnterRemoteWithDriver(virQEMUDriverPtr driver,
-                                        virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-void qemuDomainObjExitRemoteWithDriver(virQEMUDriverPtr driver,
-                                       virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+void qemuDomainObjEnterRemote(virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1);
+void qemuDomainObjExitRemote(virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1);
 
 int qemuDomainDefFormatBuf(virQEMUDriverPtr driver,
                            virDomainDefPtr vm,
@@ -358,5 +342,9 @@ void qemuDomainCleanupRemove(virDomainObjPtr vm,
                              qemuDomainCleanupCallback cb);
 void qemuDomainCleanupRun(virQEMUDriverPtr driver,
                           virDomainObjPtr vm);
+
+extern virDomainXMLPrivateDataCallbacks virQEMUDriverPrivateDataCallbacks;
+extern virDomainXMLNamespace virQEMUDriverDomainXMLNamespace;
+extern virDomainDefParserConfig virQEMUDriverDomainDefParserConfig;
 
 #endif /* __QEMU_DOMAIN_H__ */

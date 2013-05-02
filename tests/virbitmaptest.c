@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2013 Red Hat, Inc.
  * Copyright (C) 2012 Fujitsu.
  *
  * This library is free software; you can redistribute it and/or
@@ -124,6 +125,8 @@ static int test2(const void *data ATTRIBUTE_UNUSED)
         goto error;
 
     virBitmapClearAll(bitmap);
+    if (!virBitmapIsAllClear(bitmap))
+        goto error;
     if (testBit(bitmap, 0, size - 1, false) < 0)
         goto error;
     if (virBitmapCountBits(bitmap) != 0)
@@ -153,6 +156,9 @@ static int test3(const void *data ATTRIBUTE_UNUSED)
     if (!virBitmapIsAllSet(bitmap))
         goto error;
 
+    virBitmapClearAll(bitmap);
+    if (!virBitmapIsAllClear(bitmap))
+        goto error;
     ret = 0;
 
 error:
@@ -160,7 +166,7 @@ error:
     return ret;
 }
 
-/* test for virBitmapNextSetBit */
+/* test for virBitmapNextSetBit, virBitmapNextClearBit */
 static int test4(const void *data ATTRIBUTE_UNUSED)
 {
     const char *bitsString = "0, 2-4, 6-10, 12, 14-18, 20, 22, 25";
@@ -169,9 +175,15 @@ static int test4(const void *data ATTRIBUTE_UNUSED)
         0,  2,  3,  4,  6,  7,  8,  9, 10, 12,
         14, 15, 16, 17, 18, 20, 22, 25
     };
-    int npos = 18;
+    int bitsPosInv[] = {
+        1, 5, 11, 13, 19, 21, 23, 24, 26, 27,
+        28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
+    };
     virBitmapPtr bitmap = NULL;
     int i, j;
+
+    if (ARRAY_CARDINALITY(bitsPos) + ARRAY_CARDINALITY(bitsPosInv) != size)
+        goto error;
 
     /* 1. zero set */
 
@@ -179,7 +191,17 @@ static int test4(const void *data ATTRIBUTE_UNUSED)
     if (!bitmap)
         goto error;
 
-    if (virBitmapNextSetBit(bitmap, -1) >= 0)
+    if (virBitmapNextSetBit(bitmap, -1) != -1)
+        goto error;
+
+    for (i = 0; i < size; i++) {
+        if (virBitmapNextClearBit(bitmap, i - 1) != i)
+            goto error;
+    }
+    if (virBitmapNextClearBit(bitmap, i) != -1)
+        goto error;
+
+    if (!virBitmapIsAllClear(bitmap))
         goto error;
 
     virBitmapFree(bitmap);
@@ -195,27 +217,39 @@ static int test4(const void *data ATTRIBUTE_UNUSED)
     j = 0;
     i = -1;
 
-    while (j < npos) {
+    while (j < ARRAY_CARDINALITY(bitsPos)) {
         i = virBitmapNextSetBit(bitmap, i);
         if (i != bitsPos[j++])
             goto error;
     }
 
-    if (virBitmapNextSetBit(bitmap, i) > 0)
+    if (virBitmapNextSetBit(bitmap, i) != -1)
+        goto error;
+
+    j = 0;
+    i = -1;
+
+    while (j < ARRAY_CARDINALITY(bitsPosInv)) {
+        i = virBitmapNextClearBit(bitmap, i);
+        if (i != bitsPosInv[j++])
+            goto error;
+    }
+
+    if (virBitmapNextClearBit(bitmap, i) != -1)
         goto error;
 
     /* 3. full set */
 
-    i = -1;
     virBitmapSetAll(bitmap);
 
-    for (j = 0; j < size; j++) {
-        i = virBitmapNextSetBit(bitmap, i);
-        if (i != j)
+    for (i = 0; i < size; i++) {
+        if (virBitmapNextSetBit(bitmap, i - 1) != i)
             goto error;
     }
+    if (virBitmapNextSetBit(bitmap, i) != -1)
+        goto error;
 
-    if (virBitmapNextSetBit(bitmap, i) > 0)
+    if (virBitmapNextClearBit(bitmap, -1) != -1)
         goto error;
 
     virBitmapFree(bitmap);
@@ -380,6 +414,10 @@ static int test7(const void *v ATTRIBUTE_UNUSED)
         if (!virBitmapIsAllSet(bitmap))
             goto error;
 
+        virBitmapClearAll(bitmap);
+        if (!virBitmapIsAllClear(bitmap))
+            goto error;
+
         virBitmapFree(bitmap);
     }
 
@@ -388,6 +426,31 @@ static int test7(const void *v ATTRIBUTE_UNUSED)
 error:
     virBitmapFree(bitmap);
     return -1;
+}
+
+static int test8(const void *v ATTRIBUTE_UNUSED)
+{
+    virBitmapPtr bitmap = NULL;
+    char data[108] = {0x00,};
+    int ret = -1;
+
+    bitmap = virBitmapNewData(data, sizeof(data));
+    if (!bitmap)
+        goto cleanup;
+
+    if (!virBitmapIsAllClear(bitmap))
+        goto cleanup;
+
+    if (virBitmapSetBit(bitmap, 11) < 0)
+        goto cleanup;
+
+    if (virBitmapIsAllClear(bitmap))
+        goto cleanup;
+
+    ret = 0;
+cleanup:
+    virBitmapFree(bitmap);
+    return ret;
 }
 
 static int
@@ -409,7 +472,8 @@ mymain(void)
         ret = -1;
     if (virtTestRun("test7", 1, test7, NULL) < 0)
         ret = -1;
-
+    if (virtTestRun("test8", 1, test8, NULL) < 0)
+        ret = -1;
 
     return ret;
 }

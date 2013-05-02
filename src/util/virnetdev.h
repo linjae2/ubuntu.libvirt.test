@@ -104,14 +104,13 @@ int virNetDevGetPhysicalFunction(const char *ifname, char **pfname)
 
 int virNetDevGetVirtualFunctions(const char *pfname,
                                  char ***vfname,
-                                 struct pci_config_address ***virt_fns,
+                                 virPCIDeviceAddressPtr **virt_fns,
                                  unsigned int *n_vfname)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
     ATTRIBUTE_NONNULL(4) ATTRIBUTE_RETURN_CHECK;
 
 int virNetDevLinkDump(const char *ifname, int ifindex,
                       struct nlattr **tb,
-                      unsigned char **recvbuf,
                       uint32_t src_pid, uint32_t dst_pid)
     ATTRIBUTE_RETURN_CHECK;
 

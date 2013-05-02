@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2012 Red Hat, Inc.
+ * Copyright (C) 2009-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -199,7 +199,7 @@ virSocketAddrEqual(const virSocketAddrPtr s1, const virSocketAddrPtr s2)
  *
  * Return true if this address is in its family's defined
  * "private/local" address space. For IPv4, private addresses are in
- * the range of 192.168.0.0/16, 172.16.0.0/16, or 10.0.0.0/8.  For
+ * the range of 192.168.0.0/16, 172.16.0.0/12, or 10.0.0.0/8.  For
  * IPv6, local addresses are in the range of FC00::/7 or FEC0::/10
  * (that last one is deprecated, but still in use).
  *
@@ -215,7 +215,7 @@ virSocketAddrIsPrivate(const virSocketAddrPtr addr)
        val = ntohl(addr->data.inet4.sin_addr.s_addr);
 
        return ((val & 0xFFFF0000) == ((192L << 24) + (168 << 16)) ||
-               (val & 0xFFFF0000) == ((172L << 24) + (16  << 16)) ||
+               (val & 0xFFF00000) == ((172L << 24) + (16  << 16)) ||
                (val & 0xFF000000) == ((10L  << 24)));
 
     case AF_INET6:
@@ -754,4 +754,53 @@ virSocketAddrPrefixToNetmask(unsigned int prefix,
 
 error:
     return result;
+ }
+
+/**
+ * virSocketAddrGetIpPrefix:
+ * @address: network address
+ * @netmask: netmask for this network
+ * @prefix: prefix if specified instead of netmask
+ *
+ * Returns prefix value on success or -1 on error.
+ */
+
+int
+virSocketAddrGetIpPrefix(const virSocketAddrPtr address,
+                         const virSocketAddrPtr netmask,
+                         int prefix)
+{
+    if (prefix > 0) {
+        return prefix;
+    } else if (VIR_SOCKET_ADDR_VALID(netmask)) {
+        return virSocketAddrGetNumNetmaskBits(netmask);
+    } else if (VIR_SOCKET_ADDR_IS_FAMILY(address, AF_INET)) {
+        /* Return the natural prefix for the network's ip address.
+         * On Linux we could use the IN_CLASSx() macros, but those
+         * aren't guaranteed on all platforms, so we just deal with
+         * the bits ourselves.
+         */
+        unsigned char octet
+            = ntohl(address->data.inet4.sin_addr.s_addr) >> 24;
+        if ((octet & 0x80) == 0) {
+            /* Class A network */
+            return 8;
+        } else if ((octet & 0xC0) == 0x80) {
+            /* Class B network */
+            return 16;
+        } else if ((octet & 0xE0) == 0xC0) {
+            /* Class C network */
+            return 24;
+        }
+        return -1;
+    } else if (VIR_SOCKET_ADDR_IS_FAMILY(address, AF_INET6)) {
+        return 64;
+    }
+
+    /* When none of the three (address/netmask/prefix) is given, 0 is
+     * returned rather than error, because this is a valid
+     * expectation, e.g. for the address/prefix used for a default
+     * route (the destination of a default route is 0.0.0.0/0).
+     */
+    return 0;
 }

@@ -13,12 +13,7 @@ Don-t-fail-if-we-can-t-setup-avahi.patch
 enable-kvm-spice.patch
 dnsmasq-as-priv-user
 storage-default-permission-mode-to-0711
-#add-armhf-sysinfo-infomration.patch
 Reduce-udevadm-settle-timeout-to-10-seconds.patch
-apparmor-no-need-to-check-security-model
-apparmor-use-apparmor-setfdlabel
 vnc-socket.patch
-fix-virterror-namechange
 fix-ubuntu-xen-qemu-dm-path.patch
-prevent-lxc-shutdown-host.patch
-nonblock-fix.patch
+Add-sanitytest.py.patch

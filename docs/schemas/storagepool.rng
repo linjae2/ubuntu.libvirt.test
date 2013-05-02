@@ -175,7 +175,7 @@
     <optional>
       <element name='permissions'>
         <element name='mode'>
-          <ref name='unsignedInt'/>
+          <ref name='octalMode'/>
         </element>
         <element name='owner'>
           <choice>
@@ -231,6 +231,7 @@
         <choice>
           <ref name='absFilePath'/>
           <ref name='genericName'/>
+          <ref name='IscsiQualifiedName'/>
         </choice>
       </attribute>
       <choice>
@@ -268,15 +269,6 @@
     <element name='dir'>
       <attribute name='path'>
         <ref name='absFilePath'/>
-      </attribute>
-      <empty/>
-    </element>
-  </define>
-
-  <define name='sourceinfoadapter'>
-    <element name='adapter'>
-      <attribute name='name'>
-        <text/>
       </attribute>
       <empty/>
     </element>
@@ -492,7 +484,6 @@
       <optional>
         <ref name='sourceinfovendor'/>
       </optional>
-
     </element>
   </define>
 
@@ -519,9 +510,9 @@
     </element>
   </define>
 
-  <define name="PortNumber">
-    <data type="short">
-      <param name="minInclusive">-1</param>
+  <define name='IscsiQualifiedName'>
+    <data type='string'>
+      <param name="pattern">iqn\.[0-9]{4}-(0[1-9]|1[0-2])\.[a-zA-Z0-9\.\-]+(:.+)?</param>
     </data>
   </define>
 

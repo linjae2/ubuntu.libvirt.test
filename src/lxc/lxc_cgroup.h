@@ -22,20 +22,26 @@
 #ifndef __VIR_LXC_CGROUP_H__
 # define __VIR_LXC_CGROUP_H__
 
+# include "vircgroup.h"
 # include "domain_conf.h"
 # include "lxc_fuse.h"
 # include "virusb.h"
 
-int virLXCCgroupSetup(virDomainDefPtr def);
+virCgroupPtr virLXCCgroupCreate(virDomainDefPtr def, bool startup);
+virCgroupPtr virLXCCgroupJoin(virDomainDefPtr def);
+int virLXCCgroupSetup(virDomainDefPtr def,
+                      virCgroupPtr cgroup,
+                      virBitmapPtr nodemask);
+
 int virLXCCgroupGetMeminfo(virLXCMeminfoPtr meminfo);
 
 int
-virLXCSetupHostUsbDeviceCgroup(usbDevice *dev,
+virLXCSetupHostUsbDeviceCgroup(virUSBDevicePtr dev,
                                const char *path,
                                void *opaque);
 
 int
-virLXCTeardownHostUsbDeviceCgroup(usbDevice *dev,
+virLXCTeardownHostUsbDeviceCgroup(virUSBDevicePtr dev,
                                   const char *path,
                                   void *opaque);
 

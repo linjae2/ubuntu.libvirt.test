@@ -8,10 +8,11 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include "testutils.h"
+
 #ifdef WITH_QEMU
 
 # include "internal.h"
-# include "testutils.h"
 # include "qemu/qemu_command.h"
 
 # include "testutilsqemu.h"
@@ -46,8 +47,8 @@ static int testCompareXMLToArgvFiles(const char *xml,
     if (virtTestLoadFile(xml, &expectxml) < 0)
         goto fail;
 
-    if (!(vmdef = qemuParseCommandLineString(driver.caps, cmd,
-                                             NULL, NULL, NULL)))
+    if (!(vmdef = qemuParseCommandLineString(driver.caps, driver.xmlopt,
+                                             cmd, NULL, NULL, NULL)))
         goto fail;
 
     if ((log = virtTestLogContentAndReset()) == NULL)
@@ -116,9 +117,11 @@ mymain(void)
 {
     int ret = 0;
 
+    driver.config = virQEMUDriverConfigNew(false);
     if ((driver.caps = testQemuCapsInit()) == NULL)
         return EXIT_FAILURE;
-    if ((driver.stateDir = strdup("/nowhere")) == NULL)
+
+    if (!(driver.xmlopt = virQEMUDriverCreateXMLConf(&driver)))
         return EXIT_FAILURE;
 
 # define DO_TEST_FULL(name, extraFlags, migrateFrom)                     \
@@ -183,6 +186,11 @@ mymain(void)
     DO_TEST("disk-drive-cache-directsync");
     DO_TEST("disk-drive-cache-unsafe");
     DO_TEST("disk-drive-network-nbd");
+    DO_TEST("disk-drive-network-nbd-export");
+    DO_TEST("disk-drive-network-nbd-ipv6");
+    DO_TEST("disk-drive-network-nbd-ipv6-export");
+    DO_TEST("disk-drive-network-nbd-unix");
+    DO_TEST("disk-drive-network-iscsi");
     DO_TEST("disk-drive-network-gluster");
     DO_TEST("disk-drive-network-rbd");
     DO_TEST("disk-drive-network-rbd-ipv6");
@@ -193,17 +201,8 @@ mymain(void)
     DO_TEST("graphics-vnc");
     DO_TEST("graphics-vnc-socket");
 
-    driver.vncSASL = 1;
-    driver.vncSASLdir = strdup("/root/.sasl2");
     DO_TEST("graphics-vnc-sasl");
-    driver.vncTLS = 1;
-    driver.vncTLSx509verify = 1;
-    driver.vncTLSx509certdir = strdup("/etc/pki/tls/qemu");
     DO_TEST("graphics-vnc-tls");
-    driver.vncSASL = driver.vncTLSx509verify = driver.vncTLS = 0;
-    VIR_FREE(driver.vncSASLdir);
-    VIR_FREE(driver.vncTLSx509certdir);
-    driver.vncSASLdir = driver.vncTLSx509certdir = NULL;
 
     DO_TEST("graphics-sdl");
     DO_TEST("graphics-sdl-fullscreen");
@@ -245,6 +244,8 @@ mymain(void)
 
     DO_TEST("hyperv");
 
+    DO_TEST("pseries-nvram");
+
     DO_TEST_FULL("restore-v1", 0, "stdio");
     DO_TEST_FULL("restore-v2", 0, "stdio");
     DO_TEST_FULL("restore-v2", 0, "exec:cat");
@@ -252,8 +253,9 @@ mymain(void)
 
     DO_TEST_FULL("qemu-ns-no-env", 1, NULL);
 
-    VIR_FREE(driver.stateDir);
-    virCapabilitiesFree(driver.caps);
+    virObjectUnref(driver.config);
+    virObjectUnref(driver.caps);
+    virObjectUnref(driver.xmlopt);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -261,7 +263,6 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
-# include "testutils.h"
 
 int
 main(void)

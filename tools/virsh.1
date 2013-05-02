@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "VIRSH 1"
-.TH VIRSH 1 "2013-01-28" "libvirt-1.0.2" "Virtualization Support"
+.TH VIRSH 1 "2013-04-23" "libvirt-1.0.5" "Virtualization Support"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -1047,8 +1047,8 @@ be running. Default it shows stats for all CPUs, and a total. Use
 \&\fI\-\-total\fR for only the total stats, \fIstart\fR for only the per-cpu
 stats of the CPUs from \fIstart\fR, \fIcount\fR for only \fIcount\fR CPUs'
 stats.
-.IP "\fBmigrate\fR [\fI\-\-live\fR] [\fI\-\-offline\fR] [\fI\-\-direct\fR] [\fI\-\-p2p\fR [\fI\-\-tunnelled\fR]] [\fI\-\-persistent\fR] [\fI\-\-undefinesource\fR] [\fI\-\-suspend\fR] [\fI\-\-copy\-storage\-all\fR] [\fI\-\-copy\-storage\-inc\fR] [\fI\-\-change\-protection\fR] [\fI\-\-unsafe\fR] [\fI\-\-verbose\fR] \fIdomain\fR \fIdesturi\fR [\fImigrateuri\fR] [\fIdname\fR] [\fI\-\-timeout\fR \fBseconds\fR] [\fI\-\-xml\fR \fBfile\fR]" 4
-.IX Item "migrate [--live] [--offline] [--direct] [--p2p [--tunnelled]] [--persistent] [--undefinesource] [--suspend] [--copy-storage-all] [--copy-storage-inc] [--change-protection] [--unsafe] [--verbose] domain desturi [migrateuri] [dname] [--timeout seconds] [--xml file]"
+.IP "\fBmigrate\fR [\fI\-\-live\fR] [\fI\-\-offline\fR] [\fI\-\-direct\fR] [\fI\-\-p2p\fR [\fI\-\-tunnelled\fR]] [\fI\-\-persistent\fR] [\fI\-\-undefinesource\fR] [\fI\-\-suspend\fR] [\fI\-\-copy\-storage\-all\fR] [\fI\-\-copy\-storage\-inc\fR] [\fI\-\-change\-protection\fR] [\fI\-\-unsafe\fR] [\fI\-\-verbose\fR] [\fI\-\-compressed\fR] \fIdomain\fR \fIdesturi\fR [\fImigrateuri\fR] [\fIdname\fR] [\fI\-\-timeout\fR \fBseconds\fR] [\fI\-\-xml\fR \fBfile\fR]" 4
+.IX Item "migrate [--live] [--offline] [--direct] [--p2p [--tunnelled]] [--persistent] [--undefinesource] [--suspend] [--copy-storage-all] [--copy-storage-inc] [--change-protection] [--unsafe] [--verbose] [--compressed] domain desturi [migrateuri] [dname] [--timeout seconds] [--xml file]"
 Migrate domain to another host.  Add \fI\-\-live\fR for live migration; <\-\-p2p>
 for peer\-2\-peer migration; \fI\-\-direct\fR for direct migration; or \fI\-\-tunnelled\fR
 for tunnelled migration.  \fI\-\-offline\fR migrates domain definition without
@@ -1067,7 +1067,9 @@ host. \fI\-\-change\-protection\fR enforces that no incompatible configuration
 changes will be made to the domain while the migration is underway; this flag
 is implicitly enabled when supported by the hypervisor, but can be explicitly
 used to reject the migration if the hypervisor lacks change protection
-support.  \fI\-\-verbose\fR displays the progress of migration.
+support.  \fI\-\-verbose\fR displays the progress of migration.  \fI\-\-compressed\fR
+activates compression of memory pages that have to be transferred repeatedly
+during live migration.
 .Sp
 \&\fBNote\fR: Individual hypervisors usually do not support all possible types of
 migration. For example, \s-1QEMU\s0 does not support direct migration.
@@ -1081,7 +1083,7 @@ such as \s-1GFS2\s0 or \s-1GPFS\s0. If you are sure the migration is safe or you
 care, use \fI\-\-unsafe\fR to force the migration.
 .Sp
 The \fIdesturi\fR is the connection \s-1URI\s0 of the destination host, and
-\&\fImigrateuri\fR is the migration \s-1URI\s0, which usually can be omitted.
+\&\fImigrateuri\fR is the migration \s-1URI\s0, which usually can be omitted (see below).
 \&\fIdname\fR is used for renaming the domain to new name during migration, which
 also usually can be omitted.  Likewise, \fI\-\-xml\fR \fBfile\fR is usually
 omitted, but can be used to supply an alternative \s-1XML\s0 file for use on
@@ -1107,19 +1109,54 @@ peer2peer migration: the \fIdesturi\fR is an address of the target host as
 seen from the source machine.
 .RE
 .RS 4
+.Sp
+When \fImigrateuri\fR is not specified, libvirt will automatically determine the
+hypervisor specific \s-1URI\s0, by looking up the target host's configured hostname.
+There are a few scenarios where specifying \fImigrateuri\fR may help:
+.IP "\(bu" 4
+The configured hostname is incorrect, or \s-1DNS\s0 is broken.  If a host has a
+hostname which will not resolve to match one of its public \s-1IP\s0 addresses, then
+libvirt will generate an incorrect \s-1URI\s0.  In this case \fImigrateuri\fR should be
+explicitly specified, using an \s-1IP\s0 address, or a correct hostname.
+.IP "\(bu" 4
+The host has multiple network interaces.  If a host has multiple network
+interfaces, it might be desirable for the migration data stream to be sent over
+a specific interface for either security or performance reasons.  In this case
+\&\fImigrateuri\fR should be explicitly specified, using an \s-1IP\s0 address associated
+with the network to be used.
+.IP "\(bu" 4
+The firewall restricts what ports are available.  When libvirt generates
+a migration \s-1URI\s0, it will pick a port number using hypervisor specific rules.
+Some hypervisors only require a single port to be open in the firewalls, while
+others require a whole range of port numbers.  In the latter case \fImigrateuri\fR
+might be specified to choose a specific port number outside the default range in
+order to comply with local firewall policies.
+.RE
+.RS 4
 .RE
 .IP "\fBmigrate-setmaxdowntime\fR \fIdomain\fR \fIdowntime\fR" 4
 .IX Item "migrate-setmaxdowntime domain downtime"
 Set maximum tolerable downtime for a domain which is being live-migrated to
 another host.  The \fIdowntime\fR is a number of milliseconds the guest is allowed
 to be down at the end of live migration.
+.IP "\fBmigrate-compcache\fR \fIdomain\fR [\fI\-\-size\fR \fBbytes\fR]" 4
+.IX Item "migrate-compcache domain [--size bytes]"
+Sets and/or gets size of the cache (in bytes) used for compressing repeatedly
+transferred memory pages during live migration. When called without \fIsize\fR,
+the command just prints current size of the compression cache. When \fIsize\fR
+is specified, the hypervisor is asked to change compression cache to \fIsize\fR
+bytes and then the current size is printed (the result may differ from the
+requested size due to rounding done by the hypervisor). The \fIsize\fR option
+is supposed to be used while the domain is being live-migrated as a reaction
+to migration progress and increasing number of compression cache misses
+obtained from domjobinfo.
 .IP "\fBmigrate-setspeed\fR \fIdomain\fR \fIbandwidth\fR" 4
 .IX Item "migrate-setspeed domain bandwidth"
-Set the maximum migration bandwidth (in Mbps) for a domain which is being
+Set the maximum migration bandwidth (in MiB/s) for a domain which is being
 migrated to another host.
 .IP "\fBmigrate-getspeed\fR \fIdomain\fR" 4
 .IX Item "migrate-getspeed domain"
-Get the maximum migration bandwidth (in Mbps) for a domain.
+Get the maximum migration bandwidth (in MiB/s) for a domain.
 .IP "\fBnumatune\fR \fIdomain\fR [\fI\-\-mode\fR \fBmode\fR] [\fI\-\-nodeset\fR \fBnodeset\fR] [[\fI\-\-config\fR] [\fI\-\-live\fR] | [\fI\-\-current\fR]]" 4
 .IX Item "numatune domain [--mode mode] [--nodeset nodeset] [[--config] [--live] | [--current]]"
 Set or get a domain's numa parameters, corresponding to the <numatune>
@@ -1257,8 +1294,8 @@ except that it does some error checking.
 .Sp
 The editor used can be supplied by the \f(CW$VISUAL\fR or \f(CW$EDITOR\fR environment
 variables, and defaults to \f(CW\*(C`vi\*(C'\fR.
-.IP "\fBschedinfo\fR [\fI\-\-set\fR \fBparameter=value\fR] \fIdomain\fR [[\fI\-\-config\fR] [\fI\-\-live\fR] | [\fI\-\-current\fR]]" 4
-.IX Item "schedinfo [--set parameter=value] domain [[--config] [--live] | [--current]]"
+.IP "\fBschedinfo\fR \fIdomain\fR [[\fI\-\-config\fR] [\fI\-\-live\fR] | [\fI\-\-current\fR]] [[\fI\-\-set\fR] \fBparameter=value\fR]..." 4
+.IX Item "schedinfo domain [[--config] [--live] | [--current]] [[--set] parameter=value]..."
 .PD 0
 .IP "\fBschedinfo\fR [\fI\-\-weight\fR \fBnumber\fR] [\fI\-\-cap\fR \fBnumber\fR] \fIdomain\fR" 4
 .IX Item "schedinfo [--weight number] [--cap number] domain"
@@ -1439,7 +1476,8 @@ Both \fI\-\-live\fR and \fI\-\-config\fR flags may be given, but \fI\-\-current\
 exclusive. If no flag is specified, behavior is different depending
 on hypervisor.
 .Sp
-This command works for at least the Xen, \s-1QEMU/KVM\s0 and vSphere/ESX hypervisors.
+Some hypervisors such as \s-1QEMU/KVM\s0 don't support live changes (especially
+increasing) of the maximum memory limit.
 .Sp
 \&\fIsize\fR is a scaled integer (see \fB\s-1NOTES\s0\fR above); it defaults to kibibytes
 (blocks of 1024 bytes) unless you provide a suffix (and the older option
@@ -1721,6 +1759,10 @@ For cdrom and floppy devices, this command only replaces the media
 within an existing device; consider using \fBupdate-device\fR for this
 usage.  For passthrough host devices, see also \fBnodedev-detach\fR,
 needed if the device does not use managed mode.
+.Sp
+\&\fBNote\fR: using of partial device definition \s-1XML\s0 files may lead to unexpected
+results as some fields may be autogenerated and thus match devices other than
+expected.
 .IP "\fBattach-disk\fR \fIdomain\fR \fIsource\fR \fItarget\fR [\fI\-\-driver driver\fR] [\fI\-\-subdriver subdriver\fR] [\fI\-\-cache cache\fR] [\fI\-\-type type\fR] [\fI\-\-mode mode\fR] [\fI\-\-config\fR] [\fI\-\-sourcetype soucetype\fR] [\fI\-\-serial serial\fR] [\fI\-\-shareable\fR] [\fI\-\-rawio\fR] [\fI\-\-address address\fR] [\fI\-\-multifunction\fR] [\fI\-\-print\-xml\fR]" 4
 .IX Item "attach-disk domain source target [--driver driver] [--subdriver subdriver] [--cache cache] [--type type] [--mode mode] [--config] [--sourcetype soucetype] [--serial serial] [--shareable] [--rawio] [--address address] [--multifunction] [--print-xml]"
 Attach a new disk device to the domain.
@@ -1774,43 +1816,90 @@ and \fIburst\fR are optional, so \*(L"average,peak\*(R", \*(L"average,,burst\*(R
 \&\fBNote\fR: the optional target value is the name of a device to be created
 as the back-end on the node. If not provided a device named \*(L"vnetN\*(R" or \*(L"vifN\*(R"
 will be created automatically.
-.IP "\fBdetach-device\fR \fIdomain\fR \fI\s-1FILE\s0\fR [\fI\-\-config\fR]" 4
-.IX Item "detach-device domain FILE [--config]"
+.IP "\fBdetach-device\fR \fIdomain\fR \fI\s-1FILE\s0\fR [[[\fI\-\-live\fR] [\fI\-\-config\fR] | [\fI\-\-current\fR]] | [\fI\-\-persistent\fR]]" 4
+.IX Item "detach-device domain FILE [[[--live] [--config] | [--current]] | [--persistent]]"
 Detach a device from the domain, takes the same kind of \s-1XML\s0 descriptions
 as command \fBattach-device\fR.
-If \fI\-\-config\fR is specified, alter persistent configuration, effect observed
-on next boot, for compatibility purposes, \fI\-\-persistent\fR is alias of
-\&\fI\-\-config\fR.
 For passthrough host devices, see also \fBnodedev-reattach\fR, needed if
 the device does not use managed mode.
-.IP "\fBdetach-disk\fR \fIdomain\fR \fItarget\fR [\fI\-\-config\fR]" 4
-.IX Item "detach-disk domain target [--config]"
+.Sp
+\&\fBNote\fR: using of partial device definition \s-1XML\s0 files may lead to unexpected
+results as some fields may be autogenerated and thus match devices other than
+expected.
+.Sp
+If \fI\-\-live\fR is specified, affect a running domain.
+If \fI\-\-config\fR is specified, affect the next startup of a persistent domain.
+If \fI\-\-current\fR is specified, affect the current domain state.
+Both \fI\-\-live\fR and \fI\-\-config\fR flags may be given, but \fI\-\-current\fR is
+exclusive. When no flag is specified legacy \s-1API\s0 is used whose behavior depends
+on the hypervisor driver.
+.Sp
+For compatibility purposes, \fI\-\-persistent\fR behaves like \fI\-\-config\fR for
+an offline domain, and like \fI\-\-live\fR \fI\-\-config\fR for a running domain.
+.Sp
+Note that older versions of virsh used \fI\-\-config\fR as an alias for
+\&\fI\-\-persistent\fR.
+.IP "\fBdetach-disk\fR \fIdomain\fR \fItarget\fR [[[\fI\-\-live\fR] [\fI\-\-config\fR] | [\fI\-\-current\fR]] | [\fI\-\-persistent\fR]]" 4
+.IX Item "detach-disk domain target [[[--live] [--config] | [--current]] | [--persistent]]"
 Detach a disk device from a domain. The \fItarget\fR is the device as seen
 from the domain.
-If \fI\-\-config\fR is specified, alter persistent configuration, effect observed
-on next boot, for compatibility purposes, \fI\-\-persistent\fR is alias of
-\&\fI\-\-config\fR.
-.IP "\fBdetach-interface\fR \fIdomain\fR \fItype\fR [\fI\-\-mac mac\fR] [\fI\-\-config\fR]" 4
-.IX Item "detach-interface domain type [--mac mac] [--config]"
+.Sp
+If \fI\-\-live\fR is specified, affect a running domain.
+If \fI\-\-config\fR is specified, affect the next startup of a persistent domain.
+If \fI\-\-current\fR is specified, affect the current domain state.
+Both \fI\-\-live\fR and \fI\-\-config\fR flags may be given, but \fI\-\-current\fR is
+exclusive. When no flag is specified legacy \s-1API\s0 is used whose behavior depends
+on the hypervisor driver.
+.Sp
+For compatibility purposes, \fI\-\-persistent\fR behaves like \fI\-\-config\fR for
+an offline domain, and like \fI\-\-live\fR \fI\-\-config\fR for a running domain.
+.Sp
+Note that older versions of virsh used \fI\-\-config\fR as an alias for
+\&\fI\-\-persistent\fR.
+.IP "\fBdetach-interface\fR \fIdomain\fR \fItype\fR [\fI\-\-mac mac\fR] [[[\fI\-\-live\fR] [\fI\-\-config\fR] | [\fI\-\-current\fR]] | [\fI\-\-persistent\fR]]" 4
+.IX Item "detach-interface domain type [--mac mac] [[[--live] [--config] | [--current]] | [--persistent]]"
 Detach a network interface from a domain.
 \&\fItype\fR can be either \fInetwork\fR to indicate a physical network device or
 \&\fIbridge\fR to indicate a bridge to a device. It is recommended to use the
 \&\fImac\fR option to distinguish between the interfaces if more than one are
 present on the domain.
-If \fI\-\-config\fR is specified, alter persistent configuration, effect observed
-on next boot, for compatibility purposes, \fI\-\-persistent\fR is alias of
-\&\fI\-\-config\fR.
-.IP "\fBupdate-device\fR \fIdomain\fR \fIfile\fR [\fI\-\-config\fR] [\fI\-\-force\fR]" 4
-.IX Item "update-device domain file [--config] [--force]"
+.Sp
+If \fI\-\-live\fR is specified, affect a running domain.
+If \fI\-\-config\fR is specified, affect the next startup of a persistent domain.
+If \fI\-\-current\fR is specified, affect the current domain state.
+Both \fI\-\-live\fR and \fI\-\-config\fR flags may be given, but \fI\-\-current\fR is
+exclusive. When no flag is specified legacy \s-1API\s0 is used whose behavior depends
+on the hypervisor driver.
+.Sp
+For compatibility purposes, \fI\-\-persistent\fR behaves like \fI\-\-config\fR for
+an offline domain, and like \fI\-\-live\fR \fI\-\-config\fR for a running domain.
+.Sp
+Note that older versions of virsh used \fI\-\-config\fR as an alias for
+\&\fI\-\-persistent\fR.
+.IP "\fBupdate-device\fR \fIdomain\fR \fIfile\fR [\fI\-\-force\fR] [[[\fI\-\-live\fR] [\fI\-\-config\fR] | [\fI\-\-current\fR]] | [\fI\-\-persistent\fR]]" 4
+.IX Item "update-device domain file [--force] [[[--live] [--config] | [--current]] | [--persistent]]"
 Update the characteristics of a device associated with \fIdomain\fR,
-based on the device definition in an \s-1XML\s0 \fIfile\fR.  If the \fI\-\-config\fR
-option is used, the changes will take affect the next time libvirt
-starts the domain.  For compatibility purposes, \fI\-\-persistent\fR is
-alias of \fI\-\-config\fR.  The \fI\-\-force\fR option can be used to force
-device update, e.g., to eject a CD-ROM even if it is locked/mounted in
-the domain. See the documentation at
+based on the device definition in an \s-1XML\s0 \fIfile\fR.  The \fI\-\-force\fR option
+can be used to force device update, e.g., to eject a CD-ROM even if it is
+locked/mounted in the domain. See the documentation at
 <http://libvirt.org/formatdomain.html#elementsDevices> to learn about
 libvirt \s-1XML\s0 format for a device.
+.Sp
+If \fI\-\-live\fR is specified, affect a running domain.
+If \fI\-\-config\fR is specified, affect the next startup of a persistent domain.
+If \fI\-\-current\fR is specified, affect the current domain state.
+Both \fI\-\-live\fR and \fI\-\-config\fR flags may be given, but \fI\-\-current\fR is
+exclusive. Not specifying any flag is the same as specifying \fI\-\-current\fR.
+.Sp
+For compatibility purposes, \fI\-\-persistent\fR behaves like \fI\-\-config\fR for
+an offline domain, and like \fI\-\-live\fR \fI\-\-config\fR for a running domain.
+.Sp
+Note that older versions of virsh used \fI\-\-config\fR as an alias for
+\&\fI\-\-persistent\fR.
+.Sp
+\&\fBNote\fR: using of partial device definition \s-1XML\s0 files may lead to unexpected
+results as some fields may be autogenerated and thus match devices other than
+expected.
 .IP "\fBchange-media\fR \fIdomain\fR \fIpath\fR [\fI\-\-eject\fR] [\fI\-\-insert\fR] [\fI\-\-update\fR] [\fIsource\fR] [\fI\-\-force\fR] [[\fI\-\-live\fR] [\fI\-\-config\fR] | [\fI\-\-current\fR]]" 4
 .IX Item "change-media domain path [--eject] [--insert] [--update] [source] [--force] [[--live] [--config] | [--current]]"
 Change media of \s-1CDROM\s0 or floppy drive. \fIpath\fR can be the fully-qualified path
@@ -1871,11 +1960,12 @@ machines. Normally, libvirt is able to automatically determine which
 host nodes are available for use, but this allows registration of
 host hardware that libvirt did not automatically detect.  \fIfile\fR
 contains xml for a top-level <device> description of a node device.
-.IP "\fBnodedev-destroy\fR \fInodedev\fR" 4
-.IX Item "nodedev-destroy nodedev"
-Destroy (stop) a device on the host.  Note that this makes libvirt
-quit managing a host device, and may even make that device unusable
-by the rest of the physical host until a reboot.
+.IP "\fBnodedev-destroy\fR \fIdevice\fR" 4
+.IX Item "nodedev-destroy device"
+Destroy (stop) a device on the host. \fIdevice\fR can be either device
+name or wwn pair in \*(L"wwnn,wwpn\*(R" format (only works for \s-1HBA\s0). Note
+that this makes libvirt quit managing a host device, and may even make
+that device unusable by the rest of the physical host until a reboot.
 .IP "\fBnodedev-detach\fR \fInodedev\fR" 4
 .IX Item "nodedev-detach nodedev"
 Detach \fInodedev\fR from the host, so that it can safely be used by
@@ -1883,23 +1973,25 @@ guests via <hostdev> passthrough.  This is reversed with
 \&\fBnodedev-reattach\fR, and is done automatically for managed devices.
 For compatibility purposes, this command can also be spelled
 \&\fBnodedev-dettach\fR.
-.IP "\fBnodedev-dumpxml\fR \fInodedev\fR" 4
-.IX Item "nodedev-dumpxml nodedev"
+.IP "\fBnodedev-dumpxml\fR \fIdevice\fR" 4
+.IX Item "nodedev-dumpxml device"
 Dump a <device> \s-1XML\s0 representation for the given node device, including
 such information as the device name, which bus owns the device, the
 vendor and product id, and any capabilities of the device usable by
-libvirt (such as whether device reset is supported).
+libvirt (such as whether device reset is supported). \fIdevice\fR can
+be either device name or wwn pair in \*(L"wwnn,wwpn\*(R" format (only works
+for \s-1HBA\s0).
 .IP "\fBnodedev-list\fR \fIcap\fR \fI\-\-tree\fR" 4
 .IX Item "nodedev-list cap --tree"
 List all of the devices available on the node that are known by libvirt.
 \&\fIcap\fR is used to filter the list by capability types, the types must be
 separated by comma, e.g. \-\-cap pci,scsi, valid capability types include
 \&'system', 'pci', 'usb_device', 'usb', 'net', 'scsi_host', 'scsi_target',
-\&'scsi', 'storage'. If \fI\-\-tree\fR is used, the output is formatted in a tree
-representing parents of each node. \fIcap\fR and \fI\-\-tree\fR are mutually
-exclusive.
-=item \fBnodedev-reattach\fR \fInodedev\fR
-.Sp
+\&'scsi', 'storage', 'fc_host', 'vports'. If \fI\-\-tree\fR is used, the output
+is formatted in a tree representing parents of each node. \fIcap\fR and
+\&\fI\-\-tree\fR are mutually exclusive.
+.IP "\fBnodedev-reattach\fR \fInodedev\fR" 4
+.IX Item "nodedev-reattach nodedev"
 Declare that \fInodedev\fR is no longer in use by any guests, and that
 the host can resume normal use of the device.  This is done
 automatically for devices in managed mode, but must be done explicitly
@@ -1924,17 +2016,18 @@ Configure a virtual network to be automatically started at boot.
 The \fI\-\-disable\fR option disable autostarting.
 .IP "\fBnet-create\fR \fIfile\fR" 4
 .IX Item "net-create file"
-Create a virtual network from an \s-1XML\s0 \fIfile\fR, see the documentation at
-<http://libvirt.org/formatnetwork.html> to get a description of the
-\&\s-1XML\s0 network format used by libvirt.
+Create a transient (temporary) virtual network from an
+\&\s-1XML\s0 \fIfile\fR and instantiate (start) the network.
+See the documentation at <http://libvirt.org/formatnetwork.html>
+to get a description of the \s-1XML\s0 network format used by libvirt.
 .IP "\fBnet-define\fR \fIfile\fR" 4
 .IX Item "net-define file"
-Define a virtual network from an \s-1XML\s0 \fIfile\fR, the network is just defined but
-not instantiated.
+Define a persistent virtual network from an \s-1XML\s0 \fIfile\fR, the network is just
+defined but not instantiated (started).
 .IP "\fBnet-destroy\fR \fInetwork\fR" 4
 .IX Item "net-destroy network"
-Destroy (stop) a given virtual network specified by its name or \s-1UUID\s0. This
-takes effect immediately.
+Destroy (stop) a given transient or persistent virtual network
+specified by its name or \s-1UUID\s0. This takes effect immediately.
 .IP "\fBnet-dumpxml\fR \fInetwork\fR [\fI\-\-inactive\fR]" 4
 .IX Item "net-dumpxml network [--inactive]"
 Output the virtual network information as an \s-1XML\s0 dump to stdout.
@@ -1964,7 +2057,7 @@ Returns basic information about the \fInetwork\fR object.
 Returns the list of active networks, if \fI\-\-all\fR is specified this will also
 include defined but inactive networks, if \fI\-\-inactive\fR is specified only the
 inactive ones will be listed. You may also want to filter the returned networks
-by \fI\-\-persistent\fR to list the persitent ones, \fI\-\-transient\fR to list the
+by \fI\-\-persistent\fR to list the persistent ones, \fI\-\-transient\fR to list the
 transient ones, \fI\-\-autostart\fR to list the ones with autostart enabled, and
 \&\fI\-\-no\-autostart\fR to list the ones with autostart disabled.
 .Sp
@@ -2328,16 +2421,17 @@ is in.
 Upload the contents of \fIlocal-file\fR to a storage volume.
 \&\fI\-\-pool\fR \fIpool-or-uuid\fR is the name or \s-1UUID\s0 of the storage pool the volume
 is in.
-\&\fIvol-name-or-key-or-path\fR is the name or key or path of the volume to wipe.
+\&\fIvol-name-or-key-or-path\fR is the name or key or path of the volume where the
+file will be uploaded.
 \&\fI\-\-offset\fR is the position in the storage volume at which to start writing
 the data. \fI\-\-length\fR is an upper bound of the amount of data to be uploaded.
 An error will occur if the \fIlocal-file\fR is greater than the specified length.
 .IP "\fBvol-download\fR [\fI\-\-pool\fR \fIpool-or-uuid\fR] [\fI\-\-offset\fR \fIbytes\fR] [\fI\-\-length\fR \fIbytes\fR] \fIvol-name-or-key-or-path\fR \fIlocal-file\fR" 4
 .IX Item "vol-download [--pool pool-or-uuid] [--offset bytes] [--length bytes] vol-name-or-key-or-path local-file"
-Download the contents of \fIlocal-file\fR from a storage volume.
+Download the contents of a storage volume to \fIlocal-file\fR.
 \&\fI\-\-pool\fR \fIpool-or-uuid\fR is the name or \s-1UUID\s0 of the storage pool the volume
 is in.
-\&\fIvol-name-or-key-or-path\fR is the name or key or path of the volume to wipe.
+\&\fIvol-name-or-key-or-path\fR is the name or key or path of the volume to download.
 \&\fI\-\-offset\fR is the position in the storage volume at which to start reading
 the data. \fI\-\-length\fR is an upper bound of the amount of data to be downloaded.
 .IP "\fBvol-wipe\fR [\fI\-\-pool\fR \fIpool-or-uuid\fR] [\fI\-\-algorithm\fR \fIalgorithm\fR] \fIvol-name-or-key-or-path\fR" 4
@@ -2545,7 +2639,8 @@ The \fI\-\-memspec\fR option can be used to control whether a checkpoint
 is internal or external.  The \fI\-\-memspec\fR flag is mandatory, followed
 by a \fBmemspec\fR of the form \fB[file=]name[,snapshot=type]\fR, where
 type can be \fBnone\fR, \fBinternal\fR, or \fBexternal\fR.  To include a literal
-comma in \fBfile=name\fR, escape it with a second comma.
+comma in \fBfile=name\fR, escape it with a second comma. \fI\-\-memspec\fR cannot
+be used together with \fI\-\-disk\-only\fR.
 .Sp
 The \fI\-\-diskspec\fR option can be used to control how \fI\-\-disk\-only\fR and
 external checkpoints create external files.  This option can occur
@@ -2628,8 +2723,8 @@ accessible only from the original name.
 .IX Item "snapshot-info domain {snapshot | --current}"
 Output basic information about a named <snapshot>, or the current snapshot
 with \fI\-\-current\fR.
-.IP "\fBsnapshot-list\fR \fIdomain\fR [{\fI\-\-parent\fR | \fI\-\-roots\fR | \fI\-\-tree\fR}] [{[\fI\-\-from\fR] \fBsnapshot\fR | \fI\-\-current\fR} [\fI\-\-descendants\fR]] [\fI\-\-metadata\fR] [\fI\-\-no\-metadata\fR] [\fI\-\-leaves\fR] [\fI\-\-no\-leaves\fR] [\fI\-\-inactive\fR] [\fI\-\-active\fR] [\fI\-\-disk\-only\fR] [\fI\-\-internal\fR] [\fI\-\-external\fR]" 4
-.IX Item "snapshot-list domain [{--parent | --roots | --tree}] [{[--from] snapshot | --current} [--descendants]] [--metadata] [--no-metadata] [--leaves] [--no-leaves] [--inactive] [--active] [--disk-only] [--internal] [--external]"
+.IP "\fBsnapshot-list\fR \fIdomain\fR [\fI\-\-metadata\fR] [\fI\-\-no\-metadata\fR] [{\fI\-\-parent\fR | \fI\-\-roots\fR | [{\fI\-\-tree\fR | \fI\-\-name\fR}]}] [{[\fI\-\-from\fR] \fBsnapshot\fR | \fI\-\-current\fR} [\fI\-\-descendants\fR]] [\fI\-\-leaves\fR] [\fI\-\-no\-leaves\fR] p[\fI\-\-inactive\fR] [\fI\-\-active\fR] [\fI\-\-disk\-only\fR] [\fI\-\-internal\fR] [\fI\-\-external\fR]" 4
+.IX Item "snapshot-list domain [--metadata] [--no-metadata] [{--parent | --roots | [{--tree | --name}]}] [{[--from] snapshot | --current} [--descendants]] [--leaves] [--no-leaves] p[--inactive] [--active] [--disk-only] [--internal] [--external]"
 List all of the available snapshots for the given domain, defaulting
 to show columns for the snapshot name, creation time, and domain state.
 .Sp
@@ -2637,7 +2732,9 @@ If \fI\-\-parent\fR is specified, add a column to the output table giving
 the name of the parent of each snapshot.  If \fI\-\-roots\fR is specified,
 the list will be filtered to just snapshots that have no parents.
 If \fI\-\-tree\fR is specified, the output will be in a tree format, listing
-just snapshot names.  These three options are mutually exclusive.
+just snapshot names.  These three options are mutually exclusive. If
+\&\fI\-\-name\fR is specified only the snapshot name is printed. This option is
+mutually exclusive with \fI\-\-tree\fR.
 .Sp
 If \fI\-\-from\fR is provided, filter the list to snapshots which are
 children of the given \fBsnapshot\fR; or if \fI\-\-current\fR is provided,
@@ -2840,21 +2937,30 @@ of \f(CW\*(C`virsh\*(C'\fR
 .IP "VIRSH_DEBUG=<0 to 4>" 4
 .IX Item "VIRSH_DEBUG=<0 to 4>"
 Turn on verbose debugging of virsh commands. Valid levels are
-.IP "* VIRSH_DEBUG=0" 4
-.IX Item "* VIRSH_DEBUG=0"
+.RS 4
+.IP "\(bu" 4
+VIRSH_DEBUG=0
+.Sp
 \&\s-1DEBUG\s0 \- Messages at \s-1ALL\s0 levels get logged
-.IP "* VIRSH_DEBUG=1" 4
-.IX Item "* VIRSH_DEBUG=1"
+.IP "\(bu" 4
+VIRSH_DEBUG=1
+.Sp
 \&\s-1INFO\s0 \- Logs messages at levels \s-1INFO\s0, \s-1NOTICE\s0, \s-1WARNING\s0 and \s-1ERROR\s0
-.IP "* VIRSH_DEBUG=2" 4
-.IX Item "* VIRSH_DEBUG=2"
+.IP "\(bu" 4
+VIRSH_DEBUG=2
+.Sp
 \&\s-1NOTICE\s0 \- Logs messages at levels \s-1NOTICE\s0, \s-1WARNING\s0 and \s-1ERROR\s0
-.IP "* VIRSH_DEBUG=3" 4
-.IX Item "* VIRSH_DEBUG=3"
+.IP "\(bu" 4
+VIRSH_DEBUG=3
+.Sp
 \&\s-1WARNING\s0 \- Logs messages at levels \s-1WARNING\s0 and \s-1ERROR\s0
-.IP "* VIRSH_DEBUG=4" 4
-.IX Item "* VIRSH_DEBUG=4"
+.IP "\(bu" 4
+VIRSH_DEBUG=4
+.Sp
 \&\s-1ERROR\s0 \- Messages at only \s-1ERROR\s0 level gets logged.
+.RE
+.RS 4
+.RE
 .ie n .IP "VIRSH_LOG_FILE=""LOGFILE""" 4
 .el .IP "VIRSH_LOG_FILE=\f(CWLOGFILE\fR" 4
 .IX Item "VIRSH_LOG_FILE=LOGFILE"

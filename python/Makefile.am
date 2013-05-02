@@ -26,6 +26,7 @@ CLASSES_EXTRA = \
 	libvirt-override-virConnect.py \
 	libvirt-override-virDomain.py \
 	libvirt-override-virDomainSnapshot.py \
+	libvirt-override-virStoragePool.py \
 	libvirt-override-virStream.py
 
 EXTRA_DIST =			\
@@ -109,7 +110,11 @@ LXC_GENERATED= libvirt-lxc-export.c \
 	   libvirt-lxc.h \
 	   libvirt_lxc.py
 
-$(GENERATE).stamp: $(srcdir)/$(GENERATE) $(API_DESC) $(QEMU_API_DESC) $(LXC_API_DESC)
+$(GENERATE).stamp: $(srcdir)/$(GENERATE) \
+                   $(API_DESC) \
+                   $(QEMU_API_DESC) \
+                   $(LXC_API_DESC) \
+                   $(CLASSES_EXTRA)
 	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(GENERATE) $(PYTHON) && \
 	touch $@
 
@@ -118,6 +123,11 @@ $(GENERATED) $(QEMU_GENERATED) $(LXC_GENERATED): $(GENERATE).stamp
 $(libvirtmod_la_OBJECTS): $(GENERATED)
 $(libvirtmod_qemu_la_OBJECTS): $(QEMU_GENERATED)
 $(libvirtmod_lxc_la_OBJECTS): $(LXC_GENERATED)
+
+EXTRA_DIST += sanitytest.py
+
+check-local:
+	$(AM_V_GEN)../run $(PYTHON) $(srcdir)/sanitytest.py
 
 install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(pyexecdir)

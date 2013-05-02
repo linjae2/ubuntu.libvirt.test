@@ -64,7 +64,7 @@ int virInsertElementsN(void *ptrptr, size_t size, size_t at, size_t *countptr,
                        bool clearOriginal, bool inPlace)
     ATTRIBUTE_RETURN_CHECK ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(4);
 int virDeleteElementsN(void *ptrptr, size_t size, size_t at, size_t *countptr,
-                       size_t remove, bool inPlace)
+                       size_t toremove, bool inPlace)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(4);
 int virAllocVar(void *ptrptr,
                 size_t struct_size,
@@ -197,7 +197,7 @@ void virFree(void *ptrptr) ATTRIBUTE_NONNULL(1);
  *      char[1]), or generates a compile error if it wasn't successful
  *      (char[2*0 -1] i.e. char[-1], which isn't valid in C).
  *
- * So VIR_TYPECHECK(a, b) will either abort the compile with an error,
+ * So VIR_TYPEMATCH(a, b) will either abort the compile with an error,
  * or evaluate to "1", and in the meantime check that we've actually
  * added the correct &'s and/or *'s to the arguments. (Whew!)
 */
@@ -376,15 +376,8 @@ void virFree(void *ptrptr) ATTRIBUTE_NONNULL(1);
 #  define VIR_FREE(ptr) virFree((void *) &(ptr))
 # endif
 
-
-
-# if TEST_OOM
 void virAllocTestInit(void);
 int virAllocTestCount(void);
 void virAllocTestOOM(int n, int m);
 void virAllocTestHook(void (*func)(int, void*), void *data);
-# endif
-
-
-
 #endif /* __VIR_MEMORY_H_ */

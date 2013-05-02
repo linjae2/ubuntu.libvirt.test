@@ -90,8 +90,6 @@ int virFileWrapperFdClose(virFileWrapperFdPtr dfd);
 
 void virFileWrapperFdFree(virFileWrapperFdPtr dfd);
 
-void virFileWrapperFdCatchError(virFileWrapperFdPtr dfd);
-
 int virFileLock(int fd, bool shared, off_t start, off_t len);
 int virFileUnlock(int fd, off_t start, off_t len);
 
@@ -109,5 +107,7 @@ int virFileUpdatePerm(const char *path,
 
 int virFileLoopDeviceAssociate(const char *file,
                                char **dev);
+
+int virFileDeleteTree(const char *dir);
 
 #endif /* __VIR_FILES_H */

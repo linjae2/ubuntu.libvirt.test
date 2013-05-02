@@ -1,5 +1,7 @@
 #include <config.h>
 
+#include "testutils.h"
+
 #ifdef WITH_VMX
 
 # include <stdio.h>
@@ -8,17 +10,12 @@
 
 # include "internal.h"
 # include "viralloc.h"
-# include "testutils.h"
 # include "vmx/vmx.h"
 
 static virCapsPtr caps;
 static virVMXContext ctx;
+static virDomainXMLOptionPtr xmlopt;
 
-static int testDefaultConsoleType(const char *ostype ATTRIBUTE_UNUSED,
-                                  virArch arch ATTRIBUTE_UNUSED)
-{
-    return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_SERIAL;
-}
 
 static void
 testCapsInit(void)
@@ -31,12 +28,8 @@ testCapsInit(void)
         return;
     }
 
-    caps->defaultConsoleTargetType = testDefaultConsoleType;
-
-    virCapabilitiesSetMacPrefix(caps, (unsigned char[]){ 0x00, 0x0c, 0x29 });
     virCapabilitiesAddHostMigrateTransport(caps, "esx");
 
-    caps->hasWideScsiBus = true;
 
     /* i686 guest */
     guest =
@@ -71,7 +64,8 @@ testCapsInit(void)
     return;
 
   failure:
-    virCapabilitiesFree(caps);
+    virObjectUnref(caps);
+    virObjectUnref(xmlopt);
     caps = NULL;
 }
 
@@ -92,14 +86,15 @@ testCompareFiles(const char *xml, const char *vmx, int virtualHW_version)
         goto failure;
     }
 
-    def = virDomainDefParseString(caps, xmlData, 1 << VIR_DOMAIN_VIRT_VMWARE,
+    def = virDomainDefParseString(xmlData, caps, xmlopt,
+                                  1 << VIR_DOMAIN_VIRT_VMWARE,
                                   VIR_DOMAIN_XML_INACTIVE);
 
     if (def == NULL) {
         goto failure;
     }
 
-    formatted = virVMXFormatConfig(&ctx, caps, def, virtualHW_version);
+    formatted = virVMXFormatConfig(&ctx, xmlopt, def, virtualHW_version);
 
     if (formatted == NULL) {
         goto failure;
@@ -237,6 +232,9 @@ mymain(void)
         return EXIT_FAILURE;
     }
 
+    if (!(xmlopt = virVMXDomainXMLConfInit()))
+        return EXIT_FAILURE;
+
     ctx.opaque = NULL;
     ctx.parseFileName = NULL;
     ctx.formatFileName = testFormatVMXFileName;
@@ -305,7 +303,8 @@ mymain(void)
 
     DO_TEST("svga", "svga", 4);
 
-    virCapabilitiesFree(caps);
+    virObjectUnref(caps);
+    virObjectUnref(xmlopt);
 
     return result == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -313,7 +312,6 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
-# include "testutils.h"
 
 int main(void)
 {

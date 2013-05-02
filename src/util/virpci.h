@@ -1,7 +1,7 @@
 /*
  * virpci.h: helper APIs for managing host PCI devices
  *
- * Copyright (C) 2009, 2011-2012 Red Hat, Inc.
+ * Copyright (C) 2009, 2011-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,68 +25,77 @@
 # define __VIR_PCI_H__
 
 # include "internal.h"
+# include "virobject.h"
 
-typedef struct _pciDevice pciDevice;
-typedef struct _pciDeviceList pciDeviceList;
+typedef struct _virPCIDevice virPCIDevice;
+typedef virPCIDevice *virPCIDevicePtr;
+typedef struct _virPCIDeviceAddress virPCIDeviceAddress;
+typedef virPCIDeviceAddress *virPCIDeviceAddressPtr;
+typedef struct _virPCIDeviceList virPCIDeviceList;
+typedef virPCIDeviceList *virPCIDeviceListPtr;
 
-struct pci_config_address {
+struct _virPCIDeviceAddress {
     unsigned int domain;
     unsigned int bus;
     unsigned int slot;
     unsigned int function;
 };
 
-pciDevice *pciGetDevice      (unsigned       domain,
-                              unsigned       bus,
-                              unsigned       slot,
-                              unsigned       function);
-void       pciFreeDevice     (pciDevice     *dev);
-const char *pciDeviceGetName (pciDevice     *dev);
-int        pciDettachDevice  (pciDevice     *dev,
-                              pciDeviceList *activeDevs,
-                              pciDeviceList *inactiveDevs,
-                              const char *driver);
-int        pciReAttachDevice (pciDevice     *dev,
-                              pciDeviceList *activeDevs,
-                              pciDeviceList *inactiveDevs,
-                              const char *driver);
-int        pciResetDevice    (pciDevice     *dev,
-                              pciDeviceList *activeDevs,
-                              pciDeviceList *inactiveDevs);
-void      pciDeviceSetManaged(pciDevice     *dev,
-                              unsigned       managed);
-unsigned  pciDeviceGetManaged(pciDevice     *dev);
-void      pciDeviceSetUsedBy(pciDevice     *dev,
-                             const char *used_by);
-const char *pciDeviceGetUsedBy(pciDevice   *dev);
-unsigned  pciDeviceGetUnbindFromStub(pciDevice *dev);
-void      pciDeviceSetUnbindFromStub(pciDevice     *dev,
-                                     unsigned      unbind);
-unsigned  pciDeviceGetRemoveSlot(pciDevice *dev);
-void      pciDeviceSetRemoveSlot(pciDevice     *dev,
-                                 unsigned      remove_slot);
-unsigned  pciDeviceGetReprobe(pciDevice *dev);
-void      pciDeviceSetReprobe(pciDevice     *dev,
-                              unsigned      reprobe);
-void      pciDeviceReAttachInit(pciDevice   *dev);
+virPCIDevicePtr virPCIDeviceNew(unsigned int domain,
+                                unsigned int bus,
+                                unsigned int slot,
+                                unsigned int function);
+void virPCIDeviceFree(virPCIDevicePtr dev);
+const char *virPCIDeviceGetName(virPCIDevicePtr dev);
 
-pciDeviceList *pciDeviceListNew  (void);
-void           pciDeviceListFree (pciDeviceList *list);
-int            pciDeviceListAdd  (pciDeviceList *list,
-                                  pciDevice *dev);
-pciDevice *    pciDeviceListGet (pciDeviceList *list,
-                                 int idx);
-int            pciDeviceListCount (pciDeviceList *list);
-pciDevice *    pciDeviceListSteal (pciDeviceList *list,
-                                   pciDevice *dev);
-pciDevice *    pciDeviceListStealIndex(pciDeviceList *list,
-                                       int idx);
-void           pciDeviceListDel  (pciDeviceList *list,
-                                  pciDevice *dev);
-pciDevice *    pciDeviceListFind (pciDeviceList *list,
-                                  pciDevice *dev);
-int            pciDeviceListFindIndex(pciDeviceList *list,
-                                      pciDevice *dev);
+int virPCIDeviceDetach(virPCIDevicePtr dev,
+                       virPCIDeviceListPtr activeDevs,
+                       virPCIDeviceListPtr inactiveDevs,
+                       const char *driver);
+int virPCIDeviceReattach(virPCIDevicePtr dev,
+                         virPCIDeviceListPtr activeDevs,
+                         virPCIDeviceListPtr inactiveDevs);
+int virPCIDeviceReset(virPCIDevicePtr dev,
+                      virPCIDeviceListPtr activeDevs,
+                      virPCIDeviceListPtr inactiveDevs);
+
+void virPCIDeviceSetManaged(virPCIDevice *dev,
+                            bool managed);
+unsigned int virPCIDeviceGetManaged(virPCIDevice *dev);
+void virPCIDeviceSetStubDriver(virPCIDevicePtr dev,
+                               const char *driver);
+const char *virPCIDeviceGetStubDriver(virPCIDevicePtr dev);
+void virPCIDeviceSetUsedBy(virPCIDevice *dev,
+                           const char *used_by);
+const char *virPCIDeviceGetUsedBy(virPCIDevice *dev);
+unsigned int virPCIDeviceGetUnbindFromStub(virPCIDevicePtr dev);
+void  virPCIDeviceSetUnbindFromStub(virPCIDevice *dev,
+                                    bool unbind);
+unsigned int virPCIDeviceGetRemoveSlot(virPCIDevicePtr dev);
+void virPCIDeviceSetRemoveSlot(virPCIDevice *dev,
+                               bool remove_slot);
+unsigned int virPCIDeviceGetReprobe(virPCIDevicePtr dev);
+void virPCIDeviceSetReprobe(virPCIDevice *dev,
+                            bool reprobe);
+void virPCIDeviceReattachInit(virPCIDevice *dev);
+
+
+virPCIDeviceListPtr virPCIDeviceListNew(void);
+int  virPCIDeviceListAdd(virPCIDeviceListPtr list,
+                         virPCIDevicePtr dev);
+virPCIDevicePtr virPCIDeviceListGet(virPCIDeviceListPtr list,
+                                    int idx);
+int virPCIDeviceListCount(virPCIDeviceListPtr list);
+virPCIDevicePtr virPCIDeviceListSteal(virPCIDeviceListPtr list,
+                                      virPCIDevicePtr dev);
+virPCIDevicePtr virPCIDeviceListStealIndex(virPCIDeviceListPtr list,
+                                           int idx);
+void virPCIDeviceListDel(virPCIDeviceListPtr list,
+                         virPCIDevicePtr dev);
+virPCIDevicePtr virPCIDeviceListFind(virPCIDeviceListPtr list,
+                                     virPCIDevicePtr dev);
+int virPCIDeviceListFindIndex(virPCIDeviceListPtr list,
+                              virPCIDevicePtr dev);
 
 /*
  * Callback that will be invoked once for each file
@@ -95,46 +104,49 @@ int            pciDeviceListFindIndex(pciDeviceList *list,
  * Should return 0 if successfully processed, or
  * -1 to indicate error and abort iteration
  */
-typedef int (*pciDeviceFileActor)(pciDevice *dev,
-                                  const char *path, void *opaque);
+typedef int (*virPCIDeviceFileActor)(virPCIDevicePtr dev,
+                                     const char *path, void *opaque);
 
-int pciDeviceFileIterate(pciDevice *dev,
-                         pciDeviceFileActor actor,
-                         void *opaque);
+int virPCIDeviceFileIterate(virPCIDevicePtr dev,
+                            virPCIDeviceFileActor actor,
+                            void *opaque);
+char *
+virPCIDeviceGetVFIOGroupDev(virPCIDevicePtr dev);
 
-int pciDeviceIsAssignable(pciDevice *dev,
-                          int strict_acs_check);
-int pciWaitForDeviceCleanup(pciDevice *dev, const char *matcher);
+int virPCIDeviceIsAssignable(virPCIDevicePtr dev,
+                             int strict_acs_check);
+int virPCIDeviceWaitForCleanup(virPCIDevicePtr dev, const char *matcher);
 
-int pciGetPhysicalFunction(const char *sysfs_path,
-                           struct pci_config_address **phys_fn);
+int virPCIGetPhysicalFunction(const char *sysfs_path,
+                              virPCIDeviceAddressPtr *phys_fn);
 
-int pciGetVirtualFunctions(const char *sysfs_path,
-                           struct pci_config_address ***virtual_functions,
-                           unsigned int *num_virtual_functions);
+int virPCIGetVirtualFunctions(const char *sysfs_path,
+                              virPCIDeviceAddressPtr **virtual_functions,
+                              unsigned int *num_virtual_functions);
 
-int pciDeviceIsVirtualFunction(const char *vf_sysfs_device_link);
+int virPCIIsVirtualFunction(const char *vf_sysfs_device_link);
 
-int pciGetVirtualFunctionIndex(const char *pf_sysfs_device_link,
-                               const char *vf_sysfs_device_link,
-                               int *vf_index);
+int virPCIGetVirtualFunctionIndex(const char *pf_sysfs_device_link,
+                                        const char *vf_sysfs_device_link,
+                                        int *vf_index);
 
-int pciConfigAddressToSysfsFile(struct pci_config_address *dev,
-                                char **pci_sysfs_device_link);
+int virPCIDeviceAddressGetSysfsFile(virPCIDeviceAddressPtr dev,
+                                    char **pci_sysfs_device_link);
 
-int pciDeviceNetName(char *device_link_sysfs_path, char **netname);
+int virPCIGetNetName(char *device_link_sysfs_path, char **netname);
 
-int pciSysfsFile(char *pciDeviceName, char **pci_sysfs_device_link)
+int virPCIGetSysfsFile(char *virPCIDeviceName,
+                             char **pci_sysfs_device_link)
     ATTRIBUTE_RETURN_CHECK;
 
-int pciGetDeviceAddrString(unsigned domain,
-                           unsigned bus,
-                           unsigned slot,
-                           unsigned function,
-                           char **pciConfigAddr)
+int virPCIGetAddrString(unsigned int domain,
+                        unsigned int bus,
+                        unsigned int slot,
+                        unsigned int function,
+                        char **pciConfigAddr)
     ATTRIBUTE_NONNULL(5) ATTRIBUTE_RETURN_CHECK;
 
-int pciDeviceGetVirtualFunctionInfo(const char *vf_sysfs_device_path,
-                                    char **pfname, int *vf_index);
+int virPCIGetVirtualFunctionInfo(const char *vf_sysfs_device_path,
+                                 char **pfname, int *vf_index);
 
 #endif /* __VIR_PCI_H__ */

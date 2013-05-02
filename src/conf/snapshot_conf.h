@@ -101,6 +101,7 @@ typedef enum {
 
 virDomainSnapshotDefPtr virDomainSnapshotDefParseString(const char *xmlStr,
                                                         virCapsPtr caps,
+                                                        virDomainXMLOptionPtr xmlopt,
                                                         unsigned int expectedVirtTypes,
                                                         unsigned int flags);
 void virDomainSnapshotDefFree(virDomainSnapshotDefPtr def);

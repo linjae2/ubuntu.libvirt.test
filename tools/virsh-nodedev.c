@@ -1,7 +1,7 @@
 /*
  * virsh-nodedev.c: Commands in node device group
  *
- * Copyright (C) 2005, 2007-2012 Red Hat, Inc.
+ * Copyright (C) 2005, 2007-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -42,12 +42,16 @@
  * "nodedev-create" command
  */
 static const vshCmdInfo info_node_device_create[] = {
-    {"help", N_("create a device defined "
-                          "by an XML file on the node")},
-    {"desc", N_("Create a device on the node.  Note that this "
-                          "command creates devices on the physical host "
-                          "that can then be assigned to a virtual machine.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("create a device defined "
+                "by an XML file on the node")
+    },
+    {.name = "desc",
+     .data = N_("Create a device on the node.  Note that this "
+                "command creates devices on the physical host "
+                "that can then be assigned to a virtual machine.")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_node_device_create[] = {
@@ -67,7 +71,7 @@ cmdNodeDeviceCreate(vshControl *ctl, const vshCmd *cmd)
     bool ret = true;
     char *buffer;
 
-    if (vshCommandOptString(cmd, "file", &from) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, "file", &from) < 0)
         return false;
 
     if (virFileReadAll(from, VSH_MAX_XML_FILE, &buffer) < 0)
@@ -93,17 +97,25 @@ cmdNodeDeviceCreate(vshControl *ctl, const vshCmd *cmd)
  * "nodedev-destroy" command
  */
 static const vshCmdInfo info_node_device_destroy[] = {
-    {"help", N_("destroy (stop) a device on the node")},
-    {"desc", N_("Destroy a device on the node.  Note that this "
-                "command destroys devices on the physical host")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("destroy (stop) a device on the node")
+    },
+    {.name = "desc",
+     .data = N_("Destroy a device on the node.  Note that this "
+                "command destroys devices on the physical host")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_node_device_destroy[] = {
     {.name = "name",
+     .type = VSH_OT_ALIAS,
+     .help = "device"
+    },
+    {.name = "device",
      .type = VSH_OT_DATA,
      .flags = VSH_OFLAG_REQ,
-     .help = N_("name of the device to be destroyed")
+     .help = N_("device name or wwn pair in 'wwnn,wwpn' format")
     },
     {.name = NULL}
 };
@@ -112,21 +124,47 @@ static bool
 cmdNodeDeviceDestroy(vshControl *ctl, const vshCmd *cmd)
 {
     virNodeDevicePtr dev = NULL;
-    bool ret = true;
-    const char *name = NULL;
+    bool ret = false;
+    const char *device_value = NULL;
+    char **arr = NULL;
+    int narr;
 
-    if (vshCommandOptString(cmd, "name", &name) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, "device", &device_value) < 0)
         return false;
 
-    dev = virNodeDeviceLookupByName(ctl->conn, name);
+    if (strchr(device_value, ',')) {
+        narr = vshStringToArray(device_value, &arr);
+        if (narr != 2) {
+            vshError(ctl, _("Malformed device value '%s'"), device_value);
+            goto cleanup;
+        }
 
-    if (virNodeDeviceDestroy(dev) == 0) {
-        vshPrint(ctl, _("Destroyed node device '%s'\n"), name);
+        if (!virValidateWWN(arr[0]) || !virValidateWWN(arr[1]))
+            goto cleanup;
+
+        dev = virNodeDeviceLookupSCSIHostByWWN(ctl->conn, arr[0], arr[1], 0);
     } else {
-        vshError(ctl, _("Failed to destroy node device '%s'"), name);
-        ret = false;
+        dev = virNodeDeviceLookupByName(ctl->conn, device_value);
     }
 
+    if (!dev) {
+        vshError(ctl, "%s '%s'", _("Could not find matching device"), device_value);
+        goto cleanup;
+    }
+
+    if (virNodeDeviceDestroy(dev) == 0) {
+        vshPrint(ctl, _("Destroyed node device '%s'\n"), device_value);
+    } else {
+        vshError(ctl, _("Failed to destroy node device '%s'"), device_value);
+        goto cleanup;
+    }
+
+    ret = true;
+cleanup:
+    if (arr) {
+        VIR_FREE(*arr);
+        VIR_FREE(arr);
+    }
     virNodeDeviceFree(dev);
     return ret;
 }
@@ -330,20 +368,22 @@ cleanup:
  * "nodedev-list" command
  */
 static const vshCmdInfo info_node_list_devices[] = {
-    {"help", N_("enumerate devices on this host")},
-    {"desc", ""},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("enumerate devices on this host")
+    },
+    {.name = "desc",
+     .data = ""
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_node_list_devices[] = {
     {.name = "tree",
      .type = VSH_OT_BOOL,
-     .flags = 0,
      .help = N_("list devices in a tree")
     },
     {.name = "cap",
      .type = VSH_OT_STRING,
-     .flags = VSH_OFLAG_NONE,
      .help = N_("capability names, separated by comma")
     },
     {.name = NULL}
@@ -407,6 +447,12 @@ cmdNodeListDevices(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
         case VIR_NODE_DEV_CAP_STORAGE:
             flags |= VIR_CONNECT_LIST_NODE_DEVICES_CAP_STORAGE;
             break;
+        case VIR_NODE_DEV_CAP_FC_HOST:
+            flags |= VIR_CONNECT_LIST_NODE_DEVICES_CAP_FC_HOST;
+            break;
+        case VIR_NODE_DEV_CAP_VPORTS:
+            flags |= VIR_CONNECT_LIST_NODE_DEVICES_CAP_VPORTS;
+            break;
         default:
             break;
         }
@@ -466,9 +512,13 @@ cleanup:
  * "nodedev-dumpxml" command
  */
 static const vshCmdInfo info_node_device_dumpxml[] = {
-    {"help", N_("node device details in XML")},
-    {"desc", N_("Output the node device details as an XML dump to stdout.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("node device details in XML")
+    },
+    {.name = "desc",
+     .data = N_("Output the node device details as an XML dump to stdout.")
+    },
+    {.name = NULL}
 };
 
 
@@ -476,7 +526,7 @@ static const vshCmdOptDef opts_node_device_dumpxml[] = {
     {.name = "device",
      .type = VSH_OT_DATA,
      .flags = VSH_OFLAG_REQ,
-     .help = N_("device key")
+     .help = N_("device name or wwn pair in 'wwnn,wwpn' format"),
     },
     {.name = NULL}
 };
@@ -484,36 +534,63 @@ static const vshCmdOptDef opts_node_device_dumpxml[] = {
 static bool
 cmdNodeDeviceDumpXML(vshControl *ctl, const vshCmd *cmd)
 {
-    const char *name = NULL;
-    virNodeDevicePtr device;
-    char *xml;
+    virNodeDevicePtr device = NULL;
+    char *xml = NULL;
+    const char *device_value = NULL;
+    char **arr = NULL;
+    int narr;
+    bool ret = false;
 
-    if (vshCommandOptString(cmd, "device", &name) <= 0)
-        return false;
-    if (!(device = virNodeDeviceLookupByName(ctl->conn, name))) {
-        vshError(ctl, "%s '%s'", _("Could not find matching device"), name);
-        return false;
+    if (vshCommandOptStringReq(ctl, cmd, "device", &device_value) < 0)
+         return false;
+
+    if (strchr(device_value, ',')) {
+        narr = vshStringToArray(device_value, &arr);
+        if (narr != 2) {
+            vshError(ctl, _("Malformed device value '%s'"), device_value);
+            goto cleanup;
+        }
+
+        if (!virValidateWWN(arr[0]) || !virValidateWWN(arr[1]))
+            goto cleanup;
+
+        device = virNodeDeviceLookupSCSIHostByWWN(ctl->conn, arr[0], arr[1], 0);
+    } else {
+        device = virNodeDeviceLookupByName(ctl->conn, device_value);
     }
 
-    xml = virNodeDeviceGetXMLDesc(device, 0);
-    if (!xml) {
-        virNodeDeviceFree(device);
-        return false;
+    if (!device) {
+        vshError(ctl, "%s '%s'", _("Could not find matching device"), device_value);
+        goto cleanup;
     }
+
+    if (!(xml = virNodeDeviceGetXMLDesc(device, 0)))
+        goto cleanup;
 
     vshPrint(ctl, "%s\n", xml);
+
+    ret = true;
+cleanup:
+    if (arr) {
+        VIR_FREE(*arr);
+        VIR_FREE(arr);
+    }
     VIR_FREE(xml);
     virNodeDeviceFree(device);
-    return true;
+    return ret;
 }
 
 /*
  * "nodedev-detach" command
  */
 static const vshCmdInfo info_node_device_detach[] = {
-    {"help", N_("detach node device from its device driver")},
-    {"desc", N_("Detach node device from its device driver before assigning to a domain.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("detach node device from its device driver")
+    },
+    {.name = "desc",
+     .data = N_("Detach node device from its device driver before assigning to a domain.")
+    },
+    {.name = NULL}
 };
 
 
@@ -523,6 +600,10 @@ static const vshCmdOptDef opts_node_device_detach[] = {
      .flags = VSH_OFLAG_REQ,
      .help = N_("device key")
     },
+    {.name = "driver",
+     .type = VSH_OT_STRING,
+     .help = N_("pci device assignment backend driver (e.g. 'vfio' or 'kvm'")
+    },
     {.name = NULL}
 };
 
@@ -530,24 +611,36 @@ static bool
 cmdNodeDeviceDetach(vshControl *ctl, const vshCmd *cmd)
 {
     const char *name = NULL;
+    const char *driverName = NULL;
     virNodeDevicePtr device;
     bool ret = true;
 
-    if (vshCommandOptString(cmd, "device", &name) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, "device", &name) < 0)
         return false;
+
+    ignore_value(vshCommandOptString(cmd, "driver", &driverName));
+
     if (!(device = virNodeDeviceLookupByName(ctl->conn, name))) {
-        vshError(ctl, "%s '%s'", _("Could not find matching device"), name);
+        vshError(ctl, _("Could not find matching device '%s'"), name);
         return false;
     }
 
-    /* Yes, our public API is misspelled.  At least virsh can accept
-     * either spelling.  */
-    if (virNodeDeviceDettach(device) == 0) {
-        vshPrint(ctl, _("Device %s detached\n"), name);
+    if (driverName) {
+        /* we must use the newer API that accepts a driverName */
+        if (virNodeDeviceDetachFlags(device, driverName, 0) < 0)
+            ret = false;
     } else {
-        vshError(ctl, _("Failed to detach device %s"), name);
-        ret = false;
+        /* Yes, our (old) public API is misspelled.  At least virsh
+         * can accept either spelling.  */
+        if (virNodeDeviceDettach(device) < 0)
+            ret = false;
     }
+
+    if (ret)
+        vshPrint(ctl, _("Device %s detached\n"), name);
+    else
+        vshError(ctl, _("Failed to detach device %s"), name);
+
     virNodeDeviceFree(device);
     return ret;
 }
@@ -556,9 +649,13 @@ cmdNodeDeviceDetach(vshControl *ctl, const vshCmd *cmd)
  * "nodedev-reattach" command
  */
 static const vshCmdInfo info_node_device_reattach[] = {
-    {"help", N_("reattach node device to its device driver")},
-    {"desc", N_("Reattach node device to its device driver once released by the domain.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("reattach node device to its device driver")
+    },
+    {.name = "desc",
+     .data = N_("Reattach node device to its device driver once released by the domain.")
+    },
+    {.name = NULL}
 };
 
 
@@ -578,10 +675,11 @@ cmdNodeDeviceReAttach(vshControl *ctl, const vshCmd *cmd)
     virNodeDevicePtr device;
     bool ret = true;
 
-    if (vshCommandOptString(cmd, "device", &name) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, "device", &name) < 0)
         return false;
+
     if (!(device = virNodeDeviceLookupByName(ctl->conn, name))) {
-        vshError(ctl, "%s '%s'", _("Could not find matching device"), name);
+        vshError(ctl, _("Could not find matching device '%s'"), name);
         return false;
     }
 
@@ -591,6 +689,7 @@ cmdNodeDeviceReAttach(vshControl *ctl, const vshCmd *cmd)
         vshError(ctl, _("Failed to re-attach device %s"), name);
         ret = false;
     }
+
     virNodeDeviceFree(device);
     return ret;
 }
@@ -599,9 +698,13 @@ cmdNodeDeviceReAttach(vshControl *ctl, const vshCmd *cmd)
  * "nodedev-reset" command
  */
 static const vshCmdInfo info_node_device_reset[] = {
-    {"help", N_("reset node device")},
-    {"desc", N_("Reset node device before or after assigning to a domain.")},
-    {NULL, NULL}
+    {.name = "help",
+     .data = N_("reset node device")
+    },
+    {.name = "desc",
+     .data = N_("Reset node device before or after assigning to a domain.")
+    },
+    {.name = NULL}
 };
 
 
@@ -621,10 +724,11 @@ cmdNodeDeviceReset(vshControl *ctl, const vshCmd *cmd)
     virNodeDevicePtr device;
     bool ret = true;
 
-    if (vshCommandOptString(cmd, "device", &name) <= 0)
+    if (vshCommandOptStringReq(ctl, cmd, "device", &name) < 0)
         return false;
+
     if (!(device = virNodeDeviceLookupByName(ctl->conn, name))) {
-        vshError(ctl, "%s '%s'", _("Could not find matching device"), name);
+        vshError(ctl, _("Could not find matching device '%s'"), name);
         return false;
     }
 
@@ -634,26 +738,59 @@ cmdNodeDeviceReset(vshControl *ctl, const vshCmd *cmd)
         vshError(ctl, _("Failed to reset device %s"), name);
         ret = false;
     }
+
     virNodeDeviceFree(device);
     return ret;
 }
 
 const vshCmdDef nodedevCmds[] = {
-    {"nodedev-create", cmdNodeDeviceCreate, opts_node_device_create,
-     info_node_device_create, 0},
-    {"nodedev-destroy", cmdNodeDeviceDestroy, opts_node_device_destroy,
-     info_node_device_destroy, 0},
-    {"nodedev-detach", cmdNodeDeviceDetach, opts_node_device_detach,
-     info_node_device_detach, 0},
-    {"nodedev-dettach", cmdNodeDeviceDetach, opts_node_device_detach,
-     info_node_device_detach, VSH_CMD_FLAG_ALIAS},
-    {"nodedev-dumpxml", cmdNodeDeviceDumpXML, opts_node_device_dumpxml,
-     info_node_device_dumpxml, 0},
-    {"nodedev-list", cmdNodeListDevices, opts_node_list_devices,
-     info_node_list_devices, 0},
-    {"nodedev-reattach", cmdNodeDeviceReAttach, opts_node_device_reattach,
-     info_node_device_reattach, 0},
-    {"nodedev-reset", cmdNodeDeviceReset, opts_node_device_reset,
-     info_node_device_reset, 0},
-    {NULL, NULL, NULL, NULL, 0}
+    {.name = "nodedev-create",
+     .handler = cmdNodeDeviceCreate,
+     .opts = opts_node_device_create,
+     .info = info_node_device_create,
+     .flags = 0
+    },
+    {.name = "nodedev-destroy",
+     .handler = cmdNodeDeviceDestroy,
+     .opts = opts_node_device_destroy,
+     .info = info_node_device_destroy,
+     .flags = 0
+    },
+    {.name = "nodedev-detach",
+     .handler = cmdNodeDeviceDetach,
+     .opts = opts_node_device_detach,
+     .info = info_node_device_detach,
+     .flags = 0
+    },
+    {.name = "nodedev-dettach",
+     .handler = cmdNodeDeviceDetach,
+     .opts = opts_node_device_detach,
+     .info = info_node_device_detach,
+     .flags = VSH_CMD_FLAG_ALIAS
+    },
+    {.name = "nodedev-dumpxml",
+     .handler = cmdNodeDeviceDumpXML,
+     .opts = opts_node_device_dumpxml,
+     .info = info_node_device_dumpxml,
+     .flags = 0
+    },
+    {.name = "nodedev-list",
+     .handler = cmdNodeListDevices,
+     .opts = opts_node_list_devices,
+     .info = info_node_list_devices,
+     .flags = 0
+    },
+    {.name = "nodedev-reattach",
+     .handler = cmdNodeDeviceReAttach,
+     .opts = opts_node_device_reattach,
+     .info = info_node_device_reattach,
+     .flags = 0
+    },
+    {.name = "nodedev-reset",
+     .handler = cmdNodeDeviceReset,
+     .opts = opts_node_device_reset,
+     .info = info_node_device_reset,
+     .flags = 0
+    },
+    {.name = NULL}
 };

@@ -1,7 +1,7 @@
 /*
  * domain_audit.c: Domain audit management
  *
- * Copyright (C) 2006-2012 Red Hat, Inc.
+ * Copyright (C) 2006-2013 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -57,6 +57,37 @@ virDomainAuditGetRdev(const char *path ATTRIBUTE_UNUSED)
 }
 #endif
 
+
+static const char *
+virDomainAuditChardevPath(virDomainChrSourceDefPtr chr)
+{
+    if (!chr)
+        return NULL;
+
+    switch ((enum virDomainChrType) chr->type) {
+    case VIR_DOMAIN_CHR_TYPE_PTY:
+    case VIR_DOMAIN_CHR_TYPE_DEV:
+    case VIR_DOMAIN_CHR_TYPE_FILE:
+    case VIR_DOMAIN_CHR_TYPE_PIPE:
+        return chr->data.file.path;
+
+    case VIR_DOMAIN_CHR_TYPE_UNIX:
+        return chr->data.nix.path;
+
+    case VIR_DOMAIN_CHR_TYPE_TCP:
+    case VIR_DOMAIN_CHR_TYPE_UDP:
+    case VIR_DOMAIN_CHR_TYPE_NULL:
+    case VIR_DOMAIN_CHR_TYPE_VC:
+    case VIR_DOMAIN_CHR_TYPE_STDIO:
+    case VIR_DOMAIN_CHR_TYPE_SPICEVMC:
+    case VIR_DOMAIN_CHR_TYPE_LAST:
+        return NULL;
+    }
+
+    return NULL;
+}
+
+
 void
 virDomainAuditDisk(virDomainObjPtr vm,
                    const char *oldDef, const char *newDef,
@@ -97,6 +128,92 @@ cleanup:
     VIR_FREE(vmname);
     VIR_FREE(oldsrc);
     VIR_FREE(newsrc);
+}
+
+
+static void
+virDomainAuditRNG(virDomainObjPtr vm,
+                  virDomainRNGDefPtr newDef, virDomainRNGDefPtr oldDef,
+                  const char *reason, bool success)
+{
+    char uuidstr[VIR_UUID_STRING_BUFLEN];
+    char *vmname;
+    const char *newsrcpath = NULL;
+    const char *oldsrcpath = NULL;
+    char *oldsrc = NULL;
+    char *newsrc = NULL;
+    const char *virt;
+
+    if (newDef) {
+        switch ((enum virDomainRNGBackend) newDef->backend) {
+        case VIR_DOMAIN_RNG_BACKEND_RANDOM:
+            if (newDef->source.file)
+                newsrcpath = newDef->source.file;
+            else
+                newsrcpath = "/dev/random";
+            break;
+
+        case VIR_DOMAIN_RNG_BACKEND_EGD:
+            newsrcpath = virDomainAuditChardevPath(newDef->source.chardev);
+            break;
+
+        case VIR_DOMAIN_RNG_BACKEND_LAST:
+            break;
+        }
+    }
+
+    if (oldDef) {
+        switch ((enum virDomainRNGBackend) oldDef->backend) {
+        case VIR_DOMAIN_RNG_BACKEND_RANDOM:
+            if (oldDef->source.file)
+                oldsrcpath = oldDef->source.file;
+            else
+                oldsrcpath = "/dev/random";
+            break;
+
+        case VIR_DOMAIN_RNG_BACKEND_EGD:
+            oldsrcpath = virDomainAuditChardevPath(oldDef->source.chardev);
+            break;
+
+        case VIR_DOMAIN_RNG_BACKEND_LAST:
+            break;
+        }
+    }
+
+    /* don't audit the RNG device if it doesn't use local resources */
+    if (!oldsrcpath && !newsrcpath)
+        return;
+
+    virUUIDFormat(vm->def->uuid, uuidstr);
+    if (!(vmname = virAuditEncode("vm", vm->def->name)))
+        goto no_memory;
+
+    if (!(virt = virDomainVirtTypeToString(vm->def->virtType))) {
+        VIR_WARN("Unexpected virt type %d while encoding audit message",
+                 vm->def->virtType);
+        virt = "?";
+    }
+
+    if (!(newsrc = virAuditEncode("new-rng", VIR_AUDIT_STR(newsrcpath))))
+        goto no_memory;
+
+    if (!(oldsrc = virAuditEncode("old-rng", VIR_AUDIT_STR(oldsrcpath))))
+        goto no_memory;
+
+    VIR_AUDIT(VIR_AUDIT_RECORD_RESOURCE, success,
+              "virt=%s resrc=rng reason=%s %s uuid=%s %s %s",
+              virt, reason, vmname, uuidstr,
+              oldsrc, newsrc);
+
+cleanup:
+    VIR_FREE(vmname);
+    VIR_FREE(oldsrc);
+    VIR_FREE(newsrc);
+    return;
+
+no_memory:
+    VIR_WARN("OOM while encoding audit message");
+    goto cleanup;
 }
 
 
@@ -265,10 +382,10 @@ virDomainAuditHostdev(virDomainObjPtr vm, virDomainHostdevDefPtr hostdev,
         switch (hostdev->source.subsys.type) {
         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI:
             if (virAsprintf(&address, "%.4x:%.2x:%.2x.%.1x",
-                            hostdev->source.subsys.u.pci.domain,
-                            hostdev->source.subsys.u.pci.bus,
-                            hostdev->source.subsys.u.pci.slot,
-                            hostdev->source.subsys.u.pci.function) < 0) {
+                            hostdev->source.subsys.u.pci.addr.domain,
+                            hostdev->source.subsys.u.pci.addr.bus,
+                            hostdev->source.subsys.u.pci.addr.slot,
+                            hostdev->source.subsys.u.pci.addr.function) < 0) {
                 VIR_WARN("OOM while encoding audit message");
                 goto cleanup;
             }
@@ -407,6 +524,58 @@ cleanup:
 
 
 /**
+ * virDomainAuditTPM:
+ * @vm: domain making a change in pass-through host device
+ * @tpm: TPM device being attached or removed
+ * @reason: one of "start", "attach", or "detach"
+ * @success: true if the device passthrough operation succeeded
+ *
+ * Log an audit message about an attempted device passthrough change.
+ */
+static void
+virDomainAuditTPM(virDomainObjPtr vm, virDomainTPMDefPtr tpm,
+                  const char *reason, bool success)
+{
+    char uuidstr[VIR_UUID_STRING_BUFLEN];
+    char *vmname;
+    char *path = NULL;
+    char *device = NULL;
+    const char *virt;
+
+    virUUIDFormat(vm->def->uuid, uuidstr);
+    if (!(vmname = virAuditEncode("vm", vm->def->name))) {
+        VIR_WARN("OOM while encoding audit message");
+        return;
+    }
+
+    if (!(virt = virDomainVirtTypeToString(vm->def->virtType))) {
+        VIR_WARN("Unexpected virt type %d while encoding audit message", vm->def->virtType);
+        virt = "?";
+    }
+
+    switch (tpm->type) {
+    case VIR_DOMAIN_TPM_TYPE_PASSTHROUGH:
+        path = tpm->data.passthrough.source.data.file.path;
+        if (!(device = virAuditEncode("device", VIR_AUDIT_STR(path)))) {
+            VIR_WARN("OOM while encoding audit message");
+            goto cleanup;
+        }
+
+        VIR_AUDIT(VIR_AUDIT_RECORD_RESOURCE, success,
+                  "virt=%s resrc=dev reason=%s %s uuid=%s %s",
+                  virt, reason, vmname, uuidstr, device);
+        break;
+    default:
+        break;
+    }
+
+cleanup:
+    VIR_FREE(vmname);
+    VIR_FREE(device);
+}
+
+
+/**
  * virDomainAuditCgroup:
  * @vm: domain making the cgroups ACL change
  * @cgroup: cgroup that manages the devices
@@ -513,8 +682,8 @@ virDomainAuditCgroupPath(virDomainObjPtr vm, virCgroupPtr cgroup,
     rdev = virDomainAuditGetRdev(path);
 
     if (!(detail = virAuditEncode("path", path)) ||
-        virAsprintf(&extra, "path path=%s rdev=%s acl=%s",
-                    path, VIR_AUDIT_STR(rdev), perms) < 0) {
+        virAsprintf(&extra, "path %s rdev=%s acl=%s",
+                    detail, VIR_AUDIT_STR(rdev), perms) < 0) {
         VIR_WARN("OOM while encoding audit message");
         goto cleanup;
     }
@@ -641,6 +810,12 @@ virDomainAuditStart(virDomainObjPtr vm, const char *reason, bool success)
         virDomainAuditRedirdev(vm, redirdev, "start", true);
     }
 
+    if (vm->def->rng)
+        virDomainAuditRNG(vm, vm->def->rng, NULL, "start", true);
+
+    if (vm->def->tpm)
+        virDomainAuditTPM(vm, vm->def->tpm, "start", true);
+
     virDomainAuditMemory(vm, 0, vm->def->mem.cur_balloon, "start", true);
     virDomainAuditVcpu(vm, 0, vm->def->vcpus, "start", true);
 
@@ -649,7 +824,8 @@ virDomainAuditStart(virDomainObjPtr vm, const char *reason, bool success)
 
 void
 virDomainAuditInit(virDomainObjPtr vm,
-                   pid_t initpid)
+                   pid_t initpid,
+                   ino_t pidns)
 {
     char uuidstr[VIR_UUID_STRING_BUFLEN];
     char *vmname;
@@ -668,8 +844,9 @@ virDomainAuditInit(virDomainObjPtr vm,
     }
 
     VIR_AUDIT(VIR_AUDIT_RECORD_MACHINE_CONTROL, true,
-              "virt=%s op=init %s uuid=%s vm-pid=%lld init-pid=%lld",
-              virt, vmname, uuidstr, (long long)vm->pid, (long long)initpid);
+              "virt=%s op=init %s uuid=%s vm-pid=%lld init-pid=%lld pid-ns=%lld",
+              virt, vmname, uuidstr, (long long)vm->pid, (long long)initpid,
+              (long long)pidns);
 
     VIR_FREE(vmname);
 }

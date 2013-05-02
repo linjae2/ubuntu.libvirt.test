@@ -2,6 +2,7 @@
  * parallels_storage.c: core driver functions for managing
  * Parallels Cloud Server hosts
  *
+ * Copyright (C) 2013 Red Hat, Inc.
  * Copyright (C) 2012 Parallels, Inc.
  *
  * This library is free software; you can redistribute it and/or
@@ -28,9 +29,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <libgen.h>
 
 #include "datatypes.h"
+#include "dirname.h"
 #include "viralloc.h"
 #include "configmake.h"
 #include "virstoragefile.h"
@@ -45,10 +46,10 @@
                    _("pool '%s' not found"), pool_name);
 
 static virStorageVolDefPtr
-parallelsStorageVolumeDefine(virStoragePoolObjPtr pool, const char *xmldesc,
+parallelsStorageVolDefineXML(virStoragePoolObjPtr pool, const char *xmldesc,
                              const char *xmlfile, bool is_new);
 static virStorageVolPtr
-parallelsStorageVolumeLookupByPath(virConnectPtr conn, const char *path);
+parallelsStorageVolLookupByPath(virConnectPtr conn, const char *path);
 
 static int
 parallelsStoragePoolGetAlloc(virStoragePoolDefPtr def);
@@ -108,7 +109,7 @@ parallelsFindVolumes(virStoragePoolObjPtr pool)
             virReportOOMError();
             goto cleanup;
         }
-        if (!parallelsStorageVolumeDefine(pool, NULL, path, false))
+        if (!parallelsStorageVolDefineXML(pool, NULL, path, false))
             goto cleanup;
 
         VIR_FREE(path);
@@ -122,11 +123,6 @@ cleanup:
 
 }
 
-struct parallelsPoolsAddData {
-    virConnectPtr conn;
-    bool failed;
-};
-
 /*
  * Generate unique pool name by path
  */
@@ -134,9 +130,11 @@ static char *parallelsMakePoolName(virConnectPtr conn, const char *path)
 {
     parallelsConnPtr privconn = conn->privateData;
     char *name;
+    unsigned int i;
 
-    for (unsigned int i = 0; i < UINT_MAX; i++) {
+    for (i = 0; i < UINT_MAX; i++) {
         bool found = false;
+        int j;
 
         if (!(name = strdup(path))) {
             virReportOOMError();
@@ -153,11 +151,11 @@ static char *parallelsMakePoolName(virConnectPtr conn, const char *path)
             return 0;
         }
 
-        for (int j = 0; j < strlen(name); j++)
+        for (j = 0; j < strlen(name); j++)
             if (name[j] == '/')
                 name[j] = '-';
 
-        for (int j = 0; j < privconn->pools.count; j++) {
+        for (j = 0; j < privconn->pools.count; j++) {
             if (STREQ(name, privconn->pools.objs[j]->def->name)) {
                 found = true;
                 break;
@@ -231,15 +229,15 @@ parallelsPoolAddByDomain(virConnectPtr conn, virDomainObjPtr dom)
     virStoragePoolObjListPtr pools = &privconn->pools;
     char *poolPath;
     virStoragePoolObjPtr pool = NULL;
+    int j;
 
-    if (!(poolPath = strdup(pdom->home))) {
+    poolPath = mdir_name(pdom->home);
+    if (!poolPath) {
         virReportOOMError();
         return NULL;
     }
 
-    poolPath = dirname(poolPath);
-
-    for (int j = 0; j < pools->count; j++) {
+    for (j = 0; j < pools->count; j++) {
         if (STREQ(poolPath, pools->objs[j]->def->target.path)) {
             pool = pools->objs[j];
             break;
@@ -404,26 +402,20 @@ cleanup:
 
 }
 
-static void
-parallelsPoolsAdd(void *payload,
-                  const void *name ATTRIBUTE_UNUSED,
+static int
+parallelsPoolsAdd(virDomainObjPtr dom,
                   void *opaque)
 {
-    struct parallelsPoolsAddData *data = (struct parallelsPoolsAddData *)opaque;
-    virDomainObjPtr dom = payload;
+    virConnectPtr conn = opaque;
     virStoragePoolObjPtr pool;
 
-    if (!(pool = parallelsPoolAddByDomain(data->conn, dom))) {
-        data->failed = true;
-        return;
-    }
+    if (!(pool = parallelsPoolAddByDomain(conn, dom)))
+        return -1;
 
-    if (parallelsFindVmVolumes(pool, dom)) {
-        data->failed = true;
-        return;
-    }
+    if (parallelsFindVmVolumes(pool, dom))
+        return -1;
 
-    return;
+    return 0;
 }
 
 static int parallelsLoadPools(virConnectPtr conn)
@@ -432,7 +424,6 @@ static int parallelsLoadPools(virConnectPtr conn)
     virStorageDriverStatePtr storageState = conn->storagePrivateData;
     char *base = NULL;
     size_t i;
-    struct parallelsPoolsAddData data;
 
     if ((base = strdup(SYSCONFDIR "/libvirt")) == NULL)
         goto out_of_memory;
@@ -456,11 +447,7 @@ static int parallelsLoadPools(virConnectPtr conn)
         goto error;
     }
 
-    data.conn = conn;
-    data.failed = false;
-    virHashForEach(privconn->domains.objs, parallelsPoolsAdd, &data);
-
-    if (data.failed)
+    if (virDomainObjListForEach(privconn->domains, parallelsPoolsAdd, conn) < 0)
         goto error;
 
     for (i = 0; i < privconn->pools.count; i++) {
@@ -526,7 +513,7 @@ error:
 }
 
 static int
-parallelsStorageNumPools(virConnectPtr conn)
+parallelsConnectNumOfStoragePools(virConnectPtr conn)
 {
     parallelsConnPtr privconn = conn->privateData;
     int numActive = 0;
@@ -542,7 +529,7 @@ parallelsStorageNumPools(virConnectPtr conn)
 }
 
 static int
-parallelsStorageListPools(virConnectPtr conn, char **const names, int nnames)
+parallelsConnectListStoragePools(virConnectPtr conn, char **const names, int nnames)
 {
     parallelsConnPtr privconn = conn->privateData;
     int n = 0;
@@ -572,7 +559,7 @@ no_memory:
 }
 
 static int
-parallelsStorageNumDefinedPools(virConnectPtr conn)
+parallelsConnectNumOfDefinedStoragePools(virConnectPtr conn)
 {
     parallelsConnPtr privconn = conn->privateData;
     int numInactive = 0;
@@ -591,8 +578,8 @@ parallelsStorageNumDefinedPools(virConnectPtr conn)
 }
 
 static int
-parallelsStorageListDefinedPools(virConnectPtr conn,
-                           char **const names, int nnames)
+parallelsConnectListDefinedStoragePools(virConnectPtr conn,
+                                        char **const names, int nnames)
 {
     parallelsConnPtr privconn = conn->privateData;
     int n = 0;
@@ -725,15 +712,15 @@ parallelsStoragePoolGetAlloc(virStoragePoolDefPtr def)
     def->capacity = ((unsigned long long)sb.f_frsize *
                      (unsigned long long)sb.f_blocks);
     def->available = ((unsigned long long)sb.f_bfree *
-                            (unsigned long long)sb.f_bsize);
+                      (unsigned long long)sb.f_frsize);
     def->allocation = def->capacity - def->available;
 
     return 0;
 }
 
 static virStoragePoolPtr
-parallelsStoragePoolDefine(virConnectPtr conn,
-                           const char *xml, unsigned int flags)
+parallelsStoragePoolDefineXML(virConnectPtr conn,
+                              const char *xml, unsigned int flags)
 {
     parallelsConnPtr privconn = conn->privateData;
     virStoragePoolDefPtr def;
@@ -825,7 +812,7 @@ cleanup:
 }
 
 static int
-parallelsStoragePoolStart(virStoragePoolPtr pool, unsigned int flags)
+parallelsStoragePoolCreate(virStoragePoolPtr pool, unsigned int flags)
 {
     parallelsConnPtr privconn = pool->conn->privateData;
     virStoragePoolObjPtr privpool;
@@ -1041,7 +1028,7 @@ cleanup:
 }
 
 static int
-parallelsStoragePoolNumVolumes(virStoragePoolPtr pool)
+parallelsStoragePoolNumOfVolumes(virStoragePoolPtr pool)
 {
     parallelsConnPtr privconn = pool->conn->privateData;
     virStoragePoolObjPtr privpool;
@@ -1117,7 +1104,7 @@ error:
 }
 
 static virStorageVolPtr
-parallelsStorageVolumeLookupByName(virStoragePoolPtr pool,
+parallelsStorageVolLookupByName(virStoragePoolPtr pool,
                                    const char *name)
 {
     parallelsConnPtr privconn = pool->conn->privateData;
@@ -1161,7 +1148,7 @@ cleanup:
 
 
 static virStorageVolPtr
-parallelsStorageVolumeLookupByKey(virConnectPtr conn, const char *key)
+parallelsStorageVolLookupByKey(virConnectPtr conn, const char *key)
 {
     parallelsConnPtr privconn = conn->privateData;
     size_t i;
@@ -1195,7 +1182,7 @@ parallelsStorageVolumeLookupByKey(virConnectPtr conn, const char *key)
 }
 
 virStorageVolPtr
-parallelsStorageVolumeLookupByPathLocked(virConnectPtr conn, const char *path)
+parallelsStorageVolLookupByPathLocked(virConnectPtr conn, const char *path)
 {
     parallelsConnPtr privconn = conn->privateData;
     size_t i;
@@ -1227,20 +1214,20 @@ parallelsStorageVolumeLookupByPathLocked(virConnectPtr conn, const char *path)
 }
 
 static virStorageVolPtr
-parallelsStorageVolumeLookupByPath(virConnectPtr conn, const char *path)
+parallelsStorageVolLookupByPath(virConnectPtr conn, const char *path)
 {
     parallelsConnPtr privconn = conn->privateData;
     virStorageVolPtr ret = NULL;
 
     parallelsDriverLock(privconn);
-    ret = parallelsStorageVolumeLookupByPathLocked(conn, path);
+    ret = parallelsStorageVolLookupByPathLocked(conn, path);
     parallelsDriverUnlock(privconn);
 
     return ret;
 }
 
 static virStorageVolDefPtr
-parallelsStorageVolumeDefine(virStoragePoolObjPtr pool,
+parallelsStorageVolDefineXML(virStoragePoolObjPtr pool,
                              const char *xmldesc,
                              const char *xmlfile, bool is_new)
 {
@@ -1318,7 +1305,7 @@ cleanup:
 }
 
 static virStorageVolPtr
-parallelsStorageVolumeCreateXML(virStoragePoolPtr pool,
+parallelsStorageVolCreateXML(virStoragePoolPtr pool,
                                 const char *xmldesc, unsigned int flags)
 {
     parallelsConnPtr privconn = pool->conn->privateData;
@@ -1343,7 +1330,7 @@ parallelsStorageVolumeCreateXML(virStoragePoolPtr pool,
         goto cleanup;
     }
 
-    privvol = parallelsStorageVolumeDefine(privpool, xmldesc, NULL, true);
+    privvol = parallelsStorageVolDefineXML(privpool, xmldesc, NULL, true);
     if (!privvol)
         goto cleanup;
 
@@ -1357,7 +1344,7 @@ cleanup:
 }
 
 static virStorageVolPtr
-parallelsStorageVolumeCreateXMLFrom(virStoragePoolPtr pool,
+parallelsStorageVolCreateXMLFrom(virStoragePoolPtr pool,
                                     const char *xmldesc,
                                     virStorageVolPtr clonevol,
                                     unsigned int flags)
@@ -1449,7 +1436,7 @@ cleanup:
     return ret;
 }
 
-int parallelsStorageVolumeDefRemove(virStoragePoolObjPtr privpool,
+int parallelsStorageVolDefRemove(virStoragePoolObjPtr privpool,
                                     virStorageVolDefPtr privvol)
 {
     int ret = -1;
@@ -1497,7 +1484,7 @@ cleanup:
 }
 
 static int
-parallelsStorageVolumeDelete(virStorageVolPtr vol, unsigned int flags)
+parallelsStorageVolDelete(virStorageVolPtr vol, unsigned int flags)
 {
     parallelsConnPtr privconn = vol->conn->privateData;
     virStoragePoolObjPtr privpool;
@@ -1531,7 +1518,7 @@ parallelsStorageVolumeDelete(virStorageVolPtr vol, unsigned int flags)
     }
 
 
-    if (parallelsStorageVolumeDefRemove(privpool, privvol))
+    if (parallelsStorageVolDefRemove(privpool, privvol))
         goto cleanup;
 
     ret = 0;
@@ -1544,7 +1531,7 @@ cleanup:
 
 
 static int
-parallelsStorageVolumeTypeForPool(int pooltype)
+parallelsStorageVolTypeForPool(int pooltype)
 {
 
     switch (pooltype) {
@@ -1558,7 +1545,7 @@ default:
 }
 
 static int
-parallelsStorageVolumeGetInfo(virStorageVolPtr vol, virStorageVolInfoPtr info)
+parallelsStorageVolGetInfo(virStorageVolPtr vol, virStorageVolInfoPtr info)
 {
     parallelsConnPtr privconn = vol->conn->privateData;
     virStoragePoolObjPtr privpool;
@@ -1589,7 +1576,7 @@ parallelsStorageVolumeGetInfo(virStorageVolPtr vol, virStorageVolInfoPtr info)
     }
 
     memset(info, 0, sizeof(*info));
-    info->type = parallelsStorageVolumeTypeForPool(privpool->def->type);
+    info->type = parallelsStorageVolTypeForPool(privpool->def->type);
     info->capacity = privvol->capacity;
     info->allocation = privvol->allocation;
     ret = 0;
@@ -1601,7 +1588,7 @@ cleanup:
 }
 
 static char *
-parallelsStorageVolumeGetXMLDesc(virStorageVolPtr vol, unsigned int flags)
+parallelsStorageVolGetXMLDesc(virStorageVolPtr vol, unsigned int flags)
 {
     parallelsConnPtr privconn = vol->conn->privateData;
     virStoragePoolObjPtr privpool;
@@ -1642,7 +1629,7 @@ cleanup:
 }
 
 static char *
-parallelsStorageVolumeGetPath(virStorageVolPtr vol)
+parallelsStorageVolGetPath(virStorageVolPtr vol)
 {
     parallelsConnPtr privconn = vol->conn->privateData;
     virStoragePoolObjPtr privpool;
@@ -1684,39 +1671,39 @@ cleanup:
 
 static virStorageDriver parallelsStorageDriver = {
     .name = "Parallels",
-    .open = parallelsStorageOpen,     /* 0.10.0 */
-    .close = parallelsStorageClose,   /* 0.10.0 */
+    .storageOpen = parallelsStorageOpen,     /* 0.10.0 */
+    .storageClose = parallelsStorageClose,   /* 0.10.0 */
 
-    .numOfPools = parallelsStorageNumPools,   /* 0.10.0 */
-    .listPools = parallelsStorageListPools,   /* 0.10.0 */
-    .numOfDefinedPools = parallelsStorageNumDefinedPools,     /* 0.10.0 */
-    .listDefinedPools = parallelsStorageListDefinedPools,     /* 0.10.0 */
-    .poolLookupByName = parallelsStoragePoolLookupByName,     /* 0.10.0 */
-    .poolLookupByUUID = parallelsStoragePoolLookupByUUID,     /* 0.10.0 */
-    .poolLookupByVolume = parallelsStoragePoolLookupByVolume, /* 0.10.0 */
-    .poolDefineXML = parallelsStoragePoolDefine,      /* 0.10.0 */
-    .poolUndefine = parallelsStoragePoolUndefine,     /* 0.10.0 */
-    .poolCreate = parallelsStoragePoolStart,  /* 0.10.0 */
-    .poolDestroy = parallelsStoragePoolDestroy,       /* 0.10.0 */
-    .poolRefresh = parallelsStoragePoolRefresh,       /* 0.10.0 */
-    .poolGetInfo = parallelsStoragePoolGetInfo,       /* 0.10.0 */
-    .poolGetXMLDesc = parallelsStoragePoolGetXMLDesc, /* 0.10.0 */
-    .poolGetAutostart = parallelsStoragePoolGetAutostart,     /* 0.10.0 */
-    .poolSetAutostart = parallelsStoragePoolSetAutostart,     /* 0.10.0 */
-    .poolNumOfVolumes = parallelsStoragePoolNumVolumes,       /* 0.10.0 */
-    .poolListVolumes = parallelsStoragePoolListVolumes,       /* 0.10.0 */
+    .connectNumOfStoragePools = parallelsConnectNumOfStoragePools,   /* 0.10.0 */
+    .connectListStoragePools = parallelsConnectListStoragePools,   /* 0.10.0 */
+    .connectNumOfDefinedStoragePools = parallelsConnectNumOfDefinedStoragePools,     /* 0.10.0 */
+    .connectListDefinedStoragePools = parallelsConnectListDefinedStoragePools,     /* 0.10.0 */
+    .storagePoolLookupByName = parallelsStoragePoolLookupByName,     /* 0.10.0 */
+    .storagePoolLookupByUUID = parallelsStoragePoolLookupByUUID,     /* 0.10.0 */
+    .storagePoolLookupByVolume = parallelsStoragePoolLookupByVolume, /* 0.10.0 */
+    .storagePoolDefineXML = parallelsStoragePoolDefineXML,      /* 0.10.0 */
+    .storagePoolUndefine = parallelsStoragePoolUndefine,     /* 0.10.0 */
+    .storagePoolCreate = parallelsStoragePoolCreate,  /* 0.10.0 */
+    .storagePoolDestroy = parallelsStoragePoolDestroy,       /* 0.10.0 */
+    .storagePoolRefresh = parallelsStoragePoolRefresh,       /* 0.10.0 */
+    .storagePoolGetInfo = parallelsStoragePoolGetInfo,       /* 0.10.0 */
+    .storagePoolGetXMLDesc = parallelsStoragePoolGetXMLDesc, /* 0.10.0 */
+    .storagePoolGetAutostart = parallelsStoragePoolGetAutostart,     /* 0.10.0 */
+    .storagePoolSetAutostart = parallelsStoragePoolSetAutostart,     /* 0.10.0 */
+    .storagePoolNumOfVolumes = parallelsStoragePoolNumOfVolumes,       /* 0.10.0 */
+    .storagePoolListVolumes = parallelsStoragePoolListVolumes,       /* 0.10.0 */
 
-    .volLookupByName = parallelsStorageVolumeLookupByName,    /* 0.10.0 */
-    .volLookupByKey = parallelsStorageVolumeLookupByKey,      /* 0.10.0 */
-    .volLookupByPath = parallelsStorageVolumeLookupByPath,    /* 0.10.0 */
-    .volCreateXML = parallelsStorageVolumeCreateXML,  /* 0.10.0 */
-    .volCreateXMLFrom = parallelsStorageVolumeCreateXMLFrom,  /* 0.10.0 */
-    .volDelete = parallelsStorageVolumeDelete,        /* 0.10.0 */
-    .volGetInfo = parallelsStorageVolumeGetInfo,      /* 0.10.0 */
-    .volGetXMLDesc = parallelsStorageVolumeGetXMLDesc,        /* 0.10.0 */
-    .volGetPath = parallelsStorageVolumeGetPath,      /* 0.10.0 */
-    .poolIsActive = parallelsStoragePoolIsActive,     /* 0.10.0 */
-    .poolIsPersistent = parallelsStoragePoolIsPersistent,     /* 0.10.0 */
+    .storageVolLookupByName = parallelsStorageVolLookupByName,    /* 0.10.0 */
+    .storageVolLookupByKey = parallelsStorageVolLookupByKey,      /* 0.10.0 */
+    .storageVolLookupByPath = parallelsStorageVolLookupByPath,    /* 0.10.0 */
+    .storageVolCreateXML = parallelsStorageVolCreateXML,  /* 0.10.0 */
+    .storageVolCreateXMLFrom = parallelsStorageVolCreateXMLFrom,  /* 0.10.0 */
+    .storageVolDelete = parallelsStorageVolDelete,        /* 0.10.0 */
+    .storageVolGetInfo = parallelsStorageVolGetInfo,      /* 0.10.0 */
+    .storageVolGetXMLDesc = parallelsStorageVolGetXMLDesc,        /* 0.10.0 */
+    .storageVolGetPath = parallelsStorageVolGetPath,      /* 0.10.0 */
+    .storagePoolIsActive = parallelsStoragePoolIsActive,     /* 0.10.0 */
+    .storagePoolIsPersistent = parallelsStoragePoolIsPersistent,     /* 0.10.0 */
 };
 
 int
