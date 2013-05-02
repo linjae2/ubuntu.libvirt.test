@@ -219,7 +219,7 @@ int virThreadSelfID(void)
     tid = syscall(SYS_gettid);
     return (int)tid;
 #else
-    return (int)(intptr_t)(void *)pthread_self();
+    return (int)(intptr_t)pthread_self();
 #endif
 }
 
