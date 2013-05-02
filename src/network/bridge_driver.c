@@ -683,7 +683,8 @@ networkDnsmasqConfContents(virNetworkObjPtr network,
                       "## or other application using the libvirt API.\n"
                       "##\n## dnsmasq conf file created by libvirt\n"
                       "strict-order\n"
-                      "domain-needed\n",
+                      "domain-needed\n"
+					  "user=libvirt-dnsmasq\n",
                       network->def->name);
 
     if (network->def->domain) {
