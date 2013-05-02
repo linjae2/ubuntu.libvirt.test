@@ -340,7 +340,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.2
+Version: 1.0.5
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -394,6 +394,7 @@ BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: gettext-devel
 BuildRequires: libtool
+BuildRequires: /usr/bin/pod2man
 %endif
 BuildRequires: python-devel
 %if %{with_systemd}
@@ -411,6 +412,10 @@ BuildRequires: gettext
 BuildRequires: libtasn1-devel
 BuildRequires: gnutls-devel
 BuildRequires: libattr-devel
+%if %{with_libvirtd}
+# For pool-build probing for existing pools
+BuildRequires: libblkid-devel >= 2.17
+%endif
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 # for augparse, optionally used in testing
 BuildRequires: augeas
@@ -654,8 +659,6 @@ Requires: PolicyKit >= 0.6
 Requires: nfs-utils
 # For mkfs
 Requires: util-linux
-# For pool-build probing for existing pools
-BuildRequires: libblkid-devel >= 2.17
 # For glusterfs
         %if 0%{?fedora} >= 11
 Requires: glusterfs-client >= 2.0.1
@@ -1336,7 +1339,11 @@ gzip -9 ChangeLog
 %install
 rm -fr %{buildroot}
 
-%makeinstall SYSTEMD_UNIT_DIR=%{buildroot}%{_unitdir}
+# Avoid using makeinstall macro as it changes prefixes rather than setting
+# DESTDIR. Newer make_install macro would be better but it's not available
+# on RHEL 5, thus we need to expand it here.
+make install DESTDIR=%{?buildroot} SYSTEMD_UNIT_DIR=%{_unitdir}
+
 for i in domain-events/events-c dominfo domsuspend hellolibvirt openauth python xml/nwfilter systemtap
 do
   (cd examples/$i ; make clean ; rm -rf .deps .libs Makefile Makefile.in)
@@ -1937,6 +1944,7 @@ fi
 %{_datadir}/libvirt/schemas/storagevol.rng
 
 %{_datadir}/libvirt/cpu_map.xml
+%{_datadir}/libvirt/libvirtLogo.png
 
 %if %{with_systemd}
 %{_unitdir}/libvirt-guests.service
@@ -1990,6 +1998,28 @@ fi
 %endif
 
 %changelog
+* Thu May  2 2013 Daniel Veillard <veillard@redhat.com> - 1.0.5-1
+- add support for NVRAM device
+- Add XML config for resource partitions
+- Add support for TPM
+- NPIV storage migration support
+- various bug fixes and improvements including localizations
+
+* Mon Apr  1 2013 Daniel Veillard <veillard@redhat.com> - 1.0.4-1
+- qemu: support passthrough for iscsi disks
+- various S390 improvements
+- various LXC bugs fixes and improvements
+- Add API for thread cancellation
+- various bug fixes and improvements
+
+* Tue Mar  5 2013 Daniel Veillard <veillard@redhat.com> - 1.0.3-1
+- Introduce virDomainMigrate*CompressionCache APIs
+- Introduce virDomainGetJobStats API
+- Add basic support for VDI images
+- Introduce API virNodeDeviceLookupSCSIHostByWWN
+- Various locking improvements
+- a lot of bug fixes and overall improvements
+
 * Wed Jan 30 2013 Daniel Veillard <veillard@redhat.com> - 1.0.2-1
 - LXC improvements
 - S390 architecture improvement
@@ -2305,7 +2335,7 @@ fi
 * Fri Apr  3 2009 Daniel Veillard <veillard@redhat.com> - 0.6.2-1
 - release of 0.6.2
 
-* Fri Mar  4 2009 Daniel Veillard <veillard@redhat.com> - 0.6.1-1
+* Wed Mar  4 2009 Daniel Veillard <veillard@redhat.com> - 0.6.1-1
 - release of 0.6.1
 
 * Sat Jan 31 2009 Daniel Veillard <veillard@redhat.com> - 0.6.0-1
@@ -2444,7 +2474,7 @@ fi
 - it's pkgconfig not pgkconfig !
 
 * Mon Nov  6 2006 Daniel Veillard <veillard@redhat.com> 0.1.8-2
-- fixing spec file, added %dist, -devel requires pkgconfig and xen-devel
+- fixing spec file, added %%dist, -devel requires pkgconfig and xen-devel
 - Resolves: rhbz#202320
 
 * Mon Oct 16 2006 Daniel Veillard <veillard@redhat.com> 0.1.8-1

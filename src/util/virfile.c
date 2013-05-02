@@ -32,7 +32,7 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#ifdef __linux__
+#if defined(__linux__) && HAVE_DECL_LO_FLAGS_AUTOCLEAR
 # include <linux/loop.h>
 # include <sys/ioctl.h>
 #endif
@@ -135,57 +135,10 @@ virFileDirectFdFlag(void)
  * read-write is not supported, just a single direction.  */
 struct _virFileWrapperFd {
     virCommandPtr cmd; /* Child iohelper process to do the I/O.  */
-    int err_fd; /* FD to read stderr of @cmd */
     char *err_msg; /* stderr of @cmd */
-    size_t err_msg_len; /* strlen of err_msg so we don't
-                           have to compute it every time */
-    int err_watch; /* ID of watch in the event loop */
 };
 
 #ifndef WIN32
-/**
- * virFileWrapperFdReadStdErr:
- * @watch: watch ID
- * @fd: the read end of pipe to iohelper's stderr
- * @events: an OR-ed set of events which occurred on @fd
- * @opaque: virFileWrapperFdPtr
- *
- * This is a callback to our eventloop which will read iohelper's
- * stderr, reallocate @opaque->err_msg and copy data.
- */
-static void
-virFileWrapperFdReadStdErr(int watch ATTRIBUTE_UNUSED,
-                           int fd, int events, void *opaque)
-{
-    virFileWrapperFdPtr wfd = (virFileWrapperFdPtr) opaque;
-    char ebuf[1024];
-    ssize_t nread;
-
-    if (events & VIR_EVENT_HANDLE_READABLE) {
-        while ((nread = saferead(fd, ebuf, sizeof(ebuf)))) {
-            if (nread < 0) {
-                if (errno != EAGAIN)
-                    virReportSystemError(errno, "%s",
-                                         _("unable to read iohelper's stderr"));
-                break;
-            }
-
-            if (VIR_REALLOC_N(wfd->err_msg, wfd->err_msg_len + nread + 1) < 0) {
-                virReportOOMError();
-                return;
-            }
-            memcpy(wfd->err_msg + wfd->err_msg_len, ebuf, nread);
-            wfd->err_msg_len += nread;
-            wfd->err_msg[wfd->err_msg_len] = '\0';
-        }
-    }
-
-    if (events & VIR_EVENT_HANDLE_HANGUP) {
-        virEventRemoveHandle(watch);
-        wfd->err_watch = -1;
-    }
-}
-
 /**
  * virFileWrapperFdNew:
  * @fd: pointer to fd to wrap
@@ -245,8 +198,6 @@ virFileWrapperFdNew(int *fd, const char *name, unsigned int flags)
         return NULL;
     }
 
-    ret->err_watch = -1;
-
     mode = fcntl(*fd, F_GETFL);
 
     if (mode < 0) {
@@ -279,37 +230,15 @@ virFileWrapperFdNew(int *fd, const char *name, unsigned int flags)
         virCommandAddArg(ret->cmd, "0");
     }
 
-    /* In order to catch iohelper stderr, we must:
-     * - pass a FD to virCommand (-1 to auto-allocate one)
-     * - change iohelper's env so virLog functions print to stderr
+    /* In order to catch iohelper stderr, we must change
+     * iohelper's env so virLog functions print to stderr
      */
-    ret->err_fd = -1;
-    virCommandSetErrorFD(ret->cmd, &ret->err_fd);
     virCommandAddEnvPair(ret->cmd, "LIBVIRT_LOG_OUTPUTS", "1:stderr");
+    virCommandSetErrorBuffer(ret->cmd, &ret->err_msg);
+    virCommandDoAsyncIO(ret->cmd);
 
     if (virCommandRunAsync(ret->cmd, NULL) < 0)
         goto error;
-
-    /* deliberately don't use virCommandNonblockingFDs here as it is all or
-     * nothing. And we want iohelper's stdin and stdout to block (default).
-     * However, stderr is read within event loop and therefore it must be
-     * nonblocking.*/
-    if (virSetNonBlock(ret->err_fd) < 0) {
-        virReportSystemError(errno, "%s",
-                             _("Failed to set non-blocking "
-                               "file descriptor flag"));
-        goto error;
-    }
-
-    if ((ret->err_watch = virEventAddHandle(ret->err_fd,
-                                            VIR_EVENT_HANDLE_READABLE,
-                                            virFileWrapperFdReadStdErr,
-                                            ret, NULL)) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("unable to register iohelper's "
-                         "stderr FD in the eventloop"));
-        goto error;
-    }
 
     if (VIR_CLOSE(pipefd[!output]) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("unable to close pipe"));
@@ -353,26 +282,17 @@ virFileWrapperFdNew(int *fd ATTRIBUTE_UNUSED,
 int
 virFileWrapperFdClose(virFileWrapperFdPtr wfd)
 {
+    int ret;
+
     if (!wfd)
         return 0;
 
-    return virCommandWait(wfd->cmd, NULL);
-}
-
-
-/**
- * virFileWrapperFdCatchError:
- * @wfd: fd wrapper, or NULL
- *
- * If iohelper reported any error VIR_WARN() about it.
- */
-void
-virFileWrapperFdCatchError(virFileWrapperFdPtr wfd)
-{
-    if (wfd && wfd->err_msg)
+    ret = virCommandWait(wfd->cmd, NULL);
+    if (wfd->err_msg)
         VIR_WARN("iohelper reports: %s", wfd->err_msg);
-}
 
+    return ret;
+}
 
 /**
  * virFileWrapperFdFree:
@@ -389,9 +309,6 @@ virFileWrapperFdFree(virFileWrapperFdPtr wfd)
     if (!wfd)
         return;
 
-    VIR_FORCE_CLOSE(wfd->err_fd);
-    if (wfd->err_watch != -1)
-        virEventRemoveHandle(wfd->err_watch);
     VIR_FREE(wfd->err_msg);
 
     virCommandFree(wfd->cmd);
@@ -727,3 +644,86 @@ int virFileLoopDeviceAssociate(const char *file,
 }
 
 #endif /* __linux__ */
+
+
+/**
+ * virFileDeleteTree:
+ *
+ * Recursively deletes all files / directories
+ * starting from the directory @dir. Does not
+ * follow symlinks
+ *
+ * NB the algorithm is not efficient, and is subject to
+ * race conditions which can be exploited by malicious
+ * code. It should not be used in any scenarios where
+ * performance is important, or security is critical.
+ */
+int virFileDeleteTree(const char *dir)
+{
+    DIR *dh = opendir(dir);
+    struct dirent *de;
+    char *filepath = NULL;
+    int ret = -1;
+
+    if (!dh) {
+        virReportSystemError(errno, _("Cannot open dir '%s'"),
+                             dir);
+        return -1;
+    }
+
+    errno = 0;
+    while ((de = readdir(dh)) != NULL) {
+        struct stat sb;
+
+        if (STREQ(de->d_name, ".") ||
+            STREQ(de->d_name, ".."))
+            continue;
+
+        if (virAsprintf(&filepath, "%s/%s",
+                        dir, de->d_name) < 0) {
+            virReportOOMError();
+            goto cleanup;
+        }
+
+        if (lstat(filepath, &sb) < 0) {
+            virReportSystemError(errno, _("Cannot access '%s'"),
+                                 filepath);
+            goto cleanup;
+        }
+
+        if (S_ISDIR(sb.st_mode)) {
+            if (virFileDeleteTree(filepath) < 0)
+                goto cleanup;
+        } else {
+            if (unlink(filepath) < 0 && errno != ENOENT) {
+                virReportSystemError(errno,
+                                     _("Cannot delete file '%s'"),
+                                     filepath);
+                goto cleanup;
+            }
+        }
+
+        VIR_FREE(filepath);
+        errno = 0;
+    }
+
+    if (errno) {
+        virReportSystemError(errno, _("Cannot read dir '%s'"),
+                             dir);
+        goto cleanup;
+    }
+
+    if (rmdir(dir) < 0 && errno != ENOENT) {
+        virReportSystemError(errno,
+                             _("Cannot delete directory '%s'"),
+                             dir);
+        goto cleanup;
+    }
+
+    ret = 0;
+
+cleanup:
+    VIR_FREE(filepath);
+    closedir(dh);
+    return ret;
+}

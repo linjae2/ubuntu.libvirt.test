@@ -160,7 +160,7 @@ testTLSGenerateCert(struct testTLSCertReq *req)
     static char buffer[1024*1024];
     size_t size = sizeof(buffer);
     char serial[5] = { 1, 2, 3, 4, 0 };
-    gnutls_datum_t der = { (unsigned char *)buffer, size };
+    gnutls_datum_t der;
     time_t start = time(NULL) + (60*60*req->start_offset);
     time_t expire = time(NULL) + (60*60*(req->expire_offset
                                          ? req->expire_offset : 24));
@@ -294,9 +294,11 @@ testTLSGenerateCert(struct testTLSCertReq *req)
                                                         der.size,
                                                         req->basicConstraintsCritical)) < 0) {
             VIR_WARN("Failed to set certificate basic constraints %s", gnutls_strerror(err));
+            VIR_FREE(der.data);
             abort();
         }
         asn1_delete_structure(&ext);
+        VIR_FREE(der.data);
     }
 
     /*
@@ -320,9 +322,11 @@ testTLSGenerateCert(struct testTLSCertReq *req)
                                                         der.size,
                                                         req->keyUsageCritical)) < 0) {
             VIR_WARN("Failed to set certificate key usage %s", gnutls_strerror(err));
+            VIR_FREE(der.data);
             abort();
         }
         asn1_delete_structure(&ext);
+        VIR_FREE(der.data);
     }
 
     /*
@@ -350,9 +354,11 @@ testTLSGenerateCert(struct testTLSCertReq *req)
                                                         der.size,
                                                         req->keyPurposeCritical)) < 0) {
             VIR_WARN("Failed to set certificate key purpose %s", gnutls_strerror(err));
+            VIR_FREE(der.data);
             abort();
         }
         asn1_delete_structure(&ext);
+        VIR_FREE(der.data);
     }
 
     /*
@@ -867,6 +873,16 @@ mymain(void)
         false, false, NULL, NULL,
         0, 0,
     };
+
+    DO_CTX_TEST(true, cacert1req, servercertreq, false);
+    DO_CTX_TEST(true, cacert2req, servercertreq, false);
+# if 0
+    DO_CTX_TEST(true, cacert3req, servercertreq, false);
+# endif
+    DO_CTX_TEST(true, cacert4req, servercertreq, false);
+
+    /* Now some bad certs */
+
     /* Key usage:dig-sig:not-critical */
     static struct testTLSCertReq cacert5req = {
         NULL, NULL, "cacert5.pem", "UK",
@@ -876,17 +892,6 @@ mymain(void)
         false, false, NULL, NULL,
         0, 0,
     };
-
-    DO_CTX_TEST(true, cacert1req, servercertreq, false);
-    DO_CTX_TEST(true, cacert2req, servercertreq, false);
-# if 0
-    DO_CTX_TEST(true, cacert3req, servercertreq, false);
-# endif
-    DO_CTX_TEST(true, cacert4req, servercertreq, false);
-    DO_CTX_TEST(true, cacert5req, servercertreq, false);
-
-    /* Now some bad certs */
-
     /* no-basic */
     static struct testTLSCertReq cacert6req = {
         NULL, NULL, "cacert6.pem", "UK",
@@ -906,6 +911,12 @@ mymain(void)
         0, 0,
     };
 
+    /* Technically a CA cert with basic constraints
+     * key purpose == key signing + non-critical should
+     * be rejected. GNUTLS < 3 does not reject it and
+     * we don't anticipate them changing this behaviour
+     */
+    DO_CTX_TEST(true, cacert5req, servercertreq, GNUTLS_VERSION_MAJOR >= 3);
     DO_CTX_TEST(true, cacert6req, servercertreq, true);
     DO_CTX_TEST(true, cacert7req, servercertreq, true);
 

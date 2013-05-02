@@ -1,7 +1,7 @@
 /*
  * virnetclient.c: generic network RPC client
  *
- * Copyright (C) 2006-2012 Red Hat, Inc.
+ * Copyright (C) 2006-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -596,6 +596,9 @@ void virNetClientDispose(void *obj)
     virNetClientPtr client = obj;
     int i;
 
+    PROBE(RPC_CLIENT_DISPOSE,
+          "client=%p", client);
+
     if (client->closeFf)
         client->closeFf(client->closeOpaque);
 
@@ -1182,6 +1185,7 @@ virNetClientIOWriteMessage(virNetClientPtr client,
         }
         thecall->msg->donefds = 0;
         thecall->msg->bufferOffset = thecall->msg->bufferLength = 0;
+        VIR_FREE(thecall->msg->fds);
         VIR_FREE(thecall->msg->buffer);
         if (thecall->expectReply)
             thecall->mode = VIR_NET_CLIENT_MODE_WAIT_RX;
@@ -1382,7 +1386,7 @@ static bool virNetClientIOEventLoopRemoveDone(virNetClientCallPtr call,
         VIR_DEBUG("Removing completed call %p", call);
         if (call->expectReply)
             VIR_WARN("Got a call expecting a reply but without a waiting thread");
-        ignore_value(virCondDestroy(&call->cond));
+        virCondDestroy(&call->cond);
         VIR_FREE(call->msg);
         VIR_FREE(call);
     }
@@ -1409,7 +1413,7 @@ virNetClientIOEventLoopRemoveAll(virNetClientCallPtr call,
         return false;
 
     VIR_DEBUG("Removing call %p", call);
-    ignore_value(virCondDestroy(&call->cond));
+    virCondDestroy(&call->cond);
     VIR_FREE(call->msg);
     VIR_FREE(call);
     return true;
@@ -1767,7 +1771,7 @@ static int virNetClientIO(virNetClientPtr client,
             goto cleanup;
         }
 
-        /* Grr, someone passed the buck onto us ... */
+        /* Grr, someone passed the buck to us ... */
     } else {
         client->haveTheBuck = true;
     }
@@ -1821,7 +1825,6 @@ void virNetClientIncomingEvent(virNetSocketPtr sock,
     if (!client->sock)
         goto done;
 
-    /* This should be impossible, but it doesn't hurt to check */
     if (client->haveTheBuck || client->wantClose)
         goto done;
 
@@ -1854,8 +1857,12 @@ void virNetClientIncomingEvent(virNetSocketPtr sock,
     virNetClientIOUpdateCallback(client, true);
 
 done:
-    if (client->wantClose)
+    if (client->wantClose && !client->haveTheBuck) {
         virNetClientCloseLocked(client);
+        virNetClientCallRemovePredicate(&client->waitDispatch,
+                                        virNetClientIOEventLoopRemoveAll,
+                                        NULL);
+    }
     virObjectUnlock(client);
 }
 
@@ -1972,7 +1979,7 @@ static int virNetClientSendInternal(virNetClientPtr client,
     if (ret == 1)
         return 1;
 
-    ignore_value(virCondDestroy(&call->cond));
+    virCondDestroy(&call->cond);
     VIR_FREE(call);
     return ret;
 }

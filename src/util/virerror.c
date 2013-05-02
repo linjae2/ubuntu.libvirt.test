@@ -1,7 +1,7 @@
 /*
  * virerror.c: error handling and reporting code for libvirt
  *
- * Copyright (C) 2006, 2008-2012 Red Hat, Inc.
+ * Copyright (C) 2006, 2008-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -118,6 +118,8 @@ VIR_ENUM_IMPL(virErrorDomain, VIR_ERR_DOMAIN_LAST,
               "SSH transport layer", /* 50 */
               "Lock Space",
               "Init control",
+              "Identity",
+              "Cgroup",
     )
 
 
@@ -525,13 +527,13 @@ virDefaultErrorFunc(virErrorPtr err)
     len = strlen(err->message);
     if ((err->domain == VIR_FROM_XML) && (err->code == VIR_ERR_XML_DETAIL) &&
         (err->int1 != 0))
-        fprintf(stderr, "libvir: %s %s %s%s: line %d: %s",
+        fprintf(stderr, "libvirt: %s %s %s%s: line %d: %s",
                 dom, lvl, domain, network, err->int1, err->message);
     else if ((len == 0) || (err->message[len - 1] != '\n'))
-        fprintf(stderr, "libvir: %s %s %s%s: %s\n",
+        fprintf(stderr, "libvirt: %s %s %s%s: %s\n",
                 dom, lvl, domain, network, err->message);
     else
-        fprintf(stderr, "libvir: %s %s %s%s: %s",
+        fprintf(stderr, "libvirt: %s %s %s%s: %s",
                 dom, lvl, domain, network, err->message);
 }
 
@@ -647,7 +649,7 @@ virRaiseErrorFull(const char *filename ATTRIBUTE_UNUSED,
     } else {
         va_list ap;
         va_start(ap, fmt);
-        virVasprintf(&str, fmt, ap);
+        ignore_value(virVasprintf(&str, fmt, ap));
         va_end(ap);
     }
 

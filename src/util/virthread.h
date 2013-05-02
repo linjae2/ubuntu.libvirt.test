@@ -55,6 +55,10 @@ void virThreadSelf(virThreadPtr thread);
 bool virThreadIsSelf(virThreadPtr thread);
 void virThreadJoin(virThreadPtr thread);
 
+/* This API is *NOT* for general use. It exists solely as a stub
+ * for integration with libselinux AVC callbacks */
+void virThreadCancel(virThreadPtr thread);
+
 /* These next two functions are for debugging only, since they are not
  * guaranteed to give unique values for distinct threads on all
  * architectures, nor are the two functions guaranteed to give the same
@@ -87,7 +91,7 @@ void virMutexUnlock(virMutexPtr m);
 
 
 int virCondInit(virCondPtr c) ATTRIBUTE_RETURN_CHECK;
-int virCondDestroy(virCondPtr c) ATTRIBUTE_RETURN_CHECK;
+int virCondDestroy(virCondPtr c);
 
 /* virCondWait, virCondWaitUntil:
  * These functions can return without the associated predicate

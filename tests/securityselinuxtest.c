@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Red Hat, Inc.
+ * Copyright (C) 2011-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -274,11 +274,11 @@ mymain(void)
     if (!(mgr = virSecurityManagerNew("selinux", "QEMU", false, true, false))) {
         virErrorPtr err = virGetLastError();
         if (err->code == VIR_ERR_CONFIG_UNSUPPORTED)
-            exit(EXIT_AM_SKIP);
+            return EXIT_AM_SKIP;
 
         fprintf(stderr, "Unable to initialize security driver: %s\n",
                 err->message);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
 #define DO_TEST_GEN_LABEL(desc, pidcon,                                 \
@@ -296,6 +296,18 @@ mymain(void)
             ret = -1;                                                   \
     } while (0)
 
+    DO_TEST_GEN_LABEL("dynamic unconfined, s0, c0.c1023",
+                      "unconfined_u:unconfined_r:unconfined_t:s0",
+                      true, NULL, NULL,
+                      "unconfined_u", "unconfined_r", "object_r",
+                      "svirt_t", "svirt_image_t",
+                      0, 0, 0, 1023);
+    DO_TEST_GEN_LABEL("dynamic unconfined, s0, c0.c1023",
+                      "unconfined_u:unconfined_r:unconfined_t:s0-s0",
+                      true, NULL, NULL,
+                      "unconfined_u", "unconfined_r", "object_r",
+                      "svirt_t", "svirt_image_t",
+                      0, 0, 0, 1023);
     DO_TEST_GEN_LABEL("dynamic unconfined, s0, c0.c1023",
                       "unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023",
                       true, NULL, NULL,

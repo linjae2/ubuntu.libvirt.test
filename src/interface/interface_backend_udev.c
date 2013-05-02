@@ -24,7 +24,9 @@
 #include <libudev.h>
 
 #include "virerror.h"
+#include "c-ctype.h"
 #include "datatypes.h"
+#include "domain_conf.h"
 #include "interface_driver.h"
 #include "interface_conf.h"
 #include "viralloc.h"
@@ -40,6 +42,8 @@ typedef enum {
     VIR_UDEV_IFACE_INACTIVE,
     VIR_UDEV_IFACE_ALL
 } virUdevStatus ;
+
+static virInterfaceDef *udevGetIfaceDef(struct udev *udev, const char *name);
 
 static const char *
 virUdevStatusString(virUdevStatus status)
@@ -57,7 +61,7 @@ virUdevStatusString(virUdevStatus status)
 }
 
 static struct udev_enumerate * ATTRIBUTE_NONNULL(1)
-udevIfaceGetDevices(struct udev *udev, virUdevStatus status)
+udevGetDevices(struct udev *udev, virUdevStatus status)
 {
     struct udev_enumerate *enumerate;
 
@@ -97,9 +101,9 @@ udevIfaceGetDevices(struct udev *udev, virUdevStatus status)
 }
 
 static virDrvOpenStatus
-udevIfaceOpenInterface(virConnectPtr conn,
-                       virConnectAuthPtr auth ATTRIBUTE_UNUSED,
-                       unsigned int flags)
+udevInterfaceOpen(virConnectPtr conn,
+                  virConnectAuthPtr auth ATTRIBUTE_UNUSED,
+                  unsigned int flags)
 {
     struct udev_iface_driver *driverState = NULL;
 
@@ -128,7 +132,7 @@ err:
 }
 
 static int
-udevIfaceCloseInterface(virConnectPtr conn)
+udevInterfaceClose(virConnectPtr conn)
 {
     struct udev_iface_driver *driverState;
 
@@ -145,7 +149,7 @@ udevIfaceCloseInterface(virConnectPtr conn)
 }
 
 static int
-udevIfaceNumOfInterfacesByStatus(virConnectPtr conn, virUdevStatus status)
+udevNumOfInterfacesByStatus(virConnectPtr conn, virUdevStatus status)
 {
     struct udev_iface_driver *driverState = conn->interfacePrivateData;
     struct udev *udev = udev_ref(driverState->udev);
@@ -154,7 +158,7 @@ udevIfaceNumOfInterfacesByStatus(virConnectPtr conn, virUdevStatus status)
     struct udev_list_entry *dev_entry;
     int count = 0;
 
-    enumerate = udevIfaceGetDevices(udev, status);
+    enumerate = udevGetDevices(udev, status);
 
     if (!enumerate) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -184,10 +188,10 @@ err:
 }
 
 static int
-udevIfaceListInterfacesByStatus(virConnectPtr conn,
-                                char **const names,
-                                int names_len,
-                                virUdevStatus status)
+udevListInterfacesByStatus(virConnectPtr conn,
+                           char **const names,
+                           int names_len,
+                           virUdevStatus status)
 {
     struct udev_iface_driver *driverState = conn->interfacePrivateData;
     struct udev *udev = udev_ref(driverState->udev);
@@ -196,7 +200,7 @@ udevIfaceListInterfacesByStatus(virConnectPtr conn,
     struct udev_list_entry *dev_entry;
     int count = 0;
 
-    enumerate = udevIfaceGetDevices(udev, status);
+    enumerate = udevGetDevices(udev, status);
 
     if (!enumerate) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -251,39 +255,39 @@ err:
 }
 
 static int
-udevIfaceNumOfInterfaces(virConnectPtr conn)
+udevConnectNumOfInterfaces(virConnectPtr conn)
 {
-    return udevIfaceNumOfInterfacesByStatus(conn, VIR_UDEV_IFACE_ACTIVE);
+    return udevNumOfInterfacesByStatus(conn, VIR_UDEV_IFACE_ACTIVE);
 }
 
 static int
-udevIfaceListInterfaces(virConnectPtr conn,
-                        char **const names,
-                        int names_len)
+udevConnectListInterfaces(virConnectPtr conn,
+                          char **const names,
+                          int names_len)
 {
-    return udevIfaceListInterfacesByStatus(conn, names, names_len,
-                                           VIR_UDEV_IFACE_ACTIVE);
+    return udevListInterfacesByStatus(conn, names, names_len,
+                                      VIR_UDEV_IFACE_ACTIVE);
 }
 
 static int
-udevIfaceNumOfDefinedInterfaces(virConnectPtr conn)
+udevConnectNumOfDefinedInterfaces(virConnectPtr conn)
 {
-    return udevIfaceNumOfInterfacesByStatus(conn, VIR_UDEV_IFACE_INACTIVE);
+    return udevNumOfInterfacesByStatus(conn, VIR_UDEV_IFACE_INACTIVE);
 }
 
 static int
-udevIfaceListDefinedInterfaces(virConnectPtr conn,
-                               char **const names,
-                               int names_len)
+udevConnectListDefinedInterfaces(virConnectPtr conn,
+                                 char **const names,
+                                 int names_len)
 {
-    return udevIfaceListInterfacesByStatus(conn, names, names_len,
-                                           VIR_UDEV_IFACE_INACTIVE);
+    return udevListInterfacesByStatus(conn, names, names_len,
+                                      VIR_UDEV_IFACE_INACTIVE);
 }
 
 static int
-udevIfaceListAllInterfaces(virConnectPtr conn,
-                           virInterfacePtr **ifaces,
-                           unsigned int flags)
+udevConnectListAllInterfaces(virConnectPtr conn,
+                             virInterfacePtr **ifaces,
+                             unsigned int flags)
 {
     struct udev_iface_driver *driverState = conn->interfacePrivateData;
     struct udev *udev;
@@ -304,7 +308,7 @@ udevIfaceListAllInterfaces(virConnectPtr conn,
     udev = udev_ref(driverState->udev);
 
     /* List all interfaces in case we support more filter flags in the future */
-    enumerate = udevIfaceGetDevices(udev, VIR_UDEV_IFACE_ALL);
+    enumerate = udevGetDevices(udev, VIR_UDEV_IFACE_ALL);
 
     if (!enumerate) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -359,7 +363,6 @@ udevIfaceListAllInterfaces(virConnectPtr conn,
         name = udev_device_get_sysname(dev);
         macaddr = udev_device_get_sysattr_value(dev, "address");
         status = STREQ(udev_device_get_sysattr_value(dev, "operstate"), "up");
-        udev_device_unref(dev);
 
         /* Filter the results */
         if (status && (flags & VIR_CONNECT_LIST_INTERFACES_ACTIVE))
@@ -375,6 +378,7 @@ udevIfaceListAllInterfaces(virConnectPtr conn,
             }
             count++;
         }
+        udev_device_unref(dev);
     }
 
     /* Drop our refcounts */
@@ -406,7 +410,7 @@ cleanup:
 }
 
 static virInterfacePtr
-udevIfaceLookupByName(virConnectPtr conn, const char *name)
+udevInterfaceLookupByName(virConnectPtr conn, const char *name)
 {
     struct udev_iface_driver *driverState = conn->interfacePrivateData;
     struct udev *udev = udev_ref(driverState->udev);
@@ -434,7 +438,7 @@ err:
 }
 
 static virInterfacePtr
-udevIfaceLookupByMACString(virConnectPtr conn, const char *macstr)
+udevInterfaceLookupByMACString(virConnectPtr conn, const char *macstr)
 {
     struct udev_iface_driver *driverState = conn->interfacePrivateData;
     struct udev *udev = udev_ref(driverState->udev);
@@ -444,7 +448,7 @@ udevIfaceLookupByMACString(virConnectPtr conn, const char *macstr)
     const char *name;
     virInterfacePtr ret = NULL;
 
-    enumerate = udevIfaceGetDevices(udev, VIR_UDEV_IFACE_ALL);
+    enumerate = udevGetDevices(udev, VIR_UDEV_IFACE_ALL);
 
     if (!enumerate) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -492,38 +496,77 @@ err:
 }
 
 /**
- * Helper function for our use of scandir()
+ * Helper function for finding bond slaves using scandir()
  *
  * @param entry - directory entry passed by scandir()
  *
  * @return 1 if we want to add it to scandir's list, 0 if not.
  */
 static int
-udevIfaceScanDirFilter(const struct dirent *entry)
+udevBondScanDirFilter(const struct dirent *entry)
+{
+    /* This is ugly so if anyone has a better suggestion, please improve
+     * this. Unfortunately the kernel stores everything in the top level
+     * interface sysfs entry and references the slaves as slave_eth0 for
+     * example.
+     */
+    if (STRPREFIX(entry->d_name, "slave_"))
+        return 1;
+
+    return 0;
+}
+
+/**
+ * Helper function for finding bridge members using scandir()
+ *
+ * @param entry - directory entry passed by scandir()
+ *
+ * @return 1 if we want to add it to scandir's list, 0 if not.
+ */
+static int
+udevBridgeScanDirFilter(const struct dirent *entry)
 {
     if (STREQ(entry->d_name, ".") || STREQ(entry->d_name, ".."))
         return 0;
+
+    /* Omit the domain interfaces from the list of bridge attached
+     * devices. All we can do is check for the device name matching
+     * vnet%d. Improvements to this check are welcome.
+     */
+    if (strlen(entry->d_name) >= 5) {
+        if (STRPREFIX(entry->d_name, VIR_NET_GENERATED_PREFIX) &&
+            c_isdigit(entry->d_name[4]))
+            return 0;
+    }
 
     return 1;
 }
 
 /**
- * Frees any memory allocated by udevIfaceGetIfaceDef()
+ * Frees any memory allocated by udevGetIfaceDef()
  *
  * @param ifacedef - interface to free and cleanup
  */
 static void
-udevIfaceFreeIfaceDef(virInterfaceDef *ifacedef)
+udevFreeIfaceDef(virInterfaceDef *ifacedef)
 {
     int i;
 
     if (!ifacedef)
         return;
 
+    if (ifacedef->type == VIR_INTERFACE_TYPE_BOND) {
+        VIR_FREE(ifacedef->data.bond.target);
+        for (i = 0; i < ifacedef->data.bond.nbItf; i++) {
+            udevFreeIfaceDef(ifacedef->data.bond.itf[i]);
+        }
+        VIR_FREE(ifacedef->data.bond.itf);
+    }
+
     if (ifacedef->type == VIR_INTERFACE_TYPE_BRIDGE) {
         VIR_FREE(ifacedef->data.bridge.delay);
         for (i = 0; i < ifacedef->data.bridge.nbItf; i++) {
-            udevIfaceFreeIfaceDef(ifacedef->data.bridge.itf[i]);
+            udevFreeIfaceDef(ifacedef->data.bridge.itf[i]);
         }
         VIR_FREE(ifacedef->data.bridge.itf);
     }
@@ -538,18 +581,402 @@ udevIfaceFreeIfaceDef(virInterfaceDef *ifacedef)
     VIR_FREE(ifacedef);
 }
 
+static int
+ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
+ATTRIBUTE_NONNULL(4) ATTRIBUTE_RETURN_CHECK
+udevGetIfaceDefBond(struct udev *udev,
+                    struct udev_device *dev,
+                    const char *name,
+                    virInterfaceDef *ifacedef)
+{
+    struct dirent **slave_list = NULL;
+    int slave_count = 0;
+    int i;
+    const char *tmp_str;
+    int tmp_int;
+
+    /* Initial defaults */
+    ifacedef->data.bond.target = NULL;
+    ifacedef->data.bond.nbItf = 0;
+    ifacedef->data.bond.itf = NULL;
+
+    /* Set the bond specifics */
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/downdelay");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/downdelay' for '%s'"), name);
+        goto cleanup;
+    }
+    if (virStrToLong_i(tmp_str, NULL, 10, &tmp_int) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bonding/downdelay' '%s' for '%s'"),
+                tmp_str, name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.downdelay = tmp_int;
+
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/updelay");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/updelay' for '%s'"), name);
+        goto cleanup;
+    }
+    if (virStrToLong_i(tmp_str, NULL, 10, &tmp_int) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bonding/updelay' '%s' for '%s'"),
+                tmp_str, name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.updelay = tmp_int;
+
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/miimon");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/miimon' for '%s'"), name);
+        goto cleanup;
+    }
+    if (virStrToLong_i(tmp_str, NULL, 10, &tmp_int) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bonding/miimon' '%s' for '%s'"),
+                tmp_str, name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.frequency = tmp_int;
+
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/arp_interval");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/arp_interval' for '%s'"), name);
+        goto cleanup;
+    }
+    if (virStrToLong_i(tmp_str, NULL, 10, &tmp_int) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bonding/arp_interval' '%s' for '%s'"),
+                tmp_str, name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.interval = tmp_int;
+
+    /* bonding/mode is in the format: "balance-rr 0" so we find the
+     * space and increment the pointer to get the number and convert
+     * it to an interger. libvirt uses 1 through 7 while the raw
+     * number is 0 through 6 so increment it by 1.
+     */
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/mode");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/mode' for '%s'"), name);
+        goto cleanup;
+    }
+    tmp_str = strchr(tmp_str, ' ');
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Invalid format for 'bonding/mode' for '%s'"), name);
+        goto cleanup;
+    }
+    if (strlen(tmp_str) < 2) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Unable to find correct value in 'bonding/mode' for '%s'"),
+                name);
+        goto cleanup;
+    }
+    if (virStrToLong_i(tmp_str + 1, NULL, 10, &tmp_int) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bonding/mode' '%s' for '%s'"),
+                tmp_str, name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.mode = tmp_int + 1;
+
+    /* bonding/arp_validate is in the format: "none 0" so we find the
+     * space and increment the pointer to get the number and convert
+     * it to an interger.
+     */
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/arp_validate");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/arp_validate' for '%s'"), name);
+        goto cleanup;
+    }
+    tmp_str = strchr(tmp_str, ' ');
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Invalid format for 'bonding/arp_validate' for '%s'"), name);
+        goto cleanup;
+    }
+    if (strlen(tmp_str) < 2) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Unable to find correct value in 'bonding/arp_validate' "
+                "for '%s'"), name);
+        goto cleanup;
+    }
+    if (virStrToLong_i(tmp_str + 1, NULL, 10, &tmp_int) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bonding/arp_validate' '%s' for '%s'"),
+                tmp_str, name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.validate = tmp_int;
+
+    /* bonding/use_carrier is 0 or 1 and libvirt stores it as 1 or 2. */
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/use_carrier");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/use_carrier' for '%s'"), name);
+        goto cleanup;
+    }
+    if (virStrToLong_i(tmp_str, NULL, 10, &tmp_int) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bonding/use_carrier' '%s' for '%s'"),
+                tmp_str, name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.carrier = tmp_int + 1;
+
+    /* MII or ARP Monitoring is based on arp_interval and miimon.
+     * if arp_interval > 0 then ARP monitoring is in play, if
+     * miimon > 0 then MII monitoring is in play.
+     */
+    if (ifacedef->data.bond.interval > 0)
+        ifacedef->data.bond.monit = VIR_INTERFACE_BOND_MONIT_ARP;
+    else if (ifacedef->data.bond.frequency > 0)
+        ifacedef->data.bond.monit = VIR_INTERFACE_BOND_MONIT_MII;
+    else
+        ifacedef->data.bond.monit = VIR_INTERFACE_BOND_MONIT_NONE;
+
+    tmp_str = udev_device_get_sysattr_value(dev, "bonding/arp_ip_target");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bonding/arp_ip_target' for '%s'"), name);
+        goto cleanup;
+    }
+    ifacedef->data.bond.target = strdup(tmp_str);
+    if (!ifacedef->data.bond.target) {
+        virReportOOMError();
+        goto cleanup;
+    }
+
+    /* Slaves of the bond */
+    /* Get each slave in the bond */
+    slave_count = scandir(udev_device_get_syspath(dev), &slave_list,
+            udevBondScanDirFilter, alphasort);
+
+    if (slave_count < 0) {
+        virReportSystemError(errno,
+                _("Could not get slaves of bond '%s'"), name);
+        goto cleanup;
+    }
+
+    /* Allocate our list of slave devices */
+    if (VIR_ALLOC_N(ifacedef->data.bond.itf, slave_count) < 0) {
+        virReportOOMError();
+        goto cleanup;
+    }
+    ifacedef->data.bond.nbItf = slave_count;
+
+    for (i = 0; i < slave_count; i++) {
+        /* Names are slave_interface. e.g. slave_eth0
+         * so we use the part after the _
+         */
+        tmp_str = strchr(slave_list[i]->d_name, '_');
+        if (!tmp_str || strlen(tmp_str) < 2) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("Invalid enslaved interface name '%s' seen for "
+                             "bond '%s'"), slave_list[i]->d_name, name);
+            goto cleanup;
+        }
+        /* go past the _ */
+        tmp_str++;
+
+        ifacedef->data.bond.itf[i] =
+            udevGetIfaceDef(udev, tmp_str);
+        if (!ifacedef->data.bond.itf[i]) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not get interface information for '%s', which is "
+                  "a enslaved in bond '%s'"), slave_list[i]->d_name, name);
+            goto cleanup;
+        }
+        VIR_FREE(slave_list[i]);
+    }
+
+    VIR_FREE(slave_list);
+
+    return 0;
+
+cleanup:
+    for (i = 0; i < slave_count; i++) {
+        VIR_FREE(slave_list[i]);
+    }
+    VIR_FREE(slave_list);
+
+    return -1;
+}
+
+static int
+ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
+ATTRIBUTE_NONNULL(4) ATTRIBUTE_RETURN_CHECK
+udevGetIfaceDefBridge(struct udev *udev,
+                      struct udev_device *dev,
+                      const char *name,
+                      virInterfaceDef *ifacedef)
+{
+    struct dirent **member_list = NULL;
+    int member_count = 0;
+    char *member_path;
+    const char *tmp_str;
+    int stp;
+    int i;
+
+    /* Set our type to Bridge  */
+    ifacedef->type = VIR_INTERFACE_TYPE_BRIDGE;
+
+    /* Retrieve the forward delay */
+    tmp_str = udev_device_get_sysattr_value(dev, "bridge/forward_delay");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not retrieve 'bridge/forward_delay' for '%s'"), name);
+        goto error;
+    }
+
+    ifacedef->data.bridge.delay = strdup(tmp_str);
+    if (!ifacedef->data.bridge.delay) {
+        virReportOOMError();
+        goto error;
+    }
+
+    /* Retrieve Spanning Tree State. Valid values = -1, 0, 1 */
+    tmp_str = udev_device_get_sysattr_value(dev, "bridge/stp_state");
+    if (!tmp_str) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+            _("Could not retrieve 'bridge/stp_state' for '%s'"), name);
+        goto error;
+    }
+
+    if (virStrToLong_i(tmp_str, NULL, 10, &stp) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not parse 'bridge/stp_state' '%s' for '%s'"),
+                tmp_str, name);
+        goto error;
+    }
+
+    switch (stp) {
+    case -1:
+    case 0:
+    case 1:
+        ifacedef->data.bridge.stp = stp;
+        break;
+    default:
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+            _("Invalid STP state value %d received for '%s'. Must be "
+              "-1, 0, or 1."), stp, name);
+        goto error;
+    }
+
+    /* Members of the bridge */
+    if (virAsprintf(&member_path, "%s/%s",
+                udev_device_get_syspath(dev), "brif") < 0) {
+        virReportOOMError();
+        goto error;
+    }
+
+    /* Get each member of the bridge */
+    member_count = scandir(member_path, &member_list,
+            udevBridgeScanDirFilter, alphasort);
+
+    /* Don't need the path anymore */
+    VIR_FREE(member_path);
+
+    if (member_count < 0) {
+        virReportSystemError(errno,
+                _("Could not get members of bridge '%s'"),
+                name);
+        goto error;
+    }
+
+    /* Allocate our list of member devices */
+    if (VIR_ALLOC_N(ifacedef->data.bridge.itf, member_count) < 0) {
+        virReportOOMError();
+        goto error;
+    }
+    ifacedef->data.bridge.nbItf = member_count;
+
+    /* Get the interface defintions for each member of the bridge */
+    for (i = 0; i < member_count; i++) {
+        ifacedef->data.bridge.itf[i] =
+            udevGetIfaceDef(udev, member_list[i]->d_name);
+        if (!ifacedef->data.bridge.itf[i]) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("Could not get interface information for '%s', which is "
+                  "a member of bridge '%s'"), member_list[i]->d_name, name);
+            goto error;
+        }
+        VIR_FREE(member_list[i]);
+    }
+
+    VIR_FREE(member_list);
+
+    return 0;
+
+error:
+    for (i = 0; i < member_count; i++) {
+        VIR_FREE(member_list[i]);
+    }
+    VIR_FREE(member_list);
+
+    return -1;
+}
+
+static int
+ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
+ATTRIBUTE_NONNULL(4) ATTRIBUTE_RETURN_CHECK
+udevGetIfaceDefVlan(struct udev *udev ATTRIBUTE_UNUSED,
+                    struct udev_device *dev ATTRIBUTE_UNUSED,
+                    const char *name,
+                    virInterfaceDef *ifacedef)
+{
+    char *vid;
+    char *vlan_parent_dev = NULL;
+
+    vlan_parent_dev = strdup(name);
+    if (!vlan_parent_dev) {
+        virReportOOMError();
+        goto cleanup;
+    }
+
+    /* Find the DEVICE.VID again */
+    vid = strrchr(vlan_parent_dev, '.');
+    if (!vid) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                _("failed to find the VID for the VLAN device '%s'"),
+                name);
+        goto cleanup;
+        }
+
+    /* Replace the dot with a NULL so we can have the device and VID */
+    vid[0] = '\0';
+    vid++;
+
+    /* Set the VLAN specifics */
+    ifacedef->data.vlan.tag = vid;
+    ifacedef->data.vlan.devname = vlan_parent_dev;
+
+    return 0;
+
+cleanup:
+    VIR_FREE(vlan_parent_dev);
+
+    return -1;
+}
 
 static virInterfaceDef * ATTRIBUTE_NONNULL(1)
-udevIfaceGetIfaceDef(struct udev *udev, char *name)
+udevGetIfaceDef(struct udev *udev, const char *name)
 {
     struct udev_device *dev = NULL;
     virInterfaceDef *ifacedef;
     unsigned int mtu;
     const char *mtu_str;
     char *vlan_parent_dev = NULL;
-    struct dirent **member_list = NULL;
-    int member_count = 0;
-    int i;
+    const char *devtype;
 
     /* Allocate our interface definition structure */
     if (VIR_ALLOC(ifacedef) < 0) {
@@ -559,7 +986,6 @@ udevIfaceGetIfaceDef(struct udev *udev, char *name)
 
     /* Clear our structure and set safe defaults */
     ifacedef->startmode = VIR_INTERFACE_START_UNSPECIFIED;
-    ifacedef->type = VIR_INTERFACE_TYPE_ETHERNET;
     ifacedef->name = strdup(name);
 
     if (!ifacedef->name) {
@@ -596,102 +1022,55 @@ udevIfaceGetIfaceDef(struct udev *udev, char *name)
     ifacedef->nprotos = 0;
     ifacedef->protos = NULL;
 
-    /* Check if its a VLAN since we can have a VLAN of any of the
-     * other devices */
-    vlan_parent_dev = strrchr(name, '.');
-    if (vlan_parent_dev) {
-        /* Found the VLAN dot */
-        char *vid;
+    /* Check the type of device we are working with based on the devtype */
+    devtype = udev_device_get_devtype(dev);
 
-        vlan_parent_dev = strdup(name);
-        if (!vlan_parent_dev) {
-            virReportOOMError();
-            goto cleanup;
-        }
+    /* Set our type to ethernet as the default case */
+    ifacedef->type = VIR_INTERFACE_TYPE_ETHERNET;
 
-        /* Find the DEVICE.VID separator again */
-        vid = strrchr(vlan_parent_dev, '.');
-        if (!vid) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("failed to find the VID for the VLAN device '%s'"),
-                           name);
-            goto cleanup;
-        }
-
-        /* Replace the dot with a NULL so we can have the device and VID */
-        vid[0] = '\0';
-        vid++;
-
-        /* Set our type to VLAN  */
+    if (STREQ_NULLABLE(devtype, "vlan")) {
+        /* This only works on modern kernels (3.7 and newer)
+         * e949b09b71d975a82f13ac88ce4ad338fed213da
+         */
         ifacedef->type = VIR_INTERFACE_TYPE_VLAN;
-
-        /* Set the VLAN specifics */
-        ifacedef->data.vlan.tag = vid;
-        ifacedef->data.vlan.devname = vlan_parent_dev;
-    } else if (STREQ_NULLABLE(udev_device_get_devtype(dev), "bridge")) {
-        /* Check if its a bridge device */
-        char *member_path;
-        const char *stp_str;
-        int stp;
-
-        /* Set our type to Bridge  */
+    } else if (STREQ_NULLABLE(devtype, "bridge")) {
         ifacedef->type = VIR_INTERFACE_TYPE_BRIDGE;
+    } else if (STREQ_NULLABLE(devtype, "bond")) {
+        /* This only works on modern kernels (3.9 and newer) */
+        ifacedef->type = VIR_INTERFACE_TYPE_BOND;
+    }
 
-        /* Bridge specifics */
-        ifacedef->data.bridge.delay =
-            strdup(udev_device_get_sysattr_value(dev, "bridge/forward_delay"));
-        if (!ifacedef->data.bridge.delay) {
-            virReportOOMError();
+    /* Fallback checks if the devtype check didn't work. */
+    if (ifacedef->type == VIR_INTERFACE_TYPE_ETHERNET) {
+        /* First check if its a VLAN based on the name containing a dot,
+         * to prevent false positives
+         */
+        vlan_parent_dev = strrchr(name, '.');
+        if (vlan_parent_dev) {
+            ifacedef->type = VIR_INTERFACE_TYPE_VLAN;
+        }
+
+        /* Fallback check to see if this is a bond device */
+        if (udev_device_get_sysattr_value(dev, "bonding/mode")) {
+            ifacedef->type = VIR_INTERFACE_TYPE_BOND;
+        }
+    }
+
+    switch (ifacedef->type) {
+    case VIR_INTERFACE_TYPE_VLAN:
+        if (udevGetIfaceDefVlan(udev, dev, name, ifacedef) < 0)
             goto cleanup;
-        }
-
-        stp_str = udev_device_get_sysattr_value(dev, "bridge/stp_state");
-        if (virStrToLong_i(stp_str, NULL, 10, &stp) < 0) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("Could not parse STP state '%s'"), stp_str);
+        break;
+    case VIR_INTERFACE_TYPE_BRIDGE:
+        if (udevGetIfaceDefBridge(udev, dev, name, ifacedef) < 0)
             goto cleanup;
-        }
-        ifacedef->data.bridge.stp = stp;
-
-        /* Members of the bridge */
-        if (virAsprintf(&member_path, "%s/%s",
-                        udev_device_get_syspath(dev), "brif") < 0) {
-            virReportOOMError();
+        break;
+    case VIR_INTERFACE_TYPE_BOND:
+        if (udevGetIfaceDefBond(udev, dev, name, ifacedef) < 0)
             goto cleanup;
-        }
-
-        /* Get each member of the bridge */
-        member_count = scandir(member_path, &member_list,
-                               udevIfaceScanDirFilter, alphasort);
-
-        /* Don't need the path anymore */
-        VIR_FREE(member_path);
-
-        if (member_count < 0) {
-            virReportSystemError(errno,
-                                 _("Could not get members of bridge '%s'"),
-                                 name);
-            goto cleanup;
-        }
-
-        /* Allocate our list of member devices */
-        if (VIR_ALLOC_N(ifacedef->data.bridge.itf, member_count) < 0) {
-            virReportOOMError();
-            goto cleanup;
-        }
-        ifacedef->data.bridge.nbItf = member_count;
-
-        for (i = 0; i < member_count; i++) {
-            ifacedef->data.bridge.itf[i] =
-                udevIfaceGetIfaceDef(udev, member_list[i]->d_name);
-            VIR_FREE(member_list[i]);
-        }
-
-        VIR_FREE(member_list);
-
-    } else {
-        /* Set our type to ethernet */
-        ifacedef->type = VIR_INTERFACE_TYPE_ETHERNET;
+        break;
+    case VIR_INTERFACE_TYPE_ETHERNET:
+        break;
     }
 
     udev_device_unref(dev);
@@ -700,19 +1079,15 @@ udevIfaceGetIfaceDef(struct udev *udev, char *name)
 
 cleanup:
     udev_device_unref(dev);
-    for (i = 0; i < member_count; i++) {
-        VIR_FREE(member_list[i]);
-    }
-    VIR_FREE(member_list);
 
-    udevIfaceFreeIfaceDef(ifacedef);
+    udevFreeIfaceDef(ifacedef);
 
     return NULL;
 }
 
 static char *
-udevIfaceGetXMLDesc(virInterfacePtr ifinfo,
-                    unsigned int flags)
+udevInterfaceGetXMLDesc(virInterfacePtr ifinfo,
+                        unsigned int flags)
 {
     struct udev_iface_driver *driverState = ifinfo->conn->interfacePrivateData;
     struct udev *udev = udev_ref(driverState->udev);
@@ -724,7 +1099,7 @@ udevIfaceGetXMLDesc(virInterfacePtr ifinfo,
     /* Recursively build up the interface XML based on the requested
      * interface name
      */
-    ifacedef = udevIfaceGetIfaceDef(udev, ifinfo->name);
+    ifacedef = udevGetIfaceDef(udev, ifinfo->name);
 
     /* We've already printed by it happened */
     if (!ifacedef)
@@ -734,7 +1109,7 @@ udevIfaceGetXMLDesc(virInterfacePtr ifinfo,
     xmlstr = virInterfaceDefFormat(ifacedef);
 
     /* Recursively free our interface structures and free the children too */
-    udevIfaceFreeIfaceDef(ifacedef);
+    udevFreeIfaceDef(ifacedef);
 
 err:
     /* decrement our udev ptr */
@@ -744,7 +1119,7 @@ err:
 }
 
 static int
-udevIfaceIsActive(virInterfacePtr ifinfo)
+udevInterfaceIsActive(virInterfacePtr ifinfo)
 {
     struct udev_iface_driver *driverState = ifinfo->conn->interfacePrivateData;
     struct udev *udev = udev_ref(driverState->udev);
@@ -774,17 +1149,17 @@ cleanup:
 
 static virInterfaceDriver udevIfaceDriver = {
     "udev",
-    .open = udevIfaceOpenInterface, /* 1.0.0 */
-    .close = udevIfaceCloseInterface, /* 1.0.0 */
-    .numOfInterfaces = udevIfaceNumOfInterfaces, /* 1.0.0 */
-    .listInterfaces = udevIfaceListInterfaces, /* 1.0.0 */
-    .numOfDefinedInterfaces = udevIfaceNumOfDefinedInterfaces, /* 1.0.0 */
-    .listDefinedInterfaces = udevIfaceListDefinedInterfaces, /* 1.0.0 */
-    .listAllInterfaces = udevIfaceListAllInterfaces, /* 1.0.0 */
-    .interfaceLookupByName = udevIfaceLookupByName, /* 1.0.0 */
-    .interfaceLookupByMACString = udevIfaceLookupByMACString, /* 1.0.0 */
-    .interfaceIsActive = udevIfaceIsActive, /* 1.0.0 */
-    .interfaceGetXMLDesc = udevIfaceGetXMLDesc, /* 1.0.0 */
+    .interfaceOpen = udevInterfaceOpen, /* 1.0.0 */
+    .interfaceClose = udevInterfaceClose, /* 1.0.0 */
+    .connectNumOfInterfaces = udevConnectNumOfInterfaces, /* 1.0.0 */
+    .connectListInterfaces = udevConnectListInterfaces, /* 1.0.0 */
+    .connectNumOfDefinedInterfaces = udevConnectNumOfDefinedInterfaces, /* 1.0.0 */
+    .connectListDefinedInterfaces = udevConnectListDefinedInterfaces, /* 1.0.0 */
+    .connectListAllInterfaces = udevConnectListAllInterfaces, /* 1.0.0 */
+    .interfaceLookupByName = udevInterfaceLookupByName, /* 1.0.0 */
+    .interfaceLookupByMACString = udevInterfaceLookupByMACString, /* 1.0.0 */
+    .interfaceIsActive = udevInterfaceIsActive, /* 1.0.0 */
+    .interfaceGetXMLDesc = udevInterfaceGetXMLDesc, /* 1.0.0 */
 };
 
 int

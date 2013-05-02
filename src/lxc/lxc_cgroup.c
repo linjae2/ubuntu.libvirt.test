@@ -68,6 +68,57 @@ cleanup:
 }
 
 
+static int virLXCCgroupSetupCpusetTune(virDomainDefPtr def,
+                                       virCgroupPtr cgroup,
+                                       virBitmapPtr nodemask)
+{
+    int rc = 0;
+    char *mask = NULL;
+
+    if (def->placement_mode != VIR_DOMAIN_CPU_PLACEMENT_MODE_AUTO &&
+        def->cpumask) {
+        mask = virBitmapFormat(def->cpumask);
+        if (!mask) {
+            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                           _("failed to convert cpumask"));
+            return -1;
+        }
+
+        rc = virCgroupSetCpusetCpus(cgroup, mask);
+        if (rc < 0) {
+            virReportSystemError(-rc, "%s",
+                                 _("Unable to set cpuset.cpus"));
+            goto cleanup;
+        }
+    }
+
+    if ((def->numatune.memory.nodemask ||
+         (def->numatune.memory.placement_mode ==
+          VIR_NUMA_TUNE_MEM_PLACEMENT_MODE_AUTO)) &&
+          def->numatune.memory.mode == VIR_DOMAIN_NUMATUNE_MEM_STRICT) {
+        if (def->numatune.memory.placement_mode ==
+            VIR_NUMA_TUNE_MEM_PLACEMENT_MODE_AUTO)
+            mask = virBitmapFormat(nodemask);
+        else
+            mask = virBitmapFormat(def->numatune.memory.nodemask);
+
+        if (!mask) {
+            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                           _("failed to convert memory nodemask"));
+            return -1;
+        }
+
+        rc = virCgroupSetCpusetMems(cgroup, mask);
+        if (rc < 0)
+            virReportSystemError(-rc, "%s", _("Unable to set cpuset.mems"));
+    }
+
+cleanup:
+    VIR_FREE(mask);
+    return rc;
+}
+
+
 static int virLXCCgroupSetupBlkioTune(virDomainDefPtr def,
                                       virCgroupPtr cgroup)
 {
@@ -242,7 +293,7 @@ int virLXCCgroupGetMeminfo(virLXCMeminfoPtr meminfo)
     int ret;
     virCgroupPtr cgroup;
 
-    ret = virCgroupGetAppRoot(&cgroup);
+    ret = virCgroupNewSelf(&cgroup);
     if (ret < 0) {
         virReportSystemError(-ret, "%s",
                              _("Unable to get cgroup for container"));
@@ -292,7 +343,7 @@ struct _virLXCCgroupDevicePolicy {
 
 
 int
-virLXCSetupHostUsbDeviceCgroup(usbDevice *dev ATTRIBUTE_UNUSED,
+virLXCSetupHostUsbDeviceCgroup(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
                                const char *path,
                                void *opaque)
 {
@@ -314,7 +365,7 @@ virLXCSetupHostUsbDeviceCgroup(usbDevice *dev ATTRIBUTE_UNUSED,
 
 
 int
-virLXCTeardownHostUsbDeviceCgroup(usbDevice *dev ATTRIBUTE_UNUSED,
+virLXCTeardownHostUsbDeviceCgroup(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
                                   const char *path,
                                   void *opaque)
 {
@@ -412,7 +463,7 @@ static int virLXCCgroupSetupDeviceACL(virDomainDefPtr def,
 
     for (i = 0; i < def->nhostdevs; i++) {
         virDomainHostdevDefPtr hostdev = def->hostdevs[i];
-        usbDevice *usb;
+        virUSBDevicePtr usb;
 
         switch (hostdev->mode) {
         case VIR_DOMAIN_HOSTDEV_MODE_SUBSYS:
@@ -421,14 +472,17 @@ static int virLXCCgroupSetupDeviceACL(virDomainDefPtr def,
             if (hostdev->missing)
                 continue;
 
-            if ((usb = usbGetDevice(hostdev->source.subsys.u.usb.bus,
-                                    hostdev->source.subsys.u.usb.device,
-                                    NULL)) == NULL)
+            if ((usb = virUSBDeviceNew(hostdev->source.subsys.u.usb.bus,
+                                       hostdev->source.subsys.u.usb.device,
+                                       NULL)) == NULL)
                 goto cleanup;
 
-            if (usbDeviceFileIterate(usb, virLXCSetupHostUsbDeviceCgroup,
-                                     cgroup) < 0)
+            if (virUSBDeviceFileIterate(usb, virLXCSetupHostUsbDeviceCgroup,
+                                        cgroup) < 0) {
+                virUSBDeviceFree(usb);
                 goto cleanup;
+            }
+            virUSBDeviceFree(usb);
             break;
         case VIR_DOMAIN_HOSTDEV_MODE_CAPABILITIES:
             switch (hostdev->source.caps.type) {
@@ -469,39 +523,99 @@ cleanup:
 }
 
 
-int virLXCCgroupSetup(virDomainDefPtr def)
+virCgroupPtr virLXCCgroupCreate(virDomainDefPtr def, bool startup)
 {
-    virCgroupPtr driver = NULL;
+    int rc;
+    virCgroupPtr parent = NULL;
+    virCgroupPtr cgroup = NULL;
+
+    if (!def->resource && startup) {
+        virDomainResourceDefPtr res;
+
+        if (VIR_ALLOC(res) < 0) {
+            virReportOOMError();
+            goto cleanup;
+        }
+
+        if (!(res->partition = strdup("/machine"))) {
+            virReportOOMError();
+            VIR_FREE(res);
+            goto cleanup;
+        }
+
+        def->resource = res;
+    }
+
+    if (def->resource &&
+        def->resource->partition) {
+        if (def->resource->partition[0] != '/') {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("Resource partition '%s' must start with '/'"),
+                           def->resource->partition);
+            goto cleanup;
+        }
+        /* We only auto-create the default partition. In other
+         * cases we expec the sysadmin/app to have done so */
+        rc = virCgroupNewPartition(def->resource->partition,
+                                   STREQ(def->resource->partition, "/machine"),
+                                   -1,
+                                   &parent);
+        if (rc != 0) {
+            virReportSystemError(-rc,
+                                 _("Unable to initialize %s cgroup"),
+                                 def->resource->partition);
+            goto cleanup;
+        }
+
+        rc = virCgroupNewDomainPartition(parent,
+                                         "lxc",
+                                         def->name,
+                                         true,
+                                         &cgroup);
+        if (rc != 0) {
+            virReportSystemError(-rc,
+                                 _("Unable to create cgroup for %s"),
+                                 def->name);
+            goto cleanup;
+        }
+    } else {
+        rc = virCgroupNewDriver("lxc",
+                                true,
+                                -1,
+                                &parent);
+        if (rc != 0) {
+            virReportSystemError(-rc,
+                                 _("Unable to create cgroup for %s"),
+                                 def->name);
+            goto cleanup;
+        }
+
+        rc = virCgroupNewDomainDriver(parent,
+                                      def->name,
+                                      true,
+                                      &cgroup);
+        if (rc != 0) {
+            virReportSystemError(-rc,
+                                 _("Unable to create cgroup for %s"),
+                                 def->name);
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    virCgroupFree(&parent);
+    return cgroup;
+}
+
+
+virCgroupPtr virLXCCgroupJoin(virDomainDefPtr def)
+{
     virCgroupPtr cgroup = NULL;
     int ret = -1;
     int rc;
 
-    rc = virCgroupForDriver("lxc", &driver, 1, 0);
-    if (rc != 0) {
-        virReportSystemError(-rc, "%s",
-                             _("Unable to get cgroup for driver"));
-        goto cleanup;
-    }
-
-    rc = virCgroupForDomain(driver, def->name, &cgroup, 1);
-    if (rc != 0) {
-        virReportSystemError(-rc,
-                             _("Unable to create cgroup for domain %s"),
-                             def->name);
-        goto cleanup;
-    }
-
-    if (virLXCCgroupSetupCpuTune(def, cgroup) < 0)
-        goto cleanup;
-
-    if (virLXCCgroupSetupBlkioTune(def, cgroup) < 0)
-        goto cleanup;
-
-    if (virLXCCgroupSetupMemTune(def, cgroup) < 0)
-        goto cleanup;
-
-    if (virLXCCgroupSetupDeviceACL(def, cgroup) < 0)
-        goto cleanup;
+    if (!(cgroup = virLXCCgroupCreate(def, true)))
+        return NULL;
 
     rc = virCgroupAddTask(cgroup, getpid());
     if (rc != 0) {
@@ -514,8 +628,38 @@ int virLXCCgroupSetup(virDomainDefPtr def)
     ret = 0;
 
 cleanup:
-    virCgroupFree(&cgroup);
-    virCgroupFree(&driver);
+    if (ret < 0) {
+        virCgroupFree(&cgroup);
+        return NULL;
+    }
 
+    return cgroup;
+}
+
+
+int virLXCCgroupSetup(virDomainDefPtr def,
+                      virCgroupPtr cgroup,
+                      virBitmapPtr nodemask)
+{
+    int ret = -1;
+
+    if (virLXCCgroupSetupCpuTune(def, cgroup) < 0)
+        goto cleanup;
+
+    if (virLXCCgroupSetupCpusetTune(def, cgroup, nodemask) < 0)
+        goto cleanup;
+
+    if (virLXCCgroupSetupBlkioTune(def, cgroup) < 0)
+        goto cleanup;
+
+    if (virLXCCgroupSetupMemTune(def, cgroup) < 0)
+        goto cleanup;
+
+    if (virLXCCgroupSetupDeviceACL(def, cgroup) < 0)
+        goto cleanup;
+
+    ret = 0;
+
+cleanup:
     return ret;
 }

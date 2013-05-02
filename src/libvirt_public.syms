@@ -603,4 +603,17 @@ LIBVIRT_1.0.2 {
         virTypedParamsGetULLong;
 } LIBVIRT_1.0.1;
 
+LIBVIRT_1.0.3 {
+    global:
+        virDomainGetJobStats;
+        virDomainMigrateGetCompressionCache;
+        virDomainMigrateSetCompressionCache;
+        virNodeDeviceLookupSCSIHostByWWN;
+} LIBVIRT_1.0.2;
+
+LIBVIRT_1.0.5 {
+    global:
+        virNodeDeviceDetachFlags;
+} LIBVIRT_1.0.3;
+
 # .... define new API here using predicted next version number ....

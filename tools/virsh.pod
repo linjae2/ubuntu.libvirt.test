@@ -1043,7 +1043,7 @@ stats.
 =item B<migrate> [I<--live>] [I<--offline>] [I<--direct>] [I<--p2p> [I<--tunnelled>]]
 [I<--persistent>] [I<--undefinesource>] [I<--suspend>] [I<--copy-storage-all>]
 [I<--copy-storage-inc>] [I<--change-protection>] [I<--unsafe>] [I<--verbose>]
-I<domain> I<desturi> [I<migrateuri>] [I<dname>]
+[I<--compressed>] I<domain> I<desturi> [I<migrateuri>] [I<dname>]
 [I<--timeout> B<seconds>] [I<--xml> B<file>]
 
 Migrate domain to another host.  Add I<--live> for live migration; <--p2p>
@@ -1064,7 +1064,9 @@ host. I<--change-protection> enforces that no incompatible configuration
 changes will be made to the domain while the migration is underway; this flag
 is implicitly enabled when supported by the hypervisor, but can be explicitly
 used to reject the migration if the hypervisor lacks change protection
-support.  I<--verbose> displays the progress of migration.
+support.  I<--verbose> displays the progress of migration.  I<--compressed>
+activates compression of memory pages that have to be transferred repeatedly
+during live migration.
 
 B<Note>: Individual hypervisors usually do not support all possible types of
 migration. For example, QEMU does not support direct migration.
@@ -1078,7 +1080,7 @@ such as GFS2 or GPFS. If you are sure the migration is safe or you just do not
 care, use I<--unsafe> to force the migration.
 
 The I<desturi> is the connection URI of the destination host, and
-I<migrateuri> is the migration URI, which usually can be omitted.
+I<migrateuri> is the migration URI, which usually can be omitted (see below).
 I<dname> is used for renaming the domain to new name during migration, which
 also usually can be omitted.  Likewise, I<--xml> B<file> is usually
 omitted, but can be used to supply an alternative XML file for use on
@@ -1106,20 +1108,58 @@ seen from the source machine.
 
 =back
 
+When I<migrateuri> is not specified, libvirt will automatically determine the
+hypervisor specific URI, by looking up the target host's configured hostname.
+There are a few scenarios where specifying I<migrateuri> may help:
+
+=over 4
+
+=item * The configured hostname is incorrect, or DNS is broken.  If a host has a
+hostname which will not resolve to match one of its public IP addresses, then
+libvirt will generate an incorrect URI.  In this case I<migrateuri> should be
+explicitly specified, using an IP address, or a correct hostname.
+
+=item * The host has multiple network interaces.  If a host has multiple network
+interfaces, it might be desirable for the migration data stream to be sent over
+a specific interface for either security or performance reasons.  In this case
+I<migrateuri> should be explicitly specified, using an IP address associated
+with the network to be used.
+
+=item * The firewall restricts what ports are available.  When libvirt generates
+a migration URI, it will pick a port number using hypervisor specific rules.
+Some hypervisors only require a single port to be open in the firewalls, while
+others require a whole range of port numbers.  In the latter case I<migrateuri>
+might be specified to choose a specific port number outside the default range in
+order to comply with local firewall policies.
+
+=back
+
 =item B<migrate-setmaxdowntime> I<domain> I<downtime>
 
 Set maximum tolerable downtime for a domain which is being live-migrated to
 another host.  The I<downtime> is a number of milliseconds the guest is allowed
 to be down at the end of live migration.
 
+=item B<migrate-compcache> I<domain> [I<--size> B<bytes>]
+
+Sets and/or gets size of the cache (in bytes) used for compressing repeatedly
+transferred memory pages during live migration. When called without I<size>,
+the command just prints current size of the compression cache. When I<size>
+is specified, the hypervisor is asked to change compression cache to I<size>
+bytes and then the current size is printed (the result may differ from the
+requested size due to rounding done by the hypervisor). The I<size> option
+is supposed to be used while the domain is being live-migrated as a reaction
+to migration progress and increasing number of compression cache misses
+obtained from domjobinfo.
+
 =item B<migrate-setspeed> I<domain> I<bandwidth>
 
-Set the maximum migration bandwidth (in Mbps) for a domain which is being
+Set the maximum migration bandwidth (in MiB/s) for a domain which is being
 migrated to another host.
 
 =item B<migrate-getspeed> I<domain>
 
-Get the maximum migration bandwidth (in Mbps) for a domain.
+Get the maximum migration bandwidth (in MiB/s) for a domain.
 
 =item B<numatune> I<domain> [I<--mode> B<mode>] [I<--nodeset> B<nodeset>]
 [[I<--config>] [I<--live>] | [I<--current>]]
@@ -1267,8 +1307,8 @@ except that it does some error checking.
 The editor used can be supplied by the C<$VISUAL> or C<$EDITOR> environment
 variables, and defaults to C<vi>.
 
-=item B<schedinfo> [I<--set> B<parameter=value>] I<domain> [[I<--config>]
-[I<--live>] | [I<--current>]]
+=item B<schedinfo> I<domain> [[I<--config>] [I<--live>] | [I<--current>]]
+[[I<--set>] B<parameter=value>]...
 
 =item B<schedinfo> [I<--weight> B<number>] [I<--cap> B<number>]
 I<domain>
@@ -1463,7 +1503,8 @@ Both I<--live> and I<--config> flags may be given, but I<--current> is
 exclusive. If no flag is specified, behavior is different depending
 on hypervisor.
 
-This command works for at least the Xen, QEMU/KVM and vSphere/ESX hypervisors.
+Some hypervisors such as QEMU/KVM don't support live changes (especially
+increasing) of the maximum memory limit.
 
 I<size> is a scaled integer (see B<NOTES> above); it defaults to kibibytes
 (blocks of 1024 bytes) unless you provide a suffix (and the older option
@@ -1783,6 +1824,10 @@ within an existing device; consider using B<update-device> for this
 usage.  For passthrough host devices, see also B<nodedev-detach>,
 needed if the device does not use managed mode.
 
+B<Note>: using of partial device definition XML files may lead to unexpected
+results as some fields may be autogenerated and thus match devices other than
+expected.
+
 =item B<attach-disk> I<domain> I<source> I<target>
 [I<--driver driver>] [I<--subdriver subdriver>] [I<--cache cache>]
 [I<--type type>] [I<--mode mode>] [I<--config>] [I<--sourcetype soucetype>]
@@ -1844,46 +1889,97 @@ B<Note>: the optional target value is the name of a device to be created
 as the back-end on the node. If not provided a device named "vnetN" or "vifN"
 will be created automatically.
 
-=item B<detach-device> I<domain> I<FILE> [I<--config>]
+=item B<detach-device> I<domain> I<FILE>
+[[[I<--live>] [I<--config>] | [I<--current>]] | [I<--persistent>]]
 
 Detach a device from the domain, takes the same kind of XML descriptions
 as command B<attach-device>.
-If I<--config> is specified, alter persistent configuration, effect observed
-on next boot, for compatibility purposes, I<--persistent> is alias of
-I<--config>.
 For passthrough host devices, see also B<nodedev-reattach>, needed if
 the device does not use managed mode.
 
-=item B<detach-disk> I<domain> I<target> [I<--config>]
+B<Note>: using of partial device definition XML files may lead to unexpected
+results as some fields may be autogenerated and thus match devices other than
+expected.
+
+If I<--live> is specified, affect a running domain.
+If I<--config> is specified, affect the next startup of a persistent domain.
+If I<--current> is specified, affect the current domain state.
+Both I<--live> and I<--config> flags may be given, but I<--current> is
+exclusive. When no flag is specified legacy API is used whose behavior depends
+on the hypervisor driver.
+
+For compatibility purposes, I<--persistent> behaves like I<--config> for
+an offline domain, and like I<--live> I<--config> for a running domain.
+
+Note that older versions of virsh used I<--config> as an alias for
+I<--persistent>.
+
+=item B<detach-disk> I<domain> I<target>
+[[[I<--live>] [I<--config>] | [I<--current>]] | [I<--persistent>]]
 
 Detach a disk device from a domain. The I<target> is the device as seen
 from the domain.
-If I<--config> is specified, alter persistent configuration, effect observed
-on next boot, for compatibility purposes, I<--persistent> is alias of
-I<--config>.
 
-=item B<detach-interface> I<domain> I<type> [I<--mac mac>] [I<--config>]
+If I<--live> is specified, affect a running domain.
+If I<--config> is specified, affect the next startup of a persistent domain.
+If I<--current> is specified, affect the current domain state.
+Both I<--live> and I<--config> flags may be given, but I<--current> is
+exclusive. When no flag is specified legacy API is used whose behavior depends
+on the hypervisor driver.
+
+For compatibility purposes, I<--persistent> behaves like I<--config> for
+an offline domain, and like I<--live> I<--config> for a running domain.
+
+Note that older versions of virsh used I<--config> as an alias for
+I<--persistent>.
+
+=item B<detach-interface> I<domain> I<type> [I<--mac mac>]
+[[[I<--live>] [I<--config>] | [I<--current>]] | [I<--persistent>]]
 
 Detach a network interface from a domain.
 I<type> can be either I<network> to indicate a physical network device or
 I<bridge> to indicate a bridge to a device. It is recommended to use the
 I<mac> option to distinguish between the interfaces if more than one are
 present on the domain.
-If I<--config> is specified, alter persistent configuration, effect observed
-on next boot, for compatibility purposes, I<--persistent> is alias of
-I<--config>.
 
-=item B<update-device> I<domain> I<file> [I<--config>] [I<--force>]
+If I<--live> is specified, affect a running domain.
+If I<--config> is specified, affect the next startup of a persistent domain.
+If I<--current> is specified, affect the current domain state.
+Both I<--live> and I<--config> flags may be given, but I<--current> is
+exclusive. When no flag is specified legacy API is used whose behavior depends
+on the hypervisor driver.
+
+For compatibility purposes, I<--persistent> behaves like I<--config> for
+an offline domain, and like I<--live> I<--config> for a running domain.
+
+Note that older versions of virsh used I<--config> as an alias for
+I<--persistent>.
+
+=item B<update-device> I<domain> I<file> [I<--force>]
+[[[I<--live>] [I<--config>] | [I<--current>]] | [I<--persistent>]]
 
 Update the characteristics of a device associated with I<domain>,
-based on the device definition in an XML I<file>.  If the I<--config>
-option is used, the changes will take affect the next time libvirt
-starts the domain.  For compatibility purposes, I<--persistent> is
-alias of I<--config>.  The I<--force> option can be used to force
-device update, e.g., to eject a CD-ROM even if it is locked/mounted in
-the domain. See the documentation at
+based on the device definition in an XML I<file>.  The I<--force> option
+can be used to force device update, e.g., to eject a CD-ROM even if it is
+locked/mounted in the domain. See the documentation at
 L<http://libvirt.org/formatdomain.html#elementsDevices> to learn about
 libvirt XML format for a device.
+
+If I<--live> is specified, affect a running domain.
+If I<--config> is specified, affect the next startup of a persistent domain.
+If I<--current> is specified, affect the current domain state.
+Both I<--live> and I<--config> flags may be given, but I<--current> is
+exclusive. Not specifying any flag is the same as specifying I<--current>.
+
+For compatibility purposes, I<--persistent> behaves like I<--config> for
+an offline domain, and like I<--live> I<--config> for a running domain.
+
+Note that older versions of virsh used I<--config> as an alias for
+I<--persistent>.
+
+B<Note>: using of partial device definition XML files may lead to unexpected
+results as some fields may be autogenerated and thus match devices other than
+expected.
 
 =item B<change-media> I<domain> I<path> [I<--eject>] [I<--insert>]
 [I<--update>] [I<source>] [I<--force>] [[I<--live>] [I<--config>] | [I<--current>]]
@@ -1953,11 +2049,12 @@ host nodes are available for use, but this allows registration of
 host hardware that libvirt did not automatically detect.  I<file>
 contains xml for a top-level <device> description of a node device.
 
-=item B<nodedev-destroy> I<nodedev>
+=item B<nodedev-destroy> I<device>
 
-Destroy (stop) a device on the host.  Note that this makes libvirt
-quit managing a host device, and may even make that device unusable
-by the rest of the physical host until a reboot.
+Destroy (stop) a device on the host. I<device> can be either device
+name or wwn pair in "wwnn,wwpn" format (only works for HBA). Note
+that this makes libvirt quit managing a host device, and may even make
+that device unusable by the rest of the physical host until a reboot.
 
 =item B<nodedev-detach> I<nodedev>
 
@@ -1967,12 +2064,14 @@ B<nodedev-reattach>, and is done automatically for managed devices.
 For compatibility purposes, this command can also be spelled
 B<nodedev-dettach>.
 
-=item B<nodedev-dumpxml> I<nodedev>
+=item B<nodedev-dumpxml> I<device>
 
 Dump a <device> XML representation for the given node device, including
 such information as the device name, which bus owns the device, the
 vendor and product id, and any capabilities of the device usable by
-libvirt (such as whether device reset is supported).
+libvirt (such as whether device reset is supported). I<device> can
+be either device name or wwn pair in "wwnn,wwpn" format (only works
+for HBA).
 
 =item B<nodedev-list> I<cap> I<--tree>
 
@@ -1980,9 +2079,10 @@ List all of the devices available on the node that are known by libvirt.
 I<cap> is used to filter the list by capability types, the types must be
 separated by comma, e.g. --cap pci,scsi, valid capability types include
 'system', 'pci', 'usb_device', 'usb', 'net', 'scsi_host', 'scsi_target',
-'scsi', 'storage'. If I<--tree> is used, the output is formatted in a tree
-representing parents of each node. I<cap> and I<--tree> are mutually
-exclusive.
+'scsi', 'storage', 'fc_host', 'vports'. If I<--tree> is used, the output
+is formatted in a tree representing parents of each node. I<cap> and
+I<--tree> are mutually exclusive.
+
 =item B<nodedev-reattach> I<nodedev>
 
 Declare that I<nodedev> is no longer in use by any guests, and that
@@ -2017,19 +2117,20 @@ The I<--disable> option disable autostarting.
 
 =item B<net-create> I<file>
 
-Create a virtual network from an XML I<file>, see the documentation at
-L<http://libvirt.org/formatnetwork.html> to get a description of the
-XML network format used by libvirt.
+Create a transient (temporary) virtual network from an
+XML I<file> and instantiate (start) the network.
+See the documentation at L<http://libvirt.org/formatnetwork.html>
+to get a description of the XML network format used by libvirt.
 
 =item B<net-define> I<file>
 
-Define a virtual network from an XML I<file>, the network is just defined but
-not instantiated.
+Define a persistent virtual network from an XML I<file>, the network is just
+defined but not instantiated (started).
 
 =item B<net-destroy> I<network>
 
-Destroy (stop) a given virtual network specified by its name or UUID. This
-takes effect immediately.
+Destroy (stop) a given transient or persistent virtual network
+specified by its name or UUID. This takes effect immediately.
 
 =item B<net-dumpxml> I<network> [I<--inactive>]
 
@@ -2063,7 +2164,7 @@ Returns basic information about the I<network> object.
 Returns the list of active networks, if I<--all> is specified this will also
 include defined but inactive networks, if I<--inactive> is specified only the
 inactive ones will be listed. You may also want to filter the returned networks
-by I<--persistent> to list the persitent ones, I<--transient> to list the
+by I<--persistent> to list the persistent ones, I<--transient> to list the
 transient ones, I<--autostart> to list the ones with autostart enabled, and
 I<--no-autostart> to list the ones with autostart disabled.
 
@@ -2495,7 +2596,8 @@ I<vol-name-or-key-or-path> is the name or key or path of the volume to delete.
 Upload the contents of I<local-file> to a storage volume.
 I<--pool> I<pool-or-uuid> is the name or UUID of the storage pool the volume
 is in.
-I<vol-name-or-key-or-path> is the name or key or path of the volume to wipe.
+I<vol-name-or-key-or-path> is the name or key or path of the volume where the
+file will be uploaded.
 I<--offset> is the position in the storage volume at which to start writing
 the data. I<--length> is an upper bound of the amount of data to be uploaded.
 An error will occur if the I<local-file> is greater than the specified length.
@@ -2503,10 +2605,10 @@ An error will occur if the I<local-file> is greater than the specified length.
 =item B<vol-download> [I<--pool> I<pool-or-uuid>] [I<--offset> I<bytes>]
 [I<--length> I<bytes>] I<vol-name-or-key-or-path> I<local-file>
 
-Download the contents of I<local-file> from a storage volume.
+Download the contents of a storage volume to I<local-file>.
 I<--pool> I<pool-or-uuid> is the name or UUID of the storage pool the volume
 is in.
-I<vol-name-or-key-or-path> is the name or key or path of the volume to wipe.
+I<vol-name-or-key-or-path> is the name or key or path of the volume to download.
 I<--offset> is the position in the storage volume at which to start reading
 the data. I<--length> is an upper bound of the amount of data to be downloaded.
 
@@ -2749,7 +2851,8 @@ The I<--memspec> option can be used to control whether a checkpoint
 is internal or external.  The I<--memspec> flag is mandatory, followed
 by a B<memspec> of the form B<[file=]name[,snapshot=type]>, where
 type can be B<none>, B<internal>, or B<external>.  To include a literal
-comma in B<file=name>, escape it with a second comma.
+comma in B<file=name>, escape it with a second comma. I<--memspec> cannot
+be used together with I<--disk-only>.
 
 The I<--diskspec> option can be used to control how I<--disk-only> and
 external checkpoints create external files.  This option can occur
@@ -2836,10 +2939,11 @@ accessible only from the original name.
 Output basic information about a named <snapshot>, or the current snapshot
 with I<--current>.
 
-=item B<snapshot-list> I<domain> [{I<--parent> | I<--roots> | I<--tree>}]
+=item B<snapshot-list> I<domain> [I<--metadata>] [I<--no-metadata>]
+[{I<--parent> | I<--roots> | [{I<--tree> | I<--name>}]}]
 [{[I<--from>] B<snapshot> | I<--current>} [I<--descendants>]]
-[I<--metadata>] [I<--no-metadata>] [I<--leaves>] [I<--no-leaves>]
-[I<--inactive>] [I<--active>] [I<--disk-only>] [I<--internal>] [I<--external>]
+[I<--leaves>] [I<--no-leaves>] p[I<--inactive>] [I<--active>]
+[I<--disk-only>] [I<--internal>] [I<--external>]
 
 List all of the available snapshots for the given domain, defaulting
 to show columns for the snapshot name, creation time, and domain state.
@@ -2848,7 +2952,9 @@ If I<--parent> is specified, add a column to the output table giving
 the name of the parent of each snapshot.  If I<--roots> is specified,
 the list will be filtered to just snapshots that have no parents.
 If I<--tree> is specified, the output will be in a tree format, listing
-just snapshot names.  These three options are mutually exclusive.
+just snapshot names.  These three options are mutually exclusive. If
+I<--name> is specified only the snapshot name is printed. This option is
+mutually exclusive with I<--tree>.
 
 If I<--from> is provided, filter the list to snapshots which are
 children of the given B<snapshot>; or if I<--current> is provided,
@@ -3080,6 +3186,8 @@ of C<virsh>
 
 Turn on verbose debugging of virsh commands. Valid levels are
 
+=over 4
+
 =item * VIRSH_DEBUG=0
 
 DEBUG - Messages at ALL levels get logged
@@ -3099,6 +3207,8 @@ WARNING - Logs messages at levels WARNING and ERROR
 =item * VIRSH_DEBUG=4
 
 ERROR - Messages at only ERROR level gets logged.
+
+=back
 
 =item VIRSH_LOG_FILE=C<LOGFILE>
 

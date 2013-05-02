@@ -25,7 +25,7 @@
 # include "qemu_conf.h"
 # include "qemu_domain.h"
 
-int qemuProcessPrepareMonitorChr(virQEMUDriverPtr driver,
+int qemuProcessPrepareMonitorChr(virQEMUDriverConfigPtr cfg,
                                  virDomainChrSourceDefPtr monConfig,
                                  const char *vm);
 
@@ -47,7 +47,7 @@ int qemuProcessAssignPCIAddresses(virDomainDefPtr def);
 typedef enum {
     VIR_QEMU_PROCESS_START_COLD         = 1 << 0,
     VIR_QEMU_PROCESS_START_PAUSED       = 1 << 1,
-    VIR_QEMU_PROCESS_START_AUTODESROY   = 1 << 2,
+    VIR_QEMU_PROCESS_START_AUTODESTROY  = 1 << 2,
 } qemuProcessStartFlags;
 
 int qemuProcessStart(virConnectPtr conn,
@@ -84,8 +84,7 @@ typedef enum {
    VIR_QEMU_PROCESS_KILL_NOCHECK = 1 << 2, /* bypass the running vm check */
 } virQemuProcessKillMode;
 
-int qemuProcessKill(virQEMUDriverPtr driver,
-                    virDomainObjPtr vm, unsigned int flags);
+int qemuProcessKill(virDomainObjPtr vm, unsigned int flags);
 
 int qemuProcessAutoDestroyInit(virQEMUDriverPtr driver);
 void qemuProcessAutoDestroyShutdown(virQEMUDriverPtr driver);
@@ -99,8 +98,5 @@ bool qemuProcessAutoDestroyActive(virQEMUDriverPtr driver,
 virBitmapPtr qemuPrepareCpumap(virQEMUDriverPtr driver,
                                virBitmapPtr nodemask);
 int qemuSetUnprivSGIO(virDomainDiskDefPtr disk);
-
-int qemuCheckSharedDisk(virHashTablePtr sharedDisks,
-                        virDomainDiskDefPtr disk);
 
 #endif /* __QEMU_PROCESS_H__ */

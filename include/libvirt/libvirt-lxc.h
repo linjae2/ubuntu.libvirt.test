@@ -26,7 +26,7 @@
 #ifndef __VIR_LXC_H__
 # define __VIR_LXC_H__
 
-# include "libvirt/libvirt.h"
+# include <libvirt/libvirt.h>
 
 # ifdef __cplusplus
 extern "C" {
@@ -42,6 +42,10 @@ int virDomainLxcEnterNamespace(virDomainPtr domain,
                                unsigned int *noldfdlist,
                                int **oldfdlist,
                                unsigned int flags);
+int virDomainLxcEnterSecurityLabel(virSecurityModelPtr model,
+                                   virSecurityLabelPtr label,
+                                   virSecurityLabelPtr oldlabel,
+                                   unsigned int flags);
 
 # ifdef __cplusplus
 }

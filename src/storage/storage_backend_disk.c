@@ -1,7 +1,7 @@
 /*
  * storage_backend_disk.c: storage backend for disk handling
  *
- * Copyright (C) 2007-2008, 2010-2012 Red Hat, Inc.
+ * Copyright (C) 2007-2008, 2010-2013 Red Hat, Inc.
  * Copyright (C) 2007-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
+#include "dirname.h"
 #include "virerror.h"
 #include "virlog.h"
 #include "storage_backend_disk.h"
@@ -385,14 +386,7 @@ virStorageBackendDiskBuildPool(virConnectPtr conn ATTRIBUTE_UNUSED,
 {
     bool ok_to_mklabel = false;
     int ret = -1;
-    /* eg parted /dev/sda mklabel msdos */
-    virCommandPtr cmd = virCommandNewArgList(PARTED,
-                                             pool->def->source.devices[0].path,
-                                             "mklabel",
-                                             "--script",
-                                             ((pool->def->source.format == VIR_STORAGE_POOL_DISK_DOS) ? "msdos" :
-                                              virStoragePoolFormatDiskTypeToString(pool->def->source.format)),
-                                             NULL);
+    virCommandPtr cmd = NULL;
 
     virCheckFlags(VIR_STORAGE_POOL_BUILD_OVERWRITE |
                   VIR_STORAGE_POOL_BUILD_NO_OVERWRITE, ret);
@@ -423,8 +417,17 @@ virStorageBackendDiskBuildPool(virConnectPtr conn ATTRIBUTE_UNUSED,
         }
     }
 
-    if (ok_to_mklabel)
+    if (ok_to_mklabel) {
+        /* eg parted /dev/sda mklabel msdos */
+        cmd = virCommandNewArgList(PARTED,
+                                   pool->def->source.devices[0].path,
+                                   "mklabel",
+                                   "--script",
+                                   ((pool->def->source.format == VIR_STORAGE_POOL_DISK_DOS) ? "msdos" :
+                                   virStoragePoolFormatDiskTypeToString(pool->def->source.format)),
+                                   NULL);
         ret = virCommandRun(cmd, NULL);
+    }
 
 error:
     virCommandFree(cmd);
@@ -634,7 +637,7 @@ virStorageBackendDiskCreateVol(virConnectPtr conn ATTRIBUTE_UNUSED,
                                virStorageVolDefPtr vol)
 {
     int res = -1;
-    char *partFormat;
+    char *partFormat = NULL;
     unsigned long long startOffset = 0, endOffset = 0;
     virCommandPtr cmd = virCommandNewArgList(PARTED,
                                              pool->def->source.devices[0].path,
@@ -646,11 +649,11 @@ virStorageBackendDiskCreateVol(virConnectPtr conn ATTRIBUTE_UNUSED,
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                        "%s", _("storage pool does not support encrypted "
                                "volumes"));
-        return -1;
+        goto cleanup;
     }
 
     if (virStorageBackendDiskPartFormat(pool, vol, &partFormat) != 0) {
-        return -1;
+        goto cleanup;
     }
     virCommandAddArg(cmd, partFormat);
 
@@ -726,8 +729,8 @@ virStorageBackendDiskDeleteVol(virConnectPtr conn ATTRIBUTE_UNUSED,
         goto cleanup;
     }
 
-    dev_name = basename(devpath);
-    srcname = basename(pool->def->source.devices[0].path);
+    dev_name = last_component(devpath);
+    srcname = last_component(pool->def->source.devices[0].path);
     VIR_DEBUG("dev_name=%s, srcname=%s", dev_name, srcname);
 
     isDevMapperDevice = virIsDevMapperDevice(devpath);

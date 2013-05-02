@@ -29,6 +29,7 @@
 # include "cpu_conf.h"
 # include "virarch.h"
 # include "virmacaddr.h"
+# include "virobject.h"
 
 # include <libxml/xpath.h>
 
@@ -98,6 +99,7 @@ typedef virCapsHostNUMACell *virCapsHostNUMACellPtr;
 struct _virCapsHostNUMACell {
     int num;
     int ncpus;
+    unsigned long long mem; /* in kibibytes */
     virCapsHostNUMACellCPUPtr cpus;
 };
 
@@ -152,23 +154,12 @@ struct _virDomainXMLNamespace {
 typedef struct _virCaps virCaps;
 typedef virCaps* virCapsPtr;
 struct _virCaps {
+    virObject parent;
+
     virCapsHost host;
     size_t nguests;
     size_t nguests_max;
     virCapsGuestPtr *guests;
-    unsigned char macPrefix[VIR_MAC_PREFIX_BUFLEN];
-    unsigned int emulatorRequired : 1;
-    const char *defaultDiskDriverName;
-    int defaultDiskDriverType; /* enum virStorageFileFormat */
-    int (*defaultConsoleTargetType)(const char *ostype, virArch guestarch);
-    void *(*privateDataAllocFunc)(void);
-    void (*privateDataFreeFunc)(void *);
-    int (*privateDataXMLFormat)(virBufferPtr, void *);
-    int (*privateDataXMLParse)(xmlXPathContextPtr, void *);
-    bool hasWideScsiBus;
-    const char *defaultInitPath;
-
-    virDomainXMLNamespace ns;
 };
 
 
@@ -178,24 +169,7 @@ virCapabilitiesNew(virArch hostarch,
                    int liveMigrate);
 
 extern void
-virCapabilitiesFree(virCapsPtr caps);
-
-extern void
 virCapabilitiesFreeNUMAInfo(virCapsPtr caps);
-
-extern void
-virCapabilitiesSetMacPrefix(virCapsPtr caps,
-                            const unsigned char prefix[VIR_MAC_PREFIX_BUFLEN]);
-
-extern void
-virCapabilitiesGenerateMac(virCapsPtr caps,
-                           virMacAddrPtr mac);
-
-extern void
-virCapabilitiesSetEmulatorRequired(virCapsPtr caps);
-
-extern unsigned int
-virCapabilitiesIsEmulatorRequired(virCapsPtr caps);
 
 extern int
 virCapabilitiesAddHostFeature(virCapsPtr caps,
@@ -210,6 +184,7 @@ extern int
 virCapabilitiesAddHostNUMACell(virCapsPtr caps,
                                int num,
                                int ncpus,
+                               unsigned long long mem,
                                virCapsHostNUMACellCPUPtr cpus);
 
 

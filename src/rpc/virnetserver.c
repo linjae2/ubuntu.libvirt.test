@@ -1119,7 +1119,7 @@ void virNetServerRun(virNetServerPtr srv)
             if (virNetServerClientWantClose(srv->clients[i]))
                 virNetServerClientClose(srv->clients[i]);
             if (virNetServerClientIsClosed(srv->clients[i])) {
-                virObjectUnref(srv->clients[i]);
+                virNetServerClientPtr client = srv->clients[i];
                 if (srv->nclients > 1) {
                     memmove(srv->clients + i,
                             srv->clients + i + 1,
@@ -1129,6 +1129,10 @@ void virNetServerRun(virNetServerPtr srv)
                     VIR_FREE(srv->clients);
                     srv->nclients = 0;
                 }
+
+                virObjectUnlock(srv);
+                virObjectUnref(client);
+                virObjectLock(srv);
 
                 goto reprocess;
             }

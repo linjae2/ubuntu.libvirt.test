@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Red Hat, Inc.
+ * Copyright (C) 2011-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,8 +22,10 @@
 #include "testutils.h"
 #include "testutilsqemu.h"
 #include "qemumonitortestutils.h"
+#include "qemu/qemu_conf.h"
 #include "virthread.h"
 #include "virerror.h"
+#include "virstring.h"
 
 
 #define VIR_FROM_THIS VIR_FROM_NONE
@@ -31,8 +33,8 @@
 static int
 testQemuMonitorJSONGetStatus(const void *data)
 {
-    virCapsPtr caps = (virCapsPtr)data;
-    qemuMonitorTestPtr test = qemuMonitorTestNew(true, caps);
+    virDomainXMLOptionPtr xmlopt = (virDomainXMLOptionPtr)data;
+    qemuMonitorTestPtr test = qemuMonitorTestNew(true, xmlopt);
     int ret = -1;
     bool running = false;
     virDomainPausedReason reason = 0;
@@ -125,13 +127,13 @@ cleanup:
 static int
 testQemuMonitorJSONGetVersion(const void *data)
 {
-    virCapsPtr caps = (virCapsPtr)data;
-    qemuMonitorTestPtr test = qemuMonitorTestNew(true, caps);
+    virDomainXMLOptionPtr xmlopt = (virDomainXMLOptionPtr)data;
+    qemuMonitorTestPtr test = qemuMonitorTestNew(true, xmlopt);
     int ret = -1;
     int major;
     int minor;
     int micro;
-    char *package;
+    char *package = NULL;
 
     if (!test)
         return -1;
@@ -188,6 +190,7 @@ testQemuMonitorJSONGetVersion(const void *data)
                        "Package %s was not ''", package);
         goto cleanup;
     }
+    VIR_FREE(package);
 
     if (qemuMonitorGetVersion(qemuMonitorTestGetMonitor(test),
                               &major, &minor, &micro,
@@ -220,18 +223,20 @@ testQemuMonitorJSONGetVersion(const void *data)
 
 cleanup:
     qemuMonitorTestFree(test);
+    VIR_FREE(package);
     return ret;
 }
 
 static int
 testQemuMonitorJSONGetMachines(const void *data)
 {
-    virCapsPtr caps = (virCapsPtr)data;
-    qemuMonitorTestPtr test = qemuMonitorTestNew(true, caps);
+    virDomainXMLOptionPtr xmlopt = (virDomainXMLOptionPtr)data;
+    qemuMonitorTestPtr test = qemuMonitorTestNew(true, xmlopt);
     int ret = -1;
     qemuMonitorMachineInfoPtr *info;
-    int ninfo;
+    int ninfo = 0;
     const char *null = NULL;
+    int i;
 
     if (!test)
         return -1;
@@ -296,6 +301,10 @@ testQemuMonitorJSONGetMachines(const void *data)
 
 cleanup:
     qemuMonitorTestFree(test);
+    for (i = 0; i < ninfo; i++)
+        qemuMonitorMachineInfoFree(info[i]);
+    VIR_FREE(info);
+
     return ret;
 }
 
@@ -303,11 +312,12 @@ cleanup:
 static int
 testQemuMonitorJSONGetCPUDefinitions(const void *data)
 {
-    virCapsPtr caps = (virCapsPtr)data;
-    qemuMonitorTestPtr test = qemuMonitorTestNew(true, caps);
+    virDomainXMLOptionPtr xmlopt = (virDomainXMLOptionPtr)data;
+    qemuMonitorTestPtr test = qemuMonitorTestNew(true, xmlopt);
     int ret = -1;
     char **cpus = NULL;
-    int ncpus;
+    int ncpus = 0;
+    int i;
 
     if (!test)
         return -1;
@@ -358,6 +368,9 @@ testQemuMonitorJSONGetCPUDefinitions(const void *data)
 
 cleanup:
     qemuMonitorTestFree(test);
+    for (i = 0; i < ncpus; i++)
+        VIR_FREE(cpus[i]);
+    VIR_FREE(cpus);
     return ret;
 }
 
@@ -365,11 +378,12 @@ cleanup:
 static int
 testQemuMonitorJSONGetCommands(const void *data)
 {
-    virCapsPtr caps = (virCapsPtr)data;
-    qemuMonitorTestPtr test = qemuMonitorTestNew(true, caps);
+    virDomainXMLOptionPtr xmlopt = (virDomainXMLOptionPtr)data;
+    qemuMonitorTestPtr test = qemuMonitorTestNew(true, xmlopt);
     int ret = -1;
     char **commands = NULL;
-    int ncommands;
+    int ncommands = 0;
+    int i;
 
     if (!test)
         return -1;
@@ -419,6 +433,62 @@ testQemuMonitorJSONGetCommands(const void *data)
 
 cleanup:
     qemuMonitorTestFree(test);
+    for (i = 0; i < ncommands; i++)
+        VIR_FREE(commands[i]);
+    VIR_FREE(commands);
+    return ret;
+}
+
+
+static int
+testQemuMonitorJSONGetTPMModels(const void *data)
+{
+    const virDomainXMLOptionPtr xmlopt = (virDomainXMLOptionPtr)data;
+    qemuMonitorTestPtr test = qemuMonitorTestNew(true, xmlopt);
+    int ret = -1;
+    char **tpmmodels = NULL;
+    int ntpmmodels = 0;
+
+    if (!test)
+        return -1;
+
+    if (qemuMonitorTestAddItem(test, "query-tpm-models",
+                               "{ "
+                               "  \"return\": [ "
+                               "  \"passthrough\""
+                               "  ]"
+                               "}") < 0)
+        goto cleanup;
+
+    if ((ntpmmodels = qemuMonitorGetTPMModels(qemuMonitorTestGetMonitor(test),
+                                              &tpmmodels)) < 0)
+        goto cleanup;
+
+    if (ntpmmodels != 1) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "ntpmmodels %d is not 1", ntpmmodels);
+        goto cleanup;
+    }
+
+#define CHECK(i, wantname)                                              \
+    do {                                                                \
+        if (STRNEQ(tpmmodels[i], (wantname))) {                         \
+            virReportError(VIR_ERR_INTERNAL_ERROR,                      \
+                           "name %s is not %s",                         \
+                           tpmmodels[i], (wantname));                   \
+            goto cleanup;                                               \
+        }                                                               \
+    } while (0)
+
+    CHECK(0, "passthrough");
+
+#undef CHECK
+
+    ret = 0;
+
+cleanup:
+    qemuMonitorTestFree(test);
+    virStringFreeList(tpmmodels);
     return ret;
 }
 
@@ -427,18 +497,21 @@ static int
 mymain(void)
 {
     int ret = 0;
-    virCapsPtr caps;
+    virDomainXMLOptionPtr xmlopt;
 
-    if (virThreadInitialize() < 0)
-        exit(EXIT_FAILURE);
+#if !WITH_YAJL
+    fputs("libvirt not compiled with yajl, skipping this test\n", stderr);
+    return EXIT_AM_SKIP;
+#endif
 
-    if (!(caps = testQemuCapsInit()))
-        exit(EXIT_FAILURE);
+    if (virThreadInitialize() < 0 ||
+        !(xmlopt = virQEMUDriverCreateXMLConf(NULL)))
+        return EXIT_FAILURE;
 
     virEventRegisterDefaultImpl();
 
 #define DO_TEST(name) \
-    if (virtTestRun(# name, 1, testQemuMonitorJSON ## name, caps) < 0) \
+    if (virtTestRun(# name, 1, testQemuMonitorJSON ## name, xmlopt) < 0) \
         ret = -1
 
     DO_TEST(GetStatus);
@@ -446,8 +519,9 @@ mymain(void)
     DO_TEST(GetMachines);
     DO_TEST(GetCPUDefinitions);
     DO_TEST(GetCommands);
+    DO_TEST(GetTPMModels);
 
-    virCapabilitiesFree(caps);
+    virObjectUnref(xmlopt);
 
     return (ret == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

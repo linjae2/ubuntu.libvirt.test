@@ -36,8 +36,9 @@
 struct vmware_driver {
     virMutex lock;
     virCapsPtr caps;
+    virDomainXMLOptionPtr xmlopt;
 
-    virDomainObjList domains;
+    virDomainObjListPtr domains;
     int version;
     int type;
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2012 Red Hat, Inc.
+ * Copyright (C) 2007-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -38,7 +38,10 @@
 #ifdef __linux__
 # include <linux/sockios.h>
 # include <linux/if_vlan.h>
-#elif !defined(AF_PACKET)
+# define VIR_NETDEV_FAMILY AF_PACKET
+#elif defined(HAVE_STRUCT_IFREQ) && defined(AF_LOCAL)
+# define VIR_NETDEV_FAMILY AF_LOCAL
+#else
 # undef HAVE_STRUCT_IFREQ
 #endif
 
@@ -81,7 +84,7 @@ static int virNetDevSetupControlFull(const char *ifname,
 static int virNetDevSetupControl(const char *ifname,
                                  struct ifreq *ifr)
 {
-    return virNetDevSetupControlFull(ifname, ifr, AF_PACKET, SOCK_DGRAM);
+    return virNetDevSetupControlFull(ifname, ifr, VIR_NETDEV_FAMILY, SOCK_DGRAM);
 }
 #endif
 
@@ -129,7 +132,8 @@ int virNetDevExists(const char *ifname)
 #endif
 
 
-#if defined(SIOCGIFHWADDR) && defined(HAVE_STRUCT_IFREQ)
+#if defined(SIOCGIFHWADDR) && defined(SIOCSIFHWADDR) && \
+    defined(HAVE_STRUCT_IFREQ)
 /**
  * virNetDevSetMAC:
  * @ifname: interface name to set MTU for
@@ -478,12 +482,16 @@ int virNetDevSetName(const char* ifname, const char *newifname)
     if ((fd = virNetDevSetupControl(ifname, &ifr)) < 0)
         return -1;
 
+# ifdef HAVE_STRUCT_IFREQ_IFR_NEWNAME
     if (virStrcpyStatic(ifr.ifr_newname, newifname) == NULL) {
         virReportSystemError(ERANGE,
                              _("Network interface name '%s' is too long"),
                              newifname);
         goto cleanup;
     }
+# else
+    ifr.ifr_data = (caddr_t)newifname;
+# endif
 
     if (ioctl(fd, SIOCSIFNAME, &ifr)) {
         virReportSystemError(errno,
@@ -630,7 +638,7 @@ int virNetDevGetIndex(const char *ifname, int *ifindex)
 {
     int ret = -1;
     struct ifreq ifreq;
-    int fd = socket(PF_PACKET, SOCK_DGRAM, 0);
+    int fd = socket(VIR_NETDEV_FAMILY, SOCK_DGRAM, 0);
 
     if (fd < 0) {
         virReportSystemError(errno, "%s",
@@ -654,7 +662,11 @@ int virNetDevGetIndex(const char *ifname, int *ifindex)
         goto cleanup;
     }
 
+# ifdef HAVE_STRUCT_IFREQ_IFR_INDEX
+    *ifindex = ifreq.ifr_index;
+# else
     *ifindex = ifreq.ifr_ifindex;
+# endif
     ret = 0;
 
 cleanup:
@@ -672,7 +684,7 @@ int virNetDevGetIndex(const char *ifname ATTRIBUTE_UNUSED,
 #endif /* ! SIOCGIFINDEX */
 
 
-#if defined(SIOCGIFVLAN) && defined(HAVE_STRUCT_IFREQ)
+#if defined(SIOCGIFVLAN) && defined(HAVE_STRUCT_IFREQ) && defined(GET_VLAN_VID_CMD)
 int virNetDevGetVLanID(const char *ifname, int *vlanid)
 {
     struct vlan_ioctl_args vlanargs = {
@@ -870,7 +882,7 @@ int virNetDevGetIPv4Address(const char *ifname ATTRIBUTE_UNUSED,
  *
  * Returns 1 if the config matches, 0 if the config does not match, or interface does not exist, -1 on error
  */
-#if defined(HAVE_STRUCT_IFREQ)
+#if defined(SIOCGIFHWADDR) && defined(HAVE_STRUCT_IFREQ)
 int virNetDevValidateConfig(const char *ifname,
                             const virMacAddrPtr macaddr, int ifindex)
 {
@@ -924,7 +936,7 @@ int virNetDevValidateConfig(const char *ifname,
     VIR_FORCE_CLOSE(fd);
     return ret;
 }
-#else /* ! HAVE_STRUCT_IFREQ */
+#else
 int virNetDevValidateConfig(const char *ifname ATTRIBUTE_UNUSED,
                             const virMacAddrPtr macaddr ATTRIBUTE_UNUSED,
                             int ifindex ATTRIBUTE_UNUSED)
@@ -933,7 +945,7 @@ int virNetDevValidateConfig(const char *ifname ATTRIBUTE_UNUSED,
                          _("Unable to check interface config on this platform"));
     return -1;
 }
-#endif /* ! HAVE_STRUCT_IFREQ */
+#endif
 
 
 #ifdef __linux__
@@ -980,7 +992,7 @@ virNetDevSysfsDeviceFile(char **pf_sysfs_device_link, const char *ifname,
 int
 virNetDevGetVirtualFunctions(const char *pfname,
                              char ***vfname,
-                             struct pci_config_address ***virt_fns,
+                             virPCIDeviceAddressPtr **virt_fns,
                              unsigned int *n_vfname)
 {
     int ret = -1, i;
@@ -991,8 +1003,8 @@ virNetDevGetVirtualFunctions(const char *pfname,
     if (virNetDevSysfsFile(&pf_sysfs_device_link, pfname, "device") < 0)
         return ret;
 
-    if (pciGetVirtualFunctions(pf_sysfs_device_link, virt_fns,
-                               n_vfname) < 0)
+    if (virPCIGetVirtualFunctions(pf_sysfs_device_link, virt_fns,
+                                  n_vfname) < 0)
         goto cleanup;
 
     if (VIR_ALLOC_N(*vfname, *n_vfname) < 0) {
@@ -1002,22 +1014,22 @@ virNetDevGetVirtualFunctions(const char *pfname,
 
     for (i = 0; i < *n_vfname; i++)
     {
-        if (pciGetDeviceAddrString((*virt_fns)[i]->domain,
-                                   (*virt_fns)[i]->bus,
-                                   (*virt_fns)[i]->slot,
-                                   (*virt_fns)[i]->function,
-                                   &pciConfigAddr) < 0) {
+        if (virPCIGetAddrString((*virt_fns)[i]->domain,
+                                (*virt_fns)[i]->bus,
+                                (*virt_fns)[i]->slot,
+                                (*virt_fns)[i]->function,
+                                &pciConfigAddr) < 0) {
             virReportSystemError(ENOSYS, "%s",
                                  _("Failed to get PCI Config Address String"));
             goto cleanup;
         }
-        if (pciSysfsFile(pciConfigAddr, &pci_sysfs_device_link) < 0) {
+        if (virPCIGetSysfsFile(pciConfigAddr, &pci_sysfs_device_link) < 0) {
             virReportSystemError(ENOSYS, "%s",
                                  _("Failed to get PCI SYSFS file"));
             goto cleanup;
         }
 
-        if (pciDeviceNetName(pci_sysfs_device_link, &((*vfname)[i])) < 0) {
+        if (virPCIGetNetName(pci_sysfs_device_link, &((*vfname)[i])) < 0) {
             VIR_INFO("VF does not have an interface name");
         }
     }
@@ -1053,7 +1065,7 @@ virNetDevIsVirtualFunction(const char *ifname)
     if (virNetDevSysfsFile(&if_sysfs_device_link, ifname, "device") < 0)
         return ret;
 
-    ret = pciDeviceIsVirtualFunction(if_sysfs_device_link);
+    ret = virPCIIsVirtualFunction(if_sysfs_device_link);
 
     VIR_FREE(if_sysfs_device_link);
 
@@ -1086,9 +1098,9 @@ virNetDevGetVirtualFunctionIndex(const char *pfname, const char *vfname,
         return ret;
     }
 
-    ret = pciGetVirtualFunctionIndex(pf_sysfs_device_link,
-                                     vf_sysfs_device_link,
-                                     vf_index);
+    ret = virPCIGetVirtualFunctionIndex(pf_sysfs_device_link,
+                                        vf_sysfs_device_link,
+                                        vf_index);
 
     VIR_FREE(pf_sysfs_device_link);
     VIR_FREE(vf_sysfs_device_link);
@@ -1115,7 +1127,7 @@ virNetDevGetPhysicalFunction(const char *ifname, char **pfname)
     if (virNetDevSysfsDeviceFile(&physfn_sysfs_path, ifname, "physfn") < 0)
         return ret;
 
-    ret = pciDeviceNetName(physfn_sysfs_path, pfname);
+    ret = virPCIGetNetName(physfn_sysfs_path, pfname);
 
     VIR_FREE(physfn_sysfs_path);
 
@@ -1149,7 +1161,7 @@ virNetDevGetVirtualFunctionInfo(const char *vfname, char **pfname,
     if (virNetDevSysfsFile(&vf_sysfs_path, vfname, "device") < 0)
         goto cleanup;
 
-    ret = pciGetVirtualFunctionIndex(pf_sysfs_path, vf_sysfs_path, vf);
+    ret = virPCIGetVirtualFunctionIndex(pf_sysfs_path, vf_sysfs_path, vf);
 
 cleanup:
     if (ret < 0)
@@ -1165,7 +1177,7 @@ cleanup:
 int
 virNetDevGetVirtualFunctions(const char *pfname ATTRIBUTE_UNUSED,
                              char ***vfname ATTRIBUTE_UNUSED,
-                             struct pci_config_address ***virt_fns ATTRIBUTE_UNUSED,
+                             virPCIDeviceAddressPtr **virt_fns ATTRIBUTE_UNUSED,
                              unsigned int *n_vfname ATTRIBUTE_UNUSED)
 {
     virReportSystemError(ENOSYS, "%s",
@@ -1226,8 +1238,6 @@ static struct nla_policy ifla_vf_policy[IFLA_VF_MAX+1] = {
  * @ifindex: The interface index; may be < 0 if ifname is given
  * @nlattr: pointer to a pointer of netlink attributes that will contain
  *          the results
- * @recvbuf: Pointer to the buffer holding the returned netlink response
- *           message; free it, once not needed anymore
  * @src_pid: pid used for nl_pid of the local end of the netlink message
  *           (0 == "use getpid()")
  * @dst_pid: pid of destination nl_pid if the kernel
@@ -1241,11 +1251,10 @@ static struct nla_policy ifla_vf_policy[IFLA_VF_MAX+1] = {
 int
 virNetDevLinkDump(const char *ifname, int ifindex,
                   struct nlattr **tb,
-                  unsigned char **recvbuf,
                   uint32_t src_pid, uint32_t dst_pid)
 {
     int rc = -1;
-    struct nlmsghdr *resp;
+    struct nlmsghdr *resp = NULL;
     struct nlmsgerr *err;
     struct ifinfomsg ifinfo = {
         .ifi_family = AF_UNSPEC,
@@ -1253,8 +1262,6 @@ virNetDevLinkDump(const char *ifname, int ifindex,
     };
     unsigned int recvbuflen;
     struct nl_msg *nl_msg;
-
-    *recvbuf = NULL;
 
     if (ifname && ifindex <= 0 && virNetDevGetIndex(ifname, &ifindex) < 0)
         return -1;
@@ -1290,14 +1297,12 @@ virNetDevLinkDump(const char *ifname, int ifindex,
     }
 # endif
 
-    if (virNetlinkCommand(nl_msg, recvbuf, &recvbuflen,
+    if (virNetlinkCommand(nl_msg, &resp, &recvbuflen,
                           src_pid, dst_pid, NETLINK_ROUTE, 0) < 0)
         goto cleanup;
 
-    if (recvbuflen < NLMSG_LENGTH(0) || *recvbuf == NULL)
+    if (recvbuflen < NLMSG_LENGTH(0) || resp == NULL)
         goto malformed_resp;
-
-    resp = (struct nlmsghdr *)*recvbuf;
 
     switch (resp->nlmsg_type) {
     case NLMSG_ERROR:
@@ -1326,9 +1331,8 @@ virNetDevLinkDump(const char *ifname, int ifindex,
     }
     rc = 0;
 cleanup:
-    if (rc < 0)
-        VIR_FREE(*recvbuf);
     nlmsg_free(nl_msg);
+    VIR_FREE(resp);
     return rc;
 
 malformed_resp:
@@ -1348,9 +1352,8 @@ virNetDevSetVfConfig(const char *ifname, int ifindex, int vf,
                      int vlanid, uint32_t (*getPidFunc)(void))
 {
     int rc = -1;
-    struct nlmsghdr *resp;
+    struct nlmsghdr *resp = NULL;
     struct nlmsgerr *err;
-    unsigned char *recvbuf = NULL;
     unsigned int recvbuflen = 0;
     uint32_t pid = 0;
     struct nl_msg *nl_msg;
@@ -1419,14 +1422,12 @@ virNetDevSetVfConfig(const char *ifname, int ifindex, int vf,
         }
     }
 
-    if (virNetlinkCommand(nl_msg, &recvbuf, &recvbuflen, 0, pid,
+    if (virNetlinkCommand(nl_msg, &resp, &recvbuflen, 0, pid,
                           NETLINK_ROUTE, 0) < 0)
         goto cleanup;
 
-    if (recvbuflen < NLMSG_LENGTH(0) || recvbuf == NULL)
+    if (recvbuflen < NLMSG_LENGTH(0) || resp == NULL)
         goto malformed_resp;
-
-    resp = (struct nlmsghdr *)recvbuf;
 
     switch (resp->nlmsg_type) {
     case NLMSG_ERROR:
@@ -1453,7 +1454,7 @@ virNetDevSetVfConfig(const char *ifname, int ifindex, int vf,
     rc = 0;
 cleanup:
     nlmsg_free(nl_msg);
-    VIR_FREE(recvbuf);
+    VIR_FREE(resp);
     return rc;
 
 malformed_resp:
@@ -1528,17 +1529,14 @@ virNetDevGetVfConfig(const char *ifname, int vf, virMacAddrPtr mac,
                      int *vlanid)
 {
     int rc = -1;
-    unsigned char *recvbuf = NULL;
     struct nlattr *tb[IFLA_MAX + 1] = {NULL, };
     int ifindex = -1;
 
-    rc = virNetDevLinkDump(ifname, ifindex, tb, &recvbuf, 0, 0);
+    rc = virNetDevLinkDump(ifname, ifindex, tb, 0, 0);
     if (rc < 0)
         return rc;
 
     rc = virNetDevParseVfConfig(tb, vf, mac, vlanid);
-
-    VIR_FREE(recvbuf);
 
     return rc;
 }
@@ -1689,7 +1687,6 @@ int
 virNetDevLinkDump(const char *ifname ATTRIBUTE_UNUSED,
                   int ifindex ATTRIBUTE_UNUSED,
                   struct nlattr **tb ATTRIBUTE_UNUSED,
-                  unsigned char **recvbuf ATTRIBUTE_UNUSED,
                   uint32_t src_pid ATTRIBUTE_UNUSED,
                   uint32_t dst_pid ATTRIBUTE_UNUSED)
 {

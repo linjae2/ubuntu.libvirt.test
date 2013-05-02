@@ -186,6 +186,8 @@
               </li><li>
                 <a href="#elementsBlockTuning">Block I/O Tuning</a>
               </li><li>
+                <a href="#resPartition">Resource partitioning</a>
+              </li><li>
                 <a href="#elementsCPU">CPU model and topology</a>
               </li><li>
                 <a href="#elementsEvents">Events configuration</a>
@@ -304,6 +306,12 @@
                     <a href="#elementsWatchdog">Watchdog device</a>
                   </li><li>
                     <a href="#elementsMemBalloon">Memory balloon device</a>
+                  </li><li>
+                    <a href="#elementsRng">Random number generator device</a>
+                  </li><li>
+                    <a href="#elementsTpm">TPM device</a>
+                  </li><li>
+                    <a href="#elementsNVRAM">NVRAM device</a>
                   </li></ul>
               </li><li>
                 <a href="#seclabel">Security label</a>
@@ -499,6 +507,7 @@
     &lt;kernel&gt;/root/f8-i386-vmlinuz&lt;/kernel&gt;
     &lt;initrd&gt;/root/f8-i386-initrd&lt;/initrd&gt;
     &lt;cmdline&gt;console=ttyS0 ks=http://example.com/f8-i386/os/&lt;/cmdline&gt;
+    &lt;dtb&gt;/root/ppc.dtb&lt;/dtb&gt;
   &lt;/os&gt;
   ...</pre>
         <dl><dt><code>type</code></dt><dd>This element has the same semantics as described earlier in the
@@ -508,7 +517,9 @@
         to the (optional) ramdisk image in the host OS.</dd><dt><code>cmdline</code></dt><dd>The contents of this element specify arguments to be passed to
         the kernel (or installer) at boottime. This is often used to
         specify an alternate primary console (eg serial port), or the
-        installation media source / kickstart file</dd></dl>
+        installation media source / kickstart file</dd><dt><code>dtb</code></dt><dd>The contents of this element specify the fully-qualified path
+        to the (optional) device tree binary (dtb) image in the host OS.
+        <span class="since">Since 1.0.4</span></dd></dl>
         <h4>
           <a name="eleemntsOSContainer" id="eleemntsOSContainer">Container boot</a>
         </h4>
@@ -887,6 +898,34 @@
         absolute path of the device, and <code>weight</code> giving
         the relative weight of that device, in the range [100,
         1000].  <span class="since">Since 0.9.8</span></dd></dl>
+        <h3>
+          <a name="resPartition" id="resPartition">Resource partitioning</a>
+        </h3>
+        <p>
+      Hypervisors may allow for virtual machines to be placed into
+      resource partitions, potentially with nesting of said partitions.
+      The <code>resource</code> element groups together configuration
+      related to resource partitioning. It currently supports a child
+      element <code>partition</code> whose content defines the path
+      of the resource partition in which to place the domain. If no
+      partition is listed, then the domain will be placed in a default
+      partition. It is the responsibility of the app/admin to ensure
+      that the partition exists prior to starting the guest. Only the
+      (hypervisor specific) default partition can be assumed to exist
+      by default.
+    </p>
+        <pre>
+  ...
+  &lt;resource&gt;
+    &lt;partition&gt;/virtualmachines/production&lt;/partition&gt;
+  &lt;/resource&gt;
+  ...
+</pre>
+        <p>
+      Resource partitions are currently supported by the QEMU and
+      LXC drivers, which map partition paths to cgroups directories,
+      in all mounted controllers. <span class="since">Since 1.0.5</span>
+    </p>
         <h3>
           <a name="elementsCPU" id="elementsCPU">CPU model and topology</a>
         </h3>
@@ -1376,6 +1415,11 @@
       &lt;blockio logical_block_size='512' physical_block_size='4096'/&gt;
       &lt;target dev='hda' bus='ide'/&gt;
     &lt;/disk&gt;
+    &lt;disk type='volume' device='disk'&gt;
+      &lt;driver name='qemu' type='raw'/&gt;
+      &lt;source pool='blk-pool0' volume='blk-pool0-vol0'/&gt;
+      &lt;target dev='hda' bus='ide'/&gt;
+    &lt;/disk&gt;
   &lt;/devices&gt;
   ...</pre>
         <dl><dt><code>disk</code></dt><dd>The <code>disk</code> element is the main container for describing
@@ -1433,29 +1477,42 @@
         path to the file holding the disk. If the disk
         <code>type</code> is "block", then the <code>dev</code>
         attribute specifies the path to the host device to serve as
-        the disk. With both "file" and "block", one or more optional
+        the disk. With "file", "block", and "volume", one or more optional
         sub-elements <code>seclabel</code>, <a href="#seclabel">described
         below</a> (and <span class="since">since 0.9.9</span>), can be
         used to override the domain security labeling policy for just
-        that source file.  If the disk <code>type</code> is "dir", then the
+        that source file. (NB, for "volume" type disk, <code>seclabel</code>
+        is only valid when the specified storage volume is of 'file' or
+        'block' type).  If the disk <code>type</code> is "dir", then the
         <code>dir</code> attribute specifies the fully-qualified path
         to the directory to use as the disk. If the disk <code>type</code>
         is "network", then the <code>protocol</code> attribute specifies
         the protocol to access to the requested image; possible values
-        are "nbd", "rbd", "sheepdog" or "gluster".  If the
+        are "nbd", "iscsi", "rbd", "sheepdog" or "gluster".  If the
         <code>protocol</code> attribute is "rbd", "sheepdog" or "gluster", an
         additional attribute <code>name</code> is mandatory to specify which
-        volume/image will be used.  When the disk <code>type</code> is
-        "network", the <code>source</code> may have zero or
-        more <code>host</code> sub-elements used to specify the hosts
-        to connect.
+        volume/image will be used; for "nbd" it is optional.  For "iscsi",
+        the <code>name</code> attribute may include a logical unit number,
+        separated from the target's name by a slash (for example,
+        <code>iqn.1992-01.com.example/1</code>); the default LUN is zero.
+        When the disk <code>type</code> is "network", the <code>source</code>
+        may have zero or more <code>host</code> sub-elements used to
+        specify the hosts to connect.  If the disk <code>type</code> is
+        "volume", the underlying disk source is represented by attributes
+        <code>pool</code> and <code>volume</code>. Attribute <code>pool</code>
+        specifies the name of storage pool (managed by libvirt) where the disk
+        source resides, and attribute <code>volume</code> specifies the name of
+        storage volume (managed by libvirt) used as the disk source.
         <span class="since">Since 0.0.3; <code>type='dir'</code> since
-        0.7.5; <code>type='network'</code> since 0.8.7</span><br />
-        For a "file" disk type which represents a cdrom or floppy
+        0.7.5; <code>type='network'</code> since
+        0.8.7; <code>protocol='iscsi'</code> since 1.0.4;
+        <code>type='volume'</code> since 1.0.5;</span><br />
+        For a "file" or "volume" disk type which represents a cdrom or floppy
         (the <code>device</code> attribute), it is possible to define
         policy what to do with the disk if the source file is not accessible.
-        This is done by the <code>startupPolicy</code> attribute, accepting
-        these values:
+        (NB, <code>startupPolicy</code> is not valid for "volume" disk unless
+         the specified storage volume is of "file" type). This is done by the
+        <code>startupPolicy</code> attribute, accepting these values:
         <table class="top_table"><tr><td> mandatory </td><td> fail if missing for any reason (the default) </td></tr><tr><td> requisite </td><td> fail if missing on boot up,
                  drop if missing on migrate/restore/revert </td></tr><tr><td> optional </td><td> drop if missing at any start attempt </td></tr></table>
         <span class="since">Since 0.9.7</span>
@@ -1629,10 +1686,12 @@
          number, transport type and path to socket, respectively. The meaning
          of this element and the number of the elements depend on the protocol
          attribute.
-        <table class="top_table"><tr><th> Protocol </th><th> Meaning </th><th> Number of hosts </th></tr><tr><td> nbd </td><td> a server running nbd-server </td><td> only one </td></tr><tr><td> rbd </td><td> monitor servers of RBD </td><td> one or more </td></tr><tr><td> sheepdog </td><td> one of the sheepdog servers (default is localhost:7000) </td><td> zero or one </td></tr><tr><td> gluster </td><td> a server running glusterd daemon </td><td> only one </td></tr></table>
-        In case of gluster, valid values for transport attribute are tcp, rdma
-        or unix. If nothing is specified, tcp is assumed. If transport is unix,
-        socket attribute specifies path to unix socket.
+        <table class="top_table"><tr><th> Protocol </th><th> Meaning </th><th> Number of hosts </th><th> Default port </th></tr><tr><td> nbd </td><td> a server running nbd-server </td><td> only one </td><td> 10809 </td></tr><tr><td> iscsi </td><td> an iSCSI server </td><td> only one </td><td> 3260 </td></tr><tr><td> rbd </td><td> monitor servers of RBD </td><td> one or more </td><td> 6789 </td></tr><tr><td> sheepdog </td><td> one of the sheepdog servers (default is localhost:7000) </td><td> zero or one </td><td> 7000 </td></tr><tr><td> gluster </td><td> a server running glusterd daemon </td><td> only one </td><td> 24007 </td></tr></table>
+        gluster supports "tcp", "rdma", "unix" as valid values for the
+        transport attribute.  nbd supports "tcp" and "unix".  Others only
+        support "tcp".  If nothing is specified, "tcp" is assumed. If the
+        transport is "unix", the socket attribute specifies the path to an
+        AF_UNIX socket.
       </dd><dt><code>address</code></dt><dd>If present, the <code>address</code> element ties the disk
         to a given slot of a controller (the
         actual <code>&lt;controller&gt;</code> device can often be
@@ -1659,12 +1718,12 @@
         holds the actual password or other credentials (the domain XML
         intentionally does not expose the password, only the reference
         to the object that does manage the password).  For now, the
-        only known secret <code>type</code> is "ceph", for Ceph RBD
-        network sources, and requires either an
-        attribute <code>uuid</code> with the UUID of the Ceph secret
-        object, or an attribute <code>usage</code> with the name
-        associated with the Ceph secret
-        object.  <span class="since">libvirt 0.9.7</span>
+        known secret <code>type</code>s are "ceph", for Ceph RBD
+        network sources, and "iscsi", for CHAP authentication of iSCSI
+        targets.  Both require either a <code>uuid</code> attribute
+        with the UUID of the secret object, or a <code>usage</code>
+        attribute matching the key that was specified in the
+        secret object.  <span class="since">libvirt 0.9.7</span>
       </dd><dt><code>geometry</code></dt><dd>The optional <code>geometry</code> element provides the
         ability to override geometry settings. This mostly useful for
         S390 DASD-disks or older DOS-disks.  <span class="since">0.10.0</span>
@@ -1860,6 +1919,18 @@
         additional attribute: <code>reg</code> (the hex value address
         of the starting register).  <span class="since">Since
         0.9.9.</span>
+      </dd><dt><code>type='ccw'</code></dt><dd>s390 guests with a <code>machine</code> value of
+        s390-ccw-virtio use the native CCW bus for I/O devices.
+        CCW bus addresses have the following additional attributes:
+        <code>cssid</code> (a hex value between 0 and 0xfe, inclusive),
+        <code>ssid</code> (a value between 0 and 3, inclusive) and
+        <code>devno</code> (a hex value between 0 and 0xffff, inclusive).
+        Partially specified bus addresses are not allowed.
+        If omitted, libvirt will assign a free bus address with
+        cssid=0xfe and ssid=0. Virtio devices for s390 must have their
+        cssid set to 0xfe in order to be recognized by the guest
+        operating system.
+        <span class="since">Since 1.0.4</span>
       </dd></dl>
         <h4>
           <a name="elementsControllers" id="elementsControllers">Controllers</a>
@@ -1885,7 +1956,7 @@
         <p>
       Each controller has a mandatory attribute <code>type</code>,
       which must be one of "ide", "fdc", "scsi", "sata", "usb",
-      "ccid", or "virtio-serial", and a mandatory
+      "ccid", "virtio-serial" or "pci", and a mandatory
       attribute <code>index</code> which is the decimal integer
       describing in which order the bus controller is encountered (for
       use in <code>controller</code> attributes
@@ -1895,20 +1966,29 @@
       control how many devices can be connected through the
       controller.  A "scsi" controller has an optional
       attribute <code>model</code>, which is one of "auto", "buslogic",
-      "ibmvscsi", "lsilogic", "lsias1068", "virtio-scsi" or "vmpvscsi".
-      A "usb" controller has an optional attribute <code>model</code>,
-      which is one of "piix3-uhci", "piix4-uhci", "ehci",
-      "ich9-ehci1", "ich9-uhci1", "ich9-uhci2", "ich9-uhci3",
-      "vt82c686b-uhci", "pci-ohci" or "nec-xhci". Additionally,
+      "ibmvscsi", "lsilogic", "lsisas1068", "lsisas1078", "virtio-scsi" or
+      "vmpvscsi".  A "usb" controller has an optional attribute
+      <code>model</code>, which is one of "piix3-uhci", "piix4-uhci", "ehci",
+      "ich9-ehci1", "ich9-uhci1", "ich9-uhci2", "ich9-uhci3", "vt82c686b-uhci",
+      "pci-ohci" or "nec-xhci".  Additionally,
       <span class="since">since 0.10.0</span>, if the USB bus needs to be
-      explicitly disabled for the guest, <code>model='none'</code> may be used.
-      The PowerPC64 "spapr-vio" addresses do not have an associated controller.
+      explicitly disabled for the guest, <code>model='none'</code> may be
+      used.  <span class="since">Since 1.0.5</span>, no default USB controller
+      will be built on s390.  The PowerPC64 "spapr-vio" addresses do not have an
+      associated controller.
     </p>
         <p>
       For controllers that are themselves devices on a PCI or USB bus,
       an optional sub-element <code>&lt;address&gt;</code> can specify
       the exact relationship of the controller to its master bus, with
       semantics <a href="#elementsAddress">given above</a>.
+    </p>
+        <p>
+      An optional sub-element <code>driver</code> can specify the driver
+      specific options. Currently it only supports attribute <code>queues</code>
+      (<span class="since">1.0.5</span>, QEMU and KVM only), which specifies the
+      number of queues for the controller. For best performance, it's recommended
+      to specify a value matching the number of vCPUs.
     </p>
         <p>
       USB companion controllers have an optional
@@ -1928,6 +2008,30 @@
       &lt;address type='pci' domain='0' bus='0' slot='4' function='0' multifunction='on'/&gt;
     &lt;/controller&gt;
     ...
+  &lt;/devices&gt;
+  ...</pre>
+        <p>
+      PCI controllers have an optional <code>model</code> attribute with
+      possible values <code>pci-root</code> or <code>pci-bridge</code>.
+      For machine types which provide an implicit pci bus, the pci-root
+      controller with index=0 is auto-added and required to use PCI devices.
+      PCI root has no address.
+      PCI bridges are auto-added if there are too many devices to fit on
+      the one bus provided by pci-root, or a PCI bus number greater than zero
+      was specified.
+      PCI bridges can also be specified manually, but their addresses should
+      only refer to PCI buses provided by already specified PCI controllers.
+      Leaving gaps in the PCI controller indexes might lead to an invalid
+      configuration.
+      (<span class="since">since 1.0.5</span>)
+    </p>
+        <pre>
+  ...
+  &lt;devices&gt;
+    &lt;controller type='pci' index='0' model='pci-root'/&gt;
+    &lt;controller type='pci' index='1' model='pci-bridge'&gt;
+      &lt;address type='pci' domain='0' bus='0' slot='5' function='0' multifunction=off'/&gt;
+    &lt;/controller&gt;
   &lt;/devices&gt;
   ...</pre>
         <h4>
@@ -2058,8 +2162,20 @@
       the device as can be found with the <code>lspci</code> or
       with <code>virsh
       nodedev-list</code>. <a href="#elementsAddress">See above</a> for
-      more details on the address element.
-    </dd></dl>
+      more details on the address element.</dd><dt><code>driver</code></dt><dd>
+        PCI devices can have an optional <code>driver</code>
+        subelement that specifies which backend driver to use for PCI
+        device assignment. Use the <code>name</code> attribute to
+        select either "vfio" (for the new VFIO device assignment
+        backend, which is compatible with UEFI SecureBoot) or "kvm"
+        (for the legacy device assignment handled directly by the KVM
+        kernel module)<span class="since">Since 1.0.5 (QEMU and KVM
+        only, requires kernel 3.6 or newer)</span>. Currently, "kvm"
+        is the default used by libvirt when not explicitly provided,
+        but since the two are functionally equivalent, this default
+        could be changed in the future with no impact to domains that
+        don't specify anything.
+      </dd></dl>
         <h5>
           <a href="elementsHostDevCaps">Block / character devices</a>
         </h5>
@@ -2087,14 +2203,25 @@
 &lt;/hostdev&gt;
 ...
     </pre>
+        <pre>
+...
+&lt;hostdev mode='capabilities' type='net'&gt;
+  &lt;source&gt;
+    &lt;interface&gt;eth0&lt;/interface&gt;
+  &lt;/source&gt;
+&lt;/hostdev&gt;
+...
+    </pre>
         <dl><dt><code>hostdev</code></dt><dd>The <code>hostdev</code> element is the main container for describing
         host devices. For block/character device passthrough <code>mode</code> is
         always "capabilities" and <code>type</code> is "block" for a block
-        device and "char" for a character device.
+        device, "char" for a character device and "net" for a host network
+        interface.
       </dd><dt><code>source</code></dt><dd>The source element describes the device as seen from the host.
         For block devices, the path to the block device in the host
         OS is provided in the nested "block" element, while for character
-        devices the "char" element is used
+        devices the "char" element is used. For network interfaces, the
+        name of the interface is provided in the "interface" element.
       </dd></dl>
         <h4>
           <a name="elementsRedir" id="elementsRedir">Redirected devices</a>
@@ -2371,7 +2498,7 @@
       </em></strong>
     </p>
         <p>
-      Provides a bridge from the VM directly onto the LAN. This assumes
+      Provides a bridge from the VM directly to the LAN. This assumes
       there is a bridge device on the host which has one or more of the hosts
       physical NICs enslaved. The guest VM will have an associated tun device
       created with a name of vnetN, which can also be overridden with the
@@ -2551,7 +2678,7 @@
       network administrator. <span class="since">Since 0.8.2</span>
     </p>
         <dl><dt><code>profileid</code></dt><dd>The profile ID contains the name of the port profile that is to
-        be applied onto this interface.  This name is resolved by the port
+        be applied to this interface.  This name is resolved by the port
         profile database into the network parameters from the port profile,
         and those network parameters will be applied to this interface.
       </dd></dl>
@@ -2587,6 +2714,17 @@
       <span class="since">Since 0.9.11</span>
     </p>
         <p>
+      To use VFIO device assignment rather than traditional/legacy KVM
+      device assignment (VFIO is a new method of device assignment
+      that is compatible with UEFI Secure Boot), a type='hostdev'
+      interface can have an optional <code>driver</code> sub-element
+      with a <code>name</code> attribute set to "vfio". To use legacy
+      KVM device assignment you can set <code>name</code> to "kvm" (or
+      simply omit the <code>&lt;driver&gt;</code> element, since "kvm"
+      is currently the default).
+      <span class="since">Since 1.0.5 (QEMU and KVM only, requires kernel 3.6 or newer)</span>
+    </p>
+        <p>
       Note that this "intelligent passthrough" of network devices is
       very similar to the functionality of a standard &lt;hostdev&gt;
       device, the difference being that this method allows specifying
@@ -2603,6 +2741,7 @@
   ...
   &lt;devices&gt;
     &lt;interface type='hostdev'&gt;
+      &lt;driver name='vfio'/&gt;
       &lt;source&gt;
         &lt;address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/&gt;
       &lt;/source&gt;
@@ -2722,6 +2861,17 @@ qemu-kvm -net nic,model=? /dev/null
         domain defaults to 'vhost' if present, but silently falls back
         to 'qemu' without error.
         <span class="since">Since 0.8.8 (QEMU and KVM only)</span>
+      </dd><dd>
+        For interfaces of type='hostdev' (PCI passthrough devices)
+        the <code>name</code> attribute can optionally be set to
+        "vfio" or "kvm". "vfio" tells libvirt to use VFIO device
+        assignment rather than traditional KVM device assignment (VFIO
+        is a new method of device assignment that is compatible with
+        UEFI Secure Boot), and "kvm" tells libvirt to use the legacy
+        device assignment performed directly by the kvm kernel module
+        (the default is currently "kvm", but is subject to change).
+        <span class="since">Since 1.0.5 (QEMU and KVM only, requires
+        kernel 3.6 or newer)</span>
       </dd><dt><code>txmode</code></dt><dd>
         The <code>txmode</code> attribute specifies how to handle
         transmission of packets when the transmit buffer is full. The
@@ -3064,7 +3214,7 @@ qemu-kvm -net nic,model=? /dev/null
               while <code>tlsPort</code> gives an alternative secure
               port number. The <code>autoport</code> attribute is the
               new preferred syntax for indicating autoallocation of
-              both port numbers.  The <code>listen</code> attribute is
+              needed port numbers.  The <code>listen</code> attribute is
               an IP address for the server to listen
               on. The <code>passwd</code> attribute provides a SPICE
               password in clear text. The <code>keymap</code>
@@ -3157,10 +3307,10 @@ qemu-kvm -net nic,model=? /dev/null
             the TCP port to use. The <code>replaceUser</code>
             attribute is a boolean deciding whether multiple
             simultaneous connections to the VM are permitted.
-            The <code>multiUser</code> whether the existing connection
-            must be dropped and a new connection must be established
-            by the VRDP server, when a new client connects in single
-            connection mode.
+            The <code>multiUser</code> attribute is a boolean deciding
+            whether the existing connection must be dropped and a new
+            connection must be established by the VRDP server, when a
+            new client connects in single connection mode.
           </dd><dt><code>"desktop"</code></dt><dd>
             This value is reserved for VirtualBox domains for the
             moment. It displays a window on the host desktop,
@@ -3239,7 +3389,8 @@ qemu-kvm -net nic,model=? /dev/null
         attribute <code>ram</code> (<span class="since">since
         1.0.2</span>) is allowed for "qxl" type only and specifies
         the size of the primary bar, while <code>vram</code> specifies the
-        secondary bar size.  If "ram" is not supplied a default value is used.
+        secondary bar size.  If "ram" or "vram" are not supplied a default
+        value is used.
       </dd><dt><code>model</code></dt><dd>
         The <code>model</code> element has a mandatory <code>type</code>
         attribute which takes the value "vga", "cirrus", "vmvga", "xen",
@@ -3814,7 +3965,7 @@ qemu-kvm -net nic,model=? /dev/null
       <code>model='none'</code> may be used.
     </p>
         <p>
-      Example automatically added device with KVM
+      Example: automatically added device with KVM
     </p>
         <pre>
   ...
@@ -3823,13 +3974,14 @@ qemu-kvm -net nic,model=? /dev/null
   &lt;/devices&gt;
   ...</pre>
         <p>
-      Example manually added device with static PCI slot 2 requested
+      Example: manually added device with static PCI slot 2 requested
     </p>
         <pre>
   ...
   &lt;devices&gt;
-    &lt;watchdog model='virtio'/&gt;
-    &lt;address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/&gt;
+    &lt;memballoon model='virtio'&gt;
+      &lt;address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/&gt;
+    &lt;/memballoon&gt;
   &lt;/devices&gt;
 &lt;/domain&gt;</pre>
         <dl><dt><code>model</code></dt><dd>
@@ -3840,6 +3992,151 @@ qemu-kvm -net nic,model=? /dev/null
         </p>
         <ul><li>'virtio' — default with QEMU/KVM</li><li>'xen' — default with Xen</li></ul>
       </dd></dl>
+        <h4>
+          <a name="elementsRng" id="elementsRng">Random number generator device</a>
+        </h4>
+        <p>
+      The virtual random number generator device allows the host to pass
+      through entropy to guest operating systems.
+      <span class="since">Since 1.0.3</span>
+    </p>
+        <p>
+      Example: usage of the RNG device:
+    </p>
+        <pre>
+  ...
+  &lt;devices&gt;
+    &lt;rng model='virtio'&gt;
+      &lt;rate period="2000" bytes="1234"/&gt;
+      &lt;backend model='random'&gt;/dev/random&lt;/backend&gt;
+      &lt;!-- OR --&gt;
+      &lt;backend model='egd' type='udp'&gt;
+        &lt;source mode='bind' service='1234'&gt;
+        &lt;source mode='connect' host='1.2.3.4' service='1234'&gt;
+      &lt;/backend&gt;
+    &lt;/rng&gt;
+  &lt;/devices&gt;
+  ...
+</pre>
+        <dl><dt><code>model</code></dt><dd>
+        <p>
+          The required <code>model</code> attribute specifies what type
+          of RNG device is provided. Valid values are specific to
+          the virtualization platform:
+        </p>
+        <ul><li>'virtio' — supported by qemu and virtio-rng kernel module</li></ul>
+      </dd><dt><code>rate</code></dt><dd>
+        <p>
+          The optional <code>rate</code> element allows limiting the rate at
+          which entropy can be consumed from the source.  The mandatory
+          attribute <code>bytes</code> specifies how many bytes are permitted
+          to be consumed per period.  An optional <code>period</code> attribute
+          specifies the duration of a period in milliseconds; if omitted, the
+          period is taken as 1000 milliseconds (1 second).
+          <span class="since">Since 1.0.4</span>
+        </p>
+      </dd><dt><code>backend</code></dt><dd>
+        <p>
+          The <code>backend</code> element specifies the source of entropy
+          to be used for the domain. The source model is configured using the
+          <code>model</code> attribute. Supported source models are:
+        </p>
+        <ul><li>'random' — /dev/random (default) or /dev/hwrng
+            device as source (for now, no other sources are permitted)</li><li>'egd' — a EGD protocol backend</li></ul>
+      </dd><dt><code>backend model='random'</code></dt><dd>
+        <p>
+          This backend type expects a non-blocking character device as input.
+          Examples of such devices are /dev/random and /dev/urandom. The file
+          name is specified as contents of the <code>backend</code> element.
+          When no file name is specified the hypervisor default is used.
+        </p>
+      </dd><dt><code>backend model='egd'</code></dt><dd>
+        <p>
+          This backend connects to a source using the EGD protocol.
+          The source is specified as a character device. Refer to
+          <a href="#elementsCharHostInterface">character device host interface</a>
+          for more information.
+        </p>
+      </dd></dl>
+        <h4>
+          <a name="elementsTpm" id="elementsTpm">TPM device</a>
+        </h4>
+        <p>
+      The TPM device enables a QEMU guest to have access to TPM
+      functionality.
+    </p>
+        <p>
+      The TPM passthrough device type provides access to the host's TPM
+      for one QEMU guest. No other software may be is using the TPM device,
+      typically /dev/tpm0, at the time the QEMU guest is started.
+      <span class="since">'passthrough' since 1.0.5</span>
+    </p>
+        <p>
+     Example: usage of the TPM passthrough device
+    </p>
+        <pre>
+  ...
+  &lt;devices&gt;
+    &lt;tpm model='tpm-tis'&gt;
+      &lt;backend type='passthrough'&gt;
+        &lt;backend path='/dev/tpm0'/&gt;
+      &lt;/backend&gt;
+    &lt;/tpm&gt;
+  &lt;/devices&gt;
+  ...
+</pre>
+        <dl><dt><code>model</code></dt><dd>
+        <p>
+          The <code>model</code> attribute specifies what device
+          model QEMU provides to the guest. If no model name is provided,
+          <code>tpm-tis</code> will automatically be chosen.
+        </p>
+      </dd><dt><code>backend</code></dt><dd>
+        <p>
+          The <code>backend</code> element specifies the type of
+          TPM device. The following types are supported:
+        </p>
+        <ul><li>'passthrough' — use the host's TPM device.
+        </li></ul>
+      </dd><dt><code>backend type='passthrough'</code></dt><dd>
+        <p>
+          This backend type requires exclusive access to a TPM device on
+          the host.
+          An example for such a device is /dev/tpm0. The filename is
+          specified as path attribute of the <code>source</code> element.
+          If no file name is specified then /dev/tpm0 is automatically used.
+        </p>
+      </dd></dl>
+        <h4>
+          <a name="elementsNVRAM" id="elementsNVRAM">NVRAM device</a>
+        </h4>
+        <p>
+      nvram device is always added to pSeries guest on PPC64, and its address
+      is allowed to be changed.  Element <code>nvram</code> (only valid for
+      pSeries guest, <span class="since">since 1.0.5</span>) is provided to
+      enable the address setting.
+    </p>
+        <p>
+      Example: usage of NVRAM configuration
+    </p>
+        <pre>
+  ...
+  &lt;devices&gt;
+    &lt;nvram&gt;
+      &lt;address type='spapr-vio' reg='0x3000'/&gt;
+    &lt;/nvram&gt;
+  &lt;/devices&gt;
+  ...
+</pre>
+        <dl><dt><code>spapr-vio</code></dt><dd>
+      <p>
+        VIO device address type, only valid for PPC64.
+      </p>
+    </dd><dt><code>reg</code></dt><dd>
+      <p>
+        Device address
+      </p>
+    </dd></dl>
         <h3>
           <a name="seclabel" id="seclabel">Security label</a>
         </h3>
@@ -3916,8 +4213,16 @@ qemu-kvm -net nic,model=? /dev/null
             used to force the driver to parse them as uid or gid.
           </li></ul>
       </dd><dt><code>baselabel</code></dt><dd>If dynamic labelling is used, this can optionally be
-        used to specify the base security label. The format
-        of the content depends on the security driver in use.
+        used to specify the base security label that will be used to generate
+        the actual label. The format of the content depends on the security
+        driver in use.
+
+        The SELinux driver uses only the <code>type</code> field of the
+        baselabel in the generated label. Other fields are inherited from
+        the parent process when using SELinux baselabels.
+
+        (The example above demonstrates the use of <code>my_svirt_t</code>
+        as the value for the <code>type</code> field.)
       </dd><dt><code>imagelabel</code></dt><dd>This is an output only element, which shows the
         security label used on resources associated with the virtual domain.
         The format of the content depends on the security driver in use

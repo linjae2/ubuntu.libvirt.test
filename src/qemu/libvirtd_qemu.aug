@@ -60,6 +60,7 @@ module Libvirtd_qemu =
 
    let process_entry = str_entry "hugetlbfs_mount"
                  | bool_entry "clear_emulator_capabilities"
+                 | str_entry "bridge_helper"
                  | bool_entry "set_process_name"
                  | int_entry "max_processes"
                  | int_entry "max_files"
@@ -73,7 +74,7 @@ module Libvirtd_qemu =
                  | int_entry "keepalive_interval"
                  | int_entry "keepalive_count"
 
-   (* Each enty in the config is one of the following three ... *)
+   (* Each entry in the config is one of the following ... *)
    let entry = vnc_entry
              | spice_entry
              | remote_display_entry

@@ -1,30 +1,31 @@
 #include <config.h>
 
+#include "testutils.h"
+
 #ifdef WITH_QEMU
 
 # include <stdio.h>
 # include <stdlib.h>
 
-# include "testutils.h"
 # include "qemu/qemu_capabilities.h"
 # include "viralloc.h"
 
 struct testInfo {
     const char *name;
-    qemuCapsPtr flags;
+    virQEMUCapsPtr flags;
     unsigned int version;
     unsigned int is_kvm;
     unsigned int kvm_version;
 };
 
-static void printMismatchedFlags(qemuCapsPtr got,
-                                 qemuCapsPtr expect)
+static void printMismatchedFlags(virQEMUCapsPtr got,
+                                 virQEMUCapsPtr expect)
 {
     int i;
 
     for (i = 0 ; i < QEMU_CAPS_LAST ; i++) {
-        bool gotFlag = qemuCapsGet(got, i);
-        bool expectFlag = qemuCapsGet(expect, i);
+        bool gotFlag = virQEMUCapsGet(got, i);
+        bool expectFlag = virQEMUCapsGet(expect, i);
         if (gotFlag && !expectFlag)
             fprintf(stderr, "Extra flag %i\n", i);
         if (!gotFlag && expectFlag)
@@ -38,7 +39,7 @@ static int testHelpStrParsing(const void *data)
     char *path = NULL;
     char *help = NULL;
     unsigned int version, is_kvm, kvm_version;
-    qemuCapsPtr flags = NULL;
+    virQEMUCapsPtr flags = NULL;
     int ret = -1;
     char *got = NULL;
     char *expected = NULL;
@@ -49,19 +50,19 @@ static int testHelpStrParsing(const void *data)
     if (virtTestLoadFile(path, &help) < 0)
         goto cleanup;
 
-    if (!(flags = qemuCapsNew()))
+    if (!(flags = virQEMUCapsNew()))
         goto cleanup;
 
-    if (qemuCapsParseHelpStr("QEMU", help, flags,
-                             &version, &is_kvm, &kvm_version, false) == -1)
+    if (virQEMUCapsParseHelpStr("QEMU", help, flags,
+                                &version, &is_kvm, &kvm_version, false) == -1)
         goto cleanup;
 
 # ifndef WITH_YAJL
-    if (qemuCapsGet(info->flags, QEMU_CAPS_MONITOR_JSON))
-        qemuCapsSet(flags, QEMU_CAPS_MONITOR_JSON);
+    if (virQEMUCapsGet(info->flags, QEMU_CAPS_MONITOR_JSON))
+        virQEMUCapsSet(flags, QEMU_CAPS_MONITOR_JSON);
 # endif
 
-    if (qemuCapsGet(info->flags, QEMU_CAPS_DEVICE)) {
+    if (virQEMUCapsGet(info->flags, QEMU_CAPS_DEVICE)) {
         VIR_FREE(path);
         VIR_FREE(help);
         if (virAsprintf(&path, "%s/qemuhelpdata/%s-device", abs_srcdir,
@@ -71,12 +72,12 @@ static int testHelpStrParsing(const void *data)
         if (virtTestLoadFile(path, &help) < 0)
             goto cleanup;
 
-        if (qemuCapsParseDeviceStr(flags, help) < 0)
+        if (virQEMUCapsParseDeviceStr(flags, help) < 0)
             goto cleanup;
     }
 
-    got = qemuCapsFlagsString(flags);
-    expected = qemuCapsFlagsString(info->flags);
+    got = virQEMUCapsFlagsString(flags);
+    expected = virQEMUCapsFlagsString(info->flags);
     if (!got || !expected)
         goto cleanup;
 
@@ -132,9 +133,9 @@ mymain(void)
         struct testInfo info = {                                            \
             name, NULL, version, is_kvm, kvm_version                        \
         };                                                                  \
-        if (!(info.flags = qemuCapsNew()))                                  \
+        if (!(info.flags = virQEMUCapsNew()))                               \
             return EXIT_FAILURE;                                            \
-        qemuCapsSetList(info.flags, __VA_ARGS__, QEMU_CAPS_LAST);           \
+        virQEMUCapsSetList(info.flags, __VA_ARGS__, QEMU_CAPS_LAST);        \
         if (virtTestRun("QEMU Help String Parsing " name,                   \
                         1, testHelpStrParsing, &info) < 0)                  \
             ret = -1;                                                       \
@@ -397,7 +398,8 @@ mymain(void)
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
             QEMU_CAPS_DEVICE_USB_SERIAL,
-            QEMU_CAPS_DEVICE_USB_NET);
+            QEMU_CAPS_DEVICE_USB_NET,
+            QEMU_CAPS_DEVICE_PCI_BRIDGE);
     DO_TEST("qemu-kvm-0.12.3", 12003, 1, 0,
             QEMU_CAPS_VNC_COLON,
             QEMU_CAPS_NO_REBOOT,
@@ -506,7 +508,8 @@ mymain(void)
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
             QEMU_CAPS_DEVICE_USB_SERIAL,
-            QEMU_CAPS_DEVICE_USB_NET);
+            QEMU_CAPS_DEVICE_USB_NET,
+            QEMU_CAPS_DEVICE_PCI_BRIDGE);
     DO_TEST("qemu-kvm-0.12.1.2-rhel61", 12001, 1, 0,
             QEMU_CAPS_VNC_COLON,
             QEMU_CAPS_NO_REBOOT,
@@ -571,7 +574,8 @@ mymain(void)
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
             QEMU_CAPS_DEVICE_USB_SERIAL,
-            QEMU_CAPS_DEVICE_USB_NET);
+            QEMU_CAPS_DEVICE_USB_NET,
+            QEMU_CAPS_DEVICE_PCI_BRIDGE);
     DO_TEST("qemu-kvm-0.12.1.2-rhel62-beta", 12001, 1, 0,
             QEMU_CAPS_VNC_COLON,
             QEMU_CAPS_NO_REBOOT,
@@ -643,7 +647,8 @@ mymain(void)
             QEMU_CAPS_VNC,
             QEMU_CAPS_DEVICE_QXL,
             QEMU_CAPS_DEVICE_VGA,
-            QEMU_CAPS_DEVICE_CIRRUS_VGA);
+            QEMU_CAPS_DEVICE_CIRRUS_VGA,
+            QEMU_CAPS_DEVICE_PCI_BRIDGE);
     DO_TEST("qemu-1.0", 1000000, 0, 0,
             QEMU_CAPS_VNC_COLON,
             QEMU_CAPS_NO_REBOOT,
@@ -718,6 +723,7 @@ mymain(void)
             QEMU_CAPS_SCSI_LSI,
             QEMU_CAPS_BLOCKIO,
             QEMU_CAPS_VNC,
+            QEMU_CAPS_MACHINE_OPT,
             QEMU_CAPS_DEVICE_QXL,
             QEMU_CAPS_DEVICE_VGA,
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
@@ -803,15 +809,19 @@ mymain(void)
             QEMU_CAPS_NEC_USB_XHCI,
             QEMU_CAPS_NETDEV_BRIDGE,
             QEMU_CAPS_SCSI_LSI,
-            QEMU_CAPS_VIRTIO_SCSI_PCI,
+            QEMU_CAPS_VIRTIO_SCSI,
             QEMU_CAPS_BLOCKIO,
             QEMU_CAPS_VNC,
+            QEMU_CAPS_MACHINE_OPT,
             QEMU_CAPS_DEVICE_QXL,
             QEMU_CAPS_DEVICE_VGA,
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
             QEMU_CAPS_DEVICE_USB_SERIAL,
-            QEMU_CAPS_DEVICE_USB_NET);
+            QEMU_CAPS_DEVICE_USB_NET,
+            QEMU_CAPS_DTB,
+            QEMU_CAPS_IPV6_MIGRATION,
+            QEMU_CAPS_DEVICE_PCI_BRIDGE);
     DO_TEST("qemu-1.2.0", 1002000, 0, 0,
             QEMU_CAPS_VNC_COLON,
             QEMU_CAPS_NO_REBOOT,
@@ -892,7 +902,7 @@ mymain(void)
             QEMU_CAPS_NEC_USB_XHCI,
             QEMU_CAPS_NETDEV_BRIDGE,
             QEMU_CAPS_SCSI_LSI,
-            QEMU_CAPS_VIRTIO_SCSI_PCI,
+            QEMU_CAPS_VIRTIO_SCSI,
             QEMU_CAPS_BLOCKIO,
             QEMU_CAPS_DISABLE_S3,
             QEMU_CAPS_DISABLE_S4,
@@ -902,6 +912,7 @@ mymain(void)
             QEMU_CAPS_SECCOMP_SANDBOX,
             QEMU_CAPS_DUMP_GUEST_CORE,
             QEMU_CAPS_VNC,
+            QEMU_CAPS_MACHINE_OPT,
             QEMU_CAPS_USB_REDIR_BOOTINDEX,
             QEMU_CAPS_USB_HOST_BOOTINDEX,
             QEMU_CAPS_DEVICE_QXL,
@@ -910,7 +921,11 @@ mymain(void)
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
             QEMU_CAPS_DEVICE_VIDEO_PRIMARY,
             QEMU_CAPS_DEVICE_USB_SERIAL,
-            QEMU_CAPS_DEVICE_USB_NET);
+            QEMU_CAPS_DEVICE_USB_NET,
+            QEMU_CAPS_DTB,
+            QEMU_CAPS_SCSI_MEGASAS,
+            QEMU_CAPS_IPV6_MIGRATION,
+            QEMU_CAPS_DEVICE_PCI_BRIDGE);
     DO_TEST("qemu-kvm-1.2.0", 1002000, 1, 0,
             QEMU_CAPS_VNC_COLON,
             QEMU_CAPS_NO_REBOOT,
@@ -996,7 +1011,7 @@ mymain(void)
             QEMU_CAPS_NEC_USB_XHCI,
             QEMU_CAPS_NETDEV_BRIDGE,
             QEMU_CAPS_SCSI_LSI,
-            QEMU_CAPS_VIRTIO_SCSI_PCI,
+            QEMU_CAPS_VIRTIO_SCSI,
             QEMU_CAPS_BLOCKIO,
             QEMU_CAPS_DISABLE_S3,
             QEMU_CAPS_DISABLE_S4,
@@ -1006,6 +1021,7 @@ mymain(void)
             QEMU_CAPS_SECCOMP_SANDBOX,
             QEMU_CAPS_DUMP_GUEST_CORE,
             QEMU_CAPS_VNC,
+            QEMU_CAPS_MACHINE_OPT,
             QEMU_CAPS_USB_REDIR_BOOTINDEX,
             QEMU_CAPS_USB_HOST_BOOTINDEX,
             QEMU_CAPS_DEVICE_QXL,
@@ -1014,7 +1030,11 @@ mymain(void)
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
             QEMU_CAPS_DEVICE_VIDEO_PRIMARY,
             QEMU_CAPS_DEVICE_USB_SERIAL,
-            QEMU_CAPS_DEVICE_USB_NET);
+            QEMU_CAPS_DEVICE_USB_NET,
+            QEMU_CAPS_DTB,
+            QEMU_CAPS_SCSI_MEGASAS,
+            QEMU_CAPS_IPV6_MIGRATION,
+            QEMU_CAPS_DEVICE_PCI_BRIDGE);
 
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -1022,7 +1042,6 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
-# include "testutils.h"
 
 int main(void)
 {

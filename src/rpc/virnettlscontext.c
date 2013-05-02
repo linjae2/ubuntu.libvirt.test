@@ -1,7 +1,7 @@
 /*
  * virnettlscontext.c: TLS encryption/x509 handling
  *
- * Copyright (C) 2010-2012 Red Hat, Inc.
+ * Copyright (C) 2010-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -71,6 +71,7 @@ struct _virNetTLSSession {
     virNetTLSSessionWriteFunc writeFunc;
     virNetTLSSessionReadFunc readFunc;
     void *opaque;
+    char *x509dname;
 };
 
 static virClassPtr virNetTLSContextClass;
@@ -217,8 +218,8 @@ static int virNetTLSContextCheckCertKeyUsage(gnutls_x509_crt_t cert,
                                              bool isCA)
 {
     int status;
-    unsigned int usage;
-    unsigned int critical;
+    unsigned int usage = 0;
+    unsigned int critical = 0;
 
     status = gnutls_x509_crt_get_key_usage(cert, &usage, &critical);
 
@@ -949,6 +950,7 @@ static int virNetTLSContextValidCertificate(virNetTLSContextPtr ctxt,
     const gnutls_datum_t *certs;
     unsigned int nCerts, i;
     char dname[256];
+    char *dnameptr = dname;
     size_t dnamesize = sizeof(dname);
 
     memset(dname, 0, dnamesize);
@@ -1025,6 +1027,10 @@ static int virNetTLSContextValidCertificate(virNetTLSContextPtr ctxt,
                                "[session]", gnutls_strerror(ret));
                 goto authfail;
             }
+            if (!(sess->x509dname = strdup(dname))) {
+                virReportOOMError();
+                goto authfail;
+            }
             VIR_DEBUG("Peer DN is %s", dname);
 
             if (virNetTLSContextCheckCertDN(cert, "[session]", sess->hostname, dname,
@@ -1062,14 +1068,14 @@ static int virNetTLSContextValidCertificate(virNetTLSContextPtr ctxt,
 
     PROBE(RPC_TLS_CONTEXT_SESSION_ALLOW,
           "ctxt=%p sess=%p dname=%s",
-          ctxt, sess, dname);
+          ctxt, sess, dnameptr);
 
     return 0;
 
 authdeny:
     PROBE(RPC_TLS_CONTEXT_SESSION_DENY,
           "ctxt=%p sess=%p dname=%s",
-          ctxt, sess, dname);
+          ctxt, sess, dnameptr);
 
     return -1;
 
@@ -1112,6 +1118,9 @@ cleanup:
 void virNetTLSContextDispose(void *obj)
 {
     virNetTLSContextPtr ctxt = obj;
+
+    PROBE(RPC_TLS_CONTEXT_DISPOSE,
+          "ctxt=%p", ctxt);
 
     gnutls_dh_params_deinit(ctxt->dhParams);
     gnutls_certificate_free_credentials(ctxt->x509cred);
@@ -1360,11 +1369,27 @@ cleanup:
     return ssf;
 }
 
+const char *virNetTLSSessionGetX509DName(virNetTLSSessionPtr sess)
+{
+    const char *ret = NULL;
+
+    virObjectLock(sess);
+
+    ret = sess->x509dname;
+
+    virObjectUnlock(sess);
+
+    return ret;
+}
 
 void virNetTLSSessionDispose(void *obj)
 {
     virNetTLSSessionPtr sess = obj;
 
+    PROBE(RPC_TLS_SESSION_DISPOSE,
+          "sess=%p", sess);
+
+    VIR_FREE(sess->x509dname);
     VIR_FREE(sess->hostname);
     gnutls_deinit(sess->session);
 }

@@ -169,6 +169,7 @@ cleanup:
 virDomainSnapshotDefPtr
 virDomainSnapshotDefParseString(const char *xmlStr,
                                 virCapsPtr caps,
+                                virDomainXMLOptionPtr xmlopt,
                                 unsigned int expectedVirtTypes,
                                 unsigned int flags)
 {
@@ -263,7 +264,7 @@ virDomainSnapshotDefParseString(const char *xmlStr,
                                _("missing domain in snapshot"));
                 goto cleanup;
             }
-            def->dom = virDomainDefParseNode(caps, xml, domainNode,
+            def->dom = virDomainDefParseNode(xml, domainNode, caps, xmlopt,
                                              expectedVirtTypes,
                                              (VIR_DOMAIN_XML_INACTIVE |
                                               VIR_DOMAIN_XML_SECURE));
@@ -309,7 +310,8 @@ virDomainSnapshotDefParseString(const char *xmlStr,
     if (offline && def->memory &&
         def->memory != VIR_DOMAIN_SNAPSHOT_LOCATION_NONE) {
         virReportError(VIR_ERR_XML_ERROR, "%s",
-                       _("memory state cannot be saved with offline snapshot"));
+                       _("memory state cannot be saved with offline or "
+                         "disk-only snapshot"));
         goto cleanup;
     }
     def->file = memoryFile;

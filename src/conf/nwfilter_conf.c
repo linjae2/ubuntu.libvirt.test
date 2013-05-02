@@ -1803,7 +1803,9 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
     while (att[idx].name != NULL) {
         prop = virXMLPropString(node, att[idx].name);
 
+        VIR_WARNINGS_NO_CAST_ALIGN
         item = (nwItemDesc *)((char *)nwf + att[idx].dataIdx);
+        VIR_WARNINGS_RESET
         flags = &item->flags;
         flags_set = match_flag;
 
@@ -2867,7 +2869,7 @@ virNWFilterCallbackDriversUnlock(void)
 }
 
 
-static virHashIterator virNWFilterDomainFWUpdateCB;
+static virDomainObjListIterator virNWFilterDomainFWUpdateCB;
 
 /**
  * virNWFilterInstFiltersOnAllVMs:
@@ -2880,7 +2882,6 @@ virNWFilterInstFiltersOnAllVMs(virConnectPtr conn)
     int i;
     struct domUpdateCBStruct cb = {
         .conn = conn,
-        .err = 0, /* ignored here */
         .step = STEP_APPLY_CURRENT,
         .skipInterfaces = NULL, /* not needed */
     };
@@ -2897,10 +2898,9 @@ static int
 virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
 {
     int i;
-    int err;
+    int ret = 0;
     struct domUpdateCBStruct cb = {
         .conn = conn,
-        .err = 0,
         .step = STEP_APPLY_NEW,
         .skipInterfaces = virHashCreate(0, NULL),
     };
@@ -2909,16 +2909,14 @@ virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
         return -1;
 
     for (i = 0; i < nCallbackDriver; i++) {
-        callbackDrvArray[i]->vmFilterRebuild(conn,
-                                             virNWFilterDomainFWUpdateCB,
-                                             &cb);
+        if (callbackDrvArray[i]->vmFilterRebuild(conn,
+                                                 virNWFilterDomainFWUpdateCB,
+                                                 &cb) < 0)
+            ret = -1;
     }
 
-    err = cb.err;
-
-    if (err) {
+    if (ret < 0) {
         cb.step = STEP_TEAR_NEW; /* rollback */
-        cb.err = 0;
 
         for (i = 0; i < nCallbackDriver; i++)
             callbackDrvArray[i]->vmFilterRebuild(conn,
@@ -2935,7 +2933,7 @@ virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
 
     virHashFree(cb.skipInterfaces);
 
-    return err;
+    return ret;
 }
 
 
@@ -3239,7 +3237,9 @@ virNWFilterRuleDefDetailsFormat(virBufferPtr buf,
     nwItemDesc *item;
 
     while (att[i].name) {
+        VIR_WARNINGS_NO_CAST_ALIGN
         item = (nwItemDesc *)((char *)def + att[i].dataIdx);
+        VIR_WARNINGS_RESET
         enum virNWFilterEntryItemFlags flags = item->flags;
         if ((flags & NWFILTER_ENTRY_ITEM_FLAG_EXISTS)) {
             if (!typeShown) {
@@ -3503,7 +3503,7 @@ char *virNWFilterConfigFile(const char *dir,
 }
 
 
-int virNWFilterConfLayerInit(virHashIterator domUpdateCB)
+int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB)
 {
     virNWFilterDomainFWUpdateCB = domUpdateCB;
 

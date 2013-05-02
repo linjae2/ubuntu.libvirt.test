@@ -14,8 +14,8 @@
 
 m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
-m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.68],,
-[m4_warning([this file was generated for autoconf 2.68.
+m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.69],,
+[m4_warning([this file was generated for autoconf 2.69.
 You have another version of autoconf.  It may work, but is not guaranteed to.
 If you have problems, you may need to regenerate the build system entirely.
 To do so, use the procedure documented by the package, typically `autoreconf'.])])
@@ -1627,6 +1627,7 @@ m4_include([gnulib/m4/readlink.m4])
 m4_include([gnulib/m4/realloc.m4])
 m4_include([gnulib/m4/regex.m4])
 m4_include([gnulib/m4/sched_h.m4])
+m4_include([gnulib/m4/secure_getenv.m4])
 m4_include([gnulib/m4/select.m4])
 m4_include([gnulib/m4/servent.m4])
 m4_include([gnulib/m4/setenv.m4])
@@ -1734,12 +1735,14 @@ m4_include([m4/virt-audit.m4])
 m4_include([m4/virt-avahi.m4])
 m4_include([m4/virt-blkid.m4])
 m4_include([m4/virt-capng.m4])
+m4_include([m4/virt-compile-pie.m4])
 m4_include([m4/virt-compile-warnings.m4])
 m4_include([m4/virt-curl.m4])
 m4_include([m4/virt-dbus.m4])
 m4_include([m4/virt-fuse.m4])
 m4_include([m4/virt-hal.m4])
 m4_include([m4/virt-lib.m4])
+m4_include([m4/virt-linker-relro.m4])
 m4_include([m4/virt-netcf.m4])
 m4_include([m4/virt-numactl.m4])
 m4_include([m4/virt-openwsman.m4])

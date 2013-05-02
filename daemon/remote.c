@@ -38,8 +38,6 @@
 #include "virutil.h"
 #include "stream.h"
 #include "viruuid.h"
-#include "libvirt/libvirt-qemu.h"
-#include "libvirt/libvirt-lxc.h"
 #include "vircommand.h"
 #include "intprops.h"
 #include "virnetserverservice.h"
@@ -721,11 +719,11 @@ void *remoteClientInitHook(virNetServerClientPtr client,
 /*----- Functions. -----*/
 
 static int
-remoteDispatchOpen(virNetServerPtr server,
-                   virNetServerClientPtr client,
-                   virNetMessagePtr msg ATTRIBUTE_UNUSED,
-                   virNetMessageErrorPtr rerr,
-                   struct remote_open_args *args)
+remoteDispatchConnectOpen(virNetServerPtr server,
+                          virNetServerClientPtr client,
+                          virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                          virNetMessageErrorPtr rerr,
+                          struct remote_connect_open_args *args)
 {
     const char *name;
     unsigned int flags;
@@ -774,10 +772,10 @@ cleanup:
 
 
 static int
-remoteDispatchClose(virNetServerPtr server ATTRIBUTE_UNUSED,
-                    virNetServerClientPtr client ATTRIBUTE_UNUSED,
-                    virNetMessagePtr msg ATTRIBUTE_UNUSED,
-                    virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED)
+remoteDispatchConnectClose(virNetServerPtr server ATTRIBUTE_UNUSED,
+                           virNetServerClientPtr client ATTRIBUTE_UNUSED,
+                           virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                           virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED)
 {
     virNetServerClientDelayedClose(client);
     return 0;
@@ -2391,10 +2389,8 @@ remoteDispatchAuthList(virNetServerPtr server ATTRIBUTE_UNUSED,
                 goto cleanup;
             }
             VIR_INFO("Bypass polkit auth for privileged client %s", ident);
-            if (virNetServerClientSetIdentity(client, ident) < 0)
-                virResetLastError();
-            else
-                auth = VIR_NET_SERVER_SERVICE_AUTH_NONE;
+            virNetServerClientSetAuth(client, 0);
+            auth = VIR_NET_SERVER_SERVICE_AUTH_NONE;
             VIR_FREE(ident);
         }
     }
@@ -2535,9 +2531,7 @@ remoteSASLFinish(virNetServerClientPtr client)
     if (!virNetSASLContextCheckIdentity(saslCtxt, identity))
         return -2;
 
-    if (virNetServerClientSetIdentity(client, identity) < 0)
-        goto error;
-
+    virNetServerClientSetAuth(client, 0);
     virNetServerClientSetSASLSession(client, priv->sasl);
 
     VIR_DEBUG("Authentication successful %d", virNetServerClientGetFD(client));
@@ -2869,7 +2863,7 @@ remoteDispatchAuthPolkit(virNetServerPtr server ATTRIBUTE_UNUSED,
              action, (long long) callerPid, callerUid);
     ret->complete = 1;
 
-    virNetServerClientSetIdentity(client, ident);
+    virNetServerClientSetAuth(client, 0);
     virMutexUnlock(&priv->lock);
     virCommandFree(cmd);
     VIR_FREE(pkout);
@@ -3024,8 +3018,8 @@ remoteDispatchAuthPolkit(virNetServerPtr server ATTRIBUTE_UNUSED,
              action, (long long) callerPid, callerUid,
              polkit_result_to_string_representation(pkresult));
     ret->complete = 1;
-    virNetServerClientSetIdentity(client, ident);
 
+    virNetServerClientSetAuth(client, 0);
     virMutexUnlock(&priv->lock);
     VIR_FREE(ident);
     return 0;
@@ -3130,11 +3124,11 @@ cleanup:
  * Register / deregister events
  ***************************/
 static int
-remoteDispatchDomainEventsRegister(virNetServerPtr server ATTRIBUTE_UNUSED,
-                                   virNetServerClientPtr client ATTRIBUTE_UNUSED,
-                                   virNetMessagePtr msg ATTRIBUTE_UNUSED,
-                                   virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
-                                   remote_domain_events_register_ret *ret ATTRIBUTE_UNUSED)
+remoteDispatchConnectDomainEventRegister(virNetServerPtr server ATTRIBUTE_UNUSED,
+                                         virNetServerClientPtr client ATTRIBUTE_UNUSED,
+                                         virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                                         virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
+                                         remote_connect_domain_event_register_ret *ret ATTRIBUTE_UNUSED)
 {
     int callbackID;
     int rv = -1;
@@ -3172,11 +3166,11 @@ cleanup:
 }
 
 static int
-remoteDispatchDomainEventsDeregister(virNetServerPtr server ATTRIBUTE_UNUSED,
-                                     virNetServerClientPtr client ATTRIBUTE_UNUSED,
-                                     virNetMessagePtr msg ATTRIBUTE_UNUSED,
-                                     virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
-                                     remote_domain_events_deregister_ret *ret ATTRIBUTE_UNUSED)
+remoteDispatchConnectDomainEventDeregister(virNetServerPtr server ATTRIBUTE_UNUSED,
+                                           virNetServerClientPtr client ATTRIBUTE_UNUSED,
+                                           virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                                           virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
+                                           remote_connect_domain_event_deregister_ret *ret ATTRIBUTE_UNUSED)
 {
     int rv = -1;
     struct daemonClientPrivate *priv =
@@ -3319,11 +3313,11 @@ cleanup:
 }
 
 static int
-remoteDispatchDomainEventsRegisterAny(virNetServerPtr server ATTRIBUTE_UNUSED,
-                                      virNetServerClientPtr client ATTRIBUTE_UNUSED,
-                                      virNetMessagePtr msg ATTRIBUTE_UNUSED,
-                                      virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
-                                      remote_domain_events_register_any_args *args)
+remoteDispatchConnectDomainEventRegisterAny(virNetServerPtr server ATTRIBUTE_UNUSED,
+                                            virNetServerClientPtr client ATTRIBUTE_UNUSED,
+                                            virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                                            virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
+                                            remote_connect_domain_event_register_any_args *args)
 {
     int callbackID;
     int rv = -1;
@@ -3368,11 +3362,11 @@ cleanup:
 
 
 static int
-remoteDispatchDomainEventsDeregisterAny(virNetServerPtr server ATTRIBUTE_UNUSED,
-                                        virNetServerClientPtr client ATTRIBUTE_UNUSED,
-                                        virNetMessagePtr msg ATTRIBUTE_UNUSED,
-                                        virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
-                                        remote_domain_events_deregister_any_args *args)
+remoteDispatchConnectDomainEventDeregisterAny(virNetServerPtr server ATTRIBUTE_UNUSED,
+                                              virNetServerClientPtr client ATTRIBUTE_UNUSED,
+                                              virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                                              virNetMessageErrorPtr rerr ATTRIBUTE_UNUSED,
+                                              remote_connect_domain_event_deregister_any_args *args)
 {
     int callbackID = -1;
     int rv = -1;
@@ -3413,12 +3407,12 @@ cleanup:
 }
 
 static int
-qemuDispatchMonitorCommand(virNetServerPtr server ATTRIBUTE_UNUSED,
-                           virNetServerClientPtr client ATTRIBUTE_UNUSED,
-                           virNetMessagePtr msg ATTRIBUTE_UNUSED,
-                           virNetMessageErrorPtr rerr,
-                           qemu_monitor_command_args *args,
-                           qemu_monitor_command_ret *ret)
+qemuDispatchDomainMonitorCommand(virNetServerPtr server ATTRIBUTE_UNUSED,
+                                 virNetServerClientPtr client ATTRIBUTE_UNUSED,
+                                 virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                                 virNetMessageErrorPtr rerr,
+                                 qemu_domain_monitor_command_args *args,
+                                 qemu_domain_monitor_command_ret *ret)
 {
     virDomainPtr dom = NULL;
     int rv = -1;
@@ -3705,13 +3699,12 @@ cleanup:
 }
 
 
-static int remoteDispatchSupportsFeature(
-    virNetServerPtr server ATTRIBUTE_UNUSED,
-    virNetServerClientPtr client,
-    virNetMessagePtr msg ATTRIBUTE_UNUSED,
-    virNetMessageErrorPtr rerr,
-    remote_supports_feature_args *args,
-    remote_supports_feature_ret *ret)
+static int remoteDispatchConnectSupportsFeature(virNetServerPtr server ATTRIBUTE_UNUSED,
+                                                virNetServerClientPtr client,
+                                                virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                                                virNetMessageErrorPtr rerr,
+                                                remote_connect_supports_feature_args *args,
+                                                remote_connect_supports_feature_ret *ret)
 {
     int rv = -1;
     int supported;
@@ -3739,7 +3732,7 @@ static int remoteDispatchSupportsFeature(
         break;
 
     default:
-        if ((supported = virDrvSupportsFeature(priv->conn, args->feature)) < 0)
+        if ((supported = virConnectSupportsFeature(priv->conn, args->feature)) < 0)
             goto cleanup;
         break;
     }
@@ -4659,6 +4652,50 @@ cleanup:
     if (rv < 0)
         virNetMessageSaveError(rerr);
     virDomainFree(dom);
+    return rv;
+}
+
+static int
+remoteDispatchDomainGetJobStats(virNetServerPtr server ATTRIBUTE_UNUSED,
+                                virNetServerClientPtr client,
+                                virNetMessagePtr msg ATTRIBUTE_UNUSED,
+                                virNetMessageErrorPtr rerr,
+                                remote_domain_get_job_stats_args *args,
+                                remote_domain_get_job_stats_ret *ret)
+{
+    virDomainPtr dom = NULL;
+    virTypedParameterPtr params = NULL;
+    int nparams = 0;
+    int rv = -1;
+    struct daemonClientPrivate *priv =
+        virNetServerClientGetPrivateData(client);
+
+    if (!priv->conn) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("connection not open"));
+        goto cleanup;
+    }
+
+    if (!(dom = get_nonnull_domain(priv->conn, args->dom)))
+        goto cleanup;
+
+    if (virDomainGetJobStats(dom, &ret->type, &params,
+                             &nparams, args->flags) < 0)
+        goto cleanup;
+
+    if (remoteSerializeTypedParameters(params, nparams,
+                                       &ret->params.params_val,
+                                       &ret->params.params_len,
+                                       0) < 0)
+        goto cleanup;
+
+    rv = 0;
+
+cleanup:
+    if (rv < 0)
+        virNetMessageSaveError(rerr);
+    virTypedParamsFree(params, nparams);
+    if (dom)
+        virDomainFree(dom);
     return rv;
 }
 

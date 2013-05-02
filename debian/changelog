@@ -1,3 +1,22 @@
+libvirt (1.0.5-0ubuntu1) saucy; urgency=low
+
+  * New upstream release: 
+    + Dropped patches:
+      - debian/patches/fix-virterror-namechange
+      - debian/patches/apparmor-use-apparmor-setfdlabel
+      - debian/patches/prevent-lxc-shutdown-host.patch
+      - debian/patches/apparmor-no-need-to-check-security-model
+      - debian/patches/nonblock-fix.patch
+     + Refreshed patches:
+      - debian/patches/9002-better_default_uri_virsh.patch
+      - debian/patches/enable-kvm-spice.patch
+      - debian/patches/patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
+   * debian/patches/Add-sanitytest.py.patch: Add patch to fix missing sanitytest.py
+     when building the testsuite.
+   * debian/libvirt-dev.install: dont't ship files for static linking.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 02 May 2013 10:21:49 -0500
+
 libvirt (1.0.2-0ubuntu12) saucy; urgency=low
 
   * debian/libvirt-bin.{dirs,install}: install dnsmasq.d-available/libvirt-bin

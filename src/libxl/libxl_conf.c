@@ -64,15 +64,6 @@ static const char *xen_cap_re = "(xen|hvm)-[[:digit:]]+\\.[[:digit:]]+-(x86_32|x
 static regex_t xen_cap_rec;
 
 
-static int libxlDefaultConsoleType(const char *ostype,
-                                   virArch arch ATTRIBUTE_UNUSED)
-{
-    if (STREQ(ostype, "hvm"))
-        return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_SERIAL;
-    else
-        return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_XEN;
-}
-
 static virCapsPtr
 libxlBuildCapabilities(virArch hostarch,
                        int host_pae,
@@ -84,8 +75,6 @@ libxlBuildCapabilities(virArch hostarch,
 
     if ((caps = virCapabilitiesNew(hostarch, 1, 1)) == NULL)
         goto no_memory;
-
-    virCapabilitiesSetMacPrefix(caps, (unsigned char[]){ 0x00, 0x16, 0x3e });
 
     if (host_pae &&
         virCapabilitiesAddHostFeature(caps, "pae") < 0)
@@ -164,12 +153,10 @@ libxlBuildCapabilities(virArch hostarch,
         }
     }
 
-    caps->defaultConsoleTargetType = libxlDefaultConsoleType;
-
     return caps;
 
  no_memory:
-    virCapabilitiesFree(caps);
+    virObjectUnref(caps);
     return NULL;
 }
 
@@ -297,7 +284,7 @@ libxlMakeCapabilitiesInternal(virArch hostarch,
 
  no_memory:
     virReportOOMError();
-    virCapabilitiesFree(caps);
+    virObjectUnref(caps);
     return NULL;
 }
 
@@ -525,9 +512,13 @@ libxlMakeDisk(virDomainDiskDefPtr l_disk, libxl_device_disk *x_disk)
             return -1;
         }
     } else {
-        /* No driverName - default to raw/tap?? */
+        /*
+         * If driverName is not specified, default to raw as per
+         * xl-disk-configuration.txt in the xen documentation and let
+         * libxl pick a suitable backend.
+         */
         x_disk->format = LIBXL_DISK_FORMAT_RAW;
-        x_disk->backend = LIBXL_DISK_BACKEND_TAP;
+        x_disk->backend = LIBXL_DISK_BACKEND_UNKNOWN;
     }
 
     /* XXX is this right? */
@@ -765,10 +756,19 @@ error:
 virCapsPtr
 libxlMakeCapabilities(libxl_ctx *ctx)
 {
+    int err;
     libxl_physinfo phy_info;
     const libxl_version_info *ver_info;
 
-    regcomp(&xen_cap_rec, xen_cap_re, REG_EXTENDED);
+    err = regcomp(&xen_cap_rec, xen_cap_re, REG_EXTENDED);
+    if (err != 0) {
+        char error[100];
+        regerror(err, &xen_cap_rec, error, sizeof(error));
+        regfree(&xen_cap_rec);
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Failed to compile regex %s"), error);
+        return NULL;
+    }
 
     if (libxl_get_physinfo(ctx, &phy_info) != 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
@@ -796,19 +796,19 @@ libxlBuildDomainConfig(libxlDriverPrivatePtr driver,
         return -1;
 
     if (libxlMakeDomBuildInfo(def, d_config) < 0) {
-        goto error;
+        return -1;
     }
 
     if (libxlMakeDiskList(def, d_config) < 0) {
-        goto error;
+        return -1;
     }
 
     if (libxlMakeNicList(def, d_config) < 0) {
-        goto error;
+        return -1;
     }
 
     if (libxlMakeVfbList(driver, def, d_config) < 0) {
-        goto error;
+        return -1;
     }
 
     d_config->on_reboot = def->onReboot;
@@ -816,8 +816,4 @@ libxlBuildDomainConfig(libxlDriverPrivatePtr driver,
     d_config->on_crash = def->onCrash;
 
     return 0;
-
-error:
-    libxl_domain_config_dispose(d_config);
-    return -1;
 }

@@ -66,7 +66,7 @@ virStorageBackendSheepdogParseNodeInfo(virStoragePoolDefPtr pool,
         if ((next = strchr(p, '\n')))
             ++next;
         else
-            return -1;
+            break;
 
         if (!STRPREFIX(p, "Total "))
             continue;
@@ -74,13 +74,13 @@ virStorageBackendSheepdogParseNodeInfo(virStoragePoolDefPtr pool,
         p = p + 6;
 
         if (virStrToLong_ull(p, &end, 10, &pool->capacity) < 0)
-            return -1;
+            break;
 
         if ((p = end + 1) > next)
-            return -1;
+            break;
 
         if (virStrToLong_ull(p, &end, 10, &pool->allocation) < 0)
-            return -1;
+            break;
 
         pool->available = pool->capacity - pool->allocation;
         return 0;
@@ -97,12 +97,10 @@ virStorageBackendSheepdogAddHostArg(virCommandPtr cmd,
     const char *address = "localhost";
     int port = 7000;
     if (pool->def->source.nhost > 0) {
-        if (pool->def->source.hosts[0].name != NULL) {
+        if (pool->def->source.hosts[0].name != NULL)
             address = pool->def->source.hosts[0].name;
-        }
-        if (pool->def->source.hosts[0].port) {
+        if (pool->def->source.hosts[0].port)
             port = pool->def->source.hosts[0].port;
-        }
     }
     virCommandAddArg(cmd, "-a");
     virCommandAddArgFormat(cmd, "%s", address);
@@ -156,7 +154,7 @@ virStorageBackendSheepdogCreateVol(virConnectPtr conn ATTRIBUTE_UNUSED,
                                    virStorageVolDefPtr vol)
 {
 
-    int ret;
+    int ret = -1;
 
     if (vol->target.encryption != NULL) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
@@ -167,10 +165,14 @@ virStorageBackendSheepdogCreateVol(virConnectPtr conn ATTRIBUTE_UNUSED,
     virCommandPtr cmd = virCommandNewArgList(COLLIE, "vdi", "create", vol->name, NULL);
     virCommandAddArgFormat(cmd, "%llu", vol->capacity);
     virStorageBackendSheepdogAddHostArg(cmd, pool);
-    ret = virCommandRun(cmd, NULL);
+    if (virCommandRun(cmd, NULL) < 0)
+        goto cleanup;
 
-    virStorageBackendSheepdogRefreshVol(conn, pool, vol);
+    if (virStorageBackendSheepdogRefreshVol(conn, pool, vol) < 0)
+        goto cleanup;
 
+    ret = 0;
+cleanup:
     virCommandFree(cmd);
     return ret;
 }
@@ -206,11 +208,10 @@ virStorageBackendSheepdogParseVdiList(virStorageVolDefPtr vol,
             continue;
 
         /* skip space */
-        if (p + 2 < next) {
+        if (p + 2 < next)
             p += 2;
-        } else {
+        else
             return -1;
-        }
 
         /* skip name */
         while (*p != '\0' && *p != ' ') {

@@ -455,9 +455,9 @@ static virStreamDriver virFDStreamDrv = {
     .streamRecv = virFDStreamRead,
     .streamFinish = virFDStreamClose,
     .streamAbort = virFDStreamAbort,
-    .streamAddCallback = virFDStreamAddCallback,
-    .streamUpdateCallback = virFDStreamUpdateCallback,
-    .streamRemoveCallback = virFDStreamRemoveCallback
+    .streamEventAddCallback = virFDStreamAddCallback,
+    .streamEventUpdateCallback = virFDStreamUpdateCallback,
+    .streamEventRemoveCallback = virFDStreamRemoveCallback
 };
 
 static int virFDStreamOpenInternal(virStreamPtr st,
@@ -581,6 +581,8 @@ virFDStreamOpenFileInternal(virStreamPtr st,
 
     VIR_DEBUG("st=%p path=%s oflags=%x offset=%llu length=%llu mode=%o",
               st, path, oflags, offset, length, mode);
+
+    oflags |= O_NOCTTY;
 
     if (oflags & O_CREAT)
         fd = open(path, oflags, mode);

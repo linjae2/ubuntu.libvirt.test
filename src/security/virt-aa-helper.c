@@ -2,7 +2,7 @@
 /*
  * virt-aa-helper: wrapper program used by AppArmor security driver.
  *
- * Copyright (C) 2010-2012 Red Hat, Inc.
+ * Copyright (C) 2010-2013 Red Hat, Inc.
  * Copyright (C) 2009-2011 Canonical Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -71,6 +71,7 @@ typedef struct {
     char *files;                /* list of files */
     virDomainDefPtr def;        /* VM definition */
     virCapsPtr caps;            /* VM capabilities */
+    virDomainXMLOptionPtr xmlopt;/* XML parser data */
     char *hvm;                  /* type of hypervisor (eg hvm, xen) */
     virArch arch;               /* machine architecture */
     char *newfile;              /* newly added file */
@@ -84,7 +85,8 @@ vahDeinit(vahControl * ctl)
         return -1;
 
     VIR_FREE(ctl->def);
-    virCapabilitiesFree(ctl->caps);
+    virObjectUnref(ctl->caps);
+    virObjectUnref(ctl->xmlopt);
     VIR_FREE(ctl->files);
     VIR_FREE(ctl->hvm);
     VIR_FREE(ctl->newfile);
@@ -685,11 +687,6 @@ caps_mockup(vahControl * ctl, const char *xmlStr)
     return rc;
 }
 
-static int aaDefaultConsoleType(const char *ostype ATTRIBUTE_UNUSED,
-                                virArch arch ATTRIBUTE_UNUSED)
-{
-    return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_SERIAL;
-}
 
 static int
 get_definition(vahControl * ctl, const char *xmlStr)
@@ -709,7 +706,10 @@ get_definition(vahControl * ctl, const char *xmlStr)
         goto exit;
     }
 
-    ctl->caps->defaultConsoleTargetType = aaDefaultConsoleType;
+    if (!(ctl->xmlopt = virDomainXMLOptionNew(NULL, NULL, NULL))) {
+        vah_error(ctl, 0, _("Failed to create XML config object"));
+        goto exit;
+    }
 
     if ((guest = virCapabilitiesAddGuest(ctl->caps,
                                          ctl->hvm,
@@ -722,8 +722,9 @@ get_definition(vahControl * ctl, const char *xmlStr)
         goto exit;
     }
 
-    ctl->def = virDomainDefParseString(ctl->caps, xmlStr, -1,
-                                       VIR_DOMAIN_XML_INACTIVE);
+    ctl->def = virDomainDefParseString(xmlStr,
+                                       ctl->caps, ctl->xmlopt,
+                                       -1, VIR_DOMAIN_XML_INACTIVE);
     if (ctl->def == NULL) {
         vah_error(ctl, 0, _("could not parse XML"));
         goto exit;
@@ -845,7 +846,7 @@ vah_add_file_chardev(virBufferPtr buf,
 }
 
 static int
-file_iterate_hostdev_cb(usbDevice *dev ATTRIBUTE_UNUSED,
+file_iterate_hostdev_cb(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
                         const char *file, void *opaque)
 {
     virBufferPtr buf = opaque;
@@ -853,8 +854,8 @@ file_iterate_hostdev_cb(usbDevice *dev ATTRIBUTE_UNUSED,
 }
 
 static int
-file_iterate_pci_cb(pciDevice *dev ATTRIBUTE_UNUSED,
-                        const char *file, void *opaque)
+file_iterate_pci_cb(virPCIDevicePtr dev ATTRIBUTE_UNUSED,
+                    const char *file, void *opaque)
 {
     virBufferPtr buf = opaque;
     return vah_add_file(buf, file, "rw");
@@ -985,6 +986,10 @@ get_files(vahControl * ctl)
         if (vah_add_file(&buf, ctl->def->os.initrd, "r") != 0)
             goto clean;
 
+    if (ctl->def->os.dtb)
+        if (vah_add_file(&buf, ctl->def->os.dtb, "r") != 0)
+            goto clean;
+
     if (ctl->def->os.loader && ctl->def->os.loader)
         if (vah_add_file(&buf, ctl->def->os.loader, "r") != 0)
             goto clean;
@@ -1014,32 +1019,33 @@ get_files(vahControl * ctl)
             virDomainHostdevDefPtr dev = ctl->def->hostdevs[i];
             switch (dev->source.subsys.type) {
             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB: {
-                usbDevice *usb = usbGetDevice(dev->source.subsys.u.usb.bus,
-                                              dev->source.subsys.u.usb.device,
-                                              NULL);
+                virUSBDevicePtr usb =
+                    virUSBDeviceNew(dev->source.subsys.u.usb.bus,
+                                    dev->source.subsys.u.usb.device,
+                                    NULL);
 
                 if (usb == NULL)
                     continue;
 
-                rc = usbDeviceFileIterate(usb, file_iterate_hostdev_cb, &buf);
-                usbFreeDevice(usb);
+                rc = virUSBDeviceFileIterate(usb, file_iterate_hostdev_cb, &buf);
+                virUSBDeviceFree(usb);
                 if (rc != 0)
                     goto clean;
                 break;
             }
 
             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
-                pciDevice *pci = pciGetDevice(
-                           dev->source.subsys.u.pci.domain,
-                           dev->source.subsys.u.pci.bus,
-                           dev->source.subsys.u.pci.slot,
-                           dev->source.subsys.u.pci.function);
+                virPCIDevicePtr pci = virPCIDeviceNew(
+                           dev->source.subsys.u.pci.addr.domain,
+                           dev->source.subsys.u.pci.addr.bus,
+                           dev->source.subsys.u.pci.addr.slot,
+                           dev->source.subsys.u.pci.addr.function);
 
                 if (pci == NULL)
                     continue;
 
-                rc = pciDeviceFileIterate(pci, file_iterate_pci_cb, &buf);
-                pciFreeDevice(pci);
+                rc = virPCIDeviceFileIterate(pci, file_iterate_pci_cb, &buf);
+                virPCIDeviceFree(pci);
 
                 break;
             }

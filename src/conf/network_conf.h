@@ -1,7 +1,7 @@
 /*
  * network_conf.h: network XML handling
  *
- * Copyright (C) 2006-2008, 2012 Red Hat, Inc.
+ * Copyright (C) 2006-2013 Red Hat, Inc.
  * Copyright (C) 2006-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -62,17 +62,25 @@ enum virNetworkForwardHostdevDeviceType {
     VIR_NETWORK_FORWARD_HOSTDEV_DEVICE_LAST,
 };
 
-typedef struct _virNetworkDHCPRangeDef virNetworkDHCPRangeDef;
-typedef virNetworkDHCPRangeDef *virNetworkDHCPRangeDefPtr;
-struct _virNetworkDHCPRangeDef {
-    virSocketAddr start;
-    virSocketAddr end;
-};
+/* The backend driver used for devices from the pool. Currently used
+ * only for PCI devices (vfio vs. kvm), but could be used for other
+ * device types in the future.
+ */
+typedef enum {
+    VIR_NETWORK_FORWARD_DRIVER_NAME_DEFAULT, /* kvm now, could change */
+    VIR_NETWORK_FORWARD_DRIVER_NAME_KVM,    /* force legacy kvm style */
+    VIR_NETWORK_FORWARD_DRIVER_NAME_VFIO,   /* force vfio */
+
+    VIR_NETWORK_FORWARD_DRIVER_NAME_LAST
+} virNetworkForwardDriverNameType;
+
+VIR_ENUM_DECL(virNetworkForwardDriverName)
 
 typedef struct _virNetworkDHCPHostDef virNetworkDHCPHostDef;
 typedef virNetworkDHCPHostDef *virNetworkDHCPHostDefPtr;
 struct _virNetworkDHCPHostDef {
     char *mac;
+    char *id;
     char *name;
     virSocketAddr ip;
 };
@@ -131,7 +139,7 @@ struct _virNetworkIpDef {
     virSocketAddr netmask;      /* ipv4 - either netmask or prefix specified */
 
     size_t nranges;             /* Zero or more dhcp ranges */
-    virNetworkDHCPRangeDefPtr ranges;
+    virSocketAddrRangePtr ranges;
 
     size_t nhosts;              /* Zero or more dhcp hosts */
     virNetworkDHCPHostDefPtr hosts;
@@ -165,6 +173,7 @@ typedef virNetworkForwardDef *virNetworkForwardDefPtr;
 struct _virNetworkForwardDef {
     int type;     /* One of virNetworkForwardType constants */
     bool managed;  /* managed attribute for hostdev mode */
+    int driverName; /* enum virNetworkForwardDriverNameType */
 
     /* If there are multiple forward devices (i.e. a pool of
      * interfaces), they will be listed here.
@@ -174,6 +183,10 @@ struct _virNetworkForwardDef {
 
     size_t nifs;
     virNetworkForwardIfDefPtr ifs;
+
+    /* ranges for NAT */
+    virSocketAddrRange addr;
+    virPortRange port;
 };
 
 typedef struct _virPortGroupDef virPortGroupDef;
@@ -197,7 +210,7 @@ struct _virNetworkDef {
     char *bridge;       /* Name of bridge device */
     char *domain;
     unsigned long delay;   /* Bridge forward delay (ms) */
-    unsigned int stp :1; /* Spanning tree protocol */
+    bool stp; /* Spanning tree protocol */
     virMacAddr mac; /* mac address of bridge device */
     bool mac_specified;
 
@@ -282,9 +295,6 @@ virNetworkDefPtr virNetworkDefParseString(const char *xmlStr);
 virNetworkDefPtr virNetworkDefParseFile(const char *filename);
 virNetworkDefPtr virNetworkDefParseNode(xmlDocPtr xml,
                                         xmlNodePtr root);
-int virNetworkObjUpdateParseFile(const char *filename,
-                                 virNetworkObjPtr net);
-
 char *virNetworkDefFormat(const virNetworkDefPtr def, unsigned int flags);
 
 static inline const char *
@@ -320,9 +330,16 @@ virNetworkObjPtr virNetworkLoadConfig(virNetworkObjListPtr nets,
                                       const char *autostartDir,
                                       const char *file);
 
+virNetworkObjPtr virNetworkLoadState(virNetworkObjListPtr nets,
+                                     const char *stateDir,
+                                     const char *name);
+
 int virNetworkLoadAllConfigs(virNetworkObjListPtr nets,
                              const char *configDir,
                              const char *autostartDir);
+
+int virNetworkLoadAllState(virNetworkObjListPtr nets,
+                           const char *stateDir);
 
 int virNetworkDeleteConfig(const char *configDir,
                            const char *autostartDir,

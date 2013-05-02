@@ -36,7 +36,7 @@
 #define VIR_FROM_THIS VIR_FROM_SECRET
 
 VIR_ENUM_IMPL(virSecretUsageType, VIR_SECRET_USAGE_TYPE_LAST,
-              "none", "volume", "ceph")
+              "none", "volume", "ceph", "iscsi")
 
 void
 virSecretDefFree(virSecretDefPtr def)
@@ -55,6 +55,10 @@ virSecretDefFree(virSecretDefPtr def)
 
     case VIR_SECRET_USAGE_TYPE_CEPH:
         VIR_FREE(def->usage.ceph);
+        break;
+
+    case VIR_SECRET_USAGE_TYPE_ISCSI:
+        VIR_FREE(def->usage.target);
         break;
 
     default:
@@ -108,6 +112,15 @@ virSecretDefParseUsage(xmlXPathContextPtr ctxt,
         }
         break;
 
+    case VIR_SECRET_USAGE_TYPE_ISCSI:
+        def->usage.target = virXPathString("string(./usage/target)", ctxt);
+        if (!def->usage.target) {
+            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                           _("iSCSI usage specified, but target is missing"));
+            return -1;
+        }
+        break;
+
     default:
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("unexpected secret usage type %d"),
@@ -148,9 +161,9 @@ secretXMLParseNode(xmlDocPtr xml, xmlNodePtr root)
     prop = virXPathString("string(./@ephemeral)", ctxt);
     if (prop != NULL) {
         if (STREQ(prop, "yes"))
-            def->ephemeral = 1;
+            def->ephemeral = true;
         else if (STREQ(prop, "no"))
-            def->ephemeral = 0;
+            def->ephemeral = false;
         else {
             virReportError(VIR_ERR_XML_ERROR, "%s",
                            _("invalid value of 'ephemeral'"));
@@ -162,9 +175,9 @@ secretXMLParseNode(xmlDocPtr xml, xmlNodePtr root)
     prop = virXPathString("string(./@private)", ctxt);
     if (prop != NULL) {
         if (STREQ(prop, "yes"))
-            def->private = 1;
+            def->private = true;
         else if (STREQ(prop, "no"))
-            def->private = 0;
+            def->private = false;
         else {
             virReportError(VIR_ERR_XML_ERROR, "%s",
                            _("invalid value of 'private'"));
@@ -259,6 +272,13 @@ virSecretDefFormatUsage(virBufferPtr buf,
         if (def->usage.ceph != NULL) {
             virBufferEscapeString(buf, "    <name>%s</name>\n",
                                   def->usage.ceph);
+        }
+        break;
+
+    case VIR_SECRET_USAGE_TYPE_ISCSI:
+        if (def->usage.target != NULL) {
+            virBufferEscapeString(buf, "    <target>%s</target>\n",
+                                  def->usage.target);
         }
         break;
 
