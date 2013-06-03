@@ -130,6 +130,7 @@ add_statoverrides()
     "
 
     SANLOCK_DIR="/var/lib/libvirt/sanlock"
+	QEMU_CONF="/etc/libvirt/qemu.conf"
 
     for dir in ${ROOT_DIRS}; do
         if ! dpkg-statoverride --list "${dir}" >/dev/null 2>&1; then
@@ -149,6 +150,11 @@ add_statoverrides()
         chown root:root "${SANLOCK_DIR}"
         chmod 0700 "${SANLOCK_DIR}"
     fi
+
+	if ! dpkg-statoverride --list "${QEMU_CONF}" >/dev/null 2>&1; then
+		chown root:root "${QEMU_CONF}"
+		chmod 0600 "${QEMU_CONF}"
+	fi
 }
 
 
