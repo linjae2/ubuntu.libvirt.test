@@ -32,6 +32,7 @@
 #include "virutil.h"
 #include "viralloc.h"
 #include "virfile.h"
+#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_INITCTL
 
@@ -107,7 +108,7 @@ struct virInitctlRequest {
   verify(sizeof(struct virInitctlRequest) == 320 + MAXHOSTNAMELEN);
 # else
   verify(sizeof(struct virInitctlRequest) == 384);
-#endif
+# endif
 
 /*
  * Send a message to init to change the runlevel
@@ -136,10 +137,8 @@ int virInitctlSetRunLevel(virInitctlRunLevel level,
             return -1;
         }
     } else {
-        if (!(path = strdup(VIR_INITCTL_FIFO))) {
-            virReportOOMError();
+        if (VIR_STRDUP(path, VIR_INITCTL_FIFO) < 0)
             return -1;
-        }
     }
 
     if ((fd = open(path, O_WRONLY|O_NONBLOCK|O_CLOEXEC|O_NOCTTY)) < 0) {
