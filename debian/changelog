@@ -1,3 +1,9 @@
+libvirt (1.0.6-0ubuntu2) saucy; urgency=low
+
+  * Apply CVE-2013-2218-fix-crash-listing-network-interfaces-with-filters.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 28 Jun 2013 13:13:20 -0500
+
 libvirt (1.0.6-0ubuntu1) saucy; urgency=low
 
   * New upstream relase.
