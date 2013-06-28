@@ -22,3 +22,4 @@ fix-virterror-namechange
 fix-ubuntu-xen-qemu-dm-path.patch
 prevent-lxc-shutdown-host.patch
 nonblock-fix.patch
+CVE-2013-1962.patch

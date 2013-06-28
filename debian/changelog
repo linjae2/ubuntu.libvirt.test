@@ -1,3 +1,12 @@
+libvirt (1.0.2-0ubuntu11.13.04.2) raring-security; urgency=low
+
+  * SECURITY UPDATE: remote denial of service via file descriptor leak
+    - debian/patches/CVE-2013-1962.patch: properly free pool in
+      daemon/remote.c.
+    - CVE-2013-1962
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Fri, 28 Jun 2013 13:01:32 -0400
+
 libvirt (1.0.2-0ubuntu11.13.04.1) raring-proposed; urgency=low
 
   * debian/libvirt-bin.{dirs,install}: install dnsmasq.d-available/libvirt-bin
