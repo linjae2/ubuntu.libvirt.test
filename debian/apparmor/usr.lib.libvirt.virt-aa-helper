@@ -14,6 +14,7 @@
 
   deny @{PROC}/[0-9]*/mounts r,
   @{PROC}/[0-9]*/net/psched r,
+  owner @{PROC}/[0-9]*/status r,
   @{PROC}/filesystems r,
 
   # for hostdev
