@@ -1,3 +1,10 @@
+libvirt (1.0.6-0ubuntu3) saucy; urgency=low
+
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow owner read of
+    @{PROC}/[0-9]*/status
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Mon, 15 Jul 2013 10:28:42 -0500
+
 libvirt (1.0.6-0ubuntu2) saucy; urgency=low
 
   * Apply CVE-2013-2218-fix-crash-listing-network-interfaces-with-filters.
