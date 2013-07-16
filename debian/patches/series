@@ -16,3 +16,6 @@ storage-default-permission-mode-to-0711
 Reduce-udevadm-settle-timeout-to-10-seconds.patch
 fix-ubuntu-xen-qemu-dm-path.patch
 CVE-2013-2218-fix-crash-listing-network-interfaces-with-filters
+ubuntu-xen-hypervisor-4.3.patch
+ubuntu-xen-fix-api-deadlocks.patch
+ubuntu-libxl-qemu-nopath.patch
