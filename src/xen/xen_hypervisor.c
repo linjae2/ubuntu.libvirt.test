@@ -1319,7 +1319,7 @@ xenHypervisorSetSchedulerParameters(virConnectPtr conn,
                                     virTypedParameterPtr params,
                                     int nparams)
 {
-    int i;
+    size_t i;
     unsigned int val;
     xenUnifiedPrivatePtr priv = conn->privateData;
     char buf[256];
@@ -1329,12 +1329,12 @@ xenHypervisorSetSchedulerParameters(virConnectPtr conn,
         return 0;
     }
 
-    if (virTypedParameterArrayValidate(params, nparams,
-                                       VIR_DOMAIN_SCHEDULER_WEIGHT,
-                                       VIR_TYPED_PARAM_UINT,
-                                       VIR_DOMAIN_SCHEDULER_CAP,
-                                       VIR_TYPED_PARAM_UINT,
-                                       NULL) < 0)
+    if (virTypedParamsValidate(params, nparams,
+                               VIR_DOMAIN_SCHEDULER_WEIGHT,
+                               VIR_TYPED_PARAM_UINT,
+                               VIR_DOMAIN_SCHEDULER_CAP,
+                               VIR_TYPED_PARAM_UINT,
+                               NULL) < 0)
         return -1;
 
     /*
@@ -1561,10 +1561,8 @@ virXen_setvcpumap(int handle,
         /* The allocated memory to cpumap must be 'sizeof(uint64_t)' byte *
          * for Xen, and also nr_cpus must be 'sizeof(uint64_t) * 8'       */
         if (maplen < 8) {
-            if (VIR_ALLOC_N(new, sizeof(uint64_t)) < 0) {
-                virReportOOMError();
+            if (VIR_ALLOC_N(new, sizeof(uint64_t)) < 0)
                 return -1;
-            }
             memcpy(new, cpumap, maplen);
             bitmap = new;
             nr_cpus = sizeof(uint64_t) * 8;
@@ -1881,10 +1879,8 @@ xenHypervisorInit(struct xenHypervisorVersions *override_versions)
      */
     hv_versions.hypervisor = 2;
 
-    if (VIR_ALLOC(ipt) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(ipt) < 0)
         return -1;
-    }
     /* Currently consider RHEL5.0 Fedora7, xen-3.1, and xen-unstable */
     hv_versions.sys_interface = 2; /* XEN_SYSCTL_INTERFACE_VERSION */
     if (virXen_getdomaininfo(fd, 0, &info) == 1) {
@@ -1973,16 +1969,16 @@ xenHypervisorInit(struct xenHypervisorVersions *override_versions)
     }
 
     /* Xen 4.3
-     * sysctl version A -> xen-4.3 release
-     * domctl version 9 -> xen-4.3 release
+     * sysctl version 10 -> xen-unstable commit bec8f17e
+     * domctl version 9 -> xen-unstable commit 65c9792d
      */
-    hv_versions.sys_interface = 0xA; /* XEN_SYSCTL_INTERFACE_VERSION */
+    hv_versions.sys_interface = 10; /* XEN_SYSCTL_INTERFACE_VERSION */
     if (virXen_getdomaininfo(fd, 0, &info) == 1) {
-	hv_versions.dom_interface = 0x9; /* XEN_DOMCTL_INTERFACE_VERSION */
-	if (virXen_getvcpusinfo(fd, 0, 0, ipt, NULL, 0) == 0) {
-	    VIR_DEBUG("Using hypervisor call v2, sys verA dom ver9");
-	    goto done;
-	}
+        hv_versions.dom_interface = 9; /* XEN_DOMCTL_INTERFACE_VERSION */
+        if (virXen_getvcpusinfo(fd, 0, 0, ipt, NULL, 0) == 0) {
+            VIR_DEBUG("Using hypervisor call v2, sys ver10 dom ver9");
+            goto done;
+        }
     }
 
     hv_versions.hypervisor = 1;
@@ -2108,7 +2104,7 @@ xenHypervisorBuildCapabilities(virConnectPtr conn, virArch hostarch,
                                int nr_guest_archs)
 {
     virCapsPtr caps;
-    int i;
+    size_t i;
     int hv_major = hv_versions.hv >> 16;
     int hv_minor = hv_versions.hv & 0xFFFF;
 
@@ -2288,7 +2284,7 @@ static virCapsPtr
 xenHypervisorMakeCapabilitiesSunOS(virConnectPtr conn)
 {
     struct guest_arch guest_arches[32];
-    int i = 0;
+    size_t i = 0;
     virCapsPtr caps = NULL;
     int pae, longmode;
     const char *hvm;
@@ -2330,11 +2326,10 @@ xenHypervisorMakeCapabilitiesSunOS(virConnectPtr conn)
         }
     }
 
-    if ((caps = xenHypervisorBuildCapabilities(conn,
-                                               virArchFromHost(),
-                                               pae, hvm,
-                                               guest_arches, i)) == NULL)
-        virReportOOMError();
+    caps = xenHypervisorBuildCapabilities(conn,
+                                          virArchFromHost(),
+                                          pae, hvm,
+                                          guest_arches, i);
 
     return caps;
 }
@@ -2358,7 +2353,7 @@ xenHypervisorMakeCapabilitiesInternal(virConnectPtr conn,
     char line[1024], *str, *token;
     regmatch_t subs[4];
     char *saveptr = NULL;
-    int i;
+    size_t i;
 
     char hvm_type[4] = ""; /* "vmx" or "svm" (or "" if not in CPU). */
     int host_pae = 0;
@@ -2493,7 +2488,6 @@ xenHypervisorMakeCapabilitiesInternal(virConnectPtr conn,
     return caps;
 
  no_memory:
-    virReportOOMError();
     virObjectUnref(caps);
     return NULL;
 }
@@ -2663,7 +2657,8 @@ xenHypervisorLookupDomainByUUID(virConnectPtr conn, const unsigned char *uuid)
     xenUnifiedPrivatePtr priv = conn->privateData;
     virDomainDefPtr ret;
     char *name;
-    int maxids = 100, nids, i, id;
+    int maxids = 100, nids, id;
+    size_t i;
 
  retry:
     if (!(XEN_GETDOMAININFOLIST_ALLOC(dominfos, maxids))) {
@@ -2911,7 +2906,9 @@ xenHypervisorNodeGetCellsFreeMemory(virConnectPtr conn,
                                     int maxCells)
 {
     xen_op_v2_sys op_sys;
-    int i, j, ret;
+    size_t i;
+    int cell;
+    int ret;
     xenUnifiedPrivatePtr priv = conn->privateData;
 
     if (priv->nbNodeCells < 0) {
@@ -2938,22 +2935,22 @@ xenHypervisorNodeGetCellsFreeMemory(virConnectPtr conn,
     memset(&op_sys, 0, sizeof(op_sys));
     op_sys.cmd = XEN_V2_OP_GETAVAILHEAP;
 
-    for (i = startCell, j = 0;
-         i < priv->nbNodeCells && j < maxCells; i++, j++) {
+    for (cell = startCell, i = 0;
+         cell < priv->nbNodeCells && i < maxCells; cell++, i++) {
         if (hv_versions.sys_interface >= 5)
-            op_sys.u.availheap5.node = i;
+            op_sys.u.availheap5.node = cell;
         else
-            op_sys.u.availheap.node = i;
+            op_sys.u.availheap.node = cell;
         ret = xenHypervisorDoV2Sys(priv->handle, &op_sys);
         if (ret < 0) {
             return -1;
         }
         if (hv_versions.sys_interface >= 5)
-            freeMems[j] = op_sys.u.availheap5.avail_bytes;
+            freeMems[i] = op_sys.u.availheap5.avail_bytes;
         else
-            freeMems[j] = op_sys.u.availheap.avail_bytes;
+            freeMems[i] = op_sys.u.availheap.avail_bytes;
     }
-    return j;
+    return i;
 }
 
 
@@ -3041,7 +3038,8 @@ xenHypervisorGetVcpus(virConnectPtr conn,
     int ret;
     xenUnifiedPrivatePtr priv = conn->privateData;
     virVcpuInfoPtr ipt;
-    int nbinfo, i;
+    int nbinfo;
+    size_t i;
 
     if (sizeof(cpumap_t) & 7) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",

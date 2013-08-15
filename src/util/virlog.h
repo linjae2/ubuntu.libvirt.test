@@ -97,7 +97,7 @@ static inline void virLogEatParams(virLogSource unused, ...)
 struct _virLogMetadata {
     const char *key;
     const char *s;              /* String value, or NULL to use "i" */
-    int i;
+    int iv;
 };
 
 typedef struct _virLogMetadata virLogMetadata;
@@ -171,6 +171,7 @@ extern int virLogReset(void);
 extern int virLogParseDefaultPriority(const char *priority);
 extern int virLogParseFilters(const char *filters);
 extern int virLogParseOutputs(const char *output);
+extern int virLogPriorityFromSyslog(int priority);
 extern void virLogMessage(virLogSource src,
                           virLogPriority priority,
                           const char *filename,

@@ -22,7 +22,6 @@
 
 #include <config.h>
 
-#include <dirent.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
@@ -263,7 +262,8 @@ int virProcessKill(pid_t pid, int sig)
 int
 virProcessKillPainfully(pid_t pid, bool force)
 {
-    int i, ret = -1;
+    size_t i;
+    int ret = -1;
     const char *signame = "TERM";
 
     VIR_DEBUG("vpid=%lld force=%d", (long long)pid, force);
@@ -323,7 +323,7 @@ cleanup:
 
 int virProcessSetAffinity(pid_t pid, virBitmapPtr map)
 {
-    int i;
+    size_t i;
     bool set = false;
 # ifdef CPU_ALLOC
     /* New method dynamically allocates cpu mask, allowing unlimted cpus */
@@ -393,7 +393,7 @@ int virProcessGetAffinity(pid_t pid,
                           virBitmapPtr *map,
                           int maxcpu)
 {
-    int i;
+    size_t i;
 # ifdef CPU_ALLOC
     /* New method dynamically allocates cpu mask, allowing unlimted cpus */
     int numcpus = 1024;
@@ -430,10 +430,8 @@ realloc:
     }
 
     *map = virBitmapNew(maxcpu);
-    if (!*map) {
-        virReportOOMError();
+    if (!*map)
         return -1;
-    }
 
     for (i = 0; i < maxcpu; i++)
         if (CPU_ISSET_S(i, masklen, mask))
@@ -477,10 +475,8 @@ int virProcessGetAffinity(pid_t pid ATTRIBUTE_UNUSED,
                           virBitmapPtr *map,
                           int maxcpu)
 {
-    if (!(*map = virBitmapNew(maxcpu))) {
-        virReportOOMError();
+    if (!(*map = virBitmapNew(maxcpu)))
         return -1;
-    }
     virBitmapSetAll(*map);
 
     return 0;
@@ -513,51 +509,29 @@ int virProcessGetNamespaces(pid_t pid,
                             int **fdlist)
 {
     int ret = -1;
-    DIR *dh = NULL;
-    struct dirent *de;
-    char *nsdir = NULL;
     char *nsfile = NULL;
-    size_t i;
+    size_t i = 0;
+    const char *ns[] = { "user", "ipc", "uts", "net", "pid", "mnt" };
 
     *nfdlist = 0;
     *fdlist = NULL;
 
-    if (virAsprintf(&nsdir, "/proc/%llu/ns",
-                    (unsigned long long)pid) < 0) {
-        virReportOOMError();
-        goto cleanup;
-    }
-
-    if (!(dh = opendir(nsdir))) {
-        virReportSystemError(errno,
-                             _("Cannot read directory %s"),
-                             nsdir);
-        goto cleanup;
-    }
-
-    while ((de = readdir(dh))) {
+    for (i = 0; i < ARRAY_CARDINALITY(ns); i++) {
         int fd;
-        if (de->d_name[0] == '.')
-            continue;
 
-        if (VIR_EXPAND_N(*fdlist, *nfdlist, 1) < 0) {
-            virReportOOMError();
+        if (virAsprintf(&nsfile, "/proc/%llu/ns/%s",
+                        (unsigned long long)pid,
+                        ns[i]) < 0)
             goto cleanup;
-        }
 
-        if (virAsprintf(&nsfile, "%s/%s", nsdir, de->d_name) < 0) {
-            virReportOOMError();
-            goto cleanup;
-        }
+        if ((fd = open(nsfile, O_RDWR)) >= 0) {
+            if (VIR_EXPAND_N(*fdlist, *nfdlist, 1) < 0) {
+                VIR_FORCE_CLOSE(fd);
+                goto cleanup;
+            }
 
-        if ((fd = open(nsfile, O_RDWR)) < 0) {
-            virReportSystemError(errno,
-                                 _("Unable to open %s"),
-                                 nsfile);
-            goto cleanup;
+            (*fdlist)[(*nfdlist)-1] = fd;
         }
-
-        (*fdlist)[(*nfdlist)-1] = fd;
 
         VIR_FREE(nsfile);
     }
@@ -565,14 +539,10 @@ int virProcessGetNamespaces(pid_t pid,
     ret = 0;
 
 cleanup:
-    if (dh)
-        closedir(dh);
-    VIR_FREE(nsdir);
     VIR_FREE(nsfile);
     if (ret < 0) {
-        for (i = 0; i < *nfdlist; i++) {
+        for (i = 0; i < *nfdlist; i++)
             VIR_FORCE_CLOSE((*fdlist)[i]);
-        }
         VIR_FREE(*fdlist);
     }
     return ret;
@@ -590,7 +560,13 @@ int virProcessSetNamespaces(size_t nfdlist,
         return -1;
     }
     for (i = 0; i < nfdlist; i++) {
-        if (setns(fdlist[i], 0) < 0) {
+        /* We get EINVAL if new NS is same as the current
+         * NS, or if the fd namespace doesn't match the
+         * type passed to setns()'s second param. Since we
+         * pass 0, we know the EINVAL is harmless
+         */
+        if (setns(fdlist[i], 0) < 0 &&
+            errno != EINVAL) {
             virReportSystemError(errno, "%s",
                                  _("Unable to join domain namespace"));
             return -1;
@@ -781,10 +757,8 @@ int virProcessGetStartTime(pid_t pid,
     char **tokens = NULL;
 
     if (virAsprintf(&filename, "/proc/%llu/stat",
-                    (unsigned long long)pid) < 0) {
-        virReportOOMError();
+                    (unsigned long long)pid) < 0)
         return -1;
-    }
 
     if ((len = virFileReadAll(filename, 1024, &buf)) < 0)
         goto cleanup;

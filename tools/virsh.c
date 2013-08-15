@@ -199,7 +199,6 @@ vshStringToArray(const char *str,
     }
 
     if (VIR_ALLOC_N(arr, nstr_tokens) < 0) {
-        virReportOOMError();
         VIR_FREE(str_copied);
         return -1;
     }
@@ -589,7 +588,7 @@ vshTreePrintInternal(vshControl *ctl,
                      bool root,
                      virBufferPtr indent)
 {
-    int i;
+    size_t i;
     int nextlastdev = -1;
     int ret = -1;
     const char *dev = (lookup)(devid, false, opaque);
@@ -634,18 +633,15 @@ vshTreePrintInternal(vshControl *ctl,
                                  false, indent) < 0)
             goto cleanup;
     }
-    if (virBufferTrim(indent, "  ", -1) < 0)
-        goto cleanup;
+    virBufferTrim(indent, "  ", -1);
 
     /* If there was no child device, and we're the last in
      * a list of devices, then print another blank line */
     if (nextlastdev == -1 && devid == lastdev)
         vshPrint(ctl, "%s\n", virBufferCurrentContent(indent));
 
-    if (!root) {
-        if (virBufferTrim(indent, NULL, 2) < 0)
-            goto cleanup;
-    }
+    if (!root)
+        virBufferTrim(indent, NULL, 2);
     ret = 0;
 cleanup:
     return ret;
@@ -995,7 +991,7 @@ static int
 vshCmddefOptParse(const vshCmdDef *cmd, uint32_t *opts_need_arg,
                   uint32_t *opts_required)
 {
-    int i;
+    size_t i;
     bool optional = false;
 
     *opts_need_arg = 0;
@@ -1015,7 +1011,7 @@ vshCmddefOptParse(const vshCmdDef *cmd, uint32_t *opts_need_arg,
             continue;
         }
         if (opt->type == VSH_OT_ALIAS) {
-            int j;
+            size_t j;
             if (opt->flags || !opt->help)
                 return -1; /* alias options are tracked by the original name */
             for (j = i + 1; cmd->opts[j].name; j++) {
@@ -1056,7 +1052,7 @@ static const vshCmdOptDef *
 vshCmddefGetOption(vshControl *ctl, const vshCmdDef *cmd, const char *name,
                    uint32_t *opts_seen, int *opt_index)
 {
-    int i;
+    size_t i;
 
     if (STREQ(name, helpopt.name)) {
         return &helpopt;
@@ -1091,7 +1087,7 @@ static const vshCmdOptDef *
 vshCmddefGetData(const vshCmdDef *cmd, uint32_t *opts_need_arg,
                  uint32_t *opts_seen)
 {
-    int i;
+    size_t i;
     const vshCmdOptDef *opt;
 
     if (!*opts_need_arg)
@@ -1114,7 +1110,7 @@ vshCommandCheckOpts(vshControl *ctl, const vshCmd *cmd, uint32_t opts_required,
                     uint32_t opts_seen)
 {
     const vshCmdDef *def = cmd->def;
-    int i;
+    size_t i;
 
     opts_required &= ~opts_seen;
     if (!opts_required)
@@ -2978,7 +2974,8 @@ vshAllowedEscapeChar(char c)
 static bool
 vshParseArgv(vshControl *ctl, int argc, char **argv)
 {
-    int arg, len, debug, i;
+    int arg, len, debug;
+    size_t i;
     int longindex = -1;
     struct option opt[] = {
         {"debug", required_argument, NULL, 'd'},

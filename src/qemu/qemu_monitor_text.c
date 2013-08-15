@@ -157,7 +157,7 @@ int qemuMonitorTextIOProcess(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                 VIR_DEBUG("Seen a password prompt [%s]", data + used);
 #endif
                 if (msg->passwordHandler) {
-                    int i;
+                    size_t i;
                     /* Try and handle the prompt. The handler is required
                      * to report a normal libvirt error */
                     if (msg->passwordHandler(mon, msg,
@@ -190,10 +190,8 @@ int qemuMonitorTextIOProcess(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
              * BASIC_PROMPT we can reasonably reliably cope */
             if (want) {
                 if (VIR_REALLOC_N(msg->rxBuffer,
-                                  msg->rxLength + want + 1) < 0) {
-                    virReportOOMError();
+                                  msg->rxLength + want + 1) < 0)
                     return -1;
-                }
                 memcpy(msg->rxBuffer + msg->rxLength, start, want);
                 msg->rxLength += want;
                 msg->rxBuffer[msg->rxLength] = '\0';
@@ -233,10 +231,8 @@ qemuMonitorTextCommandWithHandler(qemuMonitorPtr mon,
 
     memset(&msg, 0, sizeof(msg));
 
-    if (virAsprintf(&msg.txBuffer, "%s\r", cmd) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&msg.txBuffer, "%s\r", cmd) < 0)
         return -1;
-    }
     msg.txLength = strlen(msg.txBuffer);
     msg.txFD = scm_fd;
     msg.passwordHandler = passwordHandler;
@@ -346,7 +342,6 @@ qemuMonitorSendDiskPassphrase(qemuMonitorPtr mon,
                       msg->txLength + passphrase_len + 1 + 1) < 0) {
         memset(passphrase, 0, passphrase_len);
         VIR_FREE(passphrase);
-        virReportOOMError();
         return -1;
     }
 
@@ -457,10 +452,8 @@ int qemuMonitorTextSetLink(qemuMonitorPtr mon, const char *name, enum virDomainN
     else
         st_str = "on";
 
-    if (virAsprintf(&cmd, "set_link %s %s", name, st_str) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "set_link %s %s", name, st_str) < 0)
         goto error;
-    }
     if (qemuMonitorHMPCommand(mon, cmd, &info) < 0)
         goto error;
 
@@ -768,10 +761,8 @@ int qemuMonitorTextGetBlockInfo(qemuMonitorPtr mon,
         dev = p;
         p = strchr(p, ':');
         if (p && p < eol && *(p + 1) == ' ') {
-            if (VIR_ALLOC(info) < 0) {
-                virReportOOMError();
+            if (VIR_ALLOC(info) < 0)
                 goto cleanup;
-            }
 
             *p = '\0';
             p += 2;
@@ -1057,10 +1048,8 @@ int qemuMonitorTextBlockResize(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "block_resize %s %lluB", device, size) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "block_resize %s %lluB", device, size) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1091,10 +1080,8 @@ qemuMonitorSendVNCPassphrase(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
     /* Enlarge transmit buffer to allow for the extra data
      * to be sent back */
     if (VIR_REALLOC_N(msg->txBuffer,
-                      msg->txLength + passphrase_len + 1 + 1) < 0) {
-        virReportOOMError();
+                      msg->txLength + passphrase_len + 1 + 1) < 0)
         return -1;
-    }
 
     /* Queue the password for sending */
     memcpy(msg->txBuffer + msg->txLength,
@@ -1135,10 +1122,8 @@ int qemuMonitorTextSetPassword(qemuMonitorPtr mon,
     int ret = -1;
 
     if (virAsprintf(&cmd, "set_password %s \"%s\" %s",
-                    protocol, password, action_if_connected) < 0) {
-        virReportOOMError();
+                    protocol, password, action_if_connected) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1166,10 +1151,8 @@ int qemuMonitorTextExpirePassword(qemuMonitorPtr mon,
     int ret = -1;
 
     if (virAsprintf(&cmd, "expire_password %s %s",
-                    protocol, expire_time) < 0) {
-        virReportOOMError();
+                    protocol, expire_time) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1202,10 +1185,8 @@ int qemuMonitorTextSetBalloon(qemuMonitorPtr mon,
      * 'newmem' is in KB, QEMU monitor works in MB, and we all wish
      * we just worked in bytes with unsigned long long everywhere.
      */
-    if (virAsprintf(&cmd, "balloon %lu", VIR_DIV_UP(newmem, 1024)) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "balloon %lu", VIR_DIV_UP(newmem, 1024)) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0) {
         VIR_FREE(cmd);
@@ -1231,16 +1212,14 @@ int qemuMonitorTextSetBalloon(qemuMonitorPtr mon,
  * Returns: 0 if CPU hotplug not supported, +1 if CPU hotplug worked
  * or -1 on failure
  */
-int qemuMonitorTextSetCPU(qemuMonitorPtr mon, int cpu, int online)
+int qemuMonitorTextSetCPU(qemuMonitorPtr mon, int cpu, bool online)
 {
     char *cmd;
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "cpu_set %d %s", cpu, online ? "online" : "offline") < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "cpu_set %d %s", cpu, online ? "online" : "offline") < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0) {
         VIR_FREE(cmd);
@@ -1270,10 +1249,8 @@ int qemuMonitorTextEjectMedia(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "eject %s%s", force ? "-f " : "", dev_name) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "eject %s%s", force ? "-f " : "", dev_name) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1306,15 +1283,11 @@ int qemuMonitorTextChangeMedia(qemuMonitorPtr mon,
     char *safepath = NULL;
     int ret = -1;
 
-    if (!(safepath = qemuMonitorEscapeArg(newmedia))) {
-        virReportOOMError();
+    if (!(safepath = qemuMonitorEscapeArg(newmedia)))
         goto cleanup;
-    }
 
-    if (virAsprintf(&cmd, "change %s \"%s\"", dev_name, safepath) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "change %s \"%s\"", dev_name, safepath) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1355,15 +1328,11 @@ static int qemuMonitorTextSaveMemory(qemuMonitorPtr mon,
     char *safepath = NULL;
     int ret = -1;
 
-    if (!(safepath = qemuMonitorEscapeArg(path))) {
-        virReportOOMError();
+    if (!(safepath = qemuMonitorEscapeArg(path)))
         goto cleanup;
-    }
 
-    if (virAsprintf(&cmd, "%s %llu %zi \"%s\"", cmdtype, offset, length, safepath) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "%s %llu %zi \"%s\"", cmdtype, offset, length, safepath) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1404,10 +1373,8 @@ int qemuMonitorTextSetMigrationSpeed(qemuMonitorPtr mon,
     char *info = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "migrate_set_speed %lum", bandwidth) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "migrate_set_speed %lum", bandwidth) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &info) < 0)
         goto cleanup;
@@ -1428,10 +1395,8 @@ int qemuMonitorTextSetMigrationDowntime(qemuMonitorPtr mon,
     char *info = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "migrate_set_downtime %llums", downtime) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "migrate_set_downtime %llums", downtime) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &info) < 0)
         goto cleanup;
@@ -1600,10 +1565,8 @@ int qemuMonitorTextMigrate(qemuMonitorPtr mon,
     virBuffer extra = VIR_BUFFER_INITIALIZER;
     char *extrastr = NULL;
 
-    if (!safedest) {
-        virReportOOMError();
+    if (!safedest)
         return -1;
-    }
 
     if (flags & QEMU_MONITOR_MIGRATE_BACKGROUND)
         virBufferAddLit(&extra, " -d");
@@ -1619,10 +1582,8 @@ int qemuMonitorTextMigrate(qemuMonitorPtr mon,
 
     extrastr = virBufferContentAndReset(&extra);
     if (virAsprintf(&cmd, "migrate %s\"%s\"", extrastr ? extrastr : "",
-                    safedest) < 0) {
-        virReportOOMError();
+                    safedest) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &info) < 0)
         goto cleanup;
@@ -1676,10 +1637,8 @@ int qemuMonitorTextGraphicsRelocate(qemuMonitorPtr mon,
 
     if (virAsprintf(&cmd, "client_migrate_info %s %s %d %d %s",
                     type == VIR_DOMAIN_GRAPHICS_TYPE_SPICE ? "spice" : "vnc",
-                    hostname, port, tlsPort, tlsSubject ? tlsSubject : "") < 0) {
-        virReportOOMError();
+                    hostname, port, tlsPort, tlsSubject ? tlsSubject : "") < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &info) < 0) {
         VIR_FREE(cmd);
@@ -1701,15 +1660,11 @@ int qemuMonitorTextAddUSBDisk(qemuMonitorPtr mon,
     char *info = NULL;
 
     safepath = qemuMonitorEscapeArg(path);
-    if (!safepath) {
-        virReportOOMError();
+    if (!safepath)
         return -1;
-    }
 
-    if (virAsprintf(&cmd, "usb_add disk:%s", safepath) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "usb_add disk:%s", safepath) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &info) < 0)
         goto cleanup;
@@ -1739,10 +1694,8 @@ static int qemuMonitorTextAddUSBDevice(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "usb_add %s", addr) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "usb_add %s", addr) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1771,10 +1724,8 @@ int qemuMonitorTextAddUSBDeviceExact(qemuMonitorPtr mon,
     int ret;
     char *addr;
 
-    if (virAsprintf(&addr, "host:%.3d.%.3d", bus, dev) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&addr, "host:%.3d.%.3d", bus, dev) < 0)
         return -1;
-    }
 
     ret = qemuMonitorTextAddUSBDevice(mon, addr);
 
@@ -1789,10 +1740,8 @@ int qemuMonitorTextAddUSBDeviceMatch(qemuMonitorPtr mon,
     int ret;
     char *addr;
 
-    if (virAsprintf(&addr, "host:%.4x:%.4x", vendor, product) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&addr, "host:%.4x:%.4x", vendor, product) < 0)
         return -1;
-    }
 
     ret = qemuMonitorTextAddUSBDevice(mon, addr);
 
@@ -1877,10 +1826,8 @@ int qemuMonitorTextAddPCIHostDevice(qemuMonitorPtr mon,
 
     /* XXX hostAddr->domain */
     if (virAsprintf(&cmd, "pci_add pci_addr=auto host host=%.2x:%.2x.%.1x",
-                    hostAddr->bus, hostAddr->slot, hostAddr->function) < 0) {
-        virReportOOMError();
+                    hostAddr->bus, hostAddr->slot, hostAddr->function) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1914,21 +1861,17 @@ int qemuMonitorTextAddPCIDisk(qemuMonitorPtr mon,
     char *cmd = NULL;
     char *reply = NULL;
     char *safe_path = NULL;
-    int tryOldSyntax = 0;
+    bool tryOldSyntax = false;
     int ret = -1;
 
     safe_path = qemuMonitorEscapeArg(path);
-    if (!safe_path) {
-        virReportOOMError();
+    if (!safe_path)
         return -1;
-    }
 
 try_command:
     if (virAsprintf(&cmd, "pci_add %s storage file=%s,if=%s",
-                    (tryOldSyntax ? "0": "pci_addr=auto"), safe_path, bus) < 0) {
-        virReportOOMError();
+                    (tryOldSyntax ? "0": "pci_addr=auto"), safe_path, bus) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1937,7 +1880,7 @@ try_command:
         if (!tryOldSyntax && strstr(reply, "invalid char in expression")) {
             VIR_FREE(reply);
             VIR_FREE(cmd);
-            tryOldSyntax = 1;
+            tryOldSyntax = true;
             goto try_command;
         }
 
@@ -1964,10 +1907,8 @@ int qemuMonitorTextAddPCINetwork(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "pci_add pci_addr=auto nic %s", nicstr) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "pci_add pci_addr=auto nic %s", nicstr) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1992,22 +1933,18 @@ int qemuMonitorTextRemovePCIDevice(qemuMonitorPtr mon,
 {
     char *cmd = NULL;
     char *reply = NULL;
-    int tryOldSyntax = 0;
+    bool tryOldSyntax = false;
     int ret = -1;
 
 try_command:
     if (tryOldSyntax) {
-        if (virAsprintf(&cmd, "pci_del 0 %.2x", guestAddr->slot) < 0) {
-            virReportOOMError();
+        if (virAsprintf(&cmd, "pci_del 0 %.2x", guestAddr->slot) < 0)
             goto cleanup;
-        }
     } else {
         /* XXX function ? */
         if (virAsprintf(&cmd, "pci_del pci_addr=%.4x:%.2x:%.2x",
-                        guestAddr->domain, guestAddr->bus, guestAddr->slot) < 0) {
-            virReportOOMError();
+                        guestAddr->domain, guestAddr->bus, guestAddr->slot) < 0)
             goto cleanup;
-        }
     }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
@@ -2018,7 +1955,7 @@ try_command:
      * need to try the old syntax */
     if (!tryOldSyntax &&
         strstr(reply, "extraneous characters")) {
-        tryOldSyntax = 1;
+        tryOldSyntax = true;
         VIR_FREE(reply);
         VIR_FREE(cmd);
         goto try_command;
@@ -2050,10 +1987,8 @@ int qemuMonitorTextSendFileHandle(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "getfd %s", fdname) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "getfd %s", fdname) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommandWithFd(mon, cmd, fd, &reply) < 0)
         goto cleanup;
@@ -2090,10 +2025,8 @@ int qemuMonitorTextCloseFileHandle(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "closefd %s", fdname) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "closefd %s", fdname) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2123,10 +2056,8 @@ int qemuMonitorTextAddHostNetwork(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "host_net_add %s", netstr) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "host_net_add %s", netstr) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2155,10 +2086,8 @@ int qemuMonitorTextRemoveHostNetwork(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "host_net_remove %d %s", vlan, netname) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "host_net_remove %d %s", vlan, netname) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2181,10 +2110,8 @@ int qemuMonitorTextAddNetdev(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "netdev_add %s", netdevstr) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "netdev_add %s", netdevstr) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2207,10 +2134,8 @@ int qemuMonitorTextRemoveNetdev(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "netdev_del %s", alias) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "netdev_del %s", alias) < 0)
         return -1;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2314,15 +2239,13 @@ int qemuMonitorTextAttachPCIDiskController(qemuMonitorPtr mon,
 {
     char *cmd = NULL;
     char *reply = NULL;
-    int tryOldSyntax = 0;
+    bool tryOldSyntax = false;
     int ret = -1;
 
 try_command:
     if (virAsprintf(&cmd, "pci_add %s storage if=%s",
-                    (tryOldSyntax ? "0": "pci_addr=auto"), bus) < 0) {
-        virReportOOMError();
+                    (tryOldSyntax ? "0": "pci_addr=auto"), bus) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2331,7 +2254,7 @@ try_command:
         if (!tryOldSyntax && strstr(reply, "invalid char in expression")) {
             VIR_FREE(reply);
             VIR_FREE(cmd);
-            tryOldSyntax = 1;
+            tryOldSyntax = true;
             goto try_command;
         }
 
@@ -2403,22 +2326,18 @@ int qemuMonitorTextAttachDrive(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
     char *safe_str;
-    int tryOldSyntax = 0;
+    bool tryOldSyntax = false;
 
     safe_str = qemuMonitorEscapeArg(drivestr);
-    if (!safe_str) {
-        virReportOOMError();
+    if (!safe_str)
         return -1;
-    }
 
 try_command:
     if (virAsprintf(&cmd, "drive_add %s%.2x:%.2x:%.2x %s",
                     (tryOldSyntax ? "" : "pci_addr="),
                     controllerAddr->domain, controllerAddr->bus,
-                    controllerAddr->slot, safe_str) < 0) {
-        virReportOOMError();
+                    controllerAddr->slot, safe_str) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2433,7 +2352,7 @@ try_command:
         if (!tryOldSyntax && strstr(reply, "invalid char in expression")) {
             VIR_FREE(reply);
             VIR_FREE(cmd);
-            tryOldSyntax = 1;
+            tryOldSyntax = true;
             goto try_command;
         }
         virReportError(VIR_ERR_OPERATION_FAILED,
@@ -2546,10 +2465,8 @@ int qemuMonitorTextGetAllPCIAddresses(qemuMonitorPtr mon,
         p++;
         GET_INT(p, 16, product);
 
-        if (VIR_REALLOC_N(addrs, naddrs+1) < 0) {
-            virReportOOMError();
+        if (VIR_REALLOC_N(addrs, naddrs+1) < 0)
             goto error;
-        }
 
         addrs[naddrs].addr.domain = 0;
         addrs[naddrs].addr.bus = bus;
@@ -2587,15 +2504,11 @@ int qemuMonitorTextDelDevice(qemuMonitorPtr mon,
     char *safedev;
     int ret = -1;
 
-    if (!(safedev = qemuMonitorEscapeArg(devalias))) {
-        virReportOOMError();
+    if (!(safedev = qemuMonitorEscapeArg(devalias)))
         goto cleanup;
-    }
 
-    if (virAsprintf(&cmd, "device_del %s", safedev) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "device_del %s", safedev) < 0)
         goto cleanup;
-    }
 
     VIR_DEBUG("TextDelDevice devalias=%s", devalias);
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
@@ -2625,15 +2538,11 @@ int qemuMonitorTextAddDevice(qemuMonitorPtr mon,
     char *safedev;
     int ret = -1;
 
-    if (!(safedev = qemuMonitorEscapeArg(devicestr))) {
-        virReportOOMError();
+    if (!(safedev = qemuMonitorEscapeArg(devicestr)))
         goto cleanup;
-    }
 
-    if (virAsprintf(&cmd, "device_add %s", safedev) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "device_add %s", safedev) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2673,17 +2582,13 @@ int qemuMonitorTextAddDrive(qemuMonitorPtr mon,
     char *safe_str;
 
     safe_str = qemuMonitorEscapeArg(drivestr);
-    if (!safe_str) {
-        virReportOOMError();
+    if (!safe_str)
         return -1;
-    }
 
     /* 'dummy' here is just a placeholder since there is no PCI
      * address required when attaching drives to a controller */
-    if (virAsprintf(&cmd, "drive_add dummy %s", safe_str) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "drive_add dummy %s", safe_str) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2720,15 +2625,11 @@ int qemuMonitorTextDriveDel(qemuMonitorPtr mon,
     int ret = -1;
     VIR_DEBUG("TextDriveDel drivestr=%s", drivestr);
 
-    if (!(safedev = qemuMonitorEscapeArg(drivestr))) {
-        virReportOOMError();
+    if (!(safedev = qemuMonitorEscapeArg(drivestr)))
         goto cleanup;
-    }
 
-    if (virAsprintf(&cmd, "drive_del %s", safedev) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "drive_del %s", safedev) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2769,16 +2670,12 @@ int qemuMonitorTextSetDrivePassphrase(qemuMonitorPtr mon,
     char *safe_str;
 
     safe_str = qemuMonitorEscapeArg(passphrase);
-    if (!safe_str) {
-        virReportOOMError();
+    if (!safe_str)
         return -1;
-    }
 
     if (virAsprintf(&cmd, "block_passwd %s%s \"%s\"",
-                    QEMU_DRIVE_HOST_PREFIX, alias, safe_str) < 0) {
-        virReportOOMError();
+                    QEMU_DRIVE_HOST_PREFIX, alias, safe_str) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -2810,10 +2707,8 @@ int qemuMonitorTextCreateSnapshot(qemuMonitorPtr mon, const char *name)
     char *safename;
 
     if (!(safename = qemuMonitorEscapeArg(name)) ||
-        virAsprintf(&cmd, "savevm \"%s\"", safename) < 0) {
-        virReportOOMError();
+        virAsprintf(&cmd, "savevm \"%s\"", safename) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply))
         goto cleanup;
@@ -2855,10 +2750,8 @@ int qemuMonitorTextLoadSnapshot(qemuMonitorPtr mon, const char *name)
     char *safename;
 
     if (!(safename = qemuMonitorEscapeArg(name)) ||
-        virAsprintf(&cmd, "loadvm \"%s\"", safename) < 0) {
-        virReportOOMError();
+        virAsprintf(&cmd, "loadvm \"%s\"", safename) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply))
         goto cleanup;
@@ -2910,10 +2803,8 @@ int qemuMonitorTextDeleteSnapshot(qemuMonitorPtr mon, const char *name)
     char *safename;
 
     if (!(safename = qemuMonitorEscapeArg(name)) ||
-        virAsprintf(&cmd, "delvm \"%s\"", safename) < 0) {
-        virReportOOMError();
+        virAsprintf(&cmd, "delvm \"%s\"", safename) < 0)
         goto cleanup;
-    }
     if (qemuMonitorHMPCommand(mon, cmd, &reply))
         goto cleanup;
 
@@ -2948,10 +2839,8 @@ int qemuMonitorTextArbitraryCommand(qemuMonitorPtr mon, const char *cmd,
     char *safecmd = NULL;
     int ret;
 
-    if (!(safecmd = qemuMonitorEscapeArg(cmd))) {
-        virReportOOMError();
+    if (!(safecmd = qemuMonitorEscapeArg(cmd)))
         return -1;
-    }
 
     ret = qemuMonitorHMPCommand(mon, safecmd, reply);
 
@@ -2984,7 +2873,7 @@ int qemuMonitorTextSendKey(qemuMonitorPtr mon,
                            unsigned int *keycodes,
                            unsigned int nkeycodes)
 {
-    int i;
+    size_t i;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
     char *cmd, *reply = NULL;
     int ret = -1;
@@ -2996,7 +2885,7 @@ int qemuMonitorTextSendKey(qemuMonitorPtr mon,
     for (i = 0; i < nkeycodes; i++) {
         if (keycodes[i] > 0xffff) {
             virReportError(VIR_ERR_OPERATION_FAILED,
-                           _("keycode %d is invalid: 0x%X"),
+                           _("keycode %zu is invalid: 0x%X"),
                            i, keycodes[i]);
             virBufferFreeAndReset(&buf);
             return -1;
@@ -3040,10 +2929,8 @@ int qemuMonitorTextScreendump(qemuMonitorPtr mon, const char *file)
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "screendump %s", file) < 0){
-        virReportOOMError();
+    if (virAsprintf(&cmd, "screendump %s", file) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -3071,10 +2958,8 @@ int qemuMonitorTextOpenGraphics(qemuMonitorPtr mon,
     char *reply = NULL;
     int ret = -1;
 
-    if (virAsprintf(&cmd, "add_client %s %s %d", protocol, fdname, skipauth ? 0 : 1) < 0){
-        virReportOOMError();
+    if (virAsprintf(&cmd, "add_client %s %s %d", protocol, fdname, skipauth ? 0 : 1) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -3105,10 +2990,8 @@ int qemuMonitorTextSetBlockIoThrottle(qemuMonitorPtr mon,
     if (virAsprintf(&cmd, "%s %s %llu %llu %llu %llu %llu %llu", cmd_name,
                     device, info->total_bytes_sec, info->read_bytes_sec,
                     info->write_bytes_sec, info->total_iops_sec,
-                    info->read_iops_sec, info->write_iops_sec) < 0) {
-        virReportOOMError();
+                    info->read_iops_sec, info->write_iops_sec) < 0)
         goto cleanup;
-    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &result) < 0)
         goto cleanup;

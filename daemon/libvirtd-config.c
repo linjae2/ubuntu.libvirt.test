@@ -67,7 +67,8 @@ remoteConfigGetStringList(virConfPtr conf, const char *key, char ***list_arg,
         break;
 
     case VIR_CONF_LIST: {
-        int i, len = 0;
+        int len = 0;
+        size_t i;
         virConfValuePtr pp;
         for (pp = p->list; pp; pp = pp->next)
             len++;
@@ -87,7 +88,7 @@ remoteConfigGetStringList(virConfPtr conf, const char *key, char ***list_arg,
                 return -1;
             }
             if (VIR_STRDUP(list[i], pp->str) < 0) {
-                int j;
+                size_t j;
                 for (j = 0; j < i; j++)
                     VIR_FREE(list[j]);
                 VIR_FREE(list);
@@ -200,15 +201,13 @@ daemonConfigFilePath(bool privileged, char **configfile)
 
         if (virAsprintf(configfile, "%s/libvirtd.conf", configdir) < 0) {
             VIR_FREE(configdir);
-            goto no_memory;
+            goto error;
         }
         VIR_FREE(configdir);
     }
 
     return 0;
 
-no_memory:
-    virReportOOMError();
 error:
     return -1;
 }
@@ -220,10 +219,8 @@ daemonConfigNew(bool privileged ATTRIBUTE_UNUSED)
     char *localhost;
     int ret;
 
-    if (VIR_ALLOC(data) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(data) < 0)
         return NULL;
-    }
 
     data->listen_tls = 1;
     data->listen_tcp = 0;
@@ -283,7 +280,7 @@ daemonConfigNew(bool privileged ATTRIBUTE_UNUSED)
          * running in disconnected operation, and report a less
          * useful Avahi string
          */
-        ret = virAsprintf(&data->mdns_name, "Virtualization Host");
+        ret = VIR_STRDUP(data->mdns_name, "Virtualization Host");
     } else {
         char *tmp;
         /* Extract the host part of the potentially FQDN */
@@ -294,12 +291,10 @@ daemonConfigNew(bool privileged ATTRIBUTE_UNUSED)
     }
     VIR_FREE(localhost);
     if (ret < 0)
-        goto no_memory;
+        goto error;
 
     return data;
 
-no_memory:
-    virReportOOMError();
 error:
     daemonConfigFree(data);
     return NULL;
@@ -316,6 +311,12 @@ daemonConfigFree(struct daemonConfig *data)
     VIR_FREE(data->listen_addr);
     VIR_FREE(data->tls_port);
     VIR_FREE(data->tcp_port);
+    tmp = data->access_drivers;
+    while (tmp && *tmp) {
+        VIR_FREE(*tmp);
+        tmp++;
+    }
+    VIR_FREE(data->access_drivers);
 
     VIR_FREE(data->unix_sock_ro_perms);
     VIR_FREE(data->unix_sock_rw_perms);
@@ -377,6 +378,10 @@ daemonConfigLoadOptions(struct daemonConfig *data,
     if (remoteConfigGetAuth(conf, "auth_tcp", &data->auth_tcp, filename) < 0)
         goto error;
     if (remoteConfigGetAuth(conf, "auth_tls", &data->auth_tls, filename) < 0)
+        goto error;
+
+    if (remoteConfigGetStringList(conf, "access_drivers",
+                                  &data->access_drivers, filename) < 0)
         goto error;
 
     GET_CONF_STR(conf, filename, unix_sock_group);

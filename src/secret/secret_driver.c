@@ -42,6 +42,7 @@
 #include "virfile.h"
 #include "configmake.h"
 #include "virstring.h"
+#include "viraccessapicheck.h"
 
 #define VIR_FROM_THIS VIR_FROM_SECRET
 
@@ -172,10 +173,8 @@ replaceFile(const char *filename, void *data, size_t size)
     char *tmp_path = NULL;
     int fd = -1, ret = -1;
 
-    if (virAsprintf(&tmp_path, "%sXXXXXX", filename) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&tmp_path, "%sXXXXXX", filename) < 0)
         goto cleanup;
-    }
     fd = mkostemp(tmp_path, O_CLOEXEC);
     if (fd == -1) {
         virReportSystemError(errno, _("mkostemp('%s') failed"), tmp_path);
@@ -224,10 +223,7 @@ secretComputePath(virSecretDriverStatePtr driver,
 
     virUUIDFormat(secret->def->uuid, uuidstr);
 
-    if (virAsprintf(&ret, "%s/%s%s", driver->directory, uuidstr, suffix) < 0)
-        /* ret is NULL */
-        virReportOOMError();
-
+    ignore_value(virAsprintf(&ret, "%s/%s%s", driver->directory, uuidstr, suffix));
     return ret;
 }
 
@@ -396,10 +392,8 @@ secretLoadValue(virSecretDriverStatePtr driver,
         goto cleanup;
     }
 
-    if (VIR_ALLOC_N(contents, st.st_size) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC_N(contents, st.st_size) < 0)
         goto cleanup;
-    }
     if (saferead(fd, contents, st.st_size) != st.st_size) {
         virReportSystemError(errno, _("cannot read '%s'"), filename);
         goto cleanup;
@@ -411,10 +405,8 @@ secretLoadValue(virSecretDriverStatePtr driver,
                        _("invalid base64 in '%s'"), filename);
         goto cleanup;
     }
-    if (value == NULL) {
-        virReportOOMError();
+    if (value == NULL)
         goto cleanup;
-    }
 
     secret->value = (unsigned char *)value;
     value = NULL;
@@ -445,10 +437,8 @@ secretLoad(virSecretDriverStatePtr driver,
     char *xml_filename;
 
     if (virAsprintf(&xml_filename, "%s/%s", driver->directory,
-                    xml_basename) < 0) {
-        virReportOOMError();
+                    xml_basename) < 0)
         goto cleanup;
-    }
     def = virSecretDefParseFile(xml_filename);
     if (def == NULL)
         goto cleanup;
@@ -457,10 +447,8 @@ secretLoad(virSecretDriverStatePtr driver,
     if (secretLoadValidateUUID(def, xml_basename) < 0)
         goto cleanup;
 
-    if (VIR_ALLOC(secret) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(secret) < 0)
         goto cleanup;
-    }
     secret->def = def;
     def = NULL;
 
@@ -556,14 +544,20 @@ static int
 secretConnectNumOfSecrets(virConnectPtr conn)
 {
     virSecretDriverStatePtr driver = conn->secretPrivateData;
-    int i;
+    size_t i;
     virSecretEntryPtr secret;
+
+    if (virConnectNumOfSecretsEnsureACL(conn) < 0)
+        return -1;
 
     secretDriverLock(driver);
 
     i = 0;
-    for (secret = driver->secrets; secret != NULL; secret = secret->next)
-        i++;
+    for (secret = driver->secrets; secret != NULL; secret = secret->next) {
+        if (virConnectNumOfSecretsCheckACL(conn,
+                                           secret->def))
+            i++;
+    }
 
     secretDriverUnlock(driver);
     return i;
@@ -573,22 +567,26 @@ static int
 secretConnectListSecrets(virConnectPtr conn, char **uuids, int maxuuids)
 {
     virSecretDriverStatePtr driver = conn->secretPrivateData;
-    int i;
+    size_t i;
     virSecretEntryPtr secret;
 
     memset(uuids, 0, maxuuids * sizeof(*uuids));
+
+    if (virConnectListSecretsEnsureACL(conn) < 0)
+        return -1;
 
     secretDriverLock(driver);
 
     i = 0;
     for (secret = driver->secrets; secret != NULL; secret = secret->next) {
         char *uuidstr;
+        if (!virConnectListSecretsCheckACL(conn,
+                                           secret->def))
+            continue;
         if (i == maxuuids)
             break;
-        if (VIR_ALLOC_N(uuidstr, VIR_UUID_STRING_BUFLEN) < 0) {
-            virReportOOMError();
+        if (VIR_ALLOC_N(uuidstr, VIR_UUID_STRING_BUFLEN) < 0)
             goto cleanup;
-        }
         virUUIDFormat(secret->def->uuid, uuidstr);
         uuids[i] = uuidstr;
         i++;
@@ -638,24 +636,27 @@ secretConnectListAllSecrets(virConnectPtr conn,
     int ret_nsecrets = 0;
     virSecretPtr secret = NULL;
     virSecretEntryPtr entry = NULL;
-    int i = 0;
+    size_t i = 0;
     int ret = -1;
 
     virCheckFlags(VIR_CONNECT_LIST_SECRETS_FILTERS_ALL, -1);
+
+    if (virConnectListAllSecretsEnsureACL(conn) < 0)
+        return -1;
 
     secretDriverLock(driver);
 
     for (entry = driver->secrets; entry != NULL; entry = entry->next)
         nsecrets++;
 
-    if (secrets) {
-        if (VIR_ALLOC_N(tmp_secrets, nsecrets + 1) < 0) {
-            virReportOOMError();
-            goto cleanup;
-        }
-    }
+    if (secrets && VIR_ALLOC_N(tmp_secrets, nsecrets + 1) < 0)
+        goto cleanup;
 
     for (entry = driver->secrets; entry != NULL; entry = entry->next) {
+        if (!virConnectListAllSecretsCheckACL(conn,
+                                              entry->def))
+            continue;
+
         /* filter by whether it's ephemeral */
         if (MATCH(VIR_CONNECT_LIST_SECRETS_FILTERS_EPHEMERAL) &&
             !((MATCH(VIR_CONNECT_LIST_SECRETS_EPHEMERAL) &&
@@ -725,6 +726,9 @@ secretLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
         goto cleanup;
     }
 
+    if (virSecretLookupByUUIDEnsureACL(conn, secret->def) < 0)
+        goto cleanup;
+
     ret = virGetSecret(conn,
                        secret->def->uuid,
                        secret->def->usage_type,
@@ -751,6 +755,9 @@ secretLookupByUsage(virConnectPtr conn, int usageType, const char *usageID)
                        _("no secret with matching usage '%s'"), usageID);
         goto cleanup;
     }
+
+    if (virSecretLookupByUsageEnsureACL(conn, secret->def) < 0)
+        goto cleanup;
 
     ret = virGetSecret(conn,
                        secret->def->uuid,
@@ -781,6 +788,9 @@ secretDefineXML(virConnectPtr conn, const char *xml,
 
     secretDriverLock(driver);
 
+    if (virSecretDefineXMLEnsureACL(conn, new_attrs) < 0)
+        goto cleanup;
+
     secret = secretFindByUUID(driver, new_attrs->uuid);
     if (secret == NULL) {
         /* No existing secret with same UUID, try look for matching usage instead */
@@ -796,10 +806,8 @@ secretDefineXML(virConnectPtr conn, const char *xml,
         }
 
         /* No existing secret at all, create one */
-        if (VIR_ALLOC(secret) < 0) {
-            virReportOOMError();
+        if (VIR_ALLOC(secret) < 0)
             goto cleanup;
-        }
 
         listInsert(&driver->secrets, secret);
         secret->def = new_attrs;
@@ -897,6 +905,9 @@ secretGetXMLDesc(virSecretPtr obj, unsigned int flags)
         goto cleanup;
     }
 
+    if (virSecretGetXMLDescEnsureACL(obj->conn, secret->def) < 0)
+        goto cleanup;
+
     ret = virSecretDefFormat(secret->def);
 
 cleanup:
@@ -917,10 +928,8 @@ secretSetValue(virSecretPtr obj, const unsigned char *value,
 
     virCheckFlags(0, -1);
 
-    if (VIR_ALLOC_N(new_value, value_size) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC_N(new_value, value_size) < 0)
         return -1;
-    }
 
     secretDriverLock(driver);
 
@@ -932,6 +941,9 @@ secretSetValue(virSecretPtr obj, const unsigned char *value,
                        _("no secret with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
+
+    if (virSecretSetValueEnsureACL(obj->conn, secret->def) < 0)
+        goto cleanup;
 
     old_value = secret->value;
     old_value_size = secret->value_size;
@@ -988,6 +1000,9 @@ secretGetValue(virSecretPtr obj, size_t *value_size, unsigned int flags,
         goto cleanup;
     }
 
+    if (virSecretGetValueEnsureACL(obj->conn, secret->def) < 0)
+        goto cleanup;
+
     if (secret->value == NULL) {
         char uuidstr[VIR_UUID_STRING_BUFLEN];
         virUUIDFormat(obj->uuid, uuidstr);
@@ -1003,10 +1018,8 @@ secretGetValue(virSecretPtr obj, size_t *value_size, unsigned int flags,
         goto cleanup;
     }
 
-    if (VIR_ALLOC_N(ret, secret->value_size) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC_N(ret, secret->value_size) < 0)
         goto cleanup;
-    }
     memcpy(ret, secret->value, secret->value_size);
     *value_size = secret->value_size;
 
@@ -1033,6 +1046,9 @@ secretUndefine(virSecretPtr obj)
                        _("no secret with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
+
+    if (virSecretUndefineEnsureACL(obj->conn, secret->def) < 0)
+        goto cleanup;
 
     if (!secret->def->ephemeral &&
         secretDeleteSaved(driver, secret) < 0)
@@ -1104,8 +1120,8 @@ secretStateInitialize(bool privileged,
         if (!base)
             goto error;
     }
-    if (virAsprintf(&driverState->directory, "%s/secrets", base) == -1)
-        goto out_of_memory;
+    if (virAsprintf(&driverState->directory, "%s/secrets", base) < 0)
+        goto error;
     VIR_FREE(base);
 
     if (loadSecrets(driverState, &driverState->secrets) < 0)
@@ -1114,8 +1130,6 @@ secretStateInitialize(bool privileged,
     secretDriverUnlock(driverState);
     return 0;
 
- out_of_memory:
-    VIR_ERROR(_("Out of memory initializing secrets"));
  error:
     VIR_FREE(base);
     secretDriverUnlock(driverState);

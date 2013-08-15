@@ -303,6 +303,14 @@ gather_storage_cap(LibHalContext *ctx, const char *udi,
     return 0;
 }
 
+static int
+gather_scsi_generic_cap(LibHalContext *ctx, const char *udi,
+                        union _virNodeDevCapData *d)
+{
+    (void)get_str_prop(ctx, udi, "scsi_generic.device", &d->sg.path);
+    return 0;
+}
+
 
 static int
 gather_system_cap(LibHalContext *ctx, const char *udi,
@@ -350,6 +358,7 @@ static caps_tbl_entry caps_tbl[] = {
     { "scsi_host",  VIR_NODE_DEV_CAP_SCSI_HOST,     gather_scsi_host_cap },
     { "scsi",       VIR_NODE_DEV_CAP_SCSI,          gather_scsi_cap },
     { "storage",    VIR_NODE_DEV_CAP_STORAGE,       gather_storage_cap },
+    { "scsi_generic", VIR_NODE_DEV_CAP_SCSI_GENERIC, gather_scsi_generic_cap },
 };
 
 
@@ -399,7 +408,8 @@ gather_capabilities(LibHalContext *ctx, const char *udi,
     char *bus_name = NULL;
     virNodeDevCapsDefPtr caps = NULL;
     char **hal_cap_names = NULL;
-    int rv, i;
+    int rv;
+    size_t i;
 
     if (STREQ(udi, "/org/freedesktop/Hal/devices/computer")) {
         rv = gather_capability(ctx, udi, "system", &caps);
@@ -623,7 +633,8 @@ nodeStateInitialize(bool privileged ATTRIBUTE_UNUSED,
 {
     LibHalContext *hal_ctx = NULL;
     char **udi = NULL;
-    int num_devs, i;
+    int num_devs;
+    size_t i;
     int ret = -1;
     DBusConnection *sysbus;
     DBusError err;
@@ -741,7 +752,8 @@ nodeStateReload(void)
 {
     DBusError err;
     char **udi = NULL;
-    int num_devs, i;
+    int num_devs;
+    size_t i;
     LibHalContext *hal_ctx;
 
     VIR_INFO("Reloading HAL device state");

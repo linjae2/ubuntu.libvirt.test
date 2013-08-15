@@ -56,10 +56,8 @@ getDeviceType(uint32_t host,
     int retval = 0;
 
     if (virAsprintf(&type_path, "/sys/bus/scsi/devices/%u:%u:%u:%u/type",
-                    host, bus, target, lun) < 0) {
-        virReportOOMError();
+                    host, bus, target, lun) < 0)
         goto out;
-    }
 
     typefile = fopen(type_path, "r");
     if (typefile == NULL) {
@@ -213,7 +211,6 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
     int retval = 0;
 
     if (VIR_ALLOC(vol) < 0) {
-        virReportOOMError();
         retval = -1;
         goto out;
     }
@@ -226,13 +223,11 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
      * just leave 'host' out
      */
     if (virAsprintf(&(vol->name), "unit:%u:%u:%u", bus, target, lun) < 0) {
-        virReportOOMError();
         retval = -1;
         goto free_vol;
     }
 
     if (virAsprintf(&devpath, "/dev/%s", dev) < 0) {
-        virReportOOMError();
         retval = -1;
         goto free_vol;
     }
@@ -284,7 +279,6 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
 
     if (VIR_REALLOC_N(pool->volumes.objs,
                       pool->volumes.count + 1) < 0) {
-        virReportOOMError();
         retval = -1;
         goto free_vol;
     }
@@ -310,10 +304,8 @@ getNewStyleBlockDevice(const char *lun_path,
     struct dirent *block_dirent = NULL;
     int retval = 0;
 
-    if (virAsprintf(&block_path, "%s/block", lun_path) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&block_path, "%s/block", lun_path) < 0)
         goto out;
-    }
 
     VIR_DEBUG("Looking for block device in '%s'", block_path);
 
@@ -395,10 +387,8 @@ getBlockDevice(uint32_t host,
     int retval = 0;
 
     if (virAsprintf(&lun_path, "/sys/bus/scsi/devices/%u:%u:%u:%u",
-                    host, bus, target, lun) < 0) {
-        virReportOOMError();
+                    host, bus, target, lun) < 0)
         goto out;
-    }
 
     lun_dir = opendir(lun_path);
     if (lun_dir == NULL) {
@@ -498,7 +488,7 @@ virStorageBackendSCSIFindLUs(virStoragePoolObjPtr pool,
 {
     int retval = 0;
     uint32_t bus, target, lun;
-    char *device_path = NULL;
+    const char *device_path = "/sys/bus/scsi/devices";
     DIR *devicedir = NULL;
     struct dirent *lun_dirent = NULL;
     char devicepattern[64];
@@ -507,18 +497,12 @@ virStorageBackendSCSIFindLUs(virStoragePoolObjPtr pool,
 
     virFileWaitForDevices();
 
-    if (virAsprintf(&device_path, "/sys/bus/scsi/devices") < 0) {
-        virReportOOMError();
-        goto out;
-    }
-
     devicedir = opendir(device_path);
 
     if (devicedir == NULL) {
         virReportSystemError(errno,
                              _("Failed to opendir path '%s'"), device_path);
-        retval = -1;
-        goto out;
+        return -1;
     }
 
     snprintf(devicepattern, sizeof(devicepattern), "%u:%%u:%%u:%%u\n", scanhost);
@@ -536,8 +520,6 @@ virStorageBackendSCSIFindLUs(virStoragePoolObjPtr pool,
 
     closedir(devicedir);
 
-out:
-    VIR_FREE(device_path);
     return retval;
 }
 
@@ -551,7 +533,6 @@ virStorageBackendSCSITriggerRescan(uint32_t host)
     VIR_DEBUG("Triggering rescan of host %d", host);
 
     if (virAsprintf(&path, "/sys/class/scsi_host/host%u/scan", host) < 0) {
-        virReportOOMError();
         retval = -1;
         goto out;
     }
@@ -667,8 +648,8 @@ createVport(virStoragePoolSourceAdapter adapter)
     if (getHostNumber(adapter.data.fchost.parent, &parent_host) < 0)
         return -1;
 
-    if (virManageVport(parent_host, adapter.data.fchost.wwnn,
-                       adapter.data.fchost.wwpn, VPORT_CREATE) < 0)
+    if (virManageVport(parent_host, adapter.data.fchost.wwpn,
+                       adapter.data.fchost.wwnn, VPORT_CREATE) < 0)
         return -1;
 
     virFileWaitForDevices();
@@ -690,8 +671,8 @@ deleteVport(virStoragePoolSourceAdapter adapter)
     if (getHostNumber(adapter.data.fchost.parent, &parent_host) < 0)
         return -1;
 
-    if (virManageVport(parent_host, adapter.data.fchost.wwnn,
-                       adapter.data.fchost.wwpn, VPORT_DELETE) < 0)
+    if (virManageVport(parent_host, adapter.data.fchost.wwpn,
+                       adapter.data.fchost.wwnn, VPORT_DELETE) < 0)
         return -1;
 
     return 0;
@@ -716,10 +697,8 @@ virStorageBackendSCSICheckPool(virConnectPtr conn ATTRIBUTE_UNUSED,
     if (getHostNumber(name, &host) < 0)
         goto cleanup;
 
-    if (virAsprintf(&path, "/sys/class/scsi_host/host%d", host) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&path, "/sys/class/scsi_host/host%d", host) < 0)
         goto cleanup;
-    }
 
     if (access(path, F_OK) == 0)
         *isActive = true;

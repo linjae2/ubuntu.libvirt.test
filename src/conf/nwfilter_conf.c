@@ -225,7 +225,7 @@ static const char ipsetflags_str[]   = "ipsetflags";
 static int
 intMapGetByInt(const struct int_map *intmap, int32_t attr, const char **res)
 {
-    int i = 0;
+    size_t i = 0;
     bool found = false;
 
     while (intmap[i].val && !found) {
@@ -255,7 +255,7 @@ static int
 intMapGetByString(const struct int_map *intmap, const char *str, int casecmp,
                   int32_t *result)
 {
-    int i = 0;
+    size_t i = 0;
     bool found = false;
 
     while (intmap[i].val && !found) {
@@ -272,7 +272,7 @@ intMapGetByString(const struct int_map *intmap, const char *str, int casecmp,
 
 void
 virNWFilterRuleDefFree(virNWFilterRuleDefPtr def) {
-    int i;
+    size_t i;
     if (!def)
         return;
 
@@ -312,7 +312,7 @@ virNWFilterEntryFree(virNWFilterEntryPtr entry) {
 
 void
 virNWFilterDefFree(virNWFilterDefPtr def) {
-    int i;
+    size_t i;
     if (!def)
         return;
 
@@ -348,7 +348,7 @@ virNWFilterObjFree(virNWFilterObjPtr obj)
 void
 virNWFilterObjListFree(virNWFilterObjListPtr nwfilters)
 {
-    unsigned int i;
+    size_t i;
     for (i = 0; i < nwfilters->count; i++)
         virNWFilterObjFree(nwfilters->objs[i]);
     VIR_FREE(nwfilters->objs);
@@ -361,7 +361,7 @@ virNWFilterRuleDefAddVar(virNWFilterRuleDefPtr nwf,
                          nwItemDesc *item,
                          const char *var)
 {
-    int i = 0;
+    size_t i = 0;
     virNWFilterVarAccessPtr varAccess;
 
     varAccess = virNWFilterVarAccessParse(var);
@@ -378,7 +378,6 @@ virNWFilterRuleDefAddVar(virNWFilterRuleDefPtr nwf,
     }
 
     if (VIR_EXPAND_N(nwf->varAccess, nwf->nVarAccess, 1) < 0) {
-        virReportOOMError();
         virNWFilterVarAccessFree(varAccess);
         return -1;
     }
@@ -395,10 +394,8 @@ virNWFilterRuleDefAddString(virNWFilterRuleDefPtr nwf,
                             const char *string,
                             size_t maxstrlen)
 {
-    if (VIR_REALLOC_N(nwf->strings, nwf->nstrings+1) < 0) {
-        virReportOOMError();
+    if (VIR_REALLOC_N(nwf->strings, nwf->nstrings+1) < 0)
         return NULL;
-    }
 
     if (VIR_STRNDUP(nwf->strings[nwf->nstrings], string, maxstrlen) < 0)
         return NULL;
@@ -413,7 +410,7 @@ void
 virNWFilterObjRemove(virNWFilterObjListPtr nwfilters,
                      virNWFilterObjPtr nwfilter)
 {
-    unsigned int i;
+    size_t i;
 
     virNWFilterObjUnlock(nwfilter);
 
@@ -602,12 +599,12 @@ checkValidMask(unsigned char *data, int len)
 {
     uint32_t idx = 0;
     uint8_t mask = 0x80;
-    int checkones = 1;
+    bool checkones = true;
 
     while ((idx >> 3) < len) {
         if (checkones) {
             if (!(data[idx>>3] & mask))
-                checkones = 0;
+                checkones = false;
         } else {
             if ((data[idx>>3] & mask))
                 return false;
@@ -789,7 +786,7 @@ parseStringItems(const struct int_map *int_map,
                  const char *input, int32_t *flags, char sep)
 {
     int rc = 0;
-    unsigned int i, j;
+    size_t i, j;
     bool found;
 
     i = 0;
@@ -821,7 +818,8 @@ static int
 printStringItems(virBufferPtr buf, const struct int_map *int_map,
                  int32_t flags, const char *sep)
 {
-    unsigned int i, c = 0;
+    size_t i;
+    unsigned int c = 0;
     int32_t mask = 0x1;
 
     while (mask) {
@@ -1779,7 +1777,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
     int rc = 0, g_rc = 0;
     int idx = 0;
     char *prop;
-    int found = 0;
+    bool found = false;
     enum attrDatatype datatype, att_datatypes;
     enum virNWFilterEntryItemFlags *flags ,match_flag = 0, flags_set = 0;
     nwItemDesc *item;
@@ -1806,7 +1804,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
         flags_set = match_flag;
 
         if (prop) {
-            found = 0;
+            found = false;
 
             validator = NULL;
 
@@ -1816,7 +1814,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                              item,
                                              &prop[1]) < 0)
                     rc = -1;
-                found = 1;
+                found = true;
             }
 
             datatype = 1;
@@ -1840,7 +1838,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                             if (virStrToLong_ui(prop, NULL, base, &uint_val) >= 0) {
                                 if (uint_val <= 0xff) {
                                     item->u.u8 = uint_val;
-                                    found = 1;
+                                    found = true;
                                     data.ui = uint_val;
                                 } else
                                     rc = -1;
@@ -1855,7 +1853,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                             if (virStrToLong_ui(prop, NULL, base, &uint_val) >= 0) {
                                 if (uint_val <= 0xffff) {
                                     item->u.u16 = uint_val;
-                                    found = 1;
+                                    found = true;
                                     data.ui = uint_val;
                                 } else
                                     rc = -1;
@@ -1869,7 +1867,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                         case DATATYPE_UINT32:
                             if (virStrToLong_ui(prop, NULL, base, &uint_val) >= 0) {
                                 item->u.u32 = uint_val;
-                                found = 1;
+                                found = true;
                                 data.ui = uint_val;
                             } else
                                 rc = -1;
@@ -1878,7 +1876,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                         case DATATYPE_IPADDR:
                             if (virSocketAddrParseIPv4(&item->u.ipaddr, prop) < 0)
                                 rc = -1;
-                            found = 1;
+                            found = true;
                         break;
 
                         case DATATYPE_IPMASK:
@@ -1886,7 +1884,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                 if (uint_val <= 32) {
                                     if (!validator)
                                         item->u.u8 = (uint8_t)uint_val;
-                                    found = 1;
+                                    found = true;
                                     data.ui = uint_val;
                                 } else
                                     rc = -1;
@@ -1899,7 +1897,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                         item->u.u8 = int_val;
                                     else
                                         rc = -1;
-                                    found = 1;
+                                    found = true;
                                 }
                             }
                         break;
@@ -1909,7 +1907,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                                 &item->u.macaddr) < 0) {
                                 rc = -1;
                             }
-                            found = 1;
+                            found = true;
                         break;
 
                         case DATATYPE_MACMASK:
@@ -1919,13 +1917,13 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                 rc = -1;
                             }
                             data.v = &item->u.macaddr;
-                            found = 1;
+                            found = true;
                         break;
 
                         case DATATYPE_IPV6ADDR:
                             if (virSocketAddrParseIPv6(&item->u.ipaddr, prop) < 0)
                                 rc = -1;
-                            found = 1;
+                            found = true;
                         break;
 
                         case DATATYPE_IPV6MASK:
@@ -1933,7 +1931,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                 if (uint_val <= 128) {
                                     if (!validator)
                                         item->u.u8 = (uint8_t)uint_val;
-                                    found = 1;
+                                    found = true;
                                     data.ui = uint_val;
                                 } else
                                     rc = -1;
@@ -1946,7 +1944,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                         item->u.u8 = int_val;
                                     else
                                         rc = -1;
-                                    found = 1;
+                                    found = true;
                                 }
                             }
                         break;
@@ -1960,7 +1958,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                 break;
                             }
                             data.c = prop;
-                            found = 1;
+                            found = true;
                         break;
 
                         case DATATYPE_STRINGCOPY:
@@ -1971,7 +1969,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                 break;
                             }
                             data.c = item->u.string;
-                            found = 1;
+                            found = true;
                         break;
 
                         case DATATYPE_BOOLEAN:
@@ -1983,7 +1981,7 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                 item->u.boolean = false;
 
                             data.ui = item->u.boolean;
-                            found = 1;
+                            found = true;
                         break;
 
                         case DATATYPE_LAST:
@@ -1994,13 +1992,13 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
 
                 if (rc != 0 && att_datatypes != 0) {
                     rc = 0;
-                    found = 0;
+                    found = false;
                 }
 
                 datatype <<= 1;
             } /* while */
 
-            if (found == 1 && rc == 0) {
+            if (found && rc == 0) {
                 *flags = NWFILTER_ENTRY_ITEM_FLAG_EXISTS | flags_set;
                 item->datatype = datatype >> 1;
                 if (validator) {
@@ -2039,10 +2037,8 @@ virNWFilterIncludeParse(xmlNodePtr cur)
 {
     virNWFilterIncludeDefPtr ret;
 
-    if (VIR_ALLOC(ret) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(ret) < 0)
         return NULL;
-    }
 
     ret->filterref = virXMLPropString(cur, "filter");
     if (!ret->filterref) {
@@ -2296,17 +2292,15 @@ virNWFilterRuleParse(xmlNodePtr node)
     char *direction;
     char *prio;
     char *statematch;
-    int found;
+    bool found;
     int found_i = 0;
     int priority;
 
     xmlNodePtr cur;
     virNWFilterRuleDefPtr ret;
 
-    if (VIR_ALLOC(ret) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(ret) < 0)
         return NULL;
-    }
 
     action    = virXMLPropString(node, "action");
     direction = virXMLPropString(node, "direction");
@@ -2357,11 +2351,11 @@ virNWFilterRuleParse(xmlNodePtr node)
 
     cur = node->children;
 
-    found = 0;
+    found = false;
 
     while (cur != NULL) {
         if (cur->type == XML_ELEMENT_NODE) {
-            int i = 0;
+            size_t i = 0;
             while (1) {
                 if (found)
                     i = found_i;
@@ -2369,7 +2363,7 @@ virNWFilterRuleParse(xmlNodePtr node)
                 if (xmlStrEqual(cur->name, BAD_CAST virAttr[i].id)) {
 
                     found_i = i;
-                    found = 1;
+                    found = true;
                     ret->prtclType = virAttr[i].prtclType;
 
                     if (virNWFilterRuleDetailsParse(cur,
@@ -2499,10 +2493,8 @@ virNWFilterDefParseXML(xmlXPathContextPtr ctxt) {
     int chain_priority;
     const char *name_prefix;
 
-    if (VIR_ALLOC(ret) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(ret) < 0)
         return NULL;
-    }
 
     ret->name = virXPathString("string(./@name)", ctxt);
     if (!ret->name) {
@@ -2577,10 +2569,8 @@ virNWFilterDefParseXML(xmlXPathContextPtr ctxt) {
 
     while (curr != NULL) {
         if (curr->type == XML_ELEMENT_NODE) {
-            if (VIR_ALLOC(entry) < 0) {
-                virReportOOMError();
+            if (VIR_ALLOC(entry) < 0)
                 goto cleanup;
-            }
 
             /* ignore malformed rule and include elements */
             if (xmlStrEqual(curr->name, BAD_CAST "rule"))
@@ -2591,7 +2581,6 @@ virNWFilterDefParseXML(xmlXPathContextPtr ctxt) {
             if (entry->rule || entry->include) {
                 if (VIR_REALLOC_N(ret->filterEntries, ret->nentries+1) < 0) {
                     VIR_FREE(entry);
-                    virReportOOMError();
                     goto cleanup;
                 }
                 ret->filterEntries[ret->nentries++] = entry;
@@ -2679,7 +2668,7 @@ virNWFilterObjPtr
 virNWFilterObjFindByUUID(virNWFilterObjListPtr nwfilters,
                          const unsigned char *uuid)
 {
-    unsigned int i;
+    size_t i;
 
     for (i = 0; i < nwfilters->count; i++) {
         virNWFilterObjLock(nwfilters->objs[i]);
@@ -2695,7 +2684,7 @@ virNWFilterObjFindByUUID(virNWFilterObjListPtr nwfilters,
 virNWFilterObjPtr
 virNWFilterObjFindByName(virNWFilterObjListPtr nwfilters, const char *name)
 {
-    unsigned int i;
+    size_t i;
 
     for (i = 0; i < nwfilters->count; i++) {
         virNWFilterObjLock(nwfilters->objs[i]);
@@ -2763,7 +2752,7 @@ _virNWFilterDefLoopDetect(virConnectPtr conn,
                           const char *filtername)
 {
     int rc = 0;
-    int i;
+    size_t i;
     virNWFilterEntryPtr entry;
     virNWFilterObjPtr obj;
 
@@ -2830,7 +2819,7 @@ virNWFilterRegisterCallbackDriver(virNWFilterCallbackDriverPtr cbd)
 void
 virNWFilterUnRegisterCallbackDriver(virNWFilterCallbackDriverPtr cbd)
 {
-    int i = 0;
+    size_t i = 0;
 
     while (i < nCallbackDriver && callbackDrvArray[i] != cbd)
         i++;
@@ -2846,7 +2835,7 @@ virNWFilterUnRegisterCallbackDriver(virNWFilterCallbackDriverPtr cbd)
 void
 virNWFilterCallbackDriversLock(void)
 {
-    int i;
+    size_t i;
 
     for (i = 0; i < nCallbackDriver; i++)
         callbackDrvArray[i]->vmDriverLock();
@@ -2855,7 +2844,7 @@ virNWFilterCallbackDriversLock(void)
 void
 virNWFilterCallbackDriversUnlock(void)
 {
-    int i;
+    size_t i;
 
     for (i = 0; i < nCallbackDriver; i++)
         callbackDrvArray[i]->vmDriverUnlock();
@@ -2872,7 +2861,7 @@ static virDomainObjListIterator virNWFilterDomainFWUpdateCB;
 int
 virNWFilterInstFiltersOnAllVMs(virConnectPtr conn)
 {
-    int i;
+    size_t i;
     struct domUpdateCBStruct cb = {
         .conn = conn,
         .step = STEP_APPLY_CURRENT,
@@ -2890,7 +2879,7 @@ virNWFilterInstFiltersOnAllVMs(virConnectPtr conn)
 static int
 virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
 {
-    int i;
+    size_t i;
     int ret = 0;
     struct domUpdateCBStruct cb = {
         .conn = conn,
@@ -3032,10 +3021,8 @@ virNWFilterObjAssignDef(virConnectPtr conn,
 
     virNWFilterUnlockFilterUpdates();
 
-    if (VIR_ALLOC(nwfilter) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(nwfilter) < 0)
         return NULL;
-    }
 
     if (virMutexInitRecursive(&nwfilter->lock) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -3051,7 +3038,6 @@ virNWFilterObjAssignDef(virConnectPtr conn,
         nwfilter->def = NULL;
         virNWFilterObjUnlock(nwfilter);
         virNWFilterObjFree(nwfilter);
-        virReportOOMError();
         return NULL;
     }
     nwfilters->objs[nwfilters->count++] = nwfilter;
@@ -3216,9 +3202,9 @@ virNWFilterRuleDefDetailsFormat(virBufferPtr buf,
                                 const virXMLAttr2Struct *att,
                                 virNWFilterRuleDefPtr def)
 {
-    int i = 0, j;
-    bool typeShown = 0;
-    bool neverShown = 1;
+    size_t i = 0, j;
+    bool typeShown = false;
+    bool neverShown = true;
     bool asHex;
     enum match {
         MATCH_NONE = 0,
@@ -3235,8 +3221,8 @@ virNWFilterRuleDefDetailsFormat(virBufferPtr buf,
         if ((flags & NWFILTER_ENTRY_ITEM_FLAG_EXISTS)) {
             if (!typeShown) {
                 virBufferAsprintf(buf, "    <%s", type);
-                typeShown = 1;
-                neverShown = 0;
+                typeShown = true;
+                neverShown = false;
             }
 
             if ((flags & NWFILTER_ENTRY_ITEM_FLAG_IS_NEG)) {
@@ -3355,7 +3341,7 @@ err_exit:
 static char *
 virNWFilterRuleDefFormat(virNWFilterRuleDefPtr def)
 {
-    int i;
+    size_t i;
     virBuffer buf  = VIR_BUFFER_INITIALIZER;
     virBuffer buf2 = VIR_BUFFER_INITIALIZER;
     char *data;
@@ -3442,7 +3428,7 @@ virNWFilterDefFormat(virNWFilterDefPtr def)
 {
     virBuffer buf = VIR_BUFFER_INITIALIZER;
     char uuid[VIR_UUID_STRING_BUFLEN];
-    int i;
+    size_t i;
     char *xml;
 
     virBufferAsprintf(&buf, "<filter name='%s' chain='%s'",
@@ -3485,11 +3471,7 @@ char *virNWFilterConfigFile(const char *dir,
 {
     char *ret = NULL;
 
-    if (virAsprintf(&ret, "%s/%s.xml", dir, name) < 0) {
-        virReportOOMError();
-        return NULL;
-    }
-
+    ignore_value(virAsprintf(&ret, "%s/%s.xml", dir, name));
     return ret;
 }
 

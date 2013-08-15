@@ -52,8 +52,9 @@
 #include "remote.h"
 #include "virhook.h"
 #include "viraudit.h"
-#include "locking/lock_manager.h"
 #include "virstring.h"
+#include "locking/lock_manager.h"
+#include "viraccessmanager.h"
 
 #ifdef WITH_DRIVER_MODULES
 # include "driver.h"
@@ -262,7 +263,7 @@ daemonPidFilePath(bool privileged,
 
         if (virAsprintf(pidfile, "%s/libvirtd.pid", rundir) < 0) {
             VIR_FREE(rundir);
-            goto no_memory;
+            goto error;
         }
 
         VIR_FREE(rundir);
@@ -270,8 +271,6 @@ daemonPidFilePath(bool privileged,
 
     return 0;
 
-no_memory:
-    virReportOOMError();
 error:
     return -1;
 }
@@ -284,10 +283,10 @@ daemonUnixSocketPaths(struct daemonConfig *config,
 {
     if (config->unix_sock_dir) {
         if (virAsprintf(sockfile, "%s/libvirt-sock", config->unix_sock_dir) < 0)
-            goto no_memory;
+            goto error;
         if (privileged &&
             virAsprintf(rosockfile, "%s/libvirt-sock-ro", config->unix_sock_dir) < 0)
-            goto no_memory;
+            goto error;
     } else {
         if (privileged) {
             if (VIR_STRDUP(*sockfile, LOCALSTATEDIR "/run/libvirt/libvirt-sock") < 0 ||
@@ -309,7 +308,7 @@ daemonUnixSocketPaths(struct daemonConfig *config,
 
             if (virAsprintf(sockfile, "%s/libvirt-sock", rundir) < 0) {
                 VIR_FREE(rundir);
-                goto no_memory;
+                goto error;
             }
 
             VIR_FREE(rundir);
@@ -317,8 +316,6 @@ daemonUnixSocketPaths(struct daemonConfig *config,
     }
     return 0;
 
-no_memory:
-    virReportOOMError();
 error:
     return -1;
 }
@@ -665,7 +662,7 @@ daemonSetupLogging(struct daemonConfig *config,
         char *tmp;
         if (access("/run/systemd/journal/socket", W_OK) >= 0) {
             if (virAsprintf(&tmp, "%d:journald", virLogGetDefaultPriority()) < 0)
-                goto no_memory;
+                goto error;
             virLogParseOutputs(tmp);
             VIR_FREE(tmp);
         }
@@ -683,7 +680,7 @@ daemonSetupLogging(struct daemonConfig *config,
                 if (virAsprintf(&tmp, "%d:file:%s/log/libvirt/libvirtd.log",
                                 virLogGetDefaultPriority(),
                                 LOCALSTATEDIR) == -1)
-                    goto no_memory;
+                    goto error;
             } else {
                 char *logdir = virGetUserCacheDirectory();
                 mode_t old_umask;
@@ -701,13 +698,13 @@ daemonSetupLogging(struct daemonConfig *config,
                 if (virAsprintf(&tmp, "%d:file:%s/libvirtd.log",
                                 virLogGetDefaultPriority(), logdir) == -1) {
                     VIR_FREE(logdir);
-                    goto no_memory;
+                    goto error;
                 }
                 VIR_FREE(logdir);
             }
         } else {
             if (virAsprintf(&tmp, "%d:stderr", virLogGetDefaultPriority()) < 0)
-                goto no_memory;
+                goto error;
         }
         virLogParseOutputs(tmp);
         VIR_FREE(tmp);
@@ -721,10 +718,28 @@ daemonSetupLogging(struct daemonConfig *config,
 
     return 0;
 
-no_memory:
-    virReportOOMError();
 error:
     return -1;
+}
+
+
+static int
+daemonSetupAccessManager(struct daemonConfig *config)
+{
+    virAccessManagerPtr mgr;
+    const char *none[] = { "none", NULL };
+    const char **driver = (const char **)config->access_drivers;
+
+    if (!driver ||
+        !driver[0])
+        driver = none;
+
+    if (!(mgr = virAccessManagerNewStack(driver)))
+        return -1;
+
+    virAccessManagerSetDefault(mgr);
+    virObjectUnref(mgr);
+    return 0;
 }
 
 
@@ -872,6 +887,9 @@ handleSystemMessageFunc(DBusConnection *connection ATTRIBUTE_UNUSED,
 static void daemonRunStateInit(void *opaque)
 {
     virNetServerPtr srv = opaque;
+    virIdentityPtr sysident = virIdentityGetSystem();
+
+    virIdentitySetCurrent(sysident);
 
     /* Since driver initialization can take time inhibit daemon shutdown until
        we're done so clients get a chance to connect */
@@ -914,6 +932,8 @@ static void daemonRunStateInit(void *opaque)
 cleanup:
     daemonInhibitCallback(false, srv);
     virObjectUnref(srv);
+    virObjectUnref(sysident);
+    virIdentitySetCurrent(NULL);
 }
 
 static int daemonStateInit(virNetServerPtr srv)
@@ -1127,7 +1147,7 @@ int main(int argc, char **argv) {
         }
         *tmp = '\0';
         char *driverdir;
-        if (virAsprintf(&driverdir, "%s/../../src/.libs", argv[0]) < 0) {
+        if (virAsprintfQuiet(&driverdir, "%s/../../src/.libs", argv[0]) < 0) {
             fprintf(stderr, _("%s: initialization failed\n"), argv[0]);
             exit(EXIT_FAILURE);
         }
@@ -1257,6 +1277,11 @@ int main(int argc, char **argv) {
 
     if (daemonSetupLogging(config, privileged, verbose, godaemon) < 0) {
         VIR_ERROR(_("Can't initialize logging"));
+        exit(EXIT_FAILURE);
+    }
+
+    if (daemonSetupAccessManager(config) < 0) {
+        VIR_ERROR(_("Can't initialize access manager"));
         exit(EXIT_FAILURE);
     }
 

@@ -51,7 +51,7 @@ int virNetDevOpenvswitchAddPort(const char *brname, const char *ifname,
                                    virNetDevVlanPtr virtVlan)
 {
     int ret = -1;
-    int i = 0;
+    size_t i = 0;
     virCommandPtr cmd = NULL;
     char macaddrstr[VIR_MAC_STRING_BUFLEN];
     char ifuuidstr[VIR_UUID_STRING_BUFLEN];
@@ -68,22 +68,40 @@ int virNetDevOpenvswitchAddPort(const char *brname, const char *ifname,
 
     if (virAsprintf(&attachedmac_ex_id, "external-ids:attached-mac=\"%s\"",
                     macaddrstr) < 0)
-        goto out_of_memory;
+        goto cleanup;
     if (virAsprintf(&ifaceid_ex_id, "external-ids:iface-id=\"%s\"",
                     ifuuidstr) < 0)
-        goto out_of_memory;
+        goto cleanup;
     if (virAsprintf(&vmid_ex_id, "external-ids:vm-id=\"%s\"",
                     vmuuidstr) < 0)
-        goto out_of_memory;
+        goto cleanup;
     if (ovsport->profileID[0] != '\0') {
         if (virAsprintf(&profile_ex_id, "external-ids:port-profile=\"%s\"",
                         ovsport->profileID) < 0)
-            goto out_of_memory;
+            goto cleanup;
     }
+
+    cmd = virCommandNew(OVSVSCTL);
+
+    virCommandAddArgList(cmd, "--timeout=5", "--", "--may-exist", "add-port",
+                        brname, ifname, NULL);
 
     if (virtVlan && virtVlan->nTags > 0) {
 
-        /* Trunk port first */
+        switch (virtVlan->nativeMode) {
+        case VIR_NATIVE_VLAN_MODE_TAGGED:
+            virCommandAddArg(cmd, "vlan_mode=native-tagged");
+            virCommandAddArgFormat(cmd, "tag=%d", virtVlan->nativeTag);
+            break;
+        case VIR_NATIVE_VLAN_MODE_UNTAGGED:
+            virCommandAddArg(cmd, "vlan_mode=native-untagged");
+            virCommandAddArgFormat(cmd, "tag=%d", virtVlan->nativeTag);
+            break;
+        case VIR_NATIVE_VLAN_MODE_DEFAULT:
+        default:
+            break;
+        }
+
         if (virtVlan->trunk) {
             virBufferAddLit(&buf, "trunk=");
 
@@ -99,18 +117,16 @@ int virNetDevOpenvswitchAddPort(const char *brname, const char *ifname,
                 virBufferAddLit(&buf, ",");
                 virBufferAsprintf(&buf, "%d", virtVlan->tag[i]);
             }
+
+            if (virBufferError(&buf)) {
+                virReportOOMError();
+                goto cleanup;
+            }
+            virCommandAddArg(cmd, virBufferCurrentContent(&buf));
         } else if (virtVlan->nTags) {
-            virBufferAsprintf(&buf, "tag=%d", virtVlan->tag[0]);
+            virCommandAddArgFormat(cmd, "tag=%d", virtVlan->tag[0]);
         }
     }
-
-    cmd = virCommandNew(OVSVSCTL);
-
-    virCommandAddArgList(cmd, "--timeout=5", "--", "--may-exist", "add-port",
-                        brname, ifname, NULL);
-
-    if (virBufferUse(&buf) != 0)
-        virCommandAddArgList(cmd, virBufferCurrentContent(&buf), NULL);
 
     if (ovsport->profileID[0] == '\0') {
         virCommandAddArgList(cmd,
@@ -147,10 +163,6 @@ cleanup:
     VIR_FREE(profile_ex_id);
     virCommandFree(cmd);
     return ret;
-
-out_of_memory:
-    virReportOOMError();
-    goto cleanup;
 }
 
 /**

@@ -69,13 +69,13 @@ testBuildDomainDef(bool dynamic,
     virSecurityLabelDefPtr secdef;
 
     if (VIR_ALLOC(def) < 0)
-        goto no_memory;
+        goto error;
 
     if (VIR_ALLOC_N(def->seclabels, 1) < 0)
-        goto no_memory;
+        goto error;
 
     if (VIR_ALLOC(secdef) < 0)
-        goto no_memory;
+        goto error;
 
     def->virtType = VIR_DOMAIN_VIRT_KVM;
     def->seclabels[0] = secdef;
@@ -91,8 +91,6 @@ testBuildDomainDef(bool dynamic,
 
     return def;
 
-no_memory:
-    virReportOOMError();
 error:
     virDomainDefFree(def);
     return NULL;
@@ -231,7 +229,7 @@ testSELinuxGenLabel(const void *opaque)
 
     if (virSecurityManagerGenLabel(data->mgr, def) < 0) {
         virErrorPtr err = virGetLastError();
-        fprintf(stderr, "Cannot generated label %s\n", err->message);
+        fprintf(stderr, "Cannot generate label: %s\n", err->message);
         goto cleanup;
     }
 
@@ -333,6 +331,12 @@ mymain(void)
                       "system_u", "system_r", "object_r",
                       "svirt_t", "svirt_image_t",
                       2, 3, 0, 1023);
+    DO_TEST_GEN_LABEL("dynamic virtd, missing range",
+                      "system_u:system_r:virtd_t",
+                      true, NULL, NULL,
+                      "system_u", "system_r", "object_r",
+                      "svirt_t", "svirt_image_t",
+                      0, 0, 0, 1023);
 
     return (ret == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

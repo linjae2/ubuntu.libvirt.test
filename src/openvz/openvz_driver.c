@@ -767,8 +767,7 @@ openvzGenerateVethName(int veid, char *dev_name_ve)
 
     if (sscanf(dev_name_ve, "%*[^0-9]%d", &ifNo) != 1)
         return NULL;
-    if (virAsprintf(&ret, "veth%d.%d.", veid, ifNo) < 0)
-        virReportOOMError();
+    ignore_value(virAsprintf(&ret, "veth%d.%d.", veid, ifNo));
     return ret;
 }
 
@@ -795,8 +794,7 @@ openvzGenerateContainerVethName(int veid)
         }
 
         /* set new name */
-        if (virAsprintf(&name, "eth%d", max + 1) < 0)
-            virReportOOMError();
+        ignore_value(virAsprintf(&name, "eth%d", max + 1));
     }
 
     VIR_FREE(temp);
@@ -815,6 +813,7 @@ openvzDomainSetNetwork(virConnectPtr conn, const char *vpsid,
     char host_macaddr[VIR_MAC_STRING_BUFLEN];
     struct openvz_driver *driver =  conn->privateData;
     virCommandPtr cmd = NULL;
+    char *guest_ifname = NULL;
 
     if (net == NULL)
        return 0;
@@ -840,11 +839,15 @@ openvzDomainSetNetwork(virConnectPtr conn, const char *vpsid,
         virBuffer buf = VIR_BUFFER_INITIALIZER;
         int veid = openvzGetVEID(vpsid);
 
-        /* if user doesn't specify guest interface name,
-         * then we need to generate it */
-        if (net->data.ethernet.dev == NULL) {
-            net->data.ethernet.dev = openvzGenerateContainerVethName(veid);
-            if (net->data.ethernet.dev == NULL) {
+        /* if net is ethernet and the user has specified guest interface name,
+         * let's use it; otherwise generate a new one */
+        if (net->type == VIR_DOMAIN_NET_TYPE_ETHERNET &&
+            net->data.ethernet.dev != NULL) {
+            if (VIR_STRDUP(guest_ifname, net->data.ethernet.dev) == -1)
+                goto cleanup;
+        } else {
+            guest_ifname = openvzGenerateContainerVethName(veid);
+            if (guest_ifname == NULL) {
                virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                               _("Could not generate eth name for container"));
                goto cleanup;
@@ -854,7 +857,7 @@ openvzDomainSetNetwork(virConnectPtr conn, const char *vpsid,
         /* if user doesn't specified host interface name,
          * than we need to generate it */
         if (net->ifname == NULL) {
-            net->ifname = openvzGenerateVethName(veid, net->data.ethernet.dev);
+            net->ifname = openvzGenerateVethName(veid, guest_ifname);
             if (net->ifname == NULL) {
                virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                               _("Could not generate veth name"));
@@ -862,7 +865,7 @@ openvzDomainSetNetwork(virConnectPtr conn, const char *vpsid,
             }
         }
 
-        virBufferAdd(&buf, net->data.ethernet.dev, -1); /* Guest dev */
+        virBufferAdd(&buf, guest_ifname, -1); /* Guest dev */
         virBufferAsprintf(&buf, ",%s", macaddr); /* Guest dev mac */
         virBufferAsprintf(&buf, ",%s", net->ifname); /* Host dev */
         virBufferAsprintf(&buf, ",%s", host_macaddr); /* Host dev mac */
@@ -871,7 +874,7 @@ openvzDomainSetNetwork(virConnectPtr conn, const char *vpsid,
             if (driver->version >= VZCTL_BRIDGE_MIN_VERSION) {
                 virBufferAsprintf(&buf, ",%s", net->data.bridge.brname); /* Host bridge */
             } else {
-                virBufferAsprintf(configBuf, "ifname=%s", net->data.ethernet.dev);
+                virBufferAsprintf(configBuf, "ifname=%s", guest_ifname);
                 virBufferAsprintf(configBuf, ",mac=%s", macaddr); /* Guest dev mac */
                 virBufferAsprintf(configBuf, ",host_ifname=%s", net->ifname); /* Host dev */
                 virBufferAsprintf(configBuf, ",host_mac=%s", host_macaddr); /* Host dev mac */
@@ -895,6 +898,7 @@ openvzDomainSetNetwork(virConnectPtr conn, const char *vpsid,
 
  cleanup:
     virCommandFree(cmd);
+    VIR_FREE(guest_ifname);
     return rc;
 }
 
@@ -903,7 +907,7 @@ static int
 openvzDomainSetNetworkConfig(virConnectPtr conn,
                              virDomainDefPtr def)
 {
-    unsigned int i;
+    size_t i;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
     char *param;
     int first = 1;
@@ -1442,10 +1446,8 @@ static virDrvOpenStatus openvzConnectOpen(virConnectPtr conn,
     /* We now know the URI is definitely for this driver, so beyond
      * here, don't return DECLINED, always use ERROR */
 
-    if (VIR_ALLOC(driver) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(driver) < 0)
         return VIR_DRV_OPEN_ERROR;
-    }
 
     if (!(driver->domains = virDomainObjListNew()))
         goto cleanup;
@@ -1560,7 +1562,7 @@ static int openvzConnectNumOfDomains(virConnectPtr conn) {
     int n;
 
     openvzDriverLock(driver);
-    n = virDomainObjListNumOfDomains(driver->domains, 1);
+    n = virDomainObjListNumOfDomains(driver->domains, true, NULL, NULL);
     openvzDriverUnlock(driver);
 
     return n;
@@ -1672,7 +1674,7 @@ static int openvzConnectNumOfDefinedDomains(virConnectPtr conn) {
     int n;
 
     openvzDriverLock(driver);
-    n = virDomainObjListNumOfDomains(driver->domains, 0);
+    n = virDomainObjListNumOfDomains(driver->domains, false, NULL, NULL);
     openvzDriverUnlock(driver);
 
     return n;
@@ -1787,7 +1789,8 @@ openvzDomainGetMemoryParameters(virDomainPtr domain,
                                 int *nparams,
                                 unsigned int flags)
 {
-    int i, result = -1;
+    size_t i;
+    int result = -1;
     const char *name;
     long kb_per_pages;
     unsigned long long barrier, limit, val;
@@ -1857,7 +1860,8 @@ openvzDomainSetMemoryParameters(virDomainPtr domain,
                                 int nparams,
                                 unsigned int flags)
 {
-    int i, result = -1;
+    size_t i;
+    int result = -1;
     long kb_per_pages;
 
     kb_per_pages = openvzKBPerPages();
@@ -1865,14 +1869,14 @@ openvzDomainSetMemoryParameters(virDomainPtr domain,
         goto cleanup;
 
     virCheckFlags(0, -1);
-    if (virTypedParameterArrayValidate(params, nparams,
-                                       VIR_DOMAIN_MEMORY_HARD_LIMIT,
-                                       VIR_TYPED_PARAM_ULLONG,
-                                       VIR_DOMAIN_MEMORY_SOFT_LIMIT,
-                                       VIR_TYPED_PARAM_ULLONG,
-                                       VIR_DOMAIN_MEMORY_MIN_GUARANTEE,
-                                       VIR_TYPED_PARAM_ULLONG,
-                                       NULL) < 0)
+    if (virTypedParamsValidate(params, nparams,
+                               VIR_DOMAIN_MEMORY_HARD_LIMIT,
+                               VIR_TYPED_PARAM_ULLONG,
+                               VIR_DOMAIN_MEMORY_SOFT_LIMIT,
+                               VIR_TYPED_PARAM_ULLONG,
+                               VIR_DOMAIN_MEMORY_MIN_GUARANTEE,
+                               VIR_TYPED_PARAM_ULLONG,
+                               NULL) < 0)
         return -1;
 
     for (i = 0; i < nparams; i++) {
@@ -1957,7 +1961,7 @@ openvzDomainInterfaceStats(virDomainPtr dom,
 {
     struct openvz_driver *driver = dom->conn->privateData;
     virDomainObjPtr vm;
-    int i;
+    size_t i;
     int ret = -1;
 
     openvzDriverLock(driver);
@@ -2116,7 +2120,8 @@ openvzConnectListAllDomains(virConnectPtr conn,
     virCheckFlags(VIR_CONNECT_LIST_DOMAINS_FILTERS_ALL, -1);
 
     openvzDriverLock(driver);
-    ret = virDomainObjListExport(driver->domains, conn, domains, flags);
+    ret = virDomainObjListExport(driver->domains, conn, domains,
+                                 NULL, flags);
     openvzDriverUnlock(driver);
 
     return ret;
