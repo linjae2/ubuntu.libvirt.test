@@ -24,8 +24,6 @@
 #ifndef __QEMUD_CONF_H
 # define __QEMUD_CONF_H
 
-# include <config.h>
-
 # include "virebtables.h"
 # include "internal.h"
 # include "capabilities.h"
@@ -44,6 +42,7 @@
 # include "virthreadpool.h"
 # include "locking/lock_manager.h"
 # include "qemu_capabilities.h"
+# include "virclosecallbacks.h"
 
 # ifdef CPU_SETSIZE /* Linux */
 #  define QEMUD_CPUMASK_LEN CPU_SETSIZE
@@ -52,9 +51,6 @@
 # else
 #  error "Port me"
 # endif
-
-typedef struct _virQEMUCloseCallbacks virQEMUCloseCallbacks;
-typedef virQEMUCloseCallbacks *virQEMUCloseCallbacksPtr;
 
 typedef struct _virQEMUDriver virQEMUDriver;
 typedef virQEMUDriver *virQEMUDriverPtr;
@@ -231,7 +227,7 @@ struct _virQEMUDriver {
     virLockManagerPluginPtr lockManager;
 
     /* Immutable pointer, self-clocking APIs */
-    virQEMUCloseCallbacksPtr closeCallbacks;
+    virCloseCallbacksPtr closeCallbacks;
 };
 
 typedef struct _qemuDomainCmdlineDef qemuDomainCmdlineDef;
@@ -267,25 +263,6 @@ struct qemuDomainDiskInfo {
     bool tray_open;
     int io_status;
 };
-
-typedef virDomainObjPtr (*virQEMUCloseCallback)(virQEMUDriverPtr driver,
-                                                virDomainObjPtr vm,
-                                                virConnectPtr conn);
-virQEMUCloseCallbacksPtr virQEMUCloseCallbacksNew(void);
-int virQEMUCloseCallbacksSet(virQEMUCloseCallbacksPtr closeCallbacks,
-                             virDomainObjPtr vm,
-                             virConnectPtr conn,
-                             virQEMUCloseCallback cb);
-int virQEMUCloseCallbacksUnset(virQEMUCloseCallbacksPtr closeCallbacks,
-                               virDomainObjPtr vm,
-                               virQEMUCloseCallback cb);
-virQEMUCloseCallback
-virQEMUCloseCallbacksGet(virQEMUCloseCallbacksPtr closeCallbacks,
-                         virDomainObjPtr vm,
-                         virConnectPtr conn);
-void virQEMUCloseCallbacksRun(virQEMUCloseCallbacksPtr closeCallbacks,
-                              virConnectPtr conn,
-                              virQEMUDriverPtr driver);
 
 typedef struct _qemuSharedDeviceEntry qemuSharedDeviceEntry;
 typedef qemuSharedDeviceEntry *qemuSharedDeviceEntryPtr;

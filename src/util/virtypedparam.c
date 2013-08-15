@@ -31,7 +31,6 @@
 
 #define VIR_FROM_THIS VIR_FROM_NONE
 
-VIR_ENUM_DECL(virTypedParameter)
 VIR_ENUM_IMPL(virTypedParameter, VIR_TYPED_PARAM_LAST,
               "unknown",
               "int",
@@ -48,11 +47,11 @@ VIR_ENUM_IMPL(virTypedParameter, VIR_TYPED_PARAM_LAST,
  * parameters.  Return 0 on success, -1 on failure with error message
  * already issued.  */
 int
-virTypedParameterArrayValidate(virTypedParameterPtr params, int nparams, ...)
+virTypedParamsValidate(virTypedParameterPtr params, int nparams, ...)
 {
     va_list ap;
     int ret = -1;
-    int i, j;
+    size_t i, j;
     const char *name;
     int type;
 
@@ -87,7 +86,7 @@ virTypedParameterArrayValidate(virTypedParameterPtr params, int nparams, ...)
             name = va_arg(ap, const char *);
         }
         if (!name) {
-            virReportError(VIR_ERR_INVALID_ARG,
+            virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED,
                            _("parameter '%s' not supported"),
                            params[i].field);
             goto cleanup;
@@ -107,6 +106,68 @@ cleanup:
     va_end(ap);
     return ret;
 
+}
+
+/* Check if params contains only specified parameter names. Return true if
+ * only specified names are present in params, false if params contains any
+ * unspecified parameter name. */
+bool
+virTypedParamsCheck(virTypedParameterPtr params,
+                    int nparams,
+                    const char **names,
+                    int nnames)
+{
+    size_t i, j;
+
+    for (i = 0; i < nparams; i++) {
+        bool found = false;
+        for (j = 0; j < nnames; j++) {
+            if (STREQ(params[i].field, names[j])) {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return false;
+    }
+
+    return true;
+}
+
+char *
+virTypedParameterToString(virTypedParameterPtr param)
+{
+    char *value = NULL;
+
+    switch (param->type) {
+    case VIR_TYPED_PARAM_INT:
+        ignore_value(virAsprintf(&value, "%d", param->value.i));
+        break;
+    case VIR_TYPED_PARAM_UINT:
+        ignore_value(virAsprintf(&value, "%u", param->value.ui));
+        break;
+    case VIR_TYPED_PARAM_LLONG:
+        ignore_value(virAsprintf(&value, "%lld", param->value.l));
+        break;
+    case VIR_TYPED_PARAM_ULLONG:
+        ignore_value(virAsprintf(&value, "%llu", param->value.ul));
+        break;
+    case VIR_TYPED_PARAM_DOUBLE:
+        ignore_value(virAsprintf(&value, "%g", param->value.d));
+        break;
+    case VIR_TYPED_PARAM_BOOLEAN:
+        ignore_value(virAsprintf(&value, "%d", param->value.b));
+        break;
+    case VIR_TYPED_PARAM_STRING:
+        ignore_value(VIR_STRDUP(value, param->value.s));
+        break;
+    default:
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("unexpected type %d for field %s"),
+                       param->type, param->field);
+    }
+
+    return value;
 }
 
 /* Assign name, type, and the appropriately typed arg to param; in the
@@ -259,6 +320,101 @@ cleanup:
 }
 
 
+/**
+ * virTypedParamsReplaceString:
+ * @params: pointer to the array of typed parameters
+ * @nparams: number of parameters in the @params array
+ * @name: name of the parameter to set
+ * @value: the value to store into the parameter
+ *
+ * Sets new value @value to parameter called @name with char * type. If the
+ * parameter does not exist yet in @params, it is automatically created and
+ * @naprams is incremented by one. Otherwise current value of the parameter
+ * is freed on success. The function creates its own copy of @value string,
+ * which needs to be freed using virTypedParamsFree or virTypedParamsClear.
+ *
+ * Returns 0 on success, -1 on error.
+ */
+int
+virTypedParamsReplaceString(virTypedParameterPtr *params,
+                            int *nparams,
+                            const char *name,
+                            const char *value)
+{
+    char *str = NULL;
+    char *old = NULL;
+    size_t n = *nparams;
+    virTypedParameterPtr param;
+
+    virResetLastError();
+
+    param = virTypedParamsGet(*params, n, name);
+    if (param) {
+        if (param->type != VIR_TYPED_PARAM_STRING) {
+            virReportError(VIR_ERR_INVALID_ARG,
+                           _("Parameter '%s' is not a string"),
+                           param->field);
+            goto error;
+        }
+        old = param->value.s;
+    } else {
+        if (VIR_EXPAND_N(*params, n, 1) < 0)
+            goto error;
+        param = *params + n - 1;
+    }
+
+    if (VIR_STRDUP(str, value) < 0)
+        goto error;
+
+    if (virTypedParameterAssign(param, name,
+                                VIR_TYPED_PARAM_STRING, str) < 0) {
+        param->value.s = old;
+        VIR_FREE(str);
+        goto error;
+    }
+    VIR_FREE(old);
+
+    *nparams = n;
+    return 0;
+
+error:
+    virDispatchError(NULL);
+    return -1;
+}
+
+
+int
+virTypedParamsCopy(virTypedParameterPtr *dst,
+                   virTypedParameterPtr src,
+                   int nparams)
+{
+    size_t i;
+
+    *dst = NULL;
+    if (!src || nparams <= 0)
+        return 0;
+
+    if (VIR_ALLOC_N(*dst, nparams) < 0)
+        return -1;
+
+    for (i = 0; i < nparams; i++) {
+        ignore_value(virStrcpyStatic((*dst)[i].field, src[i].field));
+        (*dst)[i].type = src[i].type;
+        if (src[i].type == VIR_TYPED_PARAM_STRING) {
+            if (VIR_STRDUP((*dst)[i].value.s, src[i].value.s) < 0) {
+                virTypedParamsFree(*dst, i - 1);
+                *dst = NULL;
+                return -1;
+            }
+        } else {
+            (*dst)[i].value = src[i].value;
+        }
+    }
+
+    return 0;
+}
+
+
 /* The following APIs are public and their signature may never change. */
 
 /**
@@ -276,7 +432,7 @@ virTypedParamsGet(virTypedParameterPtr params,
                   int nparams,
                   const char *name)
 {
-    int i;
+    size_t i;
 
     virResetLastError();
 
@@ -598,10 +754,8 @@ virTypedParamsAddInt(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (virTypedParameterAssign(*params + n, name,
@@ -648,10 +802,8 @@ virTypedParamsAddUInt(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (virTypedParameterAssign(*params + n, name,
@@ -698,10 +850,8 @@ virTypedParamsAddLLong(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (virTypedParameterAssign(*params + n, name,
@@ -748,10 +898,8 @@ virTypedParamsAddULLong(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (virTypedParameterAssign(*params + n, name,
@@ -798,10 +946,8 @@ virTypedParamsAddDouble(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (virTypedParameterAssign(*params + n, name,
@@ -848,10 +994,8 @@ virTypedParamsAddBoolean(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (virTypedParameterAssign(*params + n, name,
@@ -901,10 +1045,8 @@ virTypedParamsAddString(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (VIR_STRDUP(str, value) < 0)
@@ -961,10 +1103,8 @@ virTypedParamsAddFromString(virTypedParameterPtr *params,
     virResetLastError();
 
     VIR_TYPED_PARAM_CHECK();
-    if (VIR_RESIZE_N(*params, max, n, 1) < 0) {
-        virReportOOMError();
+    if (VIR_RESIZE_N(*params, max, n, 1) < 0)
         goto error;
-    }
     *maxparams = max;
 
     if (virTypedParameterAssignFromStr(*params + n, name, type, value) < 0)
@@ -993,7 +1133,7 @@ void
 virTypedParamsClear(virTypedParameterPtr params,
                     int nparams)
 {
-    int i;
+    size_t i;
 
     if (!params)
         return;

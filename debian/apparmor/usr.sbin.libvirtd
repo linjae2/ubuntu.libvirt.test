@@ -42,6 +42,7 @@
   /usr/bin/* PUx,
   /usr/sbin/* PUx,
   /lib/udev/scsi_id PUx,
+  /usr/lib/xen-common/bin/xen-toolstack PUx,
 
   # Required by nwfilter_ebiptables_driver.c:ebiptablesWriteToTempFile() to
   # write and run an ebtables script.

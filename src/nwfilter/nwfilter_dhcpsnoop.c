@@ -74,8 +74,9 @@
 
 #ifdef HAVE_LIBPCAP
 
-# define LEASEFILE LOCALSTATEDIR "/run/libvirt/network/nwfilter.leases"
-# define TMPLEASEFILE LOCALSTATEDIR "/run/libvirt/network/nwfilter.ltmp"
+# define LEASEFILE_DIR LOCALSTATEDIR "/run/libvirt/network/"
+# define LEASEFILE LEASEFILE_DIR "nwfilter.leases"
+# define TMPLEASEFILE LEASEFILE_DIR "nwfilter.ltmp"
 
 struct virNWFilterSnoopState {
     /* lease file */
@@ -303,10 +304,8 @@ virNWFilterSnoopActivate(virNWFilterSnoopReqPtr req)
 {
     char *key;
 
-    if (virAsprintf(&key, "%p-%d", req, req->ifindex) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&key, "%p-%d", req, req->ifindex) < 0)
         return NULL;
-    }
 
     virNWFilterSnoopActiveLock();
 
@@ -583,10 +582,8 @@ virNWFilterSnoopReqNew(const char *ifkey)
         return NULL;
     }
 
-    if (VIR_ALLOC(req) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(req) < 0)
         return NULL;
-    }
 
     req->threadStatus = THREAD_STATUS_NONE;
 
@@ -762,10 +759,8 @@ virNWFilterSnoopReqLeaseAdd(virNWFilterSnoopReqPtr req,
 
     virNWFilterSnoopReqUnlock(req);
 
-    if (VIR_ALLOC(pl) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(pl) < 0)
         return -1;
-    }
     *pl = *plnew;
 
     /* protect req->threadkey */
@@ -913,7 +908,6 @@ virNWFilterSnoopDHCPGetOpt(virNWFilterSnoopDHCPHdrPtr pd, int len,
                            uint8_t *pmtype, uint32_t *pleasetime)
 {
     int oind, olen;
-    int oend;
     uint32_t nwint;
 
     olen = len - sizeof(*pd);
@@ -926,8 +920,6 @@ virNWFilterSnoopDHCPGetOpt(virNWFilterSnoopDHCPHdrPtr pd, int len,
         return -1;              /* bad magic */
 
     oind += sizeof(dhcp_magic);
-
-    oend = 0;
 
     *pmtype = 0;
     *pleasetime = 0;
@@ -953,14 +945,11 @@ virNWFilterSnoopDHCPGetOpt(virNWFilterSnoopDHCPHdrPtr pd, int len,
             oind++;
             continue;
         case DHCPO_END:
-            oend = 1;
-            break;
+            return 0;
         default:
             if (olen - oind < 2)
                 goto malformed;
         }
-        if (oend)
-            break;
         oind += pd->d_opts[oind + 1] + 2;
     }
     return 0;
@@ -1097,10 +1086,8 @@ virNWFilterSnoopDHCPOpen(const char *ifname, virMacAddr *mac,
          * more unlikely parameters first, then go for the MAC
          */
         if (virAsprintf(&ext_filter,
-                        "%s and ether src %s", filter, macaddr) < 0) {
-            virReportOOMError();
+                        "%s and ether src %s", filter, macaddr) < 0)
             return NULL;
-        }
     } else {
         /*
          * Some DHCP servers respond via MAC broadcast; we rely on later
@@ -1201,10 +1188,8 @@ virNWFilterSnoopDHCPDecodeJobSubmit(virThreadPoolPtr pool,
     if (len <= MIN_VALID_DHCP_PKT_SIZE || len > sizeof(job->packet))
         return 0;
 
-    if (VIR_ALLOC(job) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(job) < 0)
         return -1;
-    }
 
     memcpy(job->packet, pep, len);
     job->caplen = len;
@@ -1351,7 +1336,8 @@ virNWFilterDHCPSnoopThread(void *req0)
     virNWFilterSnoopEthHdrPtr packet;
     int ifindex = 0;
     int errcount = 0;
-    int tmp = -1, i, rv, n, pollTo;
+    int tmp = -1, rv, n, pollTo;
+    size_t i;
     char *threadkey = NULL;
     virThreadPoolPtr worker = NULL;
     time_t last_displayed = 0, last_displayed_queue = 0;
@@ -1639,10 +1625,8 @@ virNWFilterDHCPSnoopReq(virNWFilterTechDriverPtr techdriver,
         VIR_STRDUP(req->linkdev, linkdev) < 0)
         goto exit_snoopreqput;
 
-    if (!req->vars || tmp < 0) {
-        virReportOOMError();
+    if (!req->vars || tmp < 0)
         goto exit_snoopreqput;
-    }
 
     /* check that all tools are available for applying the filters (late) */
     if (!techdriver->canApplyBasicRules()) {
@@ -1787,7 +1771,6 @@ virNWFilterSnoopLeaseFileWrite(int lfd, const char *ifkey,
                       ifkey, ipstr, dhcpstr);
 
     if (len < 0) {
-        virReportOOMError();
         ret = -1;
         goto cleanup;
     }
@@ -1898,6 +1881,11 @@ static void
 virNWFilterSnoopLeaseFileRefresh(void)
 {
     int tfd;
+
+    if (virFileMakePathWithMode(LEASEFILE_DIR, 0700) < 0) {
+        virReportError(errno, _("mkdir(\"%s\")"), LEASEFILE_DIR);
+        return;
+    }
 
     if (unlink(TMPLEASEFILE) < 0 && errno != ENOENT)
         virReportSystemError(errno, _("unlink(\"%s\")"), TMPLEASEFILE);
@@ -2095,10 +2083,8 @@ virNWFilterDHCPSnoopInit(void)
 
     if (!virNWFilterSnoopState.ifnameToKey ||
         !virNWFilterSnoopState.snoopReqs ||
-        !virNWFilterSnoopState.active) {
-        virReportOOMError();
+        !virNWFilterSnoopState.active)
         goto err_exit;
-    }
 
     virNWFilterSnoopLeaseFileLoad();
     virNWFilterSnoopLeaseFileOpen();

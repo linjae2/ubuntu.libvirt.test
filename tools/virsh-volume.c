@@ -177,8 +177,7 @@ cmdVolCreateAs(vshControl *ctl, const vshCmd *cmd)
 
     if (vshCommandOptBool(cmd, "prealloc-metadata"))
         flags |= VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA;
-    if (!(pool = vshCommandOptPoolBy(ctl, cmd, "pool", NULL,
-                                     VSH_BYNAME)))
+    if (!(pool = vshCommandOptPool(ctl, cmd, "pool", NULL)))
         return false;
 
     if (vshCommandOptStringReq(ctl, cmd, "name", &name) < 0)
@@ -345,8 +344,7 @@ cmdVolCreate(vshControl *ctl, const vshCmd *cmd)
 
     if (vshCommandOptBool(cmd, "prealloc-metadata"))
         flags |= VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA;
-    if (!(pool = vshCommandOptPoolBy(ctl, cmd, "pool", NULL,
-                                           VSH_BYNAME)))
+    if (!(pool = vshCommandOptPool(ctl, cmd, "pool", NULL)))
         return false;
 
     if (vshCommandOptStringReq(ctl, cmd, "file", &from) < 0)
@@ -1187,7 +1185,7 @@ typedef struct vshStorageVolList *vshStorageVolListPtr;
 static void
 vshStorageVolListFree(vshStorageVolListPtr list)
 {
-    int i;
+    size_t i;
 
     if (list && list->vols) {
         for (i = 0; i < list->nvols; i++) {
@@ -1205,7 +1203,7 @@ vshStorageVolListCollect(vshControl *ctl,
                          unsigned int flags)
 {
     vshStorageVolListPtr list = vshMalloc(ctl, sizeof(*list));
-    int i;
+    size_t i;
     char **names = NULL;
     virStorageVolPtr vol = NULL;
     bool success = false;
@@ -1275,8 +1273,9 @@ finished:
     success = true;
 
 cleanup:
-    for (i = 0; i < nvols; i++)
-        VIR_FREE(names[i]);
+    if (nvols > 0)
+        for (i = 0; i < nvols; i++)
+            VIR_FREE(names[i]);
     VIR_FREE(names);
 
     if (!success) {
@@ -1322,7 +1321,7 @@ cmdVolList(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
     const char *unit;
     double val;
     bool details = vshCommandOptBool(cmd, "details");
-    int i;
+    size_t i;
     int ret;
     bool functionReturn = false;
     int stringLength = 0;

@@ -165,6 +165,7 @@ useless_free_options =				\
   --name=virNodeDeviceObjFree			\
   --name=virObjectUnref                         \
   --name=virObjectFreeCallback                  \
+  --name=virPCIDeviceFree                       \
   --name=virSecretDefFree			\
   --name=virStorageEncryptionFree		\
   --name=virStorageEncryptionSecretFree		\
@@ -544,6 +545,17 @@ sc_avoid_attribute_unused_in_header:
 	halt='use ATTRIBUTE_UNUSED in .c rather than .h files'		\
 	  $(_sc_search_regexp)
 
+sc_prohibit_int_ijk:
+	@prohibit='\<(int|unsigned) ([^(]* )*(i|j|k)(\s|,|;)'			\
+	halt='use size_t, not int/unsigned int for loop vars i, j, k'	\
+	  $(_sc_search_regexp)
+
+sc_prohibit_loop_iijjkk:
+	@prohibit='\<(int|unsigned) ([^=]+ )*(ii|jj|kk)(\s|,|;)'				\
+	halt='use i, j, k for loop iterators, not ii, jj, kk' 			\
+	  $(_sc_search_regexp)
+
+
 # Many of the function names below came from this filter:
 # git grep -B2 '\<_('|grep -E '\.c- *[[:alpha:]_][[:alnum:]_]* ?\(.*[,;]$' \
 # |sed 's/.*\.c-  *//'|perl -pe 's/ ?\(.*//'|sort -u \
@@ -674,6 +686,19 @@ sc_spec_indentation:
 	  echo '$(ME): skipping test $@: cppi not installed' 1>&2;	\
 	fi
 
+# Long lines can be harder to diff; too long, and git send-email chokes.
+# For now, only enforce line length on files where we have intentionally
+# fixed things and don't want to regress.
+sc_prohibit_long_lines:
+	@prohibit='.{90}'						\
+	in_vc_files='\.arg[sv]'						\
+	halt='Wrap long lines in expected output files'			\
+	  $(_sc_search_regexp)
+	@prohibit='.{80}'						\
+	in_vc_files='Makefile\.am'					\
+	halt='Wrap long lines in Makefiles'				\
+	  $(_sc_search_regexp)
+
 sc_copyright_format:
 	@require='Copyright .*Red 'Hat', Inc\.'				\
 	containing='Copyright .*Red 'Hat				\
@@ -797,6 +822,15 @@ sc_prohibit_include_public_headers_brackets:
 	halt='Do not include libvirt/*.h in internal source'		\
 	  $(_sc_search_regexp)
 
+# <config.h> is only needed in .c files; .h files do not need it since
+# .c files must include config.h before any other .h.
+sc_prohibit_config_h_in_headers:
+	@prohibit='^# *include\>.*config\.h'				\
+	in_vc_files='\.h$$'						\
+	halt='headers should not include <config.h>'			\
+	  $(_sc_search_regexp)
+
+
 # We don't use this feature of maint.mk.
 prev_version_file = /dev/null
 
@@ -818,6 +852,7 @@ ifeq (0,$(MAKELEVEL))
       test -d .git || { echo 0; exit; };				\
       test -f po/Makevars || { echo 1; exit; };				\
       test -f AUTHORS || { echo 1; exit; };				\
+      test "no-git" = "$$(cat $(_curr_status))" && { echo 0; exit; };	\
       actual=$$(git submodule status | $(_submodule_hash);		\
 		git hash-object bootstrap.conf;				\
 		git ls-tree -d HEAD gnulib/local | awk '{print $$3}';	\
@@ -889,7 +924,7 @@ exclude_file_name_regexp--sc_prohibit_always_true_header_tests = \
   ^python/(libvirt-(lxc-|qemu-)?override|typewrappers)\.c$$
 
 exclude_file_name_regexp--sc_prohibit_asprintf = \
-  ^(bootstrap.conf$$|src/util/virstring\.c$$|examples/domain-events/events-c/event-test\.c$$|tests/vircgroupmock\.c$$)
+  ^(bootstrap.conf$$|src/util/virstring\.[ch]$$|examples/domain-events/events-c/event-test\.c$$|tests/vircgroupmock\.c$$)
 
 exclude_file_name_regexp--sc_prohibit_strdup = \
   ^(docs/|examples/|python/|src/util/virstring\.c$$)
@@ -937,10 +972,11 @@ exclude_file_name_regexp--sc_prohibit_xmlURI = ^src/util/viruri\.c$$
 
 exclude_file_name_regexp--sc_prohibit_return_as_function = \.py$$
 
-_virsh_includes=(edit|domain-monitor|domain|volume|pool|network|interface|nwfilter|secret|snapshot|host|nodedev)
-exclude_file_name_regexp--sc_require_config_h = ^(examples/|tools/virsh-$(_virsh_includes)\.c$$)
+exclude_file_name_regexp--sc_require_config_h = \
+	^(examples/|tools/virsh-edit\.c$$)
 
-exclude_file_name_regexp--sc_require_config_h_first = ^(examples/|tools/virsh-$(_virsh_includes)\.c$$)
+exclude_file_name_regexp--sc_require_config_h_first = \
+	^(examples/|tools/virsh-edit\.c$$)
 
 exclude_file_name_regexp--sc_trailing_blank = \
   (/qemuhelpdata/|/sysinfodata/.*\.data|\.(fig|gif|ico|png)$$)
@@ -960,3 +996,6 @@ exclude_file_name_regexp--sc_prohibit_include_public_headers_quote = \
 
 exclude_file_name_regexp--sc_prohibit_include_public_headers_brackets = \
   ^(python/|tools/|examples/|include/libvirt/(virterror|libvirt-(qemu|lxc))\.h$$)
+
+exclude_file_name_regexp--sc_prohibit_int_ijk = \
+  ^(src/remote_protocol-structs|src/remote/remote_protocol.x|cfg.mk|include/)$

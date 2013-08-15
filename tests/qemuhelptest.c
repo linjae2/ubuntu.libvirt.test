@@ -11,26 +11,28 @@
 # include "viralloc.h"
 # include "virstring.h"
 
+# define VIR_FROM_THIS VIR_FROM_NONE
+
 struct testInfo {
     const char *name;
     virQEMUCapsPtr flags;
     unsigned int version;
-    unsigned int is_kvm;
+    bool is_kvm;
     unsigned int kvm_version;
 };
 
 static void printMismatchedFlags(virQEMUCapsPtr got,
                                  virQEMUCapsPtr expect)
 {
-    int i;
+    size_t i;
 
     for (i = 0; i < QEMU_CAPS_LAST; i++) {
         bool gotFlag = virQEMUCapsGet(got, i);
         bool expectFlag = virQEMUCapsGet(expect, i);
         if (gotFlag && !expectFlag)
-            fprintf(stderr, "Extra flag %i\n", i);
+            fprintf(stderr, "Extra flag %zu\n", i);
         if (!gotFlag && expectFlag)
-            fprintf(stderr, "Missing flag %i\n", i);
+            fprintf(stderr, "Missing flag %zu\n", i);
     }
 }
 
@@ -39,7 +41,8 @@ static int testHelpStrParsing(const void *data)
     const struct testInfo *info = data;
     char *path = NULL;
     char *help = NULL;
-    unsigned int version, is_kvm, kvm_version;
+    unsigned int version, kvm_version;
+    bool is_kvm;
     virQEMUCapsPtr flags = NULL;
     int ret = -1;
     char *got = NULL;
@@ -926,7 +929,6 @@ mymain(void)
             QEMU_CAPS_DEVICE_VGA,
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
-            QEMU_CAPS_DEVICE_VIDEO_PRIMARY,
             QEMU_CAPS_DEVICE_USB_SERIAL,
             QEMU_CAPS_DEVICE_USB_NET,
             QEMU_CAPS_DTB,
@@ -1038,7 +1040,6 @@ mymain(void)
             QEMU_CAPS_DEVICE_VGA,
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_DEVICE_VMWARE_SVGA,
-            QEMU_CAPS_DEVICE_VIDEO_PRIMARY,
             QEMU_CAPS_DEVICE_USB_SERIAL,
             QEMU_CAPS_DEVICE_USB_NET,
             QEMU_CAPS_DTB,

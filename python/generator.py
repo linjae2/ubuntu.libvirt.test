@@ -458,6 +458,8 @@ skip_impl = (
     'virNodeGetMemoryParameters',
     'virNodeSetMemoryParameters',
     'virNodeGetCPUMap',
+    'virDomainMigrate3',
+    'virDomainMigrateToURI3',
 )
 
 lxc_skip_impl = (
@@ -510,6 +512,9 @@ skip_function = (
 
     'virConnectUnregisterCloseCallback', # overriden in virConnect.py
     'virConnectRegisterCloseCallback', # overriden in virConnect.py
+
+    'virDomainCreateXMLWithFiles', # overriden in virConnect.py
+    'virDomainCreateWithFiles', # overriden in virDomain.py
 
     # 'Ref' functions have no use for bindings users.
     "virConnectRef",

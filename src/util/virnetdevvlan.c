@@ -33,6 +33,8 @@ virNetDevVlanClear(virNetDevVlanPtr vlan)
 {
     VIR_FREE(vlan->tag);
     vlan->nTags = 0;
+    vlan->nativeMode = 0;
+    vlan->nativeTag = 0;
 }
 
 void
@@ -54,7 +56,9 @@ virNetDevVlanEqual(const virNetDevVlanPtr a, const virNetDevVlanPtr b)
         return false;
 
     if (a->trunk != b->trunk ||
-        a->nTags != b->nTags) {
+        a->nTags != b->nTags ||
+        a->nativeMode != b->nativeMode ||
+        a->nativeTag != b->nativeTag) {
         return false;
     }
 
@@ -82,13 +86,13 @@ virNetDevVlanCopy(virNetDevVlanPtr dst, const virNetDevVlanPtr src)
     if (!src || src->nTags == 0)
         return 0;
 
-    if (VIR_ALLOC_N(dst->tag, src->nTags) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC_N(dst->tag, src->nTags) < 0)
         return -1;
-    }
 
     dst->trunk = src->trunk;
     dst->nTags = src->nTags;
+    dst->nativeMode = src->nativeMode;
+    dst->nativeTag = src->nativeTag;
     memcpy(dst->tag, src->tag, src->nTags * sizeof(*src->tag));
     return 0;
 }

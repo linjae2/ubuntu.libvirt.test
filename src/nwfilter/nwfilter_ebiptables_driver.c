@@ -248,9 +248,9 @@ static int
 printVar(virNWFilterVarCombIterPtr vars,
          char *buf, int bufsize,
          nwItemDescPtr item,
-         int *done)
+         bool *done)
 {
-    *done = 0;
+    *done = false;
 
     if ((item->flags & NWFILTER_ENTRY_ITEM_FLAG_HAS_VAR)) {
         const char *val;
@@ -271,7 +271,7 @@ printVar(virNWFilterVarCombIterPtr vars,
             return -1;
         }
 
-        *done = 1;
+        *done = true;
     }
     return 0;
 }
@@ -283,7 +283,7 @@ _printDataType(virNWFilterVarCombIterPtr vars,
                nwItemDescPtr item,
                bool asHex, bool directionIn)
 {
-    int done;
+    bool done;
     char *data;
     uint8_t ctr;
     virBuffer vb = VIR_BUFFER_INITIALIZER;
@@ -494,10 +494,8 @@ ebiptablesAddRuleInst(virNWFilterRuleInstPtr res,
 {
     ebiptablesRuleInstPtr inst;
 
-    if (VIR_ALLOC(inst) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(inst) < 0)
         return -1;
-    }
 
     inst->commandTemplate = commandTemplate;
     inst->neededProtocolChain = neededChain;
@@ -971,7 +969,7 @@ static int
 iptablesHandleSrcMacAddr(virBufferPtr buf,
                          virNWFilterVarCombIterPtr vars,
                          nwItemDescPtr srcMacAddr,
-                         int directionIn,
+                         bool directionIn,
                          bool *srcmacskipped)
 {
     char macaddr[VIR_MAC_STRING_BUFLEN];
@@ -1008,7 +1006,7 @@ iptablesHandleIpHdr(virBufferPtr buf,
                     virBufferPtr afterStateMatch,
                     virNWFilterVarCombIterPtr vars,
                     ipHdrDataDefPtr ipHdr,
-                    int directionIn,
+                    bool directionIn,
                     bool *skipRule, bool *skipMatch,
                     virBufferPtr prefix)
 {
@@ -1204,7 +1202,7 @@ static int
 iptablesHandlePortData(virBufferPtr buf,
                        virNWFilterVarCombIterPtr vars,
                        portDataDefPtr portData,
-                       int directionIn)
+                       bool directionIn)
 {
     char portstr[20];
     const char *sport = "--sport";
@@ -1270,7 +1268,7 @@ err_exit:
 
 
 static void
-iptablesEnforceDirection(int directionIn,
+iptablesEnforceDirection(bool directionIn,
                          virNWFilterRuleDefPtr rule,
                          virBufferPtr buf)
 {
@@ -1313,7 +1311,7 @@ iptablesEnforceDirection(int directionIn,
  * pointed to by res, != 0 otherwise.
  */
 static int
-_iptablesCreateRuleInstance(int directionIn,
+_iptablesCreateRuleInstance(bool directionIn,
                             const char *chainPrefix,
                             virNWFilterDefPtr nwfilter,
                             virNWFilterRuleDefPtr rule,
@@ -1801,7 +1799,7 @@ iptablesCreateRuleInstanceStateCtrl(virNWFilterDefPtr nwfilter,
                                     bool isIPv6)
 {
     int rc;
-    int directionIn = 0;
+    bool directionIn = false;
     char chainPrefix[2];
     bool maySkipICMP, inout = false;
     char *matchState = NULL;
@@ -1809,7 +1807,7 @@ iptablesCreateRuleInstanceStateCtrl(virNWFilterDefPtr nwfilter,
 
     if ((rule->tt == VIR_NWFILTER_RULE_DIRECTION_IN) ||
         (rule->tt == VIR_NWFILTER_RULE_DIRECTION_INOUT)) {
-        directionIn = 1;
+        directionIn = true;
         inout = (rule->tt == VIR_NWFILTER_RULE_DIRECTION_INOUT);
     }
 
@@ -1926,9 +1924,9 @@ iptablesCreateRuleInstance(virNWFilterDefPtr nwfilter,
                            bool isIPv6)
 {
     int rc;
-    int directionIn = 0;
+    bool directionIn = false;
     char chainPrefix[2];
-    int needState = 1;
+    bool needState = true;
     bool maySkipICMP, inout = false;
     const char *matchState;
 
@@ -1944,14 +1942,14 @@ iptablesCreateRuleInstance(virNWFilterDefPtr nwfilter,
 
     if ((rule->tt == VIR_NWFILTER_RULE_DIRECTION_IN) ||
         (rule->tt == VIR_NWFILTER_RULE_DIRECTION_INOUT)) {
-        directionIn = 1;
+        directionIn = true;
         inout = (rule->tt == VIR_NWFILTER_RULE_DIRECTION_INOUT);
         if (inout)
-            needState = 0;
+            needState = false;
     }
 
     if ((rule->flags & RULE_FLAG_NO_STATEMATCH))
-        needState = 0;
+        needState = false;
 
     chainPrefix[0] = 'F';
 
@@ -2701,7 +2699,7 @@ ebiptablesCreateRuleInstance(enum virDomainNetType nettype ATTRIBUTE_UNUSED,
     case VIR_NWFILTER_RULE_PROTOCOL_ICMP:
     case VIR_NWFILTER_RULE_PROTOCOL_IGMP:
     case VIR_NWFILTER_RULE_PROTOCOL_ALL:
-        isIPv6 = 0;
+        isIPv6 = false;
         rc = iptablesCreateRuleInstance(nwfilter,
                                         rule,
                                         ifname,
@@ -2718,7 +2716,7 @@ ebiptablesCreateRuleInstance(enum virDomainNetType nettype ATTRIBUTE_UNUSED,
     case VIR_NWFILTER_RULE_PROTOCOL_SCTPoIPV6:
     case VIR_NWFILTER_RULE_PROTOCOL_ICMPV6:
     case VIR_NWFILTER_RULE_PROTOCOL_ALLoIPV6:
-        isIPv6 = 1;
+        isIPv6 = true;
         rc = iptablesCreateRuleInstance(nwfilter,
                                         rule,
                                         ifname,
@@ -3008,7 +3006,7 @@ ebtablesCreateTmpSubChain(ebiptablesRuleInstPtr *inst,
         ignore_value(VIR_STRDUP(protostr, ""));
         break;
     case L2_PROTO_STP_IDX:
-        ignore_value(virAsprintf(&protostr, "-d " NWFILTER_MAC_BGA " "));
+        ignore_value(VIR_STRDUP(protostr, "-d " NWFILTER_MAC_BGA " "));
         break;
     default:
         ignore_value(virAsprintf(&protostr, "-p 0x%04x ",
@@ -3016,10 +3014,8 @@ ebtablesCreateTmpSubChain(ebiptablesRuleInstPtr *inst,
         break;
     }
 
-    if (!protostr) {
-        virReportOOMError();
+    if (!protostr)
         return -1;
-    }
 
     virBufferAsprintf(&buf,
                       CMD_DEF("$EBT -t nat -F %s") CMD_SEPARATOR
@@ -3071,7 +3067,7 @@ _ebtablesRemoveSubChains(virBufferPtr buf,
                          const char *chains)
 {
     char rootchain[MAX_CHAINNAME_LENGTH];
-    unsigned i;
+    size_t i;
 
     NWFILTER_SET_EBTABLES_SHELLVAR(buf);
 
@@ -3163,7 +3159,7 @@ ebtablesRenameTmpSubAndRootChains(virBufferPtr buf,
                                   const char *ifname)
 {
     char rootchain[MAX_CHAINNAME_LENGTH];
-    unsigned i;
+    size_t i;
     char chains[3] = {
         CHAINPREFIX_HOST_IN_TEMP,
         CHAINPREFIX_HOST_OUT_TEMP,
@@ -3393,10 +3389,8 @@ ebtablesApplyDHCPOnlyRules(const char *ifname,
 
             dhcpserver = virNWFilterVarValueGetNthValue(dhcpsrvrs, idx);
 
-            if (virAsprintf(&srcIPParam, "--ip-src %s", dhcpserver) < 0) {
-                virReportOOMError();
+            if (virAsprintf(&srcIPParam, "--ip-src %s", dhcpserver) < 0)
                 goto tear_down_tmpebchains;
-            }
         }
 
         /*
@@ -3670,7 +3664,8 @@ ebtablesCreateTmpRootAndSubChains(virBufferPtr buf,
                                   ebiptablesRuleInstPtr *inst,
                                   int *nRuleInstances)
 {
-    int rc = 0, i;
+    int rc = 0;
+    size_t i;
     virHashKeyValuePairPtr filter_names;
     const virNWFilterChainPriority *priority;
 
@@ -3705,7 +3700,7 @@ ebiptablesApplyNewRules(const char *ifname,
                         int nruleInstances,
                         void **_inst)
 {
-    int i, j;
+    size_t i, j;
     int cli_status;
     ebiptablesRuleInstPtr *inst = (ebiptablesRuleInstPtr *)_inst;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
@@ -3720,10 +3715,8 @@ ebiptablesApplyNewRules(const char *ifname,
     if (inst == NULL)
         nruleInstances = 0;
 
-    if (!chains_in_set || !chains_out_set) {
-        virReportOOMError();
+    if (!chains_in_set || !chains_out_set)
         goto exit_free_sets;
-    }
 
     if (nruleInstances > 1 && inst)
         qsort(inst, nruleInstances, sizeof(inst[0]),
@@ -3736,16 +3729,12 @@ ebiptablesApplyNewRules(const char *ifname,
             const char *name = inst[i]->neededProtocolChain;
             if (inst[i]->chainprefix == CHAINPREFIX_HOST_IN_TEMP) {
                 if (virHashUpdateEntry(chains_in_set, name,
-                                       &inst[i]->chainPriority) < 0) {
-                    virReportOOMError();
+                                       &inst[i]->chainPriority) < 0)
                     goto exit_free_sets;
-                }
             } else {
                 if (virHashUpdateEntry(chains_out_set, name,
-                                       &inst[i]->chainPriority) < 0) {
-                    virReportOOMError();
+                                       &inst[i]->chainPriority) < 0)
                     goto exit_free_sets;
-                }
             }
         }
     }
@@ -4078,7 +4067,7 @@ ebiptablesRemoveRules(const char *ifname ATTRIBUTE_UNUSED,
 {
     int rc = 0;
     int cli_status;
-    int i;
+    size_t i;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
     ebiptablesRuleInstPtr *inst = (ebiptablesRuleInstPtr *)_inst;
 
@@ -4210,19 +4199,15 @@ ebiptablesDriverInitWithFirewallD(void)
         } else {
             VIR_INFO("firewalld support enabled for nwfilter");
 
-            ignore_value(virAsprintf(&ebtables_cmd_path,
-                                     "%s --direct --passthrough eb",
-                                     firewall_cmd_path));
-            ignore_value(virAsprintf(&iptables_cmd_path,
-                                     "%s --direct --passthrough ipv4",
-                                     firewall_cmd_path));
-            ignore_value(virAsprintf(&ip6tables_cmd_path,
-                                     "%s --direct --passthrough ipv6",
-                                     firewall_cmd_path));
-
-            if (!ebtables_cmd_path || !iptables_cmd_path ||
-                !ip6tables_cmd_path) {
-                virReportOOMError();
+            if (virAsprintf(&ebtables_cmd_path,
+                            "%s --direct --passthrough eb",
+                            firewall_cmd_path) < 0 ||
+                virAsprintf(&iptables_cmd_path,
+                            "%s --direct --passthrough ipv4",
+                            firewall_cmd_path) < 0 ||
+                virAsprintf(&ip6tables_cmd_path,
+                            "%s --direct --passthrough ipv6",
+                            firewall_cmd_path) < 0) {
                 VIR_FREE(ebtables_cmd_path);
                 VIR_FREE(iptables_cmd_path);
                 VIR_FREE(ip6tables_cmd_path);

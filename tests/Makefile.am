@@ -80,6 +80,7 @@ EXTRA_DIST =		\
 	nwfilterxml2xmlout \
 	oomtrace.pl \
 	qemuhelpdata \
+	qemuhotplugtestdata \
 	qemuxml2argvdata \
 	qemuxml2xmloutdata \
 	qemuxmlnsdata \
@@ -127,6 +128,11 @@ test_programs = virshtest sockettest \
         fchosttest \
 	$(NULL)
 
+if WITH_DBUS
+test_programs += virdbustest \
+                 virsystemdtest
+endif
+
 if WITH_GNUTLS
 test_programs += virnettlscontexttest
 endif
@@ -155,7 +161,7 @@ endif
 if WITH_QEMU
 test_programs += qemuxml2argvtest qemuxml2xmltest qemuxmlnstest \
 	qemuargv2xmltest qemuhelptest domainsnapshotxml2xmltest \
-	qemumonitortest qemumonitorjsontest
+	qemumonitortest qemumonitorjsontest qemuhotplugtest
 endif
 
 if WITH_LXC
@@ -275,6 +281,10 @@ if WITH_QEMU
 test_libraries += libqemumonitortestutils.la
 endif
 
+if WITH_DBUS
+test_libraries += virsystemdmock.la
+endif
+
 if WITH_TESTS
 noinst_PROGRAMS = $(test_programs) $(test_helpers)
 noinst_LTLIBRARIES = $(test_libraries)
@@ -293,7 +303,8 @@ TESTS = $(test_programs) \
 # intermediate shell variable, but must do all the expansion in make
 
 lv_abs_top_builddir=`cd '$(top_builddir)'; pwd`
-path_add = $(lv_abs_top_builddir)/daemon$(PATH_SEPARATOR)$(lv_abs_top_builddir)/tools$(PATH_SEPARATOR)$(lv_abs_top_builddir)/tests
+path_add = $(subst :,$(PATH_SEPARATOR),\
+	$(subst !,$(lv_abs_top_builddir)/,!daemon:!tools:!tests))
 
 TESTS_ENVIRONMENT =				\
   abs_top_builddir=$(lv_abs_top_builddir)	\
@@ -309,8 +320,10 @@ TESTS_ENVIRONMENT =				\
   $(VG)
 
 
+VALGRIND = valgrind --quiet --leak-check=full \
+	--suppressions=$(srcdir)/.valgrind.supp
 valgrind:
-	$(MAKE) check VG="libtool --mode=execute valgrind --quiet --leak-check=full --suppressions=$(srcdir)/.valgrind.supp"
+	$(MAKE) check VG="libtool --mode=execute $(VALGRIND)"
 
 sockettest_SOURCES = \
 	sockettest.c \
@@ -405,6 +418,13 @@ qemumonitorjsontest_SOURCES = \
 	$(NULL)
 qemumonitorjsontest_LDADD = $(qemu_LDADDS) libqemumonitortestutils.la
 
+qemuhotplugtest_SOURCES = \
+	qemuhotplugtest.c \
+	testutils.c testutils.h \
+	testutilsqemu.c testutilsqemu.h \
+	$(NULL)
+qemuhotplugtest_LDADD = $(qemu_LDADDS) libqemumonitortestutils.la
+
 domainsnapshotxml2xmltest_SOURCES = \
 	domainsnapshotxml2xmltest.c testutilsqemu.c testutilsqemu.h \
 	testutils.c testutils.h
@@ -413,7 +433,7 @@ else
 EXTRA_DIST += qemuxml2argvtest.c qemuxml2xmltest.c qemuargv2xmltest.c \
 	qemuxmlnstest.c qemuhelptest.c domainsnapshotxml2xmltest.c \
 	qemumonitortest.c testutilsqemu.c testutilsqemu.h \
-	qemumonitorjsontest.c \
+	qemumonitorjsontest.c qemuhotplugtest.c \
 	$(QEMUMONITORTESTUTILS_SOURCES)
 endif
 
@@ -629,6 +649,26 @@ vircgroupmock_la_CFLAGS = $(AM_CFLAGS)
 vircgroupmock_la_LDFLAGS = -module -avoid-version \
         -rpath /evil/libtool/hack/to/force/shared/lib/creation
 
+if WITH_DBUS
+virdbustest_SOURCES = \
+	virdbustest.c testutils.h testutils.c
+virdbustest_CFLAGS = $(AM_CFLAGS) $(DBUS_CFLAGS)
+virdbustest_LDADD = $(LDADDS)
+
+virsystemdtest_SOURCES = \
+	virsystemdtest.c testutils.h testutils.c
+virsystemdtest_CFLAGS = $(AM_CFLAGS)
+virsystemdtest_LDADD = $(LDADDS)
+
+virsystemdmock_la_SOURCES = \
+	virsystemdmock.c
+virsystemdmock_la_CFLAGS = $(AM_CFLAGS) $(DBUS_CFLAGS)
+virsystemdmock_la_LDFLAGS = -module -avoid-version \
+        -rpath /evil/libtool/hack/to/force/shared/lib/creation
+
+else
+EXTRA_DIST += virdbustest.c virsystemdtest.c virsystemdmock.c
+endif
 
 viruritest_SOURCES = \
 	viruritest.c testutils.h testutils.c
@@ -661,7 +701,8 @@ libsecurityselinuxhelper_la_LDFLAGS = -module -avoid-version \
 securityselinuxtest_SOURCES = \
 	securityselinuxtest.c testutils.h testutils.c
 securityselinuxtest_LDADD = $(LDADDS)
-securityselinuxtest_DEPENDENCIES = libsecurityselinuxhelper.la ../src/libvirt.la
+securityselinuxtest_DEPENDENCIES = libsecurityselinuxhelper.la \
+	../src/libvirt.la
 
 if WITH_QEMU
 if WITH_ATTR
@@ -669,11 +710,13 @@ securityselinuxlabeltest_SOURCES = \
 	securityselinuxlabeltest.c testutils.h testutils.c \
         testutilsqemu.h testutilsqemu.c
 securityselinuxlabeltest_LDADD = $(qemu_LDADDS)
-securityselinuxlabeltest_DEPENDENCIES = libsecurityselinuxhelper.la ../src/libvirt.la
+securityselinuxlabeltest_DEPENDENCIES = libsecurityselinuxhelper.la \
+	../src/libvirt.la
 endif
 endif
 endif
-EXTRA_DIST += securityselinuxtest.c securityselinuxlabeltest.c securityselinuxhelper.c
+EXTRA_DIST += securityselinuxtest.c securityselinuxlabeltest.c \
+	securityselinuxhelper.c
 
 virbuftest_SOURCES = \
 	virbuftest.c testutils.h testutils.c
@@ -717,7 +760,8 @@ endif
 
 libshunload_la_SOURCES = shunloadhelper.c
 libshunload_la_LIBADD = ../src/libvirt.la
-libshunload_la_LDFLAGS = -module -avoid-version -rpath /evil/libtool/hack/to/force/shared/lib/creation
+libshunload_la_LDFLAGS = -module -avoid-version \
+	-rpath /evil/libtool/hack/to/force/shared/lib/creation
 
 shunloadtest_SOURCES = \
 	shunloadtest.c
@@ -748,7 +792,8 @@ object_locking_SOURCES = object-locking.ml
 	ocamlfind ocamlopt $(CILOPTFLAGS) $(CILOPTINCS) $(CILOPTPACKAGES) -c $<
 
 object-locking: object-locking.cmx object-locking-files.txt
-	ocamlfind ocamlopt $(CILOPTFLAGS) $(CILOPTINCS) $(CILOPTPACKAGES) $(CILOPTLIBS) $< -o $@
+	ocamlfind ocamlopt $(CILOPTFLAGS) $(CILOPTINCS) $(CILOPTPACKAGES) \
+	  $(CILOPTLIBS) $< -o $@
 
 object-locking-files.txt:
 	find $(top_builddir)/src/ -name '*.i' > $@
@@ -757,4 +802,5 @@ else
 EXTRA_DIST += object-locking.ml
 endif
 
-CLEANFILES = *.cov *.gcov .libs/*.gcda .libs/*.gcno *.gcno *.gcda *.cmi *.cmx object-locking-files.txt
+CLEANFILES = *.cov *.gcov .libs/*.gcda .libs/*.gcno *.gcno *.gcda *.cmi *.cmx \
+	object-locking-files.txt
