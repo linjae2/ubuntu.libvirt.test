@@ -1,3 +1,10 @@
+libvirt (1.1.1-0ubuntu2) saucy; urgency=low
+
+  * debian/patches/fix-remote-client-segfault.patch: Fix segfault when 
+    using a remote client. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 19 Aug 2013 10:33:08 -0400
+
 libvirt (1.1.1-0ubuntu1) saucy; urgency=low
 
   [ Chuck Short ]
