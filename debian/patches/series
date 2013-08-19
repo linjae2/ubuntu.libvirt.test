@@ -18,3 +18,4 @@ fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu-libxl-qemu-nopath.patch
 ubuntu-xend-probe.patch
 ubuntu-xend-xmlcreate-double-free.patch
+fix-remote-client-segfault.patch
