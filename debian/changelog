@@ -1,3 +1,10 @@
+libvirt (1.1.1-0ubuntu3) saucy; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: Include the system bus abstraction in
+    the libvirtd AppArmor profile as libvirtd connects to the D-Bus system bus
+
+ -- Tyler Hicks <tyhicks@canonical.com>  Tue, 20 Aug 2013 09:07:17 -0700
+
 libvirt (1.1.1-0ubuntu2) saucy; urgency=low
 
   * debian/patches/fix-remote-client-segfault.patch: Fix segfault when 
