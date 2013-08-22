@@ -19,3 +19,15 @@ ubuntu-libxl-qemu-nopath.patch
 ubuntu-xend-probe.patch
 ubuntu-xend-xmlcreate-double-free.patch
 fix-remote-client-segfault.patch
+xen-use-internal-interfaces-in-xendomainusedcpus
+v1.1.1-maint/0001-xen-fix-memory-corruption-in-legacy-driver.patch
+v1.1.1-maint/0002-qemu_migration-Don-t-error-on-tunelled-migration-wit.patch
+v1.1.1-maint/0003-build-fix-configure-detection-of-if_bridge.h-on-RHEL.patch
+#v1.1.1-maint/0004-remote-Fix-a-segfault-in-remoteDomainCreateWithFlags.patch
+v1.1.1-maint/0005-Revert-build-fix-configure-detection-of-if_bridge.h-.patch
+v1.1.1-maint/0006-build-more-workarounds-for-if_bridge.h.patch
+v1.1.1-maint/0007-Fix-qemuProcessReadLog-with-non-zero-offset.patch
+v1.1.1-maint/0008-Reverse-logic-allowing-partial-DHCP-host-XML.patch
+v1.1.1-maint/0009-virsh-domain-Fix-memleak-in-cmdUndefine-with-storage.patch
+v1.1.1-maint/0010-virsh-domain-Fix-memleak-in-cmdCPUBaseline.patch
+v1.1.1-maint/0011-virbitmap-Refactor-virBitmapParse-to-avoid-access-be.patch
