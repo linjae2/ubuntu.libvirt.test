@@ -1,3 +1,11 @@
+libvirt (1.1.1-0ubuntu4) saucy; urgency=low
+
+  * apply all patches from v1.1.1-maint
+  * cherrypick xen-use-internal-interfaces-in-xendomainusedcpus from upstream
+    git.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 22 Aug 2013 10:57:20 -0500
+
 libvirt (1.1.1-0ubuntu3) saucy; urgency=low
 
   * debian/apparmor/usr.sbin.libvirtd: Include the system bus abstraction in
