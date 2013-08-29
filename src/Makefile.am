@@ -1675,7 +1675,8 @@ check-augeas-lockd: test_libvirt_lockd.aug
 
 check-augeas-virtlockd: test_virtlockd.aug
 	$(AM_V_GEN)if test -x '$(AUGPARSE)'; then \
-	    '$(AUGPARSE)' -I $(srcdir)/locking test_virtlockd.aug; \
+	    '$(AUGPARSE)' -I $(top_srcdir)/daemon/ \
+	                  -I $(srcdir)/locking test_virtlockd.aug; \
 	fi
 
 #
