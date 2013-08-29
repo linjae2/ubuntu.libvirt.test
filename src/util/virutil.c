@@ -647,6 +647,14 @@ cleanup:
     return result;
 }
 
+
+char *
+virGetUserDirectory(void)
+{
+    return virGetUserDirectoryByUID(geteuid());
+}
+
+
 #ifdef HAVE_GETPWUID_R
 /* Look up fields from the user database for the given user.  On
  * error, set errno, report the error, and return -1.  */
@@ -750,12 +758,15 @@ static char *virGetGroupEnt(gid_t gid)
     return ret;
 }
 
-char *virGetUserDirectory(void)
+
+char *
+virGetUserDirectoryByUID(uid_t uid)
 {
     char *ret;
-    virGetUserEnt(geteuid(), NULL, NULL, &ret);
+    virGetUserEnt(uid, NULL, NULL, &ret);
     return ret;
 }
+
 
 static char *virGetXDGDirectory(const char *xdgenvname, const char *xdgdefdir)
 {
@@ -972,11 +983,11 @@ virGetGroupID(const char *group, gid_t *gid)
 }
 
 
-/* Compute the list of groups (primary and supplemental) associated
- * with @uid, and including @gid in the list (unless it is -1), storing
- * a malloc'd result into @list.  Return the size of the list on
- * success, or -1 on failure with error reported and errno set. May not
- * be called between fork and exec. */
+/* Compute the list of primary and supplementary groups associated
+ * with @uid, and including @gid in the list (unless it is -1),
+ * storing a malloc'd result into @list. Return the size of the list
+ * on success, or -1 on failure with error reported and errno set. May
+ * not be called between fork and exec. */
 int
 virGetGroupList(uid_t uid, gid_t gid, gid_t **list)
 {
@@ -999,11 +1010,19 @@ virGetGroupList(uid_t uid, gid_t gid, gid_t **list)
     }
 
     if (gid != (gid_t)-1) {
-        if (VIR_REALLOC_N(*list, ++ret) < 0) {
+        size_t i;
+
+        for (i = 0; i < ret; i++) {
+            if ((*list)[i] == gid)
+                goto cleanup;
+        }
+        if (VIR_APPEND_ELEMENT(*list, i, gid) < 0) {
+            ret = -1;
             VIR_FREE(*list);
             goto cleanup;
+        } else {
+            ret = i;
         }
-        (*list)[ret-1] = gid;
     }
 
 cleanup:
@@ -1104,8 +1123,11 @@ virGetWin32DirectoryRoot(char **path)
 
 
 char *
-virGetUserDirectory(void)
+virGetUserDirectoryByUID(uid_t uid ATTRIBUTE_UNUSED)
 {
+    /* Since Windows lacks setuid binaries, and since we already fake
+     * geteuid(), we can safely assume that this is only called when
+     * querying about the current user */
     const char *dir;
     char *ret;
 
@@ -1189,7 +1211,7 @@ virGetUserRuntimeDirectory(void)
 
 # else /* !HAVE_GETPWUID_R && !WIN32 */
 char *
-virGetUserDirectory(void)
+virGetUserDirectoryByUID(uid_t uid ATTRIBUTE_UNUSED)
 {
     virReportError(VIR_ERR_INTERNAL_ERROR,
                    "%s", _("virGetUserDirectory is not available"));
