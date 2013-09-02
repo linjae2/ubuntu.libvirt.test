@@ -11,8 +11,8 @@ After=dbus.service
 After=iscsid.service
 
 [Service]
-EnvironmentFile=-/etc/sysconfig/libvirtd
-ExecStart=@sbindir@/libvirtd $LIBVIRTD_ARGS
+EnvironmentFile=-/etc/default/libvirt-bin
+ExecStart=@sbindir@/libvirtd $libvirtd_opts
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 Restart=on-failure
