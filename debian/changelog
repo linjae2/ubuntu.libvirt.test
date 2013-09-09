@@ -1,3 +1,10 @@
+libvirt (1.1.1-0ubuntu5) saucy; urgency=low
+
+  * add-bounds-checking-on-virdomainmigrate: upstream patch for CVE-2013-4292
+  * security-provide-supplemental-groups: upstream patch for CVE-2013-4291
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 09 Sep 2013 13:16:43 -0500
+
 libvirt (1.1.1-0ubuntu4) saucy; urgency=low
 
   * apply all patches from v1.1.1-maint
