@@ -4139,7 +4139,7 @@ GENERATED_SYM_FILES = \
 @WITH_XEN_TRUE@libvirt_driver_xen_la_SOURCES = 
 @WITH_XEN_TRUE@libvirt_driver_xen_la_LIBADD =  \
 @WITH_XEN_TRUE@	libvirt_driver_xen_impl.la $(am__append_18)
-@WITH_DRIVER_MODULES_TRUE@@WITH_XEN_TRUE@libvirt_driver_xen_la_LDFLAGS = -module -avoid-version
+@WITH_DRIVER_MODULES_TRUE@@WITH_XEN_TRUE@libvirt_driver_xen_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 # Stateful, so linked to daemon instead
 #libvirt_la_BUILT_LIBADD += libvirt_driver_xen.la
 @WITH_XEN_TRUE@libvirt_driver_xen_impl_la_CFLAGS = \
@@ -4168,7 +4168,7 @@ GENERATED_SYM_FILES = \
 @WITH_VBOX_TRUE@libvirt_driver_vbox_la_SOURCES = 
 @WITH_VBOX_TRUE@libvirt_driver_vbox_la_LIBADD =  \
 @WITH_VBOX_TRUE@	libvirt_driver_vbox_impl.la $(am__append_28)
-@WITH_DRIVER_MODULES_TRUE@@WITH_VBOX_TRUE@libvirt_driver_vbox_la_LDFLAGS = -module -avoid-version
+@WITH_DRIVER_MODULES_TRUE@@WITH_VBOX_TRUE@libvirt_driver_vbox_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 # GPLv2-only license requries that it be linked into
 # libvirtd and *not* libvirt.so
 #libvirt_la_BUILT_LIBADD += libvirt_driver_vbox.la
@@ -4188,7 +4188,7 @@ GENERATED_SYM_FILES = \
 @WITH_LIBXL_TRUE@libvirt_driver_libxl_la_SOURCES = 
 @WITH_LIBXL_TRUE@libvirt_driver_libxl_la_LIBADD =  \
 @WITH_LIBXL_TRUE@	libvirt_driver_libxl_impl.la $(am__append_34)
-@WITH_DRIVER_MODULES_TRUE@@WITH_LIBXL_TRUE@libvirt_driver_libxl_la_LDFLAGS = -module -avoid-version
+@WITH_DRIVER_MODULES_TRUE@@WITH_LIBXL_TRUE@libvirt_driver_libxl_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 # Stateful, so linked to daemon instead
 #libvirt_la_BUILT_LIBADD += libvirt_driver_libxl.la
 @WITH_LIBXL_TRUE@libvirt_driver_libxl_impl_la_CFLAGS = \
@@ -4205,7 +4205,7 @@ GENERATED_SYM_FILES = \
 @WITH_QEMU_TRUE@libvirt_driver_qemu_la_LIBADD =  \
 @WITH_QEMU_TRUE@	libvirt_driver_qemu_impl.la $(am__append_38) \
 @WITH_QEMU_TRUE@	$(am__append_142)
-@WITH_DRIVER_MODULES_TRUE@@WITH_QEMU_TRUE@libvirt_driver_qemu_la_LDFLAGS = -module -avoid-version
+@WITH_DRIVER_MODULES_TRUE@@WITH_QEMU_TRUE@libvirt_driver_qemu_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 # Stateful, so linked to daemon instead
 #libvirt_la_BUILT_LIBADD += libvirt_driver_qemu.la
 @WITH_QEMU_TRUE@libvirt_driver_qemu_impl_la_CFLAGS = \
@@ -4240,7 +4240,7 @@ GENERATED_SYM_FILES = \
 @WITH_UML_TRUE@libvirt_driver_uml_la_SOURCES = 
 @WITH_UML_TRUE@libvirt_driver_uml_la_LIBADD =  \
 @WITH_UML_TRUE@	libvirt_driver_uml_impl.la $(am__append_56)
-@WITH_DRIVER_MODULES_TRUE@@WITH_UML_TRUE@libvirt_driver_uml_la_LDFLAGS = -module -avoid-version
+@WITH_DRIVER_MODULES_TRUE@@WITH_UML_TRUE@libvirt_driver_uml_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 # Stateful, so linked to daemon instead
 #libvirt_la_BUILT_LIBADD += libvirt_driver_uml.la
 @WITH_UML_TRUE@libvirt_driver_uml_impl_la_CFLAGS = \
@@ -4324,7 +4324,7 @@ libvirt_driver_storage_impl_la_LIBADD = $(SECDRIVER_LIBS) \
 @WITH_STORAGE_TRUE@libvirt_driver_storage_la_LIBADD =  \
 @WITH_STORAGE_TRUE@	libvirt_driver_storage_impl.la \
 @WITH_STORAGE_TRUE@	$(am__append_82)
-@WITH_DRIVER_MODULES_TRUE@@WITH_STORAGE_TRUE@libvirt_driver_storage_la_LDFLAGS = -module -avoid-version
+@WITH_DRIVER_MODULES_TRUE@@WITH_STORAGE_TRUE@libvirt_driver_storage_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 # Stateful, so linked to daemon instead
 #libvirt_la_BUILT_LIBADD += libvirt_driver_nodedev.la
 @WITH_NODE_DEVICES_TRUE@libvirt_driver_nodedev_la_SOURCES =  \
@@ -4350,7 +4350,7 @@ libvirt_driver_storage_impl_la_LIBADD = $(SECDRIVER_LIBS) \
 @WITH_NWFILTER_TRUE@		$(AM_CFLAGS)
 
 @WITH_NWFILTER_TRUE@libvirt_driver_nwfilter_la_LDFLAGS =  \
-@WITH_NWFILTER_TRUE@	$(LD_AMFLAGS) $(am__append_108)
+@WITH_NWFILTER_TRUE@	$(AM_LDFLAGS) $(am__append_108)
 @WITH_NWFILTER_TRUE@libvirt_driver_nwfilter_la_LIBADD =  \
 @WITH_NWFILTER_TRUE@	$(LIBPCAP_LIBS) $(LIBNL_LIBS) $(DBUS_LIBS) \
 @WITH_NWFILTER_TRUE@	$(am__append_107)
@@ -4474,7 +4474,7 @@ POD2MAN = pod2man -c "Virtualization Support" \
 @LIBVIRT_INIT_SCRIPT_SYSTEMD_TRUE@@WITH_LIBVIRTD_TRUE@SYSTEMD_UNIT_DIR = /lib/systemd/system
 @WITH_SANLOCK_TRUE@sanlock_la_SOURCES = $(LOCK_DRIVER_SANLOCK_SOURCES)
 @WITH_SANLOCK_TRUE@sanlock_la_CFLAGS = -I$(top_srcdir)/src/conf $(AM_CFLAGS)
-@WITH_SANLOCK_TRUE@sanlock_la_LDFLAGS = -module -avoid-version
+@WITH_SANLOCK_TRUE@sanlock_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 @WITH_SANLOCK_TRUE@sanlock_la_LIBADD = -lsanlock_client \
 @WITH_SANLOCK_TRUE@		../gnulib/lib/libgnu.la
 
