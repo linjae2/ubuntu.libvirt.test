@@ -31,3 +31,5 @@ v1.1.1-maint/0008-Reverse-logic-allowing-partial-DHCP-host-XML.patch
 v1.1.1-maint/0009-virsh-domain-Fix-memleak-in-cmdUndefine-with-storage.patch
 v1.1.1-maint/0010-virsh-domain-Fix-memleak-in-cmdCPUBaseline.patch
 v1.1.1-maint/0011-virbitmap-Refactor-virBitmapParse-to-avoid-access-be.patch
+add-bounds-checking-on-virdomainmigrate
+security-provide-supplemental-groups
