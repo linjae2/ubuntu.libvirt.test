@@ -672,9 +672,8 @@ void virNetServerRun(virNetServerPtr srv)
     virNetServerLock(srv);
 
 #if HAVE_AVAHI
-    if (srv->mdns &&
-        virNetServerMDNSStart(srv->mdns) < 0)
-        goto cleanup;
+    if (srv->mdns)
+        virNetServerMDNSStart(srv->mdns);
 #endif
 
     if (srv->autoShutdownTimeout &&
