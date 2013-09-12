@@ -91,7 +91,10 @@ virCgroupAvailable(void)
         return false;
 
     while (getmntent_r(mounts, &entry, buf, sizeof(buf)) != NULL) {
-        if (STREQ(entry.mnt_type, "cgroup")) {
+        /* We're looking for at least one 'cgroup' fs mount,
+         * which is *not* a named mount. */
+        if (STREQ(entry.mnt_type, "cgroup") &&
+            !strstr(entry.mnt_opts, "name=")) {
             ret = true;
             break;
         }
@@ -342,10 +345,11 @@ virCgroupDetectMounts(virCgroupPtr group)
                                        entry.mnt_dir);
                         goto error;
                     }
-                    *tmp2 = '\0';
+
                     /* If it is a co-mount it has a filename like "cpu,cpuacct"
                      * and we must identify the symlink path */
                     if (strchr(tmp2 + 1, ',')) {
+                        *tmp2 = '\0';
                         if (virAsprintf(&linksrc, "%s/%s",
                                         entry.mnt_dir, typestr) < 0)
                             goto error;
