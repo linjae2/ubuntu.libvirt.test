@@ -1,3 +1,16 @@
+libvirt (0.7.5-5ubuntu27.24) lucid-security; urgency=low
+
+  * SECURITY UPDATE: possible privilege escalation via pkcheck race.
+    - debian/patches/CVE-2013-4311.patch: add uid to pkcheck call in
+      configure.in, daemon/libvirtd.*, daemon/remote.c, src/Makefile.am,
+      src/util/virprocess.*, src/util/virstring.*, src/util/memory.h.
+    - debian/control: specify version of policykit-1 security update, add
+      libpolkit-gobject-1-dev to Build-Depends
+    - debian/patched/CVE-2013-4311-autotools.patch: run autoreconf.
+    - CVE-2013-4311
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Thu, 12 Sep 2013 08:54:29 -0400
+
 libvirt (0.7.5-5ubuntu27.23) lucid-proposed; urgency=low
 
   * debian/libvirt-bin.install, debian/rules: name the apport file

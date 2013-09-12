@@ -8,7 +8,8 @@ Build-Depends: cdbs (>= 0.4.43), debhelper (>= 7), libxml2-dev, libncurses5-dev,
  libudev-dev,
  libpciaccess-dev,
  module-init-tools, parted,
- policykit-1,
+ policykit-1 (>= 0.96-2ubuntu0.2),
+ libpolkit-gobject-1-dev (>= 0.96-2ubuntu0.2),
  dpkg-dev (<< 1.15.3) | dpkg-dev (>> 1.15.3),
  libxml2-utils, libapparmor-dev, libcap-ng-dev
 XS-Python-Version: current
@@ -27,7 +28,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, libvirt0 (= ${binary:Versi
 Enhances: qemu, kvm, xen
 Section: admin
 Recommends: qemu-kvm (>= 0.11.0-0ubuntu6)
-Suggests: policykit-1, apparmor (>= 2.3+1289-0ubuntu14)
+Suggests: policykit-1 (>= 0.96-2ubuntu0.2), apparmor (>= 2.3+1289-0ubuntu14)
 Description: the programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
