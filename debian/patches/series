@@ -46,3 +46,5 @@ fix-tap-interfaces-mac-addrs.patch
 9909-CVE-2011-2511.patch
 lxc-use-own-ptyfns.patch
 fix-qemu-info-migration.patch
+CVE-2013-4311.patch
+CVE-2013-4311-autotools.patch
