@@ -141,6 +141,7 @@ src/util/iohelper.c
 src/util/viraudit.c
 src/util/virauth.c
 src/util/virauthconfig.c
+src/util/virbitmap.c
 src/util/vircgroup.c
 src/util/vircommand.c
 src/util/virconf.c
