@@ -23,3 +23,6 @@ fix-ubuntu-xen-qemu-dm-path.patch
 prevent-lxc-shutdown-host.patch
 nonblock-fix.patch
 CVE-2013-1962.patch
+CVE-2013-4311.patch
+CVE-2013-4296.patch
+CVE-2013-5651.patch
