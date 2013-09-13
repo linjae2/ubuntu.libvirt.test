@@ -46,3 +46,6 @@ ubuntu/fix-poll.patch
 ubuntu/qemu-Keep-list-of-USB-devices-attached-to-domains
 ubuntu/usb-create-functions-to-search-usb-device
 ubuntu/qemu-call-usb-search-function-for-hostdev
+CVE-2013-4311.patch
+CVE-2013-4311-autotools.patch
+CVE-2013-4296.patch
