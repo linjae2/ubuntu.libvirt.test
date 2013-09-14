@@ -105,8 +105,10 @@ UTIL_SOURCES =							\
 		util/virnetdevveth.h util/virnetdevveth.c \
 		util/virnetdevvportprofile.h util/virnetdevvportprofile.c \
 		util/virnetlink.c util/virnetlink.h		\
+		util/virprocess.h util/virprocess.c		\
 		util/virrandom.h util/virrandom.c		\
 		util/virsocketaddr.h util/virsocketaddr.c \
+		util/virstring.h util/virstring.c		\
 		util/virtime.h util/virtime.c \
 		util/viruri.h util/viruri.c
 
