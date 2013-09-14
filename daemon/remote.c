@@ -2172,6 +2172,7 @@ remoteDispatchAuthList(virNetServerPtr server ATTRIBUTE_UNUSED,
     uid_t callerUid;
     gid_t callerGid;
     pid_t callerPid;
+    unsigned long long timestamp;
 
     /* If the client is root then we want to bypass the
      * policykit auth to avoid root being denied if
@@ -2179,7 +2180,7 @@ remoteDispatchAuthList(virNetServerPtr server ATTRIBUTE_UNUSED,
      */
     if (auth == VIR_NET_SERVER_SERVICE_AUTH_POLKIT) {
         if (virNetServerClientGetUNIXIdentity(client, &callerUid, &callerGid,
-                                              &callerPid) < 0) {
+                                              &callerPid, &timestamp) < 0) {
             /* Don't do anything on error - it'll be validated at next
              * phase of auth anyway */
             virResetLastError();
@@ -2607,14 +2608,17 @@ remoteDispatchAuthPolkit(virNetServerPtr server ATTRIBUTE_UNUSED,
     pid_t callerPid = -1;
     gid_t callerGid = -1;
     uid_t callerUid = -1;
+    unsigned long long timestamp;
     const char *action;
     int status = -1;
     char *ident = NULL;
     bool authdismissed = 0;
+    bool supportsuid = 0;
     char *pkout = NULL;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
     virCommandPtr cmd = NULL;
+    static bool polkitInsecureWarned = false;
 
     virMutexLock(&priv->lock);
     action = virNetServerClientGetReadonly(client) ?
@@ -2632,7 +2636,13 @@ remoteDispatchAuthPolkit(virNetServerPtr server ATTRIBUTE_UNUSED,
     }
 
     if (virNetServerClientGetUNIXIdentity(client, &callerUid, &callerGid,
-                                          &callerPid) < 0) {
+                                          &callerPid, &timestamp) < 0) {
+        goto authfail;
+    }
+
+    if (timestamp == 0) {
+        VIR_WARN("Failing polkit auth due to missing client (pid=%lld) start time",
+                 (long long)callerPid);
         goto authfail;
     }
 
@@ -2640,7 +2650,18 @@ remoteDispatchAuthPolkit(virNetServerPtr server ATTRIBUTE_UNUSED,
              (long long) callerPid, callerUid);
 
     virCommandAddArg(cmd, "--process");
-    virCommandAddArgFormat(cmd, "%lld", (long long) callerPid);
+# ifdef PKCHECK_SUPPORTS_UID
+    supportsuid = 1;
+# endif
+    if (supportsuid) {
+        virCommandAddArgFormat(cmd, "%lld,%llu,%lu", (long long) callerPid, timestamp, (unsigned long) callerUid);
+    } else {
+        if (!polkitInsecureWarned) {
+            VIR_WARN("No support for caller UID with pkcheck. This deployment is known to be insecure.");
+            polkitInsecureWarned = true;
+        }
+        virCommandAddArgFormat(cmd, "%lld,%llu", (long long) callerPid, timestamp);
+    }
     virCommandAddArg(cmd, "--allow-user-interaction");
 
     if (virAsprintf(&ident, "pid:%lld,uid:%d",
