@@ -7,6 +7,9 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 
+DEB_AUTO_UPDATE_AUTOCONF := 2.69
+DEB_AUTO_UPDATE_AUTOHEADER := 2.69
+
 ifneq (,$(findstring $(DEB_HOST_ARCH), i386 amd64))
   DEB_MAKE_CHECK_TARGET = check
   WITH_XEN = --with-xen
