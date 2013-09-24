@@ -33,3 +33,5 @@ v1.1.1-maint/0010-virsh-domain-Fix-memleak-in-cmdCPUBaseline.patch
 v1.1.1-maint/0011-virbitmap-Refactor-virBitmapParse-to-avoid-access-be.patch
 add-bounds-checking-on-virdomainmigrate
 security-provide-supplemental-groups
+CVE-2013-4296.patch
+CVE-2013-4311.patch
