@@ -1,3 +1,13 @@
+libvirt (1.1.1-0ubuntu8) saucy; urgency=low
+
+  * SECURITY UPDATE: denial of service via invalid free in
+    virFileNBDDeviceAssociate.
+    - debian/patches/CVE-2013-4297.patch: properly initialize qemunbd in
+      src/util/virfile.c.
+    - CVE-2013-4297
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 02 Oct 2013 13:35:14 -0400
+
 libvirt (1.1.1-0ubuntu7) saucy; urgency=low
 
   * fix-crash-in-libvirtd-when-events: make sure to remove all event
