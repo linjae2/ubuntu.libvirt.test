@@ -26,3 +26,4 @@ CVE-2013-1962.patch
 CVE-2013-4311.patch
 CVE-2013-4296.patch
 CVE-2013-5651.patch
+conf-fix-a-failure-when-detaching-a-usb-device
