@@ -1858,9 +1858,6 @@ virNetworkObjUpdateParseFile(const char *filename,
         if (class_id &&
             virBitmapParse(class_id, 0,
                            &net->class_id, CLASS_ID_BITMAP_SIZE) < 0) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("Malformed 'class_id' attribute: %s"),
-                           class_id);
             VIR_FREE(class_id);
             goto cleanup;
         }
