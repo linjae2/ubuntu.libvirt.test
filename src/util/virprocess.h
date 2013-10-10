@@ -54,4 +54,7 @@ int virProcessGetNamespaces(pid_t pid,
 int virProcessSetNamespaces(size_t nfdlist,
                             int *fdlist);
 
+int virProcessGetStartTime(pid_t pid,
+                           unsigned long long *timestamp);
+
 #endif /* __VIR_PROCESS_H__ */
