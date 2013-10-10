@@ -1,0 +1,32 @@
+commit a950f03e16dd958f821027aa5d396166163c3200
+Author: Guannan Ren <gren@redhat.com>
+Date:   Tue Mar 26 22:17:43 2013 +0800
+
+    conf: fix a failure when detaching a usb device
+    
+     #virsh detach-device $guest usb.xml
+     error: Failed to detach device from usb2.xml
+     error: operation failed: host usb device vendor=0x0951 \
+     product=0x1625 not found
+    
+    This regresstion is due to a typo in matching function. The first
+    argument is always the usb device that we are checking for. If the
+    usb xml file provided by user contains bus and device info, we try
+    to search it by them, otherwise, we use vendor and product info.
+    
+    The bug occurred only when detaching a usb device with no bus and
+    device info provided in the usb xml file.
+
+Index: libvirt-1.0.2/src/conf/domain_conf.c
+===================================================================
+--- libvirt-1.0.2.orig/src/conf/domain_conf.c	2013-10-10 14:37:31.023768513 +0000
++++ libvirt-1.0.2/src/conf/domain_conf.c	2013-10-10 14:37:31.019768524 +0000
+@@ -8036,7 +8036,7 @@
+ virDomainHostdevMatchSubsysUSB(virDomainHostdevDefPtr a,
+                                virDomainHostdevDefPtr b)
+ {
+-    if (b->source.subsys.u.usb.bus && b->source.subsys.u.usb.device) {
++    if (a->source.subsys.u.usb.bus && a->source.subsys.u.usb.device) {
+         /* specified by bus location on host */
+         if (a->source.subsys.u.usb.bus == b->source.subsys.u.usb.bus &&
+             a->source.subsys.u.usb.device == b->source.subsys.u.usb.device)

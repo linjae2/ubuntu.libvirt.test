@@ -1,3 +1,10 @@
+libvirt (1.0.2-0ubuntu11.13.04.5) raring-proposed; urgency=low
+
+  * Cherrypick upstream patch (LP: #1219435)
+    - conf-fix-a-failure-when-detaching-a-usb-device
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 10 Oct 2013 14:37:35 +0000
+
 libvirt (1.0.2-0ubuntu11.13.04.4) raring-security; urgency=low
 
   * SECURITY UPDATE: possible privilege escalation via pkcheck race.
