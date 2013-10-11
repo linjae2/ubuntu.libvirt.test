@@ -49,3 +49,6 @@ ubuntu/qemu-call-usb-search-function-for-hostdev
 CVE-2013-4311.patch
 CVE-2013-4311-autotools.patch
 CVE-2013-4296.patch
+fix-for-parallel-port-passthrough-for-qemu
+qemu-delete-usb-devices-on-stop
+qemu-build-activeusbhostdevs-on-reconnect
