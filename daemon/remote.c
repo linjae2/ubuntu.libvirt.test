@@ -1969,13 +1969,15 @@ remoteDispatchAuthList(virNetServerPtr server ATTRIBUTE_UNUSED,
     int auth = virNetServerClientGetAuth(client);
     uid_t callerUid;
     pid_t callerPid;
+    unsigned long long timestamp;
 
     /* If the client is root then we want to bypass the
      * policykit auth to avoid root being denied if
      * some piece of polkit isn't present/running
      */
     if (auth == VIR_NET_SERVER_SERVICE_AUTH_POLKIT) {
-        if (virNetServerClientGetLocalIdentity(client, &callerUid, &callerPid) < 0) {
+        if (virNetServerClientGetLocalIdentity(client, &callerUid,
+                                               &callerPid, &timestamp) < 0) {
             /* Don't do anything on error - it'll be validated at next
              * phase of auth anyway */
             virResetLastError();
@@ -2402,28 +2404,22 @@ remoteDispatchAuthPolkit(virNetServerPtr server ATTRIBUTE_UNUSED,
 {
     pid_t callerPid = -1;
     uid_t callerUid = -1;
+    unsigned long long timestamp;
     const char *action;
     int status = -1;
-    char pidbuf[50];
-    char ident[100];
-    int rv = -1;
+    char *ident = NULL;
+    bool supportsuid = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
-
-    memset(ident, 0, sizeof ident);
+    virCommandPtr cmd = NULL;
+    static bool polkitInsecureWarned = false;
 
     virMutexLock(&priv->lock);
     action = virNetServerClientGetReadonly(client) ?
         "org.libvirt.unix.monitor" :
         "org.libvirt.unix.manage";
 
-    const char * const pkcheck [] = {
-      PKCHECK_PATH,
-      "--action-id", action,
-      "--process", pidbuf,
-      "--allow-user-interaction",
-      NULL
-    };
+    cmd = virCommandNewArgList(PKCHECK_PATH, "--action-id", action, NULL);
 
     VIR_DEBUG("Start PolicyKit auth %d", virNetServerClientGetFD(client));
     if (virNetServerClientGetAuth(client) != VIR_NET_SERVER_SERVICE_AUTH_POLKIT) {
@@ -2431,48 +2427,68 @@ remoteDispatchAuthPolkit(virNetServerPtr server ATTRIBUTE_UNUSED,
         goto authfail;
     }
 
-    if (virNetServerClientGetLocalIdentity(client, &callerUid, &callerPid) < 0) {
+    if (virNetServerClientGetLocalIdentity(client, &callerUid,
+                                           &callerPid, &timestamp) < 0) {
         goto authfail;
     }
 
-    VIR_INFO("Checking PID %d running as %d", callerPid, callerUid);
-
-    rv = snprintf(pidbuf, sizeof pidbuf, "%d", callerPid);
-    if (rv < 0 || rv >= sizeof pidbuf) {
-        VIR_ERROR(_("Caller PID was too large %d"), callerPid);
+    if (timestamp == 0) {
+        VIR_WARN("Failing polkit auth due to missing client (pid=%lld) start time",
+                 (long long)callerPid);
         goto authfail;
     }
 
-    rv = snprintf(ident, sizeof ident, "pid:%d,uid:%d", callerPid, callerUid);
-    if (rv < 0 || rv >= sizeof ident) {
-        VIR_ERROR(_("Caller identity was too large %d:%d"), callerPid, callerUid);
+    VIR_INFO("Checking PID %lld running as %d",
+             (long long) callerPid, callerUid);
+
+    virCommandAddArg(cmd, "--process");
+# ifdef PKCHECK_SUPPORTS_UID
+    supportsuid = 1;
+# endif
+    if (supportsuid) {
+        virCommandAddArgFormat(cmd, "%lld,%llu,%lu", (long long) callerPid, timestamp, (unsigned long) callerUid);
+    } else {
+        if (!polkitInsecureWarned) {
+            VIR_WARN("No support for caller UID with pkcheck. This deployment is known to be insecure.");
+            polkitInsecureWarned = true;
+        }
+        virCommandAddArgFormat(cmd, "%lld,%llu", (long long) callerPid, timestamp);
+    }
+    virCommandAddArg(cmd, "--allow-user-interaction");
+
+    if (virAsprintf(&ident, "pid:%lld,uid:%d",
+                    (long long) callerPid, callerUid) < 0) {
+        virReportOOMError();
         goto authfail;
     }
 
-    if (virRun(pkcheck, &status) < 0) {
-        VIR_ERROR(_("Cannot invoke %s"), PKCHECK_PATH);
+    if (virCommandRun(cmd, &status) < 0)
         goto authfail;
-    }
+
     if (status != 0) {
         char *tmp = virCommandTranslateStatus(status);
-        VIR_ERROR(_("Policy kit denied action %s from pid %d, uid %d: %s"),
-                  action, callerPid, callerUid, NULLSTR(tmp));
+        VIR_ERROR(_("Policy kit denied action %s from pid %lld, uid %d: %s"),
+                  action, (long long) callerPid, callerUid, NULLSTR(tmp));
         VIR_FREE(tmp);
         goto authdeny;
     }
     PROBE(RPC_SERVER_CLIENT_AUTH_ALLOW,
           "client=%p auth=%d identity=%s",
           client, REMOTE_AUTH_POLKIT, ident);
-    VIR_INFO("Policy allowed action %s from pid %d, uid %d",
-             action, callerPid, callerUid);
+    VIR_INFO("Policy allowed action %s from pid %lld, uid %d",
+             action, (long long) callerPid, callerUid);
     ret->complete = 1;
 
     virNetServerClientSetIdentity(client, ident);
     virMutexUnlock(&priv->lock);
+    virCommandFree(cmd);
+    VIR_FREE(ident);
 
     return 0;
 
 error:
+    virCommandFree(cmd);
+    VIR_FREE(ident);
     virResetLastError();
     virNetError(VIR_ERR_AUTH_FAILED, "%s",
                 _("authentication failed"));
@@ -2489,7 +2505,7 @@ authfail:
 authdeny:
     PROBE(RPC_SERVER_CLIENT_AUTH_DENY,
           "client=%p auth=%d identity=%s",
-          client, REMOTE_AUTH_POLKIT, (char *)ident);
+          client, REMOTE_AUTH_POLKIT, ident);
     goto error;
 }
 #elif HAVE_POLKIT0

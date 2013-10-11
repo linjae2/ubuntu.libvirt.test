@@ -98,7 +98,9 @@ UTIL_SOURCES =							\
 		util/virnetdevtap.h util/virnetdevtap.c		\
 		util/virnetdevveth.h util/virnetdevveth.c \
 		util/virnetdevvportprofile.h util/virnetdevvportprofile.c \
+		util/virprocess.h util/virprocess.c		\
 		util/virsocketaddr.h util/virsocketaddr.c \
+		util/virstring.h util/virstring.c		\
 		util/virtime.h util/virtime.c
 
 EXTRA_DIST += $(srcdir)/util/virkeymaps.h $(srcdir)/util/keymaps.csv \
