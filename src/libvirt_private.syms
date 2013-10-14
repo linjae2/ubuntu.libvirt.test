@@ -1070,6 +1070,8 @@ usbDeviceListNew;
 usbDeviceListSteal;
 usbDeviceSetUsedBy;
 usbFindDevice;
+usbFindDeviceByBus;
+usbFindDeviceByVendor;
 usbFreeDevice;
 usbGetDevice;
 
