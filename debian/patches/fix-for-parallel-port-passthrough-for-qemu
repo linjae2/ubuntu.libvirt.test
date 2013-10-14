@@ -25,8 +25,8 @@ Date:   Wed May 23 07:50:02 2012 +0200
 
 Index: libvirt-0.9.8/AUTHORS
 ===================================================================
---- libvirt-0.9.8.orig/AUTHORS	2013-10-11 08:07:15.075954858 -0500
-+++ libvirt-0.9.8/AUTHORS	2013-10-11 08:07:45.567954414 -0500
+--- libvirt-0.9.8.orig/AUTHORS	2013-10-14 10:31:22.532214257 -0500
++++ libvirt-0.9.8/AUTHORS	2013-10-14 10:31:22.496214256 -0500
 @@ -212,6 +212,7 @@
    Christian Franke     <nobody@nowhere.ws>
    Prerna Saxena        <prerna@linux.vnet.ibm.com>
@@ -37,8 +37,8 @@ Index: libvirt-0.9.8/AUTHORS
  
 Index: libvirt-0.9.8/src/qemu/qemu_command.c
 ===================================================================
---- libvirt-0.9.8.orig/src/qemu/qemu_command.c	2013-10-11 08:07:15.075954858 -0500
-+++ libvirt-0.9.8/src/qemu/qemu_command.c	2013-10-11 08:07:15.067954858 -0500
+--- libvirt-0.9.8.orig/src/qemu/qemu_command.c	2013-10-14 10:31:22.532214257 -0500
++++ libvirt-0.9.8/src/qemu/qemu_command.c	2013-10-14 10:31:22.504214256 -0500
 @@ -2825,8 +2825,9 @@
          break;
  
@@ -54,7 +54,7 @@ Index: libvirt-0.9.8/src/qemu/qemu_command.c
 Index: libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-chardev.args
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-chardev.args	2013-10-11 08:07:15.067954858 -0500
++++ libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-chardev.args	2013-10-14 10:31:22.504214256 -0500
 @@ -0,0 +1,7 @@
 +LC_ALL=C PATH=/bin HOME=/home/test USER=test LOGNAME=test /usr/bin/qemu -S -M \
 +pc -m 214 -smp 1 -nographic -nodefconfig -nodefaults -chardev socket,\
@@ -66,14 +66,13 @@ Index: libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-charde
 Index: libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-chardev.xml
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-chardev.xml	2013-10-11 08:07:15.067954858 -0500
-@@ -0,0 +1,29 @@
++++ libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-chardev.xml	2013-10-14 10:31:57.996215507 -0500
+@@ -0,0 +1,28 @@
 +<domain type='qemu'>
 +  <name>QEMUGuest1</name>
 +  <uuid>c7a5fdbd-edaf-9455-926a-d65c16db1809</uuid>
-+  <memory unit='KiB'>219136</memory>
-+  <currentMemory unit='KiB'>219136</currentMemory>
-+  <vcpu placement='static'>1</vcpu>
++  <memory>219136</memory>
++  <vcpu>1</vcpu>
 +  <os>
 +    <type arch='i686' machine='pc'>hvm</type>
 +    <boot dev='hd'/>
@@ -87,7 +86,7 @@ Index: libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-charde
 +    <disk type='block' device='disk'>
 +      <source dev='/dev/HostVG/QEMUGuest1'/>
 +      <target dev='hda' bus='ide'/>
-+      <address type='drive' controller='0' bus='0' target='0' unit='0'/>
++      <address type='drive' controller='0' bus='0' unit='0'/>
 +    </disk>
 +    <controller type='ide' index='0'/>
 +    <parallel type='dev'>
@@ -99,8 +98,8 @@ Index: libvirt-0.9.8/tests/qemuxml2argvdata/qemuxml2argv-parallel-parport-charde
 +</domain>
 Index: libvirt-0.9.8/tests/qemuxml2argvtest.c
 ===================================================================
---- libvirt-0.9.8.orig/tests/qemuxml2argvtest.c	2013-10-11 08:07:15.075954858 -0500
-+++ libvirt-0.9.8/tests/qemuxml2argvtest.c	2013-10-11 08:07:15.067954858 -0500
+--- libvirt-0.9.8.orig/tests/qemuxml2argvtest.c	2013-10-14 10:31:22.532214257 -0500
++++ libvirt-0.9.8/tests/qemuxml2argvtest.c	2013-10-14 10:31:22.520214257 -0500
 @@ -526,6 +526,8 @@
              QEMU_CAPS_CHARDEV, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG);
      DO_TEST("parallel-tcp-chardev", false,
