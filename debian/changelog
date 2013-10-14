@@ -1,3 +1,11 @@
+libvirt (0.9.8-2ubuntu17.15) precise-proposed; urgency=low
+
+  * update fix-for-parallel-port-passthrough-for-qemu: the xml for the new
+    testcase was too modern and caused the test to fail by including new
+    keywords.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 14 Oct 2013 10:32:22 -0500
+
 libvirt (0.9.8-2ubuntu17.14) precise-proposed; urgency=low
 
   * qemu-delete-usb-devices-on-stop and
