@@ -26,6 +26,7 @@
   capability mknod,
   capability fsetid,
   capability ipc_lock,
+  capability audit_write,
 
   network inet stream,
   network inet dgram,
