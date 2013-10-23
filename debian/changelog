@@ -1,3 +1,10 @@
+libvirt (1.1.1-0ubuntu9) trusty; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: add audit_write capability
+    (LP: #1204616)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 23 Oct 2013 14:09:04 -0500
+
 libvirt (1.1.1-0ubuntu8) saucy; urgency=low
 
   * SECURITY UPDATE: denial of service via invalid free in
