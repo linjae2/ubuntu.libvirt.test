@@ -95,7 +95,7 @@ struct _virNetServer {
     unsigned int keepaliveCount;
     bool keepaliveRequired;
 
-    unsigned int quit :1;
+    bool quit;
 
 #ifdef WITH_GNUTLS
     virNetTLSContextPtr tls;
@@ -1035,7 +1035,7 @@ static void virNetServerAutoShutdownTimer(int timerid ATTRIBUTE_UNUSED,
 
     if (!srv->autoShutdownInhibitions) {
         VIR_DEBUG("Automatic shutdown triggered");
-        srv->quit = 1;
+        srv->quit = true;
     }
 
     virObjectUnlock(srv);
@@ -1073,7 +1073,7 @@ void virNetServerRun(virNetServerPtr srv)
     if (srv->mdns)
         goto cleanup;
 
-    srv->quit = 0;
+    srv->quit = false;
 
     if (srv->autoShutdownTimeout &&
         (timerid = virEventAddTimeout(-1,
@@ -1161,7 +1161,7 @@ void virNetServerQuit(virNetServerPtr srv)
     virObjectLock(srv);
 
     VIR_DEBUG("Quit requested %p", srv);
-    srv->quit = 1;
+    srv->quit = true;
 
     virObjectUnlock(srv);
 }
