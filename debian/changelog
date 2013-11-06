@@ -1,3 +1,13 @@
+libvirt (1.1.1-0ubuntu8.1) saucy-security; urgency=low
+
+  * SECURITY UPDATE: incorrect permission checks in the
+    virConnectDomainXMLToNative API
+    - debian/patches/CVE-2013-4401.patch: ensure proper permissions in
+      src/libvirt.c, src/remote/remote_protocol.x.
+    - CVE-2013-4401
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 06 Nov 2013 12:47:03 -0500
+
 libvirt (1.1.1-0ubuntu8) saucy; urgency=low
 
   * SECURITY UPDATE: denial of service via invalid free in

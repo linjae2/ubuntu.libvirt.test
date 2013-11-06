@@ -37,3 +37,4 @@ CVE-2013-4296.patch
 CVE-2013-4311.patch
 fix-crash-in-libvirtd-when-events
 CVE-2013-4297.patch
+CVE-2013-4401.patch
