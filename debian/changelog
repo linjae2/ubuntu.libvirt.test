@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu17.16) precise-proposed; urgency=low
+
+  * d/p/ubuntu/properly-parse-unsigned-long-long.patch: fix i386 Python
+    binding integer length mismatch for long longs (LP: #1248394).
+
+ -- Robie Basak <robie.basak@ubuntu.com>  Fri, 08 Nov 2013 09:30:15 +0000
+
 libvirt (0.9.8-2ubuntu17.15) precise-proposed; urgency=low
 
   * update fix-for-parallel-port-passthrough-for-qemu: the xml for the new
