@@ -87,6 +87,7 @@
     <function name="VIR_MIGRATE_PARAM_DEST_NAME" link="libvirt-libvirt.html#VIR_MIGRATE_PARAM_DEST_NAME"/>
     <function name="VIR_MIGRATE_PARAM_DEST_XML" link="libvirt-libvirt.html#VIR_MIGRATE_PARAM_DEST_XML"/>
     <function name="VIR_MIGRATE_PARAM_GRAPHICS_URI" link="libvirt-libvirt.html#VIR_MIGRATE_PARAM_GRAPHICS_URI"/>
+    <function name="VIR_MIGRATE_PARAM_LISTEN_ADDRESS" link="libvirt-libvirt.html#VIR_MIGRATE_PARAM_LISTEN_ADDRESS"/>
     <function name="VIR_MIGRATE_PARAM_URI" link="libvirt-libvirt.html#VIR_MIGRATE_PARAM_URI"/>
     <function name="VIR_NODEINFO_MAXCPUS" link="libvirt-libvirt.html#VIR_NODEINFO_MAXCPUS"/>
     <function name="VIR_NODE_CPU_STATS_FIELD_LENGTH" link="libvirt-libvirt.html#VIR_NODE_CPU_STATS_FIELD_LENGTH"/>
@@ -111,6 +112,7 @@
     <function name="_virBlkioParameter" link="libvirt-libvirt.html#_virBlkioParameter"/>
     <function name="_virMemoryParameter" link="libvirt-libvirt.html#_virMemoryParameter"/>
     <function name="_virSchedParameter" link="libvirt-libvirt.html#_virSchedParameter"/>
+    <function name="VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES" link="libvirt-libvirt.html#VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES"/>
     <function name="VIR_CONNECT_CLOSE_REASON_CLIENT" link="libvirt-libvirt.html#VIR_CONNECT_CLOSE_REASON_CLIENT"/>
     <function name="VIR_CONNECT_CLOSE_REASON_EOF" link="libvirt-libvirt.html#VIR_CONNECT_CLOSE_REASON_EOF"/>
     <function name="VIR_CONNECT_CLOSE_REASON_ERROR" link="libvirt-libvirt.html#VIR_CONNECT_CLOSE_REASON_ERROR"/>
@@ -249,6 +251,7 @@
     <function name="VIR_DOMAIN_EVENT_DEFINED_UPDATED" link="libvirt-libvirt.html#VIR_DOMAIN_EVENT_DEFINED_UPDATED"/>
     <function name="VIR_DOMAIN_EVENT_DISK_CHANGE_LAST" link="libvirt-libvirt.html#VIR_DOMAIN_EVENT_DISK_CHANGE_LAST"/>
     <function name="VIR_DOMAIN_EVENT_DISK_CHANGE_MISSING_ON_START" link="libvirt-libvirt.html#VIR_DOMAIN_EVENT_DISK_CHANGE_MISSING_ON_START"/>
+    <function name="VIR_DOMAIN_EVENT_DISK_DROP_MISSING_ON_START" link="libvirt-libvirt.html#VIR_DOMAIN_EVENT_DISK_DROP_MISSING_ON_START"/>
     <function name="VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_IPV4" link="libvirt-libvirt.html#VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_IPV4"/>
     <function name="VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_IPV6" link="libvirt-libvirt.html#VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_IPV6"/>
     <function name="VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_LAST" link="libvirt-libvirt.html#VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_LAST"/>
@@ -626,6 +629,7 @@
     <function name="VIR_ERR_SSH" link="libvirt-virterror.html#VIR_ERR_SSH"/>
     <function name="VIR_ERR_STORAGE_POOL_BUILT" link="libvirt-virterror.html#VIR_ERR_STORAGE_POOL_BUILT"/>
     <function name="VIR_ERR_STORAGE_PROBE_FAILED" link="libvirt-virterror.html#VIR_ERR_STORAGE_PROBE_FAILED"/>
+    <function name="VIR_ERR_STORAGE_VOL_EXIST" link="libvirt-virterror.html#VIR_ERR_STORAGE_VOL_EXIST"/>
     <function name="VIR_ERR_SYSTEM_ERROR" link="libvirt-virterror.html#VIR_ERR_SYSTEM_ERROR"/>
     <function name="VIR_ERR_UNKNOWN_HOST" link="libvirt-virterror.html#VIR_ERR_UNKNOWN_HOST"/>
     <function name="VIR_ERR_WARNING" link="libvirt-virterror.html#VIR_ERR_WARNING"/>
@@ -819,6 +823,7 @@
     <function name="virBlkioParameterType" link="libvirt-libvirt.html#virBlkioParameterType"/>
     <function name="virCPUCompareResult" link="libvirt-libvirt.html#virCPUCompareResult"/>
     <function name="virConnectAuthPtr" link="libvirt-libvirt.html#virConnectAuthPtr"/>
+    <function name="virConnectBaselineCPUFlags" link="libvirt-libvirt.html#virConnectBaselineCPUFlags"/>
     <function name="virConnectCloseReason" link="libvirt-libvirt.html#virConnectCloseReason"/>
     <function name="virConnectCredentialPtr" link="libvirt-libvirt.html#virConnectCredentialPtr"/>
     <function name="virConnectCredentialType" link="libvirt-libvirt.html#virConnectCredentialType"/>
@@ -1039,6 +1044,7 @@
     <function name="virConnectDomainXMLFromNative ()" link="libvirt-libvirt.html#virConnectDomainXMLFromNative"/>
     <function name="virConnectDomainXMLToNative ()" link="libvirt-libvirt.html#virConnectDomainXMLToNative"/>
     <function name="virConnectFindStoragePoolSources ()" link="libvirt-libvirt.html#virConnectFindStoragePoolSources"/>
+    <function name="virConnectGetCPUModelNames ()" link="libvirt-libvirt.html#virConnectGetCPUModelNames"/>
     <function name="virConnectGetCapabilities ()" link="libvirt-libvirt.html#virConnectGetCapabilities"/>
     <function name="virConnectGetHostname ()" link="libvirt-libvirt.html#virConnectGetHostname"/>
     <function name="virConnectGetLibVersion ()" link="libvirt-libvirt.html#virConnectGetLibVersion"/>

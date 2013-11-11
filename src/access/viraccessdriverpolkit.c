@@ -76,8 +76,9 @@ virAccessDriverPolkitFormatProcess(const char *actionid)
     const char *callerTime = NULL;
     const char *callerUid = NULL;
     char *ret = NULL;
-    bool supportsuid = false;
+#ifndef PKCHECK_SUPPORTS_UID
     static bool polkitInsecureWarned;
+#endif
 
     if (!identity) {
         virAccessError(VIR_ERR_ACCESS_DENIED,
@@ -109,19 +110,17 @@ virAccessDriverPolkitFormatProcess(const char *actionid)
     }
 
 #ifdef PKCHECK_SUPPORTS_UID
-    supportsuid = true;
-#endif
-    if (supportsuid) {
-        if (virAsprintf(&ret, "%s,%s,%s", callerPid, callerTime, callerUid) < 0)
-            goto cleanup;
-    } else {
-        if (!polkitInsecureWarned) {
-            VIR_WARN("No support for caller UID with pkcheck. This deployment is known to be insecure.");
-            polkitInsecureWarned = true;
-        }
-        if (virAsprintf(&ret, "%s,%s", callerPid, callerTime) < 0)
-            goto cleanup;
+    if (virAsprintf(&ret, "%s,%s,%s", callerPid, callerTime, callerUid) < 0)
+        goto cleanup;
+#else
+    if (!polkitInsecureWarned) {
+        VIR_WARN("No support for caller UID with pkcheck. "
+                 "This deployment is known to be insecure.");
+        polkitInsecureWarned = true;
     }
+    if (virAsprintf(&ret, "%s,%s", callerPid, callerTime) < 0)
+        goto cleanup;
+#endif
 
 cleanup:
     virObjectUnref(identity);
@@ -278,7 +277,7 @@ virAccessDriverPolkitCheckNodeDevice(virAccessManagerPtr manager,
     };
 
     return virAccessDriverPolkitCheck(manager,
-                                      "nodedevice",
+                                      "node-device",
                                       virAccessPermNodeDeviceTypeToString(perm),
                                       attrs);
 }
@@ -385,7 +384,7 @@ virAccessDriverPolkitCheckStoragePool(virAccessManagerPtr manager,
     virUUIDFormat(pool->uuid, uuidstr);
 
     return virAccessDriverPolkitCheck(manager,
-                                      "pool",
+                                      "storage-pool",
                                       virAccessPermStoragePoolTypeToString(perm),
                                       attrs);
 }
@@ -409,7 +408,7 @@ virAccessDriverPolkitCheckStorageVol(virAccessManagerPtr manager,
     virUUIDFormat(pool->uuid, uuidstr);
 
     return virAccessDriverPolkitCheck(manager,
-                                      "vol",
+                                      "storage-vol",
                                       virAccessPermStorageVolTypeToString(perm),
                                       attrs);
 }

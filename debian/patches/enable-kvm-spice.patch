@@ -1,7 +1,8 @@
-diff -Naurp libvirt-1.0.5.orig/src/qemu/qemu_capabilities.c libvirt-1.0.5/src/qemu/qemu_capabilities.c
---- libvirt-1.0.5.orig/src/qemu/qemu_capabilities.c	2013-04-26 01:17:40.000000000 -0500
-+++ libvirt-1.0.5/src/qemu/qemu_capabilities.c	2013-05-02 11:55:32.445771370 -0500
-@@ -693,6 +693,7 @@ virQEMUCapsInitGuest(virCapsPtr caps,
+Index: libvirt-1.1.4/src/qemu/qemu_capabilities.c
+===================================================================
+--- libvirt-1.1.4.orig/src/qemu/qemu_capabilities.c	2013-11-12 11:48:36.215867019 -0600
++++ libvirt-1.1.4/src/qemu/qemu_capabilities.c	2013-11-12 11:48:36.203867019 -0600
+@@ -705,6 +705,7 @@
      if (virQEMUCapsIsValidForKVM(hostarch, guestarch)) {
          const char *const kvmbins[] = { "/usr/libexec/qemu-kvm", /* RHEL */
                                          "qemu-kvm", /* Fedora */

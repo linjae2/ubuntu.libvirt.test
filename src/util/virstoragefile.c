@@ -572,6 +572,13 @@ virFindBackingFile(const char *start, bool start_is_dir, const char *path,
         goto cleanup;
     }
 
+    if (virFileAccessibleAs(combined, F_OK, geteuid(), getegid()) < 0) {
+        virReportSystemError(errno,
+                             _("Cannot access backing file '%s'"),
+                             combined);
+        goto cleanup;
+    }
+
     if (!(*canonical = canonicalize_file_name(combined))) {
         virReportSystemError(errno,
                              _("Can't canonicalize path '%s'"), path);
@@ -1097,6 +1104,45 @@ virStorageFileGetMetadata(const char *path, int format,
 }
 
 /**
+ * virStorageFileChainCheckBroken
+ *
+ * If CHAIN is broken, set *brokenFile to the broken file name,
+ * otherwise set it to NULL. Caller MUST free *brokenFile after use.
+ * Return 0 on success, negative on error.
+ */
+int
+virStorageFileChainGetBroken(virStorageFileMetadataPtr chain,
+                             char **brokenFile)
+{
+    virStorageFileMetadataPtr tmp;
+    int ret = -1;
+
+    if (!chain)
+        return 0;
+
+    *brokenFile = NULL;
+
+    tmp = chain;
+    while (tmp) {
+        /* Break if no backing store or backing store is not file */
+       if (!tmp->backingStoreRaw)
+           break;
+       if (!tmp->backingStore) {
+           if (VIR_STRDUP(*brokenFile, tmp->backingStoreRaw) < 0)
+               goto error;
+           break;
+       }
+       tmp = tmp->backingMeta;
+    }
+
+    ret = 0;
+
+error:
+    return ret;
+}
+
+
+/**
  * virStorageFileFreeMetadata:
  *
  * Free pointers in passed structure and structure itself.
@@ -1195,6 +1241,12 @@ cleanup:
 # ifndef AFS_FS_MAGIC
 #  define AFS_FS_MAGIC 0x6B414653
 # endif
+# ifndef SMB_SUPER_MAGIC
+#  define SMB_SUPER_MAGIC 0x517B
+# endif
+# ifndef CIFS_SUPER_MAGIC
+#  define CIFS_SUPER_MAGIC 0xFF534D42
+# endif
 
 
 int virStorageFileIsSharedFSType(const char *path,
@@ -1258,6 +1310,12 @@ int virStorageFileIsSharedFSType(const char *path,
     if ((fstypes & VIR_STORAGE_FILE_SHFS_AFS) &&
         (sb.f_type == AFS_FS_MAGIC))
         return 1;
+    if ((fstypes & VIR_STORAGE_FILE_SHFS_SMB) &&
+        (sb.f_type == SMB_SUPER_MAGIC))
+        return 1;
+    if ((fstypes & VIR_STORAGE_FILE_SHFS_CIFS) &&
+        (sb.f_type == CIFS_SUPER_MAGIC))
+        return 1;
 
     return 0;
 }
@@ -1276,7 +1334,9 @@ int virStorageFileIsSharedFS(const char *path)
                                         VIR_STORAGE_FILE_SHFS_NFS |
                                         VIR_STORAGE_FILE_SHFS_GFS2 |
                                         VIR_STORAGE_FILE_SHFS_OCFS |
-                                        VIR_STORAGE_FILE_SHFS_AFS);
+                                        VIR_STORAGE_FILE_SHFS_AFS |
+                                        VIR_STORAGE_FILE_SHFS_SMB |
+                                        VIR_STORAGE_FILE_SHFS_CIFS);
 }
 
 int virStorageFileIsClusterFS(const char *path)

@@ -315,24 +315,22 @@ static int
 xenUnifiedXendProbe(void)
 {
     virCommandPtr cmd;
-    char *output;
+	char *output;
     int status;
     int ret = 0;
 
-    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
-    virCommandSetOutputBuffer(cmd, &output);
+    cmd = virCommandNewArgList("/usr/sbin/xen-common/bin/xen-toolstack", NULL);
+	virCommandSetOutputBuffer(cmd, &output);
     if (virCommandRun(cmd, &status) == 0 && status == 0) {
-        int i, j;
+		int i, j;
 
-        for (i = 0, j = 0; output[i] != '\0'; i++)
-            if (output[i] == '/')
-                j = i + 1;
-
-        if (output[j] == 'x' && output[j+1] == 'm')
-            ret = 1;
-    }
-
-    VIR_FREE(output);
+		for (i = 0, j = 0; output[i] != '\0'; i++)
+			if (output[i] == '/')
+				j = i + 1;
+		if (output[j] == 'x' && output[j+1] == 'm')
+			ret = 1;
+	}
+	VIR_FREE(output);
     virCommandFree(cmd);
 
     return ret;
@@ -342,7 +340,7 @@ xenUnifiedXendProbe(void)
 
 static int
 xenDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
-                            virDomainDefPtr def,
+                            const virDomainDef *def,
                             virCapsPtr caps ATTRIBUTE_UNUSED,
                             void *opaque ATTRIBUTE_UNUSED)
 {
@@ -356,9 +354,28 @@ xenDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
 }
 
 
+static int
+xenDomainDefPostParse(virDomainDefPtr def,
+                      virCapsPtr caps ATTRIBUTE_UNUSED,
+                      void *opaque ATTRIBUTE_UNUSED)
+{
+    if (!def->memballoon) {
+        virDomainMemballoonDefPtr memballoon;
+        if (VIR_ALLOC(memballoon) < 0)
+            return -1;
+
+        memballoon->model = VIR_DOMAIN_MEMBALLOON_MODEL_XEN;
+        def->memballoon = memballoon;
+    }
+
+    return 0;
+}
+
+
 virDomainDefParserConfig xenDomainDefParserConfig = {
     .macPrefix = { 0x00, 0x16, 0x3e },
     .devicesPostParseCallback = xenDomainDeviceDefPostParse,
+    .domainPostParseCallback = xenDomainDefPostParse,
 };
 
 
@@ -1607,7 +1624,8 @@ xenUnifiedConnectDomainXMLFromNative(virConnectPtr conn,
 
         def = xenParseXM(conf, priv->xendConfigVersion, priv->caps);
     } else if (STREQ(format, XEN_CONFIG_FORMAT_SEXPR)) {
-        id = xenGetDomIdFromSxprString(config, priv->xendConfigVersion);
+        if (xenGetDomIdFromSxprString(config, priv->xendConfigVersion, &id) < 0)
+            goto cleanup;
         xenUnifiedLock(priv);
         tty = xenStoreDomainGetConsolePath(conn, id);
         vncport = xenStoreDomainGetVNCPort(conn, id);

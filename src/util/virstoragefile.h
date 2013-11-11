@@ -90,6 +90,8 @@ virStorageFileMetadataPtr virStorageFileGetMetadata(const char *path,
 virStorageFileMetadataPtr virStorageFileGetMetadataFromFD(const char *path,
                                                           int fd,
                                                           int format);
+int virStorageFileChainGetBroken(virStorageFileMetadataPtr chain,
+                                 char **broken_file);
 
 const char *virStorageFileChainLookup(virStorageFileMetadataPtr chain,
                                       const char *start,
@@ -110,6 +112,8 @@ enum {
     VIR_STORAGE_FILE_SHFS_GFS2 = (1 << 1),
     VIR_STORAGE_FILE_SHFS_OCFS = (1 << 2),
     VIR_STORAGE_FILE_SHFS_AFS = (1 << 3),
+    VIR_STORAGE_FILE_SHFS_SMB = (1 << 4),
+    VIR_STORAGE_FILE_SHFS_CIFS = (1 << 5),
 };
 
 int virStorageFileIsSharedFS(const char *path);

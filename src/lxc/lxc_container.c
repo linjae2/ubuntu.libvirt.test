@@ -421,9 +421,11 @@ static int lxcContainerSetID(virDomainDefPtr def)
      * for this container. And user namespace is only enabled
      * when nuidmap&ngidmap is not zero */
 
-    VIR_DEBUG("Set UID/GID to 0/0");
-    if (def->idmap.nuidmap &&
-        virSetUIDGID(0, 0, NULL, 0) < 0) {
+    if (!def->idmap.nuidmap)
+        return 0;
+
+    VIR_DEBUG("Setting UID/GID to 0/0");
+    if (virSetUIDGID(0, 0, NULL, 0) < 0) {
         virReportSystemError(errno, "%s",
                              _("setuid or setgid failed"));
         return -1;
@@ -533,7 +535,6 @@ static int lxcContainerGetSubtree(const char *prefix,
     }
 
     while (getmntent_r(procmnt, &mntent, mntbuf, sizeof(mntbuf)) != NULL) {
-        VIR_DEBUG("Got %s", mntent.mnt_dir);
         if (!STRPREFIX(mntent.mnt_dir, prefix))
             continue;
 
@@ -542,7 +543,6 @@ static int lxcContainerGetSubtree(const char *prefix,
         if (VIR_STRDUP(mounts[nmounts], mntent.mnt_dir) < 0)
             goto cleanup;
         nmounts++;
-        VIR_DEBUG("Grabbed %s", mntent.mnt_dir);
     }
 
     if (mounts)
@@ -751,43 +751,118 @@ err:
 }
 
 
-static int lxcContainerMountBasicFS(void)
-{
-    const struct {
-        const char *src;
-        const char *dst;
-        const char *type;
-        const char *opts;
-        int mflags;
-    } mnts[] = {
-        /* When we want to make a bind mount readonly, for unknown reasons,
-         * it is currently necessary to bind it once, and then remount the
-         * bind with the readonly flag. If this is not done, then the original
-         * mount point in the main OS becomes readonly too which is not what
-         * we want. Hence some things have two entries here.
-         */
-        { "proc", "/proc", "proc", NULL, MS_NOSUID|MS_NOEXEC|MS_NODEV },
-        { "/proc/sys", "/proc/sys", NULL, NULL, MS_BIND },
-        { "/proc/sys", "/proc/sys", NULL, NULL, MS_BIND|MS_REMOUNT|MS_RDONLY },
-        { "sysfs", "/sys", "sysfs", NULL, MS_NOSUID|MS_NOEXEC|MS_NODEV },
-        { "sysfs", "/sys", "sysfs", NULL, MS_BIND|MS_REMOUNT|MS_RDONLY },
+typedef struct {
+    const char *src;
+    const char *dst;
+    const char *type;
+    const char *opts;
+    int mflags;
+} virLXCBasicMountInfo;
+
+static const virLXCBasicMountInfo lxcBasicMounts[] = {
+    /* When we want to make a bind mount readonly, for unknown reasons,
+     * it is currently necessary to bind it once, and then remount the
+     * bind with the readonly flag. If this is not done, then the original
+     * mount point in the main OS becomes readonly too which is not what
+     * we want. Hence some things have two entries here.
+     */
+    { "proc", "/proc", "proc", NULL, MS_NOSUID|MS_NOEXEC|MS_NODEV },
+    { "/proc/sys", "/proc/sys", NULL, NULL, MS_BIND },
+    { "/proc/sys", "/proc/sys", NULL, NULL, MS_BIND|MS_REMOUNT|MS_RDONLY },
+    { "sysfs", "/sys", "sysfs", NULL, MS_NOSUID|MS_NOEXEC|MS_NODEV },
+    { "sysfs", "/sys", "sysfs", NULL, MS_BIND|MS_REMOUNT|MS_RDONLY },
+    { "securityfs", "/sys/kernel/security", "securityfs", NULL, MS_NOSUID|MS_NOEXEC|MS_NODEV },
+    { "securityfs", "/sys/kernel/security", "securityfs", NULL, MS_BIND|MS_REMOUNT|MS_RDONLY },
 #if WITH_SELINUX
-        { SELINUX_MOUNT, SELINUX_MOUNT, "selinuxfs", NULL, MS_NOSUID|MS_NOEXEC|MS_NODEV },
-        { SELINUX_MOUNT, SELINUX_MOUNT, NULL, NULL, MS_BIND|MS_REMOUNT|MS_RDONLY },
+    { SELINUX_MOUNT, SELINUX_MOUNT, "selinuxfs", NULL, MS_NOSUID|MS_NOEXEC|MS_NODEV },
+    { SELINUX_MOUNT, SELINUX_MOUNT, NULL, NULL, MS_BIND|MS_REMOUNT|MS_RDONLY },
 #endif
-    };
+};
+
+
+static bool lxcIsBasicMountLocation(const char *path)
+{
+    size_t i;
+
+    for (i = 0; i < ARRAY_CARDINALITY(lxcBasicMounts); i++) {
+        if (STREQ(path, lxcBasicMounts[i].dst))
+            return true;
+    }
+
+    return false;
+}
+
+
+static int lxcContainerSetReadOnly(void)
+{
+    FILE *procmnt;
+    struct mntent mntent;
+    char mntbuf[1024];
+    int ret = -1;
+    char **mounts = NULL;
+    size_t nmounts = 0;
+    size_t i;
+
+    if (!(procmnt = setmntent("/proc/mounts", "r"))) {
+        virReportSystemError(errno, "%s",
+                             _("Failed to read /proc/mounts"));
+        return -1;
+    }
+
+    while (getmntent_r(procmnt, &mntent, mntbuf, sizeof(mntbuf)) != NULL) {
+        if (STREQ(mntent.mnt_dir, "/") ||
+            STREQ(mntent.mnt_dir, "/.oldroot") ||
+            STRPREFIX(mntent.mnt_dir, "/.oldroot/") ||
+            lxcIsBasicMountLocation(mntent.mnt_dir))
+            continue;
+
+        if (VIR_REALLOC_N(mounts, nmounts + 1) < 0)
+            goto cleanup;
+        if (VIR_STRDUP(mounts[nmounts], mntent.mnt_dir) < 0)
+            goto cleanup;
+        nmounts++;
+    }
+
+    if (mounts)
+        qsort(mounts, nmounts, sizeof(mounts[0]),
+              lxcContainerChildMountSort);
+
+    for (i = 0; i < nmounts; i++) {
+        VIR_DEBUG("Bind readonly %s", mounts[i]);
+        if (mount(mounts[i], mounts[i], NULL, MS_BIND|MS_REC|MS_RDONLY|MS_REMOUNT, NULL) < 0) {
+            virReportSystemError(errno,
+                                 _("Failed to make mount %s readonly"),
+                                 mounts[i]);
+            goto cleanup;
+        }
+    }
+
+    ret = 0;
+cleanup:
+    for (i = 0; i < nmounts; i++)
+        VIR_FREE(mounts[i]);
+    VIR_FREE(mounts);
+    endmntent(procmnt);
+    return ret;
+
+}
+
+
+static int lxcContainerMountBasicFS(bool userns_enabled)
+{
     size_t i;
     int rc = -1;
 
     VIR_DEBUG("Mounting basic filesystems");
 
-    for (i = 0; i < ARRAY_CARDINALITY(mnts); i++) {
+    for (i = 0; i < ARRAY_CARDINALITY(lxcBasicMounts); i++) {
+        virLXCBasicMountInfo const *mnt = &lxcBasicMounts[i];
         const char *srcpath = NULL;
 
         VIR_DEBUG("Processing %s -> %s",
-                  mnts[i].src, mnts[i].dst);
+                  mnt->src, mnt->dst);
 
-        srcpath = mnts[i].src;
+        srcpath = mnt->src;
 
         /* Skip if mount doesn't exist in source */
         if ((srcpath[0] == '/') &&
@@ -795,31 +870,28 @@ static int lxcContainerMountBasicFS(void)
             continue;
 
 #if WITH_SELINUX
-        if (STREQ(mnts[i].src, SELINUX_MOUNT) &&
-            !is_selinux_enabled())
+        if (STREQ(mnt->src, SELINUX_MOUNT) &&
+            (!is_selinux_enabled() || userns_enabled))
             continue;
 #endif
 
-        if (virFileMakePath(mnts[i].dst) < 0) {
+        if (STREQ(mnt->src, "securityfs") && userns_enabled)
+            continue;
+
+        if (virFileMakePath(mnt->dst) < 0) {
             virReportSystemError(errno,
                                  _("Failed to mkdir %s"),
-                                 mnts[i].src);
+                                 mnt->src);
             goto cleanup;
         }
 
         VIR_DEBUG("Mount %s on %s type=%s flags=%x, opts=%s",
-                  srcpath, mnts[i].dst, mnts[i].type, mnts[i].mflags, mnts[i].opts);
-        if (mount(srcpath, mnts[i].dst, mnts[i].type, mnts[i].mflags, mnts[i].opts) < 0) {
-#if WITH_SELINUX
-            if (STREQ(mnts[i].src, SELINUX_MOUNT) &&
-                (errno == EINVAL || errno == EPERM))
-                continue;
-#endif
-
+                  srcpath, mnt->dst, mnt->type, mnt->mflags, mnt->opts);
+        if (mount(srcpath, mnt->dst, mnt->type, mnt->mflags, mnt->opts) < 0) {
             virReportSystemError(errno,
                                  _("Failed to mount %s on %s type %s flags=%x opts=%s"),
-                                 srcpath, mnts[i].dst, NULLSTR(mnts[i].type),
-                                 mnts[i].mflags, NULLSTR(mnts[i].opts));
+                                 srcpath, mnt->dst, NULLSTR(mnt->type),
+                                 mnt->mflags, NULLSTR(mnt->opts));
             goto cleanup;
         }
     }
@@ -867,7 +939,7 @@ static int lxcContainerMountProcFuse(virDomainDefPtr def ATTRIBUTE_UNUSED,
 static int lxcContainerMountFSDev(virDomainDefPtr def,
                                   const char *stateDir)
 {
-    int ret;
+    int ret = -1;
     char *path = NULL;
 
     VIR_DEBUG("Mount /dev/ stateDir=%s", stateDir);
@@ -876,14 +948,24 @@ static int lxcContainerMountFSDev(virDomainDefPtr def,
                            stateDir, def->name)) < 0)
         return ret;
 
-    VIR_DEBUG("Tring to move %s to /dev", path);
+    if (virFileMakePath("/dev") < 0) {
+        virReportSystemError(errno, "%s",
+                             _("Cannot create /dev"));
+        goto cleanup;
+    }
 
-    if ((ret = mount(path, "/dev", NULL, MS_MOVE, NULL)) < 0) {
+    VIR_DEBUG("Trying to move %s to /dev", path);
+
+    if (mount(path, "/dev", NULL, MS_MOVE, NULL) < 0) {
         virReportSystemError(errno,
                              _("Failed to mount %s on /dev"),
                              path);
+        goto cleanup;
     }
 
+    ret = 0;
+
+cleanup:
     VIR_FREE(path);
     return ret;
 }
@@ -961,10 +1043,10 @@ static int lxcContainerSetupDevices(char **ttyPaths, size_t nttyPaths)
         if (virAsprintf(&tty, "/dev/tty%zu", i+1) < 0)
             return -1;
         if (symlink(ttyPaths[i], tty) < 0) {
-            VIR_FREE(tty);
             virReportSystemError(errno,
                                  _("Failed to symlink %s to %s"),
                                  ttyPaths[i], tty);
+            VIR_FREE(tty);
             return -1;
         }
         VIR_FREE(tty);
@@ -986,6 +1068,8 @@ static int lxcContainerMountFSBind(virDomainFSDefPtr fs,
     char *src = NULL;
     int ret = -1;
     struct stat st;
+
+    VIR_DEBUG("src=%s dst=%s", fs->src, fs->dst);
 
     if (virAsprintf(&src, "%s%s", srcprefix, fs->src) < 0)
         goto cleanup;
@@ -1041,6 +1125,13 @@ static int lxcContainerMountFSBind(virDomainFSDefPtr fs,
         if (mount(src, fs->dst, NULL, MS_BIND|MS_REMOUNT|MS_RDONLY, NULL) < 0) {
             virReportSystemError(errno,
                                  _("Failed to make directory %s readonly"),
+                                 fs->dst);
+        }
+    } else {
+        VIR_DEBUG("Binding %s readwrite", fs->dst);
+        if (mount(src, fs->dst, NULL, MS_BIND|MS_REMOUNT, NULL) < 0) {
+            virReportSystemError(errno,
+                                 _("Failed to make directory %s readwrite"),
                                  fs->dst);
         }
     }
@@ -1134,7 +1225,7 @@ lxcContainerMountDetectFilesystem(const char *src ATTRIBUTE_UNUSED,
 #endif /* ! WITH_BLKID */
 
 /*
- * This functions attempts to do automatic detection of filesystem
+ * This function attempts to do automatic detection of filesystem
  * type following the same rules as the util-linux 'mount' binary.
  *
  * The main difference is that we don't (currently) try to use
@@ -1143,7 +1234,8 @@ lxcContainerMountDetectFilesystem(const char *src ATTRIBUTE_UNUSED,
  */
 static int lxcContainerMountFSBlockAuto(virDomainFSDefPtr fs,
                                         int fsflags,
-                                        const char *src)
+                                        const char *src,
+                                        const char *srcprefix)
 {
     FILE *fp = NULL;
     int ret = -1;
@@ -1153,11 +1245,11 @@ static int lxcContainerMountFSBlockAuto(virDomainFSDefPtr fs,
     char *line = NULL;
     const char *type;
 
-    VIR_DEBUG("src=%s dst=%s", src, fs->dst);
+    VIR_DEBUG("src=%s dst=%s srcprefix=%s", src, fs->dst, srcprefix);
 
     /* First time around we use /etc/filesystems */
 retry:
-    if (virAsprintf(&fslist, "/.oldroot%s",
+    if (virAsprintf(&fslist, "%s%s", srcprefix,
                     tryProc ? "/proc/filesystems" : "/etc/filesystems") < 0)
         goto cleanup;
 
@@ -1269,7 +1361,8 @@ cleanup:
  * probing for filesystem type
  */
 static int lxcContainerMountFSBlockHelper(virDomainFSDefPtr fs,
-                                          const char *src)
+                                          const char *src,
+                                          const char *srcprefix)
 {
     int fsflags = 0;
     int ret = -1;
@@ -1299,7 +1392,7 @@ static int lxcContainerMountFSBlockHelper(virDomainFSDefPtr fs,
         }
         ret = 0;
     } else {
-        ret = lxcContainerMountFSBlockAuto(fs, fsflags, src);
+        ret = lxcContainerMountFSBlockAuto(fs, fsflags, src, srcprefix);
     }
 
 cleanup:
@@ -1314,10 +1407,12 @@ static int lxcContainerMountFSBlock(virDomainFSDefPtr fs,
     char *src = NULL;
     int ret = -1;
 
+    VIR_DEBUG("src=%s dst=%s", fs->src, fs->dst);
+
     if (virAsprintf(&src, "%s%s", srcprefix, fs->src) < 0)
         goto cleanup;
 
-    ret = lxcContainerMountFSBlockHelper(fs, src);
+    ret = lxcContainerMountFSBlockHelper(fs, src, srcprefix);
 
     VIR_DEBUG("Done mounting filesystem ret=%d", ret);
 
@@ -1333,8 +1428,10 @@ static int lxcContainerMountFSTmpfs(virDomainFSDefPtr fs,
     int ret = -1;
     char *data = NULL;
 
+    VIR_DEBUG("usage=%lld sec=%s", fs->usage, sec_mount_options);
+
     if (virAsprintf(&data,
-                    "size=%lldk%s", fs->usage, sec_mount_options) < 0)
+                    "size=%lld%s", fs->usage, sec_mount_options) < 0)
         goto cleanup;
 
     if (virFileMakePath(fs->dst) < 0) {
@@ -1357,6 +1454,7 @@ static int lxcContainerMountFSTmpfs(virDomainFSDefPtr fs,
             virReportSystemError(errno,
                                  _("Failed to make directory %s readonly"),
                                  fs->dst);
+            goto cleanup;
         }
     }
 
@@ -1456,6 +1554,60 @@ cleanup:
 }
 
 
+static int lxcContainerUnmountForSharedRoot(const char *stateDir,
+                                            const char *domain)
+{
+    int ret = -1;
+    char *tmp = NULL;
+
+#if WITH_SELINUX
+    /* Some versions of Linux kernel don't let you overmount
+     * the selinux filesystem, so make sure we kill it first
+     */
+    /* Filed coverity bug for false positive 'USE_AFTER_FREE' due to swap
+     * of root->src with root->dst and the VIR_FREE(root->src) prior to the
+     * reset of root->src in lxcContainerPrepareRoot()
+     */
+    /* coverity[deref_arg] */
+    if (lxcContainerUnmountSubtree(SELINUX_MOUNT, false) < 0)
+        goto cleanup;
+#endif
+
+    /* These filesystems are created by libvirt temporarily, they
+     * shouldn't appear in container. */
+    if (virAsprintf(&tmp, "%s/%s.dev", stateDir, domain) < 0 ||
+        lxcContainerUnmountSubtree(tmp, false) < 0)
+        goto cleanup;
+
+    VIR_FREE(tmp);
+    if (virAsprintf(&tmp, "%s/%s.devpts", stateDir, domain) < 0 ||
+        lxcContainerUnmountSubtree(tmp, false) < 0)
+        goto cleanup;
+
+#if WITH_FUSE
+    VIR_FREE(tmp);
+    if (virAsprintf(&tmp, "%s/%s.fuse", stateDir, domain) < 0 ||
+        lxcContainerUnmountSubtree(tmp, false) < 0)
+        goto cleanup;
+#endif
+
+    /* If we have the root source being '/', then we need to
+     * get rid of any existing stuff under /proc, /sys & /tmp.
+     * We need new namespace aware versions of those. We must
+     * do /proc last otherwise we won't find /proc/mounts :-) */
+    if (lxcContainerUnmountSubtree("/sys", false) < 0 ||
+        lxcContainerUnmountSubtree("/dev", false) < 0 ||
+        lxcContainerUnmountSubtree("/proc", false) < 0)
+        goto cleanup;
+
+    ret = 0;
+
+cleanup:
+    VIR_FREE(tmp);
+    return ret;
+}
+
+
 /* Got a FS mapped to /, we're going the pivot_root
  * approach to do a better-chroot-than-chroot
  * this is based on this thread http://lkml.org/lkml/2008/3/5/29
@@ -1492,32 +1644,17 @@ static int lxcContainerSetupPivotRoot(virDomainDefPtr vmDef,
     if (lxcContainerPivotRoot(root) < 0)
         goto cleanup;
 
-#if WITH_SELINUX
-    /* Some versions of Linux kernel don't let you overmount
-     * the selinux filesystem, so make sure we kill it first
-     */
-    /* Filed coverity bug for false positive 'USE_AFTER_FREE' due to swap
-     * of root->src with root->dst and the VIR_FREE(root->src) prior to the
-     * reset of root->src in lxcContainerPrepareRoot()
-     */
-    /* coverity[deref_arg] */
     if (STREQ(root->src, "/") &&
-        lxcContainerUnmountSubtree(SELINUX_MOUNT, false) < 0)
-        goto cleanup;
-#endif
-
-    /* If we have the root source being '/', then we need to
-     * get rid of any existing stuff under /proc, /sys & /tmp.
-     * We need new namespace aware versions of those. We must
-     * do /proc last otherwise we won't find /proc/mounts :-) */
-    if (STREQ(root->src, "/") &&
-        (lxcContainerUnmountSubtree("/sys", false) < 0 ||
-         lxcContainerUnmountSubtree("/dev", false) < 0 ||
-         lxcContainerUnmountSubtree("/proc", false) < 0))
+        lxcContainerUnmountForSharedRoot(stateDir, vmDef->name) < 0)
         goto cleanup;
 
     /* Mounts the core /proc, /sys, etc filesystems */
-    if (lxcContainerMountBasicFS() < 0)
+    if (lxcContainerMountBasicFS(vmDef->idmap.nuidmap) < 0)
+        goto cleanup;
+
+    /* Ensure entire root filesystem (except /.oldroot) is readonly */
+    if (root->readonly &&
+        lxcContainerSetReadOnly() < 0)
         goto cleanup;
 
     /* Mounts /proc/meminfo etc sysinfo */
@@ -1570,9 +1707,18 @@ static int lxcContainerResolveSymlinks(virDomainDefPtr vmDef)
         virDomainFSDefPtr fs = vmDef->fss[i];
         if (!fs->src)
             continue;
+
+        if (access(fs->src, F_OK)) {
+            virReportSystemError(errno,
+                                 _("Failed to access '%s'"), fs->src);
+            return -1;
+        }
+
         VIR_DEBUG("Resolving '%s'", fs->src);
         if (virFileResolveAllLinks(fs->src, &newroot) < 0) {
-            VIR_DEBUG("Failed to resolve symlink at %s", fs->src);
+            virReportSystemError(errno,
+                                 _("Failed to resolve symlink at %s"),
+                                 fs->src);
             return -1;
         }
 
@@ -1587,7 +1733,7 @@ static int lxcContainerResolveSymlinks(virDomainDefPtr vmDef)
 }
 
 /*
- * This is running as the 'init' process insid the container.
+ * This is running as the 'init' process inside the container.
  * It removes some capabilities that could be dangerous to
  * host system, since they are not currently "containerized"
  */
@@ -1737,7 +1883,7 @@ static int lxcContainerChild(void *data)
 
     if (lxcContainerSendContinue(argv->handshakefd) < 0) {
         virReportSystemError(errno, "%s",
-                            _("failed to send continue signal to controller"));
+                            _("Failed to send continue signal to controller"));
         goto cleanup;
     }
 
@@ -1761,6 +1907,15 @@ cleanup:
     if (ret == 0) {
         /* this function will only return if an error occurred */
         ret = virCommandExec(cmd);
+    }
+
+    if (ret != 0) {
+        virErrorPtr err = virGetLastError();
+        if (err && err->message)
+            fprintf(stderr, "%s\n", err->message);
+        else
+            fprintf(stderr, "%s\n",
+                    _("Unknown failure in libvirt_lxc startup"));
     }
 
     virCommandFree(cmd);
