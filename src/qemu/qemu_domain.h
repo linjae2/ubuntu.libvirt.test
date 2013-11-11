@@ -160,6 +160,7 @@ struct _qemuDomainObjPrivate {
     unsigned long migMaxBandwidth;
     char *origname;
     int nbdPort; /* Port used for migration with NBD */
+    unsigned short migrationPort;
 
     virChrdevsPtr devs;
 
@@ -347,6 +348,9 @@ bool qemuDomainJobAllowed(qemuDomainObjPrivatePtr priv,
 int qemuDomainCheckDiskPresence(virQEMUDriverPtr driver,
                                 virDomainObjPtr vm,
                                 bool start_with_state);
+
+int qemuDiskChainCheckBroken(virDomainDiskDefPtr disk);
+
 int qemuDomainDetermineDiskChain(virQEMUDriverPtr driver,
                                  virDomainDiskDefPtr disk,
                                  bool force);
@@ -362,9 +366,10 @@ extern virDomainXMLPrivateDataCallbacks virQEMUDriverPrivateDataCallbacks;
 extern virDomainXMLNamespace virQEMUDriverDomainXMLNamespace;
 extern virDomainDefParserConfig virQEMUDriverDomainDefParserConfig;
 
-unsigned long long qemuDomainMemoryLimit(virDomainDefPtr def);
-
 int qemuDomainUpdateDeviceList(virQEMUDriverPtr driver,
                                virDomainObjPtr vm);
 
+bool qemuDomainDefCheckABIStability(virQEMUDriverPtr driver,
+                                    virDomainDefPtr src,
+                                    virDomainDefPtr dst);
 #endif /* __QEMU_DOMAIN_H__ */

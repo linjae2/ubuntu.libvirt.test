@@ -40,13 +40,9 @@
 extern char *progname;
 extern char *abs_srcdir;
 
-double virtTestCountAverage(double *items,
-                            int nitems);
-
 void virtTestResult(const char *name, int ret, const char *msg, ...)
     ATTRIBUTE_FMT_PRINTF(3,4);
 int virtTestRun(const char *title,
-                int nloops,
                 int (*body)(const void *data),
                 const void *data);
 int virtTestLoadFile(const char *file, char **buf);
@@ -65,8 +61,11 @@ int virtTestDifferenceBin(FILE *stream,
 
 unsigned int virTestGetDebug(void);
 unsigned int virTestGetVerbose(void);
+unsigned int virTestGetExpensive(void);
 
 char *virtTestLogContentAndReset(void);
+
+void virtTestQuiesceLibvirtErrors(bool always);
 
 int virtTestMain(int argc,
                  char **argv,
@@ -87,8 +86,9 @@ int virtTestMain(int argc,
                 perror(lib);                                            \
                 return EXIT_FAILURE;                                    \
             }                                                           \
-            if (virAsprintf(&newenv, "%s%s%s", preload ? preload : "",  \
-                            preload ? ":" : "", lib) < 0) {             \
+            if (!preload) {                                             \
+                newenv = (char *) lib;                                  \
+            } else if (virAsprintf(&newenv, "%s:%s", lib, preload) < 0) {   \
                 perror("virAsprintf");                                  \
                 return EXIT_FAILURE;                                    \
             }                                                           \

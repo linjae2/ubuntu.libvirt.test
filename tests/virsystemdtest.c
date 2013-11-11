@@ -20,13 +20,16 @@
 
 #include <config.h>
 
-#include <stdlib.h>
-
-#include "virsystemd.h"
-#include "virlog.h"
 #include "testutils.h"
 
-#define VIR_FROM_THIS VIR_FROM_NONE
+#ifdef __linux__
+
+# include <stdlib.h>
+
+# include "virsystemd.h"
+# include "virlog.h"
+
+# define VIR_FROM_THIS VIR_FROM_NONE
 
 static int testCreateContainer(const void *opaque ATTRIBUTE_UNUSED)
 {
@@ -45,6 +48,18 @@ static int testCreateContainer(const void *opaque ATTRIBUTE_UNUSED)
                                 true,
                                 "highpriority.slice") < 0) {
         fprintf(stderr, "%s", "Failed to create LXC machine\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int testTerminateContainer(const void *opaque ATTRIBUTE_UNUSED)
+{
+    if (virSystemdTerminateMachine("demo",
+                                   "lxc",
+                                   true) < 0) {
+        fprintf(stderr, "%s", "Failed to terminate LXC machine\n");
         return -1;
     }
 
@@ -74,6 +89,18 @@ static int testCreateMachine(const void *opaque ATTRIBUTE_UNUSED)
     return 0;
 }
 
+static int testTerminateMachine(const void *opaque ATTRIBUTE_UNUSED)
+{
+    if (virSystemdTerminateMachine("demo",
+                                   "qemu",
+                                   false) < 0) {
+        fprintf(stderr, "%s", "Failed to terminate KVM machine\n");
+        return -1;
+    }
+
+    return 0;
+}
+
 static int testCreateNoSystemd(const void *opaque ATTRIBUTE_UNUSED)
 {
     unsigned char uuid[VIR_UUID_BUFLEN] = {
@@ -94,9 +121,11 @@ static int testCreateNoSystemd(const void *opaque ATTRIBUTE_UNUSED)
                                       123,
                                       false,
                                       NULL)) == 0) {
+        unsetenv("FAIL_NO_SERVICE");
         fprintf(stderr, "%s", "Unexpected create machine success\n");
         return -1;
     }
+    unsetenv("FAIL_NO_SERVICE");
 
     if (rv != -2) {
         fprintf(stderr, "%s", "Unexpected create machine error\n");
@@ -126,9 +155,11 @@ static int testCreateBadSystemd(const void *opaque ATTRIBUTE_UNUSED)
                                       123,
                                       false,
                                       NULL)) == 0) {
+        unsetenv("FAIL_BAD_SERVICE");
         fprintf(stderr, "%s", "Unexpected create machine success\n");
         return -1;
     }
+    unsetenv("FAIL_BAD_SERVICE");
 
     if (rv != -1) {
         fprintf(stderr, "%s", "Unexpected create machine error\n");
@@ -138,21 +169,82 @@ static int testCreateBadSystemd(const void *opaque ATTRIBUTE_UNUSED)
     return 0;
 }
 
+
+struct testScopeData {
+    const char *name;
+    const char *partition;
+    const char *expected;
+};
+
+static int
+testScopeName(const void *opaque)
+{
+    const struct testScopeData *data = opaque;
+    int ret = -1;
+    char *actual = NULL;
+
+    if (!(actual = virSystemdMakeScopeName(data->name,
+                                           "lxc",
+                                           data->partition)))
+        goto cleanup;
+
+    if (STRNEQ(actual, data->expected)) {
+        fprintf(stderr, "Expected '%s' but got '%s'\n",
+                data->expected, actual);
+        goto cleanup;
+    }
+
+    ret = 0;
+
+ cleanup:
+    VIR_FREE(actual);
+    return ret;
+}
+
 static int
 mymain(void)
 {
     int ret = 0;
 
-    if (virtTestRun("Test create container ", 1, testCreateContainer, NULL) < 0)
+    if (virtTestRun("Test create container ", testCreateContainer, NULL) < 0)
         ret = -1;
-    if (virtTestRun("Test create machine ", 1, testCreateMachine, NULL) < 0)
+    if (virtTestRun("Test terminate container ", testTerminateContainer, NULL) < 0)
         ret = -1;
-    if (virtTestRun("Test create no systemd ", 1, testCreateNoSystemd, NULL) < 0)
+    if (virtTestRun("Test create machine ", testCreateMachine, NULL) < 0)
         ret = -1;
-    if (virtTestRun("Test create bad systemd ", 1, testCreateBadSystemd, NULL) < 0)
+    if (virtTestRun("Test terminate machine ", testTerminateMachine, NULL) < 0)
         ret = -1;
+    if (virtTestRun("Test create no systemd ", testCreateNoSystemd, NULL) < 0)
+        ret = -1;
+    if (virtTestRun("Test create bad systemd ", testCreateBadSystemd, NULL) < 0)
+        ret = -1;
+
+# define TEST_SCOPE(name, partition, unitname)                          \
+    do {                                                                \
+        struct testScopeData data = {                                   \
+            name, partition, unitname                                   \
+        };                                                              \
+        if (virtTestRun("Test scopename", testScopeName, &data) < 0)    \
+            ret = -1;                                                   \
+    } while (0)
+
+    TEST_SCOPE("demo", "/machine", "machine-lxc\\x2ddemo.scope");
+    TEST_SCOPE("demo-name", "/machine", "machine-lxc\\x2ddemo\\x2dname.scope");
+    TEST_SCOPE("demo!name", "/machine", "machine-lxc\\x2ddemo\\x21name.scope");
+    TEST_SCOPE(".demo", "/machine", "machine-lxc\\x2d\\x2edemo.scope");
+    TEST_SCOPE("demo", "/machine/eng-dept", "machine-eng\\x2ddept-lxc\\x2ddemo.scope");
+    TEST_SCOPE("demo", "/machine/eng-dept/testing!stuff",
+               "machine-eng\\x2ddept-testing\\x21stuff-lxc\\x2ddemo.scope");
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 VIRT_TEST_MAIN_PRELOAD(mymain, abs_builddir "/.libs/virsystemdmock.so")
+
+#else
+int
+main(void)
+{
+    return EXIT_AM_SKIP;
+}
+#endif

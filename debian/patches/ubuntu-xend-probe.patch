@@ -17,75 +17,73 @@ the allowed callouts of apparmor.
 
 Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
-diff -Naurp libvirt-1.1.1.orig/src/libxl/libxl_driver.c libvirt-1.1.1/src/libxl/libxl_driver.c
---- libvirt-1.1.1.orig/src/libxl/libxl_driver.c	2013-07-29 00:25:51.000000000 +0000
-+++ libvirt-1.1.1/src/libxl/libxl_driver.c	2013-08-15 18:28:21.366736999 +0000
-@@ -1184,6 +1184,7 @@ libxlStateInitialize(bool privileged,
+Index: libvirt-1.1.4/src/libxl/libxl_driver.c
+===================================================================
+--- libvirt-1.1.4.orig/src/libxl/libxl_driver.c	2013-11-12 11:48:40.815866978 -0600
++++ libvirt-1.1.4/src/libxl/libxl_driver.c	2013-11-12 11:48:40.803866978 -0600
+@@ -791,6 +791,7 @@
  {
-     const libxl_version_info *ver_info;
-     char *log_file = NULL;
-+    char *output;
+     bool ret = false;
      virCommandPtr cmd;
-     int status, ret = 0;
-     unsigned int free_mem;
-@@ -1196,13 +1197,24 @@ libxlStateInitialize(bool privileged,
++	char *output;
+     int status;
+ 
+     /* Don't load if non-root */
+@@ -808,13 +809,23 @@
      }
  
-     /* Disable driver if legacy xen toolstack (xend) is in use */
+     /* Don't load if legacy xen toolstack (xend) is in use */
 -    cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
-+    cmd = virCommandNewArgList("usr/lib/xen-common/bin/xen-toolstack", NULL);
-+    virCommandSetOutputBuffer(cmd, &output);
++    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
      if (virCommandRun(cmd, &status) == 0 && status == 0) {
 -        VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
--                  "libxenlight driver.");
--        virCommandFree(cmd);
--        return 0;
-+        int i, j;
 +
-+        for (i = 0, j = 0; output[i] != '\0'; i++)
-+            if (output[i] == '/')
-+                j = i + 1;
 +
-+        if (output[j] == 'x' && output[j+1] == 'm') {
-+            VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
-+                      "libxenlight driver.");
-+            VIR_FREE(output);
-+            virCommandFree(cmd);
-+            return 0;
-+        }
++		int i, j;
++		for (i = 0, j = 0; output[i] != '\0'; i++)
++			if (output[i] == '/')
++				j = i + 1;
++		if (output[j] == 'x' && output[j+1] == 'm') {
++			VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
+                   "libxenlight driver.");
+-    } else {
+-        ret = true;
++			VIR_FREE(output);
++			virCommandFree(cmd);
++			return 0;
++		}
      }
-+    VIR_FREE(output);
++	VIR_FREE(output);
      virCommandFree(cmd);
  
-     if (VIR_ALLOC(libxl_driver) < 0)
-diff -Naurp libvirt-1.1.1.orig/src/xen/xen_driver.c libvirt-1.1.1/src/xen/xen_driver.c
---- libvirt-1.1.1.orig/src/xen/xen_driver.c	2013-07-30 07:21:31.000000000 +0000
-+++ libvirt-1.1.1/src/xen/xen_driver.c	2013-08-15 18:28:21.366736999 +0000
-@@ -305,12 +305,24 @@ static int
+     return ret;
+Index: libvirt-1.1.4/src/xen/xen_driver.c
+===================================================================
+--- libvirt-1.1.4.orig/src/xen/xen_driver.c	2013-11-12 11:48:40.815866978 -0600
++++ libvirt-1.1.4/src/xen/xen_driver.c	2013-11-12 11:48:40.807866978 -0600
+@@ -315,12 +315,22 @@
  xenUnifiedXendProbe(void)
  {
      virCommandPtr cmd;
-+    char *output;
++	char *output;
      int status;
      int ret = 0;
  
 -    cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
 -    if (virCommandRun(cmd, &status) == 0 && status == 0)
 -        ret = 1;
-+    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
-+    virCommandSetOutputBuffer(cmd, &output);
++    cmd = virCommandNewArgList("/usr/sbin/xen-common/bin/xen-toolstack", NULL);
++	virCommandSetOutputBuffer(cmd, &output);
 +    if (virCommandRun(cmd, &status) == 0 && status == 0) {
-+        int i, j;
++		int i, j;
 +
-+        for (i = 0, j = 0; output[i] != '\0'; i++)
-+            if (output[i] == '/')
-+                j = i + 1;
-+
-+        if (output[j] == 'x' && output[j+1] == 'm')
-+            ret = 1;
-+    }
-+
-+    VIR_FREE(output);
++		for (i = 0, j = 0; output[i] != '\0'; i++)
++			if (output[i] == '/')
++				j = i + 1;
++		if (output[j] == 'x' && output[j+1] == 'm')
++			ret = 1;
++	}
++	VIR_FREE(output);
      virCommandFree(cmd);
  
      return ret;

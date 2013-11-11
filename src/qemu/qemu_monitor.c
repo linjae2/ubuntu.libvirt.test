@@ -32,6 +32,8 @@
 #include "qemu_monitor.h"
 #include "qemu_monitor_text.h"
 #include "qemu_monitor_json.h"
+#include "qemu_domain.h"
+#include "qemu_process.h"
 #include "virerror.h"
 #include "viralloc.h"
 #include "virlog.h"
@@ -61,6 +63,7 @@ struct _qemuMonitor {
     virDomainObjPtr vm;
 
     qemuMonitorCallbacksPtr cb;
+    void *callbackOpaque;
 
     /* If there's a command being processed this will be
      * non-NULL */
@@ -87,6 +90,9 @@ struct _qemuMonitor {
     /* If found, path to the virtio memballoon driver */
     char *balloonpath;
     bool ballooninit;
+
+    /* Log file fd of the qemu process to dig for usable info */
+    int logfd;
 };
 
 static virClassPtr qemuMonitorClass;
@@ -248,11 +254,14 @@ static void qemuMonitorDispose(void *obj)
 
     VIR_DEBUG("mon=%p", mon);
     if (mon->cb && mon->cb->destroy)
-        (mon->cb->destroy)(mon, mon->vm);
+        (mon->cb->destroy)(mon, mon->vm, mon->callbackOpaque);
+    virObjectUnref(mon->vm);
+
     virCondDestroy(&mon->notify);
     VIR_FREE(mon->buffer);
     virJSONValueFree(mon->options);
     VIR_FREE(mon->balloonpath);
+    VIR_FORCE_CLOSE(mon->logfd);
 }
 
 
@@ -323,6 +332,35 @@ qemuMonitorOpenPty(const char *monitor)
     }
 
     return monfd;
+}
+
+
+/* Get a possible error from qemu's log. This function closes the
+ * corresponding log fd */
+static char *
+qemuMonitorGetErrorFromLog(qemuMonitorPtr mon)
+{
+    int len;
+    char *logbuf = NULL;
+    int orig_errno = errno;
+
+    if (mon->logfd < 0)
+        return NULL;
+
+    if (VIR_ALLOC_N_QUIET(logbuf, 4096) < 0)
+        goto error;
+
+    if ((len = qemuProcessReadLog(mon->logfd, logbuf, 4096 - 1, 0, true)) <= 0)
+        goto error;
+
+cleanup:
+    errno = orig_errno;
+    VIR_FORCE_CLOSE(mon->logfd);
+    return logbuf;
+
+error:
+    VIR_FREE(logbuf);
+    goto cleanup;
 }
 
 
@@ -559,6 +597,7 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque) {
     qemuMonitorPtr mon = opaque;
     bool error = false;
     bool eof = false;
+    bool hangup = false;
 
     virObjectRef(mon);
 
@@ -609,12 +648,14 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque) {
             }
         }
 
-        if (!error &&
-            events & VIR_EVENT_HANDLE_HANGUP) {
-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                           _("End of file from monitor"));
-            eof = true;
-            events &= ~VIR_EVENT_HANDLE_HANGUP;
+        if (events & VIR_EVENT_HANDLE_HANGUP) {
+            hangup = true;
+            if (!error) {
+                virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                               _("End of file from monitor"));
+                eof = true;
+                events &= ~VIR_EVENT_HANDLE_HANGUP;
+            }
         }
 
         if (!error && !eof &&
@@ -633,6 +674,26 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque) {
     }
 
     if (error || eof) {
+        if (hangup) {
+            /* Check if an error message from qemu is available and if so, use
+             * it to overwrite the actual message. It's done only in early
+             * startup phases where the message from qemu is certainly more
+             * interesting than a "connection reset by peer" message.
+             */
+            char *qemuMessage;
+
+            if ((qemuMessage = qemuMonitorGetErrorFromLog(mon))) {
+                virReportError(VIR_ERR_INTERNAL_ERROR,
+                               _("early end of file from monitor: "
+                                 "possible problem:\n%s"),
+                               qemuMessage);
+                virCopyLastError(&mon->lastError);
+                virResetLastError();
+            }
+
+            VIR_FREE(qemuMessage);
+        }
+
         if (mon->lastError.code != VIR_ERR_OK) {
             /* Already have an error, so clear any new error */
             virResetLastError();
@@ -660,8 +721,7 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque) {
      * but is this safe ?  I think it is, because the callback
      * will try to acquire the virDomainObjPtr mutex next */
     if (eof) {
-        void (*eofNotify)(qemuMonitorPtr, virDomainObjPtr)
-            = mon->cb->eofNotify;
+        qemuMonitorEofNotifyCallback eofNotify = mon->cb->eofNotify;
         virDomainObjPtr vm = mon->vm;
 
         /* Make sure anyone waiting wakes up now */
@@ -669,10 +729,9 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque) {
         virObjectUnlock(mon);
         virObjectUnref(mon);
         VIR_DEBUG("Triggering EOF callback");
-        (eofNotify)(mon, vm);
+        (eofNotify)(mon, vm, mon->callbackOpaque);
     } else if (error) {
-        void (*errorNotify)(qemuMonitorPtr, virDomainObjPtr)
-            = mon->cb->errorNotify;
+        qemuMonitorErrorNotifyCallback errorNotify = mon->cb->errorNotify;
         virDomainObjPtr vm = mon->vm;
 
         /* Make sure anyone waiting wakes up now */
@@ -680,7 +739,7 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque) {
         virObjectUnlock(mon);
         virObjectUnref(mon);
         VIR_DEBUG("Triggering error callback");
-        (errorNotify)(mon, vm);
+        (errorNotify)(mon, vm, mon->callbackOpaque);
     } else {
         virObjectUnlock(mon);
         virObjectUnref(mon);
@@ -693,7 +752,8 @@ qemuMonitorOpenInternal(virDomainObjPtr vm,
                         int fd,
                         bool hasSendFD,
                         bool json,
-                        qemuMonitorCallbacksPtr cb)
+                        qemuMonitorCallbacksPtr cb,
+                        void *opaque)
 {
     qemuMonitorPtr mon;
 
@@ -715,6 +775,7 @@ qemuMonitorOpenInternal(virDomainObjPtr vm,
         return NULL;
 
     mon->fd = -1;
+    mon->logfd = -1;
     if (virCondInit(&mon->notify) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("cannot initialize monitor condition"));
@@ -722,11 +783,12 @@ qemuMonitorOpenInternal(virDomainObjPtr vm,
     }
     mon->fd = fd;
     mon->hasSendFD = hasSendFD;
-    mon->vm = vm;
+    mon->vm = virObjectRef(vm);
     mon->json = json;
     if (json)
         mon->waitGreeting = true;
     mon->cb = cb;
+    mon->callbackOpaque = opaque;
 
     if (virSetCloseExec(mon->fd) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -780,7 +842,8 @@ qemuMonitorPtr
 qemuMonitorOpen(virDomainObjPtr vm,
                 virDomainChrSourceDefPtr config,
                 bool json,
-                qemuMonitorCallbacksPtr cb)
+                qemuMonitorCallbacksPtr cb,
+                void *opaque)
 {
     int fd;
     bool hasSendFD = false;
@@ -805,7 +868,7 @@ qemuMonitorOpen(virDomainObjPtr vm,
         return NULL;
     }
 
-    ret = qemuMonitorOpenInternal(vm, fd, hasSendFD, json, cb);
+    ret = qemuMonitorOpenInternal(vm, fd, hasSendFD, json, cb, opaque);
     if (!ret)
         VIR_FORCE_CLOSE(fd);
     return ret;
@@ -815,9 +878,10 @@ qemuMonitorOpen(virDomainObjPtr vm,
 qemuMonitorPtr qemuMonitorOpenFD(virDomainObjPtr vm,
                                  int sockfd,
                                  bool json,
-                                 qemuMonitorCallbacksPtr cb)
+                                 qemuMonitorCallbacksPtr cb,
+                                 void *opaque)
 {
-    return qemuMonitorOpenInternal(vm, sockfd, true, json, cb);
+    return qemuMonitorOpenInternal(vm, sockfd, true, json, cb, opaque);
 }
 
 
@@ -1070,7 +1134,8 @@ cleanup:
         virObjectRef(mon);                                      \
         virObjectUnlock(mon);                                   \
         if ((mon)->cb && (mon)->cb->callback)                   \
-            (ret) = ((mon)->cb->callback)(mon, __VA_ARGS__);    \
+            (ret) = (mon)->cb->callback(mon, __VA_ARGS__,       \
+                                        (mon)->callbackOpaque); \
         virObjectLock(mon);                                     \
         virObjectUnref(mon);                                    \
     } while (0)
@@ -3838,4 +3903,26 @@ qemuMonitorGetDeviceAliases(qemuMonitorPtr mon,
     }
 
     return qemuMonitorJSONGetDeviceAliases(mon, aliases);
+}
+
+
+/**
+ * qemuMonitorSetDomainLog:
+ * Set the file descriptor of the open VM log file to report potential
+ * early startup errors of qemu.
+ *
+ * @mon: Monitor object to set the log file reading on
+ * @logfd: File descriptor of the already open log file
+ */
+int
+qemuMonitorSetDomainLog(qemuMonitorPtr mon, int logfd)
+{
+    VIR_FORCE_CLOSE(mon->logfd);
+    if (logfd >= 0 &&
+        (mon->logfd = dup(logfd)) < 0) {
+        virReportSystemError(errno, "%s", _("failed to duplicate log fd"));
+        return -1;
+    }
+
+    return 0;
 }
