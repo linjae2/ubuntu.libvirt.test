@@ -1,3 +1,10 @@
+libvirt (1.1.4-0ubuntu2) trusty; urgency=low
+
+  * debian/patches/9002-better_default_uri_virsh.patch: Update to fix the
+    FTBFS.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 13 Nov 2013 11:04:29 -0500
+
 libvirt (1.1.4-0ubuntu1) trusty; urgency=low
 
   [ Chuck Short ]
