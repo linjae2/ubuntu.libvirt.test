@@ -27,9 +27,7 @@ mkdir -p "$XDG_RUNTIME_HOME/libvirt" "$XDG_RUNTIME_HOME/virsh"
 test_uri()
 {
   result=0
-  resp="$($virsh_bin uri)"
-  if [ "$resp" != "$good_uri" ]; then
-      echo "test $1: got $resp expected $good_uri"
+  if [ "$($virsh_bin uri)" != "$good_uri" ]; then
       result=1
       ret=1
   fi
@@ -57,7 +55,6 @@ unset VIRSH_DEFAULT_CONNECT_URI
 bad_uri="test:///default?bad_uri"
 good_uri="test:///default?good_uri"
 
-good_uri="qemu:///system"  # this is too bad, but we have to fudge the first two tests
 printf "uri_default=\"%s\"\n" "$good_uri" >"$XDG_CONFIG_HOME/libvirt/libvirt.conf"
 if uid_is_privileged_; then
     test_skip_case "$counter" "User config file" "must not be run as root"
@@ -68,7 +65,6 @@ fi
 printf "uri_default=\"%s\"\n" "$bad_uri" >"$XDG_CONFIG_HOME/libvirt/libvirt.conf"
 export LIBVIRT_DEFAULT_URI="$good_uri"
 test_uri "LIBVIRT_DEFAULT_URI"
-good_uri="test:///default?good_uri"  # end of fudging
 
 export LIBVIRT_DEFAULT_URI="$bad_uri"
 export VIRSH_DEFAULT_CONNECT_URI="$good_uri"

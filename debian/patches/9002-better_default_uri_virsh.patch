@@ -1,83 +1,30 @@
-Index: libvirt-1.1.4/tools/Makefile.am
+Description: Use qemu:///system as the default URI
+ We've done this in Ubuntu for ages, and can't switch it now.  However
+ the old patch ended up changing the behavior of various ways of
+ specifying URI preferences.  We don't want that - we only want to
+ change the default if nothing is specified.
+Author: Serge Hallyn <serge.hallyn@ubuntu.com>
+Forwarded: no
+
+Index: libvirt-1.1.4/src/libvirt.c
 ===================================================================
---- libvirt-1.1.4.orig/tools/Makefile.am	2013-11-12 16:13:34.443725369 -0600
-+++ libvirt-1.1.4/tools/Makefile.am	2013-11-12 16:13:34.427725369 -0600
-@@ -19,7 +19,9 @@
- 	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
- 	-I$(top_builddir)/src -I$(top_srcdir)/src		\
- 	-I$(top_srcdir)/src/util				\
-+	-I$(top_srcdir)/src/remote				\
- 	-I$(top_srcdir)						\
-+	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"                \
- 	$(GETTEXT_CPPFLAGS)
- 
- AM_LDFLAGS = \
-Index: libvirt-1.1.4/tools/Makefile.in
-===================================================================
---- libvirt-1.1.4.orig/tools/Makefile.in	2013-11-12 16:13:34.443725369 -0600
-+++ libvirt-1.1.4/tools/Makefile.in	2013-11-12 16:13:34.431725369 -0600
-@@ -1836,7 +1836,9 @@
- 	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
- 	-I$(top_builddir)/src -I$(top_srcdir)/src		\
- 	-I$(top_srcdir)/src/util				\
-+	-I$(top_srcdir)/src/remote				\
- 	-I$(top_srcdir)						\
-+	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"                \
- 	$(GETTEXT_CPPFLAGS)
- 
- AM_LDFLAGS = \
-Index: libvirt-1.1.4/tools/virsh.c
-===================================================================
---- libvirt-1.1.4.orig/tools/virsh.c	2013-11-12 16:13:34.443725369 -0600
-+++ libvirt-1.1.4/tools/virsh.c	2013-11-12 16:13:34.431725369 -0600
-@@ -85,6 +85,8 @@
- #include "virsh-snapshot.h"
- #include "virsh-volume.h"
- 
-+#include "remote_driver.h"
-+
- static char *progname;
- 
- static const vshCmdGrp cmdGroups[];
-@@ -3345,6 +3347,10 @@
- 
-     if ((defaultConn = virGetEnvBlockSUID("VIRSH_DEFAULT_CONNECT_URI"))) {
-         ctl->name = vshStrdup(ctl, defaultConn);
-+    } else if (!access(LIBVIRTD_PRIV_UNIX_SOCKET, W_OK)) {
-+        ctl->name = vshStrdup(ctl, "qemu:///system");
+--- libvirt-1.1.4.orig/src/libvirt.c	2013-11-13 16:44:33.472085000 +0100
++++ libvirt-1.1.4/src/libvirt.c	2013-11-13 16:47:26.924085000 +0100
+@@ -1103,6 +1103,7 @@
+     int ret = -1;
+     virConfValuePtr value = NULL;
+     const char *defname = virGetEnvBlockSUID("LIBVIRT_DEFAULT_URI");
++    const char *fallback = "qemu:///system";
+     if (defname && *defname) {
+         VIR_DEBUG("Using LIBVIRT_DEFAULT_URI '%s'", defname);
+         *name = defname;
+@@ -1114,6 +1115,9 @@
+         }
+         VIR_DEBUG("Using config file uri '%s'", value->str);
+         *name = value->str;
 +    } else {
-+        ctl->name = vshStrdup(ctl, "qemu:///session");
++        VIR_DEBUG("Falling back to uri qemu:///system");
++        *name = fallback;
      }
  
-     vshInitDebug(ctl);
-Index: libvirt-1.1.4/tests/virsh-uriprecedence
-===================================================================
---- libvirt-1.1.4.orig/tests/virsh-uriprecedence	2013-09-18 04:51:27.000000000 -0500
-+++ libvirt-1.1.4/tests/virsh-uriprecedence	2013-11-12 16:14:00.831725134 -0600
-@@ -27,7 +27,9 @@
- test_uri()
- {
-   result=0
--  if [ "$($virsh_bin uri)" != "$good_uri" ]; then
-+  resp="$($virsh_bin uri)"
-+  if [ "$resp" != "$good_uri" ]; then
-+      echo "test $1: got $resp expected $good_uri"
-       result=1
-       ret=1
-   fi
-@@ -55,6 +57,7 @@
- bad_uri="test:///default?bad_uri"
- good_uri="test:///default?good_uri"
- 
-+good_uri="qemu:///system"  # this is too bad, but we have to fudge the first two tests
- printf "uri_default=\"%s\"\n" "$good_uri" >"$XDG_CONFIG_HOME/libvirt/libvirt.conf"
- if uid_is_privileged_; then
-     test_skip_case "$counter" "User config file" "must not be run as root"
-@@ -65,6 +68,7 @@
- printf "uri_default=\"%s\"\n" "$bad_uri" >"$XDG_CONFIG_HOME/libvirt/libvirt.conf"
- export LIBVIRT_DEFAULT_URI="$good_uri"
- test_uri "LIBVIRT_DEFAULT_URI"
-+good_uri="test:///default?good_uri"  # end of fudging
- 
- export LIBVIRT_DEFAULT_URI="$bad_uri"
- export VIRSH_DEFAULT_CONNECT_URI="$good_uri"
+     ret = 0;

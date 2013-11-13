@@ -19,9 +19,7 @@ INCLUDES = \
 	-I$(top_builddir)/gnulib/lib -I$(top_srcdir)/gnulib/lib	\
 	-I$(top_builddir)/src -I$(top_srcdir)/src		\
 	-I$(top_srcdir)/src/util				\
-	-I$(top_srcdir)/src/remote				\
 	-I$(top_srcdir)						\
-	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"                \
 	$(GETTEXT_CPPFLAGS)
 
 AM_LDFLAGS = \
