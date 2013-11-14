@@ -1,3 +1,12 @@
+libvirt (1.1.1-0ubuntu8.2) saucy-proposed; urgency=low
+
+  * add d/p/util_use_w_flag_when_calling_iptables.patch (LP: #1245322)
+  * debian/apparmor/libvirt-qemu: allow access to usb info (LP: #1245251)
+  * debian/apparmor/libvirt-qemu: allow access to hugepages mounts
+    (LP: #1250216)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 14 Nov 2013 10:09:24 -0600
+
 libvirt (1.1.1-0ubuntu8.1) saucy-security; urgency=low
 
   * SECURITY UPDATE: incorrect permission checks in the

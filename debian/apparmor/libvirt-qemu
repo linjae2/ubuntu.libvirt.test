@@ -129,3 +129,12 @@
 
   # for rbd
   /etc/ceph/ceph.conf r,
+
+  # for access to hugepages
+  owner "/run/hugepages/kvm/libvirt/qemu/**" rw,
+
+  # for usb access
+  /dev/bus/usb/ r,
+  /etc/udev/udev.conf r,
+  /sys/bus/ r,
+  /sys/class/ r,
