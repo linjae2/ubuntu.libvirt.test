@@ -1,3 +1,12 @@
+libvirt (1.1.4-0ubuntu3) trusty; urgency=low
+
+  * d/p/accomodate-new-qemu-migration-status-setup.patch: work around
+    libvirt's not yet knowing of qemu's new migration state, 'setup'.
+    This can be removed when upstream libvirt has a proper patch.  QRT
+    fails without this.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 14 Nov 2013 08:41:07 -0600
+
 libvirt (1.1.4-0ubuntu2) trusty; urgency=low
 
   * debian/patches/9002-better_default_uri_virsh.patch: Update to fix the

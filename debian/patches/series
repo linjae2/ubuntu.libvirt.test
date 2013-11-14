@@ -1,4 +1,4 @@
-9002-better_default_uri_virsh.patch
+9002-default_uri_virsh_to_system.patch
 remove-RHism.diff.patch
 Don-t-enable-default-network-on-boot.patch
 Allow-libvirt-group-to-access-the-socket.patch
@@ -18,3 +18,4 @@ fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu-libxl-qemu-nopath.patch
 ubuntu-xend-probe.patch
 util_use_w_flag_when_calling_iptables.patch
+accomodate-new-qemu-migration-status-setup.patch
