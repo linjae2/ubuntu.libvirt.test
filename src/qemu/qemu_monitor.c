@@ -2087,7 +2087,8 @@ qemuMonitorSetMigrationCacheSize(qemuMonitorPtr mon,
 
 
 int qemuMonitorGetMigrationStatus(qemuMonitorPtr mon,
-                                  qemuMonitorMigrationStatusPtr status)
+                                  qemuMonitorMigrationStatusPtr status,
+                                  int *setting_up)
 {
     int ret;
     VIR_DEBUG("mon=%p", mon);
@@ -2098,10 +2099,11 @@ int qemuMonitorGetMigrationStatus(qemuMonitorPtr mon,
         return -1;
     }
 
+    *setting_up = 0;
     if (mon->json)
-        ret = qemuMonitorJSONGetMigrationStatus(mon, status);
+        ret = qemuMonitorJSONGetMigrationStatus(mon, status, setting_up);
     else
-        ret = qemuMonitorTextGetMigrationStatus(mon, status);
+        ret = qemuMonitorTextGetMigrationStatus(mon, status, setting_up);
     return ret;
 }
 

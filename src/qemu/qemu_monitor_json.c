@@ -2351,7 +2351,8 @@ qemuMonitorJSONSetMigrationCacheSize(qemuMonitorPtr mon,
 
 static int
 qemuMonitorJSONGetMigrationStatusReply(virJSONValuePtr reply,
-                                       qemuMonitorMigrationStatusPtr status)
+                                       qemuMonitorMigrationStatusPtr status,
+                                       int *setting_up)
 {
     virJSONValuePtr ret;
     const char *statusstr;
@@ -2369,6 +2370,11 @@ qemuMonitorJSONGetMigrationStatusReply(virJSONValuePtr reply,
         return -1;
     }
 
+    if (strncmp(statusstr, "setup", 5) == 0) {
+        status->status = QEMU_MONITOR_MIGRATION_STATUS_ACTIVE;
+        *setting_up = 1;
+        return 0;
+    }
     status->status = qemuMonitorMigrationStatusTypeFromString(statusstr);
     if (status->status < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -2509,7 +2515,8 @@ qemuMonitorJSONGetMigrationStatusReply(virJSONValuePtr reply,
 
 
 int qemuMonitorJSONGetMigrationStatus(qemuMonitorPtr mon,
-                                      qemuMonitorMigrationStatusPtr status)
+                                      qemuMonitorMigrationStatusPtr status,
+                                      int *setting_up)
 {
     int ret;
     virJSONValuePtr cmd = qemuMonitorJSONMakeCommand("query-migrate",
@@ -2527,7 +2534,7 @@ int qemuMonitorJSONGetMigrationStatus(qemuMonitorPtr mon,
         ret = qemuMonitorJSONCheckError(cmd, reply);
 
     if (ret == 0 &&
-        qemuMonitorJSONGetMigrationStatusReply(reply, status) < 0)
+        qemuMonitorJSONGetMigrationStatusReply(reply, status, &setting_up) < 0)
         ret = -1;
 
     if (ret < 0)
