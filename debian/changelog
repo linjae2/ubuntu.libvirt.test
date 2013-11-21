@@ -1,3 +1,9 @@
+libvirt (1.1.4-0ubuntu4) trusty; urgency=low
+
+  * debian/libvirt-dev.install: Add missing libvirt-lxc.so. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 21 Nov 2013 13:10:58 -0500
+
 libvirt (1.1.4-0ubuntu3) trusty; urgency=low
 
   * d/p/accomodate-new-qemu-migration-status-setup.patch: work around
