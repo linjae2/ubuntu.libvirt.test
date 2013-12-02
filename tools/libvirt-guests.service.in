@@ -1,6 +1,6 @@
 [Unit]
 Description=Suspend Active Libvirt Guests
-After=network.target
+After=network.target libvirt-bin.service
 
 [Service]
 EnvironmentFile=-/etc/default/libvirt-guests
