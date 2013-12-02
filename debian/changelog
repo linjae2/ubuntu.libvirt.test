@@ -1,3 +1,17 @@
+libvirt (1.2.0-0ubuntu1) trusty; urgency=low
+
+  * New upstream release:
+    - Refreshed patches:
+      + debian/patches/storage-default-permission-mode-to-0711
+    - Dropped patches:
+      + debian/patches/util_use_w_flag_when_calling_iptables.patch
+   * debian/control, debian/rules, debian/python.mk,
+     debian/python-libvirt.install: python libvirt bindings have been
+     split out into its own source called libvirt-python.
+   * debian/libvirt-dev.install: Install API files into dev package
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 02 Dec 2013 09:56:17 -0500
+
 libvirt (1.1.4-0ubuntu5) trusty; urgency=medium
 
   * Build using dh-autoreconf.
