@@ -85,6 +85,7 @@ mymain(void)
         ret = -1
 
     DO_TEST("pool-dir");
+    DO_TEST("pool-dir-naming");
     DO_TEST("pool-fs");
     DO_TEST("pool-logical");
     DO_TEST("pool-logical-nopath");
@@ -100,6 +101,8 @@ mymain(void)
     DO_TEST("pool-iscsi-multiiqn");
     DO_TEST("pool-iscsi-vendor-product");
     DO_TEST("pool-sheepdog");
+    DO_TEST("pool-gluster");
+    DO_TEST("pool-gluster-sub");
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

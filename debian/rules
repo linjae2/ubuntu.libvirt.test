@@ -6,7 +6,6 @@ export VIR_TEST_DEBUG=1
 include /usr/share/cdbs/1/rules/autoreconf.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
-include /usr/share/cdbs/1/class/python-distutils.mk
 
 DEB_AUTO_UPDATE_AUTOCONF := 2.69
 DEB_AUTO_UPDATE_AUTOHEADER := 2.69
@@ -33,7 +32,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_NETCF          = --with-netcf
   WITH_AUDIT          = --with-audit
   WITH_CEPH			  = --with-storage-rbd
-  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 i386 ia64 mips mipsel powerpc ppc64 ppc64el))
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 i386 ia64 mips mipsel powerpc ppc64el))
       WITH_NUMA       = --with-numactl
   else
       WITH_NUMA       = --without-numactl
@@ -98,18 +97,17 @@ DEB_COMPRESS_EXCLUDE = .o event-test hellolibvirt info1 suspend
 DEB_PYTHON_SETUP_CMD = /dev/null
 DEB_DH_MAKESHLIBS_ARGS_libvirt0 += -V 'libvirt0 (>= 0.5.0)'
 DEB_DH_INSTALLINIT_ARGS = --upstart-only
-DEB_PYTHON_MODULE_PACKAGE = python-libvirt
 
 LOGROTATE = $(basename $(basename $(notdir $(wildcard daemon/libvirtd*.logrotate.in))))
 EXAMPLES_DIR = $(CURDIR)/debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
-
-include debian/python.mk
 
 binary-install/libvirt-bin::
 	#cp $(CURDIR)/tools/libvirt-guests.init.sh $(CURDIR)/debian/libvirt-bin.libvirt-guests.init
 	#cp $(CURDIR)/tools/libvirt-guests.sysconf $(CURDIR)/debian/libvirt-bin.libvirt-guests.default
 	#dh_installinit --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
 	rm debian/libvirt-bin/usr/lib/libvirt/connection-driver/*.la
+	# Don't ship api files in the daemon package
+	rm -r debian/libvirt-bin/usr/share/libvirt/api/
 
 	for l in $(LOGROTATE); do \
 		cp $(CURDIR)/debian/build/daemon/$$l.logrotate \

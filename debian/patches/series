@@ -17,5 +17,4 @@ Reduce-udevadm-settle-timeout-to-10-seconds.patch
 fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu-libxl-qemu-nopath.patch
 ubuntu-xend-probe.patch
-util_use_w_flag_when_calling_iptables.patch
 accomodate-new-qemu-migration-status-setup.patch
