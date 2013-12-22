@@ -1,3 +1,10 @@
+libvirt (1.1.4-0ubuntu5) trusty; urgency=medium
+
+  * Build using dh-autoreconf.
+  * Enable numa support on ppc64 and ppc64el.
+
+ -- Matthias Klose <doko@ubuntu.com>  Sun, 22 Dec 2013 15:55:04 +0100
+
 libvirt (1.1.4-0ubuntu4) trusty; urgency=low
 
   * debian/libvirt-dev.install: Add missing libvirt-lxc.so. 
