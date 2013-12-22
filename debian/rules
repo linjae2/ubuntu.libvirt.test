@@ -3,6 +3,7 @@
 DEB_BUILD_PARALLEL = yes
 export VIR_TEST_DEBUG=1
 
+include /usr/share/cdbs/1/rules/autoreconf.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
@@ -32,7 +33,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_NETCF          = --with-netcf
   WITH_AUDIT          = --with-audit
   WITH_CEPH			  = --with-storage-rbd
-  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 i386 ia64 mips mipsel powerpc))
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 i386 ia64 mips mipsel powerpc ppc64 ppc64el))
       WITH_NUMA       = --with-numactl
   else
       WITH_NUMA       = --without-numactl
