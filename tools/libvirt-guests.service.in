@@ -1,9 +1,9 @@
 [Unit]
 Description=Suspend Active Libvirt Guests
-After=network.target libvirtd.service
+After=network.target libvirt-bin.service
 
 [Service]
-EnvironmentFile=-/etc/sysconfig/libvirt-guests
+EnvironmentFile=-/etc/default/libvirt-guests
 # Hack just call traditional service until we factor
 # out the code
 ExecStart=@libexecdir@/libvirt-guests.sh start
