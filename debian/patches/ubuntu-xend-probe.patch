@@ -17,73 +17,78 @@ the allowed callouts of apparmor.
 
 Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
-Index: libvirt-1.1.4/src/libxl/libxl_driver.c
+Index: libvirt-1.2.0/src/libxl/libxl_driver.c
 ===================================================================
---- libvirt-1.1.4.orig/src/libxl/libxl_driver.c	2013-11-12 11:48:40.815866978 -0600
-+++ libvirt-1.1.4/src/libxl/libxl_driver.c	2013-11-12 11:48:40.803866978 -0600
-@@ -791,6 +791,7 @@
+--- libvirt-1.2.0.orig/src/libxl/libxl_driver.c	2013-12-11 17:04:59.596600161 +0100
++++ libvirt-1.2.0/src/libxl/libxl_driver.c	2013-12-11 17:05:25.648727525 +0100
+@@ -792,6 +792,7 @@ libxlDriverShouldLoad(bool privileged)
  {
      bool ret = false;
      virCommandPtr cmd;
-+	char *output;
++    char *output;
      int status;
  
      /* Don't load if non-root */
-@@ -808,13 +809,23 @@
+@@ -809,14 +810,26 @@ libxlDriverShouldLoad(bool privileged)
      }
  
      /* Don't load if legacy xen toolstack (xend) is in use */
 -    cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
 +    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
++    virCommandSetOutputBuffer(cmd, &output);
      if (virCommandRun(cmd, &status) == 0 && status == 0) {
 -        VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
-+
-+
-+		int i, j;
-+		for (i = 0, j = 0; output[i] != '\0'; i++)
-+			if (output[i] == '/')
-+				j = i + 1;
-+		if (output[j] == 'x' && output[j+1] == 'm') {
-+			VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
-                   "libxenlight driver.");
+-                  "libxenlight driver.");
 -    } else {
 -        ret = true;
-+			VIR_FREE(output);
-+			virCommandFree(cmd);
-+			return 0;
-+		}
++        int i, j;
++
++        for (i = 0, j = 0; output[i] != '\0'; i++)
++            if (output[i] == '/')
++                j = i + 1;
++
++        if (output[j] == 'x' && output[j+1] == 'm') {
++            VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
++                     "libxenlight driver.");
++            VIR_FREE(output);
++            virCommandFree(cmd);
++            return ret;
++        }
      }
-+	VIR_FREE(output);
++    VIR_FREE(output);
      virCommandFree(cmd);
++    ret = true;
  
      return ret;
-Index: libvirt-1.1.4/src/xen/xen_driver.c
+ }
+Index: libvirt-1.2.0/src/xen/xen_driver.c
 ===================================================================
---- libvirt-1.1.4.orig/src/xen/xen_driver.c	2013-11-12 11:48:40.815866978 -0600
-+++ libvirt-1.1.4/src/xen/xen_driver.c	2013-11-12 11:48:40.807866978 -0600
-@@ -315,12 +315,22 @@
+--- libvirt-1.2.0.orig/src/xen/xen_driver.c	2013-12-11 17:04:59.576600064 +0100
++++ libvirt-1.2.0/src/xen/xen_driver.c	2013-12-16 14:09:25.946210255 +0100
+@@ -315,12 +315,23 @@ static int
  xenUnifiedXendProbe(void)
  {
      virCommandPtr cmd;
-+	char *output;
++    char *output;
      int status;
      int ret = 0;
  
 -    cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
 -    if (virCommandRun(cmd, &status) == 0 && status == 0)
 -        ret = 1;
-+    cmd = virCommandNewArgList("/usr/sbin/xen-common/bin/xen-toolstack", NULL);
-+	virCommandSetOutputBuffer(cmd, &output);
++    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
++    virCommandSetOutputBuffer(cmd, &output);
 +    if (virCommandRun(cmd, &status) == 0 && status == 0) {
-+		int i, j;
++        int i, j;
 +
-+		for (i = 0, j = 0; output[i] != '\0'; i++)
-+			if (output[i] == '/')
-+				j = i + 1;
-+		if (output[j] == 'x' && output[j+1] == 'm')
-+			ret = 1;
-+	}
-+	VIR_FREE(output);
++        for (i = 0, j = 0; output[i] != '\0'; i++)
++            if (output[i] == '/')
++                j = i + 1;
++
++        if (output[j] == 'x' && output[j+1] == 'm')
++            ret = 1;
++    }
++    VIR_FREE(output);
      virCommandFree(cmd);
  
      return ret;

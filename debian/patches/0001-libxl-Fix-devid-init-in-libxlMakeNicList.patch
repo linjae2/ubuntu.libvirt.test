@@ -1,0 +1,43 @@
+From e1459c1fe88068f231bad254733b29287c28d517 Mon Sep 17 00:00:00 2001
+From: Stefan Bader <stefan.bader@canonical.com>
+Date: Wed, 8 Jan 2014 11:39:19 +0100
+Subject: [PATCH] libxl: Fix devid init in libxlMakeNicList
+
+This basically reverts commit ba64b97134a6129a48684f22f31be92c3b6eef96
+"libxl: Allow libxl to set NIC devid". However assigning devid's
+before calling libxlMakeNic does not work as that is calling
+libxl_device_nic_init which sets it back to -1.
+Right now auto-assignment only works in the hotplug case. But even if
+that would be fixed at some point (if that is possible at all), this
+would add a weird dependency between Xen and libvirt versions.
+The change here should accept any auto-assignment that makes it into
+libxl_device_nic_init. My understanding is that a caller always is
+allowed to make the devid choice itself. And assuming libxlMakeNicList
+is only used on domain creation, a sequential numbering should be ok.
+
+Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+---
+ src/libxl/libxl_conf.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/libxl/libxl_conf.c b/src/libxl/libxl_conf.c
+index 04d01af..4cefadf 100644
+--- a/src/libxl/libxl_conf.c
++++ b/src/libxl/libxl_conf.c
+@@ -918,6 +918,13 @@ libxlMakeNicList(virDomainDefPtr def,  libxl_domain_config *d_config)
+     for (i = 0; i < nnics; i++) {
+         if (libxlMakeNic(def, l_nics[i], &x_nics[i]))
+             goto error;
++        /*
++         * The devid (at least right now) will not get initialized by
++         * libxl in the setup case but is required for starting the
++         * device-model.
++         */
++        if (x_nics[i].devid < 0)
++            x_nics[i].devid = i;
+     }
+ 
+     d_config->nics = x_nics;
+-- 
+1.7.9.5
+
