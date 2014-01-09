@@ -18,3 +18,5 @@ fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu-libxl-qemu-nopath.patch
 ubuntu-xend-probe.patch
 accomodate-new-qemu-migration-status-setup.patch
+0001-libxl-Fix-initialization-of-nictype-in-libxl_device_.patch
+0001-libxl-Fix-devid-init-in-libxlMakeNicList.patch
