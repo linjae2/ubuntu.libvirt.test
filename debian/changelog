@@ -1,3 +1,12 @@
+libvirt (1.1.1-0ubuntu8.3) saucy-proposed; urgency=medium
+
+  * d/a/usr.lib.libvirt.virt-aa-helper: add
+    /var/lib/nova/instances/snapshots/** r to allow virt-aa-helper to read
+    the snapshot directory to find images which VMs should be granted access
+    to.  (LP: #1244694)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 09 Jan 2014 16:42:18 -0600
+
 libvirt (1.1.1-0ubuntu8.2) saucy-proposed; urgency=low
 
   * add d/p/util_use_w_flag_when_calling_iptables.patch (LP: #1245322)
