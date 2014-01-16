@@ -1,3 +1,14 @@
+libvirt (1.2.1-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release:
+    - Dropped patches:
+     + debian/patches/0001-libxl-Fix-devid-init-in-libxlMakeNicList.patch:
+       No longer needed
+     + debian/patches/0001-libxl-Fix-initialization-of-nictype-in-libxl_device_.patch:
+       No longer needed.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 16 Jan 2014 09:17:20 -0500
+
 libvirt (1.2.0-0ubuntu3) trusty; urgency=medium
 
   * debian/apparmor/usr.lib.libvirt.virt-aa-helper: add

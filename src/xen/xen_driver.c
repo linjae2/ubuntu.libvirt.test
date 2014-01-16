@@ -1,7 +1,7 @@
 /*
  * xen_driver.c: Unified Xen driver.
  *
- * Copyright (C) 2007-2013 Red Hat, Inc.
+ * Copyright (C) 2007-2014 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -202,9 +202,6 @@ xenDomainUsedCpus(virDomainPtr dom, virDomainDefPtr def)
     virVcpuInfoPtr cpuinfo = NULL;
     virNodeInfo nodeinfo;
     xenUnifiedPrivatePtr priv;
-
-    if (!VIR_IS_CONNECTED_DOMAIN(dom))
-        return NULL;
 
     priv = dom->conn->privateData;
 
@@ -464,7 +461,7 @@ xenUnifiedConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int f
         return VIR_DRV_OPEN_ERROR;
     }
 
-    if (!(priv->domainEvents = virDomainEventStateNew())) {
+    if (!(priv->domainEvents = virObjectEventStateNew())) {
         virMutexDestroy(&priv->lock);
         VIR_FREE(priv);
         return VIR_DRV_OPEN_ERROR;
@@ -562,7 +559,7 @@ xenUnifiedConnectClose(virConnectPtr conn)
 
     virObjectUnref(priv->caps);
     virObjectUnref(priv->xmlopt);
-    virDomainEventStateFree(priv->domainEvents);
+    virObjectEventStateFree(priv->domainEvents);
 
 #if WITH_XEN_INOTIFY
     if (priv->opened[XEN_UNIFIED_INOTIFY_OFFSET])
@@ -2323,7 +2320,7 @@ xenUnifiedConnectDomainEventRegister(virConnectPtr conn,
                                      virFreeCallback freefunc)
 {
     xenUnifiedPrivatePtr priv = conn->privateData;
-    int ret;
+    int ret = 0;
 
     if (virConnectDomainEventRegisterEnsureACL(conn) < 0)
         return -1;
@@ -2331,13 +2328,15 @@ xenUnifiedConnectDomainEventRegister(virConnectPtr conn,
     xenUnifiedLock(priv);
 
     if (priv->xsWatch == -1) {
-        virReportError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+        virReportUnsupportedError();
         xenUnifiedUnlock(priv);
         return -1;
     }
 
-    ret = virDomainEventStateRegister(conn, priv->domainEvents,
-                                      callback, opaque, freefunc);
+    if (virDomainEventStateRegister(conn, priv->domainEvents,
+                                    virConnectDomainEventRegisterCheckACL,
+                                    callback, opaque, freefunc) < 0)
+        ret = -1;
 
     xenUnifiedUnlock(priv);
     return ret;
@@ -2348,7 +2347,7 @@ static int
 xenUnifiedConnectDomainEventDeregister(virConnectPtr conn,
                                        virConnectDomainEventCallback callback)
 {
-    int ret;
+    int ret = 0;
     xenUnifiedPrivatePtr priv = conn->privateData;
 
     if (virConnectDomainEventDeregisterEnsureACL(conn) < 0)
@@ -2357,14 +2356,15 @@ xenUnifiedConnectDomainEventDeregister(virConnectPtr conn,
     xenUnifiedLock(priv);
 
     if (priv->xsWatch == -1) {
-        virReportError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+        virReportUnsupportedError();
         xenUnifiedUnlock(priv);
         return -1;
     }
 
-    ret = virDomainEventStateDeregister(conn,
-                                        priv->domainEvents,
-                                        callback);
+    if (virDomainEventStateDeregister(conn,
+                                      priv->domainEvents,
+                                      callback) < 0)
+        ret = -1;
 
     xenUnifiedUnlock(priv);
     return ret;
@@ -2388,12 +2388,13 @@ xenUnifiedConnectDomainEventRegisterAny(virConnectPtr conn,
     xenUnifiedLock(priv);
 
     if (priv->xsWatch == -1) {
-        virReportError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+        virReportUnsupportedError();
         xenUnifiedUnlock(priv);
         return -1;
     }
 
     if (virDomainEventStateRegisterID(conn, priv->domainEvents,
+                                      virConnectDomainEventRegisterAnyCheckACL,
                                       dom, eventID,
                                       callback, opaque, freefunc, &ret) < 0)
         ret = -1;
@@ -2406,7 +2407,7 @@ static int
 xenUnifiedConnectDomainEventDeregisterAny(virConnectPtr conn,
                                           int callbackID)
 {
-    int ret;
+    int ret = 0;
     xenUnifiedPrivatePtr priv = conn->privateData;
 
     if (virConnectDomainEventDeregisterAnyEnsureACL(conn) < 0)
@@ -2415,14 +2416,15 @@ xenUnifiedConnectDomainEventDeregisterAny(virConnectPtr conn,
     xenUnifiedLock(priv);
 
     if (priv->xsWatch == -1) {
-        virReportError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+        virReportUnsupportedError();
         xenUnifiedUnlock(priv);
         return -1;
     }
 
-    ret = virDomainEventStateDeregisterID(conn,
-                                          priv->domainEvents,
-                                          callbackID);
+    if (virObjectEventStateDeregisterID(conn,
+                                        priv->domainEvents,
+                                        callbackID) < 0)
+        ret = -1;
 
     xenUnifiedUnlock(priv);
     return ret;
@@ -2957,12 +2959,12 @@ xenUnifiedRemoveDomainInfo(xenUnifiedDomainInfoListPtr list,
  *
  */
 void xenUnifiedDomainEventDispatch(xenUnifiedPrivatePtr priv,
-                                    virDomainEventPtr event)
+                                    virObjectEventPtr event)
 {
     if (!priv)
         return;
 
-    virDomainEventStateQueue(priv->domainEvents, event);
+    virObjectEventStateQueue(priv->domainEvents, event);
 }
 
 void xenUnifiedLock(xenUnifiedPrivatePtr priv)
