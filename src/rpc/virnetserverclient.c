@@ -448,15 +448,19 @@ int virNetServerClientGetFD(virNetServerClientPtr client)
 }
 
 int virNetServerClientGetUNIXIdentity(virNetServerClientPtr client,
-                                      uid_t *uid, gid_t *gid, pid_t *pid)
+                                      uid_t *uid, gid_t *gid, pid_t *pid,
+                                      unsigned long long *timestamp)
 {
     int ret = -1;
     virNetServerClientLock(client);
     if (client->sock)
-        ret = virNetSocketGetUNIXIdentity(client->sock, uid, gid, pid);
+        ret = virNetSocketGetUNIXIdentity(client->sock,
+                                          uid, gid, pid,
+                                          timestamp);
     virNetServerClientUnlock(client);
     return ret;
 }
+
 
 bool virNetServerClientIsSecure(virNetServerClientPtr client)
 {
@@ -840,6 +844,7 @@ readmore:
 
         /* Decode the header so we can use it for routing decisions */
         if (virNetMessageDecodeHeader(msg) < 0) {
+            virNetMessageQueueServe(&client->rx);
             virNetMessageFree(msg);
             client->wantClose = true;
             return;
@@ -849,6 +854,7 @@ readmore:
          * file descriptors */
         if (msg->header.type == VIR_NET_CALL_WITH_FDS &&
             virNetMessageDecodeNumFDs(msg) < 0) {
+            virNetMessageQueueServe(&client->rx);
             virNetMessageFree(msg);
             client->wantClose = true;
             return; /* Error */
@@ -858,6 +864,7 @@ readmore:
         for (i = msg->donefds ; i < msg->nfds ; i++) {
             int rv;
             if ((rv = virNetSocketRecvFD(client->sock, &(msg->fds[i]))) < 0) {
+                virNetMessageQueueServe(&client->rx);
                 virNetMessageFree(msg);
                 client->wantClose = true;
                 return;
@@ -1210,9 +1217,22 @@ cleanup:
 int
 virNetServerClientStartKeepAlive(virNetServerClientPtr client)
 {
-    int ret;
+    int ret = -1;
+
     virNetServerClientLock(client);
+
+    /* The connection might have been closed before we got here and thus the
+     * keepalive object could have been removed too.
+     */
+    if (!client->keepalive) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                       _("connection not open"));
+        goto cleanup;
+    }
+
     ret = virKeepAliveStart(client->keepalive, 0, 0);
+
+cleanup:
     virNetServerClientUnlock(client);
     return ret;
 }

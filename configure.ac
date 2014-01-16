@@ -3,7 +3,7 @@ dnl Process this file with autoconf to produce a configure script.
 dnl Copyright (C) 2005-2012 Red Hat, Inc.
 dnl See COPYING.LIB for the License of this software
 
-AC_INIT([libvirt], [0.9.12], [libvir-list@redhat.com], [], [http://libvirt.org])
+AC_INIT([libvirt], [0.9.12.3], [libvir-list@redhat.com], [], [http://libvirt.org])
 AC_CONFIG_SRCDIR([src/libvirt.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
@@ -848,9 +848,23 @@ fi
 dnl
 dnl check for kernel headers required by src/bridge.c
 dnl
-if test "$with_qemu" = "yes" || test "$with_lxc" = "yes" ; then
-  AC_CHECK_HEADERS([linux/param.h linux/sockios.h linux/if_bridge.h linux/if_tun.h],,
-                   AC_MSG_ERROR([You must install kernel-headers in order to compile libvirt with QEMU or LXC support]))
+if test "$with_linux" = "yes"; then
+  if test "$with_qemu" = "yes" || test "$with_lxc" = "yes" ; then
+    AC_CHECK_HEADERS([linux/param.h linux/sockios.h linux/if_bridge.h linux/if_tun.h],,
+      [AC_MSG_ERROR([You must install kernel-headers in order to compile libvirt with QEMU or LXC support])],
+      [[/* The kernel folks broke their headers when used with particular
+         * glibc versions; although the structs are ABI compatible, the
+         * C type system doesn't like struct redefinitions.  We work around
+         * the problem here in the same manner as in virnetdevbridge.c.  */
+        #include <netinet/in.h>
+        #define in6_addr in6_addr_
+        #define sockaddr_in6 sockaddr_in6_
+        #define ipv6_mreq ipv6_mreq_
+        #define in6addr_any in6addr_any_
+        #define in6addr_loopback in6addr_loopback_
+        #include <linux/in6.h>
+      ]])
+  fi
 fi
 
 
@@ -1146,6 +1160,14 @@ if test "x$with_polkit" = "xyes" || test "x$with_polkit" = "xcheck"; then
   AC_PATH_PROG([PKCHECK_PATH],[pkcheck], [], [/usr/sbin:$PATH])
   if test "x$PKCHECK_PATH" != "x" ; then
     AC_DEFINE_UNQUOTED([PKCHECK_PATH],["$PKCHECK_PATH"],[Location of pkcheck program])
+    AC_MSG_CHECKING([whether pkcheck supports uid value])
+    pkcheck_supports_uid=`$PKG_CONFIG --variable pkcheck_supports_uid polkit-gobject-1`
+    if test "x$pkcheck_supports_uid" = "xtrue"; then
+      AC_MSG_RESULT([yes])
+      AC_DEFINE_UNQUOTED([PKCHECK_SUPPORTS_UID], 1, [Pass uid to pkcheck])
+    else
+      AC_MSG_RESULT([no])
+    fi
     AC_DEFINE_UNQUOTED([HAVE_POLKIT], 1,
         [use PolicyKit for UNIX socket access checks])
     AC_DEFINE_UNQUOTED([HAVE_POLKIT1], 1,

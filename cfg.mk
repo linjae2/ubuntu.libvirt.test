@@ -560,6 +560,7 @@ msg_gen_function += virNetworkReportError
 msg_gen_function += virNodeDeviceReportError
 msg_gen_function += virNWFilterReportError
 msg_gen_function += virRaiseError
+msg_gen_function += virReportError
 msg_gen_function += virReportErrorHelper
 msg_gen_function += virReportSystemError
 msg_gen_function += virSecretReportError
@@ -823,7 +824,8 @@ exclude_file_name_regexp--sc_require_config_h = ^examples/
 
 exclude_file_name_regexp--sc_require_config_h_first = ^examples/
 
-exclude_file_name_regexp--sc_trailing_blank = \.(fig|gif|ico|png)$$
+exclude_file_name_regexp--sc_trailing_blank = \
+  (/qemuhelpdata/|\.(fig|gif|ico|png)$$)
 
 exclude_file_name_regexp--sc_unmarked_diagnostics = \
   ^(docs/apibuild.py|tests/virt-aa-helper-test)$$
