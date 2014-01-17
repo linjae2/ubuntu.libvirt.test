@@ -1,3 +1,10 @@
+libvirt (1.2.1-0ubuntu2) trusty; urgency=medium
+
+  * debian/patches/rbd-storage-format.patch: Make image format 2 the default
+    for RBD. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 17 Jan 2014 10:31:37 -0500
+
 libvirt (1.2.1-0ubuntu1) trusty; urgency=medium
 
   * New upstream release:
