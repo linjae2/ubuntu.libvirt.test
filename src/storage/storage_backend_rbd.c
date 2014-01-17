@@ -435,6 +435,26 @@ cleanup:
     return ret;
 }
 
+static int virStorageBackendRBDCreateImage(rados_ioctx_t io,
+										   char *name, long capacity)
+{
+	int order = 0;
+	#if LIBRBD_VERSION_CODE > 260
+	uint64_t features = 3;
+	uint64_t stripe_count = 1;
+	uint64_t stripe_unit = 4194304;
+
+	if (rbd_create3(io, name, capacity, features, &order,
+		stripe_count, stripe_unit) < 0) {
+	#else
+	if (rbd_create(io, name, capacity, &order) < 0)  {
+	#endif
+		return -1;
+	}
+
+	return 0;
+}
+
 static int virStorageBackendRBDCreateVol(virConnectPtr conn,
                                          virStoragePoolObjPtr pool,
                                          virStorageVolDefPtr vol)
@@ -442,7 +462,6 @@ static int virStorageBackendRBDCreateVol(virConnectPtr conn,
     virStorageBackendRBDState ptr;
     ptr.cluster = NULL;
     ptr.ioctx = NULL;
-    int order = 0;
     int ret = -1;
 
     VIR_DEBUG("Creating RBD image %s/%s with size %llu",
@@ -467,7 +486,7 @@ static int virStorageBackendRBDCreateVol(virConnectPtr conn,
         goto cleanup;
     }
 
-    if (rbd_create(ptr.ioctx, vol->name, vol->capacity, &order) < 0) {
+	if (virStorageBackendRBDCreateImage(ptr.ioctx, vol->name, vol->capacity) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("failed to create volume '%s/%s'"),
                        pool->def->source.name,
