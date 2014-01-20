@@ -35,3 +35,5 @@ git_set_xdg_env.patch
 CVE-2013-0170.patch
 CVE-2013-4311.patch
 CVE-2013-4296.patch
+CVE-2013-6458.patch
+CVE-2014-1447.patch
