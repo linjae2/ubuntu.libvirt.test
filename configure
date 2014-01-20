@@ -59627,12 +59627,12 @@ if test -n "$LIBNL_CFLAGS"; then
     pkg_cv_LIBNL_CFLAGS="$LIBNL_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-1 >= \$LIBNL_REQUIRED\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libnl-1 >= $LIBNL_REQUIRED") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-3.0 >= \$LIBNL_REQUIRED\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libnl-3.0 >= $LIBNL_REQUIRED") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_LIBNL_CFLAGS=`$PKG_CONFIG --cflags "libnl-1 >= $LIBNL_REQUIRED" 2>/dev/null`
+  pkg_cv_LIBNL_CFLAGS=`$PKG_CONFIG --cflags "libnl-3.0 >= $LIBNL_REQUIRED" 2>/dev/null`
 else
   pkg_failed=yes
 fi
@@ -59643,12 +59643,12 @@ if test -n "$LIBNL_LIBS"; then
     pkg_cv_LIBNL_LIBS="$LIBNL_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-1 >= \$LIBNL_REQUIRED\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libnl-1 >= $LIBNL_REQUIRED") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libnl-3.0 >= \$LIBNL_REQUIRED\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libnl-3.0 >= $LIBNL_REQUIRED") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_LIBNL_LIBS=`$PKG_CONFIG --libs "libnl-1 >= $LIBNL_REQUIRED" 2>/dev/null`
+  pkg_cv_LIBNL_LIBS=`$PKG_CONFIG --libs "libnl-3.0 >= $LIBNL_REQUIRED" 2>/dev/null`
 else
   pkg_failed=yes
 fi
@@ -59668,9 +59668,9 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors "libnl-1 >= $LIBNL_REQUIRED" 2>&1`
+	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors "libnl-3.0 >= $LIBNL_REQUIRED" 2>&1`
         else
-	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --print-errors "libnl-1 >= $LIBNL_REQUIRED" 2>&1`
+	        LIBNL_PKG_ERRORS=`$PKG_CONFIG --print-errors "libnl-3.0 >= $LIBNL_REQUIRED" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$LIBNL_PKG_ERRORS" >&5
