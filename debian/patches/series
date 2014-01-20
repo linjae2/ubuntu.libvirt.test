@@ -53,3 +53,5 @@ fix-for-parallel-port-passthrough-for-qemu
 qemu-delete-usb-devices-on-stop
 qemu-build-activeusbhostdevs-on-reconnect
 ubuntu/properly-parse-unsigned-long-long.patch
+CVE-2013-6458.patch
+CVE-2014-1447.patch

@@ -1,3 +1,17 @@
+libvirt (0.9.8-2ubuntu17.17) precise-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service via job usage issues in several APIs
+    - debian/patches/CVE-2013-6458.patch: fix races in
+      src/qemu/qemu_driver.c. Backport virReportError macro to cfg.mk,
+      src/util/virterror_internal.h.
+    - CVE-2013-6458
+  * SECURITY UPDATE: denial of service via keepalive feature
+    - debian/patches/CVE-2014-1447.patch: make sure connection isn't closed
+      in src/rpc/virnetserverclient.c.
+    - CVE-2014-1447
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 20 Jan 2014 15:15:03 -0500
+
 libvirt (0.9.8-2ubuntu17.16) precise-proposed; urgency=low
 
   * d/p/ubuntu/properly-parse-unsigned-long-long.patch: fix i386 Python
