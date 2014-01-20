@@ -2477,8 +2477,14 @@ fi
 AM_CONDITIONAL([WITH_VIRTUALPORT], [test "$with_virtualport" = "yes"])
 
 
-dnl netlink library
 
+dnl netlink library
+# see https://bugs.launchpad.net/bugs/823711
+case "$host" in
+	arm*-*linux* )
+		LIBNL_LIBS=`echo $LIBNL_LIBS | sed 's/ *-lnl-@<:@^ @:>@*//g'`
+	;;
+esac
 LIBNL_CFLAGS=""
 LIBNL_LIBS=""
 have_libnl=no
