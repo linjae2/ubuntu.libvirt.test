@@ -38,6 +38,7 @@ Build-Depends: cdbs (>= 0.4.90~),
  radvd [linux-any],
  libnetcf-dev [linux-any],
  libaudit-dev [linux-any],
+ nfs-common,
 # For "make check"
  dwarves,
  libxml2-utils,

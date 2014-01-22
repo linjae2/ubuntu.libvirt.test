@@ -1,3 +1,9 @@
+libvirt (1.2.1-0ubuntu3) trusty; urgency=medium
+
+  * d/control: add nfs-common to build-deps (LP: #1264955)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 22 Jan 2014 08:56:01 -0600
+
 libvirt (1.2.1-0ubuntu2) trusty; urgency=medium
 
   * debian/patches/rbd-storage-format.patch: Make image format 2 the default
