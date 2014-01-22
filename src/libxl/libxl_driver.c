@@ -4160,6 +4160,7 @@ libxlConnectDomainEventRegister(virConnectPtr conn,
     libxlDriverLock(driver);
     ret = virDomainEventStateRegister(conn,
                                       driver->domainEventState,
+                                      virConnectDomainEventRegisterCheckACL,
                                       callback, opaque, freecb);
     libxlDriverUnlock(driver);
 
@@ -4552,6 +4553,8 @@ libxlDomainGetNumaParameters(virDomainPtr dom,
      * the filtering on behalf of older clients that can't parse it. */
     flags &= ~VIR_TYPED_PARAM_STRING_OKAY;
 
+    libxl_bitmap_init(&nodemap);
+
     libxlDriverLock(driver);
     vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     libxlDriverUnlock(driver);
@@ -4572,8 +4575,6 @@ libxlDomainGetNumaParameters(virDomainPtr dom,
     }
 
     priv = vm->privateData;
-
-    libxl_bitmap_init(&nodemap);
 
     if ((*nparams) == 0) {
         *nparams = LIBXL_NUMA_NPARAM;
@@ -4750,6 +4751,7 @@ libxlConnectDomainEventRegisterAny(virConnectPtr conn, virDomainPtr dom, int eve
     libxlDriverLock(driver);
     if (virDomainEventStateRegisterID(conn,
                                       driver->domainEventState,
+                                      virConnectDomainEventRegisterAnyCheckACL,
                                       dom, eventID, callback, opaque,
                                       freecb, &ret) < 0)
         ret = -1;

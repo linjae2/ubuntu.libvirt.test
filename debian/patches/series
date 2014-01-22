@@ -39,3 +39,8 @@ fix-crash-in-libvirtd-when-events
 CVE-2013-4297.patch
 CVE-2013-4401.patch
 util_use_w_flag_when_calling_iptables.patch
+CVE-2013-6436.patch
+CVE-2013-6458.patch
+CVE-2014-0028.patch
+CVE-2014-1447.patch
+CVE-2013-6457.patch
