@@ -1,3 +1,10 @@
+libvirt (1.2.1-0ubuntu4) trusty; urgency=medium
+
+  * cherrypick d/p/9022-qemu-enable-host-passthrough-mode-for-aarch64 from
+    upstream git.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 28 Jan 2014 10:28:09 +0000
+
 libvirt (1.2.1-0ubuntu3) trusty; urgency=medium
 
   * d/control: add nfs-common to build-deps (LP: #1264955)
