@@ -20,3 +20,4 @@ ubuntu-xend-probe.patch
 accomodate-new-qemu-migration-status-setup.patch
 rbd-storage-format.patch
 9022-qemu-enable-host-passthrough-mode-for-aarch64
+9023-xen-fix-parsing-xend-http-response.patch
