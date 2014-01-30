@@ -1,3 +1,10 @@
+libvirt (1.2.1-0ubuntu5) trusty; urgency=low
+
+  * cherry-pick "xen: fix parsing xend http response" from upstream
+    git to fix connecting to xex in xm/xend mode (LP: #915954)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Thu, 30 Jan 2014 10:05:31 +0000
+
 libvirt (1.2.1-0ubuntu4) trusty; urgency=medium
 
   * cherrypick d/p/9022-qemu-enable-host-passthrough-mode-for-aarch64 from
