@@ -716,8 +716,7 @@ virNWFilterDefPtr virNWFilterDefParseFile(const char *filename);
 void virNWFilterObjLock(virNWFilterObjPtr obj);
 void virNWFilterObjUnlock(virNWFilterObjPtr obj);
 
-void virNWFilterWriteLockFilterUpdates(void);
-void virNWFilterReadLockFilterUpdates(void);
+void virNWFilterLockFilterUpdates(void);
 void virNWFilterUnlockFilterUpdates(void);
 
 int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB, void *opaque);

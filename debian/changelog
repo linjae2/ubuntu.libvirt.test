@@ -1,3 +1,9 @@
+libvirt (1.2.1-0ubuntu7) trusty; urgency=low
+
+  * debian/patches/nwfilter-locking.patch: Dropped causes ftbfs. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 13 Feb 2014 10:07:56 -0700
+
 libvirt (1.2.1-0ubuntu6) trusty; urgency=medium
 
   * debian/control: Move pm-utils from suggests to Recommends.
