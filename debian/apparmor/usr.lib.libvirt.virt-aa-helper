@@ -53,6 +53,7 @@
   /var/lib/nova/instances/snapshots/** r,
   /var/lib/eucalyptus/instances/**/disk* r,
   /var/lib/eucalyptus/instances/**/loader* r,
+  /var/lib/uvtool/libvirt/images/** r,
   /{media,mnt,opt,srv}/** r,
 
   /**.img r,

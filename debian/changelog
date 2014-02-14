@@ -1,3 +1,9 @@
+libvirt (1.2.1-0ubuntu8) trusty; urgency=medium
+
+  * Add uvtool image path to virt-aa-helper AppArmor profile.
+
+ -- Robie Basak <robie.basak@ubuntu.com>  Fri, 14 Feb 2014 17:54:58 +0000
+
 libvirt (1.2.1-0ubuntu7) trusty; urgency=low
 
   * debian/patches/nwfilter-locking.patch: Dropped causes ftbfs. 
