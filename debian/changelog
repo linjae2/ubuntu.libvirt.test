@@ -1,3 +1,10 @@
+libvirt (1.2.1-0ubuntu9) trusty; urgency=medium
+
+  * Cherrypick 9024-qemu-implement-a-stub-baseline-handler-for-aarch64 from
+    upstream git.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 14 Feb 2014 18:20:03 -0600
+
 libvirt (1.2.1-0ubuntu8) trusty; urgency=medium
 
   * Add uvtool image path to virt-aa-helper AppArmor profile.
