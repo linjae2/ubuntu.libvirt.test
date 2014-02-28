@@ -22,3 +22,4 @@ rbd-storage-format.patch
 9022-qemu-enable-host-passthrough-mode-for-aarch64
 9023-xen-fix-parsing-xend-http-response.patch
 9024-qemu-implement-a-stub-baseline-handler-for-aarch64
+9025-apparmor-allow-access-to-filesystem-mounts
