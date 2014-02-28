@@ -1,3 +1,10 @@
+libvirt (1.2.1-0ubuntu10) trusty; urgency=medium
+
+  * Pull patch from mailing list (merged with separate patch posted to the
+    bug) to fix 9p mounts. (LP: #1285995)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 28 Feb 2014 09:34:54 -0600
+
 libvirt (1.2.1-0ubuntu9) trusty; urgency=medium
 
   * Cherrypick 9024-qemu-implement-a-stub-baseline-handler-for-aarch64 from
