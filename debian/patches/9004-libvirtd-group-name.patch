@@ -2,10 +2,9 @@ Description: rename libvirt group name to 'libvirtd'
 Author: Soren Hansen <soren@ubuntu.com>
 Forwarded: no
 
-Index: libvirt-1.1.4/daemon/libvirtd.conf
-===================================================================
---- libvirt-1.1.4.orig/daemon/libvirtd.conf	2013-11-12 11:48:33.803867041 -0600
-+++ libvirt-1.1.4/daemon/libvirtd.conf	2013-11-12 11:48:33.791867041 -0600
+diff -Naurp libvirt-1.2.2.orig/daemon/libvirtd.conf libvirt-1.2.2/daemon/libvirtd.conf
+--- libvirt-1.2.2.orig/daemon/libvirtd.conf	2014-03-03 13:57:06.530195316 -0500
++++ libvirt-1.2.2/daemon/libvirtd.conf	2014-03-03 13:57:29.866195872 -0500
 @@ -78,7 +78,7 @@
  # without becoming root.
  #

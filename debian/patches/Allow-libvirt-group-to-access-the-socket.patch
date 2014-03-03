@@ -2,15 +2,11 @@ From: Guido Guenther <agx@sigxcpu.org>
 Date: Thu, 26 Jun 2008 20:01:38 +0200
 Subject: Allow libvirt group to access the socket
 
----
- daemon/libvirtd.conf |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
 
-Index: libvirt-1.1.4/daemon/libvirtd.conf
-===================================================================
---- libvirt-1.1.4.orig/daemon/libvirtd.conf	2013-11-12 11:48:30.667867069 -0600
-+++ libvirt-1.1.4/daemon/libvirtd.conf	2013-11-12 11:48:30.655867069 -0600
-@@ -78,7 +78,7 @@
+diff -Naurp libvirt-1.2.2.orig/daemon/libvirtd.conf libvirt-1.2.2/daemon/libvirtd.conf
+--- libvirt-1.2.2.orig/daemon/libvirtd.conf	2014-02-21 06:24:39.000000000 -0500
++++ libvirt-1.2.2/daemon/libvirtd.conf	2014-03-03 13:55:23.602192862 -0500
+@@ -78,14 +78,14 @@
  # without becoming root.
  #
  # This is restricted to 'root' by default.
@@ -19,10 +15,18 @@ Index: libvirt-1.1.4/daemon/libvirtd.conf
  
  # Set the UNIX socket permissions for the R/O socket. This is used
  # for monitoring VM status only
+ #
+ # Default allows any user. If setting group ownership, you may want to
+ # restrict this too.
+-#unix_sock_ro_perms = "0777"
++unix_sock_ro_perms = "0777"
+ 
+ # Set the UNIX socket permissions for the R/W socket. This is used
+ # for full management of VMs
 @@ -95,7 +95,7 @@
  #
  # If not using PolicyKit and setting group ownership for access
- # control then you may want to relax this to:
+ # control, then you may want to relax this too.
 -#unix_sock_rw_perms = "0770"
 +unix_sock_rw_perms = "0770"
  
