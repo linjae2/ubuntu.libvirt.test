@@ -963,7 +963,7 @@ xenUnifiedDomainShutdownFlags(virDomainPtr dom,
     if (!(def = xenGetDomainDefForDom(dom)))
         goto cleanup;
 
-    if (virDomainShutdownFlagsEnsureACL(dom->conn, def) < 0)
+    if (virDomainShutdownFlagsEnsureACL(dom->conn, def, flags) < 0)
         goto cleanup;
 
     ret = xenDaemonDomainShutdown(dom->conn, def);
@@ -990,7 +990,7 @@ xenUnifiedDomainReboot(virDomainPtr dom, unsigned int flags)
     if (!(def = xenGetDomainDefForDom(dom)))
         goto cleanup;
 
-    if (virDomainRebootEnsureACL(dom->conn, def) < 0)
+    if (virDomainRebootEnsureACL(dom->conn, def, flags) < 0)
         goto cleanup;
 
     ret = xenDaemonDomainReboot(dom->conn, def);
@@ -1537,7 +1537,7 @@ xenUnifiedDomainGetVcpusFlags(virDomainPtr dom, unsigned int flags)
     if (!(def = xenGetDomainDefForDom(dom)))
         goto cleanup;
 
-    if (virDomainGetVcpusFlagsEnsureACL(dom->conn, def) < 0)
+    if (virDomainGetVcpusFlagsEnsureACL(dom->conn, def, flags) < 0)
         goto cleanup;
 
     ret = xenUnifiedDomainGetVcpusFlagsInternal(dom, def, flags);
@@ -2334,7 +2334,6 @@ xenUnifiedConnectDomainEventRegister(virConnectPtr conn,
     }
 
     if (virDomainEventStateRegister(conn, priv->domainEvents,
-                                    virConnectDomainEventRegisterCheckACL,
                                     callback, opaque, freefunc) < 0)
         ret = -1;
 
@@ -2394,7 +2393,6 @@ xenUnifiedConnectDomainEventRegisterAny(virConnectPtr conn,
     }
 
     if (virDomainEventStateRegisterID(conn, priv->domainEvents,
-                                      virConnectDomainEventRegisterAnyCheckACL,
                                       dom, eventID,
                                       callback, opaque, freefunc, &ret) < 0)
         ret = -1;
@@ -2852,7 +2850,7 @@ xenUnifiedDomainInfoListFree(xenUnifiedDomainInfoListPtr list)
     if (list == NULL)
         return;
 
-    for (i=0; i<list->count; i++) {
+    for (i = 0; i < list->count; i++) {
         VIR_FREE(list->doms[i]->name);
         VIR_FREE(list->doms[i]);
     }
@@ -2876,7 +2874,7 @@ xenUnifiedAddDomainInfo(xenUnifiedDomainInfoListPtr list,
     int n;
 
     /* check if we already have this callback on our list */
-    for (n=0; n < list->count; n++) {
+    for (n = 0; n < list->count; n++) {
         if (STREQ(list->doms[n]->name, name) &&
             !memcmp(list->doms[n]->uuid, uuid, VIR_UUID_BUFLEN)) {
             VIR_DEBUG("WARNING: dom already tracked");

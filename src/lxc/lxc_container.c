@@ -745,7 +745,7 @@ static const virLXCBasicMountInfo lxcBasicMounts[] = {
 };
 
 
-static bool lxcIsBasicMountLocation(const char *path)
+bool lxcIsBasicMountLocation(const char *path)
 {
     size_t i;
 
@@ -1824,7 +1824,7 @@ static int lxcContainerChild(void *data)
     if (lxcContainerSetID(vmDef) < 0)
         goto cleanup;
 
-    root = virDomainGetRootFilesystem(vmDef);
+    root = virDomainGetFilesystemForTarget(vmDef, "/");
 
     if (argv->nttyPaths) {
         const char *tty = argv->ttyPaths[0];
