@@ -586,7 +586,7 @@ enum UpdateStep {
 };
 
 struct domUpdateCBStruct {
-    virConnectPtr conn;
+    void *opaque;
     enum UpdateStep step;
     virHashTablePtr skipInterfaces;
 };
@@ -687,12 +687,10 @@ int virNWFilterObjSaveDef(virNWFilterDriverStatePtr driver,
 
 int virNWFilterObjDeleteDef(virNWFilterObjPtr nwfilter);
 
-virNWFilterObjPtr virNWFilterObjAssignDef(virConnectPtr conn,
-                                          virNWFilterObjListPtr nwfilters,
+virNWFilterObjPtr virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
                                           virNWFilterDefPtr def);
 
-int virNWFilterTestUnassignDef(virConnectPtr conn,
-                               virNWFilterObjPtr nwfilter);
+int virNWFilterTestUnassignDef(virNWFilterObjPtr nwfilter);
 
 virNWFilterDefPtr virNWFilterDefParseNode(xmlDocPtr xml,
                                           xmlNodePtr root);
@@ -706,32 +704,29 @@ int virNWFilterSaveXML(const char *configDir,
 int virNWFilterSaveConfig(const char *configDir,
                           virNWFilterDefPtr def);
 
-int virNWFilterLoadAllConfigs(virConnectPtr conn,
-                              virNWFilterObjListPtr nwfilters,
+int virNWFilterLoadAllConfigs(virNWFilterObjListPtr nwfilters,
                               const char *configDir);
 
 char *virNWFilterConfigFile(const char *dir,
                             const char *name);
 
-virNWFilterDefPtr virNWFilterDefParseString(virConnectPtr conn,
-                                            const char *xml);
-virNWFilterDefPtr virNWFilterDefParseFile(virConnectPtr conn,
-                                          const char *filename);
+virNWFilterDefPtr virNWFilterDefParseString(const char *xml);
+virNWFilterDefPtr virNWFilterDefParseFile(const char *filename);
 
 void virNWFilterObjLock(virNWFilterObjPtr obj);
 void virNWFilterObjUnlock(virNWFilterObjPtr obj);
 
-void virNWFilterLockFilterUpdates(void);
+void virNWFilterWriteLockFilterUpdates(void);
+void virNWFilterReadLockFilterUpdates(void);
 void virNWFilterUnlockFilterUpdates(void);
 
-int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB);
+int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB, void *opaque);
 void virNWFilterConfLayerShutdown(void);
 
-int virNWFilterInstFiltersOnAllVMs(virConnectPtr conn);
+int virNWFilterInstFiltersOnAllVMs(void);
 
 
-typedef int (*virNWFilterRebuild)(virConnectPtr conn,
-                                  virDomainObjListIterator domUpdateCB,
+typedef int (*virNWFilterRebuild)(virDomainObjListIterator domUpdateCB,
                                   void *data);
 typedef void (*virNWFilterVoidCall)(void);
 

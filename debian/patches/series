@@ -44,3 +44,9 @@ CVE-2013-6458.patch
 CVE-2014-0028.patch
 CVE-2014-1447.patch
 CVE-2013-6457.patch
+lp1228977/1-dont-ignore-errors-parsing-nwfilter-rules
+lp1228977/2-remove-virconnectptr-arg-from-virnwfilterdefparse
+lp1228977/3-dont-pass-virconnectptr-in-nwfilter
+lp1228977/4-remove-use-of-virconnectptr-from-nwfilter
+lp1228977/5-add-a-read-write-lock-implementation
+lp1228977/6-push-nwfilter-update-locking-up-to-top-level
