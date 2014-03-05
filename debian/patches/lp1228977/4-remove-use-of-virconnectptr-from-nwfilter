@@ -1,0 +1,376 @@
+commit e7e1403e99b366b09b9da3e3cb4cd6140526c624
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Thu Oct 3 12:51:48 2013 +0100
+
+    Remove use of virConnectPtr from all remaining nwfilter code
+    
+    The virConnectPtr is passed around loads of nwfilter code in
+    order to provide it as a parameter to the callback registered
+    by the virt drivers. None of the virt drivers use this param
+    though, so it serves no purpose.
+    
+    Avoiding the need to pass a virConnectPtr means that the
+    nwfilterStateReload method no longer needs to open a bogus
+    QEMU driver connection. This addresses a race condition that
+    can lead to a crash on startup.
+    
+    The nwfilter driver starts before the QEMU driver and registers
+    some callbacks with DBus to detect firewalld reload. If the
+    firewalld reload happens while the QEMU driver is still starting
+    up though, the nwfilterStateReload method will open a connection
+    to the partially initialized QEMU driver and cause a crash.
+    
+    Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+    (cherry picked from commit 999d72fbd59ea712128ae294b69b6a54039d757b)
+
+diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
+index 0b00b2c..b4971b9 100644
+--- a/src/conf/nwfilter_conf.c
++++ b/src/conf/nwfilter_conf.c
+@@ -2743,8 +2743,7 @@ cleanup:
+ 
+ 
+ static int
+-_virNWFilterDefLoopDetect(virConnectPtr conn,
+-                          virNWFilterObjListPtr nwfilters,
++_virNWFilterDefLoopDetect(virNWFilterObjListPtr nwfilters,
+                           virNWFilterDefPtr def,
+                           const char *filtername)
+ {
+@@ -2768,7 +2767,7 @@ _virNWFilterDefLoopDetect(virConnectPtr conn,
+             obj = virNWFilterObjFindByName(nwfilters,
+                                            entry->include->filterref);
+             if (obj) {
+-                rc = _virNWFilterDefLoopDetect(conn, nwfilters,
++                rc = _virNWFilterDefLoopDetect(nwfilters,
+                                                obj->def, filtername);
+ 
+                 virNWFilterObjUnlock(obj);
+@@ -2784,7 +2783,6 @@ _virNWFilterDefLoopDetect(virConnectPtr conn,
+ 
+ /*
+  * virNWFilterDefLoopDetect:
+- * @conn: pointer to virConnect object
+  * @nwfilters : the nwfilters to search
+  * @def : the filter definition that may add a loop and is to be tested
+  *
+@@ -2794,11 +2792,10 @@ _virNWFilterDefLoopDetect(virConnectPtr conn,
+  * Returns 0 in case no loop was detected, -1 otherwise.
+  */
+ static int
+-virNWFilterDefLoopDetect(virConnectPtr conn,
+-                         virNWFilterObjListPtr nwfilters,
++virNWFilterDefLoopDetect(virNWFilterObjListPtr nwfilters,
+                          virNWFilterDefPtr def)
+ {
+-    return _virNWFilterDefLoopDetect(conn, nwfilters, def, def->name);
++    return _virNWFilterDefLoopDetect(nwfilters, def, def->name);
+ }
+ 
+ int nCallbackDriver;
+@@ -2857,7 +2854,7 @@ static void *virNWFilterDomainFWUpdateOpaque;
+  * error. This should be called upon reloading of the driver.
+  */
+ int
+-virNWFilterInstFiltersOnAllVMs(virConnectPtr conn)
++virNWFilterInstFiltersOnAllVMs(void)
+ {
+     size_t i;
+     struct domUpdateCBStruct cb = {
+@@ -2867,15 +2864,14 @@ virNWFilterInstFiltersOnAllVMs(virConnectPtr conn)
+     };
+ 
+     for (i = 0; i < nCallbackDriver; i++)
+-        callbackDrvArray[i]->vmFilterRebuild(conn,
+-                                             virNWFilterDomainFWUpdateCB,
++        callbackDrvArray[i]->vmFilterRebuild(virNWFilterDomainFWUpdateCB,
+                                              &cb);
+ 
+     return 0;
+ }
+ 
+ static int
+-virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
++virNWFilterTriggerVMFilterRebuild(void)
+ {
+     size_t i;
+     int ret = 0;
+@@ -2889,8 +2885,7 @@ virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
+         return -1;
+ 
+     for (i = 0; i < nCallbackDriver; i++) {
+-        if (callbackDrvArray[i]->vmFilterRebuild(conn,
+-                                                 virNWFilterDomainFWUpdateCB,
++        if (callbackDrvArray[i]->vmFilterRebuild(virNWFilterDomainFWUpdateCB,
+                                                  &cb) < 0)
+             ret = -1;
+     }
+@@ -2899,15 +2894,13 @@ virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
+         cb.step = STEP_TEAR_NEW; /* rollback */
+ 
+         for (i = 0; i < nCallbackDriver; i++)
+-            callbackDrvArray[i]->vmFilterRebuild(conn,
+-                                                 virNWFilterDomainFWUpdateCB,
++            callbackDrvArray[i]->vmFilterRebuild(virNWFilterDomainFWUpdateCB,
+                                                  &cb);
+     } else {
+         cb.step = STEP_TEAR_OLD; /* switch over */
+ 
+         for (i = 0; i < nCallbackDriver; i++)
+-            callbackDrvArray[i]->vmFilterRebuild(conn,
+-                                                 virNWFilterDomainFWUpdateCB,
++            callbackDrvArray[i]->vmFilterRebuild(virNWFilterDomainFWUpdateCB,
+                                                  &cb);
+     }
+ 
+@@ -2918,14 +2911,13 @@ virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
+ 
+ 
+ int
+-virNWFilterTestUnassignDef(virConnectPtr conn,
+-                           virNWFilterObjPtr nwfilter)
++virNWFilterTestUnassignDef(virNWFilterObjPtr nwfilter)
+ {
+     int rc = 0;
+ 
+     nwfilter->wantRemoved = 1;
+     /* trigger the update on VMs referencing the filter */
+-    if (virNWFilterTriggerVMFilterRebuild(conn))
++    if (virNWFilterTriggerVMFilterRebuild())
+         rc = -1;
+ 
+     nwfilter->wantRemoved = 0;
+@@ -2964,8 +2956,7 @@ cleanup:
+ }
+ 
+ virNWFilterObjPtr
+-virNWFilterObjAssignDef(virConnectPtr conn,
+-                        virNWFilterObjListPtr nwfilters,
++virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+                         virNWFilterDefPtr def)
+ {
+     virNWFilterObjPtr nwfilter;
+@@ -2984,7 +2975,7 @@ virNWFilterObjAssignDef(virConnectPtr conn,
+         virNWFilterObjUnlock(nwfilter);
+     }
+ 
+-    if (virNWFilterDefLoopDetect(conn, nwfilters, def) < 0) {
++    if (virNWFilterDefLoopDetect(nwfilters, def) < 0) {
+         virReportError(VIR_ERR_OPERATION_FAILED,
+                        "%s", _("filter would introduce a loop"));
+         return NULL;
+@@ -3003,7 +2994,7 @@ virNWFilterObjAssignDef(virConnectPtr conn,
+ 
+         nwfilter->newDef = def;
+         /* trigger the update on VMs referencing the filter */
+-        if (virNWFilterTriggerVMFilterRebuild(conn)) {
++        if (virNWFilterTriggerVMFilterRebuild()) {
+             nwfilter->newDef = NULL;
+             virNWFilterUnlockFilterUpdates();
+             virNWFilterObjUnlock(nwfilter);
+@@ -3045,8 +3036,7 @@ virNWFilterObjAssignDef(virConnectPtr conn,
+ 
+ 
+ static virNWFilterObjPtr
+-virNWFilterObjLoad(virConnectPtr conn,
+-                   virNWFilterObjListPtr nwfilters,
++virNWFilterObjLoad(virNWFilterObjListPtr nwfilters,
+                    const char *file,
+                    const char *path)
+ {
+@@ -3065,7 +3055,7 @@ virNWFilterObjLoad(virConnectPtr conn,
+         return NULL;
+     }
+ 
+-    if (!(nwfilter = virNWFilterObjAssignDef(conn, nwfilters, def))) {
++    if (!(nwfilter = virNWFilterObjAssignDef(nwfilters, def))) {
+         virNWFilterDefFree(def);
+         return NULL;
+     }
+@@ -3081,8 +3071,7 @@ virNWFilterObjLoad(virConnectPtr conn,
+ 
+ 
+ int
+-virNWFilterLoadAllConfigs(virConnectPtr conn,
+-                          virNWFilterObjListPtr nwfilters,
++virNWFilterLoadAllConfigs(virNWFilterObjListPtr nwfilters,
+                           const char *configDir)
+ {
+     DIR *dir;
+@@ -3110,7 +3099,7 @@ virNWFilterLoadAllConfigs(virConnectPtr conn,
+         if (!(path = virFileBuildPath(configDir, entry->d_name, NULL)))
+             continue;
+ 
+-        nwfilter = virNWFilterObjLoad(conn, nwfilters, entry->d_name, path);
++        nwfilter = virNWFilterObjLoad(nwfilters, entry->d_name, path);
+         if (nwfilter)
+             virNWFilterObjUnlock(nwfilter);
+ 
+diff --git a/src/conf/nwfilter_conf.h b/src/conf/nwfilter_conf.h
+index e470615..29906f1 100644
+--- a/src/conf/nwfilter_conf.h
++++ b/src/conf/nwfilter_conf.h
+@@ -687,12 +687,10 @@ int virNWFilterObjSaveDef(virNWFilterDriverStatePtr driver,
+ 
+ int virNWFilterObjDeleteDef(virNWFilterObjPtr nwfilter);
+ 
+-virNWFilterObjPtr virNWFilterObjAssignDef(virConnectPtr conn,
+-                                          virNWFilterObjListPtr nwfilters,
++virNWFilterObjPtr virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+                                           virNWFilterDefPtr def);
+ 
+-int virNWFilterTestUnassignDef(virConnectPtr conn,
+-                               virNWFilterObjPtr nwfilter);
++int virNWFilterTestUnassignDef(virNWFilterObjPtr nwfilter);
+ 
+ virNWFilterDefPtr virNWFilterDefParseNode(xmlDocPtr xml,
+                                           xmlNodePtr root);
+@@ -706,8 +704,7 @@ int virNWFilterSaveXML(const char *configDir,
+ int virNWFilterSaveConfig(const char *configDir,
+                           virNWFilterDefPtr def);
+ 
+-int virNWFilterLoadAllConfigs(virConnectPtr conn,
+-                              virNWFilterObjListPtr nwfilters,
++int virNWFilterLoadAllConfigs(virNWFilterObjListPtr nwfilters,
+                               const char *configDir);
+ 
+ char *virNWFilterConfigFile(const char *dir,
+@@ -725,11 +722,10 @@ void virNWFilterUnlockFilterUpdates(void);
+ int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB, void *opaque);
+ void virNWFilterConfLayerShutdown(void);
+ 
+-int virNWFilterInstFiltersOnAllVMs(virConnectPtr conn);
++int virNWFilterInstFiltersOnAllVMs(void);
+ 
+ 
+-typedef int (*virNWFilterRebuild)(virConnectPtr conn,
+-                                  virDomainObjListIterator domUpdateCB,
++typedef int (*virNWFilterRebuild)(virDomainObjListIterator domUpdateCB,
+                                   void *data);
+ typedef void (*virNWFilterVoidCall)(void);
+ 
+diff --git a/src/lxc/lxc_driver.c b/src/lxc/lxc_driver.c
+index 9fb2258..924a034 100644
+--- a/src/lxc/lxc_driver.c
++++ b/src/lxc/lxc_driver.c
+@@ -84,8 +84,7 @@ virLXCDriverPtr lxc_driver = NULL;
+ 
+ /* callbacks for nwfilter */
+ static int
+-lxcVMFilterRebuild(virConnectPtr conn ATTRIBUTE_UNUSED,
+-                   virDomainObjListIterator iter, void *data)
++lxcVMFilterRebuild(virDomainObjListIterator iter, void *data)
+ {
+     return virDomainObjListForEach(lxc_driver->domains, iter, data);
+ }
+diff --git a/src/nwfilter/nwfilter_driver.c b/src/nwfilter/nwfilter_driver.c
+index 6a392da..de28205 100644
+--- a/src/nwfilter/nwfilter_driver.c
++++ b/src/nwfilter/nwfilter_driver.c
+@@ -230,8 +230,7 @@ nwfilterStateInitialize(bool privileged,
+ 
+     VIR_FREE(base);
+ 
+-    if (virNWFilterLoadAllConfigs(NULL,
+-                                  &driverState->nwfilters,
++    if (virNWFilterLoadAllConfigs(&driverState->nwfilters,
+                                   driverState->configDir) < 0)
+         goto error;
+ 
+@@ -267,37 +266,28 @@ err_free_driverstate:
+  * files and update its state
+  */
+ static int
+-nwfilterStateReload(void) {
+-    virConnectPtr conn;
+-
+-    if (!driverState) {
++nwfilterStateReload(void)
++{
++    if (!driverState)
+         return -1;
+-    }
+ 
+     if (!driverState->privileged)
+         return 0;
+ 
+-    conn = virConnectOpen("qemu:///system");
+-
+-    if (conn) {
+-        virNWFilterDHCPSnoopEnd(NULL);
+-        /* shut down all threads -- they will be restarted if necessary */
+-        virNWFilterLearnThreadsTerminate(true);
+-
+-        nwfilterDriverLock(driverState);
+-        virNWFilterCallbackDriversLock();
++    virNWFilterDHCPSnoopEnd(NULL);
++    /* shut down all threads -- they will be restarted if necessary */
++    virNWFilterLearnThreadsTerminate(true);
+ 
+-        virNWFilterLoadAllConfigs(conn,
+-                                  &driverState->nwfilters,
+-                                  driverState->configDir);
++    nwfilterDriverLock(driverState);
++    virNWFilterCallbackDriversLock();
+ 
+-        virNWFilterCallbackDriversUnlock();
+-        nwfilterDriverUnlock(driverState);
++    virNWFilterLoadAllConfigs(&driverState->nwfilters,
++                              driverState->configDir);
+ 
+-        virNWFilterInstFiltersOnAllVMs(conn);
++    virNWFilterCallbackDriversUnlock();
++    nwfilterDriverUnlock(driverState);
+ 
+-        virConnectClose(conn);
+-    }
++    virNWFilterInstFiltersOnAllVMs();
+ 
+     return 0;
+ }
+@@ -568,7 +558,7 @@ nwfilterDefineXML(virConnectPtr conn,
+     if (virNWFilterDefineXMLEnsureACL(conn, def) < 0)
+         goto cleanup;
+ 
+-    if (!(nwfilter = virNWFilterObjAssignDef(conn, &driver->nwfilters, def)))
++    if (!(nwfilter = virNWFilterObjAssignDef(&driver->nwfilters, def)))
+         goto cleanup;
+ 
+     if (virNWFilterObjSaveDef(driver, nwfilter, def) < 0) {
+@@ -612,7 +602,7 @@ nwfilterUndefine(virNWFilterPtr obj) {
+     if (virNWFilterUndefineEnsureACL(obj->conn, nwfilter->def) < 0)
+         goto cleanup;
+ 
+-    if (virNWFilterTestUnassignDef(obj->conn, nwfilter) < 0) {
++    if (virNWFilterTestUnassignDef(nwfilter) < 0) {
+         virReportError(VIR_ERR_OPERATION_INVALID,
+                        "%s",
+                        _("nwfilter is in use"));
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 91a40db..7b28ea8 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -177,8 +177,7 @@ static void
+ qemuVMDriverUnlock(void) {}
+ 
+ static int
+-qemuVMFilterRebuild(virConnectPtr conn ATTRIBUTE_UNUSED,
+-                    virDomainObjListIterator iter, void *data)
++qemuVMFilterRebuild(virDomainObjListIterator iter, void *data)
+ {
+     return virDomainObjListForEach(qemu_driver->domains, iter, data);
+ }
+diff --git a/src/uml/uml_driver.c b/src/uml/uml_driver.c
+index 9ca352f..eb02542 100644
+--- a/src/uml/uml_driver.c
++++ b/src/uml/uml_driver.c
+@@ -148,8 +148,7 @@ static int umlMonitorCommand(const struct uml_driver *driver,
+ static struct uml_driver *uml_driver = NULL;
+ 
+ static int
+-umlVMFilterRebuild(virConnectPtr conn ATTRIBUTE_UNUSED,
+-                   virDomainObjListIterator iter, void *data)
++umlVMFilterRebuild(virDomainObjListIterator iter, void *data)
+ {
+     return virDomainObjListForEach(uml_driver->domains, iter, data);
+ }

@@ -1,0 +1,159 @@
+commit 201eda603b1a245a13905acbeaa1231399fec641
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Wed Jan 22 15:26:21 2014 +0000
+
+    Add a read/write lock implementation
+    
+    Add virRWLock backed up by a POSIX rwlock primitive
+    
+    Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+    (cherry picked from commit c065984b58000a44c90588198d222a314ac532fd)
+
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index d9615ea..609ad8b 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -1950,6 +1950,11 @@ virMutexInitRecursive;
+ virMutexLock;
+ virMutexUnlock;
+ virOnce;
++virRWLockDestroy;
++virRWLockInit;
++virRWLockRead;
++virRWLockUnlock;
++virRWLockWrite;
+ virThreadCancel;
+ virThreadCreate;
+ virThreadID;
+diff --git a/src/util/virthread.h b/src/util/virthread.h
+index 84d3bdc..7015d60 100644
+--- a/src/util/virthread.h
++++ b/src/util/virthread.h
+@@ -28,6 +28,9 @@
+ typedef struct virMutex virMutex;
+ typedef virMutex *virMutexPtr;
+ 
++typedef struct virRWLock virRWLock;
++typedef virRWLock *virRWLockPtr;
++
+ typedef struct virCond virCond;
+ typedef virCond *virCondPtr;
+ 
+@@ -89,6 +92,13 @@ void virMutexLock(virMutexPtr m);
+ void virMutexUnlock(virMutexPtr m);
+ 
+ 
++int virRWLockInit(virRWLockPtr m) ATTRIBUTE_RETURN_CHECK;
++void virRWLockDestroy(virRWLockPtr m);
++
++void virRWLockRead(virRWLockPtr m);
++void virRWLockWrite(virRWLockPtr m);
++void virRWLockUnlock(virRWLockPtr m);
++
+ 
+ int virCondInit(virCondPtr c) ATTRIBUTE_RETURN_CHECK;
+ int virCondDestroy(virCondPtr c);
+diff --git a/src/util/virthreadpthread.c b/src/util/virthreadpthread.c
+index ca841e4..38b6454 100644
+--- a/src/util/virthreadpthread.c
++++ b/src/util/virthreadpthread.c
+@@ -91,6 +91,39 @@ void virMutexUnlock(virMutexPtr m)
+ }
+ 
+ 
++int virRWLockInit(virRWLockPtr m)
++{
++    int ret;
++    ret = pthread_rwlock_init(&m->lock, NULL);
++    if (ret != 0) {
++        errno = ret;
++        return -1;
++    }
++    return 0;
++}
++
++void virRWLockDestroy(virRWLockPtr m)
++{
++    pthread_rwlock_destroy(&m->lock);
++}
++
++
++void virRWLockRead(virRWLockPtr m)
++{
++    pthread_rwlock_rdlock(&m->lock);
++}
++
++void virRWLockWrite(virRWLockPtr m)
++{
++    pthread_rwlock_wrlock(&m->lock);
++}
++
++
++void virRWLockUnlock(virRWLockPtr m)
++{
++    pthread_rwlock_unlock(&m->lock);
++}
++
+ int virCondInit(virCondPtr c)
+ {
+     int ret;
+diff --git a/src/util/virthreadpthread.h b/src/util/virthreadpthread.h
+index b9f1319..cb607d0 100644
+--- a/src/util/virthreadpthread.h
++++ b/src/util/virthreadpthread.h
+@@ -27,6 +27,10 @@ struct virMutex {
+     pthread_mutex_t lock;
+ };
+ 
++struct virRWLock {
++    pthread_rwlock_t lock;
++};
++
+ struct virCond {
+     pthread_cond_t cond;
+ };
+diff --git a/src/util/virthreadwin32.c b/src/util/virthreadwin32.c
+index 5d6277f..a9e2353 100644
+--- a/src/util/virthreadwin32.c
++++ b/src/util/virthreadwin32.c
+@@ -123,6 +123,25 @@ void virMutexUnlock(virMutexPtr m)
+ }
+ 
+ 
++int virRWLockInit(virRWLockPtr m ATTRIBUTE_UNUSED)
++{
++    errno = ENOSYS;
++    return -1;
++}
++
++void virRWLockDestroy(virRWLockPtr m ATTRIBUTE_UNUSED)
++{}
++
++
++void virRWLockRead(virRWLockPtr m ATTRIBUTE_UNUSED)
++{}
++
++void virRWLockWrite(virRWLockPtr m ATTRIBUTE_UNUSED)
++{}
++
++
++void virRWLockUnlock(virRWLockPtr m ATTRIBUTE_UNUSED)
++{}
+ 
+ int virCondInit(virCondPtr c)
+ {
+diff --git a/src/util/virthreadwin32.h b/src/util/virthreadwin32.h
+index 645031b..31d9444 100644
+--- a/src/util/virthreadwin32.h
++++ b/src/util/virthreadwin32.h
+@@ -30,6 +30,10 @@ struct virMutex {
+     HANDLE lock;
+ };
+ 
++struct virRWLock {
++    bool ignored;
++};
++
+ struct virCond {
+     virMutex lock;
+     size_t nwaiters;

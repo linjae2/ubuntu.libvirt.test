@@ -1,0 +1,384 @@
+commit 744086710956c59fa06bbc3cfde075f616469cb1
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Wed Jan 22 17:28:29 2014 +0000
+
+    Push nwfilter update locking up to top level
+    
+    The NWFilter code has as a deadlock race condition between
+    the virNWFilter{Define,Undefine} APIs and starting of guest
+    VMs due to mis-matched lock ordering.
+    
+    In the virNWFilter{Define,Undefine} codepaths the lock ordering
+    is
+    
+      1. nwfilter driver lock
+      2. virt driver lock
+      3. nwfilter update lock
+      4. domain object lock
+    
+    In the VM guest startup paths the lock ordering is
+    
+      1. virt driver lock
+      2. domain object lock
+      3. nwfilter update lock
+    
+    As can be seen the domain object and nwfilter update locks are
+    not acquired in a consistent order.
+    
+    The fix used is to push the nwfilter update lock upto the top
+    level resulting in a lock ordering for virNWFilter{Define,Undefine}
+    of
+    
+      1. nwfilter driver lock
+      2. nwfilter update lock
+      3. virt driver lock
+      4. domain object lock
+    
+    and VM start using
+    
+      1. nwfilter update lock
+      2. virt driver lock
+      3. domain object lock
+    
+    This has the effect of serializing VM startup once again, even if
+    no nwfilters are applied to the guest. There is also the possibility
+    of deadlock due to a call graph loop via virNWFilterInstantiate
+    and virNWFilterInstantiateFilterLate.
+    
+    These two problems mean the lock must be turned into a read/write
+    lock instead of a plain mutex at the same time. The lock is used to
+    serialize changes to the "driver->nwfilters" hash, so the write lock
+    only needs to be held by the define/undefine methods. All other
+    methods can rely on a read lock which allows good concurrency.
+    
+    Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+    (cherry picked from commit 6e5c79a1b5a8b3a23e7df7ffe58fb272aa17fbfb)
+
+diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
+index b4971b9..1553bfd 100644
+--- a/src/conf/nwfilter_conf.c
++++ b/src/conf/nwfilter_conf.c
+@@ -143,17 +143,22 @@ static const struct int_map chain_priorities[] = {
+ /*
+  * only one filter update allowed
+  */
+-static virMutex updateMutex;
++static virRWLock updateLock;
+ static bool initialized = false;
+ 
+ void
+-virNWFilterLockFilterUpdates(void) {
+-    virMutexLock(&updateMutex);
++virNWFilterReadLockFilterUpdates(void) {
++    virRWLockRead(&updateLock);
++}
++
++void
++virNWFilterWriteLockFilterUpdates(void) {
++    virRWLockWrite(&updateLock);
+ }
+ 
+ void
+ virNWFilterUnlockFilterUpdates(void) {
+-    virMutexUnlock(&updateMutex);
++    virRWLockUnlock(&updateLock);
+ }
+ 
+ 
+@@ -2981,14 +2986,12 @@ virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+         return NULL;
+     }
+ 
+-    virNWFilterLockFilterUpdates();
+ 
+     if ((nwfilter = virNWFilterObjFindByName(nwfilters, def->name))) {
+ 
+         if (virNWFilterDefEqual(def, nwfilter->def, false)) {
+             virNWFilterDefFree(nwfilter->def);
+             nwfilter->def = def;
+-            virNWFilterUnlockFilterUpdates();
+             return nwfilter;
+         }
+ 
+@@ -2996,7 +2999,6 @@ virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+         /* trigger the update on VMs referencing the filter */
+         if (virNWFilterTriggerVMFilterRebuild()) {
+             nwfilter->newDef = NULL;
+-            virNWFilterUnlockFilterUpdates();
+             virNWFilterObjUnlock(nwfilter);
+             return NULL;
+         }
+@@ -3004,12 +3006,9 @@ virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+         virNWFilterDefFree(nwfilter->def);
+         nwfilter->def = def;
+         nwfilter->newDef = NULL;
+-        virNWFilterUnlockFilterUpdates();
+         return nwfilter;
+     }
+ 
+-    virNWFilterUnlockFilterUpdates();
+-
+     if (VIR_ALLOC(nwfilter) < 0)
+         return NULL;
+ 
+@@ -3474,7 +3473,7 @@ int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB,
+ 
+     initialized = true;
+ 
+-    if (virMutexInitRecursive(&updateMutex) < 0)
++    if (virRWLockInit(&updateLock) < 0)
+         return -1;
+ 
+     return 0;
+@@ -3486,7 +3485,7 @@ void virNWFilterConfLayerShutdown(void)
+     if (!initialized)
+         return;
+ 
+-    virMutexDestroy(&updateMutex);
++    virRWLockDestroy(&updateLock);
+ 
+     initialized = false;
+     virNWFilterDomainFWUpdateOpaque = NULL;
+diff --git a/src/conf/nwfilter_conf.h b/src/conf/nwfilter_conf.h
+index 29906f1..d460a08 100644
+--- a/src/conf/nwfilter_conf.h
++++ b/src/conf/nwfilter_conf.h
+@@ -716,7 +716,8 @@ virNWFilterDefPtr virNWFilterDefParseFile(const char *filename);
+ void virNWFilterObjLock(virNWFilterObjPtr obj);
+ void virNWFilterObjUnlock(virNWFilterObjPtr obj);
+ 
+-void virNWFilterLockFilterUpdates(void);
++void virNWFilterWriteLockFilterUpdates(void);
++void virNWFilterReadLockFilterUpdates(void);
+ void virNWFilterUnlockFilterUpdates(void);
+ 
+ int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB, void *opaque);
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index 609ad8b..e49ee71 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -564,7 +564,6 @@ virNWFilterDefParseString;
+ virNWFilterInstFiltersOnAllVMs;
+ virNWFilterJumpTargetTypeToString;
+ virNWFilterLoadAllConfigs;
+-virNWFilterLockFilterUpdates;
+ virNWFilterObjAssignDef;
+ virNWFilterObjDeleteDef;
+ virNWFilterObjFindByName;
+@@ -576,6 +575,7 @@ virNWFilterObjSaveDef;
+ virNWFilterObjUnlock;
+ virNWFilterPrintStateMatchFlags;
+ virNWFilterPrintTCPFlags;
++virNWFilterReadLockFilterUpdates;
+ virNWFilterRegisterCallbackDriver;
+ virNWFilterRuleActionTypeToString;
+ virNWFilterRuleDirectionTypeToString;
+@@ -583,6 +583,7 @@ virNWFilterRuleProtocolTypeToString;
+ virNWFilterTestUnassignDef;
+ virNWFilterUnlockFilterUpdates;
+ virNWFilterUnRegisterCallbackDriver;
++virNWFilterWriteLockFilterUpdates;
+ 
+ 
+ # conf/nwfilter_ipaddrmap.h
+diff --git a/src/lxc/lxc_driver.c b/src/lxc/lxc_driver.c
+index 924a034..8658215 100644
+--- a/src/lxc/lxc_driver.c
++++ b/src/lxc/lxc_driver.c
+@@ -1015,6 +1015,8 @@ static int lxcDomainCreateWithFiles(virDomainPtr dom,
+ 
+     virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, -1);
+ 
++    virNWFilterReadLockFilterUpdates();
++
+     if (!(vm = lxcDomObjFromDomain(dom)))
+         goto cleanup;
+ 
+@@ -1053,6 +1055,7 @@ cleanup:
+     if (event)
+         virDomainEventStateQueue(driver->domainEventState, event);
+     virObjectUnref(cfg);
++    virNWFilterUnlockFilterUpdates();
+     return ret;
+ }
+ 
+@@ -1109,6 +1112,8 @@ lxcDomainCreateXMLWithFiles(virConnectPtr conn,
+ 
+     virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, NULL);
+ 
++    virNWFilterReadLockFilterUpdates();
++
+     if (!(caps = virLXCDriverGetCapabilities(driver, false)))
+         goto cleanup;
+ 
+@@ -1164,6 +1169,7 @@ cleanup:
+         virDomainEventStateQueue(driver->domainEventState, event);
+     virObjectUnref(caps);
+     virObjectUnref(cfg);
++    virNWFilterUnlockFilterUpdates();
+     return dom;
+ }
+ 
+diff --git a/src/nwfilter/nwfilter_driver.c b/src/nwfilter/nwfilter_driver.c
+index de28205..15c644d 100644
+--- a/src/nwfilter/nwfilter_driver.c
++++ b/src/nwfilter/nwfilter_driver.c
+@@ -279,12 +279,14 @@ nwfilterStateReload(void)
+     virNWFilterLearnThreadsTerminate(true);
+ 
+     nwfilterDriverLock(driverState);
++    virNWFilterWriteLockFilterUpdates();
+     virNWFilterCallbackDriversLock();
+ 
+     virNWFilterLoadAllConfigs(&driverState->nwfilters,
+                               driverState->configDir);
+ 
+     virNWFilterCallbackDriversUnlock();
++    virNWFilterUnlockFilterUpdates();
+     nwfilterDriverUnlock(driverState);
+ 
+     virNWFilterInstFiltersOnAllVMs();
+@@ -550,6 +552,7 @@ nwfilterDefineXML(virConnectPtr conn,
+     virNWFilterPtr ret = NULL;
+ 
+     nwfilterDriverLock(driver);
++    virNWFilterWriteLockFilterUpdates();
+     virNWFilterCallbackDriversLock();
+ 
+     if (!(def = virNWFilterDefParseString(xml)))
+@@ -576,6 +579,7 @@ cleanup:
+         virNWFilterObjUnlock(nwfilter);
+ 
+     virNWFilterCallbackDriversUnlock();
++    virNWFilterUnlockFilterUpdates();
+     nwfilterDriverUnlock(driver);
+     return ret;
+ }
+@@ -588,10 +592,9 @@ nwfilterUndefine(virNWFilterPtr obj) {
+     int ret = -1;
+ 
+     nwfilterDriverLock(driver);
++    virNWFilterWriteLockFilterUpdates();
+     virNWFilterCallbackDriversLock();
+ 
+-    virNWFilterLockFilterUpdates();
+-
+     nwfilter = virNWFilterObjFindByUUID(&driver->nwfilters, obj->uuid);
+     if (!nwfilter) {
+         virReportError(VIR_ERR_NO_NWFILTER,
+@@ -622,9 +625,8 @@ cleanup:
+     if (nwfilter)
+         virNWFilterObjUnlock(nwfilter);
+ 
+-    virNWFilterUnlockFilterUpdates();
+-
+     virNWFilterCallbackDriversUnlock();
++    virNWFilterUnlockFilterUpdates();
+     nwfilterDriverUnlock(driver);
+     return ret;
+ }
+diff --git a/src/nwfilter/nwfilter_gentech_driver.c b/src/nwfilter/nwfilter_gentech_driver.c
+index f517569..203ba0e 100644
+--- a/src/nwfilter/nwfilter_gentech_driver.c
++++ b/src/nwfilter/nwfilter_gentech_driver.c
+@@ -934,8 +934,6 @@ _virNWFilterInstantiateFilter(virNWFilterDriverStatePtr driver,
+     int ifindex;
+     int rc;
+ 
+-    virNWFilterLockFilterUpdates();
+-
+     /* after grabbing the filter update lock check for the interface; if
+        it's not there anymore its filters will be or are being removed
+        (while holding the lock) and we don't want to build new ones */
+@@ -963,8 +961,6 @@ _virNWFilterInstantiateFilter(virNWFilterDriverStatePtr driver,
+                                         foundNewFilter);
+ 
+ cleanup:
+-    virNWFilterUnlockFilterUpdates();
+-
+     return rc;
+ }
+ 
+@@ -983,7 +979,7 @@ virNWFilterInstantiateFilterLate(virNWFilterDriverStatePtr driver,
+     int rc;
+     bool foundNewFilter = false;
+ 
+-    virNWFilterLockFilterUpdates();
++    virNWFilterReadLockFilterUpdates();
+ 
+     rc = __virNWFilterInstantiateFilter(driver,
+                                         vmuuid,
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 7b28ea8..8b7388c 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -1570,6 +1570,8 @@ static virDomainPtr qemuDomainCreateXML(virConnectPtr conn,
+     if (flags & VIR_DOMAIN_START_AUTODESTROY)
+         start_flags |= VIR_QEMU_PROCESS_START_AUTODESTROY;
+ 
++    virNWFilterReadLockFilterUpdates();
++
+     if (!(caps = virQEMUDriverGetCapabilities(driver, false)))
+         goto cleanup;
+ 
+@@ -1647,6 +1649,7 @@ cleanup:
+     }
+     virObjectUnref(caps);
+     virObjectUnref(qemuCaps);
++    virNWFilterUnlockFilterUpdates();
+     return dom;
+ }
+ 
+@@ -6101,6 +6104,8 @@ qemuDomainCreateWithFlags(virDomainPtr dom, unsigned int flags)
+                   VIR_DOMAIN_START_BYPASS_CACHE |
+                   VIR_DOMAIN_START_FORCE_BOOT, -1);
+ 
++    virNWFilterReadLockFilterUpdates();
++
+     if (!(vm = qemuDomObjFromDomain(dom)))
+         return -1;
+ 
+@@ -6128,6 +6133,7 @@ endjob:
+ cleanup:
+     if (vm)
+         virObjectUnlock(vm);
++    virNWFilterUnlockFilterUpdates();
+     return ret;
+ }
+ 
+diff --git a/src/uml/uml_driver.c b/src/uml/uml_driver.c
+index eb02542..b580b32 100644
+--- a/src/uml/uml_driver.c
++++ b/src/uml/uml_driver.c
+@@ -1574,6 +1574,7 @@ static virDomainPtr umlDomainCreateXML(virConnectPtr conn, const char *xml,
+ 
+     virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, NULL);
+ 
++    virNWFilterReadLockFilterUpdates();
+     umlDriverLock(driver);
+     if (!(def = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
+                                         1 << VIR_DOMAIN_VIRT_UML,
+@@ -1613,6 +1614,7 @@ cleanup:
+     if (event)
+         umlDomainEventQueue(driver, event);
+     umlDriverUnlock(driver);
++    virNWFilterUnlockFilterUpdates();
+     return dom;
+ }
+ 
+@@ -1997,6 +1999,7 @@ static int umlDomainCreateWithFlags(virDomainPtr dom, unsigned int flags) {
+ 
+     virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, -1);
+ 
++    virNWFilterReadLockFilterUpdates();
+     umlDriverLock(driver);
+     vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
+ 
+@@ -2023,6 +2026,7 @@ cleanup:
+     if (event)
+         umlDomainEventQueue(driver, event);
+     umlDriverUnlock(driver);
++    virNWFilterUnlockFilterUpdates();
+     return ret;
+ }
+ 

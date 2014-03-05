@@ -1,0 +1,81 @@
+commit 686408be976049fc55226e5f10391d291b373a3e
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Wed Sep 25 15:26:58 2013 +0100
+
+    Don't ignore errors parsing nwfilter rules
+    
+    For inexplicable reasons, the nwfilter XML parser is intentionally
+    ignoring errors that arise during parsing. As well as meaning that
+    users don't get any feedback on their XML mistakes, this will lead
+    it to silently drop data in OOM conditions.
+    
+    Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+    (cherry picked from commit 4f2094346d98f4ed6a2de115d204c166cc563496)
+
+diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
+index a3901d3..fe4363c 100644
+--- a/src/conf/nwfilter_conf.c
++++ b/src/conf/nwfilter_conf.c
+@@ -2369,9 +2369,7 @@ virNWFilterRuleParse(xmlNodePtr node)
+                     if (virNWFilterRuleDetailsParse(cur,
+                                                     ret,
+                                                     virAttr[i].att) < 0) {
+-                        /* we ignore malformed rules
+-                           goto err_exit;
+-                        */
++                        goto err_exit;
+                     }
+                     break;
+                 }
+@@ -2572,11 +2570,13 @@ virNWFilterDefParseXML(xmlXPathContextPtr ctxt) {
+             if (VIR_ALLOC(entry) < 0)
+                 goto cleanup;
+ 
+-            /* ignore malformed rule and include elements */
+-            if (xmlStrEqual(curr->name, BAD_CAST "rule"))
+-                entry->rule = virNWFilterRuleParse(curr);
+-            else if (xmlStrEqual(curr->name, BAD_CAST "filterref"))
+-                entry->include = virNWFilterIncludeParse(curr);
++            if (xmlStrEqual(curr->name, BAD_CAST "rule")) {
++                if (!(entry->rule = virNWFilterRuleParse(curr)))
++                    goto cleanup;
++            } else if (xmlStrEqual(curr->name, BAD_CAST "filterref")) {
++                if (!(entry->include = virNWFilterIncludeParse(curr)))
++                    goto cleanup;
++            }
+ 
+             if (entry->rule || entry->include) {
+                 if (VIR_REALLOC_N(ret->filterEntries, ret->nentries+1) < 0) {
+diff --git a/tests/nwfilterxml2xmltest.c b/tests/nwfilterxml2xmltest.c
+index 5476284..84e61da 100644
+--- a/tests/nwfilterxml2xmltest.c
++++ b/tests/nwfilterxml2xmltest.c
+@@ -36,15 +36,12 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
+ 
+     virResetLastError();
+ 
+-    if (!(dev = virNWFilterDefParseString(NULL, inXmlData)))
++    if (!(dev = virNWFilterDefParseString(NULL, inXmlData))) {
++        if (expect_error) {
++            virResetLastError();
++            goto done;
++        }
+         goto fail;
+-
+-    if (!!virGetLastError() != expect_error)
+-        goto fail;
+-
+-    if (expect_error) {
+-        /* need to suppress the errors */
+-        virResetLastError();
+     }
+ 
+     if (!(actual = virNWFilterDefFormat(dev)))
+@@ -55,6 +52,7 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
+         goto fail;
+     }
+ 
++ done:
+     ret = 0;
+ 
+  fail:
