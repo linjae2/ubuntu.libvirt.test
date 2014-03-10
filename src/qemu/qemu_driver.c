@@ -9175,26 +9175,6 @@ qemuDomainBlockStats(virDomainPtr dom,
     if (virDomainBlockStatsEnsureACL(dom->conn, vm->def) < 0)
         goto cleanup;
 
-    if (!virDomainObjIsActive(vm)) {
-        virReportError(VIR_ERR_OPERATION_INVALID,
-                       "%s", _("domain is not running"));
-        goto cleanup;
-    }
-
-    if ((idx = virDomainDiskIndexByName(vm->def, path, false)) < 0) {
-        virReportError(VIR_ERR_INVALID_ARG,
-                       _("invalid path: %s"), path);
-        goto cleanup;
-    }
-    disk = vm->def->disks[idx];
-
-    if (!disk->info.alias) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("missing disk device alias name for %s"), disk->dst);
-        goto cleanup;
-    }
-
-    priv = vm->privateData;
     if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_QUERY) < 0)
         goto cleanup;
 
@@ -9203,6 +9183,21 @@ qemuDomainBlockStats(virDomainPtr dom,
                        "%s", _("domain is not running"));
         goto endjob;
     }
+
+    if ((idx = virDomainDiskIndexByName(vm->def, path, false)) < 0) {
+        virReportError(VIR_ERR_INVALID_ARG,
+                       _("invalid path: %s"), path);
+        goto endjob;
+    }
+    disk = vm->def->disks[idx];
+
+    if (!disk->info.alias) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("missing disk device alias name for %s"), disk->dst);
+        goto endjob;
+    }
+
+    priv = vm->privateData;
 
     qemuDomainObjEnterMonitor(driver, vm);
     ret = qemuMonitorGetBlockStatsInfo(priv->mon,
@@ -9940,10 +9935,12 @@ cleanup:
 }
 
 
-static int qemuDomainGetBlockInfo(virDomainPtr dom,
-                                  const char *path,
-                                  virDomainBlockInfoPtr info,
-                                  unsigned int flags) {
+static int
+qemuDomainGetBlockInfo(virDomainPtr dom,
+                       const char *path,
+                       virDomainBlockInfoPtr info,
+                       unsigned int flags)
+{
     virQEMUDriverPtr driver = dom->conn->privateData;
     virDomainObjPtr vm;
     int ret = -1;
@@ -9955,6 +9952,7 @@ static int qemuDomainGetBlockInfo(virDomainPtr dom,
     int idx;
     int format;
     virQEMUDriverConfigPtr cfg = NULL;
+    char *alias = NULL;
 
     virCheckFlags(0, -1);
 
@@ -10061,13 +10059,16 @@ static int qemuDomainGetBlockInfo(virDomainPtr dom,
         virDomainObjIsActive(vm)) {
         qemuDomainObjPrivatePtr priv = vm->privateData;
 
+        if (VIR_STRDUP(alias, disk->info.alias) < 0)
+            goto cleanup;
+
         if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_QUERY) < 0)
             goto cleanup;
 
         if (virDomainObjIsActive(vm)) {
             qemuDomainObjEnterMonitor(driver, vm);
             ret = qemuMonitorGetBlockExtent(priv->mon,
-                                            disk->info.alias,
+                                            alias,
                                             &info->allocation);
             qemuDomainObjExitMonitor(driver, vm);
         } else {
@@ -10081,6 +10082,7 @@ static int qemuDomainGetBlockInfo(virDomainPtr dom,
     }
 
 cleanup:
+    VIR_FREE(alias);
     virStorageFileFreeMetadata(meta);
     VIR_FORCE_CLOSE(fd);
     if (vm)
@@ -14255,16 +14257,25 @@ qemuDomainBlockJobImpl(virDomainObjPtr vm,
         goto cleanup;
     }
 
+    if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
+        goto cleanup;
+
+    if (!virDomainObjIsActive(vm)) {
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("domain is not running"));
+        goto endjob;
+    }
+
     device = qemuDiskPathToAlias(vm, path, &idx);
     if (!device)
-        goto cleanup;
+        goto endjob;
     disk = vm->def->disks[idx];
 
     if (mode == BLOCK_JOB_PULL && disk->mirror) {
         virReportError(VIR_ERR_BLOCK_COPY_ACTIVE,
                        _("disk '%s' already in active block copy job"),
                        disk->dst);
-        goto cleanup;
+        goto endjob;
     }
     if (mode == BLOCK_JOB_ABORT &&
         (flags & VIR_DOMAIN_BLOCK_JOB_ABORT_PIVOT) &&
@@ -14272,15 +14283,6 @@ qemuDomainBlockJobImpl(virDomainObjPtr vm,
         virReportError(VIR_ERR_OPERATION_INVALID,
                        _("pivot of disk '%s' requires an active copy job"),
                        disk->dst);
-        goto cleanup;
-    }
-
-    if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
-        goto cleanup;
-
-    if (!virDomainObjIsActive(vm)) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("domain is not running"));
         goto endjob;
     }
 
@@ -14441,7 +14443,7 @@ qemuDomainBlockCopy(virDomainObjPtr vm,
     virQEMUDriverPtr driver = conn->privateData;
     qemuDomainObjPrivatePtr priv;
     char *device = NULL;
-    virDomainDiskDefPtr disk;
+    virDomainDiskDefPtr disk = NULL;
     int ret = -1;
     int idx;
     struct stat st;
@@ -14456,40 +14458,6 @@ qemuDomainBlockCopy(virDomainObjPtr vm,
     priv = vm->privateData;
     cfg = virQEMUDriverGetConfig(driver);
 
-    if (!virDomainObjIsActive(vm)) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("domain is not running"));
-        goto cleanup;
-    }
-
-    device = qemuDiskPathToAlias(vm, path, &idx);
-    if (!device) {
-        goto cleanup;
-    }
-    disk = vm->def->disks[idx];
-    if (disk->mirror) {
-        virReportError(VIR_ERR_BLOCK_COPY_ACTIVE,
-                       _("disk '%s' already in active block copy job"),
-                       disk->dst);
-        goto cleanup;
-    }
-
-    if (!(virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DRIVE_MIRROR) &&
-          virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_BLOCKJOB_ASYNC))) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("block copy is not supported with this QEMU binary"));
-        goto cleanup;
-    }
-    if (vm->persistent) {
-        /* XXX if qemu ever lets us start a new domain with mirroring
-         * already active, we can relax this; but for now, the risk of
-         * 'managedsave' due to libvirt-guests means we can't risk
-         * this on persistent domains.  */
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("domain is not transient"));
-        goto cleanup;
-    }
-
     if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
         goto cleanup;
 
@@ -14498,6 +14466,35 @@ qemuDomainBlockCopy(virDomainObjPtr vm,
                        _("domain is not running"));
         goto endjob;
     }
+
+    device = qemuDiskPathToAlias(vm, path, &idx);
+    if (!device) {
+        goto endjob;
+    }
+    disk = vm->def->disks[idx];
+    if (disk->mirror) {
+        virReportError(VIR_ERR_BLOCK_COPY_ACTIVE,
+                       _("disk '%s' already in active block copy job"),
+                       disk->dst);
+        goto endjob;
+    }
+
+    if (!(virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DRIVE_MIRROR) &&
+          virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_BLOCKJOB_ASYNC))) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("block copy is not supported with this QEMU binary"));
+        goto endjob;
+    }
+    if (vm->persistent) {
+        /* XXX if qemu ever lets us start a new domain with mirroring
+         * already active, we can relax this; but for now, the risk of
+         * 'managedsave' due to libvirt-guests means we can't risk
+         * this on persistent domains.  */
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("domain is not transient"));
+        goto endjob;
+    }
+
     if (qemuDomainDetermineDiskChain(driver, disk, false) < 0)
         goto endjob;
 
@@ -14587,7 +14584,7 @@ qemuDomainBlockCopy(virDomainObjPtr vm,
 endjob:
     if (need_unlink && unlink(dest))
         VIR_WARN("unable to unlink just-created %s", dest);
-    if (ret < 0)
+    if (ret < 0 && disk)
         disk->mirrorFormat = VIR_STORAGE_FILE_NONE;
     VIR_FREE(mirror);
     if (qemuDomainObjEndJob(driver, vm) == 0) {
@@ -15077,18 +15074,17 @@ qemuDomainGetBlockIoTune(virDomainPtr dom,
         goto cleanup;
     }
 
-    device = qemuDiskPathToAlias(vm, disk, NULL);
-
-    if (!device) {
-        goto cleanup;
-    }
-
     if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
         goto cleanup;
 
     if (virDomainLiveConfigHelperMethod(caps, driver->xmlopt, vm, &flags,
                                         &persistentDef) < 0)
         goto endjob;
+
+    device = qemuDiskPathToAlias(vm, disk, NULL);
+    if (!device) {
+        goto endjob;
+    }
 
     if (flags & VIR_DOMAIN_AFFECT_LIVE) {
         priv = vm->privateData;
