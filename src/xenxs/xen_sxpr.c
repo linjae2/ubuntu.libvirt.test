@@ -1873,7 +1873,9 @@ xenFormatSxprNet(virConnectPtr conn,
     }
     else {
         virBufferEscapeSexpr(buf, "(model '%s')", def->model);
-        virBufferAddLit(buf, "(type ioemu)");
+	/* See above. Also needed when model is specified. */
+        if (xendConfigVersion <= XEND_CONFIG_MAX_VERS_NET_TYPE_IOEMU)
+            virBufferAddLit(buf, "(type ioemu)");
     }
 
     if (!isAttach)
