@@ -1,3 +1,10 @@
+libvirt (1.2.2-0ubuntu2) trusty; urgency=medium
+
+  * d/p/add-a-mutex-to-serialize-updates-to-fw.patch: fix another deadlock
+    when starting a large number of VMs.  (LP: #1228977)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 11 Mar 2014 14:08:02 -0500
+
 libvirt (1.2.2-0ubuntu1) trusty; urgency=medium
 
   * New upstream release:
