@@ -1,0 +1,59 @@
+commit 6948b725e78016e45b846a17b89fafb69965be51
+Author: Jiri Denemark <jdenemar@redhat.com>
+Date:   Wed Dec 14 09:57:07 2011 +0100
+
+    qemu: Fix race between async and query jobs
+    
+    If an async job run on a domain will stop the domain at the end of the
+    job, a concurrently run query job can hang in qemu monitor and nothing
+    can be done with that domain from this point on. An attempt to start
+    such domain results in "Timed out during operation: cannot acquire state
+    change lock" error.
+    
+    However, quite a few things have to happen at the right time... There
+    must be an async job running which stops a domain at the end. This race
+    was reported with dump --crash but other similar jobs, such as
+    (managed)save and migration, should be able to trigger this bug as well.
+    While this async job is processing its last monitor command, that is a
+    query-migrate to which qemu replies with status "completed", a new
+    libvirt API that results in a query job must arrive and stay waiting
+    until the query-migrate command finishes. Once query-migrate is done but
+    before the async job closes qemu monitor while stopping the domain, the
+    other thread needs to wake up and call qemuMonitorSend to send its
+    command to qemu. Before qemu gets a chance to respond to this command,
+    the async job needs to close the monitor. At this point, the query job
+    thread is waiting for a condition that no-one will ever signal so it
+    never finishes the job.
+
+Index: libvirt-0.9.8/src/qemu/qemu_monitor.c
+===================================================================
+--- libvirt-0.9.8.orig/src/qemu/qemu_monitor.c	2014-03-11 14:14:23.609567096 -0500
++++ libvirt-0.9.8/src/qemu/qemu_monitor.c	2014-03-11 14:14:23.605567096 -0500
+@@ -793,6 +793,27 @@ void qemuMonitorClose(qemuMonitorPtr mon
+         VIR_FORCE_CLOSE(mon->fd);
+     }
+ 
++    /* In case another thread is waiting for its monitor command to be
++     * processed, we need to wake it up with appropriate error set.
++     */
++    if (mon->msg) {
++        if (mon->lastError.code == VIR_ERR_OK) {
++            virErrorPtr err = virSaveLastError();
++
++            qemuReportError(VIR_ERR_OPERATION_FAILED,
++                            _("Qemu monitor was closed"));
++            virCopyLastError(&mon->lastError);
++            if (err) {
++                virSetError(err);
++                virFreeError(err);
++            } else {
++                virResetLastError();
++            }
++        }
++        mon->msg->finished = 1;
++        virCondSignal(&mon->notify);
++    }
++
+     if (qemuMonitorUnref(mon) > 0)
+         qemuMonitorUnlock(mon);
+ }

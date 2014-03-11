@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu17.18) precise-proposed; urgency=medium
+
+  * d/p/ubuntu/qemu-fix-race-between-async-and-query-jobs.patch: fix a race
+    between asynchronous and query jobs.  (LP: #1254872)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 11 Mar 2014 14:14:38 -0500
+
 libvirt (0.9.8-2ubuntu17.17) precise-security; urgency=medium
 
   * SECURITY UPDATE: denial of service via job usage issues in several APIs
