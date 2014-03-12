@@ -1,3 +1,11 @@
+libvirt (1.2.2-0ubuntu3) trusty; urgency=low
+
+  * d/p/libxl-Check-for-control_d-string-to-decide-about-dom.patch: Prevent
+    using the libxl driver when not running in dom0 but having xenfs mounted.
+    (LP: #1248025)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Wed, 12 Mar 2014 14:16:14 +0100
+
 libvirt (1.2.2-0ubuntu2) trusty; urgency=medium
 
   * d/p/add-a-mutex-to-serialize-updates-to-fw.patch: fix another deadlock
