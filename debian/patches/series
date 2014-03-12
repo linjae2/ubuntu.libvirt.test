@@ -19,3 +19,4 @@ ubuntu-xend-probe.patch
 accomodate-new-qemu-migration-status-setup.patch
 9025-apparmor-allow-access-to-filesystem-mounts
 add-a-mutex-to-serialize-updates-to-fw.patch
+libxl-Check-for-control_d-string-to-decide-about-dom.patch
