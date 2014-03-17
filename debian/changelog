@@ -1,3 +1,10 @@
+libvirt (1.2.2-0ubuntu4) trusty; urgency=medium
+
+  * debian/patches/arm-cpu-baseline.patch: Implement a stub cpuArchDriver.baseline() 
+    handler for arm.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 17 Mar 2014 10:59:49 -0400
+
 libvirt (1.2.2-0ubuntu3) trusty; urgency=low
 
   * d/p/libxl-Check-for-control_d-string-to-decide-about-dom.patch: Prevent
