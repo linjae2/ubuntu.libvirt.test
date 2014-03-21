@@ -16,8 +16,8 @@ Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
 Index: libvirt-1.2.2/src/libxl/libxl_driver.c
 ===================================================================
---- libvirt-1.2.2.orig/src/libxl/libxl_driver.c	2014-03-11 11:16:48.000000000 +0100
-+++ libvirt-1.2.2/src/libxl/libxl_driver.c	2014-03-12 12:07:42.401077836 +0100
+--- libvirt-1.2.2.orig/src/libxl/libxl_driver.c	2014-03-17 13:07:05.000000000 +0100
++++ libvirt-1.2.2/src/libxl/libxl_driver.c	2014-03-17 13:39:34.501563979 +0100
 @@ -941,8 +941,8 @@ libxlDriverShouldLoad(bool privileged)
  {
      bool ret = false;
@@ -28,12 +28,15 @@ Index: libvirt-1.2.2/src/libxl/libxl_driver.c
  
      /* Don't load if non-root */
      if (!privileged) {
-@@ -950,8 +950,18 @@ libxlDriverShouldLoad(bool privileged)
+@@ -950,8 +950,22 @@ libxlDriverShouldLoad(bool privileged)
          return ret;
      }
  
 -    /* Don't load if not running on a Xen control domain (dom0) */
--    if (!virFileExists("/proc/xen/capabilities")) {
+     if (!virFileExists("/proc/xen/capabilities")) {
++        VIR_INFO("Disabling driver as /proc/xen/capabilities does not exist");
++        return false;
++    }
 +    /*
 +     * Don't load if not running on a Xen control domain (dom0). It is not
 +     * sufficient to check for the file to exist as any guest can mount

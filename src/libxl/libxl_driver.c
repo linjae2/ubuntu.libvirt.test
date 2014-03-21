@@ -950,6 +950,10 @@ libxlDriverShouldLoad(bool privileged)
         return ret;
     }
 
+    if (!virFileExists("/proc/xen/capabilities")) {
+        VIR_INFO("Disabling driver as /proc/xen/capabilities does not exist");
+        return false;
+    }
     /*
      * Don't load if not running on a Xen control domain (dom0). It is not
      * sufficient to check for the file to exist as any guest can mount
