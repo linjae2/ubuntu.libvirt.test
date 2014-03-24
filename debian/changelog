@@ -1,3 +1,9 @@
+libvirt (1.2.2-0ubuntu6) trusty; urgency=medium
+
+  * debian/libvirt-bin.dirs: Add /var/log/libvirt/libxl. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 24 Mar 2014 14:32:54 -0400
+
 libvirt (1.2.2-0ubuntu5) trusty; urgency=low
 
   * Refreshed d/p/libxl-Check-for-control_d-string-to-decide-about-dom.patch

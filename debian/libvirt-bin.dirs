@@ -14,5 +14,6 @@
 /var/log/libvirt/qemu
 /var/log/libvirt/uml
 /var/log/libvirt/lxc
+/var/log/libvirt/libxl
 /etc/libvirt/hooks
 /etc/dnsmasq.d-available
