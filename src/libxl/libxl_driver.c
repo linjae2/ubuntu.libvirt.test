@@ -941,6 +941,7 @@ libxlDriverShouldLoad(bool privileged)
 {
     bool ret = false;
     virCommandPtr cmd;
+    char *output;
     int status;
 
     /* Don't load if non-root */
@@ -958,14 +959,26 @@ libxlDriverShouldLoad(bool privileged)
     }
 
     /* Don't load if legacy xen toolstack (xend) is in use */
-    cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
+    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
+    virCommandSetOutputBuffer(cmd, &output);
     if (virCommandRun(cmd, &status) == 0 && status == 0) {
-        VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
-                  "libxenlight driver.");
-    } else {
-        ret = true;
+        int i, j;
+
+        for (i = 0, j = 0; output[i] != '\0'; i++)
+            if (output[i] == '/')
+                j = i + 1;
+
+        if (output[j] == 'x' && output[j+1] == 'm') {
+            VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
+                     "libxenlight driver.");
+            VIR_FREE(output);
+            virCommandFree(cmd);
+            return ret;
+        }
     }
+    VIR_FREE(output);
     virCommandFree(cmd);
+    ret = true;
 
     return ret;
 }
