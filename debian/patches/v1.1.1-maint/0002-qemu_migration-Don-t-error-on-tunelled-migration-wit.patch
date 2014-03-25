@@ -20,10 +20,10 @@ instead.
  src/qemu/qemu_migration.c | 9 ++++-----
  1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/src/qemu/qemu_migration.c b/src/qemu/qemu_migration.c
-index 3dedfe8..b905459 100644
---- a/src/qemu/qemu_migration.c
-+++ b/src/qemu/qemu_migration.c
+Index: libvirt-1.1.1/src/qemu/qemu_migration.c
+===================================================================
+--- libvirt-1.1.1.orig/src/qemu/qemu_migration.c	2014-03-25 14:15:16.842627321 -0500
++++ libvirt-1.1.1/src/qemu/qemu_migration.c	2014-03-25 14:15:16.838627321 -0500
 @@ -1996,12 +1996,11 @@ static char
          virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_NBD_SERVER)) {
          /* TODO support NBD for TUNNELLED migration */
@@ -41,6 +41,3 @@ index 3dedfe8..b905459 100644
      }
  
      if (!(mig = qemuMigrationEatCookie(driver, vm, NULL, 0, 0)))
--- 
-1.8.3.2
-

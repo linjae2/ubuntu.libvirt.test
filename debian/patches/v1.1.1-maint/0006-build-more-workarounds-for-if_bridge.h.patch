@@ -51,10 +51,10 @@ Signed-off-by: Eric Blake <eblake@redhat.com>
  src/util/virnetdevbridge.c |  4 ++++
  2 files changed, 15 insertions(+), 1 deletion(-)
 
-diff --git a/configure.ac b/configure.ac
-index 35a5d76..9b3dbd4 100644
---- a/configure.ac
-+++ b/configure.ac
+Index: libvirt-1.1.1/configure.ac
+===================================================================
+--- libvirt-1.1.1.orig/configure.ac	2014-03-25 14:15:17.838627343 -0500
++++ libvirt-1.1.1/configure.ac	2014-03-25 14:15:17.830627343 -0500
 @@ -997,7 +997,17 @@ if test "$with_linux" = "yes"; then
    if test "$with_qemu" = "yes" || test "$with_lxc" = "yes" ; then
      AC_CHECK_HEADERS([linux/param.h linux/sockios.h linux/if_bridge.h linux/if_tun.h],,
@@ -74,10 +74,10 @@ index 35a5d76..9b3dbd4 100644
        ]])
    fi
  fi
-diff --git a/src/util/virnetdevbridge.c b/src/util/virnetdevbridge.c
-index 5d52e23..e4daa27 100644
---- a/src/util/virnetdevbridge.c
-+++ b/src/util/virnetdevbridge.c
+Index: libvirt-1.1.1/src/util/virnetdevbridge.c
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virnetdevbridge.c	2014-03-25 14:15:17.838627343 -0500
++++ libvirt-1.1.1/src/util/virnetdevbridge.c	2014-03-25 14:15:17.830627343 -0500
 @@ -46,11 +46,15 @@
  # define in6_addr in6_addr_
  # define sockaddr_in6 sockaddr_in6_
@@ -94,6 +94,3 @@ index 5d52e23..e4daa27 100644
  
  # define JIFFIES_TO_MS(j) (((j)*1000)/HZ)
  # define MS_TO_JIFFIES(ms) (((ms)*HZ)/1000)
--- 
-1.8.3.2
-

@@ -4,9 +4,10 @@ Description: add vendor and device to pciDeviceFileIterate(). Patch submitted
 Bug: https://bugzilla.redhat.com/show_bug.cgi?id=624151
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/maverick/+source/libvirt/+bug/545795
 
-diff -Naurp libvirt-1.1.1.orig/src/util/virpci.c libvirt-1.1.1/src/util/virpci.c
---- libvirt-1.1.1.orig/src/util/virpci.c	2013-07-24 00:23:07.000000000 +0000
-+++ libvirt-1.1.1/src/util/virpci.c	2013-08-15 17:51:19.818736999 +0000
+Index: libvirt-1.1.1/src/util/virpci.c
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virpci.c	2014-03-25 14:15:11.874627209 -0500
++++ libvirt-1.1.1/src/util/virpci.c	2014-03-25 14:15:11.866627209 -0500
 @@ -1840,6 +1840,8 @@ int virPCIDeviceFileIterate(virPCIDevice
           */
          if (STREQ(ent->d_name, "config") ||

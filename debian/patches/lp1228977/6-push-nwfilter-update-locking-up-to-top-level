@@ -54,11 +54,11 @@ Date:   Wed Jan 22 17:28:29 2014 +0000
     Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
     (cherry picked from commit 6e5c79a1b5a8b3a23e7df7ffe58fb272aa17fbfb)
 
-diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
-index b4971b9..1553bfd 100644
---- a/src/conf/nwfilter_conf.c
-+++ b/src/conf/nwfilter_conf.c
-@@ -143,17 +143,22 @@ static const struct int_map chain_priorities[] = {
+Index: libvirt-1.1.1/src/conf/nwfilter_conf.c
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/nwfilter_conf.c	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/conf/nwfilter_conf.c	2014-03-25 14:15:26.914627547 -0500
+@@ -143,17 +143,22 @@ static const struct int_map chain_priori
  /*
   * only one filter update allowed
   */
@@ -85,7 +85,7 @@ index b4971b9..1553bfd 100644
  }
  
  
-@@ -2981,14 +2986,12 @@ virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+@@ -2981,14 +2986,12 @@ virNWFilterObjAssignDef(virNWFilterObjLi
          return NULL;
      }
  
@@ -100,7 +100,7 @@ index b4971b9..1553bfd 100644
              return nwfilter;
          }
  
-@@ -2996,7 +2999,6 @@ virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+@@ -2996,7 +2999,6 @@ virNWFilterObjAssignDef(virNWFilterObjLi
          /* trigger the update on VMs referencing the filter */
          if (virNWFilterTriggerVMFilterRebuild()) {
              nwfilter->newDef = NULL;
@@ -108,7 +108,7 @@ index b4971b9..1553bfd 100644
              virNWFilterObjUnlock(nwfilter);
              return NULL;
          }
-@@ -3004,12 +3006,9 @@ virNWFilterObjAssignDef(virNWFilterObjListPtr nwfilters,
+@@ -3004,12 +3006,9 @@ virNWFilterObjAssignDef(virNWFilterObjLi
          virNWFilterDefFree(nwfilter->def);
          nwfilter->def = def;
          nwfilter->newDef = NULL;
@@ -121,7 +121,7 @@ index b4971b9..1553bfd 100644
      if (VIR_ALLOC(nwfilter) < 0)
          return NULL;
  
-@@ -3474,7 +3473,7 @@ int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB,
+@@ -3474,7 +3473,7 @@ int virNWFilterConfLayerInit(virDomainOb
  
      initialized = true;
  
@@ -139,11 +139,11 @@ index b4971b9..1553bfd 100644
  
      initialized = false;
      virNWFilterDomainFWUpdateOpaque = NULL;
-diff --git a/src/conf/nwfilter_conf.h b/src/conf/nwfilter_conf.h
-index 29906f1..d460a08 100644
---- a/src/conf/nwfilter_conf.h
-+++ b/src/conf/nwfilter_conf.h
-@@ -716,7 +716,8 @@ virNWFilterDefPtr virNWFilterDefParseFile(const char *filename);
+Index: libvirt-1.1.1/src/conf/nwfilter_conf.h
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/nwfilter_conf.h	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/conf/nwfilter_conf.h	2014-03-25 14:15:26.914627547 -0500
+@@ -716,7 +716,8 @@ virNWFilterDefPtr virNWFilterDefParseFil
  void virNWFilterObjLock(virNWFilterObjPtr obj);
  void virNWFilterObjUnlock(virNWFilterObjPtr obj);
  
@@ -153,10 +153,10 @@ index 29906f1..d460a08 100644
  void virNWFilterUnlockFilterUpdates(void);
  
  int virNWFilterConfLayerInit(virDomainObjListIterator domUpdateCB, void *opaque);
-diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
-index 609ad8b..e49ee71 100644
---- a/src/libvirt_private.syms
-+++ b/src/libvirt_private.syms
+Index: libvirt-1.1.1/src/libvirt_private.syms
+===================================================================
+--- libvirt-1.1.1.orig/src/libvirt_private.syms	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/libvirt_private.syms	2014-03-25 14:15:26.914627547 -0500
 @@ -564,7 +564,6 @@ virNWFilterDefParseString;
  virNWFilterInstFiltersOnAllVMs;
  virNWFilterJumpTargetTypeToString;
@@ -181,11 +181,11 @@ index 609ad8b..e49ee71 100644
  
  
  # conf/nwfilter_ipaddrmap.h
-diff --git a/src/lxc/lxc_driver.c b/src/lxc/lxc_driver.c
-index 924a034..8658215 100644
---- a/src/lxc/lxc_driver.c
-+++ b/src/lxc/lxc_driver.c
-@@ -1015,6 +1015,8 @@ static int lxcDomainCreateWithFiles(virDomainPtr dom,
+Index: libvirt-1.1.1/src/lxc/lxc_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/lxc/lxc_driver.c	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/lxc/lxc_driver.c	2014-03-25 14:15:26.918627547 -0500
+@@ -935,6 +935,8 @@ static int lxcDomainCreateWithFiles(virD
  
      virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, -1);
  
@@ -194,7 +194,7 @@ index 924a034..8658215 100644
      if (!(vm = lxcDomObjFromDomain(dom)))
          goto cleanup;
  
-@@ -1053,6 +1055,7 @@ cleanup:
+@@ -973,6 +975,7 @@ cleanup:
      if (event)
          virDomainEventStateQueue(driver->domainEventState, event);
      virObjectUnref(cfg);
@@ -202,7 +202,7 @@ index 924a034..8658215 100644
      return ret;
  }
  
-@@ -1109,6 +1112,8 @@ lxcDomainCreateXMLWithFiles(virConnectPtr conn,
+@@ -1029,6 +1032,8 @@ lxcDomainCreateXMLWithFiles(virConnectPt
  
      virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, NULL);
  
@@ -211,7 +211,7 @@ index 924a034..8658215 100644
      if (!(caps = virLXCDriverGetCapabilities(driver, false)))
          goto cleanup;
  
-@@ -1164,6 +1169,7 @@ cleanup:
+@@ -1084,6 +1089,7 @@ cleanup:
          virDomainEventStateQueue(driver->domainEventState, event);
      virObjectUnref(caps);
      virObjectUnref(cfg);
@@ -219,10 +219,10 @@ index 924a034..8658215 100644
      return dom;
  }
  
-diff --git a/src/nwfilter/nwfilter_driver.c b/src/nwfilter/nwfilter_driver.c
-index de28205..15c644d 100644
---- a/src/nwfilter/nwfilter_driver.c
-+++ b/src/nwfilter/nwfilter_driver.c
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_driver.c	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_driver.c	2014-03-25 14:15:26.918627547 -0500
 @@ -279,12 +279,14 @@ nwfilterStateReload(void)
      virNWFilterLearnThreadsTerminate(true);
  
@@ -277,11 +277,11 @@ index de28205..15c644d 100644
      nwfilterDriverUnlock(driver);
      return ret;
  }
-diff --git a/src/nwfilter/nwfilter_gentech_driver.c b/src/nwfilter/nwfilter_gentech_driver.c
-index f517569..203ba0e 100644
---- a/src/nwfilter/nwfilter_gentech_driver.c
-+++ b/src/nwfilter/nwfilter_gentech_driver.c
-@@ -934,8 +934,6 @@ _virNWFilterInstantiateFilter(virNWFilterDriverStatePtr driver,
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_gentech_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_gentech_driver.c	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_gentech_driver.c	2014-03-25 14:15:26.918627547 -0500
+@@ -934,8 +934,6 @@ _virNWFilterInstantiateFilter(virNWFilte
      int ifindex;
      int rc;
  
@@ -290,7 +290,7 @@ index f517569..203ba0e 100644
      /* after grabbing the filter update lock check for the interface; if
         it's not there anymore its filters will be or are being removed
         (while holding the lock) and we don't want to build new ones */
-@@ -963,8 +961,6 @@ _virNWFilterInstantiateFilter(virNWFilterDriverStatePtr driver,
+@@ -963,8 +961,6 @@ _virNWFilterInstantiateFilter(virNWFilte
                                          foundNewFilter);
  
  cleanup:
@@ -299,7 +299,7 @@ index f517569..203ba0e 100644
      return rc;
  }
  
-@@ -983,7 +979,7 @@ virNWFilterInstantiateFilterLate(virNWFilterDriverStatePtr driver,
+@@ -983,7 +979,7 @@ virNWFilterInstantiateFilterLate(virNWFi
      int rc;
      bool foundNewFilter = false;
  
@@ -308,11 +308,11 @@ index f517569..203ba0e 100644
  
      rc = __virNWFilterInstantiateFilter(driver,
                                          vmuuid,
-diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
-index 7b28ea8..8b7388c 100644
---- a/src/qemu/qemu_driver.c
-+++ b/src/qemu/qemu_driver.c
-@@ -1570,6 +1570,8 @@ static virDomainPtr qemuDomainCreateXML(virConnectPtr conn,
+Index: libvirt-1.1.1/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/qemu/qemu_driver.c	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/qemu/qemu_driver.c	2014-03-25 14:15:26.926627547 -0500
+@@ -1570,6 +1570,8 @@ static virDomainPtr qemuDomainCreateXML(
      if (flags & VIR_DOMAIN_START_AUTODESTROY)
          start_flags |= VIR_QEMU_PROCESS_START_AUTODESTROY;
  
@@ -329,7 +329,7 @@ index 7b28ea8..8b7388c 100644
      return dom;
  }
  
-@@ -6101,6 +6104,8 @@ qemuDomainCreateWithFlags(virDomainPtr dom, unsigned int flags)
+@@ -6101,6 +6104,8 @@ qemuDomainCreateWithFlags(virDomainPtr d
                    VIR_DOMAIN_START_BYPASS_CACHE |
                    VIR_DOMAIN_START_FORCE_BOOT, -1);
  
@@ -346,11 +346,11 @@ index 7b28ea8..8b7388c 100644
      return ret;
  }
  
-diff --git a/src/uml/uml_driver.c b/src/uml/uml_driver.c
-index eb02542..b580b32 100644
---- a/src/uml/uml_driver.c
-+++ b/src/uml/uml_driver.c
-@@ -1574,6 +1574,7 @@ static virDomainPtr umlDomainCreateXML(virConnectPtr conn, const char *xml,
+Index: libvirt-1.1.1/src/uml/uml_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/uml/uml_driver.c	2014-03-25 14:15:26.930627547 -0500
++++ libvirt-1.1.1/src/uml/uml_driver.c	2014-03-25 14:15:26.926627547 -0500
+@@ -1574,6 +1574,7 @@ static virDomainPtr umlDomainCreateXML(v
  
      virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, NULL);
  
@@ -366,7 +366,7 @@ index eb02542..b580b32 100644
      return dom;
  }
  
-@@ -1997,6 +1999,7 @@ static int umlDomainCreateWithFlags(virDomainPtr dom, unsigned int flags) {
+@@ -1997,6 +1999,7 @@ static int umlDomainCreateWithFlags(virD
  
      virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, -1);
  

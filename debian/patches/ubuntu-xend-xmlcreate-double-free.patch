@@ -8,11 +8,11 @@ callee.
 
 Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
-Index: libvirt-1.0.6/src/xen/xend_internal.c
+Index: libvirt-1.1.1/src/xen/xend_internal.c
 ===================================================================
---- libvirt-1.0.6.orig/src/xen/xend_internal.c	2013-05-27 14:54:08.000000000 +0200
-+++ libvirt-1.0.6/src/xen/xend_internal.c	2013-07-30 20:46:09.102792737 +0200
-@@ -2184,7 +2184,6 @@ xenDaemonCreateXML(virConnectPtr conn, v
+--- libvirt-1.1.1.orig/src/xen/xend_internal.c	2014-03-25 14:15:15.458627290 -0500
++++ libvirt-1.1.1/src/xen/xend_internal.c	2014-03-25 14:15:15.450627289 -0500
+@@ -2171,7 +2171,6 @@ xenDaemonCreateXML(virConnectPtr conn, v
      if (xenDaemonDomainResume(conn, def) < 0)
          goto error;
  

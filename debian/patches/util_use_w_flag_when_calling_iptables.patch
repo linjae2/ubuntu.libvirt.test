@@ -11,10 +11,10 @@ Date:   Fri Nov 1 12:36:59 2013 -0500
     
     Signed-off-by: Serge Hallyn <serge.hallyn@ubuntu.com>
 
-Index: libvirt-1.1.4/src/util/viriptables.c
+Index: libvirt-1.1.1/src/util/viriptables.c
 ===================================================================
---- libvirt-1.1.4.orig/src/util/viriptables.c	2013-11-12 11:48:41.471866972 -0600
-+++ libvirt-1.1.4/src/util/viriptables.c	2013-11-12 11:48:41.455866972 -0600
+--- libvirt-1.1.1.orig/src/util/viriptables.c	2014-03-25 14:15:22.446627447 -0500
++++ libvirt-1.1.1/src/util/viriptables.c	2014-03-25 14:15:22.442627447 -0500
 @@ -50,19 +50,25 @@
  #include "virstring.h"
  #include "virutil.h"
@@ -43,7 +43,7 @@ Index: libvirt-1.1.4/src/util/viriptables.c
  
          virCommandAddArgList(cmd, "--state", NULL);
          if (virCommandRun(cmd, &status) < 0 || status != 0) {
-@@ -74,13 +80,26 @@
+@@ -74,13 +80,26 @@ virIpTablesOnceInit(void)
          }
          virCommandFree(cmd);
      }
@@ -72,7 +72,7 @@ Index: libvirt-1.1.4/src/util/viriptables.c
  #define VIR_FROM_THIS VIR_FROM_NONE
  
  enum {
-@@ -92,8 +111,8 @@
+@@ -92,8 +111,8 @@ static virCommandPtr
  iptablesCommandNew(const char *table, const char *chain, int family, int action)
  {
      virCommandPtr cmd = NULL;
@@ -82,7 +82,7 @@ Index: libvirt-1.1.4/src/util/viriptables.c
      if (firewall_cmd_path) {
          cmd = virCommandNew(firewall_cmd_path);
          virCommandAddArgList(cmd, "--direct", "--passthrough",
-@@ -104,6 +123,9 @@
+@@ -104,6 +123,9 @@ iptablesCommandNew(const char *table, co
      if (cmd == NULL) {
          cmd = virCommandNew((family == AF_INET6)
                          ? IP6TABLES_PATH : IPTABLES_PATH);

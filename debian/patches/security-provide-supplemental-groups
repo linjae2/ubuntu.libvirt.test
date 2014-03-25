@@ -40,11 +40,11 @@ Date:   Fri Aug 23 09:30:42 2013 -0600
     
     Signed-off-by: Eric Blake <eblake@redhat.com>
 
-diff --git a/src/security/security_dac.c b/src/security/security_dac.c
-index 8cbb083..6876bd5 100644
---- a/src/security/security_dac.c
-+++ b/src/security/security_dac.c
-@@ -115,13 +115,13 @@ virSecurityDACGetIds(virDomainDefPtr def, virSecurityDACDataPtr priv,
+Index: libvirt-1.1.1/src/security/security_dac.c
+===================================================================
+--- libvirt-1.1.1.orig/src/security/security_dac.c	2014-03-25 14:15:20.306627399 -0500
++++ libvirt-1.1.1/src/security/security_dac.c	2014-03-25 14:15:20.298627398 -0500
+@@ -115,13 +115,13 @@ virSecurityDACGetIds(virDomainDefPtr def
          return -1;
      }
  
@@ -64,7 +64,7 @@ index 8cbb083..6876bd5 100644
  
      if (!priv) {
          virReportError(VIR_ERR_INTERNAL_ERROR,
-@@ -134,10 +134,6 @@ virSecurityDACGetIds(virDomainDefPtr def, virSecurityDACDataPtr priv,
+@@ -134,10 +134,6 @@ virSecurityDACGetIds(virDomainDefPtr def
          *uidPtr = priv->user;
      if (gidPtr)
          *gidPtr = priv->group;

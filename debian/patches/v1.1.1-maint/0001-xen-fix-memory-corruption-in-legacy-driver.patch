@@ -7,33 +7,11 @@ Commit 632180d1 introduced memory corruption in xenDaemonListDefinedDomains
 by starting to populate the names array at index -1, causing all sorts
 of havoc in libvirtd such as aborts like the following
 
-*** Error in `/usr/sbin/libvirtd': double free or corruption (out): 0x00007fffe00ccf20 ***
-======= Backtrace: =========
-/lib64/libc.so.6(+0x7abf6)[0x7ffff3fa0bf6]
-/lib64/libc.so.6(+0x7b973)[0x7ffff3fa1973]
-/lib64/libc.so.6(xdr_array+0xde)[0x7ffff403cbae]
-/usr/sbin/libvirtd(+0x50251)[0x5555555a4251]
-/lib64/libc.so.6(xdr_free+0x15)[0x7ffff403ccd5]
-/usr/lib64/libvirt.so.0(+0x1fad34)[0x7ffff76b1d34]
-/usr/lib64/libvirt.so.0(virNetServerProgramDispatch+0x1fc)[0x7ffff76b16f1]
-/usr/lib64/libvirt.so.0(+0x1f214a)[0x7ffff76a914a]
-/usr/lib64/libvirt.so.0(+0x1f222d)[0x7ffff76a922d]
-/usr/lib64/libvirt.so.0(+0xbcc4f)[0x7ffff7573c4f]
-/usr/lib64/libvirt.so.0(+0xbc5e5)[0x7ffff75735e5]
-/lib64/libpthread.so.0(+0x7e0f)[0x7ffff48f7e0f]
-/lib64/libc.so.6(clone+0x6d)[0x7ffff400e7dd]
-
-Fix by initializing ret to 0 and only setting to error on failure path.
-(cherry picked from commit 0e671a1646df543eab683b38f6644f70d12fbee1)
----
- src/xen/xend_internal.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/src/xen/xend_internal.c b/src/xen/xend_internal.c
-index 9d61fca..01e74bd 100644
---- a/src/xen/xend_internal.c
-+++ b/src/xen/xend_internal.c
-@@ -2897,7 +2897,7 @@ xenDaemonListDefinedDomains(virConnectPtr conn,
+Index: libvirt-1.1.1/src/xen/xend_internal.c
+===================================================================
+--- libvirt-1.1.1.orig/src/xen/xend_internal.c	2014-03-25 14:15:16.506627313 -0500
++++ libvirt-1.1.1/src/xen/xend_internal.c	2014-03-25 14:15:16.498627313 -0500
+@@ -2896,7 +2896,7 @@ xenDaemonListDefinedDomains(virConnectPt
  {
      struct sexpr *root = NULL;
      size_t i;
@@ -42,7 +20,7 @@ index 9d61fca..01e74bd 100644
      struct sexpr *_for_i, *node;
  
      if (maxnames == 0)
-@@ -2920,16 +2920,15 @@ xenDaemonListDefinedDomains(virConnectPtr conn,
+@@ -2919,16 +2919,15 @@ xenDaemonListDefinedDomains(virConnectPt
              break;
      }
  
@@ -61,6 +39,3 @@ index 9d61fca..01e74bd 100644
      goto cleanup;
  }
  
--- 
-1.8.3.2
-

@@ -1,0 +1,29 @@
+commit 5953a73787b50da56e2ee820a8095ccb09c7a79b
+Author: Cole Robinson <crobinso@redhat.com>
+Date:   Thu Dec 5 15:03:00 2013 -0500
+
+    qemu: hotplug: Fix double free on USB collision
+    
+    If we hit a collision, we free the USB device while it is still part
+    of our temporary USBDeviceList. When the list is unref'd, the device
+    is free'd again.
+    
+    Make the initial device freeing dependent on whether it is present
+    in the temporary list or not.
+
+Index: libvirt-1.1.1/src/qemu/qemu_hotplug.c
+===================================================================
+--- libvirt-1.1.1.orig/src/qemu/qemu_hotplug.c	2014-03-25 14:15:28.478627582 -0500
++++ libvirt-1.1.1/src/qemu/qemu_hotplug.c	2014-03-25 14:15:28.474627582 -0500
+@@ -1349,7 +1349,10 @@ cleanup:
+     }
+     if (added)
+         virUSBDeviceListSteal(driver->activeUsbHostdevs, usb);
+-    virUSBDeviceFree(usb);
++    if (list && usb &&
++        !virUSBDeviceListFind(list, usb) &&
++        !virUSBDeviceListFind(driver->activeUsbHostdevs, usb))
++        virUSBDeviceFree(usb);
+     virObjectUnref(list);
+     VIR_FREE(devstr);
+     return ret;
