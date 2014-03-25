@@ -17,10 +17,10 @@ https://bugzilla.redhat.com/show_bug.cgi?id=997765
  tools/virsh-domain.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/tools/virsh-domain.c b/tools/virsh-domain.c
-index 57065e4..b275119 100644
---- a/tools/virsh-domain.c
-+++ b/tools/virsh-domain.c
+Index: libvirt-1.1.1/tools/virsh-domain.c
+===================================================================
+--- libvirt-1.1.1.orig/tools/virsh-domain.c	2014-03-25 14:15:19.218627374 -0500
++++ libvirt-1.1.1/tools/virsh-domain.c	2014-03-25 14:15:19.210627374 -0500
 @@ -6235,6 +6235,7 @@ cleanup:
      }
      VIR_FREE(list);
@@ -29,6 +29,3 @@ index 57065e4..b275119 100644
  
      return ret;
  
--- 
-1.8.3.2
-

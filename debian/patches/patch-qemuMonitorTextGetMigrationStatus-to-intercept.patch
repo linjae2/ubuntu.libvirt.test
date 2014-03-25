@@ -38,10 +38,11 @@ info migration  -- show migration information
 This patch triggers for 'info migration' in reply to 'info migrate' command
 to savely detect that the command 'info migrate' is not implemented.
 
-diff -Naupr libvirt-1.0.5.orig/src/qemu/qemu_monitor_text.c libvirt-1.0.5/src/qemu/qemu_monitor_text.c
---- libvirt-1.0.5.orig/src/qemu/qemu_monitor_text.c	2013-03-22 08:29:10.000000000 -0500
-+++ libvirt-1.0.5/src/qemu/qemu_monitor_text.c	2013-05-02 11:49:49.601771203 -0500
-@@ -1572,7 +1572,15 @@ int qemuMonitorTextGetMigrationStatus(qe
+Index: libvirt-1.1.1/src/qemu/qemu_monitor_text.c
+===================================================================
+--- libvirt-1.1.1.orig/src/qemu/qemu_monitor_text.c	2014-03-25 14:15:09.794627162 -0500
++++ libvirt-1.1.1/src/qemu/qemu_monitor_text.c	2014-03-25 14:15:09.786627162 -0500
+@@ -1533,7 +1533,15 @@ int qemuMonitorTextGetMigrationStatus(qe
              }
              status->disk_total *= 1024;
          }

@@ -12,11 +12,11 @@ Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=996050
  tools/virsh-domain.c | 6 ++++++
  1 file changed, 6 insertions(+)
 
-diff --git a/tools/virsh-domain.c b/tools/virsh-domain.c
-index 8cafce4..57065e4 100644
---- a/tools/virsh-domain.c
-+++ b/tools/virsh-domain.c
-@@ -3048,6 +3048,8 @@ cmdUndefine(vshControl *ctl, const vshCmd *cmd)
+Index: libvirt-1.1.1/tools/virsh-domain.c
+===================================================================
+--- libvirt-1.1.1.orig/tools/virsh-domain.c	2014-03-25 14:15:18.882627367 -0500
++++ libvirt-1.1.1/tools/virsh-domain.c	2014-03-25 14:15:18.878627366 -0500
+@@ -3048,6 +3048,8 @@ cmdUndefine(vshControl *ctl, const vshCm
  
          for (i = 0; i < nvolumes; i++) {
              ctxt->node = vol_nodes[i];
@@ -25,7 +25,7 @@ index 8cafce4..57065e4 100644
  
              /* get volume source and target paths */
              if (!(target = virXPathString("string(./target/@dev)", ctxt)))
-@@ -3090,6 +3092,8 @@ cmdUndefine(vshControl *ctl, const vshCmd *cmd)
+@@ -3090,6 +3092,8 @@ cmdUndefine(vshControl *ctl, const vshCm
              }
              vlist[nvols].source = source;
              vlist[nvols].target = target;
@@ -43,6 +43,3 @@ index 8cafce4..57065e4 100644
      for (i = 0; i < nvols; i++) {
          VIR_FREE(vlist[i].source);
          VIR_FREE(vlist[i].target);
--- 
-1.8.3.2
-

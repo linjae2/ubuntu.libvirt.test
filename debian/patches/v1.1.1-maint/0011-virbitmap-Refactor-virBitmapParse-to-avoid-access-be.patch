@@ -30,10 +30,10 @@ by commit 0fc8909.
  src/util/virbitmap.c | 38 +++++++++++++++-----------------------
  1 file changed, 15 insertions(+), 23 deletions(-)
 
-diff --git a/src/util/virbitmap.c b/src/util/virbitmap.c
-index 7e1cd02..47c678e 100644
---- a/src/util/virbitmap.c
-+++ b/src/util/virbitmap.c
+Index: libvirt-1.1.1/src/util/virbitmap.c
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virbitmap.c	2014-03-25 14:15:19.562627382 -0500
++++ libvirt-1.1.1/src/util/virbitmap.c	2014-03-25 14:15:19.554627382 -0500
 @@ -297,7 +297,6 @@ virBitmapParse(const char *str,
                 virBitmapPtr *bitmap,
                 size_t bitmapSize)
@@ -121,6 +121,3 @@ index 7e1cd02..47c678e 100644
      virBitmapFree(*bitmap);
      *bitmap = NULL;
      return -1;
--- 
-1.8.3.2
-

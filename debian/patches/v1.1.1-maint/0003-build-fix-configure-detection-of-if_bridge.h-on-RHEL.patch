@@ -33,10 +33,10 @@ Signed-off-by: Eric Blake <eblake@redhat.com>
  configure.ac | 9 ++++++++-
  1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/configure.ac b/configure.ac
-index 35a5d76..df11f23 100644
---- a/configure.ac
-+++ b/configure.ac
+Index: libvirt-1.1.1/configure.ac
+===================================================================
+--- libvirt-1.1.1.orig/configure.ac	2014-03-25 14:15:17.178627328 -0500
++++ libvirt-1.1.1/configure.ac	2014-03-25 14:15:17.170627328 -0500
 @@ -997,7 +997,14 @@ if test "$with_linux" = "yes"; then
    if test "$with_qemu" = "yes" || test "$with_lxc" = "yes" ; then
      AC_CHECK_HEADERS([linux/param.h linux/sockios.h linux/if_bridge.h linux/if_tun.h],,
@@ -53,6 +53,3 @@ index 35a5d76..df11f23 100644
        ]])
    fi
  fi
--- 
-1.8.3.2
-

@@ -9,10 +9,10 @@ Date:   Wed Jan 22 15:26:21 2014 +0000
     Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
     (cherry picked from commit c065984b58000a44c90588198d222a314ac532fd)
 
-diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
-index d9615ea..609ad8b 100644
---- a/src/libvirt_private.syms
-+++ b/src/libvirt_private.syms
+Index: libvirt-1.1.1/src/libvirt_private.syms
+===================================================================
+--- libvirt-1.1.1.orig/src/libvirt_private.syms	2014-03-25 14:15:26.458627537 -0500
++++ libvirt-1.1.1/src/libvirt_private.syms	2014-03-25 14:15:26.450627537 -0500
 @@ -1950,6 +1950,11 @@ virMutexInitRecursive;
  virMutexLock;
  virMutexUnlock;
@@ -25,10 +25,10 @@ index d9615ea..609ad8b 100644
  virThreadCancel;
  virThreadCreate;
  virThreadID;
-diff --git a/src/util/virthread.h b/src/util/virthread.h
-index 84d3bdc..7015d60 100644
---- a/src/util/virthread.h
-+++ b/src/util/virthread.h
+Index: libvirt-1.1.1/src/util/virthread.h
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virthread.h	2014-03-25 14:15:26.458627537 -0500
++++ libvirt-1.1.1/src/util/virthread.h	2014-03-25 14:15:26.450627537 -0500
 @@ -28,6 +28,9 @@
  typedef struct virMutex virMutex;
  typedef virMutex *virMutexPtr;
@@ -53,10 +53,10 @@ index 84d3bdc..7015d60 100644
  
  int virCondInit(virCondPtr c) ATTRIBUTE_RETURN_CHECK;
  int virCondDestroy(virCondPtr c);
-diff --git a/src/util/virthreadpthread.c b/src/util/virthreadpthread.c
-index ca841e4..38b6454 100644
---- a/src/util/virthreadpthread.c
-+++ b/src/util/virthreadpthread.c
+Index: libvirt-1.1.1/src/util/virthreadpthread.c
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virthreadpthread.c	2014-03-25 14:15:26.458627537 -0500
++++ libvirt-1.1.1/src/util/virthreadpthread.c	2014-03-25 14:15:26.450627537 -0500
 @@ -91,6 +91,39 @@ void virMutexUnlock(virMutexPtr m)
  }
  
@@ -97,10 +97,10 @@ index ca841e4..38b6454 100644
  int virCondInit(virCondPtr c)
  {
      int ret;
-diff --git a/src/util/virthreadpthread.h b/src/util/virthreadpthread.h
-index b9f1319..cb607d0 100644
---- a/src/util/virthreadpthread.h
-+++ b/src/util/virthreadpthread.h
+Index: libvirt-1.1.1/src/util/virthreadpthread.h
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virthreadpthread.h	2014-03-25 14:15:26.458627537 -0500
++++ libvirt-1.1.1/src/util/virthreadpthread.h	2014-03-25 14:15:26.450627537 -0500
 @@ -27,6 +27,10 @@ struct virMutex {
      pthread_mutex_t lock;
  };
@@ -112,10 +112,10 @@ index b9f1319..cb607d0 100644
  struct virCond {
      pthread_cond_t cond;
  };
-diff --git a/src/util/virthreadwin32.c b/src/util/virthreadwin32.c
-index 5d6277f..a9e2353 100644
---- a/src/util/virthreadwin32.c
-+++ b/src/util/virthreadwin32.c
+Index: libvirt-1.1.1/src/util/virthreadwin32.c
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virthreadwin32.c	2014-03-25 14:15:26.458627537 -0500
++++ libvirt-1.1.1/src/util/virthreadwin32.c	2014-03-25 14:15:26.454627537 -0500
 @@ -123,6 +123,25 @@ void virMutexUnlock(virMutexPtr m)
  }
  
@@ -142,10 +142,10 @@ index 5d6277f..a9e2353 100644
  
  int virCondInit(virCondPtr c)
  {
-diff --git a/src/util/virthreadwin32.h b/src/util/virthreadwin32.h
-index 645031b..31d9444 100644
---- a/src/util/virthreadwin32.h
-+++ b/src/util/virthreadwin32.h
+Index: libvirt-1.1.1/src/util/virthreadwin32.h
+===================================================================
+--- libvirt-1.1.1.orig/src/util/virthreadwin32.h	2014-03-25 14:15:26.458627537 -0500
++++ libvirt-1.1.1/src/util/virthreadwin32.h	2014-03-25 14:15:26.454627537 -0500
 @@ -30,6 +30,10 @@ struct virMutex {
      HANDLE lock;
  };

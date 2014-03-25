@@ -23,8 +23,8 @@ Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
 
 Index: libvirt-1.1.1/daemon/remote.c
 ===================================================================
---- libvirt-1.1.1.orig/daemon/remote.c	2013-10-02 08:14:50.364968929 -0500
-+++ libvirt-1.1.1/daemon/remote.c	2013-10-02 08:14:50.360968928 -0500
+--- libvirt-1.1.1.orig/daemon/remote.c	2014-03-25 14:15:21.426627424 -0500
++++ libvirt-1.1.1/daemon/remote.c	2014-03-25 14:15:21.418627424 -0500
 @@ -666,8 +666,11 @@ void remoteClientFreeFunc(void *data)
  
      /* Deregister event delivery callback */

@@ -12,10 +12,10 @@ Date:   Wed Sep 25 15:26:58 2013 +0100
     Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
     (cherry picked from commit 4f2094346d98f4ed6a2de115d204c166cc563496)
 
-diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
-index a3901d3..fe4363c 100644
---- a/src/conf/nwfilter_conf.c
-+++ b/src/conf/nwfilter_conf.c
+Index: libvirt-1.1.1/src/conf/nwfilter_conf.c
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/nwfilter_conf.c	2014-03-25 14:15:24.742627498 -0500
++++ libvirt-1.1.1/src/conf/nwfilter_conf.c	2014-03-25 14:15:24.734627498 -0500
 @@ -2369,9 +2369,7 @@ virNWFilterRuleParse(xmlNodePtr node)
                      if (virNWFilterRuleDetailsParse(cur,
                                                      ret,
@@ -27,7 +27,7 @@ index a3901d3..fe4363c 100644
                      }
                      break;
                  }
-@@ -2572,11 +2570,13 @@ virNWFilterDefParseXML(xmlXPathContextPtr ctxt) {
+@@ -2572,11 +2570,13 @@ virNWFilterDefParseXML(xmlXPathContextPt
              if (VIR_ALLOC(entry) < 0)
                  goto cleanup;
  
@@ -46,11 +46,11 @@ index a3901d3..fe4363c 100644
  
              if (entry->rule || entry->include) {
                  if (VIR_REALLOC_N(ret->filterEntries, ret->nentries+1) < 0) {
-diff --git a/tests/nwfilterxml2xmltest.c b/tests/nwfilterxml2xmltest.c
-index 5476284..84e61da 100644
---- a/tests/nwfilterxml2xmltest.c
-+++ b/tests/nwfilterxml2xmltest.c
-@@ -36,15 +36,12 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
+Index: libvirt-1.1.1/tests/nwfilterxml2xmltest.c
+===================================================================
+--- libvirt-1.1.1.orig/tests/nwfilterxml2xmltest.c	2014-03-25 14:15:24.742627498 -0500
++++ libvirt-1.1.1/tests/nwfilterxml2xmltest.c	2014-03-25 14:15:24.734627498 -0500
+@@ -36,15 +36,12 @@ testCompareXMLToXMLFiles(const char *inx
  
      virResetLastError();
  
@@ -71,7 +71,7 @@ index 5476284..84e61da 100644
      }
  
      if (!(actual = virNWFilterDefFormat(dev)))
-@@ -55,6 +52,7 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
+@@ -55,6 +52,7 @@ testCompareXMLToXMLFiles(const char *inx
          goto fail;
      }
  

@@ -13,11 +13,11 @@ the host is uniquely identified.
  src/conf/network_conf.c | 21 +++++----------------
  1 file changed, 5 insertions(+), 16 deletions(-)
 
-diff --git a/src/conf/network_conf.c b/src/conf/network_conf.c
-index b903df9..b358393 100644
---- a/src/conf/network_conf.c
-+++ b/src/conf/network_conf.c
-@@ -3297,6 +3297,7 @@ virNetworkDefUpdateIPDHCPHost(virNetworkDefPtr def,
+Index: libvirt-1.1.1/src/conf/network_conf.c
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/network_conf.c	2014-03-25 14:15:18.538627359 -0500
++++ libvirt-1.1.1/src/conf/network_conf.c	2014-03-25 14:15:18.534627359 -0500
+@@ -3297,6 +3297,7 @@ virNetworkDefUpdateIPDHCPHost(virNetwork
      int ret = -1;
      virNetworkIpDefPtr ipdef = virNetworkIpDefByIndex(def, parentIndex);
      virNetworkDHCPHostDef host;
@@ -25,7 +25,7 @@ index b903df9..b358393 100644
  
      memset(&host, 0, sizeof(host));
  
-@@ -3307,13 +3308,11 @@ virNetworkDefUpdateIPDHCPHost(virNetworkDefPtr def,
+@@ -3307,13 +3308,11 @@ virNetworkDefUpdateIPDHCPHost(virNetwork
      if (!ipdef)
          goto cleanup;
  
@@ -43,7 +43,7 @@ index b903df9..b358393 100644
  
          /* search for the entry with this (mac|name),
           * and update the IP+(mac|name) */
-@@ -3345,11 +3344,6 @@ virNetworkDefUpdateIPDHCPHost(virNetworkDefPtr def,
+@@ -3345,11 +3344,6 @@ virNetworkDefUpdateIPDHCPHost(virNetwork
      } else if ((command == VIR_NETWORK_UPDATE_COMMAND_ADD_FIRST) ||
                 (command == VIR_NETWORK_UPDATE_COMMAND_ADD_LAST)) {
  
@@ -55,7 +55,7 @@ index b903df9..b358393 100644
          /* log error if an entry with same name/address/ip already exists */
          for (i = 0; i < ipdef->nhosts; i++) {
              if ((host.mac &&
-@@ -3379,11 +3373,6 @@ virNetworkDefUpdateIPDHCPHost(virNetworkDefPtr def,
+@@ -3379,11 +3373,6 @@ virNetworkDefUpdateIPDHCPHost(virNetwork
              goto cleanup;
      } else if (command == VIR_NETWORK_UPDATE_COMMAND_DELETE) {
  
@@ -67,6 +67,3 @@ index b903df9..b358393 100644
          /* find matching entry - all specified attributes must match */
          for (i = 0; i < ipdef->nhosts; i++) {
              if ((!host.mac ||
--- 
-1.8.3.2
-

@@ -1184,7 +1184,7 @@ libxlStateInitialize(bool privileged,
 {
     const libxl_version_info *ver_info;
     char *log_file = NULL;
-    char *output;
+    char *output = NULL;
     virCommandPtr cmd;
     int status, ret = 0;
     unsigned int free_mem;
@@ -1196,8 +1196,28 @@ libxlStateInitialize(bool privileged,
         return 0;
     }
 
+    /* Test whether we are running inside a dom0. Testing only for the
+     * presence of the file is not enough as xenfs can be mounted by
+     * any guest.
+     */
+    if (!virFileExists("/proc/xen/capabilities")) {
+        VIR_INFO("Disabling driver as /proc/xen/capabilities does not exist");
+        return 0;
+    }
+    status = virFileReadAll("/proc/xen/capabilities", 10, &output);
+    if (status >= 0) {
+        status = strncmp(output, "control_d", 9);
+    }
+    VIR_FREE(output);
+    output = NULL;
+    if (status) {
+        VIR_INFO("No control_d capabilities detected, probably not running "
+                 "in a Xen Dom0.  Disabling libxenlight driver");
+        return 0;
+    }
+
     /* Disable driver if legacy xen toolstack (xend) is in use */
-    cmd = virCommandNewArgList("usr/lib/xen-common/bin/xen-toolstack", NULL);
+    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
     virCommandSetOutputBuffer(cmd, &output);
     if (virCommandRun(cmd, &status) == 0 && status == 0) {
         int i, j;

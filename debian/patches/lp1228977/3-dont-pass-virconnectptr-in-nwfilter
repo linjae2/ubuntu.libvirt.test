@@ -11,10 +11,10 @@ Date:   Thu Oct 3 12:45:26 2013 +0100
     Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
     (cherry picked from commit ebca369e3fe5ac999c261c2d44e60a1bac3cfe65)
 
-diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
-index a50aa56..0b00b2c 100644
---- a/src/conf/nwfilter_conf.c
-+++ b/src/conf/nwfilter_conf.c
+Index: libvirt-1.1.1/src/conf/nwfilter_conf.c
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/nwfilter_conf.c	2014-03-25 14:15:25.510627516 -0500
++++ libvirt-1.1.1/src/conf/nwfilter_conf.c	2014-03-25 14:15:25.498627515 -0500
 @@ -2849,6 +2849,7 @@ virNWFilterCallbackDriversUnlock(void)
  
  
@@ -23,7 +23,7 @@ index a50aa56..0b00b2c 100644
  
  /**
   * virNWFilterInstFiltersOnAllVMs:
-@@ -2860,7 +2861,7 @@ virNWFilterInstFiltersOnAllVMs(virConnectPtr conn)
+@@ -2860,7 +2861,7 @@ virNWFilterInstFiltersOnAllVMs(virConnec
  {
      size_t i;
      struct domUpdateCBStruct cb = {
@@ -32,7 +32,7 @@ index a50aa56..0b00b2c 100644
          .step = STEP_APPLY_CURRENT,
          .skipInterfaces = NULL, /* not needed */
      };
-@@ -2879,7 +2880,7 @@ virNWFilterTriggerVMFilterRebuild(virConnectPtr conn)
+@@ -2879,7 +2880,7 @@ virNWFilterTriggerVMFilterRebuild(virCon
      size_t i;
      int ret = 0;
      struct domUpdateCBStruct cb = {
@@ -41,7 +41,7 @@ index a50aa56..0b00b2c 100644
          .step = STEP_APPLY_NEW,
          .skipInterfaces = virHashCreate(0, NULL),
      };
-@@ -3473,9 +3474,14 @@ char *virNWFilterConfigFile(const char *dir,
+@@ -3473,9 +3474,14 @@ char *virNWFilterConfigFile(const char *
  }
  
  
@@ -66,10 +66,10 @@ index a50aa56..0b00b2c 100644
  }
  
  
-diff --git a/src/conf/nwfilter_conf.h b/src/conf/nwfilter_conf.h
-index faa7527..e470615 100644
---- a/src/conf/nwfilter_conf.h
-+++ b/src/conf/nwfilter_conf.h
+Index: libvirt-1.1.1/src/conf/nwfilter_conf.h
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/nwfilter_conf.h	2014-03-25 14:15:25.510627516 -0500
++++ libvirt-1.1.1/src/conf/nwfilter_conf.h	2014-03-25 14:15:25.498627515 -0500
 @@ -586,7 +586,7 @@ enum UpdateStep {
  };
  
@@ -79,7 +79,7 @@ index faa7527..e470615 100644
      enum UpdateStep step;
      virHashTablePtr skipInterfaces;
  };
-@@ -722,7 +722,7 @@ void virNWFilterObjUnlock(virNWFilterObjPtr obj);
+@@ -722,7 +722,7 @@ void virNWFilterObjUnlock(virNWFilterObj
  void virNWFilterLockFilterUpdates(void);
  void virNWFilterUnlockFilterUpdates(void);
  
@@ -88,11 +88,11 @@ index faa7527..e470615 100644
  void virNWFilterConfLayerShutdown(void);
  
  int virNWFilterInstFiltersOnAllVMs(virConnectPtr conn);
-diff --git a/src/nwfilter/nwfilter_dhcpsnoop.c b/src/nwfilter/nwfilter_dhcpsnoop.c
-index 3e9f046..2bc1686 100644
---- a/src/nwfilter/nwfilter_dhcpsnoop.c
-+++ b/src/nwfilter/nwfilter_dhcpsnoop.c
-@@ -481,15 +481,15 @@ virNWFilterSnoopIPLeaseInstallRule(virNWFilterSnoopIPLeasePtr ipl,
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_dhcpsnoop.c
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_dhcpsnoop.c	2014-03-25 14:15:25.510627516 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_dhcpsnoop.c	2014-03-25 14:15:25.498627515 -0500
+@@ -481,15 +481,15 @@ virNWFilterSnoopIPLeaseInstallRule(virNW
      /* instantiate the filters */
  
      if (req->ifname)
@@ -111,7 +111,7 @@ index 3e9f046..2bc1686 100644
  
  exit_snooprequnlock:
      virNWFilterSnoopReqUnlock(req);
-@@ -867,15 +867,15 @@ virNWFilterSnoopReqLeaseDel(virNWFilterSnoopReqPtr req,
+@@ -867,15 +867,15 @@ virNWFilterSnoopReqLeaseDel(virNWFilterS
          goto skip_instantiate;
  
      if (ipAddrLeft) {
@@ -130,10 +130,10 @@ index 3e9f046..2bc1686 100644
      } else {
          const virNWFilterVarValuePtr dhcpsrvrs =
              virHashLookup(req->vars->hashTable, NWFILTER_VARNAME_DHCPSERVER);
-diff --git a/src/nwfilter/nwfilter_driver.c b/src/nwfilter/nwfilter_driver.c
-index 24a76f0..6a392da 100644
---- a/src/nwfilter/nwfilter_driver.c
-+++ b/src/nwfilter/nwfilter_driver.c
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_driver.c	2014-03-25 14:15:25.510627516 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_driver.c	2014-03-25 14:15:25.502627515 -0500
 @@ -201,7 +201,8 @@ nwfilterStateInitialize(bool privileged,
  
      virNWFilterTechDriversInit(privileged);
@@ -144,7 +144,7 @@ index 24a76f0..6a392da 100644
          goto err_techdrivers_shutdown;
  
      /*
-@@ -676,7 +677,7 @@ nwfilterInstantiateFilter(virConnectPtr conn,
+@@ -676,7 +677,7 @@ nwfilterInstantiateFilter(virConnectPtr
                            const unsigned char *vmuuid,
                            virDomainNetDefPtr net)
  {
@@ -153,10 +153,10 @@ index 24a76f0..6a392da 100644
  }
  
  
-diff --git a/src/nwfilter/nwfilter_gentech_driver.c b/src/nwfilter/nwfilter_gentech_driver.c
-index ee9195b..f517569 100644
---- a/src/nwfilter/nwfilter_gentech_driver.c
-+++ b/src/nwfilter/nwfilter_gentech_driver.c
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_gentech_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_gentech_driver.c	2014-03-25 14:15:25.510627516 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_gentech_driver.c	2014-03-25 14:15:25.502627515 -0500
 @@ -800,7 +800,8 @@ err_unresolvable_vars:
   * Call this function while holding the NWFilter filter update lock
   */
@@ -167,7 +167,7 @@ index ee9195b..f517569 100644
                                 bool teardownOld,
                                 const char *ifname,
                                 int ifindex,
-@@ -810,7 +811,6 @@ __virNWFilterInstantiateFilter(const unsigned char *vmuuid,
+@@ -810,7 +811,6 @@ __virNWFilterInstantiateFilter(const uns
                                 const char *filtername,
                                 virNWFilterHashTablePtr filterparams,
                                 enum instCase useNewFilter,
@@ -184,7 +184,7 @@ index ee9195b..f517569 100644
                                const unsigned char *vmuuid,
                                const virDomainNetDefPtr net,
                                bool teardownOld,
-@@ -948,7 +948,8 @@ _virNWFilterInstantiateFilter(virConnectPtr conn,
+@@ -948,7 +948,8 @@ _virNWFilterInstantiateFilter(virConnect
          goto cleanup;
      }
  
@@ -194,7 +194,7 @@ index ee9195b..f517569 100644
                                          teardownOld,
                                          net->ifname,
                                          ifindex,
-@@ -958,7 +959,6 @@ _virNWFilterInstantiateFilter(virConnectPtr conn,
+@@ -958,7 +959,6 @@ _virNWFilterInstantiateFilter(virConnect
                                          net->filter,
                                          net->filterparams,
                                          useNewFilter,
@@ -230,7 +230,7 @@ index ee9195b..f517569 100644
                                          true,
                                          ifname,
                                          ifindex,
-@@ -995,7 +996,6 @@ virNWFilterInstantiateFilterLate(const unsigned char *vmuuid,
+@@ -995,7 +996,6 @@ virNWFilterInstantiateFilterLate(const u
                                          filtername,
                                          filterparams,
                                          INSTANTIATE_ALWAYS,
@@ -238,7 +238,7 @@ index ee9195b..f517569 100644
                                          true,
                                          &foundNewFilter);
      if (rc < 0) {
-@@ -1015,13 +1015,13 @@ virNWFilterInstantiateFilterLate(const unsigned char *vmuuid,
+@@ -1015,13 +1015,13 @@ virNWFilterInstantiateFilterLate(const u
  
  
  int
@@ -254,7 +254,7 @@ index ee9195b..f517569 100644
                                           1,
                                           INSTANTIATE_ALWAYS,
                                           &foundNewFilter);
-@@ -1029,14 +1029,14 @@ virNWFilterInstantiateFilter(virConnectPtr conn,
+@@ -1029,14 +1029,14 @@ virNWFilterInstantiateFilter(virConnectP
  
  
  int
@@ -271,7 +271,7 @@ index ee9195b..f517569 100644
                                             0,
                                             INSTANTIATE_FOLLOW_NEWFILTER,
                                             &foundNewFilter);
-@@ -1154,7 +1154,7 @@ virNWFilterDomainFWUpdateCB(virDomainObjPtr obj,
+@@ -1154,7 +1154,7 @@ virNWFilterDomainFWUpdateCB(virDomainObj
              if ((net->filter) && (net->ifname)) {
                  switch (cb->step) {
                  case STEP_APPLY_NEW:
@@ -280,7 +280,7 @@ index ee9195b..f517569 100644
                                                               vm->uuid,
                                                               net,
                                                               &skipIface);
-@@ -1179,7 +1179,7 @@ virNWFilterDomainFWUpdateCB(virDomainObjPtr obj,
+@@ -1179,7 +1179,7 @@ virNWFilterDomainFWUpdateCB(virDomainObj
                      break;
  
                  case STEP_APPLY_CURRENT:
@@ -289,10 +289,10 @@ index ee9195b..f517569 100644
                                                         vm->uuid,
                                                         net);
                      if (ret)
-diff --git a/src/nwfilter/nwfilter_gentech_driver.h b/src/nwfilter/nwfilter_gentech_driver.h
-index 4b47b4a..8528e2a 100644
---- a/src/nwfilter/nwfilter_gentech_driver.h
-+++ b/src/nwfilter/nwfilter_gentech_driver.h
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_gentech_driver.h
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_gentech_driver.h	2014-03-25 14:15:25.510627516 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_gentech_driver.h	2014-03-25 14:15:25.502627515 -0500
 @@ -39,23 +39,23 @@ enum instCase {
  };
  
@@ -322,10 +322,10 @@ index 4b47b4a..8528e2a 100644
  
  int virNWFilterTeardownFilter(const virDomainNetDefPtr net);
  
-diff --git a/src/nwfilter/nwfilter_learnipaddr.c b/src/nwfilter/nwfilter_learnipaddr.c
-index 7e67203..093158a 100644
---- a/src/nwfilter/nwfilter_learnipaddr.c
-+++ b/src/nwfilter/nwfilter_learnipaddr.c
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_learnipaddr.c
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_learnipaddr.c	2014-03-25 14:15:25.510627516 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_learnipaddr.c	2014-03-25 14:15:25.502627515 -0500
 @@ -612,15 +612,15 @@ learnIPAddressThread(void *arg)
                            "cache for interface %s"), inetaddr, req->ifname);
              }

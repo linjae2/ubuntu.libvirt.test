@@ -1,3 +1,18 @@
+libvirt (1.1.1-0ubuntu8.8) saucy-proposed; urgency=medium
+
+  [ Stefan Bader ]
+  * debian/patches/ubuntu-xend-probe.patch: Fix search path for xen-toolstack
+    command (LP: #1248025)
+  * debian/patches/libxl-fix-dom0-detection.patch: Check contents of
+    /proc/xen/capabilities to decide whether running in dom0. (LP: #1248025)
+
+  [ Serge Hallyn ]
+  * debian/libvirt-dev.install: add libvirt-lxc.so (LP: #1287232)
+  * d/p/lp1264465: cherrypick upstream patches to fix usb hotplug by
+    vendor/product (LP: #1264465)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 25 Mar 2014 14:01:04 -0500
+
 libvirt (1.1.1-0ubuntu8.7) saucy-proposed; urgency=medium
 
   * cherrypick d/p/add-a-mutex-to-serialize-updates-to-firewall from

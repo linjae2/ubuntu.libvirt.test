@@ -8,10 +8,10 @@ use the same approach for the xm stack.
 
 Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
  
-Index: libvirt-1.0.6/src/libxl/libxl_conf.c
+Index: libvirt-1.1.1/src/libxl/libxl_conf.c
 ===================================================================
---- libvirt-1.0.6.orig/src/libxl/libxl_conf.c	2013-05-27 14:54:08.000000000 +0200
-+++ libvirt-1.0.6/src/libxl/libxl_conf.c	2013-07-15 14:15:45.447524527 +0200
+--- libvirt-1.1.1.orig/src/libxl/libxl_conf.c	2014-03-25 14:15:14.762627274 -0500
++++ libvirt-1.1.1/src/libxl/libxl_conf.c	2014-03-25 14:15:14.758627274 -0500
 @@ -91,12 +91,9 @@ libxlBuildCapabilities(virArch hostarch,
          if ((guest = virCapabilitiesAddGuest(caps,
                                               guest_archs[i].hvm ? "hvm" : "xen",

@@ -12,10 +12,10 @@ The change breaks configure on any recent Fedora platform
  configure.ac | 9 +--------
  1 file changed, 1 insertion(+), 8 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index df11f23..35a5d76 100644
---- a/configure.ac
-+++ b/configure.ac
+Index: libvirt-1.1.1/configure.ac
+===================================================================
+--- libvirt-1.1.1.orig/configure.ac	2014-03-25 14:15:17.510627336 -0500
++++ libvirt-1.1.1/configure.ac	2014-03-25 14:15:17.502627336 -0500
 @@ -997,14 +997,7 @@ if test "$with_linux" = "yes"; then
    if test "$with_qemu" = "yes" || test "$with_lxc" = "yes" ; then
      AC_CHECK_HEADERS([linux/param.h linux/sockios.h linux/if_bridge.h linux/if_tun.h],,
@@ -32,6 +32,3 @@ index df11f23..35a5d76 100644
        ]])
    fi
  fi
--- 
-1.8.3.2
-

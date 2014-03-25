@@ -11,11 +11,11 @@ https://bugzilla.redhat.com/show_bug.cgi?id=991334
  src/qemu/qemu_process.c | 7 +++----
  1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
-index d631a6f..fad2fe8 100644
---- a/src/qemu/qemu_process.c
-+++ b/src/qemu/qemu_process.c
-@@ -1435,18 +1435,17 @@ qemuProcessReadLog(int fd, char *buf, int buflen, int off)
+Index: libvirt-1.1.1/src/qemu/qemu_process.c
+===================================================================
+--- libvirt-1.1.1.orig/src/qemu/qemu_process.c	2014-03-25 14:15:18.194627351 -0500
++++ libvirt-1.1.1/src/qemu/qemu_process.c	2014-03-25 14:15:18.190627351 -0500
+@@ -1435,18 +1435,17 @@ qemuProcessReadLog(int fd, char *buf, in
      ssize_t bytes;
      char *eol;
  
@@ -37,6 +37,3 @@ index d631a6f..fad2fe8 100644
          /* Filter out debug messages from intermediate libvirt process */
          while ((eol = strchr(filter_next, '\n'))) {
              *eol = '\0';
--- 
-1.8.3.2
-

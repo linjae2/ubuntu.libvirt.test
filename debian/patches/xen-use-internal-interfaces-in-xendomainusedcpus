@@ -34,10 +34,10 @@ Date:   Tue Aug 6 12:28:58 2013 +0100
     
     Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
-diff --git a/src/xen/xen_driver.c b/src/xen/xen_driver.c
-index 4ae38d3..cb64de6 100644
---- a/src/xen/xen_driver.c
-+++ b/src/xen/xen_driver.c
+Index: libvirt-1.1.1/src/xen/xen_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/xen/xen_driver.c	2014-03-25 14:15:16.142627305 -0500
++++ libvirt-1.1.1/src/xen/xen_driver.c	2014-03-25 14:15:16.134627305 -0500
 @@ -73,12 +73,19 @@
  
  static int
@@ -101,7 +101,7 @@ index 4ae38d3..cb64de6 100644
          for (n = 0; n < ncpus; n++) {
              for (m = 0; m < priv->nbNodeCpus; m++) {
                  bool used;
-@@ -1416,54 +1426,62 @@ cleanup:
+@@ -1428,54 +1438,62 @@ cleanup:
  }
  
  static int
@@ -186,7 +186,7 @@ index 4ae38d3..cb64de6 100644
      if (dom->id < 0) {
          if (priv->xendConfigVersion < XEND_CONFIG_VERSION_3_0_4)
              ret = xenXMDomainGetVcpusFlags(dom->conn, def, flags);
-@@ -1476,6 +1494,27 @@ xenUnifiedDomainGetVcpusFlags(virDomainPtr dom, unsigned int flags)
+@@ -1488,6 +1506,27 @@ xenUnifiedDomainGetVcpusFlags(virDomainP
              ret = xenDaemonDomainGetVcpusFlags(dom->conn, def, flags);
      }
  
@@ -214,7 +214,7 @@ index 4ae38d3..cb64de6 100644
  cleanup:
      virDomainDefFree(def);
      return ret;
-@@ -1507,7 +1546,7 @@ xenUnifiedDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
+@@ -1519,7 +1558,7 @@ xenUnifiedDomainGetXMLDesc(virDomainPtr
      } else {
          char *cpus;
          xenUnifiedLock(priv);
@@ -223,10 +223,10 @@ index 4ae38d3..cb64de6 100644
          xenUnifiedUnlock(priv);
          def = xenDaemonDomainGetXMLDesc(dom->conn, minidef, cpus);
          VIR_FREE(cpus);
-diff --git a/src/xen/xen_driver.h b/src/xen/xen_driver.h
-index 3c7a8cd..a363161 100644
---- a/src/xen/xen_driver.h
-+++ b/src/xen/xen_driver.h
+Index: libvirt-1.1.1/src/xen/xen_driver.h
+===================================================================
+--- libvirt-1.1.1.orig/src/xen/xen_driver.h	2014-03-25 14:15:16.142627305 -0500
++++ libvirt-1.1.1/src/xen/xen_driver.h	2014-03-25 14:15:16.134627305 -0500
 @@ -187,7 +187,7 @@ struct _xenUnifiedPrivate {
  
  typedef struct _xenUnifiedPrivate *xenUnifiedPrivatePtr;

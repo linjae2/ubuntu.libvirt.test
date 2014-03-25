@@ -10,10 +10,10 @@ Date:   Thu Oct 3 12:35:34 2013 +0100
     Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
     (cherry picked from commit b77b16ce4166dcc87963ae5d279b77b162ddbb55)
 
-diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
-index fe4363c..a50aa56 100644
---- a/src/conf/nwfilter_conf.c
-+++ b/src/conf/nwfilter_conf.c
+Index: libvirt-1.1.1/src/conf/nwfilter_conf.c
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/nwfilter_conf.c	2014-03-25 14:15:25.098627506 -0500
++++ libvirt-1.1.1/src/conf/nwfilter_conf.c	2014-03-25 14:15:25.090627506 -0500
 @@ -2633,8 +2633,7 @@ cleanup:
  
  
@@ -24,7 +24,7 @@ index fe4363c..a50aa56 100644
                      const char *filename) {
      virNWFilterDefPtr def = NULL;
      xmlDocPtr xml;
-@@ -2649,18 +2648,16 @@ virNWFilterDefParse(virConnectPtr conn ATTRIBUTE_UNUSED,
+@@ -2649,18 +2648,16 @@ virNWFilterDefParse(virConnectPtr conn A
  
  
  virNWFilterDefPtr
@@ -56,11 +56,11 @@ index fe4363c..a50aa56 100644
          return NULL;
      }
  
-diff --git a/src/conf/nwfilter_conf.h b/src/conf/nwfilter_conf.h
-index 5d04cff..faa7527 100644
---- a/src/conf/nwfilter_conf.h
-+++ b/src/conf/nwfilter_conf.h
-@@ -713,10 +713,8 @@ int virNWFilterLoadAllConfigs(virConnectPtr conn,
+Index: libvirt-1.1.1/src/conf/nwfilter_conf.h
+===================================================================
+--- libvirt-1.1.1.orig/src/conf/nwfilter_conf.h	2014-03-25 14:15:25.098627506 -0500
++++ libvirt-1.1.1/src/conf/nwfilter_conf.h	2014-03-25 14:15:25.090627506 -0500
+@@ -713,10 +713,8 @@ int virNWFilterLoadAllConfigs(virConnect
  char *virNWFilterConfigFile(const char *dir,
                              const char *name);
  
@@ -73,10 +73,10 @@ index 5d04cff..faa7527 100644
  
  void virNWFilterObjLock(virNWFilterObjPtr obj);
  void virNWFilterObjUnlock(virNWFilterObjPtr obj);
-diff --git a/src/nwfilter/nwfilter_driver.c b/src/nwfilter/nwfilter_driver.c
-index 73edf87..24a76f0 100644
---- a/src/nwfilter/nwfilter_driver.c
-+++ b/src/nwfilter/nwfilter_driver.c
+Index: libvirt-1.1.1/src/nwfilter/nwfilter_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/nwfilter/nwfilter_driver.c	2014-03-25 14:15:25.098627506 -0500
++++ libvirt-1.1.1/src/nwfilter/nwfilter_driver.c	2014-03-25 14:15:25.090627506 -0500
 @@ -561,7 +561,7 @@ nwfilterDefineXML(virConnectPtr conn,
      nwfilterDriverLock(driver);
      virNWFilterCallbackDriversLock();
@@ -86,11 +86,11 @@ index 73edf87..24a76f0 100644
          goto cleanup;
  
      if (virNWFilterDefineXMLEnsureACL(conn, def) < 0)
-diff --git a/tests/nwfilterxml2xmltest.c b/tests/nwfilterxml2xmltest.c
-index 84e61da..14191a6 100644
---- a/tests/nwfilterxml2xmltest.c
-+++ b/tests/nwfilterxml2xmltest.c
-@@ -36,7 +36,7 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
+Index: libvirt-1.1.1/tests/nwfilterxml2xmltest.c
+===================================================================
+--- libvirt-1.1.1.orig/tests/nwfilterxml2xmltest.c	2014-03-25 14:15:25.098627506 -0500
++++ libvirt-1.1.1/tests/nwfilterxml2xmltest.c	2014-03-25 14:15:25.090627506 -0500
+@@ -36,7 +36,7 @@ testCompareXMLToXMLFiles(const char *inx
  
      virResetLastError();
  

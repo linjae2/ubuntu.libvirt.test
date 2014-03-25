@@ -12,10 +12,10 @@ Date:   Mon Aug 19 14:55:21 2013 +0100
     
     Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
 
-diff --git a/daemon/remote.c b/daemon/remote.c
-index 03d5557..a11ba94 100644
---- a/daemon/remote.c
-+++ b/daemon/remote.c
+Index: libvirt-1.1.1/daemon/remote.c
+===================================================================
+--- libvirt-1.1.1.orig/daemon/remote.c	2014-03-25 14:15:19.910627390 -0500
++++ libvirt-1.1.1/daemon/remote.c	2014-03-25 14:15:19.898627389 -0500
 @@ -4620,6 +4620,13 @@ remoteDispatchDomainMigrateBegin3Params(
          goto cleanup;
      }
@@ -30,7 +30,7 @@ index 03d5557..a11ba94 100644
      if (!(dom = get_nonnull_domain(priv->conn, args->dom)))
          goto cleanup;
  
-@@ -4671,6 +4678,13 @@ remoteDispatchDomainMigratePrepare3Params(
+@@ -4671,6 +4678,13 @@ remoteDispatchDomainMigratePrepare3Param
          goto cleanup;
      }
  
@@ -44,7 +44,7 @@ index 03d5557..a11ba94 100644
      if (!(params = remoteDeserializeTypedParameters(args->params.params_val,
                                                      args->params.params_len,
                                                      0, &nparams)))
-@@ -4726,6 +4740,13 @@ remoteDispatchDomainMigratePrepareTunnel3Params(
+@@ -4726,6 +4740,13 @@ remoteDispatchDomainMigratePrepareTunnel
          goto cleanup;
      }
  
@@ -58,7 +58,7 @@ index 03d5557..a11ba94 100644
      if (!(params = remoteDeserializeTypedParameters(args->params.params_val,
                                                      args->params.params_len,
                                                      0, &nparams)))
-@@ -4790,6 +4811,13 @@ remoteDispatchDomainMigratePerform3Params(
+@@ -4790,6 +4811,13 @@ remoteDispatchDomainMigratePerform3Param
          goto cleanup;
      }
  
@@ -72,7 +72,7 @@ index 03d5557..a11ba94 100644
      if (!(dom = get_nonnull_domain(priv->conn, args->dom)))
          goto cleanup;
  
-@@ -4845,6 +4873,13 @@ remoteDispatchDomainMigrateFinish3Params(
+@@ -4845,6 +4873,13 @@ remoteDispatchDomainMigrateFinish3Params
          goto cleanup;
      }
  
@@ -86,7 +86,7 @@ index 03d5557..a11ba94 100644
      if (!(params = remoteDeserializeTypedParameters(args->params.params_val,
                                                      args->params.params_len,
                                                      0, &nparams)))
-@@ -4897,6 +4932,13 @@ remoteDispatchDomainMigrateConfirm3Params(
+@@ -4897,6 +4932,13 @@ remoteDispatchDomainMigrateConfirm3Param
          goto cleanup;
      }
  
@@ -100,11 +100,11 @@ index 03d5557..a11ba94 100644
      if (!(dom = get_nonnull_domain(priv->conn, args->dom)))
          goto cleanup;
  
-diff --git a/src/remote/remote_driver.c b/src/remote/remote_driver.c
-index 71d0034..30f8f90 100644
---- a/src/remote/remote_driver.c
-+++ b/src/remote/remote_driver.c
-@@ -6037,6 +6037,13 @@ remoteDomainMigrateBegin3Params(virDomainPtr domain,
+Index: libvirt-1.1.1/src/remote/remote_driver.c
+===================================================================
+--- libvirt-1.1.1.orig/src/remote/remote_driver.c	2014-03-25 14:15:19.910627390 -0500
++++ libvirt-1.1.1/src/remote/remote_driver.c	2014-03-25 14:15:19.902627389 -0500
+@@ -6037,6 +6037,13 @@ remoteDomainMigrateBegin3Params(virDomai
      make_nonnull_domain(&args.dom, domain);
      args.flags = flags;
  
@@ -118,7 +118,7 @@ index 71d0034..30f8f90 100644
      if (remoteSerializeTypedParameters(params, nparams,
                                         &args.params.params_val,
                                         &args.params.params_len) < 0) {
-@@ -6096,6 +6103,13 @@ remoteDomainMigratePrepare3Params(virConnectPtr dconn,
+@@ -6096,6 +6103,13 @@ remoteDomainMigratePrepare3Params(virCon
      memset(&args, 0, sizeof(args));
      memset(&ret, 0, sizeof(ret));
  
@@ -132,7 +132,7 @@ index 71d0034..30f8f90 100644
      if (remoteSerializeTypedParameters(params, nparams,
                                         &args.params.params_val,
                                         &args.params.params_len) < 0) {
-@@ -6171,6 +6185,13 @@ remoteDomainMigratePrepareTunnel3Params(virConnectPtr dconn,
+@@ -6171,6 +6185,13 @@ remoteDomainMigratePrepareTunnel3Params(
      memset(&args, 0, sizeof(args));
      memset(&ret, 0, sizeof(ret));
  
@@ -146,7 +146,7 @@ index 71d0034..30f8f90 100644
      args.cookie_in.cookie_in_val = (char *)cookiein;
      args.cookie_in.cookie_in_len = cookieinlen;
      args.flags = flags;
-@@ -6250,6 +6271,13 @@ remoteDomainMigratePerform3Params(virDomainPtr dom,
+@@ -6250,6 +6271,13 @@ remoteDomainMigratePerform3Params(virDom
      memset(&args, 0, sizeof(args));
      memset(&ret, 0, sizeof(ret));
  
@@ -160,7 +160,7 @@ index 71d0034..30f8f90 100644
      make_nonnull_domain(&args.dom, dom);
      args.dconnuri = dconnuri == NULL ? NULL : (char **) &dconnuri;
      args.cookie_in.cookie_in_val = (char *)cookiein;
-@@ -6315,6 +6343,13 @@ remoteDomainMigrateFinish3Params(virConnectPtr dconn,
+@@ -6315,6 +6343,13 @@ remoteDomainMigrateFinish3Params(virConn
      memset(&args, 0, sizeof(args));
      memset(&ret, 0, sizeof(ret));
  
@@ -174,7 +174,7 @@ index 71d0034..30f8f90 100644
      args.cookie_in.cookie_in_val = (char *)cookiein;
      args.cookie_in.cookie_in_len = cookieinlen;
      args.flags = flags;
-@@ -6380,6 +6415,13 @@ remoteDomainMigrateConfirm3Params(virDomainPtr domain,
+@@ -6380,6 +6415,13 @@ remoteDomainMigrateConfirm3Params(virDom
  
      memset(&args, 0, sizeof(args));
  
@@ -188,11 +188,11 @@ index 71d0034..30f8f90 100644
      make_nonnull_domain(&args.dom, domain);
      args.cookie_in.cookie_in_len = cookieinlen;
      args.cookie_in.cookie_in_val = (char *) cookiein;
-diff --git a/src/remote/remote_protocol.x b/src/remote/remote_protocol.x
-index 7cfebdf..4262c34 100644
---- a/src/remote/remote_protocol.x
-+++ b/src/remote/remote_protocol.x
-@@ -234,6 +234,9 @@ const REMOTE_DOMAIN_DISK_ERRORS_MAX = 256;
+Index: libvirt-1.1.1/src/remote/remote_protocol.x
+===================================================================
+--- libvirt-1.1.1.orig/src/remote/remote_protocol.x	2014-03-25 14:15:19.910627390 -0500
++++ libvirt-1.1.1/src/remote/remote_protocol.x	2014-03-25 14:15:19.902627389 -0500
+@@ -234,6 +234,9 @@ const REMOTE_DOMAIN_DISK_ERRORS_MAX = 25
   */
  const REMOTE_NODE_MEMORY_PARAMETERS_MAX = 64;
  
@@ -211,7 +211,7 @@ index 7cfebdf..4262c34 100644
      unsigned int flags;
  };
  
-@@ -2780,7 +2783,7 @@ struct remote_domain_migrate_begin3_params_ret {
+@@ -2780,7 +2783,7 @@ struct remote_domain_migrate_begin3_para
  };
  
  struct remote_domain_migrate_prepare3_params_args {
@@ -220,7 +220,7 @@ index 7cfebdf..4262c34 100644
      opaque cookie_in<REMOTE_MIGRATE_COOKIE_MAX>;
      unsigned int flags;
  };
-@@ -2791,7 +2794,7 @@ struct remote_domain_migrate_prepare3_params_ret {
+@@ -2791,7 +2794,7 @@ struct remote_domain_migrate_prepare3_pa
  };
  
  struct remote_domain_migrate_prepare_tunnel3_params_args {
@@ -229,7 +229,7 @@ index 7cfebdf..4262c34 100644
      opaque cookie_in<REMOTE_MIGRATE_COOKIE_MAX>;
      unsigned int flags;
  };
-@@ -2803,7 +2806,7 @@ struct remote_domain_migrate_prepare_tunnel3_params_ret {
+@@ -2803,7 +2806,7 @@ struct remote_domain_migrate_prepare_tun
  struct remote_domain_migrate_perform3_params_args {
      remote_nonnull_domain dom;
      remote_string dconnuri;
@@ -238,7 +238,7 @@ index 7cfebdf..4262c34 100644
      opaque cookie_in<REMOTE_MIGRATE_COOKIE_MAX>;
      unsigned int flags;
  };
-@@ -2813,7 +2816,7 @@ struct remote_domain_migrate_perform3_params_ret {
+@@ -2813,7 +2816,7 @@ struct remote_domain_migrate_perform3_pa
  };
  
  struct remote_domain_migrate_finish3_params_args {
@@ -247,7 +247,7 @@ index 7cfebdf..4262c34 100644
      opaque cookie_in<REMOTE_MIGRATE_COOKIE_MAX>;
      unsigned int flags;
      int cancelled;
-@@ -2826,7 +2829,7 @@ struct remote_domain_migrate_finish3_params_ret {
+@@ -2826,7 +2829,7 @@ struct remote_domain_migrate_finish3_par
  
  struct remote_domain_migrate_confirm3_params_args {
      remote_nonnull_domain dom;
