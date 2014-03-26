@@ -88,7 +88,8 @@ int virNetSocketGetPort(virNetSocketPtr sock);
 
 int virNetSocketGetLocalIdentity(virNetSocketPtr sock,
                                  uid_t *uid,
-                                 pid_t *pid);
+                                 pid_t *pid,
+                                 unsigned long long *timestamp);
 
 int virNetSocketSetBlocking(virNetSocketPtr sock,
                             bool blocking);
