@@ -121,6 +121,9 @@ build/libvirt-bin::
 	mkdir -p debian/tmp/usr/sbin
 	cp -f debian/libvirt-migrate-qemu-disks debian/tmp/usr/sbin
 	cp -f debian/libvirt-migrate-qemu-machinetype debian/tmp/usr/sbin
+	mkdir -p debian/tmp/lib/udev
+	cp debian/libvirt_vnet_querier_enable debian/tmp/lib/udev/
+	chmod ugo+x debian/tmp/lib/udev/libvirt_vnet_querier_enable
 
 	# copy dnsmasq configuration
 	mkdir -p debian/tmp/etc/dnsmasq.d-available

@@ -14,3 +14,4 @@ usr/share/libvirt/*
 usr/share/man/man8/*
 usr/share/apport/package-hooks/source_libvirt.py
 etc/dnsmasq.d-available/libvirt-bin
+lib/udev/*

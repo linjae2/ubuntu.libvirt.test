@@ -1,0 +1,2 @@
+# cat /etc/udev/rules.d/61-virbr-querier.rules 
+ACTION=="add", SUBSYSTEM=="net", RUN+="/lib/udev/libvirt_vnet_querier_enable"

@@ -1,0 +1,4 @@
+#!/bin/bash
+if [[ $INTERFACE == virbr* ]]; then
+	/bin/echo 1 > /sys/devices/virtual/net/$INTERFACE/bridge/multicast_querier || true
+fi

@@ -1,3 +1,10 @@
+libvirt (0.9.8-2ubuntu17.19) precise-proposed; urgency=medium
+
+  * Add a udev hook and script to enable multicast_querier when a
+    virbr* is brought up (LP: #1218959)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 26 Mar 2014 11:36:55 -0500
+
 libvirt (0.9.8-2ubuntu17.18) precise-proposed; urgency=medium
 
   * d/p/ubuntu/qemu-fix-race-between-async-and-query-jobs.patch: fix a race
