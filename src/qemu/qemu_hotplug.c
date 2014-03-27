@@ -1035,6 +1035,11 @@ int qemuDomainAttachHostPciDevice(virQEMUDriverPtr driver,
         vm->def->hostdevs[vm->def->nhostdevs--] = NULL;
     }
 
+    if (virSecurityManagerSetHostdevLabel(driver->securityManager,
+                                          vm->def, hostdev, NULL) < 0)
+        goto error;
+    teardownlabel = true;
+
     if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE)) {
         if (qemuAssignDeviceHostdevAlias(vm->def, hostdev, -1) < 0)
             goto error;
@@ -1116,11 +1121,6 @@ int qemuDomainAttachRedirdevDevice(virQEMUDriverPtr driver,
     qemuDomainObjPrivatePtr priv = vm->privateData;
     virDomainDefPtr def = vm->def;
     char *devstr = NULL;
-
-    if (virSecurityManagerSetHostdevLabel(driver->securityManager,
-                                          vm->def, hostdev, NULL) < 0)
-        goto error;
-    teardownlabel = true;
 
     if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE)) {
         if (qemuAssignDeviceRedirdevAlias(vm->def, redirdev, -1) < 0)

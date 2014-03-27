@@ -15,8 +15,8 @@ Date:   Thu Dec 5 14:54:41 2013 -0500
 
 Index: libvirt-1.1.1/src/qemu/qemu_hotplug.c
 ===================================================================
---- libvirt-1.1.1.orig/src/qemu/qemu_hotplug.c	2014-03-25 14:15:28.146627575 -0500
-+++ libvirt-1.1.1/src/qemu/qemu_hotplug.c	2014-03-25 14:15:28.138627575 -0500
+--- libvirt-1.1.1.orig/src/qemu/qemu_hotplug.c	2014-03-27 16:44:13.026447255 -0500
++++ libvirt-1.1.1/src/qemu/qemu_hotplug.c	2014-03-27 16:50:48.350434112 -0500
 @@ -1007,6 +1007,7 @@ int qemuDomainAttachHostPciDevice(virQEM
      int configfd = -1;
      char *configfd_name = NULL;
@@ -25,7 +25,19 @@ Index: libvirt-1.1.1/src/qemu/qemu_hotplug.c
  
      if (VIR_REALLOC_N(vm->def->hostdevs, vm->def->nhostdevs+1) < 0)
          return -1;
-@@ -1090,6 +1091,10 @@ int qemuDomainAttachHostPciDevice(virQEM
+@@ -1034,6 +1035,11 @@ int qemuDomainAttachHostPciDevice(virQEM
+         vm->def->hostdevs[vm->def->nhostdevs--] = NULL;
+     }
+ 
++    if (virSecurityManagerSetHostdevLabel(driver->securityManager,
++                                          vm->def, hostdev, NULL) < 0)
++        goto error;
++    teardownlabel = true;
++
+     if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE)) {
+         if (qemuAssignDeviceHostdevAlias(vm->def, hostdev, -1) < 0)
+             goto error;
+@@ -1090,6 +1096,10 @@ int qemuDomainAttachHostPciDevice(virQEM
      return 0;
  
  error:
@@ -36,18 +48,6 @@ Index: libvirt-1.1.1/src/qemu/qemu_hotplug.c
      if (releaseaddr)
          qemuDomainReleaseDeviceAddress(vm, hostdev->info, NULL);
  
-@@ -1112,6 +1117,11 @@ int qemuDomainAttachRedirdevDevice(virQE
-     virDomainDefPtr def = vm->def;
-     char *devstr = NULL;
- 
-+    if (virSecurityManagerSetHostdevLabel(driver->securityManager,
-+                                          vm->def, hostdev, NULL) < 0)
-+        goto error;
-+    teardownlabel = true;
-+
-     if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE)) {
-         if (qemuAssignDeviceRedirdevAlias(vm->def, redirdev, -1) < 0)
-             goto error;
 @@ -1282,6 +1292,7 @@ int qemuDomainAttachHostUsbDevice(virQEM
      virUSBDevicePtr usb = NULL;
      char *devstr = NULL;

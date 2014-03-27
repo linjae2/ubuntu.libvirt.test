@@ -1,3 +1,10 @@
+libvirt (1.1.1-0ubuntu8.9) saucy-proposed; urgency=medium
+
+  * fix badly applied patch
+    0001-qemu-hotplug-only-label-hostdev-after-checking-device-conflicts
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 27 Mar 2014 16:52:55 -0500
+
 libvirt (1.1.1-0ubuntu8.8) saucy-proposed; urgency=medium
 
   [ Stefan Bader ]
