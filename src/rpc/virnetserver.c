@@ -1055,8 +1055,7 @@ void virNetServerRun(virNetServerPtr srv)
 
     virObjectLock(srv);
 
-    if (srv->mdns &&
-        virNetServerMDNSStart(srv->mdns) < 0)
+    if (srv->mdns) 
         goto cleanup;
 
     srv->quit = 0;
