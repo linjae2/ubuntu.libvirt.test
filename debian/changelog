@@ -1,3 +1,10 @@
+libvirt (1.2.2-0ubuntu8) trusty; urgency=medium
+
+  * debian/apparmor/libvirt-qemu: Allow qemu-system-aarch64 to be used.
+    (LP: #1301516)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 02 Apr 2014 14:20:39 -0400
+
 libvirt (1.2.2-0ubuntu7) trusty; urgency=low
 
   * d/p/libxl-Create-log-directory-earlier.patch:
