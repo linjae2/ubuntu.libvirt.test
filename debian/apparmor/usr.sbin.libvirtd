@@ -34,6 +34,10 @@
   network inet6 dgram,
   network packet dgram,
 
+  dbus bus=system,
+  signal,
+  ptrace,
+
   # for now, use a very lenient profile since we want to first focus on
   # confining the guests
   / r,
