@@ -720,7 +720,8 @@ qemuDomainDefPostParse(virDomainDefPtr def,
             !STRPREFIX(def->os.machine, "pc-1.") &&
             !STRPREFIX(def->os.machine, "pc-i440") &&
             !STREQ(def->os.machine, "pc") &&
-            !STRPREFIX(def->os.machine, "rhel"))
+            !STRPREFIX(def->os.machine, "rhel") &&
+            !STREQ(def->os.machine, "trusty"))
             break;
         addPCIRoot = true;
         break;

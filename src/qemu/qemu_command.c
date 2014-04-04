@@ -2521,7 +2521,8 @@ qemuDomainMachineIsI440FX(virDomainDefPtr def)
             STRPREFIX(def->os.machine, "pc-0.") ||
             STRPREFIX(def->os.machine, "pc-1.") ||
             STRPREFIX(def->os.machine, "pc-i440") ||
-            STRPREFIX(def->os.machine, "rhel"));
+            STRPREFIX(def->os.machine, "rhel") ||
+            STREQ(def->os.machine, "trusty"));
 }
 
 
@@ -2721,6 +2722,7 @@ qemuAssignDevicePCISlots(virDomainDefPtr def,
         STRPREFIX(def->os.machine, "pc-1.") ||
         STRPREFIX(def->os.machine, "pc-i440") ||
         STREQ(def->os.machine, "pc") ||
+        STREQ(def->os.machine, "trusty") ||
         STRPREFIX(def->os.machine, "rhel")) &&
         qemuValidateDevicePCISlotsPIIX3(def, qemuCaps, addrs) < 0) {
         goto error;
