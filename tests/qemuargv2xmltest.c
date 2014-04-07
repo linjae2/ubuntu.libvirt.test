@@ -36,13 +36,13 @@ static int blankProblemElements(char *data)
 
 static int testCompareXMLToArgvFiles(const char *xml,
                                      const char *cmdfile,
-                                     bool expect_warning) {
+                                     bool expect_warning)
+{
     char *expectxml = NULL;
     char *actualxml = NULL;
     char *cmd = NULL;
     int ret = -1;
     virDomainDefPtr vmdef = NULL;
-    char *log;
 
     if (virtTestLoadFile(cmdfile, &cmd) < 0)
         goto fail;
@@ -53,13 +53,16 @@ static int testCompareXMLToArgvFiles(const char *xml,
                                              cmd, NULL, NULL, NULL)))
         goto fail;
 
-    if ((log = virtTestLogContentAndReset()) == NULL)
-        goto fail;
-    if ((*log != '\0') != expect_warning) {
+    if (!virtTestOOMActive()) {
+        char *log;
+        if ((log = virtTestLogContentAndReset()) == NULL)
+            goto fail;
+        if ((*log != '\0') != expect_warning) {
+            VIR_FREE(log);
+            goto fail;
+        }
         VIR_FREE(log);
-        goto fail;
     }
-    VIR_FREE(log);
 
     if (!virDomainDefCheckABIStability(vmdef, vmdef)) {
         fprintf(stderr, "ABI stability check failed on %s", xml);
@@ -111,7 +114,7 @@ testCompareXMLToArgvHelper(const void *data)
 
     result = testCompareXMLToArgvFiles(xml, args, !!info->extraFlags);
 
-cleanup:
+ cleanup:
     VIR_FREE(xml);
     VIR_FREE(args);
     return result;
@@ -125,6 +128,9 @@ mymain(void)
     int ret = 0;
 
     driver.config = virQEMUDriverConfigNew(false);
+    if (driver.config == NULL)
+        return EXIT_FAILURE;
+
     if ((driver.caps = testQemuCapsInit()) == NULL)
         return EXIT_FAILURE;
 
@@ -269,7 +275,7 @@ mymain(void)
     virObjectUnref(driver.caps);
     virObjectUnref(driver.xmlopt);
 
-    return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 VIRT_TEST_MAIN(mymain)
