@@ -57,7 +57,8 @@
 typedef struct _qemuBuildCommandLineCallbacks qemuBuildCommandLineCallbacks;
 typedef qemuBuildCommandLineCallbacks *qemuBuildCommandLineCallbacksPtr;
 struct _qemuBuildCommandLineCallbacks {
-    char * (*qemuGetSCSIDeviceSgName) (const char *adapter,
+    char * (*qemuGetSCSIDeviceSgName) (const char *sysfs_prefix,
+                                       const char *adapter,
                                        unsigned int bus,
                                        unsigned int target,
                                        unsigned int unit);
@@ -75,7 +76,8 @@ virCommandPtr qemuBuildCommandLine(virConnectPtr conn,
                                    int migrateFd,
                                    virDomainSnapshotObjPtr current_snapshot,
                                    enum virNetDevVPortProfileOp vmop,
-                                   qemuBuildCommandLineCallbacksPtr callbacks)
+                                   qemuBuildCommandLineCallbacksPtr callbacks,
+                                   bool forXMLToArgv)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(11);
 
 /* Generate '-device' string for chardev device */
@@ -311,5 +313,14 @@ qemuParseKeywords(const char *str,
                   char ***retvalues,
                   int *retnkeywords,
                   int allowEmptyValue);
+
+int qemuGetDriveSourceString(int type,
+                             const char *src,
+                             int protocol,
+                             size_t nhosts,
+                             virDomainDiskHostDefPtr hosts,
+                             const char *username,
+                             const char *secret,
+                             char **path);
 
 #endif /* __QEMU_COMMAND_H__*/
