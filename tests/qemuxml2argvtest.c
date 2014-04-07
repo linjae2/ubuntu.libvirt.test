@@ -484,7 +484,10 @@ mymain(void)
 {
     int ret = 0;
     char *map = NULL;
+    uid_t user;
+    gid_t group;
     bool skipLegacyCPUs = false;
+    bool privileged = true;
 
     abs_top_srcdir = getenv("abs_top_srcdir");
     if (!abs_top_srcdir)
@@ -500,7 +503,11 @@ mymain(void)
         return EXIT_FAILURE;
     }
 
-    driver.config = virQEMUDriverConfigNew(true);
+    if (virGetUserID(QEMU_USER, &user) < 0 ||
+        virGetGroupID(QEMU_GROUP, &group) < 0)
+        privileged = false;
+
+    driver.config = virQEMUDriverConfigNew(privileged);
     if (driver.config == NULL)
         return EXIT_FAILURE;
 
@@ -1160,13 +1167,14 @@ mymain(void)
     DO_TEST_FAILURE("cpu-host-passthrough", NONE);
     DO_TEST_FAILURE("cpu-qemu-host-passthrough",
                     QEMU_CAPS_KVM, QEMU_CAPS_CPU_HOST);
-
-    DO_TEST("memtune", QEMU_CAPS_NAME);
-    DO_TEST("memtune-unlimited", QEMU_CAPS_NAME);
-    DO_TEST("blkiotune", QEMU_CAPS_NAME);
-    DO_TEST("blkiotune-device", QEMU_CAPS_NAME);
-    DO_TEST("cputune", QEMU_CAPS_NAME);
-    DO_TEST("cputune-zero-shares", QEMU_CAPS_NAME);
+    if (privileged) {
+        DO_TEST("memtune", QEMU_CAPS_NAME);
+        DO_TEST("memtune-unlimited", QEMU_CAPS_NAME);
+        DO_TEST("blkiotune", QEMU_CAPS_NAME);
+        DO_TEST("blkiotune-device", QEMU_CAPS_NAME);
+        DO_TEST("cputune", QEMU_CAPS_NAME);
+        DO_TEST("cputune-zero-shares", QEMU_CAPS_NAME);
+    }
     DO_TEST("numatune-memory", NONE);
     DO_TEST("numatune-auto-nodeset-invalid", NONE);
     DO_TEST("numad", NONE);
