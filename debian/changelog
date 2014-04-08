@@ -1,3 +1,10 @@
+libvirt (1.2.2-0ubuntu11) trusty; urgency=medium
+
+  * debian/patches/recognize-trusty-machine-type.patch: Revert patch
+    since it was causing issues with virtio deivces. (LP: #1304107) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 08 Apr 2014 12:51:55 -0400
+
 libvirt (1.2.2-0ubuntu10) trusty; urgency=medium
 
   * d/p/recognize-trusty-machine-type.patch: handle "trusty" qemu machine type

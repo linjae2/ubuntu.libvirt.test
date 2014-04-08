@@ -25,4 +25,3 @@ libxl-Create-log-directory-earlier.patch
 libxl-do-not-use-virdomain-id.patch
 libxl-set-disk-format-for-cdrom.patch
 libxl-set-vfb0-data-in-build-config.patch
-recognize-trusty-machine-type.patch
