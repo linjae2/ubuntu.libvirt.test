@@ -134,6 +134,7 @@ build/libvirt-bin::
 	mkdir -p debian/tmp/usr/sbin
 	cp -f debian/libvirt-migrate-qemu-disks debian/tmp/usr/sbin
 	cp -f debian/libvirt-migrate-qemu-machinetype debian/tmp/usr/sbin
+	cp -f debian/libvirt-migrate-xend-managed-domains debian/tmp/usr/sbin
 	# copy dnsmasq configuration
 	mkdir -p debian/tmp/etc/dnsmasq.d-available
 	cp debian/libvirt-bin.dnsmasq debian/tmp/etc/dnsmasq.d-available/libvirt-bin
