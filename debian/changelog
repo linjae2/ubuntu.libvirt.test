@@ -1,3 +1,11 @@
+libvirt (1.2.2-0ubuntu13) trusty; urgency=medium
+
+  * Add a dependency on the new apparmor to make sure we have the new
+    parser around before we attempt to load a profile requiring the new
+    stanza support. (LP: #1304167)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 14 Apr 2014 11:03:37 -0500
+
 libvirt (1.2.2-0ubuntu12) trusty; urgency=low
 
   * d/p/libxl-support-sexpr-in-native-to-XML-conversion.patch:
