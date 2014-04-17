@@ -1179,6 +1179,82 @@ error:
     return NULL;
 }
 
+static void
+libxlSetBuildGraphics(virDomainDefPtr def, libxl_domain_config *d_config)
+{
+    libxl_domain_build_info *b_info = &d_config->b_info;
+
+    /*
+     * Take the first defined video device (graphics card) to display
+     * on the first graphics device (display).
+     * Right now only type and vram info is used and anything beside
+     * type xen and vga is mapped to cirrus.
+     */
+    if (def->nvideos) {
+        unsigned int min_vram = 8 * 1024;
+
+        switch (def->videos[0]->type) {
+            case VIR_DOMAIN_VIDEO_TYPE_VGA:
+            case VIR_DOMAIN_VIDEO_TYPE_XEN:
+                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_STD;
+                /*
+                 * Libxl enforces a minimal VRAM size of 8M when using
+                 * LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL or
+                 * 16M for LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN.
+                 * Avoid build failures and go with the minimum if less
+                 * is specified.
+                 */
+                switch (b_info->device_model_version) {
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+                        min_vram = 8 * 1024;
+                        break;
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+                    default:
+                        min_vram = 16 * 1024;
+                }
+                break;
+            default:
+                /*
+                 * Ignore any other device type and use Cirrus. Again fix
+                 * up the minimal VRAM to what libxl expects.
+                 */
+                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_CIRRUS;
+                switch (b_info->device_model_version) {
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+                        min_vram = 4 * 1024; /* Actually the max, too */
+                        break;
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+                    default:
+                        min_vram = 8 * 1024;
+                }
+        }
+        b_info->video_memkb = (def->videos[0]->vram > min_vram) ?
+                               def->videos[0]->vram :
+                               LIBXL_MEMKB_DEFAULT;
+    } else {
+        libxl_defbool_set(&b_info->u.hvm.nographic, 1);
+    }
+
+    /*
+     * When making the list of displays, only VNC and SDL types were
+     * taken into account. So it seems sensible to connect the default
+     * video device to the first in the vfb list.
+     *
+     * FIXME: Copy the structures and fixing the strings feels a bit dirty.
+     */
+    if (d_config->num_vfbs) {
+        libxl_device_vfb *vfb0 = &d_config->vfbs[0];
+
+	b_info->u.hvm.vnc = vfb0->vnc;
+        VIR_STRDUP(b_info->u.hvm.vnc.listen, vfb0->vnc.listen);
+        VIR_STRDUP(b_info->u.hvm.vnc.passwd, vfb0->vnc.passwd);
+        b_info->u.hvm.sdl = vfb0->sdl;
+        VIR_STRDUP(b_info->u.hvm.sdl.display, vfb0->sdl.display);
+        VIR_STRDUP(b_info->u.hvm.sdl.xauthority, vfb0->sdl.xauthority);
+        VIR_STRDUP(b_info->u.hvm.keymap, vfb0->keymap);
+    }
+}
+
 int
 libxlBuildDomainConfig(libxlDriverPrivatePtr driver,
                        virDomainObjPtr vm, libxl_domain_config *d_config)
@@ -1202,6 +1278,15 @@ libxlBuildDomainConfig(libxlDriverPrivatePtr driver,
 
     if (libxlMakeVfbList(driver, def, d_config) < 0)
         return -1;
+
+    /*
+     * Now that any potential VFBs are defined, it is time to update the
+     * build info with the data of the primary display. Some day libxl
+     * might implicitely do so but as it does not right now, better be
+     * explicit.
+     */
+    if (d_config->c_info.type == LIBXL_DOMAIN_TYPE_HVM)
+        libxlSetBuildGraphics(def, d_config);
 
     d_config->on_reboot = def->onReboot;
     d_config->on_poweroff = def->onPoweroff;
