@@ -52,6 +52,3 @@ lp1228977/5-add-a-read-write-lock-implementation
 lp1228977/6-push-nwfilter-update-locking-up-to-top-level
 add-a-mutex-to-serialize-updates-to-firewall
 libxl-fix-dom0-detection.patch
-lp1264465/0001-qemu-hotplug-only-label-hostdev-after-checking-device-conflicts
-lp1264465/0002-qemu-hotplug-fix-double-free-on-usb-collision
-lp1264465/0003-qemu-hotplug-fix-adding-usb-devices-to-the-driver-list
