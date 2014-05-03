@@ -483,11 +483,7 @@ static int
 mymain(void)
 {
     int ret = 0;
-    char *map = NULL;
-    uid_t user;
-    gid_t group;
     bool skipLegacyCPUs = false;
-    bool privileged = true;
 
     abs_top_srcdir = getenv("abs_top_srcdir");
     if (!abs_top_srcdir)
@@ -503,13 +499,11 @@ mymain(void)
         return EXIT_FAILURE;
     }
 
-    if (virGetUserID(QEMU_USER, &user) < 0 ||
-        virGetGroupID(QEMU_GROUP, &group) < 0)
-        privileged = false;
-
-    driver.config = virQEMUDriverConfigNew(privileged);
+    driver.config = virQEMUDriverConfigNew(false);
     if (driver.config == NULL)
         return EXIT_FAILURE;
+    else
+        driver.config->privileged = true;
 
     VIR_FREE(driver.config->spiceListen);
     VIR_FREE(driver.config->vncListen);
@@ -537,11 +531,6 @@ mymain(void)
     driver.config->spiceTLS = 1;
     if (VIR_STRDUP_QUIET(driver.config->spicePassword, "123456") < 0)
         return EXIT_FAILURE;
-    if (virAsprintf(&map, "%s/src/cpu/cpu_map.xml", abs_top_srcdir) < 0 ||
-        cpuMapOverride(map) < 0) {
-        VIR_FREE(map);
-        return EXIT_FAILURE;
-    }
 
 # define DO_TEST_FULL(name, migrateFrom, migrateFd, flags, ...)         \
     do {                                                                \
@@ -746,6 +735,9 @@ mymain(void)
     DO_TEST("disk-drive-cache-unsafe",
             QEMU_CAPS_DRIVE, QEMU_CAPS_DRIVE_CACHE_V2,
             QEMU_CAPS_DRIVE_CACHE_UNSAFE, QEMU_CAPS_DRIVE_FORMAT);
+    DO_TEST("disk-drive-copy-on-read",
+            QEMU_CAPS_DRIVE, QEMU_CAPS_DRIVE_CACHE_V2,
+            QEMU_CAPS_DRIVE_COPY_ON_READ, QEMU_CAPS_DRIVE_FORMAT);
     DO_TEST("disk-drive-network-nbd",
             QEMU_CAPS_DRIVE, QEMU_CAPS_DRIVE_FORMAT);
     DO_TEST("disk-drive-network-nbd-export",
@@ -1167,14 +1159,13 @@ mymain(void)
     DO_TEST_FAILURE("cpu-host-passthrough", NONE);
     DO_TEST_FAILURE("cpu-qemu-host-passthrough",
                     QEMU_CAPS_KVM, QEMU_CAPS_CPU_HOST);
-    if (privileged) {
-        DO_TEST("memtune", QEMU_CAPS_NAME);
-        DO_TEST("memtune-unlimited", QEMU_CAPS_NAME);
-        DO_TEST("blkiotune", QEMU_CAPS_NAME);
-        DO_TEST("blkiotune-device", QEMU_CAPS_NAME);
-        DO_TEST("cputune", QEMU_CAPS_NAME);
-        DO_TEST("cputune-zero-shares", QEMU_CAPS_NAME);
-    }
+
+    DO_TEST("memtune", QEMU_CAPS_NAME);
+    DO_TEST("memtune-unlimited", QEMU_CAPS_NAME);
+    DO_TEST("blkiotune", QEMU_CAPS_NAME);
+    DO_TEST("blkiotune-device", QEMU_CAPS_NAME);
+    DO_TEST("cputune", QEMU_CAPS_NAME);
+    DO_TEST("cputune-zero-shares", QEMU_CAPS_NAME);
     DO_TEST("numatune-memory", NONE);
     DO_TEST("numatune-auto-nodeset-invalid", NONE);
     DO_TEST("numad", NONE);
@@ -1369,7 +1360,6 @@ mymain(void)
     virObjectUnref(driver.config);
     virObjectUnref(driver.caps);
     virObjectUnref(driver.xmlopt);
-    VIR_FREE(map);
 
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
