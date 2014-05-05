@@ -37,7 +37,6 @@ enum virInitctlRunLevel {
     VIR_INITCTL_RUNLEVEL_LAST
 };
 
-int virInitctlSetRunLevel(virInitctlRunLevel level,
-                          const char *vroot);
+int virInitctlSetRunLevel(virInitctlRunLevel level);
 
 #endif

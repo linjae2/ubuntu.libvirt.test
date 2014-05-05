@@ -16921,6 +16921,7 @@ virDomainDefCompatibleDevice(virDomainDefPtr def,
                              virDomainDeviceDefPtr dev)
 {
     if (!virDomainDefHasUSB(def) &&
+        STRNEQ(def->os.type, "exe") &&
         virDomainDeviceIsUSB(dev)) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("Device configuration is not compatible: "

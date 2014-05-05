@@ -122,9 +122,12 @@ int virFileNBDDeviceAssociate(const char *file,
 
 int virFileDeleteTree(const char *dir);
 
-int virFileReadLimFD(int fd, int maxlen, char **buf) ATTRIBUTE_RETURN_CHECK;
-
-int virFileReadAll(const char *path, int maxlen, char **buf) ATTRIBUTE_RETURN_CHECK;
+int virFileReadHeaderFD(int fd, int maxlen, char **buf)
+    ATTRIBUTE_RETURN_CHECK ATTRIBUTE_NONNULL(3);
+int virFileReadLimFD(int fd, int maxlen, char **buf)
+    ATTRIBUTE_RETURN_CHECK ATTRIBUTE_NONNULL(3);
+int virFileReadAll(const char *path, int maxlen, char **buf)
+    ATTRIBUTE_RETURN_CHECK ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(3);
 
 int virFileWriteStr(const char *path, const char *str, mode_t mode)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_RETURN_CHECK;
@@ -184,6 +187,7 @@ int virDirCreate(const char *path, mode_t mode, uid_t uid, gid_t gid,
 int virFileMakePath(const char *path) ATTRIBUTE_RETURN_CHECK;
 int virFileMakePathWithMode(const char *path,
                             mode_t mode) ATTRIBUTE_RETURN_CHECK;
+int virFileMakeParentPath(const char *path) ATTRIBUTE_RETURN_CHECK;
 
 char *virFileBuildPath(const char *dir,
                        const char *name,

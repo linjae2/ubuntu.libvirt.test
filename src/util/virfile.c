@@ -1149,6 +1149,27 @@ saferead_lim(int fd, size_t max_len, size_t *length)
     return NULL;
 }
 
+
+/* A wrapper around saferead_lim that merely stops reading at the
+ * specified maximum size.  */
+int
+virFileReadHeaderFD(int fd, int maxlen, char **buf)
+{
+    size_t len;
+    char *s;
+
+    if (maxlen <= 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    s = saferead_lim(fd, maxlen, &len);
+    if (s == NULL)
+        return -1;
+    *buf = s;
+    return len;
+}
+
+
 /* A wrapper around saferead_lim that maps a failure due to
    exceeding the maximum size limitation to EOVERFLOW.  */
 int
@@ -2067,6 +2088,35 @@ cleanup:
     VIR_FREE(tmp);
     return ret;
 }
+
+
+int
+virFileMakeParentPath(const char *path)
+{
+    char *p;
+    char *tmp;
+    int ret = -1;
+
+    VIR_DEBUG("path=%s", path);
+
+    if (VIR_STRDUP(tmp, path) < 0) {
+        errno = ENOMEM;
+        return -1;
+    }
+
+    if ((p = strrchr(tmp, '/')) == NULL) {
+        errno = EINVAL;
+        goto cleanup;
+    }
+    *p = '\0';
+
+    ret = virFileMakePathHelper(tmp, 0777);
+
+ cleanup:
+    VIR_FREE(tmp);
+    return ret;
+}
+
 
 /* Build up a fully qualified path for a config file to be
  * associated with a persistent guest or network */
