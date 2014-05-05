@@ -1184,6 +1184,7 @@ libxlStateInitialize(bool privileged,
 {
     const libxl_version_info *ver_info;
     char *log_file = NULL;
+    char *output = NULL;
     virCommandPtr cmd;
     int status, ret = 0;
     unsigned int free_mem;
@@ -1196,13 +1197,24 @@ libxlStateInitialize(bool privileged,
     }
 
     /* Disable driver if legacy xen toolstack (xend) is in use */
-    cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
+    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
+    virCommandSetOutputBuffer(cmd, &output);
     if (virCommandRun(cmd, &status) == 0 && status == 0) {
-        VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
-                  "libxenlight driver.");
-        virCommandFree(cmd);
-        return 0;
+        int i, j;
+
+        for (i = 0, j = 0; output[i] != '\0'; i++)
+            if (output[i] == '/')
+                j = i + 1;
+
+        if (output[j] == 'x' && output[j+1] == 'm') {
+            VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
+                      "libxenlight driver.");
+            VIR_FREE(output);
+            virCommandFree(cmd);
+            return 0;
+        }
     }
+    VIR_FREE(output);
     virCommandFree(cmd);
 
     if (VIR_ALLOC(libxl_driver) < 0)
