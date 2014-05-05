@@ -52,3 +52,5 @@ lp1228977/5-add-a-read-write-lock-implementation
 lp1228977/6-push-nwfilter-update-locking-up-to-top-level
 add-a-mutex-to-serialize-updates-to-firewall
 libxl-fix-dom0-detection.patch
+CVE-2013-6456.patch
+CVE-2013-7336.patch
