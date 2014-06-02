@@ -1,7 +1,7 @@
 /*
  * nodeinfo.c: Helper routines for OS specific node information
  *
- * Copyright (C) 2006-2008, 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2006-2008, 2010-2014 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -44,7 +44,6 @@
 #include "viralloc.h"
 #include "nodeinfopriv.h"
 #include "physmem.h"
-#include "virlog.h"
 #include "virerror.h"
 #include "count-one-bits.h"
 #include "intprops.h"
@@ -197,7 +196,7 @@ freebsdNodeGetCPUStats(int cpuNum,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cpu_times);
 
     return ret;
@@ -330,7 +329,7 @@ virNodeGetCpuValue(const char *dir, unsigned int cpu, const char *file,
         goto cleanup;
     }
 
-cleanup:
+ cleanup:
     VIR_FORCE_FCLOSE(pathfp);
     VIR_FREE(path);
 
@@ -379,7 +378,7 @@ virNodeCountThreadSiblings(const char *dir, unsigned int cpu)
         i++;
     }
 
-cleanup:
+ cleanup:
     VIR_FORCE_FCLOSE(pathfp);
     VIR_FREE(path);
 
@@ -441,6 +440,7 @@ virNodeParseNode(const char *node,
     int siblings;
     unsigned int cpu;
     int online;
+    int direrr;
 
     *threads = 0;
     *cores = 0;
@@ -453,8 +453,7 @@ virNodeParseNode(const char *node,
 
     /* enumerate sockets in the node */
     CPU_ZERO(&sock_map);
-    errno = 0;
-    while ((cpudirent = readdir(cpudir))) {
+    while ((direrr = virDirRead(cpudir, &cpudirent, node)) > 0) {
         if (sscanf(cpudirent->d_name, "cpu%u", &cpu) != 1)
             continue;
 
@@ -471,14 +470,10 @@ virNodeParseNode(const char *node,
 
         if (sock > sock_max)
             sock_max = sock;
-
-        errno = 0;
     }
 
-    if (errno) {
-        virReportSystemError(errno, _("problem reading %s"), node);
+    if (direrr < 0)
         goto cleanup;
-    }
 
     sock_max++;
 
@@ -491,8 +486,7 @@ virNodeParseNode(const char *node,
 
     /* iterate over all CPU's in the node */
     rewinddir(cpudir);
-    errno = 0;
-    while ((cpudirent = readdir(cpudir))) {
+    while ((direrr = virDirRead(cpudir, &cpudirent, node)) > 0) {
         if (sscanf(cpudirent->d_name, "cpu%u", &cpu) != 1)
             continue;
 
@@ -531,14 +525,10 @@ virNodeParseNode(const char *node,
 
         if (siblings > *threads)
             *threads = siblings;
-
-        errno = 0;
     }
 
-    if (errno) {
-        virReportSystemError(errno, _("problem reading %s"), node);
+    if (direrr < 0)
         goto cleanup;
-    }
 
     /* finalize the returned data */
     *sockets = CPU_COUNT(&sock_map);
@@ -554,7 +544,7 @@ virNodeParseNode(const char *node,
 
     ret = processors;
 
-cleanup:
+ cleanup:
     /* don't shadow a more serious error */
     if (cpudir && closedir(cpudir) < 0 && ret >= 0) {
         virReportSystemError(errno, _("problem closing %s"), node);
@@ -577,6 +567,7 @@ int linuxNodeInfoCPUPopulate(FILE *cpuinfo,
     int ret = -1;
     char *sysfs_nodedir = NULL;
     char *sysfs_cpudir = NULL;
+    int direrr;
 
     /* Start with parsing CPU clock speed from /proc/cpuinfo */
     while (fgets(line, sizeof(line), cpuinfo) != NULL) {
@@ -673,8 +664,7 @@ int linuxNodeInfoCPUPopulate(FILE *cpuinfo,
         goto fallback;
     }
 
-    errno = 0;
-    while ((nodedirent = readdir(nodedir))) {
+    while ((direrr = virDirRead(nodedir, &nodedirent, sysfs_nodedir)) > 0) {
         if (sscanf(nodedirent->d_name, "node%u", &node) != 1)
             continue;
 
@@ -700,19 +690,15 @@ int linuxNodeInfoCPUPopulate(FILE *cpuinfo,
 
         if (threads > nodeinfo->threads)
             nodeinfo->threads = threads;
-
-        errno = 0;
     }
 
-    if (errno) {
-        virReportSystemError(errno, _("problem reading %s"), sysfs_nodedir);
+    if (direrr < 0)
         goto cleanup;
-    }
 
     if (nodeinfo->cpus && nodeinfo->nodes)
         goto done;
 
-fallback:
+ fallback:
     VIR_FREE(sysfs_cpudir);
 
     if (virAsprintf(&sysfs_cpudir, "%s/cpu", sysfs_dir) < 0)
@@ -728,7 +714,7 @@ fallback:
     nodeinfo->cores = cores;
     nodeinfo->threads = threads;
 
-done:
+ done:
     /* There should always be at least one cpu, socket, node, and thread. */
     if (nodeinfo->cpus == 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("no CPUs found"));
@@ -764,7 +750,7 @@ done:
 
     ret = 0;
 
-cleanup:
+ cleanup:
     /* don't shadow a more serious error */
     if (nodedir && closedir(nodedir) < 0 && ret >= 0) {
         virReportSystemError(errno, _("problem closing %s"), sysfs_nodedir);
@@ -862,7 +848,7 @@ linuxNodeGetCPUStats(FILE *procstat,
                         _("Invalid cpuNum in %s"),
                         __FUNCTION__);
 
-cleanup:
+ cleanup:
     return ret;
 }
 
@@ -968,7 +954,7 @@ linuxNodeGetMemoryStats(FILE *meminfo,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     return ret;
 }
 
@@ -996,7 +982,7 @@ linuxParseCPUmax(const char *path)
     } while (*tmp++ != '\n');
     ret++;
 
-cleanup:
+ cleanup:
     VIR_FREE(str);
     return ret;
 }
@@ -1021,7 +1007,7 @@ linuxParseCPUmap(int max_cpuid, const char *path)
     VIR_FREE(str);
     return map;
 
-error:
+ error:
     VIR_FREE(str);
     virBitmapFree(map);
     return NULL;
@@ -1045,7 +1031,7 @@ virNodeGetSiblingsList(const char *dir, int cpu_id)
     if (virBitmapParse(buf, 0, &ret, virNumaGetMaxCPUs()) < 0)
         goto cleanup;
 
-cleanup:
+ cleanup:
     VIR_FREE(buf);
     VIR_FREE(path);
     return ret;
@@ -1078,7 +1064,7 @@ int nodeGetInfo(virNodeInfoPtr nodeinfo)
     /* Convert to KB. */
     nodeinfo->memory = physmem_total() / 1024;
 
-cleanup:
+ cleanup:
     VIR_FORCE_FCLOSE(cpuinfo);
     return ret;
     }
@@ -1320,7 +1306,7 @@ nodeSetMemoryParameterValue(virTypedParameterPtr param)
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     VIR_FREE(path);
     VIR_FREE(strval);
     return ret;
@@ -1443,7 +1429,7 @@ nodeGetMemoryParameterValue(const char *field,
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     VIR_FREE(path);
     VIR_FREE(buf);
     return ret;
@@ -1618,7 +1604,7 @@ nodeGetCPUMap(unsigned char **cpumap,
         *online = virBitmapCountBits(cpus);
 
     ret = maxpresent;
-cleanup:
+ cleanup:
     if (ret < 0 && cpumap)
         VIR_FREE(*cpumap);
     virBitmapFree(cpus);
@@ -1700,6 +1686,23 @@ nodeGetCellsFreeMemoryFake(unsigned long long *freeMems,
 static unsigned long long
 nodeGetFreeMemoryFake(void)
 {
+#if defined(__FreeBSD__)
+    unsigned long pagesize = getpagesize();
+    u_int value;
+    size_t value_size = sizeof(value);
+    unsigned long long freemem;
+
+    if (sysctlbyname("vm.stats.vm.v_free_count", &value,
+                     &value_size, NULL, 0) < 0) {
+        virReportSystemError(errno, "%s",
+                             _("sysctl failed for vm.stats.vm.v_free_count"));
+        return 0;
+    }
+
+    freemem = value * (unsigned long long)pagesize;
+
+    return freemem;
+#else
     double avail = physmem_available();
     unsigned long long ret;
 
@@ -1710,6 +1713,7 @@ nodeGetFreeMemoryFake(void)
     }
 
     return ret;
+#endif
 }
 
 /* returns 1 on success, 0 if the detection failed and -1 on hard error */
@@ -1802,7 +1806,7 @@ nodeCapsInitNUMA(virCapsPtr caps)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     if (topology_failed || ret < 0)
         virCapabilitiesClearHostNUMACellCPUTopology(cpus, ncpus);
 
@@ -1850,7 +1854,7 @@ nodeGetCellsFreeMemory(unsigned long long *freeMems,
     }
     ret = numCells;
 
-cleanup:
+ cleanup:
     return ret;
 }
 

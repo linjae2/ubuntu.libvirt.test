@@ -105,7 +105,7 @@ vshGetDomainDescription(vshControl *ctl, virDomainPtr dom, bool title,
     if (!desc)
         desc = vshStrdup(ctl, "");
 
-cleanup:
+ cleanup:
     VIR_FREE(domxml);
     xmlXPathFreeContext(ctxt);
     xmlFreeDoc(doc);
@@ -370,7 +370,7 @@ cmdDomMemStat(vshControl *ctl, const vshCmd *cmd)
     }
 
     ret = true;
-cleanup:
+ cleanup:
     virDomainFree(dom);
     return ret;
 }
@@ -425,7 +425,7 @@ cmdDomblkinfo(vshControl *ctl, const vshCmd *cmd)
 
     ret = true;
 
-cleanup:
+ cleanup:
     virDomainFree(dom);
     return ret;
 }
@@ -547,7 +547,7 @@ cmdDomblklist(vshControl *ctl, const vshCmd *cmd)
 
     ret = true;
 
-cleanup:
+ cleanup:
     VIR_FREE(disks);
     virDomainFree(dom);
     VIR_FREE(xml);
@@ -648,7 +648,7 @@ cmdDomiflist(vshControl *ctl, const vshCmd *cmd)
 
     ret = true;
 
-cleanup:
+ cleanup:
     VIR_FREE(interfaces);
     virDomainFree(dom);
     VIR_FREE(xml);
@@ -760,7 +760,7 @@ cmdDomIfGetLink(vshControl *ctl, const vshCmd *cmd)
 
     ret = true;
 
-cleanup:
+ cleanup:
     VIR_FREE(desc);
     VIR_FREE(state);
     VIR_FREE(interfaces);
@@ -819,7 +819,7 @@ cmdDomControl(vshControl *ctl, const vshCmd *cmd)
                  vshDomainControlStateToString(info.state));
     }
 
-cleanup:
+ cleanup:
     virDomainFree(dom);
     return ret;
 }
@@ -1008,7 +1008,7 @@ cmdDomblkstat(vshControl *ctl, const vshCmd *cmd)
 
     ret = true;
 
-cleanup:
+ cleanup:
     VIR_FREE(params);
     virDomainFree(dom);
     return ret;
@@ -1087,7 +1087,7 @@ cmdDomIfstat(vshControl *ctl, const vshCmd *cmd)
 
     ret = true;
 
-cleanup:
+ cleanup:
     virDomainFree(dom);
     return ret;
 }
@@ -1151,7 +1151,7 @@ cmdDomBlkError(vshControl *ctl, const vshCmd *cmd)
 
     ret = true;
 
-cleanup:
+ cleanup:
     VIR_FREE(disks);
     virDomainFree(dom);
     return ret;
@@ -1203,7 +1203,7 @@ cmdDominfo(vshControl *ctl, const vshCmd *cmd)
         vshPrint(ctl, "%-15s %d\n", _("Id:"), id);
     vshPrint(ctl, "%-15s %s\n", _("Name:"), virDomainGetName(dom));
 
-    if (virDomainGetUUIDString(dom, &uuid[0])==0)
+    if (virDomainGetUUIDString(dom, &uuid[0]) == 0)
         vshPrint(ctl, "%-15s %s\n", _("UUID:"), uuid);
 
     if ((str = virDomainGetOSType(dom))) {
@@ -1350,7 +1350,117 @@ cmdDomstate(vshControl *ctl, const vshCmd *cmd)
                  vshDomainStateToString(state));
     }
 
-cleanup:
+ cleanup:
+    virDomainFree(dom);
+    return ret;
+}
+
+/*
+ * "domtime" command
+ */
+static const vshCmdInfo info_domtime[] = {
+    {.name = "help",
+     .data = N_("domain time")
+    },
+    {.name = "desc",
+     .data = N_("Gets or sets the domain's system time")
+    },
+    {.name = NULL}
+};
+
+static const vshCmdOptDef opts_domtime[] = {
+    {.name = "domain",
+     .type = VSH_OT_DATA,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("domain name, id or uuid")
+    },
+    {.name = "now",
+     .type = VSH_OT_BOOL,
+     .help = N_("set to the time of the host running virsh")
+    },
+    {.name = "pretty",
+     .type = VSH_OT_BOOL,
+     .help = N_("print domain's time in human readable form")
+    },
+    {.name = "sync",
+     .type = VSH_OT_BOOL,
+     .help = N_("instead of setting given time, synchronize from domain's RTC"),
+    },
+    {.name = "time",
+     .type = VSH_OT_INT,
+     .help = N_("time to set")
+    },
+    {.name = NULL}
+};
+
+static bool
+cmdDomTime(vshControl *ctl, const vshCmd *cmd)
+{
+    virDomainPtr dom;
+    bool ret = false;
+    bool now = vshCommandOptBool(cmd, "now");
+    bool pretty = vshCommandOptBool(cmd, "pretty");
+    bool rtcSync = vshCommandOptBool(cmd, "sync");
+    long long seconds = 0;
+    unsigned int nseconds = 0;
+    unsigned int flags = 0;
+    bool doSet = false;
+    int rv;
+
+    VSH_EXCLUSIVE_OPTIONS("time", "now");
+    VSH_EXCLUSIVE_OPTIONS("time", "sync");
+    VSH_EXCLUSIVE_OPTIONS("now", "sync");
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
+        return false;
+
+    rv = vshCommandOptLongLong(cmd, "time", &seconds);
+
+    if (rv < 0) {
+        /* invalid integer format */
+        vshError(ctl, "%s",
+                 _("Unable to parse integer parameter to --time."));
+        goto cleanup;
+    } else if (rv > 0) {
+        /* valid integer to set */
+        doSet = true;
+    }
+
+    if (doSet || now || rtcSync) {
+        if (now && ((seconds = time(NULL)) == (time_t) -1)) {
+            vshError(ctl, _("Unable to get current time"));
+            goto cleanup;
+        }
+
+        if (rtcSync)
+            flags |= VIR_DOMAIN_TIME_SYNC;
+
+        if (virDomainSetTime(dom, seconds, nseconds, flags) < 0)
+            goto cleanup;
+
+    } else {
+        if (virDomainGetTime(dom, &seconds, &nseconds, flags) < 0)
+            goto cleanup;
+
+        if (pretty) {
+            char timestr[100];
+            time_t cur_time = seconds;
+            struct tm time_info;
+
+            if (!gmtime_r(&cur_time, &time_info)) {
+                vshError(ctl, _("Unable to format time"));
+                goto cleanup;
+            }
+            strftime(timestr, sizeof(timestr), "%Y-%m-%d %H:%M:%S", &time_info);
+
+            vshPrint(ctl, _("Time: %s"), timestr);
+        } else {
+            vshPrint(ctl, _("Time: %lld"), seconds);
+        }
+    }
+
+    ret = true;
+ cleanup:
     virDomainFree(dom);
     return ret;
 }
@@ -1474,7 +1584,7 @@ vshDomainListCollect(vshControl *ctl, unsigned int flags)
     goto cleanup;
 
 
-fallback:
+ fallback:
     /* fall back to old method (0.9.12 and older) */
     vshResetLibvirtError();
 
@@ -1534,7 +1644,7 @@ fallback:
     /* truncate domains that weren't found */
     deleted = (nids + nnames) - list->ndomains;
 
-filter:
+ filter:
     /* filter list the list if the list was acquired by fallback means */
     for (i = 0; i < list->ndomains; i++) {
         dom = list->domains[i];
@@ -1610,14 +1720,14 @@ filter:
         /* the domain matched all filters, it may stay */
         continue;
 
-remove_entry:
+ remove_entry:
         /* the domain has to be removed as it failed one of the filters */
         virDomainFree(list->domains[i]);
         list->domains[i] = NULL;
         deleted++;
     }
 
-finished:
+ finished:
     /* sort the list */
     if (list->domains && list->ndomains)
         qsort(list->domains, list->ndomains, sizeof(*list->domains),
@@ -1629,7 +1739,7 @@ finished:
 
     success = true;
 
-cleanup:
+ cleanup:
     for (i = 0; nnames != -1 && i < nnames; i++)
         VIR_FREE(names[i]);
 
@@ -1718,7 +1828,7 @@ static const vshCmdOptDef opts_list[] = {
     },
     {.name = "title",
      .type = VSH_OT_BOOL,
-     .help = N_("show short domain description")
+     .help = N_("show domain title")
     },
     {.name = NULL}
 };
@@ -1838,7 +1948,7 @@ cmdList(vshControl *ctl, const vshCmd *cmd)
     }
 
     ret = true;
-cleanup:
+ cleanup:
     vshDomainListFree(list);
     return ret;
 }
@@ -1909,6 +2019,12 @@ const vshCmdDef domMonitoringCmds[] = {
      .handler = cmdDomstate,
      .opts = opts_domstate,
      .info = info_domstate,
+     .flags = 0
+    },
+    {.name = "domtime",
+     .handler = cmdDomTime,
+     .opts = opts_domtime,
+     .info = info_domtime,
      .flags = 0
     },
     {.name = "list",

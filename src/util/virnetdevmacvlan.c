@@ -65,6 +65,7 @@ VIR_ENUM_IMPL(virNetDevMacVLanMode, VIR_NETDEV_MACVLAN_MODE_LAST,
 # include "virnetdev.h"
 # include "virpidfile.h"
 
+VIR_LOG_INIT("util.netdevmacvlan");
 
 # define MACVTAP_NAME_PREFIX	"macvtap"
 # define MACVTAP_NAME_PATTERN	"macvtap%d"
@@ -72,18 +73,7 @@ VIR_ENUM_IMPL(virNetDevMacVLanMode, VIR_NETDEV_MACVLAN_MODE_LAST,
 # define MACVLAN_NAME_PREFIX	"macvlan"
 # define MACVLAN_NAME_PATTERN	"macvlan%d"
 
-virMutex virNetDevMacVLanCreateMutex;
-
-static int virNetDevMacVLanCreateMutexOnceInit(void)
-{
-    if (virMutexInit(&virNetDevMacVLanCreateMutex) < 0) {
-        virReportSystemError(errno, "%s", _("unable to init mutex"));
-        return -1;
-    }
-    return 0;
-}
-
-VIR_ONCE_GLOBAL_INIT(virNetDevMacVLanCreateMutex);
+virMutex virNetDevMacVLanCreateMutex = VIR_MUTEX_INITIALIZER;
 
 /**
  * virNetDevMacVLanCreate:
@@ -201,17 +191,17 @@ virNetDevMacVLanCreate(const char *ifname,
     }
 
     rc = 0;
-cleanup:
+ cleanup:
     nlmsg_free(nl_msg);
     VIR_FREE(resp);
     return rc;
 
-malformed_resp:
+ malformed_resp:
     virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("malformed netlink response message"));
     goto cleanup;
 
-buffer_too_small:
+ buffer_too_small:
     virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("allocated netlink buffer is too small"));
     goto cleanup;
@@ -278,17 +268,17 @@ int virNetDevMacVLanDelete(const char *ifname)
     }
 
     rc = 0;
-cleanup:
+ cleanup:
     nlmsg_free(nl_msg);
     VIR_FREE(resp);
     return rc;
 
-malformed_resp:
+ malformed_resp:
     virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("malformed netlink response message"));
     goto cleanup;
 
-buffer_too_small:
+ buffer_too_small:
     virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("allocated netlink buffer is too small"));
     goto cleanup;
@@ -444,7 +434,7 @@ struct virNetlinkCallbackData {
     char *linkdev;
     int vf;
     unsigned char vmuuid[VIR_UUID_BUFLEN];
-    enum virNetDevVPortProfileOp vmOp;
+    virNetDevVPortProfileOp vmOp;
     unsigned int linkState;
 };
 
@@ -758,7 +748,7 @@ virNetDevMacVLanVPortProfileRegisterCallback(const char *ifname,
                                              const char *linkdev,
                                              const unsigned char *vmuuid,
                                              virNetDevVPortProfilePtr virtPortProfile,
-                                             enum virNetDevVPortProfileOp vmOp)
+                                             virNetDevVPortProfileOp vmOp)
 {
     virNetlinkCallbackDataPtr calld = NULL;
 
@@ -785,7 +775,7 @@ virNetDevMacVLanVPortProfileRegisterCallback(const char *ifname,
 
     return 0;
 
-error:
+ error:
     virNetlinkCallbackDataFree(calld);
     return -1;
 }
@@ -813,13 +803,13 @@ error:
 int virNetDevMacVLanCreateWithVPortProfile(const char *tgifname,
                                            const virMacAddr *macaddress,
                                            const char *linkdev,
-                                           enum virNetDevMacVLanMode mode,
+                                           virNetDevMacVLanMode mode,
                                            bool withTap,
                                            int vnet_hdr,
                                            const unsigned char *vmuuid,
                                            virNetDevVPortProfilePtr virtPortProfile,
                                            char **res_ifname,
-                                           enum virNetDevVPortProfileOp vmOp,
+                                           virNetDevVPortProfileOp vmOp,
                                            char *stateDir,
                                            virNetDevBandwidthPtr bandwidth)
 {
@@ -870,10 +860,8 @@ int virNetDevMacVLanCreateWithVPortProfile(const char *tgifname,
         if (rc < 0)
             return -1;
     } else {
-create_name:
+ create_name:
         retries = 5;
-        if (virNetDevMacVLanCreateMutexInitialize() < 0)
-            return -1;
         virMutexLock(&virNetDevMacVLanCreateMutex);
         for (c = 0; c < 8192; c++) {
             snprintf(ifname, sizeof(ifname), pattern, c);
@@ -959,7 +947,7 @@ create_name:
 
     return rc;
 
-disassociate_exit:
+ disassociate_exit:
     ignore_value(virNetDevVPortProfileDisassociate(cr_ifname,
                                                    virtPortProfile,
                                                    macaddress,
@@ -967,7 +955,7 @@ disassociate_exit:
                                                    vf,
                                                    vmOp));
 
-link_del_exit:
+ link_del_exit:
     ignore_value(virNetDevMacVLanDelete(cr_ifname));
 
     return rc;
@@ -1034,7 +1022,7 @@ int virNetDevMacVLanRestartWithVPortProfile(const char *cr_ifname,
                                            const char *linkdev,
                                            const unsigned char *vmuuid,
                                            virNetDevVPortProfilePtr virtPortProfile,
-                                           enum virNetDevVPortProfileOp vmOp)
+                                           virNetDevVPortProfileOp vmOp)
 {
     int rc = 0;
 
@@ -1052,7 +1040,7 @@ int virNetDevMacVLanRestartWithVPortProfile(const char *cr_ifname,
                                                 vmuuid,
                                                 vmOp, true));
 
-error:
+ error:
     return rc;
 
 }
@@ -1080,13 +1068,13 @@ int virNetDevMacVLanDelete(const char *ifname ATTRIBUTE_UNUSED)
 int virNetDevMacVLanCreateWithVPortProfile(const char *ifname ATTRIBUTE_UNUSED,
                                            const virMacAddr *macaddress ATTRIBUTE_UNUSED,
                                            const char *linkdev ATTRIBUTE_UNUSED,
-                                           enum virNetDevMacVLanMode mode ATTRIBUTE_UNUSED,
+                                           virNetDevMacVLanMode mode ATTRIBUTE_UNUSED,
                                            bool withTap ATTRIBUTE_UNUSED,
                                            int vnet_hdr ATTRIBUTE_UNUSED,
                                            const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                            virNetDevVPortProfilePtr virtPortProfile ATTRIBUTE_UNUSED,
                                            char **res_ifname ATTRIBUTE_UNUSED,
-                                           enum virNetDevVPortProfileOp vmop ATTRIBUTE_UNUSED,
+                                           virNetDevVPortProfileOp vmop ATTRIBUTE_UNUSED,
                                            char *stateDir ATTRIBUTE_UNUSED,
                                            virNetDevBandwidthPtr bandwidth ATTRIBUTE_UNUSED)
 {
@@ -1112,7 +1100,7 @@ int virNetDevMacVLanRestartWithVPortProfile(const char *cr_ifname ATTRIBUTE_UNUS
                                            const char *linkdev ATTRIBUTE_UNUSED,
                                            const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                            virNetDevVPortProfilePtr virtPortProfile ATTRIBUTE_UNUSED,
-                                           enum virNetDevVPortProfileOp vmOp ATTRIBUTE_UNUSED)
+                                           virNetDevVPortProfileOp vmOp ATTRIBUTE_UNUSED)
 {
     virReportSystemError(ENOSYS, "%s",
                          _("Cannot create macvlan devices on this platform"));
@@ -1124,7 +1112,7 @@ int virNetDevMacVLanVPortProfileRegisterCallback(const char *ifname ATTRIBUTE_UN
                                              const char *linkdev ATTRIBUTE_UNUSED,
                                              const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                              virNetDevVPortProfilePtr virtPortProfile ATTRIBUTE_UNUSED,
-                                             enum virNetDevVPortProfileOp vmOp ATTRIBUTE_UNUSED)
+                                             virNetDevVPortProfileOp vmOp ATTRIBUTE_UNUSED)
 {
     virReportSystemError(ENOSYS, "%s",
                          _("Cannot create macvlan devices on this platform"));

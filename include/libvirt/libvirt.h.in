@@ -4,7 +4,7 @@
  * Description: Provides the interfaces of the libvirt library to handle
  *              virtualized domains
  *
- * Copyright (C) 2005-2006, 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2005-2006, 2010-2014 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1180,6 +1180,29 @@ typedef enum {
     VIR_DUMP_MEMORY_ONLY  = (1 << 4), /* use dump-guest-memory */
 } virDomainCoreDumpFlags;
 
+/**
+ * virDomainCoreDumpFormat:
+ *
+ * Values for specifying different formats of domain core dumps.
+ */
+typedef enum {
+    VIR_DOMAIN_CORE_DUMP_FORMAT_RAW,          /* dump guest memory in raw format */
+    VIR_DOMAIN_CORE_DUMP_FORMAT_KDUMP_ZLIB,   /* kdump-compressed format, with
+                                               * zlib compression */
+    VIR_DOMAIN_CORE_DUMP_FORMAT_KDUMP_LZO,    /* kdump-compressed format, with
+                                               * lzo compression */
+    VIR_DOMAIN_CORE_DUMP_FORMAT_KDUMP_SNAPPY, /* kdump-compressed format, with
+                                               * snappy compression */
+#ifdef VIR_ENUM_SENTINELS
+    VIR_DOMAIN_CORE_DUMP_FORMAT_LAST
+    /*
+     * NB: this enum value will increase over time as new events are
+     * added to the libvirt API. It reflects the last state supported
+     * by this version of the libvirt API.
+     */
+#endif
+} virDomainCoreDumpFormat;
+
 /* Domain migration flags. */
 typedef enum {
     VIR_MIGRATE_LIVE              = (1 << 0), /* live migration */
@@ -1200,6 +1223,7 @@ typedef enum {
     VIR_MIGRATE_OFFLINE           = (1 << 10), /* offline migrate */
     VIR_MIGRATE_COMPRESSED        = (1 << 11), /* compress data during migration */
     VIR_MIGRATE_ABORT_ON_ERROR    = (1 << 12), /* abort migration on I/O errors happened during migration */
+    VIR_MIGRATE_AUTO_CONVERGE     = (1 << 13), /* force convergence */
 } virDomainMigrateFlags;
 
 
@@ -1628,6 +1652,7 @@ typedef enum {
     VIR_DOMAIN_SHUTDOWN_GUEST_AGENT    = (1 << 1), /* Use guest agent */
     VIR_DOMAIN_SHUTDOWN_INITCTL        = (1 << 2), /* Use initctl */
     VIR_DOMAIN_SHUTDOWN_SIGNAL         = (1 << 3), /* Send a signal */
+    VIR_DOMAIN_SHUTDOWN_PARAVIRT       = (1 << 4), /* Use paravirt guest control */
 } virDomainShutdownFlagValues;
 
 int                     virDomainShutdown       (virDomainPtr domain);
@@ -1640,6 +1665,7 @@ typedef enum {
     VIR_DOMAIN_REBOOT_GUEST_AGENT    = (1 << 1), /* Use guest agent */
     VIR_DOMAIN_REBOOT_INITCTL        = (1 << 2), /* Use initctl */
     VIR_DOMAIN_REBOOT_SIGNAL         = (1 << 3), /* Send a signal */
+    VIR_DOMAIN_REBOOT_PARAVIRT       = (1 << 4), /* Use paravirt guest control */
 } virDomainRebootFlagValues;
 
 int                     virDomainReboot         (virDomainPtr domain,
@@ -1728,6 +1754,14 @@ int                    virDomainManagedSaveRemove(virDomainPtr dom,
  */
 int                     virDomainCoreDump       (virDomainPtr domain,
                                                  const char *to,
+                                                 unsigned int flags);
+
+/*
+ * Domain core dump with format specified
+ */
+int                 virDomainCoreDumpWithFormat (virDomainPtr domain,
+                                                 const char *to,
+                                                 unsigned int dumpformat,
                                                  unsigned int flags);
 
 /*
@@ -4603,7 +4637,7 @@ typedef enum {
     VIR_DOMAIN_EVENT_WATCHDOG_NONE = 0, /* No action, watchdog ignored */
     VIR_DOMAIN_EVENT_WATCHDOG_PAUSE,    /* Guest CPUs are paused */
     VIR_DOMAIN_EVENT_WATCHDOG_RESET,    /* Guest CPUs are reset */
-    VIR_DOMAIN_EVENT_WATCHDOG_POWEROFF, /* Guest is forcably powered off */
+    VIR_DOMAIN_EVENT_WATCHDOG_POWEROFF, /* Guest is forcibly powered off */
     VIR_DOMAIN_EVENT_WATCHDOG_SHUTDOWN, /* Guest is requested to gracefully shutdown */
     VIR_DOMAIN_EVENT_WATCHDOG_DEBUG,    /* No action, a debug message logged */
 
@@ -5244,6 +5278,30 @@ int virDomainFSTrim(virDomainPtr dom,
                     const char *mountPoint,
                     unsigned long long minimum,
                     unsigned int flags);
+
+int virDomainFSFreeze(virDomainPtr dom,
+                      const char **mountpoints,
+                      unsigned int nmountpoints,
+                      unsigned int flags);
+
+int virDomainFSThaw(virDomainPtr dom,
+                    const char **mountpoints,
+                    unsigned int nmountpoints,
+                    unsigned int flags);
+
+int virDomainGetTime(virDomainPtr dom,
+                     long long *seconds,
+                     unsigned int *nseconds,
+                     unsigned int flags);
+
+typedef enum {
+    VIR_DOMAIN_TIME_SYNC = (1 << 0), /* Re-sync domain time from domain's RTC */
+} virDomainSetTimeFlags;
+
+int virDomainSetTime(virDomainPtr dom,
+                     long long seconds,
+                     unsigned int nseconds,
+                     unsigned int flags);
 
 /**
  * virSchedParameterType:

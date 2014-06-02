@@ -1,5 +1,5 @@
 # Customize Makefile.maint.                           -*- makefile -*-
-# Copyright (C) 2008-2013 Red Hat, Inc.
+# Copyright (C) 2008-2014 Red Hat, Inc.
 # Copyright (C) 2003-2008 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
@@ -421,6 +421,12 @@ sc_prohibit_gethostname:
 	halt='use virGetHostname, not gethostname'			\
 	  $(_sc_search_regexp)
 
+sc_prohibit_readdir:
+	@prohibit='\breaddir *\('					\
+	exclude='exempt from syntax-check'				\
+	halt='use virDirRead, not readdir'				\
+	  $(_sc_search_regexp)
+
 sc_prohibit_gettext_noop:
 	@prohibit='gettext_noop *\('					\
 	halt='use N_, not gettext_noop'					\
@@ -515,6 +521,11 @@ sc_prohibit_virBufferAdd_with_string_literal:
 sc_prohibit_virBufferAsprintf_with_string_literal:
 	@prohibit='\<virBufferAsprintf *\([^,]+, *"([^%"\]|\\.|%%)*"\)'		\
 	halt='use virBufferAddLit, not virBufferAsprintf, with a string literal' \
+	  $(_sc_search_regexp)
+
+sc_forbid_manual_xml_indent:
+	@prohibit='virBuffer.*" +<'					      \
+	halt='use virBufferAdjustIndent instead of spaces when indenting xml' \
 	  $(_sc_search_regexp)
 
 # Not only do they fail to deal well with ipv6, but the gethostby*
@@ -614,7 +625,7 @@ sc_libvirt_unmarked_diagnostics:
 	  $(_sc_search_regexp)
 	@{ grep     -nE '\<$(func_re) *\(.*;$$' $$($(VC_LIST_EXCEPT));   \
 	   grep -A1 -nE '\<$(func_re) *\(.*,$$' $$($(VC_LIST_EXCEPT)); } \
-	   | sed 's/_("\([^\"]\|\\.\)\+"//;s/[	 ]"%s"//'		\
+	   | $(SED) 's/_("\([^\"]\|\\.\)\+"//;s/[	 ]"%s"//'		\
 	   | grep '[	 ]"' &&						\
 	  { echo '$(ME): found unmarked diagnostic(s)' 1>&2;		\
 	    exit 1; } || :
@@ -639,7 +650,7 @@ sc_prohibit_newline_at_end_of_diagnostic:
 sc_prohibit_diagnostic_without_format:
 	@{ grep     -nE '\<$(func_re) *\(.*;$$' $$($(VC_LIST_EXCEPT));   \
 	   grep -A2 -nE '\<$(func_re) *\(.*,$$' $$($(VC_LIST_EXCEPT)); } \
-	   | sed -rn -e ':l; /[,"]$$/ {N;b l;}'				 \
+	   | $(SED) -rn -e ':l; /[,"]$$/ {N;b l;}'				 \
 		-e '/(xenapiSessionErrorHandler|vah_(error|warning))/d'	 \
 		-e '/\<$(func_re) *\([^"]*"([^%"]|"\n[^"]*")*"[,)]/p'	 \
            | grep -vE 'VIR_ERROR' &&					 \
@@ -661,7 +672,7 @@ sc_prohibit_useless_translation:
 # or \n on one side of the split.
 sc_require_whitespace_in_translation:
 	@grep -n -A1 '"$$' $$($(VC_LIST_EXCEPT))   			\
-	   | sed -ne ':l; /"$$/ {N;b l;}; s/"\n[^"]*"/""/g; s/\\n/ /g'	\
+	   | $(SED) -ne ':l; /"$$/ {N;b l;}; s/"\n[^"]*"/""/g; s/\\n/ /g'	\
 		-e '/_(.*[^\ ]""[^\ ]/p' | grep . &&			\
 	  { echo '$(ME): missing whitespace at line split' 1>&2;	\
 	    exit 1; } || :
@@ -681,11 +692,11 @@ sc_preprocessor_indentation:
 sc_spec_indentation:
 	@if cppi --version >/dev/null 2>&1; then			\
 	  for f in $$($(VC_LIST_EXCEPT) | grep '\.spec\.in$$'); do	\
-	    sed -e 's|#|// #|; s|%ifn*\(arch\)* |#if a // |'		\
+	    $(SED) -e 's|#|// #|; s|%ifn*\(arch\)* |#if a // |'		\
 		-e 's/%\(else\|endif\|define\)/#\1/'			\
 		-e 's/^\( *\)\1\1\1#/#\1/'				\
 		-e 's|^\( *[^#/ ]\)|// \1|; s|^\( */[^/]\)|// \1|' $$f	\
-	    | cppi -a -c 2>&1 | sed "s|standard input|$$f|";		\
+	    | cppi -a -c 2>&1 | $(SED) "s|standard input|$$f|";		\
 	  done | { if grep . >&2; then false; else :; fi; }		\
 	    || { echo '$(ME): incorrect preprocessor indentation' 1>&2;	\
 		exit 1; };						\
@@ -755,17 +766,17 @@ sc_prohibit_gettext_markup:
 # lower-level code must not include higher-level headers.
 cross_dirs=$(patsubst $(srcdir)/src/%.,%,$(wildcard $(srcdir)/src/*/.))
 cross_dirs_re=($(subst / ,/|,$(cross_dirs)))
+mid_dirs=access|conf|cpu|locking|network|node_device|rpc|security|storage
 sc_prohibit_cross_inclusion:
 	@for dir in $(cross_dirs); do					\
 	  case $$dir in							\
 	    util/) safe="util";;					\
-	    locking/)							\
-	      safe="($$dir|util|conf|rpc)";;				\
-	    cpu/ | locking/ | network/ | rpc/ | security/)		\
+	    access/ | conf/) safe="($$dir|conf|util)";;			\
+	    locking/) safe="($$dir|util|conf|rpc)";;			\
+	    cpu/| network/| node_device/| rpc/| security/| storage/)	\
 	      safe="($$dir|util|conf)";;				\
 	    xenapi/ | xenxs/ ) safe="($$dir|util|conf|xen)";;		\
-	    qemu/ ) safe="($$dir|util|conf|cpu|network|locking|rpc|security|storage)";; \
-	    *) safe="($$dir|util|conf|cpu|network|locking|rpc|security)";; \
+	    *) safe="($$dir|$(mid_dirs)|util)";;			\
 	  esac;								\
 	  in_vc_files="^src/$$dir"					\
 	  prohibit='^# *include .$(cross_dirs_re)'			\
@@ -778,7 +789,7 @@ sc_prohibit_cross_inclusion:
 # elements added to the enum by using a _LAST marker.
 sc_require_enum_last_marker:
 	@grep -A1 -nE '^[^#]*VIR_ENUM_IMPL *\(' $$($(VC_LIST_EXCEPT))	\
-	   | sed -ne '/VIR_ENUM_IMPL[^,]*,$$/N'				\
+	   | $(SED) -ne '/VIR_ENUM_IMPL[^,]*,$$/N'				\
 	     -e '/VIR_ENUM_IMPL[^,]*,[^,]*[^_,][^L,][^A,][^S,][^T,],/p'	\
 	     -e '/VIR_ENUM_IMPL[^,]*,[^,]\{0,4\},/p'			\
 	   | grep . &&							\
@@ -863,6 +874,60 @@ sc_prohibit_atoi:
 	halt='Use virStrToLong* instead of atoi, atol, atof, atoq, atoll' \
 	  $(_sc_search_regexp)
 
+sc_prohibit_wrong_filename_in_comment:
+	@fail=0;                                                       \
+	awk 'BEGIN {                                                   \
+	  fail=0;                                                      \
+	} FNR < 3 {                                                    \
+	  n=match($$0, /[[:space:]][^[:space:]]*[.][ch][[:space:]:]/); \
+	  if (n > 0) {                                                 \
+	    A=substr($$0, RSTART+1, RLENGTH-2);                        \
+	    n=split(FILENAME, arr, "/");                               \
+	    if (A != arr[n]) {                                         \
+	      print "in " FILENAME ": " A " mentioned in comments ";   \
+	      fail=1;                                                  \
+	    }                                                          \
+	  }                                                            \
+	} END {                                                        \
+	  if (fail == 1) {                                             \
+	    exit 1;                                                    \
+	  }                                                            \
+	}' $$($(VC_LIST_EXCEPT) | grep '\.[ch]$$') || fail=1;          \
+	if test $$fail -eq 1; then                                     \
+	  { echo '$(ME): The file name in comments must match the'     \
+	    'actual file name' 1>&2; exit 1; }	                       \
+	fi;
+
+sc_prohibit_virConnectOpen_in_virsh:
+	@prohibit='\bvirConnectOpen[a-zA-Z]* *\('                      \
+	in_vc_files='^tools/virsh-.*\.[ch]$$'                          \
+	halt='Use vshConnect() in virsh instead of virConnectOpen*'    \
+	  $(_sc_search_regexp)
+
+sc_require_space_before_label:
+	@prohibit='^(   ?)?[_a-zA-Z0-9]+:$$'                           \
+	in_vc_files='\.[ch]$$'                                         \
+	halt="Top-level labels should be indented by one space"        \
+	  $(_sc_search_regexp)
+
+sc_curly_braces_style:
+	@files=$$($(VC_LIST_EXCEPT) | grep '\.[ch]$$');                \
+	$(GREP) -nHP                                                   \
+'^\s*(?!([a-zA-Z_]*for_?each[a-zA-Z_]*) ?\()([_a-zA-Z0-9]+( [_a-zA-Z0-9]+)* ?\()?(\*?[_a-zA-Z0-9]+(,? \*?[_a-zA-Z0-9\[\]]+)+|void)\) ?\{' \
+	$$files && { echo '$(ME): Non-K&R style used for curly'        \
+			  'braces around function body, see'           \
+			  'HACKING' 1>&2; exit 1; } || :
+
+sc_prohibit_windows_special_chars_in_filename:
+	@files=$$($(VC_LIST_EXCEPT) | grep '[:*?"<>|]');               \
+	test -n "$$files" && { echo '$(ME): Windows special chars'     \
+	  'in filename not allowed:' 1>&2; echo $$files 1>&2; exit 1; } || :
+
+sc_prohibit_mixed_case_abbreviations:
+	@prohibit='Pci|Usb|Scsi'			\
+	in_vc_files='\.[ch]$$'				\
+	halt='Use PCI, USB, SCSI, not Pci, Usb, Scsi'	\
+	  $(_sc_search_regexp)
 
 # We don't use this feature of maint.mk.
 prev_version_file = /dev/null
@@ -879,7 +944,7 @@ ifeq (0,$(MAKELEVEL))
   # b653eda3ac4864de205419d9f41eec267cb89eeb
   #
   # Keep this logic in sync with autogen.sh.
-  _submodule_hash = sed 's/^[ +-]//;s/ .*//'
+  _submodule_hash = $(SED) 's/^[ +-]//;s/ .*//'
   _update_required := $(shell						\
       cd '$(srcdir)';							\
       test -d .git || { echo 0; exit; };				\
@@ -941,7 +1006,8 @@ exclude_file_name_regexp--sc_bindtextdomain = ^(tests|examples)/
 exclude_file_name_regexp--sc_copyright_usage = \
   ^COPYING(|\.LESSER)$$
 
-exclude_file_name_regexp--sc_flags_usage = ^(docs/|src/util/virnetdevtap\.c$$|tests/vir(cgroup|pci)mock\.c$$)
+exclude_file_name_regexp--sc_flags_usage = \
+  ^(docs/|src/util/virnetdevtap\.c$$|tests/vir(cgroup|pci|usb)mock\.c$$)
 
 exclude_file_name_regexp--sc_libvirt_unmarked_diagnostics = \
   ^(src/rpc/gendispatch\.pl$$|tests/)
@@ -1032,3 +1098,9 @@ exclude_file_name_regexp--sc_prohibit_int_ijk = \
 
 exclude_file_name_regexp--sc_prohibit_getenv = \
   ^tests/.*\.[ch]$$
+
+exclude_file_name_regexp--sc_avoid_attribute_unused_in_header = \
+  ^src/util/virlog\.h$$
+
+exclude_file_name_regexp--sc_prohibit_mixed_case_abbreviations = \
+  ^src/(vbox/vbox_CAPI.*.h|esx/esx_vi.(c|h)|esx/esx_storage_backend_iscsi.c)$$

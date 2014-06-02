@@ -204,6 +204,8 @@ enum virQEMUCapsFlags {
     QEMU_CAPS_SPICE_FILE_XFER_DISABLE = 163, /* -spice disable-agent-file-xfer */
     QEMU_CAPS_CHARDEV_SPICEPORT  = 164, /* -chardev spiceport */
     QEMU_CAPS_DEVICE_USB_KBD     = 165, /* -device usb-kbd */
+    QEMU_CAPS_HOST_PCI_MULTIDOMAIN = 166, /* support domain > 0 in host pci address */
+    QEMU_CAPS_MSG_TIMESTAMP      = 167, /* -msg timestamp */
 
     QEMU_CAPS_LAST,                   /* this must always be the last item */
 };
@@ -218,6 +220,7 @@ virQEMUCapsPtr virQEMUCapsNew(void);
 virQEMUCapsPtr virQEMUCapsNewCopy(virQEMUCapsPtr qemuCaps);
 virQEMUCapsPtr virQEMUCapsNewForBinary(const char *binary,
                                        const char *libDir,
+                                       const char *cacheDir,
                                        uid_t runUid,
                                        gid_t runGid);
 
@@ -237,6 +240,9 @@ void virQEMUCapsClear(virQEMUCapsPtr qemuCaps,
 
 bool virQEMUCapsGet(virQEMUCapsPtr qemuCaps,
                     enum virQEMUCapsFlags flag);
+
+bool virQEMUCapsHasPCIMultiBus(virQEMUCapsPtr qemuCaps,
+                               virDomainDefPtr def);
 
 char *virQEMUCapsFlagsString(virQEMUCapsPtr qemuCaps);
 
@@ -262,6 +268,7 @@ bool virQEMUCapsIsValid(virQEMUCapsPtr qemuCaps);
 
 
 virQEMUCapsCachePtr virQEMUCapsCacheNew(const char *libDir,
+                                        const char *cacheDir,
                                         uid_t uid, gid_t gid);
 virQEMUCapsPtr virQEMUCapsCacheLookup(virQEMUCapsCachePtr cache,
                                       const char *binary);
@@ -292,5 +299,12 @@ bool virQEMUCapsUsedQMP(virQEMUCapsPtr qemuCaps);
 bool virQEMUCapsSupportsChardev(virDomainDefPtr def,
                                 virQEMUCapsPtr qemuCaps,
                                 virDomainChrDefPtr chr);
+
+int virQEMUCapsInitGuestFromBinary(virCapsPtr caps,
+                                   const char *binary,
+                                   virQEMUCapsPtr qemubinCaps,
+                                   const char *kvmbin,
+                                   virQEMUCapsPtr kvmbinCaps,
+                                   virArch guestarch);
 
 #endif /* __QEMU_CAPABILITIES_H__*/

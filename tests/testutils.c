@@ -1,7 +1,7 @@
 /*
  * testutils.c: basic test utils
  *
- * Copyright (C) 2005-2013 Red Hat, Inc.
+ * Copyright (C) 2005-2014 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -59,6 +59,8 @@
 #endif
 
 #define VIR_FROM_THIS VIR_FROM_NONE
+
+VIR_LOG_INIT("tests.testutils");
 
 #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
 #define DIFF_MSEC(T, U)                                 \
@@ -360,7 +362,8 @@ virtTestLoadFile(const char *file, char **buf)
 #ifndef WIN32
 static
 void virtTestCaptureProgramExecChild(const char *const argv[],
-                                     int pipefd) {
+                                     int pipefd)
+{
     size_t i;
     int open_max;
     int stdinfd = -1;
@@ -427,7 +430,7 @@ virtTestCaptureProgramOutput(const char *const argv[], char **buf, int maxlen)
         VIR_FORCE_CLOSE(pipefd[1]);
         len = virFileReadLimFD(pipefd[0], maxlen, buf);
         VIR_FORCE_CLOSE(pipefd[0]);
-        if (virProcessWait(pid, NULL) < 0)
+        if (virProcessWait(pid, NULL, false) < 0)
             return -1;
 
         return len;
@@ -456,10 +459,20 @@ int virtTestDifference(FILE *stream,
                        const char *expect,
                        const char *actual)
 {
-    const char *expectStart = expect;
-    const char *expectEnd = expect + (strlen(expect)-1);
-    const char *actualStart = actual;
-    const char *actualEnd = actual + (strlen(actual)-1);
+    const char *expectStart;
+    const char *expectEnd;
+    const char *actualStart;
+    const char *actualEnd;
+
+    if (!expect)
+        expect = "";
+    if (!actual)
+        actual = "";
+
+    expectStart = expect;
+    expectEnd = expect + (strlen(expect)-1);
+    actualStart = actual;
+    actualEnd = actual + (strlen(actual)-1);
 
     if (!virTestGetDebug())
         return 0;
@@ -584,7 +597,7 @@ struct virtTestLogData {
 static struct virtTestLogData testLog = { VIR_BUFFER_INITIALIZER };
 
 static void
-virtTestLogOutput(virLogSource source ATTRIBUTE_UNUSED,
+virtTestLogOutput(virLogSourcePtr source ATTRIBUTE_UNUSED,
                   virLogPriority priority ATTRIBUTE_UNUSED,
                   const char *filename ATTRIBUTE_UNUSED,
                   int lineno ATTRIBUTE_UNUSED,
@@ -627,7 +640,8 @@ virtTestLogContentAndReset(void)
 
 
 static unsigned int
-virTestGetFlag(const char *name) {
+virTestGetFlag(const char *name)
+{
     char *flagStr;
     unsigned int flag;
 
@@ -641,21 +655,24 @@ virTestGetFlag(const char *name) {
 }
 
 unsigned int
-virTestGetDebug(void) {
+virTestGetDebug(void)
+{
     if (testDebug == -1)
         testDebug = virTestGetFlag("VIR_TEST_DEBUG");
     return testDebug;
 }
 
 unsigned int
-virTestGetVerbose(void) {
+virTestGetVerbose(void)
+{
     if (testVerbose == -1)
         testVerbose = virTestGetFlag("VIR_TEST_VERBOSE");
     return testVerbose || virTestGetDebug();
 }
 
 unsigned int
-virTestGetExpensive(void) {
+virTestGetExpensive(void)
+{
     if (testExpensive == -1)
         testExpensive = virTestGetFlag("VIR_TEST_EXPENSIVE");
     return testExpensive;
@@ -670,6 +687,8 @@ int virtTestMain(int argc,
 #ifdef TEST_OOM
     char *oomstr;
 #endif
+
+    virFileActivateDirOverride(argv[0]);
 
     if (!virFileExists(abs_srcdir))
         return EXIT_AM_HARDFAIL;
@@ -836,6 +855,57 @@ int virtTestClearLineRegex(const char *pattern,
 }
 
 
+/*
+ * @cmdset contains a list of command line args, eg
+ *
+ * "/usr/sbin/iptables --table filter --insert INPUT --in-interface virbr0 --protocol tcp --destination-port 53 --jump ACCEPT
+ *  /usr/sbin/iptables --table filter --insert INPUT --in-interface virbr0 --protocol udp --destination-port 53 --jump ACCEPT
+ *  /usr/sbin/iptables --table filter --insert FORWARD --in-interface virbr0 --jump REJECT
+ *  /usr/sbin/iptables --table filter --insert FORWARD --out-interface virbr0 --jump REJECT
+ *  /usr/sbin/iptables --table filter --insert FORWARD --in-interface virbr0 --out-interface virbr0 --jump ACCEPT"
+ *
+ * And we're munging it in-place to strip the path component
+ * of the command line, to produce
+ *
+ * "iptables --table filter --insert INPUT --in-interface virbr0 --protocol tcp --destination-port 53 --jump ACCEPT
+ *  iptables --table filter --insert INPUT --in-interface virbr0 --protocol udp --destination-port 53 --jump ACCEPT
+ *  iptables --table filter --insert FORWARD --in-interface virbr0 --jump REJECT
+ *  iptables --table filter --insert FORWARD --out-interface virbr0 --jump REJECT
+ *  iptables --table filter --insert FORWARD --in-interface virbr0 --out-interface virbr0 --jump ACCEPT"
+ */
+void virtTestClearCommandPath(char *cmdset)
+{
+    size_t offset = 0;
+    char *lineStart = cmdset;
+    char *lineEnd = strchr(lineStart, '\n');
+
+    while (lineStart) {
+        char *dirsep;
+        char *movestart;
+        size_t movelen;
+        dirsep = strchr(lineStart, ' ');
+        if (dirsep) {
+            while (dirsep > lineStart && *dirsep != '/')
+                dirsep--;
+            if (*dirsep == '/')
+                dirsep++;
+            movestart = dirsep;
+        } else {
+            movestart = lineStart;
+        }
+        movelen = lineEnd ? lineEnd - movestart : strlen(movestart);
+
+        if (movelen) {
+            memmove(cmdset + offset, movestart, movelen + 1);
+            offset += movelen + 1;
+        }
+        lineStart = lineEnd ? lineEnd + 1 : NULL;
+        lineEnd = lineStart ? strchr(lineStart, '\n') : NULL;
+    }
+    cmdset[offset] = '\0';
+}
+
+
 virCapsPtr virTestGenericCapsInit(void)
 {
     virCapsPtr caps;
@@ -877,7 +947,7 @@ virCapsPtr virTestGenericCapsInit(void)
 
     return caps;
 
-error:
+ error:
     virObjectUnref(caps);
     return NULL;
 }

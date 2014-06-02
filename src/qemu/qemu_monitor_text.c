@@ -1,7 +1,7 @@
 /*
  * qemu_monitor_text.c: interaction with QEMU monitor console
  *
- * Copyright (C) 2006-2013 Red Hat, Inc.
+ * Copyright (C) 2006-2014 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -40,6 +40,7 @@
 #include "datatypes.h"
 #include "virerror.h"
 #include "virbuffer.h"
+#include "virprobe.h"
 #include "virstring.h"
 
 #ifdef WITH_DTRACE_PROBES
@@ -47,6 +48,8 @@
 #endif
 
 #define VIR_FROM_THIS VIR_FROM_QEMU
+
+VIR_LOG_INIT("qemu.qemu_monitor_text");
 
 #define QEMU_CMD_PROMPT "\n(qemu) "
 #define QEMU_PASSWD_PROMPT "Password: "
@@ -361,7 +364,8 @@ qemuMonitorSendDiskPassphrase(qemuMonitorPtr mon,
 
 int
 qemuMonitorTextStartCPUs(qemuMonitorPtr mon,
-                         virConnectPtr conn) {
+                         virConnectPtr conn)
+{
     char *reply;
 
     if (qemuMonitorTextCommandWithHandler(mon, "cont",
@@ -376,7 +380,8 @@ qemuMonitorTextStartCPUs(qemuMonitorPtr mon,
 
 
 int
-qemuMonitorTextStopCPUs(qemuMonitorPtr mon) {
+qemuMonitorTextStopCPUs(qemuMonitorPtr mon)
+{
     char *info;
     int ret;
 
@@ -425,13 +430,14 @@ qemuMonitorTextGetStatus(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     return ret;
 }
 
 
-int qemuMonitorTextSystemPowerdown(qemuMonitorPtr mon) {
+int qemuMonitorTextSystemPowerdown(qemuMonitorPtr mon)
+{
     char *info;
     int ret;
 
@@ -441,7 +447,11 @@ int qemuMonitorTextSystemPowerdown(qemuMonitorPtr mon) {
     return ret;
 }
 
-int qemuMonitorTextSetLink(qemuMonitorPtr mon, const char *name, enum virDomainNetInterfaceLinkState state) {
+int
+qemuMonitorTextSetLink(qemuMonitorPtr mon,
+                       const char *name,
+                       enum virDomainNetInterfaceLinkState state)
+{
     char *info = NULL;
     char *cmd = NULL;
     const char *st_str = NULL;
@@ -476,14 +486,15 @@ int qemuMonitorTextSetLink(qemuMonitorPtr mon, const char *name, enum virDomainN
     VIR_FREE(cmd);
     return 0;
 
-error:
+ error:
     VIR_FREE(info);
     VIR_FREE(cmd);
 
     return -1;
 }
 
-int qemuMonitorTextSystemReset(qemuMonitorPtr mon) {
+int qemuMonitorTextSystemReset(qemuMonitorPtr mon)
+{
     char *info;
     int ret;
 
@@ -529,11 +540,10 @@ int qemuMonitorTextGetCPUInfo(qemuMonitorPtr mon,
         if (end == NULL || !c_isspace(*end))
             goto error;
 
-        if (VIR_REALLOC_N(cpupids, ncpupids+1) < 0)
+        if (VIR_APPEND_ELEMENT_COPY(cpupids, ncpupids, tid) < 0)
             goto error;
 
         VIR_DEBUG("tid=%d", tid);
-        cpupids[ncpupids++] = tid;
 
         /* Skip to next data line */
         line = strchr(offset, '\r');
@@ -546,7 +556,7 @@ int qemuMonitorTextGetCPUInfo(qemuMonitorPtr mon,
     *pids = cpupids;
     return ncpupids;
 
-error:
+ error:
     VIR_FREE(qemucpus);
     VIR_FREE(cpupids);
 
@@ -697,7 +707,7 @@ int qemuMonitorTextGetBalloonInfo(qemuMonitorPtr mon,
         ret = 0;
     }
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     return ret;
 }
@@ -824,7 +834,7 @@ int qemuMonitorTextGetBlockInfo(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(info);
     VIR_FREE(reply);
     return ret;
@@ -1061,7 +1071,7 @@ int qemuMonitorTextBlockResize(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -1135,7 +1145,7 @@ int qemuMonitorTextSetPassword(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     VIR_FREE(cmd);
     return ret;
@@ -1164,7 +1174,7 @@ int qemuMonitorTextExpirePassword(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     VIR_FREE(cmd);
     return ret;
@@ -1266,7 +1276,7 @@ int qemuMonitorTextEjectMedia(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     VIR_FREE(cmd);
     return ret;
@@ -1310,7 +1320,7 @@ int qemuMonitorTextChangeMedia(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     VIR_FREE(cmd);
     VIR_FREE(safepath);
@@ -1341,7 +1351,7 @@ static int qemuMonitorTextSaveMemory(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     VIR_FREE(safepath);
@@ -1381,7 +1391,7 @@ int qemuMonitorTextSetMigrationSpeed(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(info);
     VIR_FREE(cmd);
     return ret;
@@ -1403,7 +1413,7 @@ int qemuMonitorTextSetMigrationDowntime(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(info);
     VIR_FREE(cmd);
     return ret;
@@ -1419,8 +1429,7 @@ cleanup:
 #define MIGRATION_DISK_TOTAL_PREFIX "total disk: "
 
 int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
-                                      qemuMonitorMigrationStatusPtr status,
-                                      int *setting_up)
+                                      qemuMonitorMigrationStatusPtr status)
 {
     char *reply;
     char *tmp;
@@ -1441,12 +1450,6 @@ int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
             goto cleanup;
         }
         *end = '\0';
-
-        if (strncmp(tmp, "setup", 5) == 0) {
-            status->status = QEMU_MONITOR_MIGRATION_STATUS_ACTIVE;
-            *setting_up = 1;
-            goto done;
-        }
 
         status->status = qemuMonitorMigrationStatusTypeFromString(tmp);
         if (status->status < 0) {
@@ -1540,20 +1543,12 @@ int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
             }
             status->disk_total *= 1024;
         }
-    } else if (strstr(reply, "info migration") != NULL) {
-        /* 'info migrate' returned help for info commands and the help page
-         * advertises 'info migration' command. Therefore we have an old
-         * command implementation installed and this must be kvm 72 on debian */
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                        _("command 'info migrate' is not implemented in kvm,"
-                          " please update to qemu-kvm"));
-        goto cleanup;
-   }
+    }
 
-done:
+ done:
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     if (ret < 0)
         memset(status, 0, sizeof(*status));
@@ -1612,7 +1607,7 @@ int qemuMonitorTextMigrate(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(extrastr);
     VIR_FREE(safedest);
     VIR_FREE(info);
@@ -1686,7 +1681,7 @@ int qemuMonitorTextAddUSBDisk(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(safepath);
     VIR_FREE(info);
@@ -1717,7 +1712,7 @@ static int qemuMonitorTextAddUSBDevice(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -1758,7 +1753,7 @@ int qemuMonitorTextAddUSBDeviceMatch(qemuMonitorPtr mon,
 
 
 static int
-qemuMonitorTextParsePciAddReply(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
+qemuMonitorTextParsePCIAddReply(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                 const char *reply,
                                 virDevicePCIAddress *addr)
 {
@@ -1831,10 +1826,20 @@ int qemuMonitorTextAddPCIHostDevice(qemuMonitorPtr mon,
 
     memset(guestAddr, 0, sizeof(*guestAddr));
 
-    /* XXX hostAddr->domain */
-    if (virAsprintf(&cmd, "pci_add pci_addr=auto host host=%.2x:%.2x.%.1x",
-                    hostAddr->bus, hostAddr->slot, hostAddr->function) < 0)
-        goto cleanup;
+    if (hostAddr->domain) {
+        /* if domain > 0, the caller has already verified that this qemu
+         * supports specifying domain in pci_add command
+         */
+        if (virAsprintf(&cmd,
+                        "pci_add pci_addr=auto host host=%.4x:%.2x:%.2x.%.1x",
+                        hostAddr->domain, hostAddr->bus,
+                        hostAddr->slot, hostAddr->function) < 0)
+            goto cleanup;
+    } else {
+        if (virAsprintf(&cmd, "pci_add pci_addr=auto host host=%.2x:%.2x.%.1x",
+                        hostAddr->bus, hostAddr->slot, hostAddr->function) < 0)
+            goto cleanup;
+    }
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
@@ -1845,7 +1850,7 @@ int qemuMonitorTextAddPCIHostDevice(qemuMonitorPtr mon,
         goto cleanup;
     }
 
-    if (qemuMonitorTextParsePciAddReply(mon, reply, guestAddr) < 0) {
+    if (qemuMonitorTextParsePCIAddReply(mon, reply, guestAddr) < 0) {
         virReportError(VIR_ERR_OPERATION_FAILED,
                        _("parsing pci_add reply failed: %s"), reply);
         goto cleanup;
@@ -1853,7 +1858,7 @@ int qemuMonitorTextAddPCIHostDevice(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -1875,7 +1880,7 @@ int qemuMonitorTextAddPCIDisk(qemuMonitorPtr mon,
     if (!safe_path)
         return -1;
 
-try_command:
+ try_command:
     if (virAsprintf(&cmd, "pci_add %s storage file=%s,if=%s",
                     (tryOldSyntax ? "0": "pci_addr=auto"), safe_path, bus) < 0)
         goto cleanup;
@@ -1883,7 +1888,7 @@ try_command:
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
 
-    if (qemuMonitorTextParsePciAddReply(mon, reply, guestAddr) < 0) {
+    if (qemuMonitorTextParsePCIAddReply(mon, reply, guestAddr) < 0) {
         if (!tryOldSyntax && strstr(reply, "invalid char in expression")) {
             VIR_FREE(reply);
             VIR_FREE(cmd);
@@ -1898,7 +1903,7 @@ try_command:
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(safe_path);
     VIR_FREE(cmd);
     VIR_FREE(reply);
@@ -1920,7 +1925,7 @@ int qemuMonitorTextAddPCINetwork(qemuMonitorPtr mon,
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
 
-    if (qemuMonitorTextParsePciAddReply(mon, reply, guestAddr) < 0) {
+    if (qemuMonitorTextParsePCIAddReply(mon, reply, guestAddr) < 0) {
         virReportError(VIR_ERR_OPERATION_FAILED,
                        _("parsing pci_add reply failed: %s"), reply);
         goto cleanup;
@@ -1928,7 +1933,7 @@ int qemuMonitorTextAddPCINetwork(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     VIR_FREE(cmd);
     return ret;
@@ -1943,7 +1948,7 @@ int qemuMonitorTextRemovePCIDevice(qemuMonitorPtr mon,
     bool tryOldSyntax = false;
     int ret = -1;
 
-try_command:
+ try_command:
     if (tryOldSyntax) {
         if (virAsprintf(&cmd, "pci_del 0 %.2x", guestAddr->slot) < 0)
             goto cleanup;
@@ -1979,7 +1984,7 @@ try_command:
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2018,7 +2023,7 @@ int qemuMonitorTextSendFileHandle(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2049,7 +2054,7 @@ int qemuMonitorTextCloseFileHandle(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2078,7 +2083,7 @@ int qemuMonitorTextAddHostNetwork(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2103,7 +2108,7 @@ int qemuMonitorTextRemoveHostNetwork(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2127,7 +2132,7 @@ int qemuMonitorTextAddNetdev(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2151,7 +2156,7 @@ int qemuMonitorTextRemoveNetdev(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2234,7 +2239,7 @@ int qemuMonitorTextGetPtyPaths(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     return ret;
 }
@@ -2249,7 +2254,7 @@ int qemuMonitorTextAttachPCIDiskController(qemuMonitorPtr mon,
     bool tryOldSyntax = false;
     int ret = -1;
 
-try_command:
+ try_command:
     if (virAsprintf(&cmd, "pci_add %s storage if=%s",
                     (tryOldSyntax ? "0": "pci_addr=auto"), bus) < 0)
         goto cleanup;
@@ -2257,7 +2262,7 @@ try_command:
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0)
         goto cleanup;
 
-    if (qemuMonitorTextParsePciAddReply(mon, reply, guestAddr) < 0) {
+    if (qemuMonitorTextParsePCIAddReply(mon, reply, guestAddr) < 0) {
         if (!tryOldSyntax && strstr(reply, "invalid char in expression")) {
             VIR_FREE(reply);
             VIR_FREE(cmd);
@@ -2272,7 +2277,7 @@ try_command:
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2339,7 +2344,7 @@ int qemuMonitorTextAttachDrive(qemuMonitorPtr mon,
     if (!safe_str)
         return -1;
 
-try_command:
+ try_command:
     if (virAsprintf(&cmd, "drive_add %s%.2x:%.2x:%.2x %s",
                     (tryOldSyntax ? "" : "pci_addr="),
                     controllerAddr->domain, controllerAddr->bus,
@@ -2369,7 +2374,7 @@ try_command:
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     VIR_FREE(safe_str);
@@ -2492,7 +2497,7 @@ int qemuMonitorTextGetAllPCIAddresses(qemuMonitorPtr mon,
 
     return naddrs;
 
-error:
+ error:
     VIR_FREE(addrs);
     VIR_FREE(reply);
     return -1;
@@ -2529,7 +2534,7 @@ int qemuMonitorTextDelDevice(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     VIR_FREE(safedev);
@@ -2572,7 +2577,7 @@ int qemuMonitorTextAddDevice(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     VIR_FREE(safedev);
@@ -2614,7 +2619,7 @@ int qemuMonitorTextAddDrive(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     VIR_FREE(safe_str);
@@ -2660,7 +2665,7 @@ int qemuMonitorTextDriveDel(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     VIR_FREE(safedev);
@@ -2699,7 +2704,7 @@ int qemuMonitorTextSetDrivePassphrase(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     VIR_FREE(safe_str);
@@ -2742,7 +2747,7 @@ int qemuMonitorTextCreateSnapshot(qemuMonitorPtr mon, const char *name)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(safename);
     VIR_FREE(cmd);
     VIR_FREE(reply);
@@ -2795,7 +2800,7 @@ int qemuMonitorTextLoadSnapshot(qemuMonitorPtr mon, const char *name)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(safename);
     VIR_FREE(cmd);
     VIR_FREE(reply);
@@ -2832,7 +2837,7 @@ int qemuMonitorTextDeleteSnapshot(qemuMonitorPtr mon, const char *name)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(safename);
     VIR_FREE(cmd);
     VIR_FREE(reply);
@@ -2923,7 +2928,7 @@ int qemuMonitorTextSendKey(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(reply);
     return ret;
@@ -2949,7 +2954,7 @@ int qemuMonitorTextScreendump(qemuMonitorPtr mon, const char *file)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     VIR_FREE(cmd);
     return ret;
@@ -2976,7 +2981,7 @@ int qemuMonitorTextOpenGraphics(qemuMonitorPtr mon,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(reply);
     VIR_FREE(cmd);
     return ret;
@@ -3010,7 +3015,7 @@ int qemuMonitorTextSetBlockIoThrottle(qemuMonitorPtr mon,
     }
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(cmd);
     VIR_FREE(result);
     return ret;
@@ -3087,7 +3092,7 @@ qemuMonitorTextParseBlockIoThrottle(const char *result,
     virReportError(VIR_ERR_INVALID_ARG,
                    _("No info for device '%s'"), device);
 
-cleanup:
+ cleanup:
     return ret;
 }
 
@@ -3110,7 +3115,7 @@ int qemuMonitorTextGetBlockIoThrottle(qemuMonitorPtr mon,
 
     ret = qemuMonitorTextParseBlockIoThrottle(result, device, reply);
 
-cleanup:
+ cleanup:
     VIR_FREE(result);
     return ret;
 }

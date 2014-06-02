@@ -116,7 +116,6 @@ static int virPortAllocatorBindToPort(bool *used,
     struct sockaddr* addr;
     size_t addrlen;
     int v6only = 1;
-    int reuse = 1;
     int ret = -1;
     int fd = -1;
     bool ipv6 = false;
@@ -143,8 +142,7 @@ static int virPortAllocatorBindToPort(bool *used,
         goto cleanup;
     }
 
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void*)&reuse,
-                   sizeof(reuse)) < 0) {
+    if (virSetSockReuseAddr(fd) < 0) {
         virReportSystemError(errno, "%s",
                              _("Unable to set socket reuse addr flag"));
         goto cleanup;
@@ -168,7 +166,7 @@ static int virPortAllocatorBindToPort(bool *used,
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     VIR_FORCE_CLOSE(fd);
     return ret;
 }
@@ -217,7 +215,7 @@ int virPortAllocatorAcquire(virPortAllocatorPtr pa,
                        _("Unable to find an unused port in range '%s' (%d-%d)"),
                        pa->name, pa->start, pa->end);
     }
-cleanup:
+ cleanup:
     virObjectUnlock(pa);
     return ret;
 }
@@ -248,7 +246,7 @@ int virPortAllocatorRelease(virPortAllocatorPtr pa,
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     virObjectUnlock(pa);
     return ret;
 }

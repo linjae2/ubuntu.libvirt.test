@@ -486,6 +486,7 @@ GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GLUSTERFS_CFLAGS = @GLUSTERFS_CFLAGS@
 GLUSTERFS_LIBS = @GLUSTERFS_LIBS@
+GLUSTER_CLI = @GLUSTER_CLI@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GNULIB_ACCEPT = @GNULIB_ACCEPT@
@@ -1307,6 +1308,7 @@ LIB_EXECINFO = @LIB_EXECINFO@
 LIB_FDATASYNC = @LIB_FDATASYNC@
 LIB_NANOSLEEP = @LIB_NANOSLEEP@
 LIB_POLL = @LIB_POLL@
+LIB_POSIX_SPAWN = @LIB_POSIX_SPAWN@
 LIB_PTHREAD = @LIB_PTHREAD@
 LIB_PTHREAD_SIGMASK = @LIB_PTHREAD_SIGMASK@
 LIB_SELECT = @LIB_SELECT@
@@ -1832,7 +1834,7 @@ SUBDIRS = . gnulib/lib include src daemon tools docs gnulib/tests \
   tests po examples/object-events examples/hellolibvirt \
   examples/dominfo examples/domsuspend examples/apparmor \
   examples/xml/nwfilter examples/openauth examples/systemtap \
-  tools/wireshark
+  tools/wireshark examples/dommigrate
 
 ACLOCAL_AMFLAGS = -I m4
 XML_EXAMPLES = \

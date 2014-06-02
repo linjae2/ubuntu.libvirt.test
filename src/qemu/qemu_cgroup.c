@@ -37,6 +37,8 @@
 
 #define VIR_FROM_THIS VIR_FROM_QEMU
 
+VIR_LOG_INIT("qemu.qemu_cgroup");
+
 static const char *const defaultDeviceACL[] = {
     "/dev/null", "/dev/full", "/dev/zero",
     "/dev/random", "/dev/urandom",
@@ -183,7 +185,7 @@ qemuSetupTPMCgroup(virDomainDefPtr def,
 
 
 static int
-qemuSetupHostUsbDeviceCgroup(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
+qemuSetupHostUSBDeviceCgroup(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
                              const char *path,
                              void *opaque)
 {
@@ -200,7 +202,7 @@ qemuSetupHostUsbDeviceCgroup(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
 }
 
 static int
-qemuSetupHostScsiDeviceCgroup(virSCSIDevicePtr dev ATTRIBUTE_UNUSED,
+qemuSetupHostSCSIDeviceCgroup(virSCSIDevicePtr dev ATTRIBUTE_UNUSED,
                               const char *path,
                               void *opaque)
 {
@@ -281,10 +283,10 @@ qemuSetupHostdevCGroup(virDomainObjPtr vm,
                 goto cleanup;
             }
 
-            /* oddly, qemuSetupHostUsbDeviceCgroup doesn't ever
+            /* oddly, qemuSetupHostUSBDeviceCgroup doesn't ever
              * reference the usb object we just created
              */
-            if (virUSBDeviceFileIterate(usb, qemuSetupHostUsbDeviceCgroup,
+            if (virUSBDeviceFileIterate(usb, qemuSetupHostUSBDeviceCgroup,
                                         vm) < 0) {
                 goto cleanup;
             }
@@ -301,7 +303,7 @@ qemuSetupHostdevCGroup(virDomainObjPtr vm,
                 goto cleanup;
 
             if (virSCSIDeviceFileIterate(scsi,
-                                         qemuSetupHostScsiDeviceCgroup,
+                                         qemuSetupHostSCSIDeviceCgroup,
                                          vm) < 0)
                 goto cleanup;
 
@@ -311,7 +313,7 @@ qemuSetupHostdevCGroup(virDomainObjPtr vm,
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     virPCIDeviceFree(pci);
     virUSBDeviceFree(usb);
     virSCSIDeviceFree(scsi);
@@ -372,7 +374,7 @@ qemuTeardownHostdevCgroup(virDomainObjPtr vm,
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     virPCIDeviceFree(pci);
     VIR_FREE(path);
     return ret;
@@ -525,7 +527,7 @@ qemuSetupDevicesCgroup(virQEMUDriverPtr driver,
 
     for (i = 0; deviceACL[i] != NULL; i++) {
         if (!virFileExists(deviceACL[i])) {
-            VIR_DEBUG("Ignoring non-existant device %s", deviceACL[i]);
+            VIR_DEBUG("Ignoring non-existent device %s", deviceACL[i]);
             continue;
         }
 
@@ -567,7 +569,7 @@ qemuSetupDevicesCgroup(virQEMUDriverPtr driver,
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     virObjectUnref(cfg);
     return ret;
 }
@@ -631,7 +633,7 @@ qemuSetupCpusetCgroup(virDomainObjPtr vm,
     }
 
     ret = 0;
-cleanup:
+ cleanup:
     VIR_FREE(mem_mask);
     VIR_FREE(cpu_mask);
     return ret;
@@ -644,7 +646,7 @@ qemuSetupCpuCgroup(virDomainObjPtr vm)
     qemuDomainObjPrivatePtr priv = vm->privateData;
 
     if (!virCgroupHasController(priv->cgroup, VIR_CGROUP_CONTROLLER_CPU)) {
-       if (vm->def->cputune.shares) {
+       if (vm->def->cputune.sharesSpecified) {
            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                           _("CPU tuning is not available on this host"));
            return -1;
@@ -653,9 +655,15 @@ qemuSetupCpuCgroup(virDomainObjPtr vm)
        }
     }
 
-    if (vm->def->cputune.shares &&
-        virCgroupSetCpuShares(priv->cgroup, vm->def->cputune.shares) < 0)
-        return -1;
+    if (vm->def->cputune.sharesSpecified) {
+        unsigned long long val;
+        if (virCgroupSetCpuShares(priv->cgroup, vm->def->cputune.shares) < 0)
+            return -1;
+
+        if (virCgroupGetCpuShares(priv->cgroup, &val) < 0)
+            return -1;
+        vm->def->cputune.shares = val;
+    }
 
     return 0;
 }
@@ -714,9 +722,9 @@ qemuInitCgroup(virQEMUDriverPtr driver,
         goto cleanup;
     }
 
-done:
+ done:
     ret = 0;
-cleanup:
+ cleanup:
     virObjectUnref(cfg);
     return ret;
 }
@@ -748,9 +756,9 @@ qemuConnectCgroup(virQEMUDriverPtr driver,
                                   &priv->cgroup) < 0)
         goto cleanup;
 
-done:
+ done:
     ret = 0;
-cleanup:
+ cleanup:
     virObjectUnref(cfg);
     return ret;
 }
@@ -795,7 +803,7 @@ qemuSetupCgroup(virQEMUDriverPtr driver,
         goto cleanup;
 
     ret = 0;
-cleanup:
+ cleanup:
     virObjectUnref(caps);
     return ret;
 }
@@ -825,7 +833,7 @@ qemuSetupCgroupVcpuBW(virCgroupPtr cgroup,
 
     return 0;
 
-error:
+ error:
     if (period) {
         virErrorPtr saved = virSaveLastError();
         ignore_value(virCgroupSetCpuCfsPeriod(cgroup, old_period));
@@ -873,7 +881,7 @@ qemuSetupCgroupEmulatorPin(virCgroupPtr cgroup,
         goto cleanup;
 
     ret = 0;
-cleanup:
+ cleanup:
     VIR_FREE(new_cpus);
     return ret;
 }
@@ -896,8 +904,7 @@ qemuSetupCgroupForVcpu(virDomainObjPtr vm)
     }
 
     /* We are trying to setup cgroups for CPU pinning, which can also be done
-     * with virProcessInfoSetAffinity, thus the lack of cgroups is not fatal
-     * here.
+     * with virProcessSetAffinity, thus the lack of cgroups is not fatal here.
      */
     if (priv->cgroup == NULL)
         return 0;
@@ -946,7 +953,7 @@ qemuSetupCgroupForVcpu(virDomainObjPtr vm)
 
     return 0;
 
-cleanup:
+ cleanup:
     if (cgroup_vcpu) {
         virCgroupRemove(cgroup_vcpu);
         virCgroupFree(&cgroup_vcpu);
@@ -1011,7 +1018,7 @@ qemuSetupCgroupForEmulator(virQEMUDriverPtr driver,
     virBitmapFree(cpumap);
     return 0;
 
-cleanup:
+ cleanup:
     virBitmapFree(cpumap);
 
     if (cgroup_emulator) {

@@ -306,6 +306,12 @@ typedef int
                         const char *to,
                         unsigned int flags);
 
+typedef int
+(*virDrvDomainCoreDumpWithFormat)(virDomainPtr domain,
+                                  const char *to,
+                                  unsigned int dumpformat,
+                                  unsigned int flags);
+
 typedef char *
 (*virDrvDomainScreenshot)(virDomainPtr domain,
                           virStreamPtr stream,
@@ -843,6 +849,19 @@ typedef virDomainPtr
                           unsigned int flags);
 
 typedef int
+(*virDrvConnectDomainQemuMonitorEventRegister)(virConnectPtr conn,
+                                               virDomainPtr dom,
+                                               const char *event,
+                                               virConnectDomainQemuMonitorEventCallback cb,
+                                               void *opaque,
+                                               virFreeCallback freecb,
+                                               unsigned int flags);
+
+typedef int
+(*virDrvConnectDomainQemuMonitorEventDeregister)(virConnectPtr conn,
+                                                 int callbackID);
+
+typedef int
 (*virDrvDomainOpenConsole)(virDomainPtr dom,
                            const char *dev_name,
                            virStreamPtr st,
@@ -1065,6 +1084,18 @@ typedef int
                       unsigned int flags);
 
 typedef int
+(*virDrvDomainGetTime)(virDomainPtr dom,
+                       long long *seconds,
+                       unsigned int *nseconds,
+                       unsigned int flags);
+
+typedef int
+(*virDrvDomainSetTime)(virDomainPtr dom,
+                       long long seconds,
+                       unsigned int nseconds,
+                       unsigned int flags);
+
+typedef int
 (*virDrvDomainLxcOpenNamespace)(virDomainPtr dom,
                                 int **fdlist,
                                 unsigned int flags);
@@ -1129,6 +1160,18 @@ typedef int
                                      int cookieinlen,
                                      unsigned int flags,
                                      int cancelled);
+
+typedef int
+(*virDrvDomainFSFreeze)(virDomainPtr dom,
+                        const char **mountpoints,
+                        unsigned int nmountpoints,
+                        unsigned int flags);
+
+typedef int
+(*virDrvDomainFSThaw)(virDomainPtr dom,
+                      const char **mountpoints,
+                      unsigned int nmountpoints,
+                      unsigned int flags);
 
 typedef struct _virDriver virDriver;
 typedef virDriver *virDriverPtr;
@@ -1200,6 +1243,7 @@ struct _virDriver {
     virDrvDomainSaveImageGetXMLDesc domainSaveImageGetXMLDesc;
     virDrvDomainSaveImageDefineXML domainSaveImageDefineXML;
     virDrvDomainCoreDump domainCoreDump;
+    virDrvDomainCoreDumpWithFormat domainCoreDumpWithFormat;
     virDrvDomainScreenshot domainScreenshot;
     virDrvDomainSetVcpus domainSetVcpus;
     virDrvDomainSetVcpusFlags domainSetVcpusFlags;
@@ -1302,6 +1346,8 @@ struct _virDriver {
     virDrvDomainQemuMonitorCommand domainQemuMonitorCommand;
     virDrvDomainQemuAttach domainQemuAttach;
     virDrvDomainQemuAgentCommand domainQemuAgentCommand;
+    virDrvConnectDomainQemuMonitorEventRegister connectDomainQemuMonitorEventRegister;
+    virDrvConnectDomainQemuMonitorEventDeregister connectDomainQemuMonitorEventDeregister;
     virDrvDomainOpenConsole domainOpenConsole;
     virDrvDomainOpenChannel domainOpenChannel;
     virDrvDomainOpenGraphics domainOpenGraphics;
@@ -1341,6 +1387,10 @@ struct _virDriver {
     virDrvDomainMigrateFinish3Params domainMigrateFinish3Params;
     virDrvDomainMigrateConfirm3Params domainMigrateConfirm3Params;
     virDrvConnectGetCPUModelNames connectGetCPUModelNames;
+    virDrvDomainFSFreeze domainFSFreeze;
+    virDrvDomainFSThaw domainFSThaw;
+    virDrvDomainGetTime domainGetTime;
+    virDrvDomainSetTime domainSetTime;
 };
 
 
@@ -2132,17 +2182,16 @@ struct _virNWFilterDriver {
  * TODO: also need ways to (des)activate a given driver
  *       lookup based on the URI given in a virConnectOpen(ReadOnly)
  */
-int virRegisterDriver(virDriverPtr);
-int virRegisterNetworkDriver(virNetworkDriverPtr);
-int virRegisterInterfaceDriver(virInterfaceDriverPtr);
-int virRegisterStorageDriver(virStorageDriverPtr);
-int virRegisterNodeDeviceDriver(virNodeDeviceDriverPtr);
-int virRegisterSecretDriver(virSecretDriverPtr);
-int virRegisterNWFilterDriver(virNWFilterDriverPtr);
+int virRegisterDriver(virDriverPtr) ATTRIBUTE_RETURN_CHECK;
+int virRegisterNetworkDriver(virNetworkDriverPtr) ATTRIBUTE_RETURN_CHECK;
+int virRegisterInterfaceDriver(virInterfaceDriverPtr) ATTRIBUTE_RETURN_CHECK;
+int virRegisterStorageDriver(virStorageDriverPtr) ATTRIBUTE_RETURN_CHECK;
+int virRegisterNodeDeviceDriver(virNodeDeviceDriverPtr) ATTRIBUTE_RETURN_CHECK;
+int virRegisterSecretDriver(virSecretDriverPtr) ATTRIBUTE_RETURN_CHECK;
+int virRegisterNWFilterDriver(virNWFilterDriverPtr) ATTRIBUTE_RETURN_CHECK;
 # ifdef WITH_LIBVIRTD
-int virRegisterStateDriver(virStateDriverPtr);
+int virRegisterStateDriver(virStateDriverPtr) ATTRIBUTE_RETURN_CHECK;
 # endif
-void virDriverModuleInitialize(const char *defmoddir);
 void *virDriverLoadModule(const char *name);
 
 #endif /* __VIR_DRIVER_H__ */

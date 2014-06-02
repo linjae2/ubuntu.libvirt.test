@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 #
-# Copyright (C) 2010-2013 Red Hat, Inc.
+# Copyright (C) 2010-2014 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -64,6 +64,8 @@ sub fixup_name {
     $name =~ s/Nmi$/NMI/;
     $name =~ s/Pm/PM/;
     $name =~ s/Fstrim$/FSTrim/;
+    $name =~ s/Fsfreeze$/FSFreeze/;
+    $name =~ s/Fsthaw$/FSThaw/;
     $name =~ s/Scsi/SCSI/;
     $name =~ s/Wwn$/WWN/;
 
@@ -927,8 +929,9 @@ elsif ($mode eq "server") {
                 push(@args_list, "priv->conn");
             }
 
-            if ($structprefix eq "qemu" && $call->{ProcName} =~ /^Domain/) {
-                $proc_name =~ s/^(Domain)/${1}Qemu/;
+            if ($structprefix eq "qemu" &&
+                $call->{ProcName} =~ /^(Connect)?Domain/) {
+                $proc_name =~ s/^((Connect)?Domain)/${1}Qemu/;
             }
             if ($structprefix eq "lxc" && $call->{ProcName} =~ /^Domain/) {
                 $proc_name =~ s/^(Domain)/${1}Lxc/;
@@ -1704,7 +1707,7 @@ elsif ($mode eq "client") {
         if ($mode eq "aclsym") {
             my $apiname = "vir" . $call->{ProcName};
             if ($structprefix eq "qemu") {
-                $apiname =~ s/virDomain/virDomainQemu/;
+                $apiname =~ s/(vir(Connect)?Domain)/${1}Qemu/;
             } elsif ($structprefix eq "lxc") {
                 $apiname =~ s/virDomain/virDomainLxc/;
             }
@@ -1744,7 +1747,7 @@ elsif ($mode eq "client") {
 
             my $apiname = "vir" . $call->{ProcName};
             if ($structprefix eq "qemu") {
-                $apiname =~ s/virDomain/virDomainQemu/;
+                $apiname =~ s/(vir(Connect)?Domain)/${1}Qemu/;
             } elsif ($structprefix eq "lxc") {
                 $apiname =~ s/virDomain/virDomainLxc/;
             }
@@ -1856,7 +1859,7 @@ elsif ($mode eq "client") {
 
             my $apiname = "vir" . $call->{ProcName};
             if ($structprefix eq "qemu") {
-                $apiname =~ s/virDomain/virDomainQemu/;
+                $apiname =~ s/(vir(Connect)?Domain)/${1}Qemu/;
             } elsif ($structprefix eq "lxc") {
                 $apiname =~ s/virDomain/virDomainLxc/;
             }
