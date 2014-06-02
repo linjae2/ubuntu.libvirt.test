@@ -7,6 +7,7 @@ Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-mind
 Build-Depends: cdbs (>= 0.4.90~),
  debhelper (>= 7),
  dh-autoreconf,
+ ebtables,
  libxml2-dev,
  libncurses5-dev,
  libreadline-dev,
@@ -46,7 +47,10 @@ Build-Depends: cdbs (>= 0.4.90~),
  dnsmasq-base,
  openssh-client,
  netcat-openbsd,
- librbd-dev
+ librbd-dev,
+ ebtables,
+ iptables,
+ qemu-utils
 Build-Conflicts: dpkg-dev (= 1.15.3)
 Homepage: http://libvirt.org
 Standards-Version: 3.9.4

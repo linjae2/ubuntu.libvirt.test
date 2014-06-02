@@ -1,7 +1,7 @@
 /*
  * node_device_hal.c: node device enumeration - HAL-based implementation
  *
- * Copyright (C) 2011, 2013 Red Hat, Inc.
+ * Copyright (C) 2011-2014 Red Hat, Inc.
  * Copyright (C) 2008 Virtual Iron Software, Inc.
  * Copyright (C) 2008 David F. Lively
  *
@@ -42,6 +42,8 @@
 #include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_NODEDEV
+
+VIR_LOG_INIT("node_device.node_device_hal");
 
 /*
  * Host device enumeration (HAL implementation)
@@ -257,7 +259,7 @@ gather_scsi_host_cap(LibHalContext *ctx, const char *udi,
         goto out;
     }
 
-out:
+ out:
     return retval;
 }
 
@@ -341,7 +343,7 @@ gather_system_cap(LibHalContext *ctx, const char *udi,
 
 struct _caps_tbl_entry {
     const char *cap_name;
-    enum virNodeDevCapType type;
+    virNodeDevCapType type;
     int (*gather_fn)(LibHalContext *ctx,
                      const char *udi,
                      union _virNodeDevCapData *data);
@@ -525,7 +527,7 @@ dev_create(const char *udi)
 
  failure:
     VIR_DEBUG("FAILED TO ADD dev %s", name);
-cleanup:
+ cleanup:
     VIR_FREE(privData);
     virNodeDeviceDefFree(def);
     nodeDeviceUnlock(driverState);

@@ -40,8 +40,6 @@
 #include "cpu/cpu_map.h"
 #include "virstring.h"
 
-static const char *abs_top_srcdir;
-
 #define VIR_FROM_THIS VIR_FROM_CPU
 
 enum cpuTestBoolWithError {
@@ -96,7 +94,7 @@ cpuTestLoadXML(const char *arch, const char *name)
 
     cpu = virCPUDefParseXML(ctxt->node, ctxt, VIR_CPU_TYPE_AUTO);
 
-cleanup:
+ cleanup:
     xmlXPathFreeContext(ctxt);
     xmlFreeDoc(doc);
     VIR_FREE(xml);
@@ -136,14 +134,14 @@ cpuTestLoadMultiXML(const char *arch,
 
     *count = n;
 
-cleanup:
+ cleanup:
     VIR_FREE(xml);
     VIR_FREE(nodes);
     xmlXPathFreeContext(ctxt);
     xmlFreeDoc(doc);
     return cpus;
 
-cleanup_cpus:
+ cleanup_cpus:
     for (i = 0; i < n; i++)
         virCPUDefFree(cpus[i]);
     VIR_FREE(cpus);
@@ -181,7 +179,7 @@ cpuTestCompareXML(const char *arch,
 
     ret = 0;
 
-cleanup:
+ cleanup:
     VIR_FREE(xml);
     VIR_FREE(expected);
     VIR_FREE(actual);
@@ -247,7 +245,7 @@ cpuTestCompare(const void *arg)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     virCPUDefFree(host);
     virCPUDefFree(cpu);
     return ret;
@@ -307,7 +305,7 @@ cpuTestGuestData(const void *arg)
 
     ret = cpuTestCompareXML(data->arch, guest, result, 0);
 
-cleanup:
+ cleanup:
     VIR_FREE(result);
     cpuDataFree(guestData);
     virCPUDefFree(host);
@@ -374,7 +372,7 @@ cpuTestBaseline(const void *arg)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     if (cpus) {
         for (i = 0; i < ncpus; i++)
             virCPUDefFree(cpus[i]);
@@ -408,7 +406,7 @@ cpuTestUpdate(const void *arg)
     ret = cpuTestCompareXML(data->arch, cpu, result,
                             VIR_DOMAIN_XML_UPDATE_CPU);
 
-cleanup:
+ cleanup:
     virCPUDefFree(host);
     virCPUDefFree(cpu);
     VIR_FREE(result);
@@ -449,7 +447,7 @@ cpuTestHasFeature(const void *arg)
 
     ret = 0;
 
-cleanup:
+ cleanup:
     cpuDataFree(hostData);
     virCPUDefFree(host);
     return ret;
@@ -504,17 +502,6 @@ static int
 mymain(void)
 {
     int ret = 0;
-    char *map = NULL;
-
-    abs_top_srcdir = getenv("abs_top_srcdir");
-    if (!abs_top_srcdir)
-        abs_top_srcdir = abs_srcdir "/..";
-
-    if (virAsprintf(&map, "%s/src/cpu/cpu_map.xml", abs_top_srcdir) < 0 ||
-        cpuMapOverride(map) < 0) {
-        VIR_FREE(map);
-        return EXIT_FAILURE;
-    }
 
 #define DO_TEST(arch, api, name, host, cpu,                             \
                 models, nmodels, preferred, flags, result)              \
@@ -657,7 +644,6 @@ mymain(void)
     DO_TEST_GUESTDATA("ppc64", "host", "guest", ppc_models, NULL, 0);
     DO_TEST_GUESTDATA("ppc64", "host", "guest-nofallback", ppc_models, "POWER7_v2.1", -1);
 
-    VIR_FREE(map);
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

@@ -91,7 +91,9 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
 	$(WITH_LXC)		 \
 	$(WITH_AUDIT)		 \
 	--with-apparmor		 \
-	--with-vbox
+	--with-vbox \
+    --without-firewalld
+
 
 DEB_COMPRESS_EXCLUDE = .o event-test hellolibvirt info1 suspend
 DEB_PYTHON_SETUP_CMD = /dev/null

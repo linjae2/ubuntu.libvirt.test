@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "VIRSH 1"
-.TH VIRSH 1 "2014-03-02" "libvirt-1.2.2" "Virtualization Support"
+.TH VIRSH 1 "2014-05-30" "libvirt-1.2.5" "Virtualization Support"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -188,18 +188,6 @@ interpreter waiting for your commands, and the \fBquit\fR command will then exit
 the program.
 .PP
 The \fBvirsh\fR program understands the following \fI\s-1OPTIONS\s0\fR.
-.IP "\fB\-h\fR, \fB\-\-help\fR" 4
-.IX Item "-h, --help"
-Ignore all other arguments, and behave as if the \fBhelp\fR command were
-given instead.
-.IP "\fB\-v\fR, \fB\-\-version[=short]\fR" 4
-.IX Item "-v, --version[=short]"
-Ignore all other arguments, and prints the version of the libvirt library
-virsh is coming from
-.IP "\fB\-V\fR, \fB\-\-version=long\fR" 4
-.IX Item "-V, --version=long"
-Ignore all other arguments, and prints the version of the libvirt library
-virsh is coming from and which options and driver are compiled in.
 .IP "\fB\-c\fR, \fB\-\-connect\fR \fI\s-1URI\s0\fR" 4
 .IX Item "-c, --connect URI"
 Connect to the specified \fI\s-1URI\s0\fR, as if by the \fBconnect\fR command,
@@ -209,6 +197,25 @@ instead of the default connection.
 Enable debug messages at integer \fI\s-1LEVEL\s0\fR and above.  \fI\s-1LEVEL\s0\fR can
 range from 0 to 4 (default).  See the documentation of \fB\s-1VIRSH_DEBUG\s0\fR
 environment variable below for the description of each \fI\s-1LEVEL\s0\fR.
+.IP "\fB\-e\fR, \fB\-\-escape\fR \fIstring\fR" 4
+.IX Item "-e, --escape string"
+Set alternative escape sequence for \fIconsole\fR command. By default,
+telnet's \fB^]\fR is used. Allowed characters when using hat notation are:
+alphabetic character, @, [, ], \e, ^, _.
+.IP "\fB\-h\fR, \fB\-\-help\fR" 4
+.IX Item "-h, --help"
+Ignore all other arguments, and behave as if the \fBhelp\fR command were
+given instead.
+.IP "\fB\-k\fR, \fB\-\-keepalive\-interval\fR \fI\s-1INTERVAL\s0\fR" 4
+.IX Item "-k, --keepalive-interval INTERVAL"
+Set an \fI\s-1INTERVAL\s0\fR (in seconds) for sending keepalive messages to
+check whether connection to the server is still alive.  Setting the
+interval to 0 disables client keepalive mechanism.
+.IP "\fB\-K\fR, \fB\-\-keepalive\-count\fR \fI\s-1COUNT\s0\fR" 4
+.IX Item "-K, --keepalive-count COUNT"
+Set a number of times keepalive message can be sent without getting an
+answer from the server without marking the connection dead.  There is
+no effect to this setting in case the \fI\s-1INTERVAL\s0\fR is set to 0.
 .IP "\fB\-l\fR, \fB\-\-log\fR \fI\s-1FILE\s0\fR" 4
 .IX Item "-l, --log FILE"
 Output logging details to \fI\s-1FILE\s0\fR.
@@ -222,11 +229,14 @@ option of the \fBconnect\fR command.
 .IP "\fB\-t\fR, \fB\-\-timing\fR" 4
 .IX Item "-t, --timing"
 Output elapsed time information for each command.
-.IP "\fB\-e\fR, \fB\-\-escape\fR \fIstring\fR" 4
-.IX Item "-e, --escape string"
-Set alternative escape sequence for \fIconsole\fR command. By default,
-telnet's \fB^]\fR is used. Allowed characters when using hat notation are:
-alphabetic character, @, [, ], \e, ^, _.
+.IP "\fB\-v\fR, \fB\-\-version[=short]\fR" 4
+.IX Item "-v, --version[=short]"
+Ignore all other arguments, and prints the version of the libvirt library
+virsh is coming from
+.IP "\fB\-V\fR, \fB\-\-version=long\fR" 4
+.IX Item "-V, --version=long"
+Ignore all other arguments, and prints the version of the libvirt library
+virsh is coming from and which options and driver are compiled in.
 .SH "NOTES"
 .IX Header "NOTES"
 Most \fBvirsh\fR operations rely upon the libvirt library being able to
@@ -742,6 +752,9 @@ expressed in kilobytes per second, while \fIburst\fR is expressed in kilobytes
 in a single burst at \-\fIpeak\fR speed as described in the Network \s-1XML\s0
 documentation at <http://libvirt.org/formatnetwork.html#elementQoS>.
 .Sp
+To clear inbound or outbound settings, use \fI\-\-inbound\fR or \fI\-\-outbound\fR
+respectfully with average value of zero.
+.Sp
 If \fI\-\-live\fR is specified, affect a running guest.
 If \fI\-\-config\fR is specified, affect the next boot of a persistent guest.
 If \fI\-\-current\fR is specified, affect the current guest state.
@@ -959,6 +972,27 @@ also \fBdomblklist\fR for listing these names).
 Output a \s-1URI\s0 which can be used to connect to the graphical display of the
 domain via \s-1VNC, SPICE\s0 or \s-1RDP.\s0 If \fI\-\-include\-password\fR is specified, the
 \&\s-1SPICE\s0 channel password will be included in the \s-1URI.\s0
+.IP "\fBdomfsfreeze\fR \fIdomain\fR [[\fI\-\-mountpoint\fR] \fBmountpoint\fR...]" 4
+.IX Item "domfsfreeze domain [[--mountpoint] mountpoint...]"
+Freeze mounted filesystems within a running domain to prepare for consistent
+snapshots.
+.Sp
+The \fI\-\-mountpoint\fR option takes a parameter \fBmountpoint\fR, which is a
+mount point path of the filesystem to be frozen. This option can occur
+multiple times. If this is not specified, every mounted filesystem is frozen.
+.Sp
+Note: \fBsnapshot-create\fR command has a \fI\-\-quiesce\fR option to freeze
+and thaw the filesystems automatically to keep snapshots consistent.
+\&\fBdomfsfreeze\fR command is only needed when a user wants to utilize the
+native snapshot features of storage devices not supported by libvirt.
+.IP "\fBdomfsthaw\fR \fIdomain\fR [[\fI\-\-mountpoint\fR] \fBmountpoint\fR...]" 4
+.IX Item "domfsthaw domain [[--mountpoint] mountpoint...]"
+Thaw mounted filesystems within a running domain, which have been frozen by
+domfsfreeze command.
+.Sp
+The \fI\-\-mountpoint\fR option takes a parameter \fBmountpoint\fR, which is a
+mount point path of the filesystem to be thawed. This option can occur
+multiple times. If this is not specified, every mounted filesystem is thawed.
 .IP "\fBdomfstrim\fR \fIdomain\fR [\fI\-\-minimum\fR \fBbytes\fR] [\fI\-\-mountpoint mountPoint\fR]" 4
 .IX Item "domfstrim domain [--minimum bytes] [--mountpoint mountPoint]"
 Issue a fstrim command on all mounted filesystems within a running
@@ -1001,6 +1035,22 @@ reason for the state.
 Returns state of an interface to \s-1VMM\s0 used to control a domain.  For
 states other than \*(L"ok\*(R" or \*(L"error\*(R" the command also prints number of
 seconds elapsed since the control interface entered its current state.
+.IP "\fBdomtime\fR \fIdomain\fR { [\fI\-\-now\fR] [\fI\-\-pretty\fR] [\fI\-\-sync\fR] [\fI\-\-time\fR \fBtime\fR] }" 4
+.IX Item "domtime domain { [--now] [--pretty] [--sync] [--time time] }"
+Gets or sets the domain's system time. When run without any arguments
+(but \fIdomain\fR), the current domain's system time is printed out. The
+\&\fI\-\-pretty\fR modifier can be used to print the time in more human
+readable form.
+.Sp
+When \fI\-\-time\fR \fBtime\fR is specified, the domain's time is
+not gotten but set instead. The \fI\-\-now\fR modifier acts like if it was
+an alias for \fI\-\-time\fR \fB\f(CB$now\fB\fR, which means it sets the time that is
+currently on the host virsh is running at. In both cases (setting and
+getting), time is in seconds relative to Epoch of 1970\-01\-01 in \s-1UTC.\s0
+The \fI\-\-sync\fR modifies the set behavior a bit: The time passed is
+ignored, but the time to set is read from domain's \s-1RTC\s0 instead. Please
+note, that some hypervisors may require a guest agent to be configured
+in order to get or set the guest time.
 .IP "\fBdomxml-from-native\fR \fIformat\fR \fIconfig\fR" 4
 .IX Item "domxml-from-native format config"
 Convert the file \fIconfig\fR in the native guest configuration format
@@ -1013,8 +1063,8 @@ Convert the file \fIxml\fR in domain \s-1XML\s0 format to the native guest
 configuration format named by \fIformat\fR. For \s-1QEMU/KVM\s0 hypervisor,
 the \fIformat\fR argument must be \fBqemu-argv\fR. For Xen hypervisor, the
 \&\fIformat\fR argument may be \fBxen-xm\fR or \fBxen-sxpr\fR.
-.IP "\fBdump\fR \fIdomain\fR \fIcorefilepath\fR [\fI\-\-bypass\-cache\fR] { [\fI\-\-live\fR] | [\fI\-\-crash\fR] | [\fI\-\-reset\fR] } [\fI\-\-verbose\fR] [\fI\-\-memory\-only\fR]" 4
-.IX Item "dump domain corefilepath [--bypass-cache] { [--live] | [--crash] | [--reset] } [--verbose] [--memory-only]"
+.IP "\fBdump\fR \fIdomain\fR \fIcorefilepath\fR [\fI\-\-bypass\-cache\fR] { [\fI\-\-live\fR] | [\fI\-\-crash\fR] | [\fI\-\-reset\fR] } [\fI\-\-verbose\fR] [\fI\-\-memory\-only\fR] [\fI\-\-format\fR \fIstring\fR]" 4
+.IX Item "dump domain corefilepath [--bypass-cache] { [--live] | [--crash] | [--reset] } [--verbose] [--memory-only] [--format string]"
 Dumps the core of a domain to a file for analysis.
 If \fI\-\-live\fR is specified, the domain continues to run until the core
 dump is complete, rather than pausing up front.
@@ -1027,6 +1077,10 @@ cache, although this may slow down the operation.
 If \fI\-\-memory\-only\fR is specified, the file is elf file, and will only
 include domain's memory and cpu common register value. It is very
 useful if the domain uses host devices directly.
+\&\fI\-\-format\fR \fIstring\fR is used to specify the format of 'memory\-only'
+dump, and \fIstring\fR can be one of them: elf, kdump\-zlib(kdump\-compressed
+format with zlib-compressed), kdump\-lzo(kdump\-compressed format with
+lzo-compressed), kdump\-snappy(kdump\-compressed format with snappy-compressed).
 .Sp
 The progress may be monitored using \fBdomjobinfo\fR virsh command and canceled
 with \fBdomjobabort\fR command (sent by another virsh instance). Another option
@@ -1282,8 +1336,8 @@ The exact behavior of a domain when it reboots is set by the
 By default the hypervisor will try to pick a suitable shutdown
 method. To specify an alternative method, the \fI\-\-mode\fR parameter
 can specify a comma separated list which includes \f(CW\*(C`acpi\*(C'\fR, \f(CW\*(C`agent\*(C'\fR,
-\&\f(CW\*(C`initctl\*(C'\fR and \f(CW\*(C`signal\*(C'\fR. The order in which drivers will try each
-mode is undefined, and not related to the order specified to virsh.
+\&\f(CW\*(C`initctl\*(C'\fR, \f(CW\*(C`signal\*(C'\fR and \f(CW\*(C`paravirt\*(C'\fR. The order in which drivers will
+try each mode is undefined, and not related to the order specified to virsh.
 For strict control over ordering, use a single mode at a time and
 repeat the command.
 .IP "\fBreset\fR \fIdomain\fR" 4
@@ -1686,7 +1740,9 @@ domain is next started.
 .Sp
 If \fI\-\-live\fR is specified, the guest domain must be active, and the change
 takes place immediately.  Both the \fI\-\-config\fR and \fI\-\-live\fR flags may be
-specified together if supported by the hypervisor.
+specified together if supported by the hypervisor.  If this command is run
+before the guest has finished booting, the guest may fail to process
+the change.
 .Sp
 If \fI\-\-current\fR is specified, affect the current guest state.
 .Sp
@@ -1721,8 +1777,8 @@ snapshot metadata with \fBsnapshot-create\fR.
 By default the hypervisor will try to pick a suitable shutdown
 method. To specify an alternative method, the \fI\-\-mode\fR parameter
 can specify a comma separated list which includes \f(CW\*(C`acpi\*(C'\fR, \f(CW\*(C`agent\*(C'\fR,
-\&\f(CW\*(C`initctl\*(C'\fR and \f(CW\*(C`signal\*(C'\fR. The order in which drivers will try each
-mode is undefined, and not related to the order specified to virsh.
+\&\f(CW\*(C`initctl\*(C'\fR, \f(CW\*(C`signal\*(C'\fR and \f(CW\*(C`paravirt\*(C'\fR. The order in which drivers will
+try each mode is undefined, and not related to the order specified to virsh.
 For strict control over ordering, use a single mode at a time and
 repeat the command.
 .IP "\fBstart\fR \fIdomain-name-or-uuid\fR [\fI\-\-console\fR] [\fI\-\-paused\fR] [\fI\-\-autodestroy\fR] [\fI\-\-bypass\-cache\fR] [\fI\-\-force\-boot\fR] [\fI\-\-pass\-fds N,M,...\fR]" 4
@@ -1915,8 +1971,8 @@ an offline domain, and like \fI\-\-live\fR \fI\-\-config\fR for a running domain
 \&\fBNote\fR: using of partial device definition \s-1XML\s0 files may lead to unexpected
 results as some fields may be autogenerated and thus match devices other than
 expected.
-.IP "\fBattach-disk\fR \fIdomain\fR \fIsource\fR \fItarget\fR [[[\fI\-\-live\fR] [\fI\-\-config\fR] | [\fI\-\-current\fR]] | [\fI\-\-persistent\fR]] [\fI\-\-driver driver\fR] [\fI\-\-subdriver subdriver\fR] [\fI\-\-cache cache\fR] [\fI\-\-type type\fR] [\fI\-\-mode mode\fR] [\fI\-\-config\fR] [\fI\-\-sourcetype soucetype\fR] [\fI\-\-serial serial\fR] [\fI\-\-wwn wwn\fR] [\fI\-\-rawio\fR] [\fI\-\-address address\fR] [\fI\-\-multifunction\fR] [\fI\-\-print\-xml\fR]" 4
-.IX Item "attach-disk domain source target [[[--live] [--config] | [--current]] | [--persistent]] [--driver driver] [--subdriver subdriver] [--cache cache] [--type type] [--mode mode] [--config] [--sourcetype soucetype] [--serial serial] [--wwn wwn] [--rawio] [--address address] [--multifunction] [--print-xml]"
+.IP "\fBattach-disk\fR \fIdomain\fR \fIsource\fR \fItarget\fR [[[\fI\-\-live\fR] [\fI\-\-config\fR] | [\fI\-\-current\fR]] | [\fI\-\-persistent\fR]] [\fI\-\-driver driver\fR] [\fI\-\-subdriver subdriver\fR] [\fI\-\-cache cache\fR] [\fI\-\-type type\fR] [\fI\-\-mode mode\fR] [\fI\-\-sourcetype sourcetype\fR] [\fI\-\-serial serial\fR] [\fI\-\-wwn wwn\fR] [\fI\-\-rawio\fR] [\fI\-\-address address\fR] [\fI\-\-multifunction\fR] [\fI\-\-print\-xml\fR]" 4
+.IX Item "attach-disk domain source target [[[--live] [--config] | [--current]] | [--persistent]] [--driver driver] [--subdriver subdriver] [--cache cache] [--type type] [--mode mode] [--sourcetype sourcetype] [--serial serial] [--wwn wwn] [--rawio] [--address address] [--multifunction] [--print-xml]"
 Attach a new disk device to the domain.
 \&\fIsource\fR is path for the files and devices. \fItarget\fR controls the bus or
 device under which the disk is exposed to the guest \s-1OS.\s0 It indicates the
@@ -2721,14 +2777,14 @@ for storage volumes not in use by an active guest; see also
 The following commands manipulate \*(L"secrets\*(R" (e.g. passwords, passphrases and
 encryption keys).  Libvirt can store secrets independently from their use, and
 other objects (e.g. volumes or domains) can refer to the secrets for encryption
-or possibly other uses.  Secrets are identified using an \s-1UUID. \s0 See
+or possibly other uses.  Secrets are identified using a \s-1UUID. \s0 See
 <http://libvirt.org/formatsecret.html> for documentation of the \s-1XML\s0 format
 used to represent properties of secrets.
 .IP "\fBsecret-define\fR \fIfile\fR" 4
 .IX Item "secret-define file"
 Create a secret with the properties specified in \fIfile\fR, with no associated
 secret value.  If \fIfile\fR does not specify a \s-1UUID,\s0 choose one automatically.
-If \fIfile\fR specifies an \s-1UUID\s0 of an existing secret, replace its properties by
+If \fIfile\fR specifies a \s-1UUID\s0 of an existing secret, replace its properties by
 properties defined in \fIfile\fR, without affecting the secret value.
 .IP "\fBsecret-dumpxml\fR \fIsecret\fR" 4
 .IX Item "secret-dumpxml secret"
@@ -2834,7 +2890,7 @@ is specified, the snapshot will not include vm state.
 The \fI\-\-memspec\fR option can be used to control whether a checkpoint
 is internal or external.  The \fI\-\-memspec\fR flag is mandatory, followed
 by a \fBmemspec\fR of the form \fB[file=]name[,snapshot=type]\fR, where
-type can be \fBnone\fR, \fBinternal\fR, or \fBexternal\fR.  To include a literal
+type can be \fBno\fR, \fBinternal\fR, or \fBexternal\fR.  To include a literal
 comma in \fBfile=name\fR, escape it with a second comma. \fI\-\-memspec\fR cannot
 be used together with \fI\-\-disk\-only\fR.
 .Sp
@@ -2919,8 +2975,8 @@ accessible only from the original name.
 .IX Item "snapshot-info domain {snapshot | --current}"
 Output basic information about a named <snapshot>, or the current snapshot
 with \fI\-\-current\fR.
-.IP "\fBsnapshot-list\fR \fIdomain\fR [\fI\-\-metadata\fR] [\fI\-\-no\-metadata\fR] [{\fI\-\-parent\fR | \fI\-\-roots\fR | [{\fI\-\-tree\fR | \fI\-\-name\fR}]}] [{[\fI\-\-from\fR] \fBsnapshot\fR | \fI\-\-current\fR} [\fI\-\-descendants\fR]] [\fI\-\-leaves\fR] [\fI\-\-no\-leaves\fR] p[\fI\-\-inactive\fR] [\fI\-\-active\fR] [\fI\-\-disk\-only\fR] [\fI\-\-internal\fR] [\fI\-\-external\fR]" 4
-.IX Item "snapshot-list domain [--metadata] [--no-metadata] [{--parent | --roots | [{--tree | --name}]}] [{[--from] snapshot | --current} [--descendants]] [--leaves] [--no-leaves] p[--inactive] [--active] [--disk-only] [--internal] [--external]"
+.IP "\fBsnapshot-list\fR \fIdomain\fR [\fI\-\-metadata\fR] [\fI\-\-no\-metadata\fR] [{\fI\-\-parent\fR | \fI\-\-roots\fR | [{\fI\-\-tree\fR | \fI\-\-name\fR}]}] [{[\fI\-\-from\fR] \fBsnapshot\fR | \fI\-\-current\fR} [\fI\-\-descendants\fR]] [\fI\-\-leaves\fR] [\fI\-\-no\-leaves\fR] [\fI\-\-inactive\fR] [\fI\-\-active\fR] [\fI\-\-disk\-only\fR] [\fI\-\-internal\fR] [\fI\-\-external\fR]" 4
+.IX Item "snapshot-list domain [--metadata] [--no-metadata] [{--parent | --roots | [{--tree | --name}]}] [{[--from] snapshot | --current} [--descendants]] [--leaves] [--no-leaves] [--inactive] [--active] [--disk-only] [--internal] [--external]"
 List all of the available snapshots for the given domain, defaulting
 to show columns for the snapshot name, creation time, and domain state.
 .Sp
@@ -3070,12 +3126,15 @@ mentioned in \fInwfilter-define\fR.
 .Sp
 The editor used can be supplied by the \f(CW$VISUAL\fR or \f(CW$EDITOR\fR environment
 variables, and defaults to \f(CW\*(C`vi\*(C'\fR.
-.SH "QEMU-SPECIFIC COMMANDS"
-.IX Header "QEMU-SPECIFIC COMMANDS"
+.SH "HYPERVISOR-SPECIFIC COMMANDS"
+.IX Header "HYPERVISOR-SPECIFIC COMMANDS"
 \&\s-1NOTE:\s0 Use of the following commands is \fBstrongly\fR discouraged.  They
 can cause libvirt to become confused and do the wrong thing on subsequent
-operations.  Once you have used this command, please do not report
-problems to the libvirt developers; the reports will be ignored.
+operations.  Once you have used these commands, please do not report
+problems to the libvirt developers; the reports will be ignored.  If
+you find that these commands are the only way to accomplish something,
+then it is better to request that the feature be added as a first-class
+citizen in the regular libvirt library.
 .IP "\fBqemu-attach\fR \fIpid\fR" 4
 .IX Item "qemu-attach pid"
 Attach an externally launched \s-1QEMU\s0 process to the libvirt \s-1QEMU\s0 driver.
@@ -3119,13 +3178,30 @@ qemu agent.
 When \fI\-\-aysnc\fR is given, the command waits for timeout whether success or
 failed. And when \fI\-\-block\fR is given, the command waits forever with blocking
 timeout.
+.IP "\fBqemu-monitor-event\fR [\fIdomain\fR] [\fI\-\-event\fR \fIevent-name\fR] [\fI\-\-loop\fR] [\fI\-\-timeout\fR \fIseconds\fR] [\fI\-\-pretty\fR] [\fI\-\-regex\fR] [\fI\-\-no\-case\fR]" 4
+.IX Item "qemu-monitor-event [domain] [--event event-name] [--loop] [--timeout seconds] [--pretty] [--regex] [--no-case]"
+Wait for arbitrary \s-1QEMU\s0 monitor events to occur, and print out the
+details of events as they happen.  The events can optionally be filtered
+by \fIdomain\fR or \fIevent-name\fR.  The 'query\-events' \s-1QMP\s0 command can be
+used via \fIqemu-monitor-command\fR to learn what events are supported.
+If \fI\-\-regex\fR is used, \fIevent-name\fR is a basic regular expression
+instead of a literal string.  If \fI\-\-no\-case\fR is used, \fIevent-name\fR
+will match case-insensitively.
+.Sp
+By default, this command is one-shot, and returns success once an event
+occurs; you can send \s-1SIGINT \s0(usually via \f(CW\*(C`Ctrl\-C\*(C'\fR) to quit immediately.
+If \fI\-\-timeout\fR is specified, the command gives up waiting for events
+after \fIseconds\fR have elapsed.  With \fI\-\-loop\fR, the command prints all
+events until a timeout or interrupt key.  If \fI\-\-pretty\fR is specified,
+any \s-1JSON\s0 event details are pretty-printed for better legibility.
 .IP "\fBlxc-enter-namespace\fR \fIdomain\fR \*(-- /path/to/binary [arg1, [arg2, ...]]" 4
 .IX Item "lxc-enter-namespace domain /path/to/binary [arg1, [arg2, ...]]"
 Enter the namespace of \fIdomain\fR and execute the command \f(CW\*(C`/path/to/binary\*(C'\fR
 passing the requested args. The binary path is relative to the container
 root filesystem, not the host root filesystem. The binary will inherit the
 environment variables / console visible to virsh. This command only works
-when connected to the \s-1LXC\s0 hypervisor driver.
+when connected to the \s-1LXC\s0 hypervisor driver.  This command succeeds only
+if \f(CW\*(C`/path/to/binary\*(C'\fR has 0 exit status.
 .SH "ENVIRONMENT"
 .IX Header "ENVIRONMENT"
 The following environment variables can be set to alter the behaviour
@@ -3225,7 +3301,7 @@ Alternatively report bugs to your software distributor / vendor.
 .Ve
 .SH "COPYRIGHT"
 .IX Header "COPYRIGHT"
-Copyright (C) 2005, 2007\-2010 Red Hat, Inc., and the authors listed in the
+Copyright (C) 2005, 2007\-2014 Red Hat, Inc., and the authors listed in the
 libvirt \s-1AUTHORS\s0 file.
 .SH "LICENSE"
 .IX Header "LICENSE"
