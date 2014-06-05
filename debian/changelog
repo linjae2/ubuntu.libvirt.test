@@ -1,3 +1,10 @@
+libvirt (1.2.2-0ubuntu13.2) utopic; urgency=medium
+
+  * debian/apparmor/libvirt-qemu: add device-tree access for ppc
+    (LP: #1321365)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 05 Jun 2014 12:06:17 -0500
+
 libvirt (1.2.2-0ubuntu13.1) trusty-proposed; urgency=medium
 
   * debian/control: change apparmor dependency into an inverse conflicts,
