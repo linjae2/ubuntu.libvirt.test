@@ -142,3 +142,7 @@
 
   signal (receive) peer=/usr/sbin/libvirtd,
   ptrace (tracedby) peer=/usr/sbin/libvirtd,
+
+  # for ppc device-tree access
+  @{PROC}/device-tree/ r,
+  @{PROC}/device-tree/** r,
