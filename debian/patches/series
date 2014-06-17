@@ -16,3 +16,4 @@ fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu-libxl-qemu-nopath.patch
 #ubuntu-xend-probe.patch
 ubuntu-skip-virstoragetest
+add-cgmanager-support.patch
