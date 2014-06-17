@@ -50,7 +50,8 @@ Build-Depends: cdbs (>= 0.4.90~),
  librbd-dev,
  ebtables,
  iptables,
- qemu-utils
+ qemu-utils,
+ libcgmanager-dev
 Build-Conflicts: dpkg-dev (= 1.15.3)
 Homepage: http://libvirt.org
 Standards-Version: 3.9.4
@@ -61,7 +62,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
  adduser,
  bridge-utils,
- cgroup-lite | cgroup-bin,
+ cgmanager | cgroup-lite | cgroup-bin,
  dnsmasq-base (>= 2.46-1),
  dbus,
  gettext-base,
