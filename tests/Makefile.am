@@ -906,8 +906,9 @@ libvirportallocatormock_la_LDFLAGS = -module -avoid-version \
         -rpath /evil/libtool/hack/to/force/shared/lib/creation
 
 vircgrouptest_SOURCES = \
-	vircgrouptest.c testutils.h testutils.c
-vircgrouptest_LDADD = $(LDADDS)
+	vircgrouptest.c testutils.h testutils.c ../src/util/cgmanager.c
+vircgrouptest_LDADD = $(LDADDS) $(CGMANAGER_LIBS)
+vircgrouptest_CFLAGS = $(AM_CFLAGS) $(CGMANAGER_CFLAGS) -DHAVE_CGMANAGER
 
 vircgroupmock_la_SOURCES = \
 	vircgroupmock.c
