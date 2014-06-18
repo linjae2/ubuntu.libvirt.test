@@ -1,3 +1,10 @@
+libvirt (1.2.5-0ubuntu3) utopic; urgency=medium
+
+  * d/p/virt-aa-helper-vhost.patch: allow access to /dev/vhost-net if domain
+    needs it (LP: #1322568)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 17 Jun 2014 22:01:49 -0500
+
 libvirt (1.2.5-0ubuntu2) utopic; urgency=medium
 
   * implement cgmanager support (LP: #1322677)
