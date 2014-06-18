@@ -104,14 +104,16 @@ libvirtd_conf_la_CFLAGS = \
 	$(XDR_CFLAGS) \
 	$(WARN_CFLAGS) $(PIE_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
+	$(CGMANAGER_CFLAGS) \
 	$(NULL)
 libvirtd_conf_la_LDFLAGS =				\
 	$(RELRO_LDFLAGS)				\
 	$(PIE_LDFLAGS)					\
 	$(COVERAGE_LDFLAGS)				\
 	$(NO_INDIRECT_LDFLAGS)				\
+	$(NO_INDIRECT_LDFLAGS)				\
 	$(NULL)
-libvirtd_conf_la_LIBADD = $(LIBXML_LIBS)
+libvirtd_conf_la_LIBADD = $(LIBXML_LIBS) $(CGMANAGER_LIBS)
 
 man8_MANS = libvirtd.8
 
@@ -142,7 +144,7 @@ libvirtd_CFLAGS = \
 	$(LIBXML_CFLAGS) $(GNUTLS_CFLAGS) $(SASL_CFLAGS) \
 	$(XDR_CFLAGS) $(POLKIT_CFLAGS) $(DBUS_CFLAGS) $(LIBNL_CFLAGS) \
 	$(WARN_CFLAGS) $(PIE_CFLAGS) \
-	$(COVERAGE_CFLAGS) \
+	$(COVERAGE_CFLAGS) $(CGMANAGER_CFLAGS) \
 	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\""
 
 libvirtd_LDFLAGS =					\
@@ -158,6 +160,7 @@ libvirtd_LDADD =					\
 	$(SASL_LIBS)					\
 	$(DBUS_LIBS)					\
 	$(POLKIT_LIBS)					\
+	$(CGMANAGER_LIBS)				\
 	$(LIBNL_LIBS)
 
 if WITH_DTRACE_PROBES
