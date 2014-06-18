@@ -1,3 +1,10 @@
+libvirt (1.2.5-0ubuntu4) utopic; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: allow pygrub to be run
+    (LP: #1326003)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Wed, 18 Jun 2014 11:04:15 +0200
+
 libvirt (1.2.5-0ubuntu3) utopic; urgency=medium
 
   * d/p/virt-aa-helper-vhost.patch: allow access to /dev/vhost-net if domain
