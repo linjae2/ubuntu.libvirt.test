@@ -1,3 +1,15 @@
+libvirt (1.2.2-0ubuntu13.1.2) trusty; urgency=low
+
+  * debian/apparmor/usr.sbin.libvirtd: allow libvirtd to run
+    libxl-save-helper (required for save restore through libxl).
+    (LP: #1334195)
+  * debian/apparmor/usr.sbin.libvirtd: allow pygrub to be run
+    (LP: #1326003)
+  * debian/patches/libxl-Support-PV-consoles.patch
+    Enable console support for PV guests (LP: #1334738)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Thu, 26 Jun 2014 16:03:42 +0200
+
 libvirt (1.2.2-0ubuntu13.1.1) trusty-proposed; urgency=medium
 
   * debian/apparmor/libvirt-qemu: add device-tree access for ppc
