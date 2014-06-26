@@ -34,6 +34,7 @@
 # include "virfile.h"
 # include "testutilslxc.h"
 # include "nodeinfo.h"
+# include "cgmanager.h"
 
 # define VIR_FROM_THIS VIR_FROM_NONE
 
@@ -757,6 +758,14 @@ mymain(void)
 {
     int ret = 0;
     char *fakesysfsdir;
+
+#ifdef HAVE_CGMANAGER
+    /* TODO make tests work with cgmanager */ 
+    if (cgm_dbus_connect()) {
+        cgm_dbus_disconnect();
+        return 0;
+    }
+#endif
 
     if (VIR_STRDUP_QUIET(fakesysfsdir, FAKESYSFSDIRTEMPLATE) < 0) {
         fprintf(stderr, "Out of memory\n");
