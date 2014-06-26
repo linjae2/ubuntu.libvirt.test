@@ -26,3 +26,4 @@ libxl-do-not-use-virdomain-id.patch
 libxl-set-disk-format-for-cdrom.patch
 libxl-set-vfb0-data-in-build-config.patch
 libxl-support-sexpr-in-native-to-XML-conversion.patch
+libxl-Support-PV-consoles.patch
