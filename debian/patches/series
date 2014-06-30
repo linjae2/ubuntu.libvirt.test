@@ -18,3 +18,5 @@ ubuntu-libxl-qemu-nopath.patch
 ubuntu-skip-virstoragetest
 add-cgmanager-support.patch
 virt-aa-helper-vhost.patch
+libxl-Implement-basic-video-device-selection.patch
+libxl-Fix-up-VRAM-to-minimum-requirements.patch
