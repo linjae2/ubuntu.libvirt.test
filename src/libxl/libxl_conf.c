@@ -1040,10 +1040,21 @@ libxlMakeVfbList(libxlDriverPrivatePtr driver,
         libxl_domain_build_info *b_info = &d_config->b_info;
         libxl_device_vfb vfb = d_config->vfbs[0];
 
-        if (libxl_defbool_val(vfb.vnc.enable))
+        if (libxl_defbool_val(vfb.vnc.enable)) {
             memcpy(&b_info->u.hvm.vnc, &vfb.vnc, sizeof(libxl_vnc_info));
-        else if (libxl_defbool_val(vfb.sdl.enable))
+            if (VIR_STRDUP(b_info->u.hvm.vnc.listen, vfb.vnc.listen) < 0)
+                goto error;
+            if (VIR_STRDUP(b_info->u.hvm.vnc.passwd, vfb.vnc.passwd) < 0)
+                goto error;
+        } else if (libxl_defbool_val(vfb.sdl.enable)) {
             memcpy(&b_info->u.hvm.sdl, &vfb.sdl, sizeof(libxl_sdl_info));
+            if (VIR_STRDUP(b_info->u.hvm.sdl.display, vfb.sdl.display) < 0)
+                goto error;
+            if (VIR_STRDUP(b_info->u.hvm.sdl.xauthority, vfb.sdl.xauthority) < 0)
+                goto error;
+        }
+        if (VIR_STRDUP(b_info->u.hvm.keymap, vfb.keymap) < 0)
+            goto error;
     }
 
     return 0;
@@ -1301,6 +1312,70 @@ libxlMakeCapabilities(libxl_ctx *ctx)
     return NULL;
 }
 
+static int
+libxlMakeVideo(virDomainDefPtr def, libxl_domain_config *d_config)
+{
+    libxl_domain_build_info *b_info = &d_config->b_info;
+
+    if (d_config->c_info.type != LIBXL_DOMAIN_TYPE_HVM)
+        return 0;
+
+    /*
+     * Take the first defined video device (graphics card) to display
+     * on the first graphics device (display).
+     * Right now only type and vram info is used and anything beside
+     * type xen and vga is mapped to cirrus.
+     */
+    if (def->nvideos) {
+        unsigned int min_vram = 8 * 1024;
+
+        switch (def->videos[0]->type) {
+            case VIR_DOMAIN_VIDEO_TYPE_VGA:
+            case VIR_DOMAIN_VIDEO_TYPE_XEN:
+                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_STD;
+                /*
+                 * Libxl enforces a minimal VRAM size of 8M when using
+                 * LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL or
+                 * 16M for LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN.
+                 * Avoid build failures and go with the minimum if less
+                 * is specified.
+                 */
+                switch (b_info->device_model_version) {
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+                        min_vram = 8 * 1024;
+                        break;
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+                    default:
+                        min_vram = 16 * 1024;
+                }
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_CIRRUS:
+                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_CIRRUS;
+                switch (b_info->device_model_version) {
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+                        min_vram = 4 * 1024; /* Actually the max, too */
+                        break;
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+                    default:
+                        min_vram = 8 * 1024;
+                }
+                break;
+            default:
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                               "%s",
+                               _("video type not supported by libxl"));
+                return -1;
+        }
+        b_info->video_memkb = (def->videos[0]->vram >= min_vram) ?
+                              def->videos[0]->vram :
+                              LIBXL_MEMKB_DEFAULT;
+    } else {
+        libxl_defbool_set(&b_info->u.hvm.nographic, 1);
+    }
+
+    return 0;
+}
+
 int
 libxlBuildDomainConfig(libxlDriverPrivatePtr driver,
                        virDomainObjPtr vm, libxl_domain_config *d_config)
@@ -1326,6 +1401,15 @@ libxlBuildDomainConfig(libxlDriverPrivatePtr driver,
         return -1;
 
     if (libxlMakePCIList(def, d_config) < 0)
+        return -1;
+
+    /*
+     * Now that any potential VFBs are defined, it is time to update the
+     * build info with the data of the primary display. Some day libxl
+     * might implicitely do so but as it does not right now, better be
+     * explicit.
+     */
+    if (libxlMakeVideo(def, d_config) < 0)
         return -1;
 
     d_config->on_reboot = def->onReboot;
