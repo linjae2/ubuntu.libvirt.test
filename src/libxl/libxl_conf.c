@@ -1327,13 +1327,38 @@ libxlMakeVideo(virDomainDefPtr def, libxl_domain_config *d_config)
      * type xen and vga is mapped to cirrus.
      */
     if (def->nvideos) {
+        unsigned int min_vram = 8 * 1024;
+
         switch (def->videos[0]->type) {
             case VIR_DOMAIN_VIDEO_TYPE_VGA:
             case VIR_DOMAIN_VIDEO_TYPE_XEN:
                 b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_STD;
+                /*
+                 * Libxl enforces a minimal VRAM size of 8M when using
+                 * LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL or
+                 * 16M for LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN.
+                 * Avoid build failures and go with the minimum if less
+                 * is specified.
+                 */
+                switch (b_info->device_model_version) {
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+                        min_vram = 8 * 1024;
+                        break;
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+                    default:
+                        min_vram = 16 * 1024;
+                }
                 break;
             case VIR_DOMAIN_VIDEO_TYPE_CIRRUS:
                 b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_CIRRUS;
+                switch (b_info->device_model_version) {
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
+                        min_vram = 4 * 1024; /* Actually the max, too */
+                        break;
+                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
+                    default:
+                        min_vram = 8 * 1024;
+                }
                 break;
             default:
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
@@ -1341,7 +1366,7 @@ libxlMakeVideo(virDomainDefPtr def, libxl_domain_config *d_config)
                                _("video type not supported by libxl"));
                 return -1;
         }
-        b_info->video_memkb = def->videos[0]->vram ?
+        b_info->video_memkb = (def->videos[0]->vram >= min_vram) ?
                               def->videos[0]->vram :
                               LIBXL_MEMKB_DEFAULT;
     } else {
