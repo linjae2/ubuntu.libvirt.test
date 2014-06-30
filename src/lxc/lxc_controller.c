@@ -2166,6 +2166,9 @@ virLXCControllerRun(virLXCControllerPtr ctrl)
     if (virLXCControllerSetupResourceLimits(ctrl) < 0)
         goto cleanup;
 
+    if (virCgroupAddTask(ctrl->cgroup, getpid()) < 0)
+        goto cleanup;
+
     if (virLXCControllerSetupDevPTS(ctrl) < 0)
         goto cleanup;
 
