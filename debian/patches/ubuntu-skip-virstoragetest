@@ -5,16 +5,15 @@ Description: skip virstoragetest
 Author: Serge Hallyn <serge.hallyn@ubuntu.com>
 Forwarded: no
 
-Index: libvirt-1.2.5/tests/virstoragetest.c
-===================================================================
---- libvirt-1.2.5.orig/tests/virstoragetest.c	2014-05-18 20:20:24.000000000 -0500
-+++ libvirt-1.2.5/tests/virstoragetest.c	2014-06-17 07:49:59.098503868 -0500
-@@ -508,6 +508,9 @@
-     struct testChainData data;
-     virStorageSourcePtr chain = NULL;
+diff -Naurp libvirt-1.2.6.orig/tests/virstoragetest.c libvirt-1.2.6/tests/virstoragetest.c
+--- libvirt-1.2.6.orig/tests/virstoragetest.c	2014-06-25 07:25:52.000000000 -0400
++++ libvirt-1.2.6/tests/virstoragetest.c	2014-07-07 10:27:03.958927000 -0400
+@@ -667,6 +667,9 @@ mymain(void)
+     virStorageSourcePtr chain2; /* short for chain->backingStore */
+     virStorageSourcePtr chain3; /* short for chain2->backingStore */
  
-+    /* Skip this test as it hangs on buildds (but passes locally) */
-+    return EXIT_AM_SKIP;
++	/* Skip this test as it hangs on buildds (but passes locally) */
++	return EXIT_AM_SKIP;
 +
      /* Prep some files with qemu-img; if that is not found on PATH, or
       * if it lacks support for qcow2 and qed, skip this test.  */

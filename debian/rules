@@ -17,6 +17,8 @@ else
   WITH_XEN = --without-xen
 endif
 
+LIBVIRT_VERSION   = $(shell dpkg-parsechangelog | grep ^Version | sed "s/Version: //")
+
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_STORAGE_LVM    = --with-storage-lvm
   WITH_STORAGE_ISCSI  = --with-storage-iscsi
@@ -92,7 +94,8 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
 	$(WITH_AUDIT)		 \
 	--with-apparmor		 \
 	--with-vbox \
-    --without-firewalld
+    --without-firewalld \
+	--with-packager-version="$(LIBVIRT_VERSION)"
 
 
 DEB_COMPRESS_EXCLUDE = .o event-test hellolibvirt info1 suspend

@@ -921,6 +921,29 @@ virQEMUCapsInitCPU(virCapsPtr caps,
 }
 
 
+static int
+virQEMUCapsInitPages(virCapsPtr caps)
+{
+    int ret = -1;
+    unsigned int *pages_size = NULL;
+    size_t npages;
+
+    if (virNumaGetPages(-1 /* Magic constant for overall info */,
+                        &pages_size, NULL, NULL, &npages) < 0)
+        goto cleanup;
+
+    caps->host.pagesSize = pages_size;
+    pages_size = NULL;
+    caps->host.nPagesSize = npages;
+    npages = 0;
+
+    ret = 0;
+ cleanup:
+    VIR_FREE(pages_size);
+    return ret;
+}
+
+
 virCapsPtr virQEMUCapsInit(virQEMUCapsCachePtr cache)
 {
     virCapsPtr caps;
@@ -944,10 +967,14 @@ virCapsPtr virQEMUCapsInit(virQEMUCapsCachePtr cache)
         VIR_WARN("Failed to get host CPU");
 
     /* Add the power management features of the host */
-
     if (virNodeSuspendGetTargetMask(&caps->host.powerMgmt) < 0)
         VIR_WARN("Failed to get host power management capabilities");
 
+    /* Add huge pages info */
+    if (virQEMUCapsInitPages(caps) < 0)
+        VIR_WARN("Failed to get pages info");
+
+    /* Add domain migration transport URI */
     virCapabilitiesAddHostMigrateTransport(caps,
                                            "tcp");
 
@@ -1887,7 +1914,7 @@ void virQEMUCapsDispose(void *obj)
 
 void
 virQEMUCapsSet(virQEMUCapsPtr qemuCaps,
-               enum virQEMUCapsFlags flag)
+               virQEMUCapsFlags flag)
 {
     ignore_value(virBitmapSetBit(qemuCaps->flags, flag));
 }
@@ -1908,7 +1935,7 @@ virQEMUCapsSetList(virQEMUCapsPtr qemuCaps, ...)
 
 void
 virQEMUCapsClear(virQEMUCapsPtr qemuCaps,
-                 enum virQEMUCapsFlags flag)
+                 virQEMUCapsFlags flag)
 {
     ignore_value(virBitmapClearBit(qemuCaps->flags, flag));
 }
@@ -1922,7 +1949,7 @@ char *virQEMUCapsFlagsString(virQEMUCapsPtr qemuCaps)
 
 bool
 virQEMUCapsGet(virQEMUCapsPtr qemuCaps,
-               enum virQEMUCapsFlags flag)
+               virQEMUCapsFlags flag)
 {
     bool b;
 
@@ -2280,7 +2307,7 @@ virQEMUCapsProbeQMPCPUDefinitions(virQEMUCapsPtr qemuCaps,
 
 struct tpmTypeToCaps {
     int type;
-    enum virQEMUCapsFlags caps;
+    virQEMUCapsFlags caps;
 };
 
 static const struct tpmTypeToCaps virQEMUCapsTPMTypesToCaps[] = {
