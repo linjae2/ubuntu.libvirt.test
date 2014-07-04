@@ -1,3 +1,14 @@
+libvirt (1.2.6-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release:
+    + Dropped:
+     - debian/patches/virt-aa-helper-vhost.patch
+     - debian/patches/libxl-Implement-basic-video-device-selection.patch
+     - debian/patches/libxl-Fix-up-VRAM-to-minimum-requirements.patch
+    + debian/rules: Include packaging version in the log file. (LP: #1335221)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 04 Jul 2014 08:40:24 -0400
+
 libvirt (1.2.5-0ubuntu6) utopic; urgency=low
 
   * libxl: Refresh patch(es) to allow the choice between Cirrus and
