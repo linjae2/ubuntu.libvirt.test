@@ -1263,20 +1263,6 @@ int virLXCProcessStart(virConnectPtr conn,
         goto cleanup;
     }
 
-    if (virCgroupNewDetectMachine(vm->def->name, "lxc", vm->pid,
-                                  vm->def->resource ?
-                                  vm->def->resource->partition :
-                                  NULL,
-                                  -1, &priv->cgroup) < 0)
-        goto error;
-
-    if (!priv->cgroup) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("No valid cgroup for machine %s"),
-                       vm->def->name);
-        goto error;
-    }
-
     priv->stopReason = VIR_DOMAIN_EVENT_STOPPED_FAILED;
     priv->wantReboot = false;
     vm->def->id = vm->pid;
@@ -1294,6 +1280,20 @@ int virLXCProcessStart(virConnectPtr conn,
                            _("guest failed to start: %s"), out);
         }
 
+        goto error;
+    }
+
+    if (virCgroupNewDetectMachine(vm->def->name, "lxc", vm->pid,
+                                  vm->def->resource ?
+                                  vm->def->resource->partition :
+                                  NULL,
+                                  -1, &priv->cgroup) < 0)
+        goto error;
+
+    if (!priv->cgroup) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("No valid cgroup for machine %s"),
+                       vm->def->name);
         goto error;
     }
 
