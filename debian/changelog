@@ -1,3 +1,11 @@
+libvirt (1.2.4-3.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Change build-dependency to libgnutls28-dev and libgcrypt20-dev to avoid
+    build-dependency conflict (thanks, Peter Green; closes: #753121).
+
+ -- Colin Watson <cjwatson@debian.org>  Mon, 14 Jul 2014 11:34:05 +0100
+
 libvirt (1.2.4-3) unstable; urgency=medium
 
   * [b0b7359] Don't pretend kFreeBSD supports linux only features.  So far we
