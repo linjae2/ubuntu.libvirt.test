@@ -1084,6 +1084,18 @@ typedef int
                       unsigned int flags);
 
 typedef int
+(*virDrvDomainGetTime)(virDomainPtr dom,
+                       long long *seconds,
+                       unsigned int *nseconds,
+                       unsigned int flags);
+
+typedef int
+(*virDrvDomainSetTime)(virDomainPtr dom,
+                       long long seconds,
+                       unsigned int nseconds,
+                       unsigned int flags);
+
+typedef int
 (*virDrvDomainLxcOpenNamespace)(virDomainPtr dom,
                                 int **fdlist,
                                 unsigned int flags);
@@ -1148,6 +1160,33 @@ typedef int
                                      int cookieinlen,
                                      unsigned int flags,
                                      int cancelled);
+
+typedef int
+(*virDrvDomainFSFreeze)(virDomainPtr dom,
+                        const char **mountpoints,
+                        unsigned int nmountpoints,
+                        unsigned int flags);
+
+typedef int
+(*virDrvDomainFSThaw)(virDomainPtr dom,
+                      const char **mountpoints,
+                      unsigned int nmountpoints,
+                      unsigned int flags);
+
+typedef int
+(*virDrvNodeGetFreePages)(virConnectPtr conn,
+                          unsigned int npages,
+                          unsigned int *pages,
+                          int startCell,
+                          unsigned int cellCount,
+                          unsigned long long *counts,
+                          unsigned int flags);
+
+typedef int
+(*virDrvNetworkGetDHCPLeases)(virNetworkPtr network,
+                              const char *mac,
+                              virNetworkDHCPLeasePtr **leases,
+                              unsigned int flags);
 
 typedef struct _virDriver virDriver;
 typedef virDriver *virDriverPtr;
@@ -1363,6 +1402,11 @@ struct _virDriver {
     virDrvDomainMigrateFinish3Params domainMigrateFinish3Params;
     virDrvDomainMigrateConfirm3Params domainMigrateConfirm3Params;
     virDrvConnectGetCPUModelNames connectGetCPUModelNames;
+    virDrvDomainFSFreeze domainFSFreeze;
+    virDrvDomainFSThaw domainFSThaw;
+    virDrvDomainGetTime domainGetTime;
+    virDrvDomainSetTime domainSetTime;
+    virDrvNodeGetFreePages nodeGetFreePages;
 };
 
 
@@ -1496,6 +1540,7 @@ struct _virNetworkDriver {
     virDrvNetworkSetAutostart networkSetAutostart;
     virDrvNetworkIsActive networkIsActive;
     virDrvNetworkIsPersistent networkIsPersistent;
+    virDrvNetworkGetDHCPLeases networkGetDHCPLeases;
 };
 
 

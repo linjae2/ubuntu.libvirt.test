@@ -169,6 +169,9 @@ typedef virStorageFileBackend *virStorageFileBackendPtr;
 struct _virStorageDriverData {
     virStorageFileBackendPtr backend;
     void *priv;
+
+    uid_t uid;
+    gid_t gid;
 };
 
 typedef int
@@ -187,8 +190,22 @@ typedef int
 (*virStorageFileBackendStat)(virStorageSourcePtr src,
                              struct stat *st);
 
-virStorageFileBackendPtr virStorageFileBackendForType(int type, int protocol);
+typedef ssize_t
+(*virStorageFileBackendReadHeader)(virStorageSourcePtr src,
+                                   ssize_t max_len,
+                                   char **buf);
 
+typedef const char *
+(*virStorageFileBackendGetUniqueIdentifier)(virStorageSourcePtr src);
+
+typedef int
+(*virStorageFileBackendAccess)(virStorageSourcePtr src,
+                               int mode);
+
+virStorageFileBackendPtr virStorageFileBackendForType(int type, int protocol);
+virStorageFileBackendPtr virStorageFileBackendForTypeInternal(int type,
+                                                              int protocol,
+                                                              bool report);
 
 
 struct _virStorageFileBackend {
@@ -201,12 +218,15 @@ struct _virStorageFileBackend {
      * error on failure. */
     virStorageFileBackendInit backendInit;
     virStorageFileBackendDeinit backendDeinit;
+    virStorageFileBackendReadHeader storageFileReadHeader;
+    virStorageFileBackendGetUniqueIdentifier storageFileGetUniqueIdentifier;
 
     /* The following group of callbacks is expected to set errno
      * and return -1 on error. No libvirt error shall be reported */
     virStorageFileBackendCreate storageFileCreate;
     virStorageFileBackendUnlink storageFileUnlink;
     virStorageFileBackendStat   storageFileStat;
+    virStorageFileBackendAccess storageFileAccess;
 };
 
 #endif /* __VIR_STORAGE_BACKEND_H__ */

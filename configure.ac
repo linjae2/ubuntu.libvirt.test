@@ -16,7 +16,7 @@ dnl You should have received a copy of the GNU Lesser General Public
 dnl License along with this library.  If not, see
 dnl <http://www.gnu.org/licenses/>.
 
-AC_INIT([libvirt], [1.2.4], [libvir-list@redhat.com], [], [http://libvirt.org])
+AC_INIT([libvirt], [1.2.6], [libvir-list@redhat.com], [], [http://libvirt.org])
 AC_CONFIG_SRCDIR([src/libvirt.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
@@ -2684,6 +2684,13 @@ AC_CHECK_DECLS([cpuset_getaffinity],
                 #include <sys/cpuset.h>
                ])
 
+# Check for BSD kvm (kernel memory interface)
+if test $with_freebsd = yes; then
+     AC_CHECK_LIB([kvm], [kvm_getprocs], [],
+                  [AC_MSG_ERROR([BSD kernel memory interface library is required to build on FreeBSD])]
+                 )
+fi
+
 # Check if we need to look for ifconfig
 if test "$want_ifconfig" = "yes"; then
      AC_PATH_PROG([IFCONFIG_PATH], [ifconfig])
@@ -2720,7 +2727,13 @@ AC_CONFIG_FILES([\
         docs/schemas/Makefile \
         gnulib/lib/Makefile \
         gnulib/tests/Makefile \
-        libvirt.pc libvirt.spec mingw-libvirt.spec \
+        libvirt.pc \
+        libvirt-qemu.pc \
+        libvirt-lxc.pc \
+        src/libvirt.pc \
+        src/libvirt-qemu.pc \
+        src/libvirt-lxc.pc \
+        libvirt.spec mingw-libvirt.spec \
         po/Makefile.in \
         include/libvirt/Makefile include/libvirt/libvirt.h \
         daemon/Makefile \
@@ -2735,6 +2748,7 @@ AC_CONFIG_FILES([\
         examples/hellolibvirt/Makefile \
         examples/systemtap/Makefile \
         examples/xml/nwfilter/Makefile \
+        examples/lxcconvert/Makefile \
         tools/wireshark/Makefile \
         tools/wireshark/src/Makefile])
 AC_OUTPUT

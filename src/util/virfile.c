@@ -810,7 +810,7 @@ virFileNBDDeviceFindUnused(void)
 
 
 int virFileNBDDeviceAssociate(const char *file,
-                              enum virStorageFileFormat fmt,
+                              virStorageFileFormat fmt,
                               bool readonly,
                               char **dev)
 {
@@ -879,7 +879,7 @@ int virFileLoopDeviceAssociate(const char *file,
 }
 
 int virFileNBDDeviceAssociate(const char *file,
-                              enum virStorageFileFormat fmt ATTRIBUTE_UNUSED,
+                              virStorageFileFormat fmt ATTRIBUTE_UNUSED,
                               bool readonly ATTRIBUTE_UNUSED,
                               char **dev ATTRIBUTE_UNUSED)
 {
@@ -1297,6 +1297,21 @@ virFileReadAll(const char *path, int maxlen, char **buf)
         virReportSystemError(errno, _("Failed to read file '%s'"), path);
         return -1;
     }
+
+    return len;
+}
+
+int
+virFileReadAllQuiet(const char *path, int maxlen, char **buf)
+{
+    int fd = open(path, O_RDONLY);
+    if (fd < 0)
+        return -errno;
+
+    int len = virFileReadLimFD(fd, maxlen, buf);
+    VIR_FORCE_CLOSE(fd);
+    if (len < 0)
+        return -errno;
 
     return len;
 }

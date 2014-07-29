@@ -77,7 +77,7 @@ VIR_ENUM_IMPL(virNetworkTaint, VIR_NETWORK_TAINT_LAST,
 
 bool
 virNetworkObjTaint(virNetworkObjPtr obj,
-                   enum virNetworkTaintFlags taint)
+                   virNetworkTaintFlags taint)
 {
     unsigned int flag = (1 << taint);
 
@@ -2851,7 +2851,7 @@ virNetworkObjFormat(virNetworkObjPtr net,
     size_t i;
 
     if (!class_id)
-        goto no_memory;
+        goto error;
 
     virBufferAddLit(&buf, "<networkstatus>\n");
     virBufferAdjustIndent(&buf, 2);

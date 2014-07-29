@@ -1098,7 +1098,7 @@ x86MapFree(struct x86_map *map)
 
 
 static int
-x86MapLoadCallback(enum cpuMapElement element,
+x86MapLoadCallback(cpuMapElement element,
                    xmlXPathContextPtr ctxt,
                    void *data)
 {
@@ -1463,9 +1463,25 @@ x86Compute(virCPUDefPtr host,
 
 static virCPUCompareResult
 x86Compare(virCPUDefPtr host,
-           virCPUDefPtr cpu)
+           virCPUDefPtr cpu,
+           bool failIncomaptible)
 {
-    return x86Compute(host, cpu, NULL, NULL);
+    virCPUCompareResult ret;
+    char *message = NULL;
+
+    ret = x86Compute(host, cpu, NULL, &message);
+
+    if (failIncomaptible && ret == VIR_CPU_COMPARE_INCOMPATIBLE) {
+        ret = VIR_CPU_COMPARE_ERROR;
+        if (message) {
+            virReportError(VIR_ERR_CPU_INCOMPATIBLE, "%s", message);
+        } else {
+            virReportError(VIR_ERR_CPU_INCOMPATIBLE, NULL);
+        }
+    }
+    VIR_FREE(message);
+
+    return ret;
 }
 
 
@@ -1615,7 +1631,7 @@ x86DecodeCPUData(virCPUDefPtr cpu,
 static virCPUx86Data *
 x86EncodePolicy(const virCPUDef *cpu,
                 const struct x86_map *map,
-                enum virCPUFeaturePolicy policy)
+                virCPUFeaturePolicy policy)
 {
     struct x86_model *model;
     virCPUx86Data *data = NULL;
@@ -2045,7 +2061,7 @@ static int
 x86Update(virCPUDefPtr guest,
           const virCPUDef *host)
 {
-    switch ((enum virCPUMode) guest->mode) {
+    switch ((virCPUMode) guest->mode) {
     case VIR_CPU_MODE_CUSTOM:
         return x86UpdateCustom(guest, host);
 
