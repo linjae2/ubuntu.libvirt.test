@@ -51,7 +51,9 @@ fakeSecretLookupByUsage(virConnectPtr conn,
     if (STRNEQ(usageID, "mycluster_myname"))
         return NULL;
 
-    virUUIDGenerate(uuid);
+    if (virUUIDGenerate(uuid) < 0)
+        return NULL;
+
     return virGetSecret(conn, uuid, usageType, usageID);
 }
 
@@ -578,6 +580,7 @@ mymain(void)
     unsetenv("SDL_AUDIODRIVER");
 
     DO_TEST("minimal", QEMU_CAPS_NAME);
+    DO_TEST("minimal-msg-timestamp", QEMU_CAPS_NAME, QEMU_CAPS_MSG_TIMESTAMP);
     DO_TEST("minimal-s390", QEMU_CAPS_NAME);
     DO_TEST("machine-aliases1", NONE);
     DO_TEST("machine-aliases2", QEMU_CAPS_KVM);
@@ -629,7 +632,7 @@ mymain(void)
     DO_TEST_FAILURE("reboot-timeout-enabled", NONE);
 
     DO_TEST("bios", QEMU_CAPS_DEVICE, QEMU_CAPS_SGA);
-    DO_TEST("clock-utc", NONE);
+    DO_TEST("clock-utc", QEMU_CAPS_NODEFCONFIG, QEMU_CAPS_DEVICE);
     DO_TEST("clock-localtime", NONE);
     DO_TEST("clock-localtime-basis-localtime", QEMU_CAPS_RTC);
     DO_TEST("clock-variable", QEMU_CAPS_RTC);
@@ -942,9 +945,21 @@ mymain(void)
     DO_TEST("net-mcast", NONE);
     DO_TEST("net-hostdev",
             QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG);
+    DO_TEST("net-hostdev-multidomain",
+            QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG,
+            QEMU_CAPS_HOST_PCI_MULTIDOMAIN);
+    DO_TEST_FAILURE("net-hostdev-multidomain",
+                    QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE,
+                    QEMU_CAPS_NODEFCONFIG);
     DO_TEST("net-hostdev-vfio",
             QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG,
             QEMU_CAPS_DEVICE_VFIO_PCI);
+    DO_TEST("net-hostdev-vfio-multidomain",
+            QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG,
+            QEMU_CAPS_DEVICE_VFIO_PCI, QEMU_CAPS_HOST_PCI_MULTIDOMAIN);
+    DO_TEST_FAILURE("net-hostdev-vfio-multidomain",
+                    QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE,
+                    QEMU_CAPS_NODEFCONFIG, QEMU_CAPS_DEVICE_VFIO_PCI);
 
     DO_TEST("serial-vc", NONE);
     DO_TEST("serial-pty", NONE);
@@ -1121,6 +1136,12 @@ mymain(void)
     DO_TEST("hostdev-vfio",
             QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG,
             QEMU_CAPS_DEVICE_VFIO_PCI);
+    DO_TEST("hostdev-vfio-multidomain",
+            QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG,
+            QEMU_CAPS_DEVICE_VFIO_PCI, QEMU_CAPS_HOST_PCI_MULTIDOMAIN);
+    DO_TEST_FAILURE("hostdev-vfio-multidomain",
+                    QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE,
+                    QEMU_CAPS_NODEFCONFIG, QEMU_CAPS_DEVICE_VFIO_PCI);
     DO_TEST("pci-rom",
             QEMU_CAPS_PCIDEVICE, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG,
             QEMU_CAPS_PCI_ROMBAR);
@@ -1195,6 +1216,7 @@ mymain(void)
     DO_TEST("seclabel-static-relabel", QEMU_CAPS_NAME);
     DO_TEST("seclabel-static-labelskip", QEMU_CAPS_NAME);
     DO_TEST("seclabel-none", QEMU_CAPS_NAME);
+    DO_TEST("seclabel-dac-none", QEMU_CAPS_NAME);
 
     DO_TEST("pseries-basic",
             QEMU_CAPS_CHARDEV, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG);
@@ -1260,6 +1282,7 @@ mymain(void)
             QEMU_CAPS_DEVICE_VIRTIO_RNG, QEMU_CAPS_OBJECT_RNG_RANDOM);
 
     DO_TEST("ppc-dtb", QEMU_CAPS_KVM, QEMU_CAPS_DTB);
+    DO_TEST("ppce500-serial", QEMU_CAPS_KVM, QEMU_CAPS_DEVICE, QEMU_CAPS_CHARDEV);
 
     DO_TEST("tpm-passthrough", QEMU_CAPS_DEVICE,
             QEMU_CAPS_DEVICE_TPM_PASSTHROUGH, QEMU_CAPS_DEVICE_TPM_TIS);

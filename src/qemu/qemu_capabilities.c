@@ -254,6 +254,8 @@ VIR_ENUM_IMPL(virQEMUCaps, QEMU_CAPS_LAST,
               "spiceport",
 
               "usb-kbd", /* 165 */
+              "host-pci-multidomain",
+              "msg-timestamp",
     );
 
 
@@ -918,6 +920,29 @@ virQEMUCapsInitCPU(virCapsPtr caps,
 }
 
 
+static int
+virQEMUCapsInitPages(virCapsPtr caps)
+{
+    int ret = -1;
+    unsigned int *pages_size = NULL;
+    size_t npages;
+
+    if (virNumaGetPages(-1 /* Magic constant for overall info */,
+                        &pages_size, NULL, NULL, &npages) < 0)
+        goto cleanup;
+
+    caps->host.pagesSize = pages_size;
+    pages_size = NULL;
+    caps->host.nPagesSize = npages;
+    npages = 0;
+
+    ret = 0;
+ cleanup:
+    VIR_FREE(pages_size);
+    return ret;
+}
+
+
 virCapsPtr virQEMUCapsInit(virQEMUCapsCachePtr cache)
 {
     virCapsPtr caps;
@@ -941,10 +966,14 @@ virCapsPtr virQEMUCapsInit(virQEMUCapsCachePtr cache)
         VIR_WARN("Failed to get host CPU");
 
     /* Add the power management features of the host */
-
     if (virNodeSuspendGetTargetMask(&caps->host.powerMgmt) < 0)
         VIR_WARN("Failed to get host power management capabilities");
 
+    /* Add huge pages info */
+    if (virQEMUCapsInitPages(caps) < 0)
+        VIR_WARN("Failed to get pages info");
+
+    /* Add domain migration transport URI */
     virCapabilitiesAddHostMigrateTransport(caps,
                                            "tcp");
 
@@ -1043,6 +1072,8 @@ virQEMUCapsComputeCmdFlags(const char *help,
         virQEMUCapsSet(qemuCaps, QEMU_CAPS_DRIVE_SERIAL);
     if (strstr(help, "-pcidevice"))
         virQEMUCapsSet(qemuCaps, QEMU_CAPS_PCIDEVICE);
+    if (strstr(help, "host=[seg:]bus"))
+        virQEMUCapsSet(qemuCaps, QEMU_CAPS_HOST_PCI_MULTIDOMAIN);
     if (strstr(help, "-mem-path"))
         virQEMUCapsSet(qemuCaps, QEMU_CAPS_MEM_PATH);
     if (strstr(help, "-chardev")) {
@@ -1882,7 +1913,7 @@ void virQEMUCapsDispose(void *obj)
 
 void
 virQEMUCapsSet(virQEMUCapsPtr qemuCaps,
-               enum virQEMUCapsFlags flag)
+               virQEMUCapsFlags flag)
 {
     ignore_value(virBitmapSetBit(qemuCaps->flags, flag));
 }
@@ -1903,7 +1934,7 @@ virQEMUCapsSetList(virQEMUCapsPtr qemuCaps, ...)
 
 void
 virQEMUCapsClear(virQEMUCapsPtr qemuCaps,
-                 enum virQEMUCapsFlags flag)
+                 virQEMUCapsFlags flag)
 {
     ignore_value(virBitmapClearBit(qemuCaps->flags, flag));
 }
@@ -1917,7 +1948,7 @@ char *virQEMUCapsFlagsString(virQEMUCapsPtr qemuCaps)
 
 bool
 virQEMUCapsGet(virQEMUCapsPtr qemuCaps,
-               enum virQEMUCapsFlags flag)
+               virQEMUCapsFlags flag)
 {
     bool b;
 
@@ -2275,7 +2306,7 @@ virQEMUCapsProbeQMPCPUDefinitions(virQEMUCapsPtr qemuCaps,
 
 struct tpmTypeToCaps {
     int type;
-    enum virQEMUCapsFlags caps;
+    virQEMUCapsFlags caps;
 };
 
 static const struct tpmTypeToCaps virQEMUCapsTPMTypesToCaps[] = {
@@ -2375,6 +2406,7 @@ static struct virQEMUCapsCommandLineProps virQEMUCapsCommandLine[] = {
     { "boot-opts", "strict", QEMU_CAPS_BOOT_STRICT },
     { "boot-opts", "reboot-timeout", QEMU_CAPS_REBOOT_TIMEOUT },
     { "spice", "disable-agent-file-xfer", QEMU_CAPS_SPICE_FILE_XFER_DISABLE },
+    { "msg", "timestamp", QEMU_CAPS_MSG_TIMESTAMP },
 };
 
 static int
@@ -2970,6 +3002,7 @@ virQEMUCapsInitQMPBasic(virQEMUCapsPtr qemuCaps)
     virQEMUCapsSet(qemuCaps, QEMU_CAPS_MACHINE_OPT);
     virQEMUCapsSet(qemuCaps, QEMU_CAPS_DUMP_GUEST_CORE);
     virQEMUCapsSet(qemuCaps, QEMU_CAPS_VNC_SHARE_POLICY);
+    virQEMUCapsSet(qemuCaps, QEMU_CAPS_HOST_PCI_MULTIDOMAIN);
 }
 
 /* Capabilities that are architecture depending
@@ -3459,6 +3492,12 @@ virQEMUCapsSupportsChardev(virDomainDefPtr def,
     if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_CHARDEV) ||
         !virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE))
         return false;
+
+    if ((def->os.arch == VIR_ARCH_PPC) || (def->os.arch == VIR_ARCH_PPC64)) {
+        /* only pseries need -device spapr-vty with -chardev */
+        return (chr->deviceType == VIR_DOMAIN_CHR_DEVICE_TYPE_SERIAL &&
+                chr->info.type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_SPAPRVIO);
+    }
 
     if ((def->os.arch != VIR_ARCH_ARMV7L) && (def->os.arch != VIR_ARCH_AARCH64))
         return true;

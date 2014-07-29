@@ -421,13 +421,13 @@ qemuProcessGetVolumeQcowPassphrase(virConnectPtr conn,
     int ret = -1;
     virStorageEncryptionPtr enc;
 
-    if (!disk->src.encryption) {
+    if (!disk->src->encryption) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("disk %s does not have any encryption information"),
-                       disk->src.path);
+                       disk->src->path);
         return -1;
     }
-    enc = disk->src.encryption;
+    enc = disk->src->encryption;
 
     if (!conn) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -831,7 +831,6 @@ qemuProcessHandleResume(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
     return 0;
 }
 
-
 static int
 qemuProcessHandleRTCChange(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                            virDomainObjPtr vm,
@@ -844,25 +843,30 @@ qemuProcessHandleRTCChange(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
 
     virObjectLock(vm);
 
-    /* QEMU's RTC_CHANGE event returns the offset from the specified
-     * date instead of the host UTC if a specific date is provided
-     * (-rtc base=$date). We need to convert it to be offset from
-     * host UTC.
-     */
     if (vm->def->clock.offset == VIR_DOMAIN_CLOCK_OFFSET_VARIABLE) {
-        time_t now = time(NULL);
+        /* when a basedate is manually given on the qemu commandline
+         * rather than simply "-rtc base=utc", the offset sent by qemu
+         * in this event is *not* the new offset from UTC, but is
+         * instead the new offset from the *original basedate* +
+         * uptime. For example, if the original offset was 3600 and
+         * the guest clock has been advanced by 10 seconds, qemu will
+         * send "10" in the event - this means that the new offset
+         * from UTC is 3610, *not* 10. If the guest clock is advanced
+         * by another 10 seconds, qemu will now send "20" - i.e. each
+         * event is the sum of the most recent change and all previous
+         * changes since the domain was started. Fortunately, we have
+         * saved the initial offset in "adjustment0", so to arrive at
+         * the proper new "adjustment", we just add the most recent
+         * offset to adjustment0.
+         */
+        offset += vm->def->clock.data.variable.adjustment0;
+        vm->def->clock.data.variable.adjustment = offset;
 
-        offset += vm->def->clock.data.variable.basedate -
-                  (unsigned long long)now;
+        if (virDomainSaveStatus(driver->xmlopt, cfg->stateDir, vm) < 0)
+           VIR_WARN("unable to save domain status with RTC change");
     }
 
     event = virDomainEventRTCChangeNewFromObj(vm, offset);
-
-    if (vm->def->clock.offset == VIR_DOMAIN_CLOCK_OFFSET_VARIABLE)
-        vm->def->clock.data.variable.adjustment = offset;
-
-    if (virDomainSaveStatus(driver->xmlopt, cfg->stateDir, vm) < 0)
-        VIR_WARN("unable to save domain status with RTC change");
 
     virObjectUnlock(vm);
 
@@ -1009,6 +1013,7 @@ qemuProcessHandleBlockJob(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
 {
     virQEMUDriverPtr driver = opaque;
     virObjectEventPtr event = NULL;
+    virObjectEventPtr event2 = NULL;
     const char *path;
     virDomainDiskDefPtr disk;
 
@@ -1016,8 +1021,12 @@ qemuProcessHandleBlockJob(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
     disk = qemuProcessFindDomainDiskByAlias(vm, diskAlias);
 
     if (disk) {
+        /* Have to generate two variants of the event for old vs. new
+         * client callbacks */
         path = virDomainDiskGetSource(disk);
         event = virDomainEventBlockJobNewFromObj(vm, path, type, status);
+        event2 = virDomainEventBlockJob2NewFromObj(vm, disk->dst, type,
+                                                   status);
         /* XXX If we completed a block pull or commit, then recompute
          * the cached backing chain to match.  Better would be storing
          * the chain ourselves rather than reprobing, but this
@@ -1029,18 +1038,23 @@ qemuProcessHandleBlockJob(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
              type == VIR_DOMAIN_BLOCK_JOB_TYPE_COMMIT) &&
             status == VIR_DOMAIN_BLOCK_JOB_COMPLETED)
             qemuDomainDetermineDiskChain(driver, vm, disk, true);
-        if (disk->mirror && type == VIR_DOMAIN_BLOCK_JOB_TYPE_COPY &&
-            status == VIR_DOMAIN_BLOCK_JOB_READY)
-            disk->mirroring = true;
-        if (disk->mirror && type == VIR_DOMAIN_BLOCK_JOB_TYPE_COPY &&
-            status == VIR_DOMAIN_BLOCK_JOB_FAILED)
-            VIR_FREE(disk->mirror);
+        if (disk->mirror && type == VIR_DOMAIN_BLOCK_JOB_TYPE_COPY) {
+            if (status == VIR_DOMAIN_BLOCK_JOB_READY) {
+                disk->mirroring = true;
+            } else if (status == VIR_DOMAIN_BLOCK_JOB_FAILED) {
+                virStorageSourceFree(disk->mirror);
+                disk->mirror = NULL;
+                disk->mirroring = false;
+            }
+        }
     }
 
     virObjectUnlock(vm);
 
     if (event)
         qemuDomainEventQueue(driver, event);
+    if (event2)
+        qemuDomainEventQueue(driver, event2);
 
     return 0;
 }
@@ -1369,28 +1383,40 @@ qemuProcessHandleDeviceDeleted(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                void *opaque)
 {
     virQEMUDriverPtr driver = opaque;
-    virQEMUDriverConfigPtr cfg = virQEMUDriverGetConfig(driver);
-    virDomainDeviceDef dev;
+    struct qemuProcessEvent *processEvent = NULL;
+    char *data;
 
     virObjectLock(vm);
 
     VIR_DEBUG("Device %s removed from domain %p %s",
               devAlias, vm, vm->def->name);
 
-    qemuDomainSignalDeviceRemoval(vm, devAlias);
-
-    if (virDomainDefFindDevice(vm->def, devAlias, &dev, true) < 0)
+    if (qemuDomainSignalDeviceRemoval(vm, devAlias))
         goto cleanup;
 
-    qemuDomainRemoveDevice(driver, vm, &dev);
+    if (VIR_ALLOC(processEvent) < 0)
+        goto error;
 
-    if (virDomainSaveStatus(driver->xmlopt, cfg->stateDir, vm) < 0)
-        VIR_WARN("unable to save domain status with balloon change");
+    processEvent->eventType = QEMU_PROCESS_EVENT_DEVICE_DELETED;
+    if (VIR_STRDUP(data, devAlias) < 0)
+        goto error;
+    processEvent->data = data;
+    processEvent->vm = vm;
+
+    virObjectRef(vm);
+    if (virThreadPoolSendJob(driver->workerPool, 0, processEvent) < 0) {
+        ignore_value(virObjectUnref(vm));
+        goto error;
+    }
 
  cleanup:
     virObjectUnlock(vm);
-    virObjectUnref(cfg);
     return 0;
+ error:
+    if (processEvent)
+        VIR_FREE(processEvent->data);
+    VIR_FREE(processEvent);
+    goto cleanup;
 }
 
 
@@ -2218,7 +2244,7 @@ qemuProcessInitPasswords(virConnectPtr conn,
             size_t secretLen;
             const char *alias;
 
-            if (!vm->def->disks[i]->src.encryption ||
+            if (!vm->def->disks[i]->src->encryption ||
                 !virDomainDiskGetSource(vm->def->disks[i]))
                 continue;
 
@@ -2655,6 +2681,19 @@ qemuProcessPrepareChardevDevice(virDomainDefPtr def ATTRIBUTE_UNUSED,
 }
 
 
+static int
+qemuProcessCleanupChardevDevice(virDomainDefPtr def ATTRIBUTE_UNUSED,
+                                virDomainChrDefPtr dev,
+                                void *opaque ATTRIBUTE_UNUSED)
+{
+    if (dev->source.type == VIR_DOMAIN_CHR_TYPE_UNIX &&
+        dev->source.data.nix.listen)
+        unlink(dev->source.data.nix.path);
+
+    return 0;
+}
+
+
 struct qemuProcessHookData {
     virConnectPtr conn;
     virDomainObjPtr vm;
@@ -2730,7 +2769,7 @@ qemuProcessPrepareMonitorChr(virQEMUDriverConfigPtr cfg,
 int
 qemuProcessStartCPUs(virQEMUDriverPtr driver, virDomainObjPtr vm,
                      virConnectPtr conn, virDomainRunningReason reason,
-                     enum qemuDomainAsyncJob asyncJob)
+                     qemuDomainAsyncJob asyncJob)
 {
     int ret = -1;
     qemuDomainObjPrivatePtr priv = vm->privateData;
@@ -2747,48 +2786,53 @@ qemuProcessStartCPUs(virQEMUDriverPtr driver, virDomainObjPtr vm,
     }
     VIR_FREE(priv->lockState);
 
-    ret = qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob);
-    if (ret == 0) {
-        ret = qemuMonitorStartCPUs(priv->mon, conn);
-        qemuDomainObjExitMonitor(driver, vm);
-    }
+    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+        goto release;
 
-    if (ret == 0) {
-        virDomainObjSetState(vm, VIR_DOMAIN_RUNNING, reason);
-    } else {
-        if (virDomainLockProcessPause(driver->lockManager, vm, &priv->lockState) < 0)
-            VIR_WARN("Unable to release lease on %s", vm->def->name);
-        VIR_DEBUG("Preserving lock state '%s'", NULLSTR(priv->lockState));
-    }
+    ret = qemuMonitorStartCPUs(priv->mon, conn);
+    qemuDomainObjExitMonitor(driver, vm);
+
+    if (ret < 0)
+        goto release;
+
+    virDomainObjSetState(vm, VIR_DOMAIN_RUNNING, reason);
 
  cleanup:
     virObjectUnref(cfg);
     return ret;
+
+ release:
+    if (virDomainLockProcessPause(driver->lockManager, vm, &priv->lockState) < 0)
+        VIR_WARN("Unable to release lease on %s", vm->def->name);
+    VIR_DEBUG("Preserving lock state '%s'", NULLSTR(priv->lockState));
+    goto cleanup;
 }
 
 
 int qemuProcessStopCPUs(virQEMUDriverPtr driver, virDomainObjPtr vm,
                         virDomainPausedReason reason,
-                        enum qemuDomainAsyncJob asyncJob)
+                        qemuDomainAsyncJob asyncJob)
 {
-    int ret;
+    int ret = -1;
     qemuDomainObjPrivatePtr priv = vm->privateData;
 
     VIR_FREE(priv->lockState);
 
-    ret = qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob);
-    if (ret == 0) {
-        ret = qemuMonitorStopCPUs(priv->mon);
-        qemuDomainObjExitMonitor(driver, vm);
-    }
+    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+        goto cleanup;
 
-    if (ret == 0) {
-        virDomainObjSetState(vm, VIR_DOMAIN_PAUSED, reason);
-        if (virDomainLockProcessPause(driver->lockManager, vm, &priv->lockState) < 0)
-            VIR_WARN("Unable to release lease on %s", vm->def->name);
-        VIR_DEBUG("Preserving lock state '%s'", NULLSTR(priv->lockState));
-    }
+    ret = qemuMonitorStopCPUs(priv->mon);
+    qemuDomainObjExitMonitor(driver, vm);
 
+    if (ret < 0)
+        goto cleanup;
+
+    virDomainObjSetState(vm, VIR_DOMAIN_PAUSED, reason);
+    if (virDomainLockProcessPause(driver->lockManager, vm, &priv->lockState) < 0)
+        VIR_WARN("Unable to release lease on %s", vm->def->name);
+    VIR_DEBUG("Preserving lock state '%s'", NULLSTR(priv->lockState));
+
+ cleanup:
     return ret;
 }
 
@@ -2891,8 +2935,8 @@ static int
 qemuProcessRecoverMigration(virQEMUDriverPtr driver,
                             virDomainObjPtr vm,
                             virConnectPtr conn,
-                            enum qemuDomainAsyncJob job,
-                            enum qemuMigrationJobPhase phase,
+                            qemuDomainAsyncJob job,
+                            qemuMigrationJobPhase phase,
                             virDomainState state,
                             int reason)
 {
@@ -3206,6 +3250,11 @@ qemuProcessReconnect(void *opaque)
         virDomainDeviceDef dev;
 
         if (qemuTranslateDiskSourcePool(conn, obj->def->disks[i]) < 0)
+            goto error;
+
+        /* XXX we should be able to restore all data from XML in the future */
+        if (qemuDomainDetermineDiskChain(driver, obj,
+                                         obj->def->disks[i], true) < 0)
             goto error;
 
         dev.type = VIR_DOMAIN_DEVICE_DISK;
@@ -3606,7 +3655,7 @@ int qemuProcessStart(virConnectPtr conn,
                      int stdin_fd,
                      const char *stdin_path,
                      virDomainSnapshotObjPtr snapshot,
-                     enum virNetDevVPortProfileOp vmop,
+                     virNetDevVPortProfileOp vmop,
                      unsigned int flags)
 {
     int ret;
@@ -3751,6 +3800,41 @@ int qemuProcessStart(virConnectPtr conn,
      * settings */
     VIR_DEBUG("Ensuring no historical cgroup is lying around");
     qemuRemoveCgroup(vm);
+
+    for (i = 0; i < vm->def->ngraphics; ++i) {
+        virDomainGraphicsDefPtr graphics = vm->def->graphics[i];
+        if (graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_VNC &&
+            !graphics->data.vnc.autoport) {
+            if (virPortAllocatorSetUsed(driver->remotePorts,
+                                        graphics->data.vnc.port,
+                                        true) < 0) {
+                goto cleanup;
+            }
+
+            graphics->data.vnc.portReserved = true;
+
+        } else if (graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_SPICE &&
+                   !graphics->data.spice.autoport) {
+
+            if (graphics->data.spice.port > 0) {
+                if (virPortAllocatorSetUsed(driver->remotePorts,
+                                            graphics->data.spice.port,
+                                            true) < 0)
+                    goto cleanup;
+
+                graphics->data.spice.portReserved = true;
+            }
+
+            if (graphics->data.spice.tlsPort > 0) {
+                if (virPortAllocatorSetUsed(driver->remotePorts,
+                                            graphics->data.spice.tlsPort,
+                                            true) < 0)
+                    goto cleanup;
+
+                graphics->data.spice.tlsPortReserved = true;
+            }
+        }
+    }
 
     for (i = 0; i < vm->def->ngraphics; ++i) {
         virDomainGraphicsDefPtr graphics = vm->def->graphics[i];
@@ -4339,6 +4423,12 @@ void qemuProcessStop(virQEMUDriverPtr driver,
         priv->monConfig = NULL;
     }
 
+    ignore_value(virDomainChrDefForeach(vm->def,
+                                        false,
+                                        qemuProcessCleanupChardevDevice,
+                                        NULL));
+
+
     /* shut it off for sure */
     ignore_value(qemuProcessKill(vm,
                                  VIR_QEMU_PROCESS_KILL_FORCE|
@@ -4364,7 +4454,7 @@ void qemuProcessStop(virQEMUDriverPtr driver,
     if (!(flags & VIR_QEMU_PROCESS_STOP_NO_RELABEL))
         virSecurityManagerRestoreAllLabel(driver->securityManager,
                                           vm->def,
-                                          flags & VIR_QEMU_PROCESS_STOP_MIGRATED);
+                                          !!(flags & VIR_QEMU_PROCESS_STOP_MIGRATED));
     virSecurityManagerReleaseLabel(driver->securityManager, vm->def);
 
     for (i = 0; i < vm->def->ndisks; i++) {
@@ -4390,10 +4480,10 @@ void qemuProcessStop(virQEMUDriverPtr driver,
     virDomainDefClearDeviceAliases(vm->def);
     if (!priv->persistentAddrs) {
         virDomainDefClearPCIAddresses(vm->def);
-        qemuDomainPCIAddressSetFree(priv->pciaddrs);
+        virDomainPCIAddressSetFree(priv->pciaddrs);
         priv->pciaddrs = NULL;
         virDomainDefClearCCWAddresses(vm->def);
-        qemuDomainCCWAddressSetFree(priv->ccwaddrs);
+        virDomainCCWAddressSetFree(priv->ccwaddrs);
         priv->ccwaddrs = NULL;
     }
 
@@ -4458,15 +4548,36 @@ void qemuProcessStop(virQEMUDriverPtr driver,
                 virPortAllocatorRelease(driver->remotePorts,
                                         graphics->data.vnc.port);
             }
+            else if (graphics->data.vnc.portReserved) {
+                virPortAllocatorSetUsed(driver->remotePorts,
+                                        graphics->data.spice.port,
+                                        false);
+                graphics->data.vnc.portReserved = false;
+            }
             virPortAllocatorRelease(driver->webSocketPorts,
                                     graphics->data.vnc.websocket);
         }
-        if (graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_SPICE &&
-            graphics->data.spice.autoport) {
-            virPortAllocatorRelease(driver->remotePorts,
-                                    graphics->data.spice.port);
-            virPortAllocatorRelease(driver->remotePorts,
-                                    graphics->data.spice.tlsPort);
+        if (graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_SPICE) {
+            if (graphics->data.spice.autoport) {
+                virPortAllocatorRelease(driver->remotePorts,
+                                        graphics->data.spice.port);
+                virPortAllocatorRelease(driver->remotePorts,
+                                        graphics->data.spice.tlsPort);
+            } else {
+                if (graphics->data.spice.portReserved) {
+                    virPortAllocatorSetUsed(driver->remotePorts,
+                                            graphics->data.spice.port,
+                                            false);
+                    graphics->data.spice.portReserved = false;
+                }
+
+                if (graphics->data.spice.tlsPortReserved) {
+                    virPortAllocatorSetUsed(driver->remotePorts,
+                                            graphics->data.spice.tlsPort,
+                                            false);
+                    graphics->data.spice.tlsPortReserved = false;
+                }
+            }
         }
     }
 

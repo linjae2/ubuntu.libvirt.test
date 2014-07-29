@@ -29,13 +29,14 @@
 # include "virutil.h"
 # include "virthread.h"
 # include "virpci.h"
+# include "device_conf.h"
 
 # include <libxml/tree.h>
 
 # define CREATE_DEVICE 1
 # define EXISTING_DEVICE 0
 
-enum virNodeDevCapType {
+typedef enum {
     /* Keep in sync with VIR_ENUM_IMPL in node_device_conf.c */
     VIR_NODE_DEV_CAP_SYSTEM,		/* System capability */
     VIR_NODE_DEV_CAP_PCI_DEV,		/* PCI device */
@@ -51,38 +52,66 @@ enum virNodeDevCapType {
     VIR_NODE_DEV_CAP_SCSI_GENERIC,      /* SCSI generic device */
 
     VIR_NODE_DEV_CAP_LAST
-};
+} virNodeDevCapType;
 
-enum virNodeDevNetCapType {
+typedef enum {
     /* Keep in sync with VIR_ENUM_IMPL in node_device_conf.c */
     VIR_NODE_DEV_CAP_NET_80203,		/* 802.03 network device */
     VIR_NODE_DEV_CAP_NET_80211,		/* 802.11 network device */
     VIR_NODE_DEV_CAP_NET_LAST
-};
+} virNodeDevNetCapType;
 
 VIR_ENUM_DECL(virNodeDevCap)
 VIR_ENUM_DECL(virNodeDevNetCap)
 
-enum virNodeDevStorageCapFlags {
+typedef enum {
     VIR_NODE_DEV_CAP_STORAGE_REMOVABLE			= (1 << 0),
     VIR_NODE_DEV_CAP_STORAGE_REMOVABLE_MEDIA_AVAILABLE	= (1 << 1),
     VIR_NODE_DEV_CAP_STORAGE_HOTPLUGGABLE		= (1 << 2),
-};
+} virNodeDevStorageCapFlags;
 
-enum virNodeDevSCSIHostCapFlags {
+typedef enum {
     VIR_NODE_DEV_CAP_FLAG_HBA_FC_HOST			= (1 << 0),
     VIR_NODE_DEV_CAP_FLAG_HBA_VPORT_OPS			= (1 << 1),
+} virNodeDevSCSIHostCapFlags;
+
+typedef enum {
+    VIR_NODE_DEV_CAP_FLAG_PCI_PHYSICAL_FUNCTION     = (1 << 0),
+    VIR_NODE_DEV_CAP_FLAG_PCI_VIRTUAL_FUNCTION      = (1 << 1),
+    VIR_NODE_DEV_CAP_FLAG_PCIE                      = (1 << 2),
+} virNodeDevPCICapFlags;
+
+typedef enum {
+    VIR_PCIE_LINK_SPEED_NA = 0,
+    VIR_PCIE_LINK_SPEED_25,
+    VIR_PCIE_LINK_SPEED_5,
+    VIR_PCIE_LINK_SPEED_8,
+    VIR_PCIE_LINK_SPEED_LAST
+} virPCIELinkSpeed;
+
+VIR_ENUM_DECL(virPCIELinkSpeed)
+
+typedef struct _virPCIELink virPCIELink;
+typedef virPCIELink *virPCIELinkPtr;
+struct _virPCIELink {
+    int port;
+    virPCIELinkSpeed speed;
+    unsigned int width;
 };
 
-enum virNodeDevPCICapFlags {
-    VIR_NODE_DEV_CAP_FLAG_PCI_PHYSICAL_FUNCTION		= (1 << 0),
-    VIR_NODE_DEV_CAP_FLAG_PCI_VIRTUAL_FUNCTION		= (1 << 1),
+typedef struct _virPCIEDeviceInfo virPCIEDeviceInfo;
+typedef virPCIEDeviceInfo *virPCIEDeviceInfoPtr;
+struct _virPCIEDeviceInfo {
+    /* Not all PCI Express devices has link. For example this 'Root Complex
+     * Integrated Endpoint' and 'Root Complex Event Collector' don't have it. */
+    virPCIELink *link_cap;   /* PCIe device link capabilities */
+    virPCIELink *link_sta;   /* Actually negotiated capabilities */
 };
 
 typedef struct _virNodeDevCapsDef virNodeDevCapsDef;
 typedef virNodeDevCapsDef *virNodeDevCapsDefPtr;
 struct _virNodeDevCapsDef {
-    enum virNodeDevCapType type;
+    virNodeDevCapType type;
     union _virNodeDevCapData {
         struct {
             char *product_name;
@@ -115,6 +144,8 @@ struct _virNodeDevCapsDef {
             virPCIDeviceAddressPtr *iommuGroupDevices;
             size_t nIommuGroupDevices;
             unsigned int iommuGroupNumber;
+            int numa_node;
+            virPCIEDeviceInfoPtr pci_express;
         } pci_dev;
         struct {
             unsigned int bus;
@@ -135,7 +166,8 @@ struct _virNodeDevCapsDef {
             char *address;
             unsigned int address_len;
             char *ifname;
-            enum virNodeDevNetCapType subtype;  /* LAST -> no subtype */
+            virInterfaceLink lnk;
+            virNodeDevNetCapType subtype;  /* LAST -> no subtype */
         } net;
         struct {
             unsigned int host;

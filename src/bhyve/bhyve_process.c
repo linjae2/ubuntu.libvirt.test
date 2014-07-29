@@ -22,11 +22,16 @@
 #include <config.h>
 
 #include <fcntl.h>
+#include <kvm.h>
+#include <sys/param.h>
 #include <sys/types.h>
+#include <sys/sysctl.h>
+#include <sys/user.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <net/if_tap.h>
 
+#include "bhyve_device.h"
 #include "bhyve_process.h"
 #include "bhyve_command.h"
 #include "datatypes.h"
@@ -73,10 +78,12 @@ bhyveNetCleanup(virDomainObjPtr vm)
         int actualType = virDomainNetGetActualType(net);
 
         if (actualType == VIR_DOMAIN_NET_TYPE_BRIDGE) {
-            ignore_value(virNetDevBridgeRemovePort(
-                            virDomainNetGetActualBridgeName(net),
-                            net->ifname));
-            ignore_value(virNetDevTapDelete(net->ifname));
+            if (net->ifname) {
+                ignore_value(virNetDevBridgeRemovePort(
+                                virDomainNetGetActualBridgeName(net),
+                                net->ifname));
+                ignore_value(virNetDevTapDelete(net->ifname));
+            }
         }
     }
 }
@@ -126,9 +133,13 @@ virBhyveProcessStart(virConnectPtr conn,
         goto cleanup;
     }
 
+    if (bhyveDomainAssignAddresses(vm->def, NULL) < 0)
+        goto cleanup;
+
     /* Call bhyve to start the VM */
     if (!(cmd = virBhyveProcessBuildBhyveCmd(driver,
-                                             vm)))
+                                             vm->def,
+                                             false)))
         goto cleanup;
 
     virCommandSetOutputFD(cmd, &logfd);
@@ -140,7 +151,7 @@ virBhyveProcessStart(virConnectPtr conn,
     /* Now bhyve command is constructed, meaning the
      * domain is ready to be started, so we can build
      * and execute bhyveload command */
-    if (!(load_cmd = virBhyveProcessBuildLoadCmd(driver, vm)))
+    if (!(load_cmd = virBhyveProcessBuildLoadCmd(driver, vm->def)))
         goto cleanup;
     virCommandSetOutputFD(load_cmd, &logfd);
     virCommandSetErrorFD(load_cmd, &logfd);
@@ -178,11 +189,13 @@ virBhyveProcessStart(virConnectPtr conn,
 
  cleanup:
     if (ret < 0) {
+        int exitstatus; /* Needed to avoid logging non-zero status */
         virCommandPtr destroy_cmd;
-        if ((destroy_cmd = virBhyveProcessBuildDestroyCmd(driver, vm)) != NULL) {
+        if ((destroy_cmd = virBhyveProcessBuildDestroyCmd(driver,
+                                                          vm->def)) != NULL) {
             virCommandSetOutputFD(load_cmd, &logfd);
             virCommandSetErrorFD(load_cmd, &logfd);
-            ignore_value(virCommandRun(destroy_cmd, NULL));
+            ignore_value(virCommandRun(destroy_cmd, &exitstatus));
             virCommandFree(destroy_cmd);
         }
 
@@ -227,7 +240,7 @@ virBhyveProcessStop(bhyveConnPtr driver,
 
     /* No matter if shutdown was successful or not, we
      * need to unload the VM */
-    if (!(cmd = virBhyveProcessBuildDestroyCmd(driver, vm)))
+    if (!(cmd = virBhyveProcessBuildDestroyCmd(driver, vm->def)))
         goto cleanup;
 
     if (virCommandRun(cmd, NULL) < 0)
@@ -244,5 +257,41 @@ virBhyveProcessStop(bhyveConnPtr driver,
 
  cleanup:
     virCommandFree(cmd);
+    return ret;
+}
+
+int
+virBhyveGetDomainTotalCpuStats(virDomainObjPtr vm,
+                               unsigned long long *cpustats)
+{
+    struct kinfo_proc *kp;
+    kvm_t *kd;
+    char errbuf[_POSIX2_LINE_MAX];
+    int nprocs;
+    int ret = -1;
+
+    if ((kd = kvm_openfiles(NULL, NULL, NULL, O_RDONLY, errbuf)) == NULL) {
+        virReportError(VIR_ERR_SYSTEM_ERROR,
+                       _("Unable to get kvm descriptor: %s"),
+                       errbuf);
+        return -1;
+
+    }
+
+    kp = kvm_getprocs(kd, KERN_PROC_PID, vm->pid, &nprocs);
+    if (kp == NULL || nprocs != 1) {
+        virReportError(VIR_ERR_SYSTEM_ERROR,
+                       _("Unable to obtain information about pid: %d"),
+                       (int)vm->pid);
+        goto cleanup;
+    }
+
+    *cpustats = kp->ki_runtime * 1000ull;
+
+    ret = 0;
+
+ cleanup:
+    kvm_close(kd);
+
     return ret;
 }
