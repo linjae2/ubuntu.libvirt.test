@@ -1,3 +1,12 @@
+libvirt (1.2.2-0ubuntu13.1.3) trusty-proposed; urgency=medium
+
+  * 9026-fix-apparmor-profile-for-vfio-pci-passthrough - allow VFIO passthrough
+    (LP: #1276719)
+  * 9027-virt-aa-helper-allow-access-to-vhost-net - allow access to
+    /dev/vhost-net if domain needs it (LP: #1322568)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 31 Jul 2014 20:14:22 +0000
+
 libvirt (1.2.2-0ubuntu13.1.2) trusty; urgency=low
 
   * debian/apparmor/usr.sbin.libvirtd: allow libvirtd to run

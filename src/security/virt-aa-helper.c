@@ -2,7 +2,7 @@
 /*
  * virt-aa-helper: wrapper program used by AppArmor security driver.
  *
- * Copyright (C) 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2010-2014 Red Hat, Inc.
  * Copyright (C) 2009-2011 Canonical Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -900,6 +900,7 @@ get_files(vahControl * ctl)
     size_t i;
     char *uuid;
     char uuidstr[VIR_UUID_STRING_BUFLEN];
+    bool needsVfio = false, needsvhost = false;
 
     /* verify uuid is same as what we were given on the command line */
     virUUIDFormat(ctl->def->uuid, uuidstr);
@@ -1041,6 +1042,12 @@ get_files(vahControl * ctl)
                            dev->source.subsys.u.pci.addr.slot,
                            dev->source.subsys.u.pci.addr.function);
 
+                virDomainHostdevSubsysPciBackendType backend = dev->source.subsys.u.pci.backend;
+                if (backend == VIR_DOMAIN_HOSTDEV_PCI_BACKEND_VFIO ||
+                        backend == VIR_DOMAIN_HOSTDEV_PCI_BACKEND_DEFAULT) {
+                    needsVfio = true;
+                }
+
                 if (pci == NULL)
                     continue;
 
@@ -1067,6 +1074,26 @@ get_files(vahControl * ctl)
             if (vah_add_path(&buf, fs->src, fs->readonly ? "r" : "rw", true) != 0)
                 goto cleanup;
         }
+    }
+
+    if (ctl->def->virtType == VIR_DOMAIN_VIRT_KVM) {
+        for (i = 0; i < ctl->def->nnets; i++) {
+            virDomainNetDefPtr net = ctl->def->nets[i];
+            if (net && net->model) {
+                if (net->driver.virtio.name == VIR_DOMAIN_NET_BACKEND_TYPE_QEMU)
+                    continue;
+                if (STRNEQ(net->model, "virtio"))
+                    continue;
+            }
+            needsvhost = true;
+        }
+    }
+    if (needsvhost)
+        virBufferAddLit(&buf, "  /dev/vhost-net rw,\n");
+
+    if (needsVfio) {
+        virBufferAddLit(&buf, "  /dev/vfio/vfio rw,\n");
+        virBufferAddLit(&buf, "  /dev/vfio/[0-9]* rw,\n");
     }
 
     if (ctl->newfile)

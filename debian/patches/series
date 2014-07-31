@@ -27,3 +27,5 @@ libxl-set-disk-format-for-cdrom.patch
 libxl-set-vfb0-data-in-build-config.patch
 libxl-support-sexpr-in-native-to-XML-conversion.patch
 libxl-Support-PV-consoles.patch
+9026-fix-apparmor-profile-for-vfio-pci-passthrough
+9027-virt-aa-helper-allow-access-to-vhost-net
