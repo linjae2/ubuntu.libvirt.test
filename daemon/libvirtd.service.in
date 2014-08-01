@@ -15,7 +15,7 @@ Documentation=http://libvirt.org
 
 [Service]
 Type=notify
-EnvironmentFile=-/etc/default/libvirt-bin
+EnvironmentFile=-/etc/default/libvirtd
 ExecStart=@sbindir@/libvirtd $libvirtd_opts
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
