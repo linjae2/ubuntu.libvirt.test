@@ -1,3 +1,10 @@
+libvirt (1.2.6-0ubuntu3) utopic; urgency=medium
+
+  * debian/apparmor/usr.sbin.libvirtd - add cap-sys-resource to fully
+    fix (LP: #1276719)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 07 Aug 2014 12:43:20 -0500
+
 libvirt (1.2.6-0ubuntu2) utopic; urgency=medium
 
   * Rebuild against libparted2.
