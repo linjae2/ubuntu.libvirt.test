@@ -1,3 +1,14 @@
+libvirt (1.2.7-5) unstable; urgency=medium
+
+  * [06d457c] Bump comparison version so this applies to current failed
+    upgrades too.
+  * [bdae16d] Remove another obsolete conffile (Closes: #757332)
+  * [2f486c5] Don't try to stop libvirt-bin if it's already gone
+    (Closes: #757407)
+  * [a9643a0] Remove another obsolete conffile (Closes: #757332)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 07 Aug 2014 23:21:39 +0200
+
 libvirt (1.2.7-4) unstable; urgency=medium
 
   * [5e71896] Move networking configuration to libvirt-daemon-system too
