@@ -1,3 +1,10 @@
+libvirt (1.2.2-0ubuntu13.1.4) trusty-proposed; urgency=medium
+
+  * debian/apparmor/usr.sbin.libvirtd - add cap-sys-resource to fully
+    fix (LP: #1276719)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 07 Aug 2014 12:46:22 -0500
+
 libvirt (1.2.2-0ubuntu13.1.3) trusty-proposed; urgency=medium
 
   * 9026-fix-apparmor-profile-for-vfio-pci-passthrough - allow VFIO passthrough
