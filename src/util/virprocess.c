@@ -40,6 +40,7 @@
 #endif
 
 #ifdef HAVE_BSD_CPU_AFFINITY
+# include <sys/param.h>
 # include <sys/cpuset.h>
 #endif
 
