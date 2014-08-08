@@ -1,3 +1,12 @@
+libvirt (1.2.6-0ubuntu5) utopic; urgency=medium
+
+  * cgroups-ignore-systemd-failure - fix incoming migration failures when
+    systemd-shim is installed.
+  * ovs-delete-port-if-exists-while-adding-new-one - cherrypick commit 33445ce
+    from upstream (LP: #1343262)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 08 Aug 2014 09:56:43 -0500
+
 libvirt (1.2.6-0ubuntu4) utopic; urgency=high
 
   * No change rebuild against gnutls28.
