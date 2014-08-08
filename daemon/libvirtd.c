@@ -49,6 +49,7 @@
 #include "viralloc.h"
 #include "virconf.h"
 #include "virnetlink.h"
+#include "vircgroup.h"
 #include "virnetserver.h"
 #include "remote.h"
 #include "virhook.h"
@@ -1268,6 +1269,10 @@ int main(int argc, char **argv) {
         VIR_ERROR(_("invalid host UUID: %s"), config->host_uuid);
         exit(EXIT_FAILURE);
     }
+
+    /* move ourselves to root cgroup if necessary */
+    // XXX todo - figure out how to get the fn included
+    // virCgroupEscape();
 
     if (daemonSetupLogging(config, privileged, verbose, godaemon) < 0) {
         VIR_ERROR(_("Can't initialize logging"));
