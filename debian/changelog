@@ -1,3 +1,9 @@
+libvirt (1.2.6-0ubuntu4) utopic; urgency=high
+
+  * No change rebuild against gnutls28.
+
+ -- Dimitri John Ledkov <xnox@ubuntu.com>  Fri, 08 Aug 2014 13:28:03 +0100
+
 libvirt (1.2.6-0ubuntu3) utopic; urgency=medium
 
   * debian/apparmor/usr.sbin.libvirtd - add cap-sys-resource to fully
