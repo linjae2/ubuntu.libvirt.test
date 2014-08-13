@@ -158,6 +158,8 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	dh_install -p libvirt-daemon-system etc/libvirt/qemu.conf
 	dh_install -p libvirt-daemon-system etc/libvirt/qemu-lockd.conf
 	dh_install -p libvirt-daemon-system etc/libvirt/qemu-sanlock.conf
+	dh_install -p libvirt-daemon-system etc/libvirt/qemu/networks/
+	dh_install -p libvirt-daemon-system etc/libvirt/nwfilter/
 	dh_install -p libvirt-clients etc/libvirt/virt-login-shell.conf
 endif
 
@@ -176,7 +178,8 @@ override_dh_installinit:
 	dh_systemd_enable
 	dh_installinit -p libvirt-daemon-system --name=libvirtd --restart-after-upgrade -- defaults 28 72
 	dh_installinit -p libvirt-daemon-system --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
-	dh_systemd_start --restart-after-upgrade
+	dh_systemd_start --restart-after-upgrade libvirt-guests.service libvirtd.service
+	dh_systemd_start --no-restart-on-upgrade virtlockd.socket virtlockd.service
 
 override_dh_installdocs:
 	dh_installdocs
@@ -197,3 +200,7 @@ override_dh_auto_clean:
 	rm -f $(CURDIR)/debian/libvirt-daemon-system.*.logrotate
 	rm -f $(CURDIR)/debian/*.service
 	rm -rf $(DEB_BUILDDIR)
+
+override_dh_installchangelogs:
+	dh_installchangelogs -plibvirt0
+	dh_installchangelogs -Nlibvirt0 -XChangeLog
