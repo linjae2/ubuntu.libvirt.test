@@ -40,6 +40,7 @@
   dbus bus=system,
   signal,
   ptrace,
+  unix,
 
   # for now, use a very lenient profile since we want to first focus on
   # confining the guests
