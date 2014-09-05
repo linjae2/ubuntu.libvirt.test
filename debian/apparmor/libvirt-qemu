@@ -26,6 +26,7 @@
   /dev/ptmx rw,
   /dev/kqemu rw,
   @{PROC}/*/status r,
+  @{PROC}/sys/kernel/cap_last_cap r,
   owner @{PROC}/*/auxv r,
   @{PROC}/sys/vm/overcommit_memory r,
 
