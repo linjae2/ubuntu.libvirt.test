@@ -251,8 +251,10 @@ int virSystemdCreateMachine(const char *name,
                           3,
                           "Slice", "s", slicename,
                           "After", "as", 1, "libvirtd.service",
-                          "Before", "as", 1, "libvirt-guests.service") < 0)
+                          "Before", "as", 1, "libvirt-guests.service") < 0) {
+        ret = -2;
         goto cleanup;
+    }
 
     ret = 0;
 
