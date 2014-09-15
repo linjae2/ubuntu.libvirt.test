@@ -26,6 +26,7 @@
 
 # include <sys/stat.h>
 
+# include "domain_conf.h"
 # include "storage_conf.h"
 # include "virstoragefile.h"
 
@@ -43,11 +44,17 @@ ssize_t virStorageFileReadHeader(virStorageSourcePtr src,
                                  char **buf);
 const char *virStorageFileGetUniqueIdentifier(virStorageSourcePtr src);
 int virStorageFileAccess(virStorageSourcePtr src, int mode);
+int virStorageFileChown(virStorageSourcePtr src, uid_t uid, gid_t gid);
+
+bool virStorageFileSupportsSecurityDriver(virStorageSourcePtr src);
 
 int virStorageFileGetMetadata(virStorageSourcePtr src,
                               uid_t uid, gid_t gid,
                               bool allow_probe)
     ATTRIBUTE_NONNULL(1);
+
+int virStorageTranslateDiskSourcePool(virConnectPtr conn,
+                                      virDomainDiskDefPtr def);
 
 int storageRegister(void);
 

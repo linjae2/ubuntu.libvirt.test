@@ -18,4 +18,6 @@ ubuntu-libxl-qemu-nopath.patch
 ubuntu-skip-virstoragetest
 add-cgmanager-support.patch
 cgroups-ignore-systemd-failure
-ovs-delete-port-if-exists-while-adding-new-one
+9030-create-socket-dir
+9031-enable-lxc-apparmor
+9032-lxc-allow-no-security-driver

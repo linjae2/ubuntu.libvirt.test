@@ -60,15 +60,63 @@
 # define SA_SIGINFO 0
 #endif
 
+
+static virDomainPtr
+vshLookupDomainInternal(vshControl *ctl,
+                        const char *cmdname,
+                        const char *name,
+                        unsigned int flags)
+{
+    virDomainPtr dom = NULL;
+    int id;
+    virCheckFlags(VSH_BYID | VSH_BYUUID | VSH_BYNAME, NULL);
+
+    /* try it by ID */
+    if (flags & VSH_BYID) {
+        if (virStrToLong_i(name, NULL, 10, &id) == 0 && id >= 0) {
+            vshDebug(ctl, VSH_ERR_DEBUG, "%s: <domain> looks like ID\n",
+                     cmdname);
+            dom = virDomainLookupByID(ctl->conn, id);
+        }
+    }
+
+    /* try it by UUID */
+    if (!dom && (flags & VSH_BYUUID) &&
+        strlen(name) == VIR_UUID_STRING_BUFLEN-1) {
+        vshDebug(ctl, VSH_ERR_DEBUG, "%s: <domain> trying as domain UUID\n",
+                 cmdname);
+        dom = virDomainLookupByUUIDString(ctl->conn, name);
+    }
+
+    /* try it by NAME */
+    if (!dom && (flags & VSH_BYNAME)) {
+        vshDebug(ctl, VSH_ERR_DEBUG, "%s: <domain> trying as domain NAME\n",
+                 cmdname);
+        dom = virDomainLookupByName(ctl->conn, name);
+    }
+
+    if (!dom)
+        vshError(ctl, _("failed to get domain '%s'"), name);
+
+    return dom;
+}
+
+
+virDomainPtr
+vshLookupDomainBy(vshControl *ctl,
+                  const char *name,
+                  unsigned int flags)
+{
+    return vshLookupDomainInternal(ctl, "unknown", name, flags);
+}
+
+
 virDomainPtr
 vshCommandOptDomainBy(vshControl *ctl, const vshCmd *cmd,
                       const char **name, unsigned int flags)
 {
-    virDomainPtr dom = NULL;
     const char *n = NULL;
-    int id;
     const char *optname = "domain";
-    virCheckFlags(VSH_BYID | VSH_BYUUID | VSH_BYNAME, NULL);
 
     if (!vshCmdHasOption(ctl, cmd, optname))
         return NULL;
@@ -82,33 +130,7 @@ vshCommandOptDomainBy(vshControl *ctl, const vshCmd *cmd,
     if (name)
         *name = n;
 
-    /* try it by ID */
-    if (flags & VSH_BYID) {
-        if (virStrToLong_i(n, NULL, 10, &id) == 0 && id >= 0) {
-            vshDebug(ctl, VSH_ERR_DEBUG,
-                     "%s: <%s> seems like domain ID\n",
-                     cmd->def->name, optname);
-            dom = virDomainLookupByID(ctl->conn, id);
-        }
-    }
-    /* try it by UUID */
-    if (!dom && (flags & VSH_BYUUID) &&
-        strlen(n) == VIR_UUID_STRING_BUFLEN-1) {
-        vshDebug(ctl, VSH_ERR_DEBUG, "%s: <%s> trying as domain UUID\n",
-                 cmd->def->name, optname);
-        dom = virDomainLookupByUUIDString(ctl->conn, n);
-    }
-    /* try it by NAME */
-    if (!dom && (flags & VSH_BYNAME)) {
-        vshDebug(ctl, VSH_ERR_DEBUG, "%s: <%s> trying as domain NAME\n",
-                 cmd->def->name, optname);
-        dom = virDomainLookupByName(ctl->conn, n);
-    }
-
-    if (!dom)
-        vshError(ctl, _("failed to get domain '%s'"), n);
-
-    return dom;
+    return vshLookupDomainInternal(ctl, cmd->def->name, n, flags);
 }
 
 VIR_ENUM_DECL(vshDomainVcpuState)
@@ -276,6 +298,10 @@ static const vshCmdOptDef opts_attach_disk[] = {
      .type = VSH_OT_DATA,
      .flags = VSH_OFLAG_REQ,
      .help = N_("target of disk device")
+    },
+    {.name = "targetbus",
+     .type = VSH_OT_STRING,
+     .help = N_("target bus of disk device")
     },
     {.name = "driver",
      .type = VSH_OT_STRING,
@@ -502,7 +528,7 @@ cmdAttachDisk(vshControl *ctl, const vshCmd *cmd)
     const char *source = NULL, *target = NULL, *driver = NULL,
                 *subdriver = NULL, *type = NULL, *mode = NULL,
                 *cache = NULL, *serial = NULL, *straddr = NULL,
-                *wwn = NULL;
+                *wwn = NULL, *targetbus = NULL;
     struct DiskAddress diskAddr;
     bool isFile = false, functionReturn = false;
     int ret;
@@ -536,6 +562,7 @@ cmdAttachDisk(vshControl *ctl, const vshCmd *cmd)
         vshCommandOptStringReq(ctl, cmd, "serial", &serial) < 0 ||
         vshCommandOptStringReq(ctl, cmd, "wwn", &wwn) < 0 ||
         vshCommandOptStringReq(ctl, cmd, "address", &straddr) < 0 ||
+        vshCommandOptStringReq(ctl, cmd, "targetbus", &targetbus) < 0 ||
         vshCommandOptStringReq(ctl, cmd, "sourcetype", &stype) < 0)
         goto cleanup;
 
@@ -590,7 +617,11 @@ cmdAttachDisk(vshControl *ctl, const vshCmd *cmd)
     if (source)
         virBufferAsprintf(&buf, "<source %s='%s'/>\n",
                           isFile ? "file" : "dev", source);
-    virBufferAsprintf(&buf, "<target dev='%s'/>\n", target);
+    virBufferAsprintf(&buf, "<target dev='%s'", target);
+    if (targetbus)
+        virBufferAsprintf(&buf, " bus='%s'", targetbus);
+    virBufferAddLit(&buf, "/>\n");
+
     if (mode)
         virBufferAsprintf(&buf, "<%s/>\n", mode);
 
@@ -1246,7 +1277,7 @@ static const vshCmdOptDef opts_blkiotune[] = {
     },
     {.name = "weight",
      .type = VSH_OT_INT,
-     .help = N_("IO Weight in range [100, 1000]")
+     .help = N_("IO Weight")
     },
     {.name = "device-weights",
      .type = VSH_OT_STRING,
@@ -1444,14 +1475,14 @@ blockJobImpl(vshControl *ctl, const vshCmd *cmd,
              virDomainPtr *pdom)
 {
     virDomainPtr dom = NULL;
-    const char *name, *path;
+    const char *path;
     unsigned long bandwidth = 0;
     int ret = -1;
     const char *base = NULL;
     const char *top = NULL;
     unsigned int flags = 0;
 
-    if (!(dom = vshCommandOptDomain(ctl, cmd, &name)))
+    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
         goto cleanup;
 
     if (vshCommandOptStringReq(ctl, cmd, "path", &path) < 0)
@@ -1479,10 +1510,14 @@ blockJobImpl(vshControl *ctl, const vshCmd *cmd,
     case VSH_CMD_BLOCK_JOB_PULL:
         if (vshCommandOptStringReq(ctl, cmd, "base", &base) < 0)
             goto cleanup;
-        if (base)
-            ret = virDomainBlockRebase(dom, path, base, bandwidth, 0);
+        if (vshCommandOptBool(cmd, "keep-relative"))
+            flags |= VIR_DOMAIN_BLOCK_REBASE_RELATIVE;
+
+        if (base || flags)
+            ret = virDomainBlockRebase(dom, path, base, bandwidth, flags);
         else
             ret = virDomainBlockPull(dom, path, bandwidth, 0);
+
         break;
     case VSH_CMD_BLOCK_JOB_COMMIT:
         if (vshCommandOptStringReq(ctl, cmd, "base", &base) < 0 ||
@@ -1496,6 +1531,8 @@ blockJobImpl(vshControl *ctl, const vshCmd *cmd,
             vshCommandOptBool(cmd, "pivot") ||
             vshCommandOptBool(cmd, "keep-overlay"))
             flags |= VIR_DOMAIN_BLOCK_COMMIT_ACTIVE;
+        if (vshCommandOptBool(cmd, "keep-relative"))
+            flags |= VIR_DOMAIN_BLOCK_COMMIT_RELATIVE;
         ret = virDomainBlockCommit(dom, path, base, top, bandwidth, flags);
         break;
     case VSH_CMD_BLOCK_JOB_COPY:
@@ -1628,6 +1665,10 @@ static const vshCmdOptDef opts_block_commit[] = {
     {.name = "async",
      .type = VSH_OT_BOOL,
      .help = N_("with --wait, don't wait for cancel to finish")
+    },
+    {.name = "keep-relative",
+     .type = VSH_OT_BOOL,
+     .help = N_("keep the backing chain relatively referenced")
     },
     {.name = NULL}
 };
@@ -2111,6 +2152,10 @@ static const vshCmdOptDef opts_block_pull[] = {
     {.name = "async",
      .type = VSH_OT_BOOL,
      .help = N_("with --wait, don't wait for cancel to finish")
+    },
+    {.name = "keep-relative",
+     .type = VSH_OT_BOOL,
+     .help = N_("keep the backing chain relatively referenced")
     },
     {.name = NULL}
 };
@@ -2663,6 +2708,14 @@ cmdDomIftune(vshControl *ctl, const vshCmd *cmd)
             vshError(ctl, _("inbound format is incorrect"));
             goto cleanup;
         }
+        /* we parse the rate as unsigned long long, but the API
+         * only accepts UINT */
+        if (inbound.average > UINT_MAX || inbound.peak > UINT_MAX ||
+            inbound.burst > UINT_MAX) {
+            vshError(ctl, _("inbound rate larger than maximum %u"),
+                     UINT_MAX);
+            goto cleanup;
+        }
         if (inbound.average == 0 && (inbound.burst || inbound.peak)) {
             vshError(ctl, _("inbound average is mandatory"));
             goto cleanup;
@@ -2689,6 +2742,12 @@ cmdDomIftune(vshControl *ctl, const vshCmd *cmd)
     if (outboundStr) {
         if (parseRateStr(outboundStr, &outbound) < 0) {
             vshError(ctl, _("outbound format is incorrect"));
+            goto cleanup;
+        }
+        if (outbound.average > UINT_MAX || outbound.peak > UINT_MAX ||
+            outbound.burst > UINT_MAX) {
+            vshError(ctl, _("outbound rate larger than maximum %u"),
+                     UINT_MAX);
             goto cleanup;
         }
         if (outbound.average == 0 && (outbound.burst || outbound.peak)) {
@@ -7800,7 +7859,8 @@ static const vshCmdOptDef opts_numatune[] = {
     },
     {.name = "mode",
      .type = VSH_OT_DATA,
-     .help = N_("NUMA mode, one of strict, preferred and interleave")
+     .help = N_("NUMA mode, one of strict, preferred and interleave \n"
+                "or a number from the virDomainNumatuneMemMode enum")
     },
     {.name = "nodeset",
      .type = VSH_OT_DATA,
@@ -8927,6 +8987,7 @@ doMigrate(void *opaque)
     virTypedParameterPtr params = NULL;
     int nparams = 0;
     int maxparams = 0;
+    virConnectPtr dconn = data->dconn;
 
     sigemptyset(&sigmask);
     sigaddset(&sigmask, SIGINT);
@@ -9041,18 +9102,12 @@ doMigrate(void *opaque)
             ret = '0';
     } else {
         /* For traditional live migration, connect to the destination host directly. */
-        virConnectPtr dconn = NULL;
         virDomainPtr ddom = NULL;
-
-        dconn = vshConnect(ctl, desturi, false);
-        if (!dconn)
-            goto out;
 
         if ((ddom = virDomainMigrate3(dom, dconn, params, nparams, flags))) {
             virDomainFree(ddom);
             ret = '0';
         }
-        virConnectClose(dconn);
     }
 
  out:
@@ -9089,7 +9144,7 @@ cmdMigrate(vshControl *ctl, const vshCmd *cmd)
     bool functionReturn = false;
     int timeout = 0;
     bool live_flag = false;
-    vshCtrlData data;
+    vshCtrlData data = { .dconn = NULL };
 
     if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
         return false;
@@ -9114,6 +9169,23 @@ cmdMigrate(vshControl *ctl, const vshCmd *cmd)
     data.cmd = cmd;
     data.writefd = p[1];
 
+    if (vshCommandOptBool(cmd, "p2p") || vshCommandOptBool(cmd, "direct")) {
+        data.dconn = NULL;
+    } else {
+        /* For traditional live migration, connect to the destination host. */
+        virConnectPtr dconn = NULL;
+        const char *desturi = NULL;
+
+        if (vshCommandOptStringReq(ctl, cmd, "desturi", &desturi) < 0)
+            goto cleanup;
+
+        dconn = vshConnect(ctl, desturi, false);
+        if (!dconn)
+            goto cleanup;
+
+        data.dconn = dconn;
+    }
+
     if (virThreadCreate(&workerThread,
                         true,
                         doMigrate,
@@ -9125,6 +9197,8 @@ cmdMigrate(vshControl *ctl, const vshCmd *cmd)
     virThreadJoin(&workerThread);
 
  cleanup:
+    if (data.dconn)
+        virConnectClose(data.dconn);
     virDomainFree(dom);
     VIR_FORCE_CLOSE(p[0]);
     VIR_FORCE_CLOSE(p[1]);
@@ -9351,7 +9425,8 @@ static const vshCmdInfo info_domdisplay[] = {
      .data = N_("domain display connection URI")
     },
     {.name = "desc",
-     .data = N_("Output the IP address and port number for the graphical display.")
+     .data = N_("Output the IP address and port number "
+                "for the graphical display.")
     },
     {.name = NULL}
 };
@@ -9365,6 +9440,11 @@ static const vshCmdOptDef opts_domdisplay[] = {
     {.name = "include-password",
      .type = VSH_OT_BOOL,
      .help = N_("includes the password into the connection URI if available")
+    },
+    {.name = "type",
+     .type = VSH_OT_DATA,
+     .help = N_("select particular graphics display "
+                "(e.g. \"vnc\", \"spice\", \"rdp\")")
     },
     {.name = NULL}
 };
@@ -9384,6 +9464,7 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
     char *passwd = NULL;
     char *output = NULL;
     const char *scheme[] = { "vnc", "spice", "rdp", NULL };
+    const char *type = NULL;
     int iter = 0;
     int tmp;
     int flags = 0;
@@ -9402,6 +9483,9 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
     if (vshCommandOptBool(cmd, "include-password"))
         flags |= VIR_DOMAIN_XML_SECURE;
 
+    if (vshCommandOptStringReq(ctl, cmd, "type", &type) < 0)
+        goto cleanup;
+
     if (!(doc = virDomainGetXMLDesc(dom, flags)))
         goto cleanup;
 
@@ -9410,6 +9494,10 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
 
     /* Attempt to grab our display info */
     for (iter = 0; scheme[iter] != NULL; iter++) {
+        /* Particular scheme requested */
+        if (type && STRNEQ(type, scheme[iter]))
+            continue;
+
         /* Create our XPATH lookup for the current display's port */
         if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "port") < 0)
             goto cleanup;
@@ -9517,6 +9605,13 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
         /* We got what we came for so return successfully */
         ret = true;
         break;
+    }
+
+    if (!ret) {
+        if (type)
+            vshError(ctl, _("No graphical display with type '%s' found"), type);
+        else
+            vshError(ctl, _("No graphical display found"));
     }
 
  cleanup:
@@ -10122,7 +10217,12 @@ cmdDetachInterface(vshControl *ctl, const vshCmd *cmd)
         virDomainIsActive(dom) == 1)
         flags |= VIR_DOMAIN_AFFECT_LIVE;
 
-    if (!(doc = virDomainGetXMLDesc(dom, 0)))
+    if (flags & VIR_DOMAIN_AFFECT_CONFIG)
+        doc = virDomainGetXMLDesc(dom, VIR_DOMAIN_XML_INACTIVE);
+    else
+        doc = virDomainGetXMLDesc(dom, 0);
+
+    if (!doc)
         goto cleanup;
 
     if (!(xml = virXMLParseStringCtxt(doc, _("(domain_definition)"), &ctxt))) {
@@ -10320,8 +10420,8 @@ vshPrepareDiskXML(xmlNodePtr disk_node,
                   int type)
 {
     xmlNodePtr cur = NULL;
-    const char *disk_type = NULL;
-    const char *device_type = NULL;
+    char *disk_type = NULL;
+    char *device_type = NULL;
     xmlNodePtr new_node = NULL;
     char *ret = NULL;
 

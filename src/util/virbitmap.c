@@ -378,6 +378,9 @@ virBitmapParse(const char *str,
         }
     }
 
+    if (virBitmapIsAllClear(*bitmap))
+        goto error;
+
     return virBitmapCountBits(*bitmap);
 
  error:
@@ -731,4 +734,24 @@ virBitmapDataToString(void *data,
     ret = virBitmapFormat(map);
     virBitmapFree(map);
     return ret;
+}
+
+bool
+virBitmapOverlaps(virBitmapPtr b1,
+                  virBitmapPtr b2)
+{
+    size_t i;
+
+    if (b1->max_bit > b2->max_bit) {
+        virBitmapPtr tmp = b1;
+        b1 = b2;
+        b2 = tmp;
+    }
+
+    for (i = 0; i < b1->map_len; i++) {
+        if (b1->map[i] & b2->map[i])
+            return true;
+    }
+
+    return false;
 }

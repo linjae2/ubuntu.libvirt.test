@@ -568,7 +568,7 @@ sc_avoid_attribute_unused_in_header:
 	  $(_sc_search_regexp)
 
 sc_prohibit_int_ijk:
-	@prohibit='\<(int|unsigned) ([^(]* )*(i|j|k)\>(\s|,|;)'		\
+	@prohibit='\<(int|unsigned) ([^(=]* )*(i|j|k)\>(\s|,|;)'	\
 	halt='use size_t, not int/unsigned int for loop vars i, j, k'	\
 	  $(_sc_search_regexp)
 
@@ -775,7 +775,7 @@ sc_prohibit_cross_inclusion:
 	    locking/) safe="($$dir|util|conf|rpc)";;			\
 	    cpu/| network/| node_device/| rpc/| security/| storage/)	\
 	      safe="($$dir|util|conf|storage)";;			\
-	    xenapi/ | xenxs/ ) safe="($$dir|util|conf|xen)";;		\
+	    xenapi/ | xenconfig/ ) safe="($$dir|util|conf|xen)";;	\
 	    *) safe="($$dir|$(mid_dirs)|util)";;			\
 	  esac;								\
 	  in_vc_files="^src/$$dir"					\
@@ -943,6 +943,12 @@ sc_prohibit_empty_first_line:
 	  print "$(ME): Prohibited empty first line" > "/dev/stderr";	\
 	} exit fail; }' $$($(VC_LIST_EXCEPT));
 
+sc_prohibit_paren_brace:
+	@prohibit='\)\{$$'						\
+	in_vc_files='\.[chx]$$'						\
+	halt='Put space between closing parenthesis and opening brace'	\
+	  $(_sc_search_regexp)
+
 # We don't use this feature of maint.mk.
 prev_version_file = /dev/null
 
@@ -1065,7 +1071,7 @@ exclude_file_name_regexp--sc_prohibit_nonreentrant = \
   ^((po|tests)/|docs/.*(py|html\.in)|run.in$$|tools/wireshark/util/genxdrstub\.pl$$)
 
 exclude_file_name_regexp--sc_prohibit_raw_allocation = \
-  ^(docs/hacking\.html\.in)|(src/util/viralloc\.[ch]|examples/.*|tests/securityselinuxhelper\.c|tests/vircgroupmock\.c|tools/wireshark/src/packet-libvirt.c)$$
+  ^(docs/hacking\.html\.in|src/util/viralloc\.[ch]|examples/.*|tests/(securityselinuxhelper|vircgroupmock)\.c|tools/wireshark/src/packet-libvirt\.c)$$
 
 exclude_file_name_regexp--sc_prohibit_readlink = \
   ^src/(util/virutil|lxc/lxc_container)\.c$$
@@ -1073,12 +1079,11 @@ exclude_file_name_regexp--sc_prohibit_readlink = \
 exclude_file_name_regexp--sc_prohibit_setuid = ^src/util/virutil\.c$$
 
 exclude_file_name_regexp--sc_prohibit_sprintf = \
-  ^(docs/hacking\.html\.in)|(examples/systemtap/.*stp)|(src/dtrace2systemtap\.pl)|(src/rpc/gensystemtap\.pl)|(tools/wireshark/util/genxdrstub\.pl)$$
+  (^docs/hacking\.html\.in|\.stp|\.pl)$$
 
 exclude_file_name_regexp--sc_prohibit_strncpy = ^src/util/virstring\.c$$
 
-exclude_file_name_regexp--sc_prohibit_strtol = \
-  ^(src/(util/virsexpr|(vbox|xen|xenxs)/.*)\.c)|(examples/domsuspend/suspend.c)$$
+exclude_file_name_regexp--sc_prohibit_strtol = ^examples/dom.*/.*\.c$$
 
 exclude_file_name_regexp--sc_prohibit_xmlGetProp = ^src/util/virxml\.c$$
 

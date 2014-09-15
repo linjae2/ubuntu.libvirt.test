@@ -787,13 +787,13 @@ cmdVolDownload(vshControl *ctl, const vshCmd *cmd)
     unsigned long long offset = 0, length = 0;
     bool created = false;
 
-    if (vshCommandOptULongLongWrap(cmd, "offset", &offset) < 0) {
-        vshError(ctl, _("Unable to parse integer"));
+    if (vshCommandOptULongLong(cmd, "offset", &offset) < 0) {
+        vshError(ctl, _("Unable to parse offset value"));
         return false;
     }
 
     if (vshCommandOptULongLongWrap(cmd, "length", &length) < 0) {
-        vshError(ctl, _("Unable to parse integer"));
+        vshError(ctl, _("Unable to parse length value"));
         return false;
     }
 
@@ -1123,7 +1123,7 @@ cmdVolResize(vshControl *ctl, const vshCmd *cmd)
     if (*capacityStr == '-') {
         /* The API always requires a positive value; but we allow a
          * negative value for convenience.  */
-        if (delta && vshCommandOptBool(cmd, "shrink")){
+        if (delta && vshCommandOptBool(cmd, "shrink")) {
             capacityStr++;
         } else {
             vshError(ctl, "%s",

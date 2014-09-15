@@ -1,7 +1,8 @@
 usr/bin/*
 usr/sbin/*
 etc/apparmor.d/abstractions/libvirt-qemu
-etc/apparmor.d/libvirt/TEMPLATE
+etc/apparmor.d/abstractions/libvirt-lxc
+etc/apparmor.d/libvirt/TEMPLATE*
 etc/apparmor.d/usr.lib.libvirt.virt-aa-helper
 etc/apparmor.d/usr.sbin.libvirtd
 etc/apparmor.d/local/usr.sbin.libvirtd
