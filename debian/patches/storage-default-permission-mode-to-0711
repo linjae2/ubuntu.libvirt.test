@@ -2,21 +2,21 @@ Description: use 0711, not 0755, as the default perms for storage dirs
  That is what we want for /var/lib/libvirt/images.
 Author: Serge Hallyn <serge.hallyn@ubuntu.com>
 Forwarded: no
-diff -Naurp libvirt-1.2.0.orig/src/conf/storage_conf.c libvirt-1.2.0/src/conf/storage_conf.c
---- libvirt-1.2.0.orig/src/conf/storage_conf.c	2013-11-25 20:56:37.000000000 -0500
-+++ libvirt-1.2.0/src/conf/storage_conf.c	2013-12-02 12:08:16.316555557 -0500
-@@ -48,7 +48,7 @@
+diff -Naurp libvirt-1.2.8.orig/src/conf/storage_conf.c libvirt-1.2.8/src/conf/storage_conf.c
+--- libvirt-1.2.8.orig/src/conf/storage_conf.c	2014-08-29 08:22:31.000000000 -0400
++++ libvirt-1.2.8/src/conf/storage_conf.c	2014-09-02 13:42:12.672657941 -0400
+@@ -50,7 +50,7 @@
  
- #define VIR_FROM_THIS VIR_FROM_STORAGE
+ VIR_LOG_INIT("conf.storage_conf");
  
 -#define DEFAULT_POOL_PERM_MODE 0755
 +#define DEFAULT_POOL_PERM_MODE 0711
  #define DEFAULT_VOL_PERM_MODE  0600
  
  VIR_ENUM_IMPL(virStorageVol,
-diff -Naurp libvirt-1.2.0.orig/tests/storagepoolxml2xmltest.c libvirt-1.2.0/tests/storagepoolxml2xmltest.c
---- libvirt-1.2.0.orig/tests/storagepoolxml2xmltest.c	2013-11-25 20:56:37.000000000 -0500
-+++ libvirt-1.2.0/tests/storagepoolxml2xmltest.c	2013-12-02 13:04:35.904636133 -0500
+diff -Naurp libvirt-1.2.8.orig/tests/storagepoolxml2xmltest.c libvirt-1.2.8/tests/storagepoolxml2xmltest.c
+--- libvirt-1.2.8.orig/tests/storagepoolxml2xmltest.c	2014-07-25 18:55:57.000000000 -0400
++++ libvirt-1.2.8/tests/storagepoolxml2xmltest.c	2014-09-02 13:42:37.304657953 -0400
 @@ -94,7 +94,6 @@ mymain(void)
      DO_TEST("pool-iscsi");
      DO_TEST("pool-iscsi-auth");

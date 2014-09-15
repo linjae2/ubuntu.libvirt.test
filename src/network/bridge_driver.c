@@ -104,16 +104,16 @@ static int networkShutdownNetwork(virNetworkDriverStatePtr driver,
                                   virNetworkObjPtr network);
 
 static int networkStartNetworkVirtual(virNetworkDriverStatePtr driver,
-                                     virNetworkObjPtr network);
+                                      virNetworkObjPtr network);
 
 static int networkShutdownNetworkVirtual(virNetworkDriverStatePtr driver,
                                          virNetworkObjPtr network);
 
 static int networkStartNetworkExternal(virNetworkDriverStatePtr driver,
-                                     virNetworkObjPtr network);
+                                       virNetworkObjPtr network);
 
 static int networkShutdownNetworkExternal(virNetworkDriverStatePtr driver,
-                                        virNetworkObjPtr network);
+                                          virNetworkObjPtr network);
 
 static void networkReloadFirewallRules(virNetworkDriverStatePtr driver);
 static void networkRefreshDaemons(virNetworkDriverStatePtr driver);
@@ -180,10 +180,10 @@ networkRunHook(virNetworkObjPtr network,
         virBufferAdjustIndent(&buf, -2);
         virBufferAddLit(&buf, "</hookData>");
 
-        if (virBufferError(&buf) ||
-            !(xml = virBufferContentAndReset(&buf)))
+        if (virBufferCheckError(&buf) < 0)
             goto cleanup;
 
+        xml = virBufferContentAndReset(&buf);
         hookret = virHookCall(VIR_HOOK_DRIVER_NETWORK, network->def->name,
                               op, sub_op, NULL, xml, NULL);
 
@@ -364,7 +364,7 @@ networkUpdateAllState(virNetworkDriverStatePtr driver)
         virNetworkObjPtr obj = driver->networks.objs[i];
 
         if (!obj->active)
-           continue;
+            continue;
 
         virNetworkObjLock(obj);
 
@@ -445,7 +445,7 @@ networkAutostartConfigs(virNetworkDriverStatePtr driver)
         if (driver->networks.objs[i]->autostart &&
             !virNetworkObjIsActive(driver->networks.objs[i])) {
             if (networkStartNetwork(driver, driver->networks.objs[i]) < 0) {
-            /* failed to start but already logged */
+                /* failed to start but already logged */
             }
         }
         virNetworkObjUnlock(driver->networks.objs[i]);
@@ -516,13 +516,13 @@ networkMigrateStateFiles(virNetworkDriverStatePtr driver)
 
         if (virAsprintf(&oldPath, "%s/%s",
                         oldStateDir, entry->d_name) < 0)
-           goto cleanup;
+            goto cleanup;
         if (virFileReadAll(oldPath, 1024*1024, &contents) < 0)
-           goto cleanup;
+            goto cleanup;
 
         if (virAsprintf(&newPath, "%s/%s",
                         driver->stateDir, entry->d_name) < 0)
-           goto cleanup;
+            goto cleanup;
         if (virFileWriteStr(newPath, contents, S_IRUSR | S_IWUSR) < 0) {
             virReportSystemError(errno,
                                  _("failed to write network status file '%s'"),
@@ -536,7 +536,7 @@ networkMigrateStateFiles(virNetworkDriverStatePtr driver)
         VIR_FREE(contents);
     }
     if (direrr < 0)
-       goto cleanup;
+        goto cleanup;
 
     ret = 0;
  cleanup:
@@ -824,9 +824,9 @@ networkKillDaemon(pid_t pid, const char *daemonName, const char *networkName)
     return ret;
 }
 
-    /* the following does not build a file, it builds a list
-     * which is later saved into a file
-     */
+/* the following does not build a file, it builds a list
+ * which is later saved into a file
+ */
 
 static int
 networkBuildDnsmasqDhcpHostsList(dnsmasqContext *dctx,
@@ -916,7 +916,7 @@ networkDnsmasqConfContents(virNetworkObjPtr network,
         virBufferAddLit(&configbuf, "no-resolv\n");
         for (i = 0; i < network->def->dns.nfwds; i++) {
             virBufferAsprintf(&configbuf, "server=%s\n",
-                               network->def->dns.forwarders[i]);
+                              network->def->dns.forwarders[i]);
         }
     }
 
@@ -927,8 +927,7 @@ networkDnsmasqConfContents(virNetworkObjPtr network,
                           network->def->domain);
     }
 
-    if (network->def->dns.forwardPlainNames
-        == VIR_NETWORK_DNS_FORWARD_PLAIN_NAMES_NO) {
+    if (network->def->dns.forwardPlainNames == VIR_TRISTATE_BOOL_NO) {
         virBufferAddLit(&configbuf, "domain-needed\n");
         /* need to specify local=// whether or not a domain is
          * specified, unless the config says we should forward "plain"
@@ -994,6 +993,7 @@ networkDnsmasqConfContents(virNetworkObjPtr network,
                                  "(as described in RFC1918/RFC3484/RFC4193)."),
                                ipaddr, (int)version / 1000000,
                                (int)(version % 1000000) / 1000);
+                VIR_FREE(ipaddr);
                 goto cleanup;
             }
             virBufferAsprintf(&configbuf, "listen-address=%s\n", ipaddr);
@@ -1276,8 +1276,8 @@ networkBuildDhcpDaemonCommandLine(virNetworkObjPtr network,
     /* Write the file */
     if (virFileWriteStr(configfile, configstr, 0600) < 0) {
         virReportSystemError(errno,
-                         _("couldn't write dnsmasq config file '%s'"),
-                         configfile);
+                             _("couldn't write dnsmasq config file '%s'"),
+                             configfile);
         goto cleanup;
     }
 
@@ -1426,13 +1426,13 @@ networkRefreshDhcpDaemon(virNetworkDriverStatePtr driver,
     }
 
     if (ipv4def && (networkBuildDnsmasqDhcpHostsList(dctx, ipv4def) < 0))
-           goto cleanup;
+        goto cleanup;
 
     if (ipv6def && (networkBuildDnsmasqDhcpHostsList(dctx, ipv6def) < 0))
-           goto cleanup;
+        goto cleanup;
 
     if (networkBuildDnsmasqHostsList(dctx, &network->def->dns) < 0)
-       goto cleanup;
+        goto cleanup;
 
     if ((ret = dnsmasqSave(dctx)) < 0)
         goto cleanup;
@@ -1535,19 +1535,12 @@ networkRadvdConfContents(virNetworkObjPtr network, char **configstr)
         VIR_FREE(netaddr);
     }
 
-    /* only create the string if we found at least one IPv6 address */
-    if (v6present) {
-        virBufferAddLit(&configbuf, "};\n");
+    virBufferAddLit(&configbuf, "};\n");
 
-        if (virBufferError(&configbuf)) {
-            virReportOOMError();
-            goto cleanup;
-        }
-        if (!(*configstr = virBufferContentAndReset(&configbuf))) {
-            virReportOOMError();
-            goto cleanup;
-        }
-    }
+    if (virBufferCheckError(&configbuf) < 0)
+        goto cleanup;
+
+    *configstr = virBufferContentAndReset(&configbuf);
 
     ret = 0;
  cleanup:
@@ -1596,7 +1589,7 @@ networkRadvdConfWrite(virNetworkObjPtr network, char **configFile)
 
 static int
 networkStartRadvd(virNetworkDriverStatePtr driver ATTRIBUTE_UNUSED,
-                        virNetworkObjPtr network)
+                  virNetworkObjPtr network)
 {
     char *pidfile = NULL;
     char *radvdpidbase = NULL;
@@ -1607,7 +1600,7 @@ networkStartRadvd(virNetworkDriverStatePtr driver ATTRIBUTE_UNUSED,
     network->radvdPid = -1;
 
     /* Is dnsmasq handling RA? */
-   if (DNSMASQ_RA_SUPPORT(driver->dnsmasqCaps)) {
+    if (DNSMASQ_RA_SUPPORT(driver->dnsmasqCaps)) {
         ret = 0;
         goto cleanup;
     }
@@ -1812,10 +1805,10 @@ networkEnableIpForwarding(bool enableIPv4, bool enableIPv6)
     int enabled = 1;
     if (enableIPv4)
         ret = sysctlbyname("net.inet.ip.forwarding", NULL, 0,
-                            &enabled, sizeof(enabled));
+                           &enabled, sizeof(enabled));
     if (enableIPv6 && ret == 0)
         ret = sysctlbyname("net.inet6.ip6.forwarding", NULL, 0,
-                            &enabled, sizeof(enabled));
+                           &enabled, sizeof(enabled));
 #else
     if (enableIPv4)
         ret = virFileWriteStr("/proc/sys/net/ipv4/ip_forward", "1\n", 0);
@@ -1832,33 +1825,34 @@ networkSetIPv6Sysctls(virNetworkObjPtr network)
 {
     char *field = NULL;
     int ret = -1;
+    bool enableIPv6 =  !!virNetworkDefGetIpByIndex(network->def, AF_INET6, 0);
 
-    if (!virNetworkDefGetIpByIndex(network->def, AF_INET6, 0)) {
-        /* Only set disable_ipv6 if there are no ipv6 addresses defined for
-         * the network.
-         */
-        if (virAsprintf(&field, SYSCTL_PATH "/net/ipv6/conf/%s/disable_ipv6",
-                        network->def->bridge) < 0)
-            goto cleanup;
+    /* set disable_ipv6 if there are no ipv6 addresses defined for the
+     * network. But also unset it if there *are* ipv6 addresses, as we
+     * can't be sure of its default value.
+     */
+    if (virAsprintf(&field, SYSCTL_PATH "/net/ipv6/conf/%s/disable_ipv6",
+                    network->def->bridge) < 0)
+       goto cleanup;
 
-        if (access(field, W_OK) < 0 && errno == ENOENT) {
+    if (access(field, W_OK) < 0 && errno == ENOENT) {
+        if (!enableIPv6)
             VIR_DEBUG("ipv6 appears to already be disabled on %s",
                       network->def->bridge);
-            ret = 0;
-            goto cleanup;
-        }
-
-        if (virFileWriteStr(field, "1", 0) < 0) {
-            virReportSystemError(errno,
-                                 _("cannot write to %s to disable IPv6 on bridge %s"),
-                                 field, network->def->bridge);
-            goto cleanup;
-        }
-        VIR_FREE(field);
+        ret = 0;
+        goto cleanup;
     }
 
-    /* The rest of the ipv6 sysctl tunables should always be set,
-     * whether or not we're using ipv6 on this bridge.
+    if (virFileWriteStr(field, enableIPv6 ? "0" : "1", 0) < 0) {
+        virReportSystemError(errno,
+                             _("cannot write to %s to enable/disable IPv6 "
+                               "on bridge %s"), field, network->def->bridge);
+        goto cleanup;
+    }
+    VIR_FREE(field);
+
+    /* The rest of the ipv6 sysctl tunables should always be set the
+     * same, whether or not we're using ipv6 on this bridge.
      */
 
     /* Prevent guests from hijacking the host network by sending out
@@ -1936,7 +1930,7 @@ networkAddRouteToBridge(virNetworkObjPtr network,
         if (routedef->has_prefix && routedef->prefix == 0)
             prefix = 0;
         else if ((VIR_SOCKET_ADDR_IS_FAMILY(mask, AF_INET) &&
-                virSocketAddrEqual(mask, &zero)))
+                  virSocketAddrEqual(mask, &zero)))
             prefix = 0;
         else
             prefix = virSocketAddrGetIpPrefix(addr, mask, routedef->prefix);
@@ -1966,7 +1960,7 @@ networkAddRouteToBridge(virNetworkObjPtr network,
 
 static int
 networkStartNetworkVirtual(virNetworkDriverStatePtr driver,
-                          virNetworkObjPtr network)
+                           virNetworkObjPtr network)
 {
     size_t i;
     bool v4present = false, v6present = false;
@@ -2088,12 +2082,8 @@ networkStartNetworkVirtual(virNetworkDriverStatePtr driver,
     }
 
     if (virNetDevBandwidthSet(network->def->bridge,
-                              network->def->bandwidth, true) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("cannot set bandwidth limits on %s"),
-                       network->def->bridge);
+                              network->def->bandwidth, true) < 0)
         goto err5;
-    }
 
     VIR_FREE(macTapIfName);
 
@@ -2191,20 +2181,127 @@ static int networkShutdownNetworkVirtual(virNetworkDriverStatePtr driver ATTRIBU
     return 0;
 }
 
+
+/* networkCreateInterfacePool:
+ * @netdef: the original NetDef from the network
+ *
+ * Creates an implicit interface pool of VF's when a PF dev is given
+ */
+static int
+networkCreateInterfacePool(virNetworkDefPtr netdef)
+{
+    size_t numVirtFns = 0;
+    char **vfNames = NULL;
+    virPCIDeviceAddressPtr *virtFns;
+
+    int ret = -1;
+    size_t i;
+
+    if (netdef->forward.npfs == 0 || netdef->forward.nifs > 0)
+       return 0;
+
+    if ((virNetDevGetVirtualFunctions(netdef->forward.pfs->dev,
+                                      &vfNames, &virtFns, &numVirtFns)) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Could not get Virtual functions on %s"),
+                       netdef->forward.pfs->dev);
+        goto cleanup;
+    }
+
+    if (VIR_ALLOC_N(netdef->forward.ifs, numVirtFns) < 0)
+        goto cleanup;
+
+    for (i = 0; i < numVirtFns; i++) {
+        virPCIDeviceAddressPtr thisVirtFn = virtFns[i];
+        const char *thisName = vfNames[i];
+        virNetworkForwardIfDefPtr thisIf
+            = &netdef->forward.ifs[netdef->forward.nifs];
+
+        switch (netdef->forward.type) {
+        case VIR_NETWORK_FORWARD_BRIDGE:
+        case VIR_NETWORK_FORWARD_PRIVATE:
+        case VIR_NETWORK_FORWARD_VEPA:
+        case VIR_NETWORK_FORWARD_PASSTHROUGH:
+            if (thisName) {
+                if (VIR_STRDUP(thisIf->device.dev, thisName) < 0)
+                    goto cleanup;
+                thisIf->type = VIR_NETWORK_FORWARD_HOSTDEV_DEVICE_NETDEV;
+                netdef->forward.nifs++;
+            } else {
+                VIR_WARN("VF %zu of SRIOV PF %s couldn't be added to the "
+                         "interface pool because it isn't bound "
+                         "to a network driver - possibly in use elsewhere",
+                         i, netdef->forward.pfs->dev);
+            }
+            break;
+
+        case VIR_NETWORK_FORWARD_HOSTDEV:
+            /* VF's are always PCI devices */
+            thisIf->type = VIR_NETWORK_FORWARD_HOSTDEV_DEVICE_PCI;
+            thisIf->device.pci.domain = thisVirtFn->domain;
+            thisIf->device.pci.bus = thisVirtFn->bus;
+            thisIf->device.pci.slot = thisVirtFn->slot;
+            thisIf->device.pci.function = thisVirtFn->function;
+            netdef->forward.nifs++;
+            break;
+
+        case VIR_NETWORK_FORWARD_NONE:
+        case VIR_NETWORK_FORWARD_NAT:
+        case VIR_NETWORK_FORWARD_ROUTE:
+        case VIR_NETWORK_FORWARD_LAST:
+            /* by definition these will never be encountered here */
+            break;
+        }
+    }
+
+    if (netdef->forward.nifs == 0) {
+        /* If we don't get at least one interface in the pool, declare
+         * failure
+         */
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("No usable Vf's present on SRIOV PF %s"),
+                       netdef->forward.pfs->dev);
+        goto cleanup;
+    }
+
+    ret = 0;
+ cleanup:
+    if (ret < 0) {
+        /* free all the entries made before error */
+        for (i = 0; i < netdef->forward.nifs; i++) {
+            if (netdef->forward.ifs[i].type
+                == VIR_NETWORK_FORWARD_HOSTDEV_DEVICE_NETDEV)
+                VIR_FREE(netdef->forward.ifs[i].device.dev);
+        }
+        netdef->forward.nifs = 0;
+    }
+    if (netdef->forward.nifs == 0)
+        VIR_FREE(netdef->forward.ifs);
+
+    for (i = 0; i < numVirtFns; i++) {
+        VIR_FREE(vfNames[i]);
+        VIR_FREE(virtFns[i]);
+    }
+    VIR_FREE(vfNames);
+    VIR_FREE(virtFns);
+    return ret;
+}
+
+
 static int
 networkStartNetworkExternal(virNetworkDriverStatePtr driver ATTRIBUTE_UNUSED,
-                            virNetworkObjPtr network ATTRIBUTE_UNUSED)
+                            virNetworkObjPtr network)
 {
     /* put anything here that needs to be done each time a network of
      * type BRIDGE, PRIVATE, VEPA, HOSTDEV or PASSTHROUGH is started. On
      * failure, undo anything you've done, and return -1. On success
      * return 0.
      */
-    return 0;
+    return networkCreateInterfacePool(network->def);
 }
 
 static int networkShutdownNetworkExternal(virNetworkDriverStatePtr driver ATTRIBUTE_UNUSED,
-                                        virNetworkObjPtr network ATTRIBUTE_UNUSED)
+                                          virNetworkObjPtr network ATTRIBUTE_UNUSED)
 {
     /* put anything here that needs to be done each time a network of
      * type BRIDGE, PRIVATE, VEPA, HOSTDEV or PASSTHROUGH is shutdown. On
@@ -2291,7 +2388,7 @@ networkStartNetwork(virNetworkDriverStatePtr driver,
 }
 
 static int networkShutdownNetwork(virNetworkDriverStatePtr driver,
-                                        virNetworkObjPtr network)
+                                  virNetworkObjPtr network)
 {
     int ret = 0;
     char *stateFile;
@@ -2739,8 +2836,8 @@ networkValidate(virNetworkDriverStatePtr driver,
      */
 
     vlanAllowed = ((def->forward.type == VIR_NETWORK_FORWARD_BRIDGE &&
-                   def->virtPortProfile &&
-                   def->virtPortProfile->virtPortType
+                    def->virtPortProfile &&
+                    def->virtPortProfile->virtPortType
                     == VIR_NETDEV_VPORT_PROFILE_OPENVSWITCH) ||
                    def->forward.type == VIR_NETWORK_FORWARD_HOSTDEV);
 
@@ -2809,7 +2906,7 @@ static virNetworkPtr networkCreateXML(virConnectPtr conn, const char *xml)
         goto cleanup;
 
     if (networkValidate(driver, def, true) < 0)
-       goto cleanup;
+        goto cleanup;
 
     /* NB: even though this transient network hasn't yet been started,
      * we assign the def with live = true in anticipation that it will
@@ -2862,10 +2959,10 @@ static virNetworkPtr networkDefineXML(virConnectPtr conn, const char *xml)
         goto cleanup;
 
     if (networkValidate(driver, def, false) < 0)
-       goto cleanup;
+        goto cleanup;
 
     if (!(network = virNetworkAssignDef(&driver->networks, def, false)))
-       goto cleanup;
+        goto cleanup;
 
     /* def was assigned to network object */
     freeDef = false;
@@ -2895,7 +2992,7 @@ static virNetworkPtr networkDefineXML(virConnectPtr conn, const char *xml)
     if (event)
         virObjectEventStateQueue(driver->networkEventState, event);
     if (freeDef)
-       virNetworkDefFree(def);
+        virNetworkDefFree(def);
     if (network)
         virNetworkObjUnlock(network);
     networkDriverUnlock(driver);
@@ -3009,7 +3106,7 @@ networkUpdate(virNetworkPtr net,
 
     /* VIR_NETWORK_UPDATE_AFFECT_CURRENT means "change LIVE if network
      * is active, else change CONFIG
-    */
+     */
     isActive = virNetworkObjIsActive(network);
     if ((flags & (VIR_NETWORK_UPDATE_AFFECT_LIVE |
                   VIR_NETWORK_UPDATE_AFFECT_CONFIG)) ==
@@ -3278,7 +3375,7 @@ static char *networkGetBridgeName(virNetworkPtr net) {
 }
 
 static int networkGetAutostart(virNetworkPtr net,
-                             int *autostart)
+                               int *autostart)
 {
     virNetworkObjPtr network;
     int ret = -1;
@@ -3611,76 +3708,6 @@ int networkRegister(void)
  * "backend" function table.
  */
 
-/* networkCreateInterfacePool:
- * @netdef: the original NetDef from the network
- *
- * Creates an implicit interface pool of VF's when a PF dev is given
- */
-static int
-networkCreateInterfacePool(virNetworkDefPtr netdef)
-{
-    size_t num_virt_fns = 0;
-    char **vfname = NULL;
-    virPCIDeviceAddressPtr *virt_fns;
-    int ret = -1;
-    size_t i;
-
-    if ((virNetDevGetVirtualFunctions(netdef->forward.pfs->dev,
-                                      &vfname, &virt_fns, &num_virt_fns)) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not get Virtual functions on %s"),
-                       netdef->forward.pfs->dev);
-        goto finish;
-    }
-
-    if (num_virt_fns == 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("No Vf's present on SRIOV PF %s"),
-                       netdef->forward.pfs->dev);
-       goto finish;
-    }
-
-    if (VIR_ALLOC_N(netdef->forward.ifs, num_virt_fns) < 0)
-        goto finish;
-
-    netdef->forward.nifs = num_virt_fns;
-
-    for (i = 0; i < netdef->forward.nifs; i++) {
-        if ((netdef->forward.type == VIR_NETWORK_FORWARD_BRIDGE) ||
-            (netdef->forward.type == VIR_NETWORK_FORWARD_PRIVATE) ||
-            (netdef->forward.type == VIR_NETWORK_FORWARD_VEPA) ||
-            (netdef->forward.type == VIR_NETWORK_FORWARD_PASSTHROUGH)) {
-            netdef->forward.ifs[i].type = VIR_NETWORK_FORWARD_HOSTDEV_DEVICE_NETDEV;
-            if (vfname[i]) {
-                if (VIR_STRDUP(netdef->forward.ifs[i].device.dev, vfname[i]) < 0)
-                    goto finish;
-            } else {
-                virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                               _("Direct mode types require interface names"));
-                goto finish;
-            }
-        }
-        else if (netdef->forward.type == VIR_NETWORK_FORWARD_HOSTDEV) {
-            /* VF's are always PCI devices */
-            netdef->forward.ifs[i].type = VIR_NETWORK_FORWARD_HOSTDEV_DEVICE_PCI;
-            netdef->forward.ifs[i].device.pci.domain = virt_fns[i]->domain;
-            netdef->forward.ifs[i].device.pci.bus = virt_fns[i]->bus;
-            netdef->forward.ifs[i].device.pci.slot = virt_fns[i]->slot;
-            netdef->forward.ifs[i].device.pci.function = virt_fns[i]->function;
-        }
-    }
-
-    ret = 0;
- finish:
-    for (i = 0; i < num_virt_fns; i++) {
-        VIR_FREE(vfname[i]);
-        VIR_FREE(virt_fns[i]);
-    }
-    VIR_FREE(vfname);
-    VIR_FREE(virt_fns);
-    return ret;
-}
-
 /* networkAllocateActualDevice:
  * @dom: domain definition that @iface belongs to
  * @iface: the original NetDef from the domain
@@ -3739,7 +3766,7 @@ networkAllocateActualDevice(virDomainDefPtr dom,
     /* portgroup can be present for any type of network, in particular
      * for bandwidth information, so we need to check for that and
      * fill it in appropriately for all forward types.
-    */
+     */
     portgroup = virPortGroupFindByName(netdef, iface->data.network.portgroup);
 
     /* If there is already interface-specific bandwidth, just use that
@@ -3773,7 +3800,7 @@ networkAllocateActualDevice(virDomainDefPtr dom,
         /* for these forward types, the actual net type really *is*
          *NETWORK; we just keep the info from the portgroup in
          * iface->data.network.actual
-        */
+         */
         iface->data.network.actual->type = VIR_DOMAIN_NET_TYPE_NETWORK;
 
         if (networkPlugBandwidth(network, iface) < 0)
@@ -3819,10 +3846,8 @@ networkAllocateActualDevice(virDomainDefPtr dom,
         virDomainHostdevSubsysPCIBackendType backend;
 
         iface->data.network.actual->type = actualType = VIR_DOMAIN_NET_TYPE_HOSTDEV;
-        if (netdef->forward.npfs > 0 && netdef->forward.nifs <= 0 &&
-            networkCreateInterfacePool(netdef) < 0) {
+        if (networkCreateInterfacePool(netdef) < 0)
             goto error;
-        }
 
         /* pick first dev with 0 connections */
         for (i = 0; i < netdef->forward.nifs; i++) {
@@ -3954,10 +3979,8 @@ networkAllocateActualDevice(virDomainDefPtr dom,
         } else {
             /* pick an interface from the pool */
 
-            if (netdef->forward.npfs > 0 && netdef->forward.nifs == 0 &&
-                networkCreateInterfacePool(netdef) < 0) {
+            if (networkCreateInterfacePool(netdef) < 0)
                 goto error;
-            }
 
             /* PASSTHROUGH mode, and PRIVATE Mode + 802.1Qbh both
              * require exclusive access to a device, so current
@@ -4105,7 +4128,7 @@ networkNotifyActualDevice(virDomainDefPtr dom,
     int ret = -1;
 
     if (iface->type != VIR_DOMAIN_NET_TYPE_NETWORK)
-       return 0;
+        return 0;
 
     networkDriverLock(driver);
     network = virNetworkFindByName(&driver->networks, iface->data.network.name);
@@ -4125,10 +4148,9 @@ networkNotifyActualDevice(virDomainDefPtr dom,
         goto success;
     }
 
-    if (netdef->forward.npfs > 0 && netdef->forward.nifs == 0 &&
-        networkCreateInterfacePool(netdef) < 0) {
+    if (networkCreateInterfacePool(netdef) < 0)
         goto error;
-    }
+
     if (netdef->forward.nifs == 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("network '%s' uses a direct or hostdev mode, "
@@ -4219,7 +4241,7 @@ networkNotifyActualDevice(virDomainDefPtr dom,
                            hostdev->source.subsys.u.pci.addr.bus,
                            hostdev->source.subsys.u.pci.addr.slot,
                            hostdev->source.subsys.u.pci.addr.function);
-                goto error;
+            goto error;
         }
 
         /* PASSTHROUGH mode, PRIVATE Mode + 802.1Qbh, and hostdev (PCI
@@ -4296,7 +4318,7 @@ networkReleaseActualDevice(virDomainDefPtr dom,
     int ret = -1;
 
     if (iface->type != VIR_DOMAIN_NET_TYPE_NETWORK)
-       return 0;
+        return 0;
 
     networkDriverLock(driver);
     network = virNetworkFindByName(&driver->networks, iface->data.network.name);
@@ -4392,7 +4414,7 @@ networkReleaseActualDevice(virDomainDefPtr dom,
                            hostdev->source.subsys.u.pci.addr.bus,
                            hostdev->source.subsys.u.pci.addr.slot,
                            hostdev->source.subsys.u.pci.addr.function);
-                goto error;
+            goto error;
         }
 
         dev->connections--;
@@ -4400,7 +4422,7 @@ networkReleaseActualDevice(virDomainDefPtr dom,
                   dev->device.pci.domain, dev->device.pci.bus,
                   dev->device.pci.slot, dev->device.pci.function,
                   dev->connections);
-   }
+    }
 
  success:
     if (iface->data.network.actual) {

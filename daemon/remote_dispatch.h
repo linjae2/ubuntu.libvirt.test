@@ -508,6 +508,28 @@ cleanup:
 
 
 
+static int remoteDispatchConnectGetAllDomainStats(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_connect_get_all_domain_stats_args *args,
+    remote_connect_get_all_domain_stats_ret *ret);
+static int remoteDispatchConnectGetAllDomainStatsHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret)
+{
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  return remoteDispatchConnectGetAllDomainStats(server, client, msg, rerr, args, ret);
+}
+/* remoteDispatchConnectGetAllDomainStats body has to be implemented manually */
+
+
+
 static int remoteDispatchConnectGetCapabilities(
     virNetServerPtr server,
     virNetServerClientPtr client,
@@ -575,6 +597,65 @@ static int remoteDispatchConnectGetCPUModelNamesHelper(
   return remoteDispatchConnectGetCPUModelNames(server, client, msg, rerr, args, ret);
 }
 /* remoteDispatchConnectGetCPUModelNames body has to be implemented manually */
+
+
+
+static int remoteDispatchConnectGetDomainCapabilities(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_connect_get_domain_capabilities_args *args,
+    remote_connect_get_domain_capabilities_ret *ret);
+static int remoteDispatchConnectGetDomainCapabilitiesHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret)
+{
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  return remoteDispatchConnectGetDomainCapabilities(server, client, msg, rerr, args, ret);
+}
+static int remoteDispatchConnectGetDomainCapabilities(
+    virNetServerPtr server ATTRIBUTE_UNUSED,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg ATTRIBUTE_UNUSED,
+    virNetMessageErrorPtr rerr,
+    remote_connect_get_domain_capabilities_args *args,
+    remote_connect_get_domain_capabilities_ret *ret)
+{
+    int rv = -1;
+    char *emulatorbin;
+    char *arch;
+    char *machine;
+    char *virttype;
+    char *capabilities;
+    struct daemonClientPrivate *priv =
+        virNetServerClientGetPrivateData(client);
+
+    if (!priv->conn) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("connection not open"));
+        goto cleanup;
+    }
+
+    emulatorbin = args->emulatorbin ? *args->emulatorbin : NULL;
+    arch = args->arch ? *args->arch : NULL;
+    machine = args->machine ? *args->machine : NULL;
+    virttype = args->virttype ? *args->virttype : NULL;
+
+    if ((capabilities = virConnectGetDomainCapabilities(priv->conn, emulatorbin, arch, machine, virttype, args->flags)) == NULL)
+        goto cleanup;
+
+    ret->capabilities = capabilities;
+    rv = 0;
+
+cleanup:
+    if (rv < 0)
+        virNetMessageSaveError(rerr);
+    return rv;
+}
 
 
 
@@ -6517,6 +6598,27 @@ static int remoteDispatchDomainOpenGraphicsHelper(
 
 
 
+static int remoteDispatchDomainOpenGraphicsFd(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_domain_open_graphics_fd_args *args);
+static int remoteDispatchDomainOpenGraphicsFdHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret ATTRIBUTE_UNUSED)
+{
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  return remoteDispatchDomainOpenGraphicsFd(server, client, msg, rerr, args);
+}
+/* remoteDispatchDomainOpenGraphicsFd body has to be implemented manually */
+
+
+
 static int remoteDispatchDomainPinEmulator(
     virNetServerPtr server,
     virNetServerClientPtr client,
@@ -7524,7 +7626,7 @@ static int remoteDispatchDomainSetBlkioParameters(
     int rv = -1;
     virDomainPtr dom = NULL;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -7585,7 +7687,7 @@ static int remoteDispatchDomainSetBlockIoTune(
     int rv = -1;
     virDomainPtr dom = NULL;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -7646,7 +7748,7 @@ static int remoteDispatchDomainSetInterfaceParameters(
     int rv = -1;
     virDomainPtr dom = NULL;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -7872,7 +7974,7 @@ static int remoteDispatchDomainSetMemoryParameters(
     int rv = -1;
     virDomainPtr dom = NULL;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -8044,7 +8146,7 @@ static int remoteDispatchDomainSetNumaParameters(
     int rv = -1;
     virDomainPtr dom = NULL;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -8105,7 +8207,7 @@ static int remoteDispatchDomainSetSchedulerParameters(
     int rv = -1;
     virDomainPtr dom = NULL;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -8166,7 +8268,7 @@ static int remoteDispatchDomainSetSchedulerParametersFlags(
     int rv = -1;
     virDomainPtr dom = NULL;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -11825,7 +11927,7 @@ static int remoteDispatchNodeSetMemoryParameters(
 {
     int rv = -1;
     virTypedParameterPtr params = NULL;
-    int nparams = 0;;
+    int nparams = 0;
     struct daemonClientPrivate *priv =
         virNetServerClientGetPrivateData(client);
 
@@ -17439,6 +17541,33 @@ virNetServerProgramProc remoteProcs[] = {
    (xdrproc_t)xdr_remote_network_get_dhcp_leases_args,
    sizeof(remote_network_get_dhcp_leases_ret),
    (xdrproc_t)xdr_remote_network_get_dhcp_leases_ret,
+   true,
+   0
+},
+{ /* Method ConnectGetDomainCapabilities => 342 */
+   remoteDispatchConnectGetDomainCapabilitiesHelper,
+   sizeof(remote_connect_get_domain_capabilities_args),
+   (xdrproc_t)xdr_remote_connect_get_domain_capabilities_args,
+   sizeof(remote_connect_get_domain_capabilities_ret),
+   (xdrproc_t)xdr_remote_connect_get_domain_capabilities_ret,
+   true,
+   0
+},
+{ /* Method DomainOpenGraphicsFd => 343 */
+   remoteDispatchDomainOpenGraphicsFdHelper,
+   sizeof(remote_domain_open_graphics_fd_args),
+   (xdrproc_t)xdr_remote_domain_open_graphics_fd_args,
+   0,
+   (xdrproc_t)xdr_void,
+   true,
+   0
+},
+{ /* Method ConnectGetAllDomainStats => 344 */
+   remoteDispatchConnectGetAllDomainStatsHelper,
+   sizeof(remote_connect_get_all_domain_stats_args),
+   (xdrproc_t)xdr_remote_connect_get_all_domain_stats_args,
+   sizeof(remote_connect_get_all_domain_stats_ret),
+   (xdrproc_t)xdr_remote_connect_get_all_domain_stats_ret,
    true,
    0
 },

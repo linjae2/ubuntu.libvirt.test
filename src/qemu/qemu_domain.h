@@ -353,6 +353,10 @@ int qemuDomainDetermineDiskChain(virQEMUDriverPtr driver,
                                  virDomainDiskDefPtr disk,
                                  bool force);
 
+int qemuDomainStorageFileInit(virQEMUDriverPtr driver,
+                              virDomainObjPtr vm,
+                              virStorageSourcePtr src);
+
 int qemuDomainCleanupAdd(virDomainObjPtr vm,
                          qemuDomainCleanupCallback cb);
 void qemuDomainCleanupRemove(virDomainObjPtr vm,
@@ -365,7 +369,7 @@ extern virDomainXMLNamespace virQEMUDriverDomainXMLNamespace;
 extern virDomainDefParserConfig virQEMUDriverDomainDefParserConfig;
 
 int qemuDomainUpdateDeviceList(virQEMUDriverPtr driver,
-                               virDomainObjPtr vm);
+                               virDomainObjPtr vm, int asyncJob);
 
 bool qemuDomainDefCheckABIStability(virQEMUDriverPtr driver,
                                     virDomainDefPtr src,

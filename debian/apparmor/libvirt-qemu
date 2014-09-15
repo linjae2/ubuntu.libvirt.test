@@ -47,8 +47,8 @@
   # spice
   /usr/bin/qemu-system-i386-spice rmix,
   /usr/bin/qemu-system-x86_64-spice rmix,
-  /run/shm/ r,
-  owner /run/shm/spice.* rw,
+  /{dev,run}/shm/ r,
+  owner /{dev,run}/shm/spice.* rw,
   # 'kill' is not required for sound and is a security risk. Do not enable
   # unless you absolutely need it.
   deny capability kill,
@@ -88,6 +88,8 @@
   /usr/bin/qemu-system-cris rmix,
   /usr/bin/qemu-system-i386 rmix,
   /usr/bin/qemu-system-m68k rmix,
+  /usr/bin/qemu-system-microblaze rmix,
+  /usr/bin/qemu-system-microblazeel rmix,
   /usr/bin/qemu-system-mips rmix,
   /usr/bin/qemu-system-mips64 rmix,
   /usr/bin/qemu-system-mips64el rmix,
@@ -107,6 +109,8 @@
   /usr/bin/qemu-cris rmix,
   /usr/bin/qemu-i386 rmix,
   /usr/bin/qemu-m68k rmix,
+  /usr/bin/qemu-microblaze rmix,
+  /usr/bin/qemu-microblazeel rmix,
   /usr/bin/qemu-mips rmix,
   /usr/bin/qemu-mipsel rmix,
   /usr/bin/qemu-ppc rmix,
@@ -147,3 +151,22 @@
   # for ppc device-tree access
   @{PROC}/device-tree/ r,
   @{PROC}/device-tree/** r,
+
+  /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
+  # child profile for bridge helper process
+  profile qemu_bridge_helper {
+   #include <abstractions/base>
+
+   capability setuid,
+   capability setgid,
+   capability setpcap,
+   capability net_admin,
+
+   network inet stream,
+
+   /dev/net/tun rw,
+   /etc/qemu/** r,
+   owner @{PROC}/*/status r,
+
+   /usr/{lib,libexec}/qemu-bridge-helper rmix,
+  }

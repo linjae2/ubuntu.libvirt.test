@@ -130,10 +130,11 @@ build/libvirt-bin::
 	mkdir -p debian/tmp/etc/apparmor.d/abstractions debian/tmp/etc/apparmor.d/libvirt
 	mkdir -p debian/tmp/etc/apparmor.d/local
 	cp -f debian/apparmor/libvirt-qemu debian/tmp/etc/apparmor.d/abstractions
+	cp -f debian/apparmor/libvirt-lxc debian/tmp/etc/apparmor.d/abstractions
 	cp -f debian/apparmor/usr.lib.libvirt.virt-aa-helper debian/tmp/etc/apparmor.d
 	cp -f debian/apparmor/usr.sbin.libvirtd debian/tmp/etc/apparmor.d
 	cp -f debian/apparmor/local-usr.sbin.libvirtd debian/tmp/etc/apparmor.d/local/usr.sbin.libvirtd
-	cp -f debian/apparmor/TEMPLATE debian/tmp/etc/apparmor.d/libvirt
+	cp -f debian/apparmor/TEMPLATE* debian/tmp/etc/apparmor.d/libvirt
 	mkdir -p debian/tmp/usr/share/apport/package-hooks
 	cp -f debian/libvirt-bin.apport debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
 	mkdir -p debian/tmp/usr/sbin

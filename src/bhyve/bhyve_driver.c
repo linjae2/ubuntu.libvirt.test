@@ -150,10 +150,8 @@ bhyveConnectGetCapabilities(virConnectPtr conn)
         goto cleanup;
     }
 
-    if (!(xml = virCapabilitiesFormatXML(caps))) {
-        virReportOOMError();
+    if (!(xml = virCapabilitiesFormatXML(caps)))
         goto cleanup;
-    }
 
  cleanup:
     virObjectUnref(caps);
@@ -260,10 +258,8 @@ bhyveConnectGetSysinfo(virConnectPtr conn, unsigned int flags)
 
     if (virSysinfoFormat(&buf, privconn->hostsysinfo) < 0)
         return NULL;
-    if (virBufferError(&buf)) {
-        virReportOOMError();
+    if (virBufferCheckError(&buf) < 0)
         return NULL;
-    }
 
     return virBufferContentAndReset(&buf);
 }
@@ -693,20 +689,18 @@ bhyveConnectDomainXMLToNative(virConnectPtr conn,
     if (bhyveDomainAssignAddresses(def, NULL) < 0)
         goto cleanup;
 
-    if (!(loadcmd = virBhyveProcessBuildLoadCmd(privconn, def)))
+    if (!(loadcmd = virBhyveProcessBuildLoadCmd(conn, def)))
         goto cleanup;
 
-    if (!(cmd = virBhyveProcessBuildBhyveCmd(privconn, def, true)))
+    if (!(cmd = virBhyveProcessBuildBhyveCmd(conn, def, true)))
         goto cleanup;
 
     virBufferAdd(&buf, virCommandToString(loadcmd), -1);
     virBufferAddChar(&buf, '\n');
     virBufferAdd(&buf, virCommandToString(cmd), -1);
 
-    if (virBufferError(&buf)) {
-        virReportOOMError();
+    if (virBufferCheckError(&buf) < 0)
         goto cleanup;
-    }
 
     ret = virBufferContentAndReset(&buf);
 
@@ -1052,7 +1046,8 @@ bhyveDomainSetMetadata(virDomainPtr dom,
         goto cleanup;
 
     ret = virDomainObjSetMetadata(vm, type, metadata, key, uri, caps,
-                                  privconn->xmlopt, BHYVE_CONFIG_DIR, flags);
+                                  privconn->xmlopt, BHYVE_STATE_DIR,
+                                  BHYVE_CONFIG_DIR, flags);
 
  cleanup:
     virObjectUnref(caps);
@@ -1151,6 +1146,8 @@ bhyveStateInitialize(bool priveleged ATTRIBUTE_UNUSED,
                      virStateInhibitCallback callback ATTRIBUTE_UNUSED,
                      void *opaque ATTRIBUTE_UNUSED)
 {
+    virConnectPtr conn = NULL;
+
     if (!priveleged) {
         VIR_INFO("Not running priveleged, disabling driver");
         return 0;
@@ -1194,9 +1191,18 @@ bhyveStateInitialize(bool priveleged ATTRIBUTE_UNUSED,
     if (virFileMakePath(BHYVE_STATE_DIR) < 0) {
         virReportSystemError(errno,
                              _("Failed to mkdir %s"),
-                             BHYVE_LOG_DIR);
+                             BHYVE_STATE_DIR);
         goto cleanup;
     }
+
+    if (virDomainObjListLoadAllConfigs(bhyve_driver->domains,
+                                       BHYVE_STATE_DIR,
+                                       NULL, 1,
+                                       bhyve_driver->caps,
+                                       bhyve_driver->xmlopt,
+                                       1 << VIR_DOMAIN_VIRT_BHYVE,
+                                       NULL, NULL) < 0)
+        goto cleanup;
 
     if (virDomainObjListLoadAllConfigs(bhyve_driver->domains,
                                        BHYVE_CONFIG_DIR,
@@ -1207,9 +1213,14 @@ bhyveStateInitialize(bool priveleged ATTRIBUTE_UNUSED,
                                        NULL, NULL) < 0)
         goto cleanup;
 
+    virBhyveProcessReconnectAll(bhyve_driver);
+
+    virObjectUnref(conn);
+
     return 0;
 
  cleanup:
+    virObjectUnref(conn);
     bhyveStateCleanup();
     return -1;
 }
