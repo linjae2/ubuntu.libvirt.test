@@ -14,10 +14,12 @@ storage-default-permission-mode-to-0711
 Reduce-udevadm-settle-timeout-to-10-seconds.patch
 fix-ubuntu-xen-qemu-dm-path.patch
 ubuntu-libxl-qemu-nopath.patch
-#ubuntu-xend-probe.patch
 ubuntu-skip-virstoragetest
 add-cgmanager-support.patch
 cgroups-ignore-systemd-failure
 9030-create-socket-dir
 9031-enable-lxc-apparmor
 9032-lxc-allow-no-security-driver
+ubuntu-xend-probe.patch
+ubuntu-libxl-Implement-basic-video-device-selection.patch
+ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch
