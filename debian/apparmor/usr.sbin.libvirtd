@@ -36,6 +36,7 @@
   network inet6 stream,
   network inet6 dgram,
   network packet dgram,
+  network netlink,
 
   dbus bus=system,
   signal,
