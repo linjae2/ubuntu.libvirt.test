@@ -1,3 +1,9 @@
+libvirt (1.2.8-0ubuntu4) utopic; urgency=medium
+
+  * debian/apparmor/usr.sbin.libvirtd: allow 'network netlink'
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Thu, 18 Sep 2014 15:15:13 -0500
+
 libvirt (1.2.8-0ubuntu3) utopic; urgency=medium
 
   * 9033-apparmor-use-TEMPLATE.qemu-for-kvm.patch - fix failure to start
