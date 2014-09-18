@@ -1145,6 +1145,8 @@ libxlMakeVfbList(virPortAllocatorPtr graphicsports,
             if (VIR_STRDUP(b_info->u.hvm.sdl.xauthority, vfb.sdl.xauthority) < 0)
                 goto error;
         }
+        if (VIR_STRDUP(b_info->u.hvm.keymap, vfb.keymap) < 0)
+            goto error;
     }
 
     return 0;
@@ -1407,6 +1409,45 @@ libxlMakeCapabilities(libxl_ctx *ctx)
     return NULL;
 }
 
+static int
+libxlMakeVideo(virDomainDefPtr def, libxl_domain_config *d_config)
+{
+    libxl_domain_build_info *b_info = &d_config->b_info;
+
+    if (d_config->c_info.type != LIBXL_DOMAIN_TYPE_HVM)
+        return 0;
+
+    /*
+     * Take the first defined video device (graphics card) to display
+     * on the first graphics device (display).
+     * Right now only type and vram info is used and anything beside
+     * type xen and vga is mapped to cirrus.
+     */
+    if (def->nvideos) {
+        switch (def->videos[0]->type) {
+            case VIR_DOMAIN_VIDEO_TYPE_VGA:
+            case VIR_DOMAIN_VIDEO_TYPE_XEN:
+                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_STD;
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_CIRRUS:
+                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_CIRRUS;
+                break;
+            default:
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                               "%s",
+                               _("video type not supported by libxl"));
+                return -1;
+        }
+        b_info->video_memkb = def->videos[0]->vram ?
+                              def->videos[0]->vram :
+                              LIBXL_MEMKB_DEFAULT;
+    } else {
+        libxl_defbool_set(&b_info->u.hvm.nographic, 1);
+    }
+
+    return 0;
+}
+
 int
 libxlBuildDomainConfig(virPortAllocatorPtr graphicsports,
                        virDomainDefPtr def,
@@ -1431,6 +1472,15 @@ libxlBuildDomainConfig(virPortAllocatorPtr graphicsports,
         return -1;
 
     if (libxlMakePCIList(def, d_config) < 0)
+        return -1;
+
+    /*
+     * Now that any potential VFBs are defined, it is time to update the
+     * build info with the data of the primary display. Some day libxl
+     * might implicitely do so but as it does not right now, better be
+     * explicit.
+     */
+    if (libxlMakeVideo(def, d_config) < 0)
         return -1;
 
     d_config->on_reboot = def->onReboot;
