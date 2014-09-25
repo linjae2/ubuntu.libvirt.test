@@ -4,12 +4,18 @@
 
 #include <tunables/global>
 
-profile LIBVIRT_TEMPLATE {
+profile LIBVIRT_TEMPLATE (attach_disconnected,mediate_deleted) {
   #include <abstractions/libvirt-lxc>
 
-  # Globally allows everything to run under this profile
-  # These can be narrowed depending on the container's use.
+  # Globally allows everything to run under this profile. This is fine-tuned via
+  # via abstractions/libvirt-lxc and can be narrowed depending on the
+  # container's use.
   file,
   capability,
   network,
+
+  # the container may never be allowed to mount devpts.  If it does, it
+  # will remount the host's devpts.  We could allow it to do it with
+  # the newinstance option (but, right now, we don't).
+  deny mount fstype=devpts,
 }
