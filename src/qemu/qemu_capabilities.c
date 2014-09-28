@@ -3306,6 +3306,7 @@ virQEMUCapsInitQMP(virQEMUCapsPtr qemuCaps,
     virCommandAbort(cmd);
     virCommandFree(cmd);
     VIR_FREE(monarg);
+    ignore_value(unlink(monpath));
     VIR_FREE(monpath);
     virObjectUnref(vm);
     virObjectUnref(xmlopt);
