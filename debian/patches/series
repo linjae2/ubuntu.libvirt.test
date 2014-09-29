@@ -24,3 +24,4 @@ ubuntu-xend-probe.patch
 ubuntu-libxl-Implement-basic-video-device-selection.patch
 ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch
 9033-apparmor-use-TEMPLATE.qemu-for-kvm.patch
+CVE-2014-3633.patch
