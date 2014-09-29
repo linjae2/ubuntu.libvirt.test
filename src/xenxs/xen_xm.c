@@ -1335,7 +1335,9 @@ static int xenFormatXMNet(virConnectPtr conn,
     }
     else {
         virBufferAsprintf(&buf, ",model=%s", net->model);
-        virBufferAddLit(&buf, ",type=ioemu");
+	/* See above. Also needed if model is specified. */
+        if (xendConfigVersion <= XEND_CONFIG_MAX_VERS_NET_TYPE_IOEMU)
+            virBufferAddLit(&buf, ",type=ioemu");
     }
 
     if (net->ifname)
