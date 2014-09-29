@@ -5,8 +5,10 @@ INCLUDES = \
 	-I../include -I$(top_srcdir)/include \
 	-I$(top_srcdir)/gnulib/lib -I../gnulib/lib	\
 	-I$(top_srcdir)/src -I../src			\
+	-I$(top_srcdir)/src/remote                      \
 	-I$(top_srcdir)/src/util			\
 	-I$(top_srcdir)					\
+	-DLOCAL_STATE_DIR=\""$(localstatedir)"\"        \
 	$(GETTEXT_CPPFLAGS)
 
 POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
