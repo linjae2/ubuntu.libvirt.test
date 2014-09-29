@@ -1,3 +1,19 @@
+libvirt (1.2.2-0ubuntu13.1.5) trusty-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service and possible information disclosure
+    via crafted XML document
+    - debian/patches/CVE-2014-0179.patch: don't expand entities when
+      parsing XML in src/util/virxml.c.
+    - CVE-2014-0179
+    - CVE-2014-5177
+  * SECURITY UPDATE: denial of service or information disclosure via
+    virDomainGetBlockIoTune
+    - debian/patches/CVE-2014-3633.patch: use correct definition when
+      looking up disk in src/qemu/qemu_driver.c.
+    - CVE-2014-3633
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 29 Sep 2014 15:27:53 -0400
+
 libvirt (1.2.2-0ubuntu13.1.4) trusty-proposed; urgency=medium
 
   * debian/apparmor/usr.sbin.libvirtd - add cap-sys-resource to fully
