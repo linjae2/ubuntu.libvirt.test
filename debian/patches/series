@@ -48,3 +48,4 @@ lxc-use-own-ptyfns.patch
 fix-qemu-info-migration.patch
 CVE-2013-4311.patch
 CVE-2013-4311-autotools.patch
+CVE-2014-0179.patch

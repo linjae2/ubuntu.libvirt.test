@@ -1,3 +1,15 @@
+libvirt (0.7.5-5ubuntu27.25) lucid-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service via crafted XML document
+    - debian/patches/CVE-2014-0179.patch: don't expand entities when
+      parsing XML in src/conf/domain_conf.c, src/conf/interface_conf.c,
+      src/conf/network_conf.c, src/conf/node_device_conf.c,
+      src/conf/secret_conf.c, src/conf/storage_conf.c,
+      src/security/virt-aa-helper.c, src/test/test_driver.c, tools/virsh.c.
+    - CVE-2014-0179
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 29 Sep 2014 15:59:23 -0400
+
 libvirt (0.7.5-5ubuntu27.24) lucid-security; urgency=low
 
   * SECURITY UPDATE: possible privilege escalation via pkcheck race.
