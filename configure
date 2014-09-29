@@ -57957,6 +57957,12 @@ $as_echo "$ac_res" >&6; }
     fi
   done
 
+# see https://bugs.launchpad.net/bugs/823711
+case "$host" in
+	arm*-*linux* )
+		LIBNL_LIBS=`echo $LIBNL_LIBS | sed 's/ *-lnl-[^ ]*//g'`
+		;;
+esac
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for iconv" >&5
 $as_echo_n "checking for iconv... " >&6; }
