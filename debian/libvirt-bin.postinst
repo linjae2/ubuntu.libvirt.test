@@ -130,31 +130,39 @@ add_statoverrides()
     "
 
     SANLOCK_DIR="/var/lib/libvirt/sanlock"
-	QEMU_CONF="/etc/libvirt/qemu.conf"
+    QEMU_CONF="/etc/libvirt/qemu.conf"
 
     for dir in ${ROOT_DIRS}; do
         if ! dpkg-statoverride --list "${dir}" >/dev/null 2>&1; then
-            chown root:root "${dir}"
-            chmod 0711 "${dir}"
+            if [ -d "${dir}" ]; then
+                chown root:root "${dir}"
+                chmod 0711 "${dir}"
+            fi
         fi
     done
 
     for dir in ${QEMU_DIRS}; do
         if ! dpkg-statoverride --list "${dir}" >/dev/null 2>&1; then
-            chown libvirt-qemu:kvm "${dir}"
-            chmod 0750 "${dir}"
+            if [ -d "${dir}" ]; then
+                chown libvirt-qemu:kvm "${dir}"
+                chmod 0750 "${dir}"
+            fi
         fi
     done
 
     if ! dpkg-statoverride --list "${SANLOCK_DIR}" >/dev/null 2>&1; then
-        chown root:root "${SANLOCK_DIR}"
-        chmod 0700 "${SANLOCK_DIR}"
+        if [ -d "${SANLOCK_DIR}" ]; then
+            chown root:root "${SANLOCK_DIR}"
+            chmod 0700 "${SANLOCK_DIR}"
+        fi
     fi
 
-	if ! dpkg-statoverride --list "${QEMU_CONF}" >/dev/null 2>&1; then
-		chown root:root "${QEMU_CONF}"
-		chmod 0600 "${QEMU_CONF}"
-	fi
+    if ! dpkg-statoverride --list "${QEMU_CONF}" >/dev/null 2>&1; then
+        if [ -f "${QEMU_CONF}" ]; then
+            chown root:root "${QEMU_CONF}"
+            chmod 0600 "${QEMU_CONF}"
+        fi
+    fi
 }
 
 
