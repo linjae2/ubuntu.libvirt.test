@@ -598,6 +598,10 @@ int virNetSocketNewConnectUNIX(const char *path,
 
             if (pid == 0) {
                 umask(0077);
+                if (path[0] != '@') {
+                    if (virFileMakeParentPath(path) < 0)
+                        virReportSystemError(errno, "%s", _("Failed to create directory"));
+                }
                 if (bind(passfd, &remoteAddr.data.sa, remoteAddr.len) < 0)
                     _exit(EXIT_FAILURE);
 
