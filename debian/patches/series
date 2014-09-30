@@ -31,3 +31,8 @@ libxl-Support-PV-consoles.patch
 9027-virt-aa-helper-allow-access-to-vhost-net
 CVE-2014-0179.patch
 CVE-2014-3633.patch
+9029-ovs-delete-port-if-it-exists-when-adding-new-one
+9030-virsh-add-keepalive-in-new-vshconnect-fn
+9031-cmdmigrate-move-vshconnect-before-vshwatchjob
+9032-virsh-initialize-vsh-data-in-cmdmigrate
+support-incoming-qemu-kvm
