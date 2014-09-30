@@ -1,3 +1,10 @@
+libvirt (1.2.8-0ubuntu7) utopic; urgency=medium
+
+  * libvirt-bin.postinst: check for confiles whichhave been removed rather
+    than fail package install (LP: #1375910)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 30 Sep 2014 12:37:16 -0500
+
 libvirt (1.2.8-0ubuntu6) utopic; urgency=medium
 
   * SECURITY UPDATE: denial of service or information disclosure via
