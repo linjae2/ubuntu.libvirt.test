@@ -1,3 +1,10 @@
+libvirt (1.2.8-0ubuntu9) utopic; urgency=medium
+
+  * libvirt-qemu apparmor template: add /sys/firmware/devicetree/** r
+    (LP: #1374554)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 01 Oct 2014 17:09:05 -0500
+
 libvirt (1.2.8-0ubuntu8) utopic; urgency=medium
 
   * libvirt-bin.postinst: fix syntax error (s/if/fi/)
