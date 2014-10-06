@@ -1,3 +1,11 @@
+libvirt (1.2.8-0ubuntu10) utopic; urgency=medium
+
+  * libvirt-bin.upstart: delay start until rc finished
+    This give hypervisors more time to finish their setup (LP: #1377900).
+  * libvirt-bin.upstart: add xen:/// uri to the list (LP: #1377960)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Mon, 06 Oct 2014 16:23:06 +0200
+
 libvirt (1.2.8-0ubuntu9) utopic; urgency=medium
 
   * libvirt-qemu apparmor template: add /sys/firmware/devicetree/** r

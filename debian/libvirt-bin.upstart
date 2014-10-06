@@ -1,7 +1,7 @@
 description "libvirt daemon"
 author "Dustin Kirkland <kirkland@canonical.com>"
 
-start on runlevel [2345]
+start on stopped rc RUNLEVEL=[2345]
 stop on starting rc RUNLEVEL=[016]
 
 expect daemon
@@ -14,7 +14,7 @@ env start_libvirtd="yes"
 # by default wait 30 seconds for vms to shut down
 env libvirtd_shutdown_timeout=30
 # uris for which to shut down vms
-env libvirt_uris='qemu:///system lxc:///'
+env libvirt_uris='qemu:///system lxc:/// xen:///'
 
 pre-start script
 	[ -r /etc/default/libvirt-bin ] && . /etc/default/libvirt-bin
@@ -37,7 +37,7 @@ pre-stop script
 	{
 		# We parse the output for things like domain state;
 		# make sure the output is in the language we expect.
-		LANG=C virsh "$@"
+		LANG=C virsh "$@" 2>/dev/null
 	}
 
 	if [ -z "$RUNLEVEL" ]; then
