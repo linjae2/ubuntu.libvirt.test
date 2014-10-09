@@ -1,3 +1,10 @@
+libvirt (1.2.8-0ubuntu11) utopic; urgency=medium
+
+  [ Felix Geyer ] 
+  * d/p/ubuntu_machine_type.patch: Fix No PCI buses available. (LP: #1379346).
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Thu, 09 Oct 2014 08:57:27 -0500
+
 libvirt (1.2.8-0ubuntu10) utopic; urgency=medium
 
   * libvirt-bin.upstart: delay start until rc finished
