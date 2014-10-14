@@ -785,7 +785,7 @@ vshEditFile(vshControl *ctl, const char *filename)
     if (!editor)
         editor = virGetEnvBlockSUID("EDITOR");
     if (!editor)
-        editor = "vi"; /* could be cruel & default to ed(1) here */
+        editor = "sensible-editor";
 
     /* Check that filename doesn't contain shell meta-characters, and
      * if it does, refuse to run.  Follow the Unix conventions for
