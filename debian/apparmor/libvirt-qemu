@@ -163,6 +163,10 @@
    capability setpcap,
    capability net_admin,
 
+   # for 9p
+   capability fsetid,
+   capability fowner,
+
    network inet stream,
 
    /dev/net/tun rw,
