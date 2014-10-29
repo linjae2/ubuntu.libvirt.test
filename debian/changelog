@@ -1,3 +1,12 @@
+libvirt (1.2.8-0ubuntu12) vivid; urgency=medium
+
+  * complete the 9p support: (LP: #1378434)
+    - libvirt-qemu: add fowner and fsetid
+    - virt-aa-helper: add 'l' to 9p file options
+  * dont-include-non-migrateable-features-in-host-model (LP: #1386503)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 29 Oct 2014 15:07:21 -0500
+
 libvirt (1.2.8-0ubuntu11) utopic; urgency=medium
 
   [ Felix Geyer ] 
