@@ -36,3 +36,5 @@ CVE-2014-3633.patch
 9031-cmdmigrate-move-vshconnect-before-vshwatchjob
 9032-virsh-initialize-vsh-data-in-cmdmigrate
 support-incoming-qemu-kvm
+CVE-2014-3657.patch
+CVE-2014-7823.patch

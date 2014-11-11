@@ -1,3 +1,16 @@
+libvirt (1.2.2-0ubuntu13.1.7) trusty-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service via virConnectListAllDomains
+    - debian/patches/CVE-2014-3633.patch: fix domain deadlock in
+      src/conf/domain_conf.c.
+    - CVE-2014-3633
+  * SECURITY UPDATE: xml information leak with read-only connections
+    - debian/patches/CVE-2014-7823.patch: check for migratable flag in
+      src/libvirt.c, src/remote/remote_protocol.x.
+    - CVE-2014-3657
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 10 Nov 2014 19:48:54 -0500
+
 libvirt (1.2.2-0ubuntu13.1.6) trusty-proposed; urgency=medium
 
   * 9029-ovs-delete-port-if-it-exists-when-adding-new-one:  cherrypick commit
