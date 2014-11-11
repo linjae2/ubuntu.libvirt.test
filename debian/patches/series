@@ -28,3 +28,6 @@ CVE-2014-3633.patch
 ubuntu_machine_type.patch
 9034-complete-9p-support
 dont-include-non-migrateable-features-in-host-model
+9036-util-prepare-uri-for-libxml2-2.9.2.patch
+CVE-2014-3657.patch
+CVE-2014-7823.patch
