@@ -341,15 +341,19 @@ create_profile(const char *profile, const char *profile_name,
     int tlen, plen;
     int fd;
     int rc = -1;
+    const char *virttype;
 
     if (virFileExists(profile)) {
         vah_error(NULL, 0, _("profile exists"));
         goto end;
     }
 
+    virttype = virDomainVirtTypeToString(virtType);
+    if (strcmp(virttype, "kvm") == 0)
+	    virttype = "qemu";
 
     if (virAsprintfQuiet(&template, "%s/TEMPLATE.%s", APPARMOR_DIR "/libvirt",
-                         virDomainVirtTypeToString(virtType)) < 0) {
+                         virttype) < 0) {
         vah_error(NULL, 0, _("template name exceeds maximum length"));
         goto end;
     }
