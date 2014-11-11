@@ -28,3 +28,4 @@ CVE-2014-3633.patch
 ubuntu_machine_type.patch
 CVE-2014-3657.patch
 CVE-2014-7823.patch
+9034-complete-9p-support
