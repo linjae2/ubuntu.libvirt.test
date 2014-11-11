@@ -17,6 +17,10 @@
   # atm, so just silence the denial until libcap-ng works right. LP: #522845
   deny capability setpcap,
 
+  # for 9p
+  capability fsetid,
+  capability fowner,
+
   network inet stream,
   network inet6 stream,
 
@@ -75,6 +79,7 @@
   /usr/share/vgabios/** r,
   /usr/share/seabios/** r,
   /usr/share/ovmf/** r,
+  /usr/share/slof/** r,
 
   # access PKI infrastructure
   /etc/pki/libvirt-vnc/** r,
@@ -146,3 +151,4 @@
   # for ppc device-tree access
   @{PROC}/device-tree/ r,
   @{PROC}/device-tree/** r,
+  /sys/firmware/devicetree/** r,
