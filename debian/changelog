@@ -1,3 +1,9 @@
+libvirt (1.2.8-0ubuntu15) vivid; urgency=medium
+
+  * libvirt-qemu: add r to sgabios.bin (LP: #1393548)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 17 Nov 2014 15:05:22 -0600
+
 libvirt (1.2.8-0ubuntu14) vivid; urgency=medium
 
   [ Serge Hallyn ]
