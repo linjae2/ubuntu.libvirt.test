@@ -1,3 +1,10 @@
+libvirt (1.2.8-0ubuntu16) vivid; urgency=medium
+
+  * debian/patches/add-ppc64le-support.patch: Added patches needed
+    for ppc64le support. (LP: #1396070) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 27 Nov 2014 08:57:35 -0500
+
 libvirt (1.2.8-0ubuntu15) vivid; urgency=medium
 
   * libvirt-qemu: add r to sgabios.bin (LP: #1393548)
