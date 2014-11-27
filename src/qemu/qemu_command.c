@@ -703,7 +703,7 @@ qemuSetSCSIControllerModel(virDomainDefPtr def,
             return -1;
         }
     } else {
-        if ((def->os.arch == VIR_ARCH_PPC64) &&
+        if (ARCH_IS_PPC64(def->os.arch) &&
             STREQ(def->os.machine, "pseries")) {
             *model = VIR_DOMAIN_CONTROLLER_MODEL_SCSI_IBMVSCSI;
         } else if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_SCSI_LSI)) {
@@ -1250,7 +1250,7 @@ int qemuDomainAssignSpaprVIOAddresses(virDomainDefPtr def,
 
     for (i = 0; i < def->nserials; i++) {
         if (def->serials[i]->deviceType == VIR_DOMAIN_CHR_DEVICE_TYPE_SERIAL &&
-            (def->os.arch == VIR_ARCH_PPC64) &&
+            ARCH_IS_PPC64(def->os.arch) &&
             STREQ(def->os.machine, "pseries"))
             def->serials[i]->info.type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_SPAPRVIO;
         if (qemuAssignSpaprVIOAddress(def, &def->serials[i]->info,
@@ -1259,7 +1259,7 @@ int qemuDomainAssignSpaprVIOAddresses(virDomainDefPtr def,
     }
 
     if (def->nvram) {
-        if (def->os.arch == VIR_ARCH_PPC64 &&
+        if (ARCH_IS_PPC64(def->os.arch) &&
             STREQ(def->os.machine, "pseries"))
             def->nvram->info.type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_SPAPRVIO;
         if (qemuAssignSpaprVIOAddress(def, &def->nvram->info,
@@ -4149,7 +4149,7 @@ qemuBuildUSBControllerDevStr(virDomainDefPtr domainDef,
     model = def->model;
 
     if (model == -1) {
-        if (domainDef->os.arch == VIR_ARCH_PPC64)
+        if ARCH_IS_PPC64(domainDef->os.arch)
             model = VIR_DOMAIN_CONTROLLER_MODEL_USB_PCI_OHCI;
         else
             model = VIR_DOMAIN_CONTROLLER_MODEL_USB_PIIX3_UHCI;
@@ -6054,64 +6054,52 @@ qemuBuildClockArgStr(virDomainClockDefPtr def)
     return NULL;
 }
 
-
 static int
-qemuBuildCpuArgStr(virQEMUDriverPtr driver,
-                   const virDomainDef *def,
-                   const char *emulator,
-                   virQEMUCapsPtr qemuCaps,
-                   virArch hostarch,
-                   char **opt,
-                   bool *hasHwVirt,
-                   bool migrating)
+qemuBuildCpuModelArgStr(virQEMUDriverPtr driver,
+                        const virDomainDef *def,
+                        virBufferPtr buf,
+                        virQEMUCapsPtr qemuCaps,
+                        bool *hasHwVirt,
+                        bool migrating)
 {
+    int ret = -1;
+    size_t i;
     virCPUDefPtr host = NULL;
     virCPUDefPtr guest = NULL;
     virCPUDefPtr cpu = NULL;
     size_t ncpus = 0;
     char **cpus = NULL;
-    const char *default_model;
     virCPUDataPtr data = NULL;
-    bool have_cpu = false;
     char *compare_msg = NULL;
-    int ret = -1;
-    virBuffer buf = VIR_BUFFER_INITIALIZER;
-    size_t i;
+    virCPUCompareResult cmp;
+    const char *preferred;
     virCapsPtr caps = NULL;
-
-    *hasHwVirt = false;
+    bool compareAgainstHost = (def->virtType == VIR_DOMAIN_VIRT_KVM ||
+        def->cpu->mode != VIR_CPU_MODE_CUSTOM);
 
     if (!(caps = virQEMUDriverGetCapabilities(driver, false)))
         goto cleanup;
 
     host = caps->host.cpu;
 
-    if (def->os.arch == VIR_ARCH_I686)
-        default_model = "qemu32";
-    else
-        default_model = "qemu64";
+    if (!host ||
+        !host->model ||
+        (ncpus = virQEMUCapsGetCPUDefinitions(qemuCaps, &cpus)) == 0) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("CPU specification not supported by hypervisor"));
+        goto cleanup;
+    }
 
-    if (def->cpu &&
-        (def->cpu->mode != VIR_CPU_MODE_CUSTOM || def->cpu->model)) {
-        virCPUCompareResult cmp;
-        const char *preferred;
+    if (!(cpu = virCPUDefCopy(def->cpu)))
+        goto cleanup;
 
-        if (!host ||
-            !host->model ||
-            (ncpus = virQEMUCapsGetCPUDefinitions(qemuCaps, &cpus)) == 0) {
-            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                           _("CPU specification not supported by hypervisor"));
-            goto cleanup;
-        }
+    if (cpu->mode != VIR_CPU_MODE_CUSTOM &&
+        !migrating &&
+        cpuUpdate(cpu, host) < 0)
+        goto cleanup;
 
-        if (!(cpu = virCPUDefCopy(def->cpu)))
-            goto cleanup;
-
-        if (cpu->mode != VIR_CPU_MODE_CUSTOM &&
-            !migrating &&
-            cpuUpdate(cpu, host) < 0)
-            goto cleanup;
-
+    /* For non-KVM, CPU features are emulated, so host compat doesn't matter */
+    if (compareAgainstHost) {
         cmp = cpuGuestData(host, cpu, &data, &compare_msg);
         switch (cmp) {
         case VIR_CPU_COMPARE_INCOMPATIBLE:
@@ -6130,39 +6118,49 @@ qemuBuildCpuArgStr(virQEMUDriverPtr driver,
         default:
             break;
         }
+    }
 
-        /* Only 'svm' requires --enable-nesting. The nested
-         * 'vmx' patches now simply hook off the CPU features
-         */
-        if (def->os.arch == VIR_ARCH_X86_64 ||
-            def->os.arch == VIR_ARCH_I686) {
-            int hasSVM = cpuHasFeature(data, "svm");
-            if (hasSVM < 0)
-                goto cleanup;
-            *hasHwVirt = hasSVM > 0 ? true : false;
+    /* Only 'svm' requires --enable-nesting. The nested
+     * 'vmx' patches now simply hook off the CPU features
+     */
+    if ((def->os.arch == VIR_ARCH_X86_64 || def->os.arch == VIR_ARCH_I686) &&
+         compareAgainstHost) {
+        int hasSVM = cpuHasFeature(data, "svm");
+        if (hasSVM < 0)
+            goto cleanup;
+        *hasHwVirt = hasSVM > 0 ? true : false;
+    }
+
+    if ((cpu->mode == VIR_CPU_MODE_HOST_PASSTHROUGH) ||
+        ((cpu->mode == VIR_CPU_MODE_HOST_MODEL) &&
+          ARCH_IS_PPC64(def->os.arch))) {
+        const char *mode = virCPUModeTypeToString(cpu->mode);
+        if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_CPU_HOST)) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("CPU mode '%s' is not supported by QEMU"
+                             " binary"), mode);
+            goto cleanup;
+        }
+        if (def->virtType != VIR_DOMAIN_VIRT_KVM) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("CPU mode '%s' is only supported with kvm"),
+                           mode);
+            goto cleanup;
+        }
+        virBufferAddLit(buf, "host");
+
+        if (ARCH_IS_PPC64(def->os.arch) &&
+            cpu->mode == VIR_CPU_MODE_HOST_MODEL) {
+            virBufferAsprintf(buf, ",compat=%s", def->cpu->model);
         }
 
-        if (cpu->mode == VIR_CPU_MODE_HOST_PASSTHROUGH) {
-            const char *mode = virCPUModeTypeToString(cpu->mode);
-            if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_CPU_HOST)) {
-                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               _("CPU mode '%s' is not supported by QEMU"
-                                 " binary"), mode);
-                goto cleanup;
-            }
-            if (def->virtType != VIR_DOMAIN_VIRT_KVM) {
-                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               _("CPU mode '%s' is only supported with kvm"),
-                               mode);
-                goto cleanup;
-            }
-            virBufferAddLit(&buf, "host");
-        } else {
-            if (VIR_ALLOC(guest) < 0)
-                goto cleanup;
-            if (VIR_STRDUP(guest->vendor_id, cpu->vendor_id) < 0)
-                goto cleanup;
+    } else {
+        if (VIR_ALLOC(guest) < 0)
+            goto cleanup;
+        if (VIR_STRDUP(guest->vendor_id, cpu->vendor_id) < 0)
+            goto cleanup;
 
+        if (compareAgainstHost) {
             guest->arch = host->arch;
             if (cpu->match == VIR_CPU_MATCH_MINIMUM)
                 preferred = host->model;
@@ -6171,22 +6169,67 @@ qemuBuildCpuArgStr(virQEMUDriverPtr driver,
 
             guest->type = VIR_CPU_TYPE_GUEST;
             guest->fallback = cpu->fallback;
-            if (cpuDecode(guest, data, (const char **)cpus, ncpus, preferred) < 0)
+            if (cpuDecode(guest, data,
+                          (const char **)cpus, ncpus, preferred) < 0)
                 goto cleanup;
-
-            virBufferAdd(&buf, guest->model, -1);
-            if (guest->vendor_id)
-                virBufferAsprintf(&buf, ",vendor=%s", guest->vendor_id);
-            for (i = 0; i < guest->nfeatures; i++) {
-                char sign;
-                if (guest->features[i].policy == VIR_CPU_FEATURE_DISABLE)
-                    sign = '-';
-                else
-                    sign = '+';
-
-                virBufferAsprintf(&buf, ",%c%s", sign, guest->features[i].name);
-            }
+        } else {
+            guest->arch = def->os.arch;
+            if (VIR_STRDUP(guest->model, cpu->model) < 0)
+                goto cleanup;
         }
+
+        virBufferAdd(buf, guest->model, -1);
+        if (guest->vendor_id)
+            virBufferAsprintf(buf, ",vendor=%s", guest->vendor_id);
+        for (i = 0; i < guest->nfeatures; i++) {
+            char sign;
+            if (guest->features[i].policy == VIR_CPU_FEATURE_DISABLE)
+                sign = '-';
+            else
+                sign = '+';
+
+            virBufferAsprintf(buf, ",%c%s", sign, guest->features[i].name);
+        }
+    }
+
+    ret = 0;
+ cleanup:
+    virObjectUnref(caps);
+    VIR_FREE(compare_msg);
+    cpuDataFree(data);
+    virCPUDefFree(guest);
+    virCPUDefFree(cpu);
+    return ret;
+}
+
+static int
+qemuBuildCpuArgStr(virQEMUDriverPtr driver,
+                   const virDomainDef *def,
+                   const char *emulator,
+                   virQEMUCapsPtr qemuCaps,
+                   virArch hostarch,
+                   char **opt,
+                   bool *hasHwVirt,
+                   bool migrating)
+{
+    const char *default_model;
+    bool have_cpu = false;
+    int ret = -1;
+    virBuffer buf = VIR_BUFFER_INITIALIZER;
+    size_t i;
+
+    *hasHwVirt = false;
+
+    if (def->os.arch == VIR_ARCH_I686)
+        default_model = "qemu32";
+    else
+        default_model = "qemu64";
+
+    if (def->cpu &&
+        (def->cpu->mode != VIR_CPU_MODE_CUSTOM || def->cpu->model)) {
+        if (qemuBuildCpuModelArgStr(driver, def, &buf, qemuCaps,
+                                    hasHwVirt, migrating) < 0)
+            goto cleanup;
         have_cpu = true;
     } else {
         /*
@@ -6311,11 +6354,6 @@ qemuBuildCpuArgStr(virQEMUDriverPtr driver,
     ret = 0;
 
  cleanup:
-    VIR_FREE(compare_msg);
-    cpuDataFree(data);
-    virCPUDefFree(guest);
-    virCPUDefFree(cpu);
-    virObjectUnref(caps);
     return ret;
 }
 
@@ -8178,7 +8216,7 @@ qemuBuildCommandLine(virConnectPtr conn,
                            !qemuDomainMachineIsQ35(def) &&
                            (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_PIIX3_USB_UHCI) ||
                             (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_PCI_OHCI) &&
-                             def->os.arch == VIR_ARCH_PPC64))) {
+                             ARCH_IS_PPC64(def->os.arch)))) {
                     if (usblegacy) {
                         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                                        _("Multiple legacy USB controllers are "
@@ -9368,7 +9406,7 @@ qemuBuildCommandLine(virConnectPtr conn,
     }
 
     if (def->nvram) {
-        if (def->os.arch == VIR_ARCH_PPC64 &&
+        if (ARCH_IS_PPC64(def->os.arch) &&
             STREQ(def->os.machine, "pseries")) {
             if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_NVRAM)) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
@@ -9480,7 +9518,7 @@ qemuBuildSerialChrDeviceStr(char **deviceStr,
 {
     virBuffer cmd = VIR_BUFFER_INITIALIZER;
 
-    if ((arch == VIR_ARCH_PPC64) && STREQ(machine, "pseries")) {
+    if (ARCH_IS_PPC64(arch) && STREQ(machine, "pseries")) {
         if (serial->deviceType == VIR_DOMAIN_CHR_DEVICE_TYPE_SERIAL &&
             serial->info.type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_SPAPRVIO) {
             virBufferAsprintf(&cmd, "spapr-vty,chardev=char%s",
@@ -9902,7 +9940,7 @@ qemuParseCommandLineDisk(virDomainXMLOptionPtr xmlopt,
     if (VIR_ALLOC(def->src) < 0)
         goto error;
 
-    if (((dom->os.arch == VIR_ARCH_PPC64) &&
+    if ((ARCH_IS_PPC64(dom->os.arch) &&
         dom->os.machine && STREQ(dom->os.machine, "pseries")))
         def->bus = VIR_DOMAIN_DISK_BUS_SCSI;
     else
@@ -11235,7 +11273,7 @@ qemuParseCommandLine(virCapsPtr qemuCaps,
                 disk->src->type = VIR_STORAGE_TYPE_FILE;
             if (STREQ(arg, "-cdrom")) {
                 disk->device = VIR_DOMAIN_DISK_DEVICE_CDROM;
-                if (((def->os.arch == VIR_ARCH_PPC64) &&
+                if ((ARCH_IS_PPC64(def->os.arch) &&
                     def->os.machine && STREQ(def->os.machine, "pseries")))
                     disk->bus = VIR_DOMAIN_DISK_BUS_SCSI;
                 if (VIR_STRDUP(disk->dst, "hdc") < 0)
