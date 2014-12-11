@@ -32,3 +32,4 @@ dont-include-non-migrateable-features-in-host-model
 CVE-2014-3657.patch
 CVE-2014-7823.patch
 add-ppc64le-support.patch
+upstream-libxl-Allow-libxl-to-find-pygrub-binary.patch
