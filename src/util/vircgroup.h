@@ -259,4 +259,9 @@ int virCgroupSetOwner(virCgroupPtr cgroup,
                       gid_t gid,
                       int controllers);
 
+void virCgroupEscape(void);
+int virCgroupDetectPlacement(virCgroupPtr group,
+                             pid_t pid,
+                             const char *path);
+
 #endif /* __VIR_CGROUP_H__ */
