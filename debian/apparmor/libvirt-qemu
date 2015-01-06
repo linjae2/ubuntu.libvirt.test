@@ -155,6 +155,12 @@
   @{PROC}/device-tree/** r,
   /sys/firmware/devicetree/** r,
 
+  # allow access to charm-specific ceph config (see lp#1403648)
+  /var/lib/charm/ceph/ceph.conf r,
+  # silence spurious denials (see lp#1403648)
+  deny /tmp/{,**} r,
+  deny /var/tmp/{,**} r,
+
   /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
   # child profile for bridge helper process
   profile qemu_bridge_helper {
