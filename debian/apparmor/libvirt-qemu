@@ -78,6 +78,7 @@
   /usr/share/proll/** r,
   /usr/share/vgabios/** r,
   /usr/share/seabios/** r,
+  /usr/share/misc/sgabios.bin r,
   /usr/share/ovmf/** r,
   /usr/share/slof/** r,
 
@@ -152,3 +153,9 @@
   @{PROC}/device-tree/ r,
   @{PROC}/device-tree/** r,
   /sys/firmware/devicetree/** r,
+
+  # allow access to charm-specific ceph config (see lp#1403648)
+  /var/lib/charm/ceph/ceph.conf r,
+  # workaround LP: #1403648 by allowing read access to the directory. This will be removed in future releases
+  /tmp/ r,
+  /var/tmp/ r,

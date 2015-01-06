@@ -1,3 +1,13 @@
+libvirt (1.2.2-0ubuntu13.1.9) trusty-proposed; urgency=medium
+
+  * apparmor libvirt-qemu template: allow reading charm-specific ceph config
+    and allow reading under /tmp and /var/tmp (for SRU only)  (LP: #1403648)
+  * numa-cgroups-fix-cpuset-mems-init.patch - cherrypicked, refreshed patch
+    (by Richard Laager) to fix failure to start on numa node 1 (LP: #1404388)
+  * libvirt-qemu: add r to sgabios.bin (LP: #1393548)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 06 Jan 2015 10:39:15 -0600
+
 libvirt (1.2.2-0ubuntu13.1.8) trusty-proposed; urgency=medium
 
   * complete the 9p support: (LP: #1378434)
