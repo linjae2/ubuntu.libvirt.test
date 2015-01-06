@@ -1,3 +1,10 @@
+libvirt (1.2.8-0ubuntu19) vivid; urgency=medium
+
+  * apparmor libvirt-qemu template: allow reading charm-specific ceph config
+    and silence denials for /tmp/**.  (LP: #1403648)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 06 Jan 2015 10:27:33 -0600
+
 libvirt (1.2.8-0ubuntu18) vivid; urgency=medium
 
   * mutex cgmanager actions (Thanks to Don Bowman for finding the cause)
