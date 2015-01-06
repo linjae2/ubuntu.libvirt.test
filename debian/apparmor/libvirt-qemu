@@ -158,6 +158,12 @@
   @{PROC}/device-tree/** r,
   /sys/firmware/devicetree/** r,
 
+  # allow access to charm-specific ceph config (see lp#1403648)
+  /var/lib/charm/ceph/ceph.conf r,
+  # workaround LP: #1403648 by allowing read access to the directory. This will be removed in future releases
+  /tmp/ r,
+  /var/tmp/ r,
+
   /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
   # child profile for bridge helper process
   profile qemu_bridge_helper {

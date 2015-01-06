@@ -1,3 +1,12 @@
+libvirt (1.2.8-0ubuntu11.3) utopic-proposed; urgency=medium
+
+  * apparmor libvirt-qemu template: allow reading charm-specific ceph config
+    and allow reading under /tmp and /var/tmp (for SRU only)  (LP: #1403648)
+  * mutex cgmanager actions (Thanks to Don Bowman for finding the cause)
+    (LP: #1397130) (LP: #1367702)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 06 Jan 2015 10:40:17 -0600
+
 libvirt (1.2.8-0ubuntu11.2) utopic-proposed; urgency=medium
 
   * complete the 9p support: (LP: #1378434)
