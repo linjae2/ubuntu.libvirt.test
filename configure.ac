@@ -2259,6 +2259,20 @@ if test "${enable_oom}" = yes; then
   AC_DEFINE([TEST_OOM], 1, [Whether malloc OOM checking is enabled])
 fi
 
+AC_ARG_ENABLE([cgmanager],
+	[AC_HELP_STRING([--enable-cgmanager], [enable cgmanager support [default=auto]])],
+	[], [enable_cgmanager=auto])
+if test "x$enable_cgmanager" = "xauto" ; then
+	 AC_CHECK_LIB([cgmanager],[cgmanager_create],[enable_cgmanager=yes],[enable_cgmanager=no],[-lnih -lnih-dbus -ldbus-1])
+fi
+AM_CONDITIONAL([ENABLE_CGMANAGER], [test "x$enable_cgmanager" = "xyes"])
+
+AM_COND_IF([ENABLE_CGMANAGER],
+       [PKG_CHECK_MODULES([CGMANAGER], [libcgmanager])
+       PKG_CHECK_MODULES([NIH], [libnih >= 1.0.2])
+       PKG_CHECK_MODULES([NIH_DBUS], [libnih-dbus >= 1.0.0])
+       PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.2.16])
+       ])
 
 AC_ARG_ENABLE([test-locking],
   [AS_HELP_STRING([--enable-test-locking],
@@ -2970,6 +2984,7 @@ AC_MSG_NOTICE([           DTrace: $with_dtrace])
 AC_MSG_NOTICE([            numad: $with_numad])
 AC_MSG_NOTICE([      XML Catalog: $XML_CATALOG_FILE])
 AC_MSG_NOTICE([      Init script: $with_init_script])
+AC_MSG_NOTICE([      CGManager:   $with_cgmanager])
 AC_MSG_NOTICE([Char device locks: $with_chrdev_lock_files])
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([Developer Tools])
