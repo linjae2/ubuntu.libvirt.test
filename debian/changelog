@@ -1,3 +1,12 @@
+libvirt (1.2.8-0ubuntu20) vivid; urgency=medium
+
+  * debian/rules:
+    - use --with-esx (LP: #565771)
+    - specify restart-after-upgrade (LP: #1215617)
+  * debian/control: add libcurl4-gnutls-dev for esx support
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 21 Jan 2015 13:01:59 -0600
+
 libvirt (1.2.8-0ubuntu19) vivid; urgency=medium
 
   * apparmor libvirt-qemu template: allow reading charm-specific ceph config

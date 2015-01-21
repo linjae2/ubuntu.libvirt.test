@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 DEB_BUILD_PARALLEL = yes
+
 #export VIR_TEST_DEBUG=1
 
 include /usr/share/cdbs/1/rules/autoreconf.mk
@@ -82,7 +83,7 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
 	--with-init-script=none  \
 	$(WITH_NUMA)             \
 	--without-selinux        \
-	--without-esx		 \
+	--with-esx		 \
 	--without-libssh2	 \
 	$(WITH_CAPNG)		 \
 	--enable-debug		 \
@@ -101,7 +102,7 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
 DEB_COMPRESS_EXCLUDE = .o event-test hellolibvirt info1 suspend
 DEB_PYTHON_SETUP_CMD = /dev/null
 DEB_DH_MAKESHLIBS_ARGS_libvirt0 += -V 'libvirt0 (>= 0.5.0)'
-DEB_DH_INSTALLINIT_ARGS = --upstart-only
+DEB_DH_INSTALLINIT_ARGS = --upstart-only --restart-after-upgrade
 
 LOGROTATE = $(basename $(basename $(notdir $(wildcard daemon/libvirtd*.logrotate.in))))
 EXAMPLES_DIR = $(CURDIR)/debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
