@@ -19,8 +19,7 @@
       <wordsize>64</wordsize>
       <emulator>qemu-dm</emulator>
       <machine>xenpv</machine>
-      <domain type='xen'>
-      </domain>
+      <domain type='xen'/>
     </arch>
   </guest>
 
@@ -31,8 +30,7 @@
       <emulator>qemu-dm</emulator>
       <loader>hvmloader</loader>
       <machine>xenfv</machine>
-      <domain type='xen'>
-      </domain>
+      <domain type='xen'/>
     </arch>
     <features>
       <acpi default='on' toggle='yes'/>

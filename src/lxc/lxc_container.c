@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2008-2014 Red Hat, Inc.
  * Copyright (C) 2008 IBM Corp.
+ * Copyright (c) 2015 SUSE LINUX Products GmbH, Nuernberg, Germany.
  *
  * lxc_container.c: file description
  *
@@ -472,7 +473,7 @@ lxcContainerGetNetDef(virDomainDefPtr vmDef, const char *devName)
 
     for (i = 0; i < vmDef->nnets; i++) {
         netDef = vmDef->nets[i];
-        if (STREQ(netDef->ifname_guest_actual, devName))
+        if (STREQ_NULLABLE(netDef->ifname_guest_actual, devName))
             return netDef;
     }
 
@@ -495,8 +496,10 @@ static int lxcContainerRenameAndEnableInterfaces(virDomainDefPtr vmDef,
                                                  char **veths)
 {
     int rc = 0;
-    size_t i;
+    size_t i, j;
     char *newname = NULL;
+    char *toStr = NULL;
+    char *viaStr = NULL;
     virDomainNetDefPtr netDef;
     bool privNet = vmDef->features[VIR_DOMAIN_FEATURE_PRIVNET] ==
                    VIR_TRISTATE_SWITCH_ON;
@@ -516,10 +519,45 @@ static int lxcContainerRenameAndEnableInterfaces(virDomainDefPtr vmDef,
         if (rc < 0)
             goto error_out;
 
-        VIR_DEBUG("Enabling %s", newname);
-        rc = virNetDevSetOnline(newname, true);
-        if (rc < 0)
-            goto error_out;
+        for (j = 0; j < netDef->nips; j++) {
+            virDomainNetIpDefPtr ip = netDef->ips[j];
+            unsigned int prefix = (ip->prefix > 0) ? ip->prefix :
+                                  VIR_SOCKET_ADDR_DEFAULT_PREFIX;
+            char *ipStr = virSocketAddrFormat(&ip->address);
+
+            VIR_DEBUG("Adding IP address '%s/%u' to '%s'",
+                      ipStr, ip->prefix, newname);
+            if (virNetDevSetIPAddress(newname, &ip->address, prefix) < 0) {
+                virReportError(VIR_ERR_SYSTEM_ERROR,
+                               _("Failed to set IP address '%s' on %s"),
+                               ipStr, newname);
+                VIR_FREE(ipStr);
+                goto error_out;
+            }
+            VIR_FREE(ipStr);
+        }
+
+        if (netDef->linkstate != VIR_DOMAIN_NET_INTERFACE_LINK_STATE_DOWN) {
+            VIR_DEBUG("Enabling %s", newname);
+            rc = virNetDevSetOnline(newname, true);
+            if (rc < 0)
+                goto error_out;
+
+            /* Set the routes */
+            for (j = 0; j < netDef->nroutes; j++) {
+                virNetworkRouteDefPtr route = netDef->routes[j];
+
+                if (virNetDevAddRoute(newname,
+                                      virNetworkRouteDefGetAddress(route),
+                                      virNetworkRouteDefGetPrefix(route),
+                                      virNetworkRouteDefGetGateway(route),
+                                      virNetworkRouteDefGetMetric(route)) < 0) {
+                    goto error_out;
+                }
+                VIR_FREE(toStr);
+                VIR_FREE(viaStr);
+            }
+        }
 
         VIR_FREE(newname);
     }
@@ -529,6 +567,8 @@ static int lxcContainerRenameAndEnableInterfaces(virDomainDefPtr vmDef,
         rc = virNetDevSetOnline("lo", true);
 
  error_out:
+    VIR_FREE(toStr);
+    VIR_FREE(viaStr);
     VIR_FREE(newname);
     return rc;
 }
@@ -800,15 +840,18 @@ typedef struct {
     int mflags;
     bool skipUserNS;
     bool skipUnmounted;
+    bool skipNoNetns;
 } virLXCBasicMountInfo;
 
 static const virLXCBasicMountInfo lxcBasicMounts[] = {
-    { "proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, false, false },
-    { "/proc/sys", "/proc/sys", NULL, MS_BIND|MS_RDONLY, false, false },
-    { "sysfs", "/sys", "sysfs", MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RDONLY, false, false },
-    { "securityfs", "/sys/kernel/security", "securityfs", MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RDONLY, true, true },
+    { "proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, false, false, false },
+    { "/proc/sys", "/proc/sys", NULL, MS_BIND|MS_RDONLY, false, false, false },
+    { "/.oldroot/proc/sys/net/ipv4", "/proc/sys/net/ipv4", NULL, MS_BIND, false, false, true },
+    { "/.oldroot/proc/sys/net/ipv6", "/proc/sys/net/ipv6", NULL, MS_BIND, false, false, true },
+    { "sysfs", "/sys", "sysfs", MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RDONLY, false, false, false },
+    { "securityfs", "/sys/kernel/security", "securityfs", MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RDONLY, true, true, false },
 #if WITH_SELINUX
-    { SELINUX_MOUNT, SELINUX_MOUNT, "selinuxfs", MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RDONLY, true, true },
+    { SELINUX_MOUNT, SELINUX_MOUNT, "selinuxfs", MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RDONLY, true, true, false },
 #endif
 };
 
@@ -940,10 +983,24 @@ static int lxcContainerMountBasicFS(bool userns_enabled,
             continue;
         }
 
+        /* Skip mounts with missing source without shouting: it may be a
+         * missing folder in /proc due to the absence of a kernel feature */
+        if (STRPREFIX(mnt_src, "/") && !virFileExists(mnt_src)) {
+            VIR_DEBUG("Skipping due to missing source: %s", mnt_src);
+            VIR_FREE(mnt_src);
+            continue;
+        }
+
+        if (mnt->skipNoNetns && netns_disabled) {
+            VIR_DEBUG("Skipping due to absence of network namespace");
+            VIR_FREE(mnt_src);
+            continue;
+        }
+
         if (virFileMakePath(mnt->dst) < 0) {
             virReportSystemError(errno,
                                  _("Failed to mkdir %s"),
-                                 mnt_src);
+                                 mnt->dst);
             goto cleanup;
         }
 
@@ -1697,6 +1754,23 @@ static int lxcContainerUnmountForSharedRoot(const char *stateDir,
 }
 
 
+static bool
+lxcNeedNetworkNamespace(virDomainDefPtr def)
+{
+    size_t i;
+    if (def->nets != NULL)
+        return true;
+    if (def->features[VIR_DOMAIN_FEATURE_PRIVNET] == VIR_TRISTATE_SWITCH_ON)
+        return true;
+    for (i = 0; i < def->nhostdevs; i++) {
+        if (def->hostdevs[i]->mode == VIR_DOMAIN_HOSTDEV_MODE_CAPABILITIES &&
+            def->hostdevs[i]->source.caps.type == VIR_DOMAIN_HOSTDEV_CAPS_TYPE_NET)
+            return true;
+    }
+    return false;
+}
+
+
 /* Got a FS mapped to /, we're going the pivot_root
  * approach to do a better-chroot-than-chroot
  * this is based on this thread http://lkml.org/lkml/2008/3/5/29
@@ -1741,7 +1815,7 @@ static int lxcContainerSetupPivotRoot(virDomainDefPtr vmDef,
 
     /* Mounts the core /proc, /sys, etc filesystems */
     if (lxcContainerMountBasicFS(vmDef->idmap.nuidmap,
-                                 !vmDef->nnets) < 0)
+                                 !lxcNeedNetworkNamespace(vmDef)) < 0)
         goto cleanup;
 
     /* Ensure entire root filesystem (except /.oldroot) is readonly */
@@ -2239,22 +2313,6 @@ virArch lxcContainerGetAlt32bitArch(virArch arch)
     return VIR_ARCH_NONE;
 }
 
-
-static bool
-lxcNeedNetworkNamespace(virDomainDefPtr def)
-{
-    size_t i;
-    if (def->nets != NULL)
-        return true;
-    if (def->features[VIR_DOMAIN_FEATURE_PRIVNET] == VIR_TRISTATE_SWITCH_ON)
-        return true;
-    for (i = 0; i < def->nhostdevs; i++) {
-        if (def->hostdevs[i]->mode == VIR_DOMAIN_HOSTDEV_MODE_CAPABILITIES &&
-            def->hostdevs[i]->source.caps.type == VIR_DOMAIN_HOSTDEV_CAPS_TYPE_NET)
-            return true;
-    }
-    return false;
-}
 
 /**
  * lxcContainerStart:
