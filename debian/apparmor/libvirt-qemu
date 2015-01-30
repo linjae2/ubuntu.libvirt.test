@@ -156,7 +156,7 @@
   /sys/firmware/devicetree/** r,
 
   # allow access to charm-specific ceph config (see lp#1403648)
-  /var/lib/charm/ceph/ceph.conf r,
+  /var/lib/charm/*/ceph.conf r,
   # silence spurious denials (see lp#1403648)
   deny /tmp/{,**} r,
   deny /var/tmp/{,**} r,
