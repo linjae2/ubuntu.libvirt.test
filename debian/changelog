@@ -1,3 +1,9 @@
+libvirt (1.2.8-0ubuntu21) vivid; urgency=medium
+
+  * d/apparmor/libvirt-qemu: Update the ceph.conf allow rule (LP: #1403648)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 30 Jan 2015 10:02:20 +0100
+
 libvirt (1.2.8-0ubuntu20) vivid; urgency=medium
 
   * debian/rules:
