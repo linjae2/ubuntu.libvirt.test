@@ -45,10 +45,8 @@ int qemuTeardownHostdevCgroup(virDomainObjPtr vm,
 int qemuConnectCgroup(virQEMUDriverPtr driver,
                       virDomainObjPtr vm);
 int qemuSetupCgroup(virQEMUDriverPtr driver,
-                    virDomainObjPtr vm,
-                    virBitmapPtr nodemask);
-int qemuSetupCgroupPostInit(virDomainObjPtr vm,
-                            virBitmapPtr nodemask);
+                    virDomainObjPtr vm);
+int qemuSetupCpusetMems(virDomainObjPtr vm);
 int qemuSetupCgroupVcpuBW(virCgroupPtr cgroup,
                           unsigned long long period,
                           long long quota);
@@ -57,11 +55,15 @@ int qemuSetupCgroupVcpuPin(virCgroupPtr cgroup,
                            int nvcpupin,
                            int vcpuid);
 int qemuSetupCgroupEmulatorPin(virCgroupPtr cgroup, virBitmapPtr cpumask);
+int qemuSetupCgroupIOThreadsPin(virCgroupPtr cgroup,
+                                virDomainVcpuPinDefPtr *iothreadspin,
+                                int niothreadspin,
+                                int iothreadid);
 int qemuSetupCgroupForVcpu(virDomainObjPtr vm);
+int qemuSetupCgroupForIOThreads(virDomainObjPtr vm);
 int qemuSetupCgroupForEmulator(virQEMUDriverPtr driver,
-                               virDomainObjPtr vm,
-                               virBitmapPtr nodemask);
-int qemuRemoveCgroup(virDomainObjPtr vm);
+                               virDomainObjPtr vm);
+int qemuRemoveCgroup(virQEMUDriverPtr driver, virDomainObjPtr vm);
 int qemuAddToCgroup(virDomainObjPtr vm);
 
 #endif /* __QEMU_CGROUP_H__ */

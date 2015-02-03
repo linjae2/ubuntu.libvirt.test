@@ -2,38 +2,33 @@ Description: Extend libvirt checks for ubuntu machine types
 Author: Felix Geyer <debfx@ubuntu.com>
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1379346
 Last-Update: 2014-10-09
-
---- libvirt-1.2.8.orig/src/qemu/qemu_command.c
-+++ libvirt-1.2.8/src/qemu/qemu_command.c
-@@ -1795,7 +1795,8 @@ qemuDomainMachineIsI440FX(virDomainDefPt
+diff -Naurp libvirt-1.2.12.orig/src/qemu/qemu_command.c libvirt-1.2.12/src/qemu/qemu_command.c
+--- libvirt-1.2.12.orig/src/qemu/qemu_command.c	2015-01-23 21:20:37.000000000 -0500
++++ libvirt-1.2.12/src/qemu/qemu_command.c	2015-02-04 09:19:56.107483380 -0500
+@@ -1721,6 +1721,7 @@ qemuDomainMachineIsI440FX(virDomainDefPt
              STRPREFIX(def->os.machine, "pc-0.") ||
              STRPREFIX(def->os.machine, "pc-1.") ||
              STRPREFIX(def->os.machine, "pc-i440") ||
--            STRPREFIX(def->os.machine, "rhel"));
-+            STRPREFIX(def->os.machine, "rhel") ||
-+            STREQ(def->os.machine, "ubuntu"));
++			STREQ(def->os.machine, "ubuntu") ||
+             STRPREFIX(def->os.machine, "rhel"));
  }
  
- 
-@@ -1995,7 +1996,8 @@ qemuAssignDevicePCISlots(virDomainDefPtr
+@@ -1884,6 +1885,7 @@ qemuValidateDevicePCISlotsChipsets(virDo
          STRPREFIX(def->os.machine, "pc-1.") ||
          STRPREFIX(def->os.machine, "pc-i440") ||
          STREQ(def->os.machine, "pc") ||
--        STRPREFIX(def->os.machine, "rhel")) &&
-+        STRPREFIX(def->os.machine, "rhel") ||
-+        STREQ(def->os.machine, "ubuntu")) &&
++        STREQ(def->os.machine, "ubuntu") ||
+         STRPREFIX(def->os.machine, "rhel")) &&
          qemuValidateDevicePCISlotsPIIX3(def, qemuCaps, addrs) < 0) {
-         goto error;
-     }
---- libvirt-1.2.8.orig/src/qemu/qemu_domain.c
-+++ libvirt-1.2.8/src/qemu/qemu_domain.c
-@@ -739,7 +739,8 @@ qemuDomainDefPostParse(virDomainDefPtr d
+         return -1;
+diff -Naurp libvirt-1.2.12.orig/src/qemu/qemu_domain.c libvirt-1.2.12/src/qemu/qemu_domain.c
+--- libvirt-1.2.12.orig/src/qemu/qemu_domain.c	2015-01-23 06:46:24.000000000 -0500
++++ libvirt-1.2.12/src/qemu/qemu_domain.c	2015-02-04 09:20:18.043482693 -0500
+@@ -951,6 +951,7 @@ qemuDomainDefPostParse(virDomainDefPtr d
              !STRPREFIX(def->os.machine, "pc-1.") &&
              !STRPREFIX(def->os.machine, "pc-i440") &&
              !STREQ(def->os.machine, "pc") &&
--            !STRPREFIX(def->os.machine, "rhel"))
-+            !STRPREFIX(def->os.machine, "rhel") &&
-+            !STREQ(def->os.machine, "ubuntu"))
++            !STREQ(def->os.machine, "ubuntu") &&
+             !STRPREFIX(def->os.machine, "rhel"))
              break;
          addPCIRoot = true;
-         break;

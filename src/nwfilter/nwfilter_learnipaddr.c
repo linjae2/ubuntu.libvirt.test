@@ -134,7 +134,7 @@ struct _virNWFilterIfaceLock {
 };
 
 
-static bool threadsTerminate = false;
+static bool threadsTerminate;
 
 
 int
@@ -797,9 +797,8 @@ virNWFilterLearnInit(void)
     threadsTerminate = false;
 
     pendingLearnReq = virHashCreate(0, freeLearnReqEntry);
-    if (!pendingLearnReq) {
+    if (!pendingLearnReq)
         return -1;
-    }
 
     ifaceLockMap = virHashCreate(0, virHashValueFree);
     if (!ifaceLockMap) {

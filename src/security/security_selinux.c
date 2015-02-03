@@ -71,6 +71,12 @@ struct _virSecuritySELinuxData {
 #define SECURITY_SELINUX_VOID_DOI       "0"
 #define SECURITY_SELINUX_NAME "selinux"
 
+/* Data structure to pass to *FileIterate so we have everything we need */
+struct SELinuxSCSICallbackData {
+    virSecurityManagerPtr mgr;
+    virDomainDefPtr def;
+};
+
 static int
 virSecuritySELinuxRestoreSecurityTPMFileLabelInt(virSecurityManagerPtr mgr,
                                                  virDomainDefPtr def,
@@ -641,7 +647,7 @@ virSecuritySELinuxGenSecurityLabel(virSecurityManagerPtr mgr,
         if (!baselabel) {
             if (def->virtType == VIR_DOMAIN_VIRT_QEMU) {
                 if (data->alt_domain_context == NULL) {
-                    static bool warned = false;
+                    static bool warned;
                     if (!warned) {
                         VIR_WARN("SELinux policy does not define a domain type for QEMU TCG. "
                                  "Guest startup may be denied due to missing 'execmem' privilege "
@@ -731,7 +737,9 @@ virSecuritySELinuxReserveSecurityLabel(virSecurityManagerPtr mgr,
     virSecurityLabelDefPtr seclabel;
 
     seclabel = virDomainDefGetSecurityLabelDef(def, SECURITY_SELINUX_NAME);
-    if (!seclabel || seclabel->type == VIR_DOMAIN_SECLABEL_STATIC)
+    if (!seclabel ||
+        seclabel->type == VIR_DOMAIN_SECLABEL_NONE ||
+        seclabel->type == VIR_DOMAIN_SECLABEL_STATIC)
         return 0;
 
     if (getpidcon_raw(pid, &pctx) == -1) {
@@ -1141,7 +1149,7 @@ virSecuritySELinuxRestoreSecurityImageLabelInt(virSecurityManagerPtr mgr,
         !src->backingStore)
         return 0;
 
-    /* Don't restore labels on readoly/shared disks, because other VMs may
+    /* Don't restore labels on readonly/shared disks, because other VMs may
      * still be accessing these. Alternatively we could iterate over all
      * running domains and try to figure out if it is in use, but this would
      * not work for clustered filesystems, since we can't see running VMs using
@@ -1307,14 +1315,31 @@ virSecuritySELinuxSetSecurityUSBLabel(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
 }
 
 static int
-virSecuritySELinuxSetSecuritySCSILabel(virSCSIDevicePtr dev ATTRIBUTE_UNUSED,
+virSecuritySELinuxSetSecuritySCSILabel(virSCSIDevicePtr dev,
                                        const char *file, void *opaque)
 {
-    return virSecuritySELinuxSetSecurityHostdevLabelHelper(file, opaque);
+    virSecurityLabelDefPtr secdef;
+    struct SELinuxSCSICallbackData *ptr = opaque;
+    virSecurityManagerPtr mgr = ptr->mgr;
+    virSecuritySELinuxDataPtr data = virSecurityManagerGetPrivateData(mgr);
+
+    secdef = virDomainDefGetSecurityLabelDef(ptr->def, SECURITY_SELINUX_NAME);
+    if (secdef == NULL)
+        return 0;
+
+    if (virSCSIDeviceGetShareable(dev))
+        return virSecuritySELinuxSetFileconOptional(file,
+                                                    data->file_context);
+    else if (virSCSIDeviceGetReadonly(dev))
+        return virSecuritySELinuxSetFileconOptional(file,
+                                                    data->content_context);
+    else
+        return virSecuritySELinuxSetFileconOptional(file, secdef->imagelabel);
 }
 
 static int
-virSecuritySELinuxSetSecurityHostdevSubsysLabel(virDomainDefPtr def,
+virSecuritySELinuxSetSecurityHostdevSubsysLabel(virSecurityManagerPtr mgr,
+                                                virDomainDefPtr def,
                                                 virDomainHostdevDefPtr dev,
                                                 const char *vroot)
 
@@ -1327,7 +1352,8 @@ virSecuritySELinuxSetSecurityHostdevSubsysLabel(virDomainDefPtr def,
     /* Like virSecuritySELinuxSetSecurityImageLabelInternal() for a networked
      * disk, do nothing for an iSCSI hostdev
      */
-    if (scsisrc->protocol == VIR_DOMAIN_HOSTDEV_SCSI_PROTOCOL_TYPE_ISCSI)
+    if (dev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI &&
+        scsisrc->protocol == VIR_DOMAIN_HOSTDEV_SCSI_PROTOCOL_TYPE_ISCSI)
         return 0;
 
     switch (dev->source.subsys.type) {
@@ -1374,6 +1400,8 @@ virSecuritySELinuxSetSecurityHostdevSubsysLabel(virDomainDefPtr def,
 
     case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI: {
         virDomainHostdevSubsysSCSIHostPtr scsihostsrc = &scsisrc->u.host;
+        struct SELinuxSCSICallbackData data = {.mgr = mgr, .def = def};
+
         virSCSIDevicePtr scsi =
             virSCSIDeviceNew(NULL,
                              scsihostsrc->adapter, scsihostsrc->bus,
@@ -1383,7 +1411,9 @@ virSecuritySELinuxSetSecurityHostdevSubsysLabel(virDomainDefPtr def,
         if (!scsi)
             goto done;
 
-        ret = virSCSIDeviceFileIterate(scsi, virSecuritySELinuxSetSecuritySCSILabel, def);
+        ret = virSCSIDeviceFileIterate(scsi,
+                                       virSecuritySELinuxSetSecuritySCSILabel,
+                                       &data);
         virSCSIDeviceFree(scsi);
 
         break;
@@ -1451,7 +1481,7 @@ virSecuritySELinuxSetSecurityHostdevCapsLabel(virDomainDefPtr def,
 
 
 static int
-virSecuritySELinuxSetSecurityHostdevLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+virSecuritySELinuxSetSecurityHostdevLabel(virSecurityManagerPtr mgr,
                                           virDomainDefPtr def,
                                           virDomainHostdevDefPtr dev,
                                           const char *vroot)
@@ -1465,7 +1495,8 @@ virSecuritySELinuxSetSecurityHostdevLabel(virSecurityManagerPtr mgr ATTRIBUTE_UN
 
     switch (dev->mode) {
     case VIR_DOMAIN_HOSTDEV_MODE_SUBSYS:
-        return virSecuritySELinuxSetSecurityHostdevSubsysLabel(def, dev, vroot);
+        return virSecuritySELinuxSetSecurityHostdevSubsysLabel(mgr, def,
+                                                               dev, vroot);
 
     case VIR_DOMAIN_HOSTDEV_MODE_CAPABILITIES:
         return virSecuritySELinuxSetSecurityHostdevCapsLabel(def, dev, vroot);
@@ -1497,11 +1528,17 @@ virSecuritySELinuxRestoreSecurityUSBLabel(virUSBDevicePtr dev ATTRIBUTE_UNUSED,
 
 
 static int
-virSecuritySELinuxRestoreSecuritySCSILabel(virSCSIDevicePtr dev ATTRIBUTE_UNUSED,
+virSecuritySELinuxRestoreSecuritySCSILabel(virSCSIDevicePtr dev,
                                            const char *file,
                                            void *opaque)
 {
     virSecurityManagerPtr mgr = opaque;
+
+    /* Don't restore labels on a shareable or readonly hostdev, because
+     * other VMs may still be accessing.
+     */
+    if (virSCSIDeviceGetShareable(dev) || virSCSIDeviceGetReadonly(dev))
+        return 0;
 
     return virSecuritySELinuxRestoreSecurityFileLabel(mgr, file);
 }
@@ -1520,7 +1557,8 @@ virSecuritySELinuxRestoreSecurityHostdevSubsysLabel(virSecurityManagerPtr mgr,
     /* Like virSecuritySELinuxRestoreSecurityImageLabelInt() for a networked
      * disk, do nothing for an iSCSI hostdev
      */
-    if (scsisrc->protocol == VIR_DOMAIN_HOSTDEV_SCSI_PROTOCOL_TYPE_ISCSI)
+    if (dev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI &&
+        scsisrc->protocol == VIR_DOMAIN_HOSTDEV_SCSI_PROTOCOL_TYPE_ISCSI)
         return 0;
 
     switch (dev->source.subsys.type) {
@@ -1911,6 +1949,10 @@ virSecuritySELinuxRestoreSecurityAllLabel(virSecurityManagerPtr mgr,
                                      mgr) < 0)
         rc = -1;
 
+    if (def->os.loader && def->os.loader->nvram &&
+        virSecuritySELinuxRestoreSecurityFileLabel(mgr, def->os.loader->nvram) < 0)
+        rc = -1;
+
     if (def->os.kernel &&
         virSecuritySELinuxRestoreSecurityFileLabel(mgr, def->os.kernel) < 0)
         rc = -1;
@@ -2294,6 +2336,13 @@ virSecuritySELinuxSetSecurityAllLabel(virSecurityManagerPtr mgr,
                                      mgr) < 0)
         return -1;
 
+    /* This is different than kernel or initrd. The nvram store
+     * is really a disk, qemu can read and write to it. */
+    if (def->os.loader && def->os.loader->nvram &&
+        secdef && secdef->imagelabel &&
+        virSecuritySELinuxSetFilecon(def->os.loader->nvram, secdef->imagelabel) < 0)
+        return -1;
+
     if (def->os.kernel &&
         virSecuritySELinuxSetFilecon(def->os.kernel, data->content_context) < 0)
         return -1;
@@ -2330,17 +2379,66 @@ virSecuritySELinuxSetImageFDLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
 }
 
 static int
-virSecuritySELinuxSetTapFDLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
+virSecuritySELinuxSetTapFDLabel(virSecurityManagerPtr mgr,
                                 virDomainDefPtr def,
                                 int fd)
 {
+    struct stat buf;
+    security_context_t fcon = NULL;
     virSecurityLabelDefPtr secdef;
+    char *str = NULL, *proc = NULL, *fd_path = NULL;
+    int rc = -1;
 
     secdef = virDomainDefGetSecurityLabelDef(def, SECURITY_SELINUX_NAME);
     if (!secdef || !secdef->label)
         return 0;
 
-    return virSecuritySELinuxFSetFilecon(fd, secdef->imagelabel);
+    if (fstat(fd, &buf) < 0) {
+        virReportSystemError(errno, _("cannot stat tap fd %d"), fd);
+        goto cleanup;
+    }
+
+    if ((buf.st_mode & S_IFMT) != S_IFCHR) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("tap fd %d is not character device"), fd);
+        goto cleanup;
+    }
+
+    /* Label /dev/tap.* devices only. Leave /dev/net/tun alone! */
+    if (virAsprintf(&proc, "/proc/self/fd/%d", fd) == -1)
+        goto cleanup;
+
+    if (virFileResolveLink(proc, &fd_path) < 0) {
+        virReportSystemError(errno,
+                             _("Unable to resolve link: %s"), proc);
+        goto cleanup;
+    }
+
+    if (!STRPREFIX(fd_path, "/dev/tap")) {
+        VIR_DEBUG("fd=%d points to %s not setting SELinux label",
+                  fd, fd_path);
+        rc = 0;
+        goto cleanup;
+    }
+
+    if (getContext(mgr, "/dev/tap*", buf.st_mode, &fcon) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("cannot lookup default selinux label for tap fd %d"), fd);
+        goto cleanup;
+    }
+
+    if (!(str = virSecuritySELinuxContextAddRange(secdef->label, fcon))) {
+        goto cleanup;
+    } else {
+        rc = virSecuritySELinuxFSetFilecon(fd, str);
+    }
+
+ cleanup:
+    freecon(fcon);
+    VIR_FREE(fd_path);
+    VIR_FREE(proc);
+    VIR_FREE(str);
+    return rc;
 }
 
 static char *

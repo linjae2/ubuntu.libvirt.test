@@ -492,8 +492,7 @@ virPCIDeviceIterDevices(virPCIDeviceIterPredicate predicate,
             virPCIDeviceFree(check);
             ret = -1;
             break;
-        }
-        else if (rc == 1) {
+        } else if (rc == 1) {
             VIR_DEBUG("%s %s: iter matched on %s", dev->id, dev->name, check->name);
             *matched = check;
             ret = 1;
@@ -1128,9 +1127,8 @@ virPCIDeviceUnbindFromStub(virPCIDevicePtr dev)
         goto reprobe;
 
     /* Xen's pciback.ko wants you to use remove_slot on the specific device */
-    if (virPCIDriverFile(&path, driver, "remove_slot") < 0) {
+    if (virPCIDriverFile(&path, driver, "remove_slot") < 0)
         goto cleanup;
-    }
 
     if (virFileExists(path) && virFileWriteStr(path, dev->name, 0) < 0) {
         virReportSystemError(errno,
@@ -1184,7 +1182,7 @@ virPCIDeviceBindToStub(virPCIDevicePtr dev,
                        const char *stubDriverName)
 {
     int result = -1;
-    int reprobe = false;
+    bool reprobe = false;
     char *stubDriverPath = NULL;
     char *driverLink = NULL;
     char *path = NULL; /* reused for different purposes */
@@ -1215,9 +1213,8 @@ virPCIDeviceBindToStub(virPCIDevicePtr dev,
      * is triggered for such a device, it will also be immediately
      * bound by the stub.
      */
-    if (virPCIDriverFile(&path, stubDriverName, "new_id") < 0) {
+    if (virPCIDriverFile(&path, stubDriverName, "new_id") < 0)
         goto cleanup;
-    }
 
     if (virFileWriteStr(path, dev->id, 0) < 0) {
         virReportSystemError(errno,
@@ -1243,9 +1240,8 @@ virPCIDeviceBindToStub(virPCIDevicePtr dev,
      */
     if (!virFileLinkPointsTo(driverLink, stubDriverPath)) {
         /* Xen's pciback.ko wants you to use new_slot first */
-        if (virPCIDriverFile(&path, stubDriverName, "new_slot") < 0) {
+        if (virPCIDriverFile(&path, stubDriverName, "new_slot") < 0)
             goto remove_id;
-        }
 
         if (virFileExists(path) && virFileWriteStr(path, dev->name, 0) < 0) {
             virReportSystemError(errno,
@@ -1256,9 +1252,8 @@ virPCIDeviceBindToStub(virPCIDevicePtr dev,
         }
         dev->remove_slot = true;
 
-        if (virPCIDriverFile(&path, stubDriverName, "bind") < 0) {
+        if (virPCIDriverFile(&path, stubDriverName, "bind") < 0)
             goto remove_id;
-        }
 
         if (virFileWriteStr(path, dev->name, 0) < 0) {
             virReportSystemError(errno,
@@ -1468,8 +1463,7 @@ virPCIDeviceWaitForCleanup(virPCIDevicePtr dev, const char *matcher)
                 ret = 1;
                 break;
             }
-        }
-        else {
+        } else {
             in_matching_device = false;
 
             /* expected format: <start>-<end> : <domain>:<bus>:<slot>.<function> */
@@ -1507,9 +1501,8 @@ virPCIDeviceReadID(virPCIDevicePtr dev, const char *id_name)
     char *path = NULL;
     char *id_str;
 
-    if (virPCIFile(&path, dev->name, id_name) < 0) {
+    if (virPCIFile(&path, dev->name, id_name) < 0)
         return NULL;
-    }
 
     /* ID string is '0xNNNN\n' ... i.e. 7 bytes */
     if (virFileReadAll(path, 7, &id_str) < 0) {
@@ -1660,6 +1653,32 @@ virPCIDeviceFree(virPCIDevicePtr dev)
     VIR_FREE(dev->used_by_drvname);
     VIR_FREE(dev->used_by_domname);
     VIR_FREE(dev);
+}
+
+/**
+ * virPCIDeviceGetAddress:
+ * @dev: device to get address from
+ *
+ * Take a PCI device on input and return its PCI address. The
+ * caller must free the returned value when no longer needed.
+ *
+ * Returns NULL on failure, the device address on success.
+ */
+virPCIDeviceAddressPtr
+virPCIDeviceGetAddress(virPCIDevicePtr dev)
+{
+
+    virPCIDeviceAddressPtr pciAddrPtr;
+
+    if (!dev || (VIR_ALLOC(pciAddrPtr) < 0))
+        return NULL;
+
+    pciAddrPtr->domain = dev->domain;
+    pciAddrPtr->bus = dev->bus;
+    pciAddrPtr->slot = dev->slot;
+    pciAddrPtr->function = dev->function;
+
+    return pciAddrPtr;
 }
 
 const char *
@@ -2272,9 +2291,9 @@ virPCIDeviceIsBehindSwitchLackingACS(virPCIDevicePtr dev)
          * into play since devices on the root bus can't P2P without going
          * through the root IOMMU.
          */
-        if (dev->bus == 0)
+        if (dev->bus == 0) {
             return 0;
-        else {
+        } else {
             virReportError(VIR_ERR_INTERNAL_ERROR,
                            _("Failed to find parent device for %s"),
                            dev->name);

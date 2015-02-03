@@ -56,7 +56,7 @@ struct _udevPrivate {
     bool privileged;
 };
 
-static virNodeDeviceDriverStatePtr driverState = NULL;
+static virNodeDeviceDriverStatePtr driverState;
 
 static int udevStrToLong_ull(char const *s,
                              char **end_ptr,
@@ -166,9 +166,8 @@ static int udevGetIntProperty(struct udev_device *udev_device,
     ret = udevGetDeviceProperty(udev_device, property_key, &udev_value);
 
     if (ret == PROPERTY_FOUND) {
-        if (udevStrToLong_i(udev_value, NULL, base, value) != 0) {
+        if (udevStrToLong_i(udev_value, NULL, base, value) != 0)
             ret = PROPERTY_ERROR;
-        }
     }
 
     VIR_FREE(udev_value);
@@ -187,9 +186,8 @@ static int udevGetUintProperty(struct udev_device *udev_device,
     ret = udevGetDeviceProperty(udev_device, property_key, &udev_value);
 
     if (ret == PROPERTY_FOUND) {
-        if (udevStrToLong_ui(udev_value, NULL, base, value) != 0) {
+        if (udevStrToLong_ui(udev_value, NULL, base, value) != 0)
             ret = PROPERTY_ERROR;
-        }
     }
 
     VIR_FREE(udev_value);
@@ -266,9 +264,8 @@ static int udevGetIntSysfsAttr(struct udev_device *udev_device,
     ret = udevGetDeviceSysfsAttr(udev_device, attr_name, &udev_value);
 
     if (ret == PROPERTY_FOUND) {
-        if (udevStrToLong_i(udev_value, NULL, base, value) != 0) {
+        if (udevStrToLong_i(udev_value, NULL, base, value) != 0)
             ret = PROPERTY_ERROR;
-        }
     }
 
     VIR_FREE(udev_value);
@@ -287,9 +284,8 @@ static int udevGetUintSysfsAttr(struct udev_device *udev_device,
     ret = udevGetDeviceSysfsAttr(udev_device, attr_name, &udev_value);
 
     if (ret == PROPERTY_FOUND) {
-        if (udevStrToLong_ui(udev_value, NULL, base, value) != 0) {
+        if (udevStrToLong_ui(udev_value, NULL, base, value) != 0)
             ret = PROPERTY_ERROR;
-        }
     }
 
     VIR_FREE(udev_value);
@@ -307,9 +303,8 @@ static int udevGetUint64SysfsAttr(struct udev_device *udev_device,
     ret = udevGetDeviceSysfsAttr(udev_device, attr_name, &udev_value);
 
     if (ret == PROPERTY_FOUND) {
-        if (udevStrToLong_ull(udev_value, NULL, 0, value) != 0) {
+        if (udevStrToLong_ull(udev_value, NULL, 0, value) != 0)
             ret = PROPERTY_ERROR;
-        }
     }
 
     VIR_FREE(udev_value);
@@ -329,9 +324,8 @@ static int udevGenerateDeviceName(struct udev_device *device,
                       udev_device_get_subsystem(device),
                       udev_device_get_sysname(device));
 
-    if (s != NULL) {
+    if (s != NULL)
         virBufferAsprintf(&buf, "_%s", s);
-    }
 
     if (virBufferCheckError(&buf) < 0)
         return -1;
@@ -339,15 +333,14 @@ static int udevGenerateDeviceName(struct udev_device *device,
     def->name = virBufferContentAndReset(&buf);
 
     for (i = 0; i < strlen(def->name); i++) {
-        if (!(c_isalnum(*(def->name + i)))) {
+        if (!(c_isalnum(*(def->name + i))))
             *(def->name + i) = '_';
-        }
     }
 
     return ret;
 }
 
-
+#if HAVE_UDEV_LOGGING
 typedef void (*udevLogFunctionPtr)(struct udev *udev,
                                    int priority,
                                    const char *file,
@@ -380,6 +373,7 @@ udevLogFunction(struct udev *udev ATTRIBUTE_UNUSED,
 
     VIR_FREE(format);
 }
+#endif
 
 
 static int udevTranslatePCIIds(unsigned int vendor,
@@ -490,9 +484,8 @@ static int udevProcessPCI(struct udev_device *device,
         goto out;
     }
 
-    if (udevGenerateDeviceName(device, def, NULL) != 0) {
+    if (udevGenerateDeviceName(device, def, NULL) != 0)
         goto out;
-    }
 
     rc = udevGetIntSysfsAttr(device,
                             "numa_node",
@@ -580,6 +573,7 @@ static int udevProcessUSBDevice(struct udev_device *device,
 {
     union _virNodeDevCapData *data = &def->caps->data;
     int ret = -1;
+    int err;
 
     if (udevGetUintProperty(device,
                             "BUSNUM",
@@ -602,10 +596,17 @@ static int udevProcessUSBDevice(struct udev_device *device,
         goto out;
     }
 
-    if (udevGetStringSysfsAttr(device,
-                              "manufacturer",
-                              &data->usb_dev.vendor_name) == PROPERTY_ERROR) {
+    err = udevGetStringProperty(device,
+                                "ID_VENDOR_FROM_DATABASE",
+                                &data->usb_dev.vendor_name);
+    if (err == PROPERTY_ERROR)
         goto out;
+    if (err == PROPERTY_MISSING) {
+        if (udevGetStringSysfsAttr(device,
+                                  "manufacturer",
+                                  &data->usb_dev.vendor_name) == PROPERTY_ERROR) {
+            goto out;
+        }
     }
 
     if (udevGetUintProperty(device,
@@ -615,15 +616,21 @@ static int udevProcessUSBDevice(struct udev_device *device,
         goto out;
     }
 
-    if (udevGetStringSysfsAttr(device,
-                              "product",
-                              &data->usb_dev.product_name) == PROPERTY_ERROR) {
+    err = udevGetStringProperty(device,
+                                "ID_MODEL_FROM_DATABASE",
+                                &data->usb_dev.product_name);
+    if (err == PROPERTY_ERROR)
         goto out;
+    if (err == PROPERTY_MISSING) {
+        if (udevGetStringSysfsAttr(device,
+                                  "product",
+                                  &data->usb_dev.product_name) == PROPERTY_ERROR) {
+            goto out;
+        }
     }
 
-    if (udevGenerateDeviceName(device, def, NULL) != 0) {
+    if (udevGenerateDeviceName(device, def, NULL) != 0)
         goto out;
-    }
 
     ret = 0;
 
@@ -666,9 +673,8 @@ static int udevProcessUSBInterface(struct udev_device *device,
         goto out;
     }
 
-    if (udevGenerateDeviceName(device, def, NULL) != 0) {
+    if (udevGenerateDeviceName(device, def, NULL) != 0)
         goto out;
-    }
 
     ret = 0;
 
@@ -709,9 +715,8 @@ static int udevProcessNetworkInterface(struct udev_device *device,
         goto out;
     }
 
-    if (udevGenerateDeviceName(device, def, data->net.address) != 0) {
+    if (udevGenerateDeviceName(device, def, data->net.address) != 0)
         goto out;
-    }
 
     if (virNetDevGetLinkInfo(data->net.ifname, &data->net.lnk) < 0)
         goto out;
@@ -747,9 +752,8 @@ static int udevProcessSCSIHost(struct udev_device *device ATTRIBUTE_UNUSED,
 
     detect_scsi_host_caps(&def->caps->data);
 
-    if (udevGenerateDeviceName(device, def, NULL) != 0) {
+    if (udevGenerateDeviceName(device, def, NULL) != 0)
         goto out;
-    }
 
     ret = 0;
 
@@ -770,9 +774,8 @@ static int udevProcessSCSITarget(struct udev_device *device ATTRIBUTE_UNUSED,
     if (VIR_STRDUP(data->scsi_target.name, sysname) < 0)
         goto out;
 
-    if (udevGenerateDeviceName(device, def, NULL) != 0) {
+    if (udevGenerateDeviceName(device, def, NULL) != 0)
         goto out;
-    }
 
     ret = 0;
 
@@ -849,9 +852,8 @@ static int udevProcessSCSIDevice(struct udev_device *device ATTRIBUTE_UNUSED,
 
     filename = last_component(def->sysfs_path);
 
-    if (udevStrToLong_ui(filename, &p, 10, &data->scsi.host) == -1) {
+    if (udevStrToLong_ui(filename, &p, 10, &data->scsi.host) == -1)
         goto out;
-    }
 
     if ((p == NULL) || (udevStrToLong_ui(p+1,
                                          &p,
@@ -876,9 +878,8 @@ static int udevProcessSCSIDevice(struct udev_device *device ATTRIBUTE_UNUSED,
 
     switch (udevGetUintSysfsAttr(device, "type", &tmp, 0)) {
     case PROPERTY_FOUND:
-        if (udevGetSCSIType(def, tmp, &data->scsi.type) == -1) {
+        if (udevGetSCSIType(def, tmp, &data->scsi.type) == -1)
             goto out;
-        }
         break;
     case PROPERTY_MISSING:
         break; /* No type is not an error */
@@ -888,9 +889,8 @@ static int udevProcessSCSIDevice(struct udev_device *device ATTRIBUTE_UNUSED,
         break;
     }
 
-    if (udevGenerateDeviceName(device, def, NULL) != 0) {
+    if (udevGenerateDeviceName(device, def, NULL) != 0)
         goto out;
-    }
 
     ret = 0;
 
@@ -1084,9 +1084,8 @@ static int udevKludgeStorageType(virNodeDeviceDefPtr def)
 
 static void udevStripSpaces(char *s)
 {
-    if (s == NULL) {
+    if (s == NULL)
         return;
-    }
 
     while (virFileStripSuffix(s, " ")) {
         /* do nothing */
@@ -1169,9 +1168,8 @@ static int udevProcessStorage(struct udev_device *device,
         } else {
 
             /* If udev doesn't have it, perhaps we can guess it. */
-            if (udevKludgeStorageType(def) != 0) {
+            if (udevKludgeStorageType(def) != 0)
                 goto out;
-            }
         }
     }
 
@@ -1189,9 +1187,8 @@ static int udevProcessStorage(struct udev_device *device,
         goto out;
     }
 
-    if (udevGenerateDeviceName(device, def, data->storage.serial) != 0) {
+    if (udevGenerateDeviceName(device, def, data->storage.serial) != 0)
         goto out;
-    }
 
  out:
     VIR_DEBUG("Storage ret=%d", ret);
@@ -1361,9 +1358,8 @@ static int udevSetParent(struct udev_device *device,
     do {
 
         parent_device = udev_device_get_parent(parent_device);
-        if (parent_device == NULL) {
+        if (parent_device == NULL)
             break;
-        }
 
         parent_sysfs_path = udev_device_get_syspath(parent_device);
         if (parent_sysfs_path == NULL) {
@@ -1419,17 +1415,14 @@ static int udevAddOneDevice(struct udev_device *device)
     if (VIR_ALLOC(def->caps) != 0)
         goto out;
 
-    if (udevGetDeviceType(device, &def->caps->type) != 0) {
+    if (udevGetDeviceType(device, &def->caps->type) != 0)
         goto out;
-    }
 
-    if (udevGetDeviceDetails(device, def) != 0) {
+    if (udevGetDeviceDetails(device, def) != 0)
         goto out;
-    }
 
-    if (udevSetParent(device, def) != 0) {
+    if (udevSetParent(device, def) != 0)
         goto out;
-    }
 
     /* If this is a device change, the old definition will be freed
      * and the current definition will take its place. */
@@ -1529,9 +1522,8 @@ static int nodeStateCleanup(void)
             udev_monitor_unref(udev_monitor);
         }
 
-        if (udev != NULL) {
+        if (udev != NULL)
             udev_unref(udev);
-        }
 
         virNodeDeviceObjListFree(&driverState->devs);
         nodeDeviceUnlock(driverState);
@@ -1666,9 +1658,8 @@ udevGetDMIData(union _virNodeDevCapData *data)
 
  out:
     VIR_FREE(tmp);
-    if (device != NULL) {
+    if (device != NULL)
         udev_device_unref(device);
-    }
     return;
 }
 #endif
@@ -1704,9 +1695,8 @@ static int udevSetupSystemDev(void)
     ret = 0;
 
  out:
-    if (ret == -1) {
+    if (ret == -1)
         virNodeDeviceDefFree(def);
-    }
 
     return ret;
 }
@@ -1770,8 +1760,10 @@ static int nodeStateInitialize(bool privileged,
      * its return value.
      */
     udev = udev_new();
+#if HAVE_UDEV_LOGGING
     /* cast to get rid of missing-format-attribute warning */
     udev_set_log_fn(udev, (udevLogFunctionPtr) udevLogFunction);
+#endif
 
     priv->udev_monitor = udev_monitor_new_from_netlink(udev, "udev");
     if (priv->udev_monitor == NULL) {
@@ -1819,9 +1811,8 @@ static int nodeStateInitialize(bool privileged,
     nodeDeviceUnlock(driverState);
 
  out:
-    if (ret == -1) {
+    if (ret == -1)
         nodeStateCleanup();
-    }
     return ret;
 }
 
@@ -1838,9 +1829,8 @@ static virDrvOpenStatus nodeDeviceOpen(virConnectPtr conn,
 {
     virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
 
-    if (driverState == NULL) {
+    if (driverState == NULL)
         return VIR_DRV_OPEN_DECLINED;
-    }
 
     conn->nodeDevicePrivateData = driverState;
 
@@ -1881,9 +1871,8 @@ int udevNodeRegister(void)
 {
     VIR_DEBUG("Registering udev node device backend");
 
-    if (virRegisterNodeDeviceDriver(&udevNodeDeviceDriver) < 0) {
+    if (virRegisterNodeDeviceDriver(&udevNodeDeviceDriver) < 0)
         return -1;
-    }
 
     return virRegisterStateDriver(&udevStateDriver);
 }

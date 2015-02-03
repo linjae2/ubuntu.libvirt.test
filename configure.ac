@@ -16,7 +16,7 @@ dnl You should have received a copy of the GNU Lesser General Public
 dnl License along with this library.  If not, see
 dnl <http://www.gnu.org/licenses/>.
 
-AC_INIT([libvirt], [1.2.8], [libvir-list@redhat.com], [], [http://libvirt.org])
+AC_INIT([libvirt], [1.2.12], [libvir-list@redhat.com], [], [http://libvirt.org])
 AC_CONFIG_SRCDIR([src/libvirt.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
@@ -891,6 +891,9 @@ if test $fail = 1; then
 fi
 
 if test "$with_libxl" = "yes"; then
+    dnl If building with libxl, use the libxl utility header and lib too
+    AC_CHECK_HEADERS([libxlutil.h])
+    LIBXL_LIBS="$LIBXL_LIBS -lxlutil"
     AC_DEFINE_UNQUOTED([WITH_LIBXL], 1, [whether libxenlight driver is enabled])
 fi
 AM_CONDITIONAL([WITH_LIBXL], [test "$with_libxl" = "yes"])
@@ -1046,19 +1049,21 @@ dnl
 dnl Checks for the Parallels driver
 dnl
 
-if test "$with_parallels" = "check"; then
-    with_parallels=$with_linux
-    if test ! $host_cpu = 'x86_64'; then
-        with_parallels=no
+
+if test "$with_parallels" = "yes" ||
+   test "$with_parallels" = "check"; then
+    PKG_CHECK_MODULES([PARALLELS_SDK], [parallels-sdk],
+                      [PARALLELS_SDK_FOUND=yes], [PARALLELS_SDK_FOUND=no])
+
+    if test "$with_parallels" = "yes" && test "$PARALLELS_SDK_FOUND" = "no"; then
+        AC_MSG_ERROR([Parallels Virtualization SDK is needed to build the Parallels driver.])
     fi
-fi
 
-if test "$with_parallels" = "yes" && test "$with_linux" = "no"; then
-    AC_MSG_ERROR([The Parallels driver can be enabled on Linux only.])
-fi
-
-if test "$with_parallels" = "yes"; then
-    AC_DEFINE_UNQUOTED([WITH_PARALLELS], 1, [whether Parallels driver is enabled])
+    with_parallels=$PARALLELS_SDK_FOUND
+    if test "$with_parallels" = "yes"; then
+        AC_DEFINE_UNQUOTED([WITH_PARALLELS], 1,
+                           [whether Parallels driver is enabled])
+    fi
 fi
 AM_CONDITIONAL([WITH_PARALLELS], [test "$with_parallels" = "yes"])
 
@@ -1387,7 +1392,7 @@ AC_ARG_WITH([firewalld],
 if test "x$with_firewalld" = "xcheck" ; then
    with_firewalld=$with_dbus
 fi
-if test "x$with_firewalld" == "xyes" ; then
+if test "x$with_firewalld" = "xyes" ; then
   if test "x$with_dbus" != "xyes" ; then
      AC_MSG_ERROR([You must have dbus enabled for firewalld support])
   fi
@@ -2611,7 +2616,11 @@ if test "$with_linux" = "yes"; then
              [whether the netlink v1 library is available])
         ], [
             if test "$with_macvtap" = "yes"; then
-                AC_MSG_ERROR([libnl-devel >= $LIBNL_REQUIRED is required for macvtap support])
+                    if test "$LIBNL_REQUIRED" = "3.0";then
+                        AC_MSG_ERROR([libnl3-devel >= $LIBNL_REQUIRED is required for macvtap support])
+                    else
+                        AC_MSG_ERROR([libnl-devel >= $LIBNL_REQUIRED is required for macvtap support])
+                    fi
             fi
         ])
     fi
@@ -2688,7 +2697,8 @@ AC_SUBST([ws_plugindir])
 # Check for Linux vs. BSD ifreq members
 AC_CHECK_MEMBERS([struct ifreq.ifr_newname,
                   struct ifreq.ifr_ifindex,
-                  struct ifreq.ifr_index],
+                  struct ifreq.ifr_index,
+                  struct ifreq.ifr_hwaddr],
                  [], [],
                  [#include <sys/socket.h>
                   #include <net/if.h>
@@ -2770,6 +2780,14 @@ t=0
 test "x$lv_cv_static_analysis" = xyes && t=1
 AC_DEFINE_UNQUOTED([STATIC_ANALYSIS], [$t],
   [Define to 1 when performing static analysis.])
+
+AC_ARG_WITH([default-editor],
+  [AS_HELP_STRING([--with-default-editor],
+    [Editor to use for interactive commands
+     @<:@default=vi@:>@])],
+  [DEFAULT_EDITOR=${withval}],
+  [DEFAULT_EDITOR=vi])
+AC_DEFINE_UNQUOTED([DEFAULT_EDITOR], ["$DEFAULT_EDITOR"], [Default editor to use])
 
 # Some GNULIB base64 symbols clash with a kerberos library
 AC_DEFINE_UNQUOTED([isbase64],[libvirt_gl_isbase64],[Hack to avoid symbol clash])
@@ -2971,6 +2989,7 @@ AC_MSG_NOTICE([            numad: $with_numad])
 AC_MSG_NOTICE([      XML Catalog: $XML_CATALOG_FILE])
 AC_MSG_NOTICE([      Init script: $with_init_script])
 AC_MSG_NOTICE([Char device locks: $with_chrdev_lock_files])
+AC_MSG_NOTICE([   Default Editor: $DEFAULT_EDITOR])
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([Developer Tools])
 AC_MSG_NOTICE([])

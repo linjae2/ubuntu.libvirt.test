@@ -144,7 +144,7 @@ static const struct int_map chain_priorities[] = {
  * only one filter update allowed
  */
 static virRWLock updateLock;
-static bool initialized = false;
+static bool initialized;
 
 void
 virNWFilterReadLockFilterUpdates(void)
@@ -535,9 +535,8 @@ checkVlanVlanID(enum attrDatatype datatype, union data *value,
     int32_t res;
 
     res = value->ui;
-    if (res < 0 || res > 4095) {
+    if (res < 0 || res > 4095)
         res = -1;
-    }
 
     if (res != -1) {
         nwf->p.vlanHdrFilter.dataVlanID.u.u16 = res;
@@ -1446,6 +1445,26 @@ static const virXMLAttr2Struct ipv6Attributes[] = {
         .datatype = DATATYPE_UINT16 | DATATYPE_UINT16_HEX,
         .dataIdx = offsetof(virNWFilterRuleDef, p.ipv6HdrFilter.portData.dataDstPortEnd),
     },
+    {
+        .name = "type",
+        .datatype = DATATYPE_UINT8 | DATATYPE_UINT8_HEX,
+        .dataIdx = offsetof(virNWFilterRuleDef, p.ipv6HdrFilter.dataICMPTypeStart),
+    },
+    {
+        .name = "typeend",
+        .datatype = DATATYPE_UINT8 | DATATYPE_UINT8_HEX,
+        .dataIdx = offsetof(virNWFilterRuleDef, p.ipv6HdrFilter.dataICMPTypeEnd),
+    },
+    {
+        .name = "code",
+        .datatype = DATATYPE_UINT8 | DATATYPE_UINT8_HEX,
+        .dataIdx = offsetof(virNWFilterRuleDef, p.ipv6HdrFilter.dataICMPCodeStart),
+    },
+    {
+        .name = "codeend",
+        .datatype = DATATYPE_UINT8 | DATATYPE_UINT8_HEX,
+        .dataIdx = offsetof(virNWFilterRuleDef, p.ipv6HdrFilter.dataICMPCodeEnd),
+    },
     COMMENT_PROP_IPHDR(ipv6HdrFilter),
     {
         .name = NULL,
@@ -1858,10 +1877,12 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                     item->u.u8 = uint_val;
                                     found = true;
                                     data.ui = uint_val;
-                                } else
+                                } else {
                                     rc = -1;
-                            } else
+                                }
+                            } else {
                                 rc = -1;
+                            }
                         break;
 
                         case DATATYPE_UINT16_HEX:
@@ -1873,10 +1894,12 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                     item->u.u16 = uint_val;
                                     found = true;
                                     data.ui = uint_val;
-                                } else
+                                } else {
                                     rc = -1;
-                            } else
+                                }
+                            } else {
                                 rc = -1;
+                            }
                         break;
 
                         case DATATYPE_UINT32_HEX:
@@ -1887,8 +1910,9 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                 item->u.u32 = uint_val;
                                 found = true;
                                 data.ui = uint_val;
-                            } else
+                            } else {
                                 rc = -1;
+                            }
                         break;
 
                         case DATATYPE_IPADDR:
@@ -1904,8 +1928,9 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                         item->u.u8 = (uint8_t)uint_val;
                                     found = true;
                                     data.ui = uint_val;
-                                } else
+                                } else {
                                     rc = -1;
+                                }
                             } else {
                                 if (virSocketAddrParseIPv4(&ipaddr, prop) < 0) {
                                     rc = -1;
@@ -1951,8 +1976,9 @@ virNWFilterRuleDetailsParse(xmlNodePtr node,
                                         item->u.u8 = (uint8_t)uint_val;
                                     found = true;
                                     data.ui = uint_val;
-                                } else
+                                } else {
                                     rc = -1;
+                                }
                             } else {
                                 if (virSocketAddrParseIPv6(&ipaddr, prop) < 0) {
                                     rc = -1;
@@ -2213,6 +2239,12 @@ virNWFilterRuleDefFixup(virNWFilterRuleDefPtr rule)
                       rule->p.ipv6HdrFilter.ipHdr.dataSrcIPAddr);
         COPY_NEG_SIGN(rule->p.ipv6HdrFilter.ipHdr.dataDstIPMask,
                       rule->p.ipv6HdrFilter.ipHdr.dataDstIPAddr);
+        COPY_NEG_SIGN(rule->p.ipv6HdrFilter.dataICMPTypeEnd,
+                      rule->p.ipv6HdrFilter.dataICMPTypeStart);
+        COPY_NEG_SIGN(rule->p.ipv6HdrFilter.dataICMPCodeStart,
+                      rule->p.ipv6HdrFilter.dataICMPTypeStart);
+        COPY_NEG_SIGN(rule->p.ipv6HdrFilter.dataICMPCodeEnd,
+                      rule->p.ipv6HdrFilter.dataICMPTypeStart);
         virNWFilterRuleDefFixupIPSet(&rule->p.ipv6HdrFilter.ipHdr);
     break;
 
@@ -2457,8 +2489,9 @@ virNWFilterRuleParse(xmlNodePtr node)
                     i++;
                     if (!virAttr[i].id)
                         break;
-                } else
+                } else {
                    break;
+                }
             }
         }
 
@@ -2667,8 +2700,9 @@ virNWFilterDefParseXML(xmlXPathContextPtr ctxt)
                     virNWFilterEntryFree(entry);
                     goto cleanup;
                 }
-            } else
+            } else {
                 virNWFilterEntryFree(entry);
+            }
         }
         curr = curr->next;
     }
@@ -2770,7 +2804,7 @@ virNWFilterObjFindByName(virNWFilterObjListPtr nwfilters, const char *name)
 
     for (i = 0; i < nwfilters->count; i++) {
         virNWFilterObjLock(nwfilters->objs[i]);
-        if (STREQ(nwfilters->objs[i]->def->name, name))
+        if (STREQ_NULLABLE(nwfilters->objs[i]->def->name, name))
             return nwfilters->objs[i];
         virNWFilterObjUnlock(nwfilters->objs[i]);
     }
@@ -2890,9 +2924,8 @@ static virNWFilterCallbackDriverPtr callbackDrvArray[MAX_CALLBACK_DRIVER];
 void
 virNWFilterRegisterCallbackDriver(virNWFilterCallbackDriverPtr cbd)
 {
-    if (nCallbackDriver < MAX_CALLBACK_DRIVER) {
+    if (nCallbackDriver < MAX_CALLBACK_DRIVER)
         callbackDrvArray[nCallbackDriver++] = cbd;
-    }
 }
 
 void
@@ -3132,9 +3165,8 @@ virNWFilterObjLoad(virNWFilterObjListPtr nwfilters,
     virNWFilterDefPtr def;
     virNWFilterObjPtr nwfilter;
 
-    if (!(def = virNWFilterDefParseFile(path))) {
+    if (!(def = virNWFilterDefParseFile(path)))
         return NULL;
-    }
 
     if (!virFileMatchesNameSuffix(file, def->name, ".xml")) {
         virReportError(VIR_ERR_XML_ERROR,
@@ -3168,9 +3200,8 @@ virNWFilterLoadAllConfigs(virNWFilterObjListPtr nwfilters,
     int ret = -1;
 
     if (!(dir = opendir(configDir))) {
-        if (errno == ENOENT) {
+        if (errno == ENOENT)
             return 0;
-        }
         virReportSystemError(errno, _("Failed to open dir '%s'"),
                              configDir);
         return -1;

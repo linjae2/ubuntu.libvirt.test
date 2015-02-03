@@ -23,6 +23,8 @@
 #ifndef PARALLELS_UTILS_H
 # define PARALLELS_UTILS_H
 
+# include <Parallels.h>
+
 # include "driver.h"
 # include "conf/domain_conf.h"
 # include "conf/storage_conf.h"
@@ -35,16 +37,29 @@
     virReportErrorHelper(VIR_FROM_TEST, VIR_ERR_OPERATION_FAILED, __FILE__,    \
                      __FUNCTION__, __LINE__, _("Can't parse prlctl output"))
 
+# define IS_CT(def)  (STREQ_NULLABLE(def->os.type, "exe"))
+
+# define parallelsDomNotFoundError(domain)                               \
+    do {                                                                 \
+        char uuidstr[VIR_UUID_STRING_BUFLEN];                            \
+        virUUIDFormat(domain->uuid, uuidstr);                            \
+        virReportError(VIR_ERR_NO_DOMAIN,                                \
+                       _("no domain with matching uuid '%s'"), uuidstr); \
+    } while (0)
+
 # define PARALLELS_ROUTED_NETWORK_NAME   "Routed"
 
 struct _parallelsConn {
     virMutex lock;
     virDomainObjListPtr domains;
+    PRL_HANDLE server;
+    PRL_UINT32 jobTimeout;
     virStoragePoolObjList pools;
     virNetworkObjList networks;
     virCapsPtr caps;
     virDomainXMLOptionPtr xmlopt;
     virObjectEventStatePtr domainEventState;
+    virStorageDriverStatePtr storageState;
 };
 
 typedef struct _parallelsConn parallelsConn;
@@ -55,6 +70,7 @@ struct parallelsDomObj {
     char *uuid;
     char *home;
     virBitmapPtr cpumask;
+    PRL_HANDLE sdkdom;
 };
 
 typedef struct parallelsDomObj *parallelsDomObjPtr;

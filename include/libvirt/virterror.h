@@ -124,6 +124,8 @@ typedef enum {
     VIR_FROM_CRYPTO = 58,       /* Error from crypto code */
     VIR_FROM_FIREWALL = 59,     /* Error from firewall */
 
+    VIR_FROM_POLKIT = 60,       /* Error from polkit code */
+
 # ifdef VIR_ENUM_SENTINELS
     VIR_ERR_DOMAIN_LAST
 # endif
@@ -302,6 +304,7 @@ typedef enum {
     VIR_ERR_STORAGE_VOL_EXIST = 90,     /* the storage vol already exists */
     VIR_ERR_CPU_INCOMPATIBLE = 91,      /* given CPU is incompatible with host
                                            CPU*/
+    VIR_ERR_XML_INVALID_SCHEMA = 92,    /* XML document doens't validate against schema */
 } virErrorNumber;
 
 /**

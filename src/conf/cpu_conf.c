@@ -1,7 +1,7 @@
 /*
  * cpu_conf.c: CPU XML handling
  *
- * Copyright (C) 2009-2014 Red Hat, Inc.
+ * Copyright (C) 2009-2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -55,6 +55,11 @@ VIR_ENUM_IMPL(virCPUFeaturePolicy, VIR_CPU_FEATURE_LAST,
               "optional",
               "disable",
               "forbid")
+
+VIR_ENUM_IMPL(virMemAccess, VIR_MEM_ACCESS_LAST,
+              "default",
+              "shared",
+              "private")
 
 
 void ATTRIBUTE_NONNULL(1)
@@ -179,6 +184,7 @@ virCPUDefParseXML(xmlNodePtr node,
 {
     virCPUDefPtr def;
     xmlNodePtr *nodes = NULL;
+    xmlNodePtr oldnode = ctxt->node;
     int n;
     size_t i;
     char *cpuMode;
@@ -198,7 +204,7 @@ virCPUDefParseXML(xmlNodePtr node,
         if (virXPathBoolean("boolean(./arch)", ctxt)) {
             if (virXPathBoolean("boolean(./@match)", ctxt)) {
                 virReportError(VIR_ERR_XML_ERROR, "%s",
-                               _("'arch' element element cannot be used inside 'cpu'"
+                               _("'arch' element cannot be used inside 'cpu'"
                                  " element with 'match' attribute'"));
                 goto error;
             }
@@ -360,7 +366,8 @@ virCPUDefParseXML(xmlNodePtr node,
         goto error;
 
     if (n > 0) {
-        if (!def->model && def->mode != VIR_CPU_MODE_HOST_MODEL) {
+        if (!def->model && def->mode != VIR_CPU_MODE_HOST_MODEL &&
+            def->mode != VIR_CPU_MODE_HOST_PASSTHROUGH) {
             virReportError(VIR_ERR_XML_ERROR, "%s",
                            _("Non-empty feature list specified without "
                              "CPU model"));
@@ -408,7 +415,7 @@ virCPUDefParseXML(xmlNodePtr node,
         for (j = 0; j < i; j++) {
             if (STREQ(name, def->features[j].name)) {
                 virReportError(VIR_ERR_XML_ERROR,
-                               _("CPU feature `%s' specified more than once"),
+                               _("CPU feature '%s' specified more than once"),
                                name);
                 VIR_FREE(name);
                 goto error;
@@ -435,7 +442,7 @@ virCPUDefParseXML(xmlNodePtr node,
         def->ncells = n;
 
         for (i = 0; i < n; i++) {
-            char *cpus, *memory;
+            char *cpus, *memAccessStr;
             int ret, ncpus = 0;
             unsigned int cur_cell;
             char *tmp = NULL;
@@ -484,25 +491,33 @@ virCPUDefParseXML(xmlNodePtr node,
                 goto error;
             def->cells_cpus += ncpus;
 
-            memory = virXMLPropString(nodes[i], "memory");
-            if (!memory) {
-                virReportError(VIR_ERR_XML_ERROR, "%s",
-                               _("Missing 'memory' attribute in NUMA cell"));
-                goto error;
-            }
+            ctxt->node = nodes[i];
+            if (virDomainParseMemory("./@memory", "./@unit", ctxt,
+                                     &def->cells[cur_cell].mem, true, false) < 0)
+                goto cleanup;
 
-            ret  = virStrToLong_ui(memory, NULL, 10, &def->cells[cur_cell].mem);
-            if (ret == -1) {
-                virReportError(VIR_ERR_XML_ERROR, "%s",
-                               _("Invalid 'memory' attribute in NUMA cell"));
-                VIR_FREE(memory);
-                goto error;
+            memAccessStr = virXMLPropString(nodes[i], "memAccess");
+            if (memAccessStr) {
+                int rc = virMemAccessTypeFromString(memAccessStr);
+
+                if (rc <= 0) {
+                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                                   _("Invalid 'memAccess' attribute "
+                                     "value '%s'"),
+                                   memAccessStr);
+                    VIR_FREE(memAccessStr);
+                    goto error;
+                }
+
+                def->cells[cur_cell].memAccess = rc;
+
+                VIR_FREE(memAccessStr);
             }
-            VIR_FREE(memory);
         }
     }
 
  cleanup:
+    ctxt->node = oldnode;
     VIR_FREE(fallback);
     VIR_FREE(vendor_id);
     VIR_FREE(nodes);
@@ -517,11 +532,11 @@ virCPUDefParseXML(xmlNodePtr node,
 
 char *
 virCPUDefFormat(virCPUDefPtr def,
-                unsigned int flags)
+                bool updateCPU)
 {
     virBuffer buf = VIR_BUFFER_INITIALIZER;
 
-    if (virCPUDefFormatBufFull(&buf, def, flags) < 0)
+    if (virCPUDefFormatBufFull(&buf, def, updateCPU) < 0)
         goto cleanup;
 
     if (virBufferCheckError(&buf) < 0)
@@ -538,7 +553,7 @@ virCPUDefFormat(virCPUDefPtr def,
 int
 virCPUDefFormatBufFull(virBufferPtr buf,
                        virCPUDefPtr def,
-                       unsigned int flags)
+                       bool updateCPU)
 {
     if (!def)
         return 0;
@@ -558,7 +573,7 @@ virCPUDefFormatBufFull(virBufferPtr buf,
 
         if (def->model &&
             (def->mode == VIR_CPU_MODE_CUSTOM ||
-             (flags & VIR_DOMAIN_XML_UPDATE_CPU))) {
+             updateCPU)) {
             if (!(tmp = virCPUMatchTypeToString(def->match))) {
                 virReportError(VIR_ERR_INTERNAL_ERROR,
                                _("Unexpected CPU match policy %d"),
@@ -574,7 +589,7 @@ virCPUDefFormatBufFull(virBufferPtr buf,
     if (def->arch)
         virBufferAsprintf(buf, "<arch>%s</arch>\n",
                           virArchToString(def->arch));
-    if (virCPUDefFormatBuf(buf, def, flags) < 0)
+    if (virCPUDefFormatBuf(buf, def, updateCPU) < 0)
         return -1;
     virBufferAdjustIndent(buf, -2);
 
@@ -586,7 +601,7 @@ virCPUDefFormatBufFull(virBufferPtr buf,
 int
 virCPUDefFormatBuf(virBufferPtr buf,
                    virCPUDefPtr def,
-                   unsigned int flags)
+                   bool updateCPU)
 {
     size_t i;
     bool formatModel;
@@ -596,13 +611,15 @@ virCPUDefFormatBuf(virBufferPtr buf,
         return 0;
 
     formatModel = (def->mode == VIR_CPU_MODE_CUSTOM ||
-                   (flags & VIR_DOMAIN_XML_UPDATE_CPU));
+                   def->mode == VIR_CPU_MODE_HOST_MODEL ||
+                   updateCPU);
     formatFallback = (def->type == VIR_CPU_TYPE_GUEST &&
                       (def->mode == VIR_CPU_MODE_HOST_MODEL ||
                        (def->mode == VIR_CPU_MODE_CUSTOM && def->model)));
 
     if (!def->model &&
         def->mode != VIR_CPU_MODE_HOST_MODEL &&
+        def->mode != VIR_CPU_MODE_HOST_PASSTHROUGH &&
         def->nfeatures) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("Non-empty feature list specified without CPU model"));
@@ -674,10 +691,16 @@ virCPUDefFormatBuf(virBufferPtr buf,
         virBufferAddLit(buf, "<numa>\n");
         virBufferAdjustIndent(buf, 2);
         for (i = 0; i < def->ncells; i++) {
+            virMemAccess memAccess = def->cells[i].memAccess;
+
             virBufferAddLit(buf, "<cell");
             virBufferAsprintf(buf, " id='%zu'", i);
             virBufferAsprintf(buf, " cpus='%s'", def->cells[i].cpustr);
-            virBufferAsprintf(buf, " memory='%d'", def->cells[i].mem);
+            virBufferAsprintf(buf, " memory='%llu'", def->cells[i].mem);
+            virBufferAddLit(buf, " unit='KiB'");
+            if (memAccess)
+                virBufferAsprintf(buf, " memAccess='%s'",
+                                  virMemAccessTypeToString(memAccess));
             virBufferAddLit(buf, "/>\n");
         }
         virBufferAdjustIndent(buf, -2);
@@ -705,7 +728,7 @@ virCPUDefUpdateFeatureInternal(virCPUDefPtr def,
             }
 
             virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("CPU feature `%s' specified more than once"),
+                           _("CPU feature '%s' specified more than once"),
                            name);
 
             return -1;

@@ -357,6 +357,8 @@
 # changes in reported warnings
 %if 0%{?rhel}
     %define enable_werror --enable-werror
+%else
+    %define enable_werror --disable-werror
 %endif
 
 
@@ -425,6 +427,7 @@ BuildRequires: gettext-devel
 BuildRequires: libtool
 BuildRequires: /usr/bin/pod2man
 %endif
+BuildRequires: git
 BuildRequires: perl
 BuildRequires: python
 %if %{with_systemd}
@@ -1198,6 +1201,41 @@ driver
 %prep
 %setup -q
 
+# Patches have to be stored in a temporary file because RPM has
+# a limit on the length of the result of any macro expansion;
+# if the string is longer, it's silently cropped
+%{lua:
+    tmp = os.tmpname();
+    f = io.open(tmp, "w+");
+    count = 0;
+    for i, p in ipairs(patches) do
+        f:write(p.."\n");
+        count = count + 1;
+    end;
+    f:close();
+    print("PATCHCOUNT="..count.."\n")
+    print("PATCHLIST="..tmp.."\n")
+}
+
+git init -q
+git config user.name rpm-build
+git config user.email rpm-build
+git config gc.auto 0
+git add .
+git commit -q -a --author 'rpm-build <rpm-build>' \
+           -m '%{name}-%{version} base'
+
+COUNT=$(grep '\.patch$' $PATCHLIST | wc -l)
+if [ $COUNT -ne $PATCHCOUNT ]; then
+    echo "Found $COUNT patches in $PATCHLIST, expected $PATCHCOUNT"
+    exit 1
+fi
+if [ $COUNT -gt 0 ]; then
+    xargs git am <$PATCHLIST || exit 1
+fi
+echo "Applied $COUNT patches"
+rm -f $PATCHLIST
+
 %build
 %if ! %{with_xen}
     %define _without_xen --without-xen
@@ -1606,48 +1644,6 @@ exit 0
 
 %post daemon
 
-    %if %{with_network}
-# All newly defined networks will have a mac address for the bridge
-# auto-generated, but networks already existing at the time of upgrade
-# will not. We need to go through all the network configs, look for
-# those that don't have a mac address, and add one.
-
-network_files=$( (cd %{_localstatedir}/lib/libvirt/network && \
-                  grep -L "mac address" *.xml; \
-                  cd %{_sysconfdir}/libvirt/qemu/networks && \
-                  grep -L "mac address" *.xml) 2>/dev/null \
-                | sort -u)
-
-for file in $network_files
-do
-   # each file exists in either the config or state directory (or both) and
-   # does not have a mac address specified in either. We add the same mac
-   # address to both files (or just one, if the other isn't there)
-
-   mac4=`printf '%X' $(($RANDOM % 256))`
-   mac5=`printf '%X' $(($RANDOM % 256))`
-   mac6=`printf '%X' $(($RANDOM % 256))`
-   for dir in %{_localstatedir}/lib/libvirt/network \
-              %{_sysconfdir}/libvirt/qemu/networks
-   do
-      if test -f $dir/$file
-      then
-         sed -i.orig -e \
-           "s|\(<bridge.*$\)|\0\n  <mac address='52:54:00:$mac4:$mac5:$mac6'/>|" \
-           $dir/$file
-         if test $? != 0
-         then
-             echo "failed to add <mac address='52:54:00:$mac4:$mac5:$mac6'/>" \
-                  "to $dir/$file"
-             mv -f $dir/$file.orig $dir/$file
-         else
-             rm -f $dir/$file.orig
-         fi
-      fi
-   done
-done
-    %endif
-
     %if %{with_systemd}
         %if %{with_systemd_macros}
             %systemd_post virtlockd.socket libvirtd.service libvirtd.socket
@@ -1677,11 +1673,7 @@ fi
 %preun daemon
     %if %{with_systemd}
         %if %{with_systemd_macros}
-            %systemd_preun \
-                libvirtd.socket \
-                libvirtd.service \
-                virtlockd.socket \
-                virtlockd.service
+            %systemd_preun libvirtd.socket libvirtd.service virtlockd.socket virtlockd.service
         %else
 if [ $1 -eq 0 ] ; then
     # Package removal, not upgrade
@@ -1732,8 +1724,37 @@ fi
     %if %{with_network}
 %post daemon-config-network
 if test $1 -eq 1 && test ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml ; then
+    # see if the network used by default network creates a conflict,
+    # and try to resolve it
+    # NB: 192.168.122.0/24 is used in the default.xml template file;
+    # do not modify any of those values here without also modifying
+    # them in the template.
+    orig_sub=122
+    sub=${orig_sub}
+    nl='
+'
+    routes="${nl}$(ip route show | cut -d' ' -f1)${nl}"
+    case ${routes} in
+      *"${nl}192.168.${orig_sub}.0/24${nl}"*)
+        # there was a match, so we need to look for an unused subnet
+        for new_sub in $(seq 124 254); do
+          case ${routes} in
+          *"${nl}192.168.${new_sub}.0/24${nl}"*)
+            ;;
+          *)
+            sub=$new_sub
+            break;
+            ;;
+          esac
+        done
+        ;;
+      *)
+        ;;
+    esac
+
     UUID=`/usr/bin/uuidgen`
-    sed -e "s,</name>,</name>\n  <uuid>$UUID</uuid>," \
+    sed -e "s/${orig_sub}/${sub}/g" \
+        -e "s,</name>,</name>\n  <uuid>$UUID</uuid>," \
          < %{_datadir}/libvirt/networks/default.xml \
          > %{_sysconfdir}/libvirt/qemu/networks/default.xml
     ln -s ../default.xml %{_sysconfdir}/libvirt/qemu/networks/autostart/default.xml
@@ -1942,6 +1963,7 @@ exit 0
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/target/
+%dir %attr(0711, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/nvram/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/cache/libvirt/qemu/
 %{_datadir}/augeas/lenses/libvirtd_qemu.aug
 %{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
@@ -2044,6 +2066,7 @@ exit 0
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/target/
+%dir %attr(0711, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/nvram/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/cache/libvirt/qemu/
 %{_datadir}/augeas/lenses/libvirtd_qemu.aug
 %{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
@@ -2224,6 +2247,17 @@ exit 0
 %dir %{_includedir}/libvirt
 %{_includedir}/libvirt/virterror.h
 %{_includedir}/libvirt/libvirt.h
+%{_includedir}/libvirt/libvirt-domain.h
+%{_includedir}/libvirt/libvirt-domain-snapshot.h
+%{_includedir}/libvirt/libvirt-event.h
+%{_includedir}/libvirt/libvirt-host.h
+%{_includedir}/libvirt/libvirt-interface.h
+%{_includedir}/libvirt/libvirt-network.h
+%{_includedir}/libvirt/libvirt-nodedev.h
+%{_includedir}/libvirt/libvirt-nwfilter.h
+%{_includedir}/libvirt/libvirt-secret.h
+%{_includedir}/libvirt/libvirt-storage.h
+%{_includedir}/libvirt/libvirt-stream.h
 %{_includedir}/libvirt/libvirt-qemu.h
 %{_includedir}/libvirt/libvirt-lxc.h
 %{_libdir}/pkgconfig/libvirt.pc
@@ -2247,6 +2281,33 @@ exit 0
 %doc examples/systemtap
 
 %changelog
+* Tue Jan 27 2015 Daniel Veillard <veillard@redhat.com> - 1.2.12-1
+- CVE-2015-0236: qemu: Check ACLs when dumping security info from snapshots
+- CVE-2015-0236: qemu: Check ACLs when dumping security info from save image
+- a lot of improvement and bug fixes
+
+* Sat Dec 13 2014 Daniel Veillard <veillard@redhat.com> - 1.2.11-1
+- CVE-2014-8131: Fix possible deadlock and segfault in qemuConnectGetAllDomainStats()
+- CVE-2014-7823: dumpxml: security hole with migratable flag
+- Implement public API for virDomainGetFSInfo
+- Add define support for the new throttle options
+- a number of improvements and bug fixes
+
+* Mon Nov  3 2014 Daniel Veillard <veillard@redhat.com> - 1.2.10-1
+- vbox: various drivers improvements
+- libxl: various drivers improvements
+- Internal driver refactoring
+- a number of improvements and bug fixes
+
+* Wed Oct  1 2014 Daniel Veillard <veillard@redhat.com> - 1.2.9-1
+- CVE-2014-3657: domain_conf: fix domain deadlock
+- CVE-2014-3633: qemu: blkiotune: Use correct definition when looking up disk
+- Introduce virNodeAllocPages
+- event: introduce new event for tunable values
+- add migration support for OpenVZ driver
+- Add support for fetching statistics of completed jobs
+- many improvements and bug fixes
+
 * Tue Sep  2 2014 Daniel Veillard <veillard@redhat.com> - 1.2.8-1
 - blockcopy: virDomainBlockCopy with XML destination, typed params
 - Introduce API for retrieving bulk domain stats

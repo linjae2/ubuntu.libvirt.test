@@ -54,7 +54,7 @@
 # endif
 
 # define JOB_MASK(job)                  (1 << (job - 1))
-# define DEFAULT_JOB_MASK               \
+# define QEMU_JOB_DEFAULT_MASK          \
     (JOB_MASK(QEMU_JOB_QUERY) |         \
      JOB_MASK(QEMU_JOB_DESTROY) |       \
      JOB_MASK(QEMU_JOB_ABORT))
@@ -100,6 +100,19 @@ typedef enum {
 } qemuDomainAsyncJob;
 VIR_ENUM_DECL(qemuDomainAsyncJob)
 
+typedef struct _qemuDomainJobInfo qemuDomainJobInfo;
+typedef qemuDomainJobInfo *qemuDomainJobInfoPtr;
+struct _qemuDomainJobInfo {
+    virDomainJobType type;
+    unsigned long long started; /* When the async job started */
+    unsigned long long stopped; /* When the domain's CPUs were stopped */
+    /* Computed values */
+    unsigned long long timeElapsed;
+    unsigned long long timeRemaining;
+    /* Raw values from QEMU */
+    qemuMonitorMigrationStatus status;
+};
+
 struct qemuDomainJobObj {
     virCond cond;                       /* Use to coordinate jobs */
     qemuDomainJob active;               /* Currently running job */
@@ -110,10 +123,9 @@ struct qemuDomainJobObj {
     unsigned long long asyncOwner;      /* Thread which set current async job */
     int phase;                          /* Job phase (mainly for migrations) */
     unsigned long long mask;            /* Jobs allowed during async job */
-    unsigned long long start;           /* When the async job started */
     bool dump_memory_only;              /* use dump-guest-memory to do dump */
-    qemuMonitorMigrationStatus status;  /* Raw async job progress data */
-    virDomainJobInfo info;              /* Processed async job progress data */
+    qemuDomainJobInfoPtr current;       /* async job progress data */
+    qemuDomainJobInfoPtr completed;     /* statistics data of a recently completed job */
     bool asyncAbort;                    /* abort of async job requested */
 };
 
@@ -141,6 +153,9 @@ struct _qemuDomainObjPrivate {
 
     int nvcpupids;
     int *vcpupids;
+
+    int niothreadpids;
+    int *iothreadpids;
 
     virDomainPCIAddressSetPtr pciaddrs;
     virDomainCCWAddressSetPtr ccwaddrs;
@@ -172,14 +187,15 @@ struct _qemuDomainObjPrivate {
     char **qemuDevices; /* NULL-terminated list of devices aliases known to QEMU */
 
     bool hookRun;  /* true if there was a hook run over this domain */
-
-    bool quiesced; /* true if filesystems are quiesced */
+    virBitmapPtr autoNodeset;
 };
 
 typedef enum {
     QEMU_PROCESS_EVENT_WATCHDOG = 0,
     QEMU_PROCESS_EVENT_GUESTPANIC,
     QEMU_PROCESS_EVENT_DEVICE_DELETED,
+    QEMU_PROCESS_EVENT_NIC_RX_FILTER_CHANGED,
+    QEMU_PROCESS_EVENT_SERIAL_CHANGED,
 
     QEMU_PROCESS_EVENT_LAST
 } qemuProcessEventType;
@@ -210,12 +226,10 @@ int qemuDomainObjBeginAsyncJob(virQEMUDriverPtr driver,
                                qemuDomainAsyncJob asyncJob)
     ATTRIBUTE_RETURN_CHECK;
 
-bool qemuDomainObjEndJob(virQEMUDriverPtr driver,
-                         virDomainObjPtr obj)
-    ATTRIBUTE_RETURN_CHECK;
-bool qemuDomainObjEndAsyncJob(virQEMUDriverPtr driver,
-                              virDomainObjPtr obj)
-    ATTRIBUTE_RETURN_CHECK;
+void qemuDomainObjEndJob(virQEMUDriverPtr driver,
+                         virDomainObjPtr obj);
+void qemuDomainObjEndAsyncJob(virQEMUDriverPtr driver,
+                              virDomainObjPtr obj);
 void qemuDomainObjAbortAsyncJob(virDomainObjPtr obj);
 void qemuDomainObjSetJobPhase(virQEMUDriverPtr driver,
                               virDomainObjPtr obj,
@@ -224,7 +238,6 @@ void qemuDomainObjSetAsyncJobMask(virDomainObjPtr obj,
                                   unsigned long long allowedJobs);
 void qemuDomainObjRestoreJob(virDomainObjPtr obj,
                              struct qemuDomainJobObj *job);
-void qemuDomainObjTransferJob(virDomainObjPtr obj);
 void qemuDomainObjDiscardAsyncJob(virQEMUDriverPtr driver,
                                   virDomainObjPtr obj);
 void qemuDomainObjReleaseAsyncJob(virDomainObjPtr obj);
@@ -232,9 +245,10 @@ void qemuDomainObjReleaseAsyncJob(virDomainObjPtr obj);
 void qemuDomainObjEnterMonitor(virQEMUDriverPtr driver,
                                virDomainObjPtr obj)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-void qemuDomainObjExitMonitor(virQEMUDriverPtr driver,
-                              virDomainObjPtr obj)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+int qemuDomainObjExitMonitor(virQEMUDriverPtr driver,
+                             virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
+    ATTRIBUTE_RETURN_CHECK;
 int qemuDomainObjEnterMonitorAsync(virQEMUDriverPtr driver,
                                    virDomainObjPtr obj,
                                    qemuDomainAsyncJob asyncJob)
@@ -286,6 +300,10 @@ void qemuDomainObjCheckDiskTaint(virQEMUDriverPtr driver,
                                  virDomainObjPtr obj,
                                  virDomainDiskDefPtr disk,
                                  int logFD);
+void qemuDomainObjCheckHostdevTaint(virQEMUDriverPtr driver,
+                                    virDomainObjPtr obj,
+                                    virDomainHostdevDefPtr disk,
+                                    int logFD);
 void qemuDomainObjCheckNetTaint(virQEMUDriverPtr driver,
                                 virDomainObjPtr obj,
                                 virDomainNetDefPtr net,
@@ -351,11 +369,13 @@ int qemuDomainCheckDiskPresence(virQEMUDriverPtr driver,
 int qemuDomainDetermineDiskChain(virQEMUDriverPtr driver,
                                  virDomainObjPtr vm,
                                  virDomainDiskDefPtr disk,
-                                 bool force);
+                                 bool force_probe,
+                                 bool report_broken);
 
 int qemuDomainStorageFileInit(virQEMUDriverPtr driver,
                               virDomainObjPtr vm,
                               virStorageSourcePtr src);
+char *qemuDomainStorageAlias(const char *device, int depth);
 
 int qemuDomainCleanupAdd(virDomainObjPtr vm,
                          qemuDomainCleanupCallback cb);
@@ -377,5 +397,21 @@ bool qemuDomainDefCheckABIStability(virQEMUDriverPtr driver,
 
 bool qemuDomainAgentAvailable(qemuDomainObjPrivatePtr priv,
                               bool reportError);
+
+int qemuDomainJobInfoUpdateTime(qemuDomainJobInfoPtr jobInfo)
+    ATTRIBUTE_NONNULL(1);
+int qemuDomainJobInfoUpdateDowntime(qemuDomainJobInfoPtr jobInfo)
+    ATTRIBUTE_NONNULL(1);
+int qemuDomainJobInfoToInfo(qemuDomainJobInfoPtr jobInfo,
+                            virDomainJobInfoPtr info)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+int qemuDomainJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
+                              int *type,
+                              virTypedParameterPtr *params,
+                              int *nparams)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
+    ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
+
+void qemuDomObjEndAPI(virDomainObjPtr *vm);
 
 #endif /* __QEMU_DOMAIN_H__ */

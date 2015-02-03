@@ -56,7 +56,7 @@ static int testCompareXMLToArgvFiles(const char *xml,
 
     if (!(vmdef = virDomainDefParseFile(xml, driver.caps, driver.xmlopt,
                                         QEMU_EXPECTED_VIRT_TYPES,
-                                        VIR_DOMAIN_XML_INACTIVE)))
+                                        VIR_DOMAIN_DEF_PARSE_INACTIVE)))
         goto fail;
 
     if (!virDomainDefCheckABIStability(vmdef, vmdef)) {
@@ -119,7 +119,7 @@ static int testCompareXMLToArgvFiles(const char *xml,
                                      vmdef, &monitor_chr, json, extraFlags,
                                      migrateFrom, migrateFd, NULL,
                                      VIR_NETDEV_VPORT_PROFILE_OP_NO_OP,
-                                     &testCallbacks, false)))
+                                     &testCallbacks, false, false, NULL)))
         goto fail;
 
     if (!virtTestOOMActive()) {
@@ -211,7 +211,8 @@ mymain(void)
     if (!abs_top_srcdir)
         abs_top_srcdir = abs_srcdir "/..";
 
-    driver.config = virQEMUDriverConfigNew(false);
+    if (!(driver.config = virQEMUDriverConfigNew(false)))
+        return EXIT_FAILURE;
     if ((driver.caps = testQemuCapsInit()) == NULL)
         return EXIT_FAILURE;
     if (!(driver.xmlopt = virQEMUDriverCreateXMLConf(&driver)))

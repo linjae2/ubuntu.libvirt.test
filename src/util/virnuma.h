@@ -23,7 +23,6 @@
 # define __VIR_NUMA_H__
 
 # include "internal.h"
-# include "numatune_conf.h"
 # include "virbitmap.h"
 # include "virutil.h"
 
@@ -31,9 +30,11 @@
 char *virNumaGetAutoPlacementAdvice(unsigned short vcups,
                                     unsigned long long balloon);
 
-int virNumaSetupMemoryPolicy(virDomainNumatunePtr numatune,
-                             virBitmapPtr nodemask);
+int virNumaSetupMemoryPolicy(virDomainNumatuneMemMode mode,
+                             virBitmapPtr nodeset);
 
+virBitmapPtr virNumaGetHostNodeset(void);
+bool virNumaNodesetIsAvailable(virBitmapPtr nodeset);
 bool virNumaIsAvailable(void);
 int virNumaGetMaxNode(void);
 bool virNumaNodeIsAvailable(int node);
@@ -59,4 +60,8 @@ int virNumaGetPages(int node,
                     unsigned int **pages_free,
                     size_t *npages)
     ATTRIBUTE_NONNULL(5);
+int virNumaSetPagePoolSize(int node,
+                           unsigned int page_size,
+                           unsigned long long page_count,
+                           bool add);
 #endif /* __VIR_NUMA_H__ */

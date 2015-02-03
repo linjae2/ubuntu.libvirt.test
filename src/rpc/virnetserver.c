@@ -285,14 +285,14 @@ static int virNetServerAddClient(virNetServerPtr srv,
     if (srv->nclients_unauth_max &&
         srv->nclients_unauth == srv->nclients_unauth_max) {
         /* Temporarily stop accepting new clients */
-        VIR_DEBUG("Temporarily suspending services "
-                  "due to max_anonymous_clients");
+        VIR_INFO("Temporarily suspending services "
+                 "due to max_anonymous_clients");
         virNetServerUpdateServicesLocked(srv, false);
     }
 
     if (srv->nclients == srv->nclients_max) {
         /* Temporarily stop accepting new clients */
-        VIR_DEBUG("Temporarily suspending services due to max_clients");
+        VIR_INFO("Temporarily suspending services due to max_clients");
         virNetServerUpdateServicesLocked(srv, false);
     }
 
@@ -817,8 +817,8 @@ void virNetServerRemoveShutdownInhibition(virNetServerPtr srv)
 
 
 
-static sig_atomic_t sigErrors = 0;
-static int sigLastErrno = 0;
+static sig_atomic_t sigErrors;
+static int sigLastErrno;
 static int sigWrite = -1;
 
 static void
@@ -1080,7 +1080,7 @@ virNetServerCheckLimits(virNetServerPtr srv)
         (!srv->nclients_unauth_max ||
          srv->nclients_unauth < srv->nclients_unauth_max)) {
         /* Now it makes sense to accept() a new client. */
-        VIR_DEBUG("Re-enabling services");
+        VIR_INFO("Re-enabling services");
         virNetServerUpdateServicesLocked(srv, true);
     }
 }
@@ -1233,9 +1233,8 @@ void virNetServerClose(virNetServerPtr srv)
 
     virObjectLock(srv);
 
-    for (i = 0; i < srv->nservices; i++) {
+    for (i = 0; i < srv->nservices; i++)
         virNetServerServiceClose(srv->services[i]);
-    }
 
     virObjectUnlock(srv);
 }

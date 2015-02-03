@@ -105,7 +105,7 @@ int virTimeFieldsNowRaw(struct tm *fields)
 #define DIV(a, b) ((a) / (b) - ((a) % (b) < 0))
 #define LEAPS_THRU_END_OF(y) (DIV (y, 4) - DIV (y, 100) + DIV (y, 400))
 
-const unsigned short int __mon_yday[2][13] = {
+static const unsigned short int mon_yday[2][13] = {
     /* Normal years.  */
     { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 },
     /* Leap years.  */
@@ -127,22 +127,16 @@ const unsigned short int __mon_yday[2][13] = {
 void virTimeFieldsThen(unsigned long long when, struct tm *fields)
 {
     /* This code is taken from GLibC under terms of LGPLv2+ */
+    /* Remove the 'offset' or GMT manipulation since we don't care. See
+     * commit id '3ec12898' comments regarding localtime.
+     */
     long int days, rem, y;
     const unsigned short int *ip;
     unsigned long long whenSecs = when / 1000ull;
-    unsigned int offset = 0; /* We hardcoded GMT */
 
     days = whenSecs / SECS_PER_DAY;
     rem = whenSecs % SECS_PER_DAY;
-    rem += offset;
-    while (rem < 0) {
-        rem += SECS_PER_DAY;
-        --days;
-    }
-    while (rem >= SECS_PER_DAY) {
-        rem -= SECS_PER_DAY;
-        ++days;
-    }
+
     fields->tm_hour = rem / SECS_PER_HOUR;
     rem %= SECS_PER_HOUR;
     fields->tm_min = rem / 60;
@@ -166,7 +160,7 @@ void virTimeFieldsThen(unsigned long long when, struct tm *fields)
     fields->tm_year = y - 1900;
 
     fields->tm_yday = days;
-    ip = __mon_yday[is_leap_year(y)];
+    ip = mon_yday[is_leap_year(y)];
     for (y = 11; days < (long int) ip[y]; --y)
         continue;
     days -= ip[y];

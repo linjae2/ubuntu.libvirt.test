@@ -82,13 +82,35 @@ vmwareDataFreeFunc(void *data)
     VIR_FREE(dom);
 }
 
+static int
+vmwareDomainDefPostParse(virDomainDefPtr def ATTRIBUTE_UNUSED,
+                         virCapsPtr caps ATTRIBUTE_UNUSED,
+                         void *opaque ATTRIBUTE_UNUSED)
+{
+    return 0;
+}
+
+static int
+vmwareDomainDeviceDefPostParse(virDomainDeviceDefPtr dev ATTRIBUTE_UNUSED,
+                               const virDomainDef *def ATTRIBUTE_UNUSED,
+                               virCapsPtr caps ATTRIBUTE_UNUSED,
+                               void *opaque ATTRIBUTE_UNUSED)
+{
+    return 0;
+}
+
+virDomainDefParserConfig vmwareDomainDefParserConfig = {
+    .devicesPostParseCallback = vmwareDomainDeviceDefPostParse,
+    .domainPostParseCallback = vmwareDomainDefPostParse,
+};
+
 static virDomainXMLOptionPtr
 vmwareDomainXMLConfigInit(void)
 {
     virDomainXMLPrivateDataCallbacks priv = { .alloc = vmwareDataAllocFunc,
                                               .free = vmwareDataFreeFunc };
 
-    return virDomainXMLOptionNew(NULL, &priv, NULL);
+    return virDomainXMLOptionNew(&vmwareDomainDefParserConfig, &priv, NULL);
 }
 
 static virDrvOpenStatus
@@ -291,9 +313,8 @@ vmwareStopVM(struct vmware_driver *driver,
     vmwareSetSentinal(cmd, vmwareDriverTypeToString(driver->type));
     vmwareSetSentinal(cmd, ((vmwareDomainPtr) vm->privateData)->vmxPath);
 
-    if (virRun(cmd, NULL) < 0) {
+    if (virRun(cmd, NULL) < 0)
         return -1;
-    }
 
     vm->def->id = -1;
     virDomainObjSetState(vm, VIR_DOMAIN_SHUTOFF, reason);
@@ -323,9 +344,8 @@ vmwareStartVM(struct vmware_driver *driver, virDomainObjPtr vm)
     else
         vmwareSetSentinal(cmd, NULL);
 
-    if (virRun(cmd, NULL) < 0) {
+    if (virRun(cmd, NULL) < 0)
         return -1;
-    }
 
     if ((vm->def->id = vmwareExtractPid(vmxPath)) < 0) {
         vmwareStopVM(driver, vm, VIR_DOMAIN_SHUTOFF_FAILED);
@@ -338,7 +358,7 @@ vmwareStartVM(struct vmware_driver *driver, virDomainObjPtr vm)
 }
 
 static virDomainPtr
-vmwareDomainDefineXML(virConnectPtr conn, const char *xml)
+vmwareDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int flags)
 {
     struct vmware_driver *driver = conn->privateData;
     virDomainDefPtr vmdef = NULL;
@@ -350,13 +370,19 @@ vmwareDomainDefineXML(virConnectPtr conn, const char *xml)
     char *vmxPath = NULL;
     vmwareDomainPtr pDomain = NULL;
     virVMXContext ctx;
+    unsigned int parse_flags = VIR_DOMAIN_DEF_PARSE_INACTIVE;
+
+    virCheckFlags(VIR_DOMAIN_DEFINE_VALIDATE, NULL);
+
+    if (flags & VIR_DOMAIN_DEFINE_VALIDATE)
+        parse_flags |= VIR_DOMAIN_DEF_PARSE_VALIDATE;
 
     ctx.formatFileName = vmwareCopyVMXFileName;
 
     vmwareDriverLock(driver);
     if ((vmdef = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
                                          1 << VIR_DOMAIN_VIRT_VMWARE,
-                                         VIR_DOMAIN_XML_INACTIVE)) == NULL)
+                                         parse_flags)) == NULL)
         goto cleanup;
 
     /* generate vmx file */
@@ -405,6 +431,12 @@ vmwareDomainDefineXML(virConnectPtr conn, const char *xml)
         virObjectUnlock(vm);
     vmwareDriverUnlock(driver);
     return dom;
+}
+
+static virDomainPtr
+vmwareDomainDefineXML(virConnectPtr conn, const char *xml)
+{
+    return vmwareDomainDefineXMLFlags(conn, xml, 0);
 }
 
 static int
@@ -629,8 +661,12 @@ vmwareDomainCreateXML(virConnectPtr conn, const char *xml,
     char *vmxPath = NULL;
     vmwareDomainPtr pDomain = NULL;
     virVMXContext ctx;
+    unsigned int parse_flags = VIR_DOMAIN_DEF_PARSE_INACTIVE;
 
-    virCheckFlags(0, NULL);
+    virCheckFlags(VIR_DOMAIN_START_VALIDATE, NULL);
+
+    if (flags & VIR_DOMAIN_START_VALIDATE)
+        parse_flags |= VIR_DOMAIN_DEF_PARSE_VALIDATE;
 
     ctx.formatFileName = vmwareCopyVMXFileName;
 
@@ -638,7 +674,7 @@ vmwareDomainCreateXML(virConnectPtr conn, const char *xml,
 
     if ((vmdef = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
                                          1 << VIR_DOMAIN_VIRT_VMWARE,
-                                         VIR_DOMAIN_XML_INACTIVE)) == NULL)
+                                         parse_flags)) == NULL)
         goto cleanup;
 
     /* generate vmx file */
@@ -956,7 +992,8 @@ vmwareDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
         goto cleanup;
     }
 
-    ret = virDomainDefFormat(vm->def, flags);
+    ret = virDomainDefFormat(vm->def,
+                             virDomainDefFormatConvertXMLFlags(flags));
 
  cleanup:
     if (vm)
@@ -987,7 +1024,7 @@ vmwareConnectDomainXMLFromNative(virConnectPtr conn, const char *nativeFormat,
     def = virVMXParseConfig(&ctx, driver->xmlopt, nativeConfig);
 
     if (def != NULL)
-        xml = virDomainDefFormat(def, VIR_DOMAIN_XML_INACTIVE);
+        xml = virDomainDefFormat(def, VIR_DOMAIN_DEF_FORMAT_INACTIVE);
 
     virDomainDefFree(def);
 
@@ -1160,7 +1197,7 @@ vmwareConnectListAllDomains(virConnectPtr conn,
 
 
 
-static virDriver vmwareDriver = {
+static virHypervisorDriver vmwareDriver = {
     .no = VIR_DRV_VMWARE,
     .name = "VMWARE",
     .connectOpen = vmwareConnectOpen, /* 0.8.7 */
@@ -1191,6 +1228,7 @@ static virDriver vmwareDriver = {
     .domainCreate = vmwareDomainCreate, /* 0.8.7 */
     .domainCreateWithFlags = vmwareDomainCreateWithFlags, /* 0.8.7 */
     .domainDefineXML = vmwareDomainDefineXML, /* 0.8.7 */
+    .domainDefineXMLFlags = vmwareDomainDefineXMLFlags, /* 1.2.12 */
     .domainUndefine = vmwareDomainUndefine, /* 0.8.7 */
     .domainUndefineFlags = vmwareDomainUndefineFlags, /* 0.9.4 */
     .domainIsActive = vmwareDomainIsActive, /* 0.8.7 */
@@ -1201,7 +1239,7 @@ static virDriver vmwareDriver = {
 int
 vmwareRegister(void)
 {
-    if (virRegisterDriver(&vmwareDriver) < 0)
+    if (virRegisterHypervisorDriver(&vmwareDriver) < 0)
         return -1;
     return 0;
 }

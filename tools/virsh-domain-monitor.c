@@ -271,7 +271,7 @@ static const vshCmdOptDef opts_dommemstat[] = {
      .help = N_("domain name, id or uuid")
     },
     {.name = "period",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .flags = VSH_OFLAG_REQ_OPT,
      .help = N_("period in seconds to set collection")
     },
@@ -295,10 +295,10 @@ cmdDomMemStat(vshControl *ctl, const vshCmd *cmd)
 {
     virDomainPtr dom;
     const char *name;
-    struct _virDomainMemoryStat stats[VIR_DOMAIN_MEMORY_STAT_NR];
+    virDomainMemoryStatStruct stats[VIR_DOMAIN_MEMORY_STAT_NR];
     unsigned int nr_stats;
     size_t i;
-    int ret = false;
+    bool ret = false;
     int rv = 0;
     int period = -1;
     bool config = vshCommandOptBool(cmd, "config");
@@ -845,7 +845,7 @@ static const vshCmdOptDef opts_domblkstat[] = {
      .help = N_("domain name, id or uuid")
     },
     {.name = "device",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .flags = VSH_OFLAG_EMPTY_OK,
      .help = N_("block device")
     },
@@ -899,7 +899,7 @@ cmdDomblkstat(vshControl *ctl, const vshCmd *cmd)
 {
     virDomainPtr dom;
     const char *name = NULL, *device = NULL;
-    struct _virDomainBlockStats stats;
+    virDomainBlockStatsStruct stats;
     virTypedParameterPtr params = NULL;
     virTypedParameterPtr par = NULL;
     char *value = NULL;
@@ -1047,7 +1047,7 @@ cmdDomIfstat(vshControl *ctl, const vshCmd *cmd)
 {
     virDomainPtr dom;
     const char *name = NULL, *device = NULL;
-    struct _virDomainInterfaceStats stats;
+    virDomainInterfaceStatsStruct stats;
     bool ret = false;
 
     if (!(dom = vshCommandOptDomain(ctl, cmd, &name)))
@@ -1916,6 +1916,11 @@ cmdList(vshControl *ctl, const vshCmd *cmd)
             ignore_value(virStrcpyStatic(id_buf, "-"));
 
         state = vshDomainState(ctl, dom, NULL);
+
+        /* Domain could've been removed in the meantime */
+        if (state < 0)
+            continue;
+
         if (optTable && managed && state == VIR_DOMAIN_SHUTOFF &&
             virDomainHasManagedSaveImage(dom, 0) > 0)
             state = -2;
@@ -1972,6 +1977,26 @@ static const vshCmdOptDef opts_domstats[] = {
      .type = VSH_OT_BOOL,
      .help = N_("report domain state"),
     },
+    {.name = "cpu-total",
+     .type = VSH_OT_BOOL,
+     .help = N_("report domain physical cpu usage"),
+    },
+    {.name = "balloon",
+     .type = VSH_OT_BOOL,
+     .help = N_("report domain balloon statistics"),
+    },
+    {.name = "vcpu",
+     .type = VSH_OT_BOOL,
+     .help = N_("report domain virtual cpu information"),
+    },
+    {.name = "interface",
+     .type = VSH_OT_BOOL,
+     .help = N_("report domain network interface information"),
+    },
+    {.name = "block",
+     .type = VSH_OT_BOOL,
+     .help = N_("report domain block device statistics"),
+    },
     {.name = "list-active",
      .type = VSH_OT_BOOL,
      .help = N_("list only active domains"),
@@ -2011,6 +2036,10 @@ static const vshCmdOptDef opts_domstats[] = {
     {.name = "enforce",
      .type = VSH_OT_BOOL,
      .help = N_("enforce requested stats parameters"),
+    },
+    {.name = "backing",
+     .type = VSH_OT_BOOL,
+     .help = N_("add backing chain information to block stats"),
     },
     {.name = "domain",
      .type = VSH_OT_ARGV,
@@ -2063,6 +2092,21 @@ cmdDomstats(vshControl *ctl, const vshCmd *cmd)
     if (vshCommandOptBool(cmd, "state"))
         stats |= VIR_DOMAIN_STATS_STATE;
 
+    if (vshCommandOptBool(cmd, "cpu-total"))
+        stats |= VIR_DOMAIN_STATS_CPU_TOTAL;
+
+    if (vshCommandOptBool(cmd, "balloon"))
+        stats |= VIR_DOMAIN_STATS_BALLOON;
+
+    if (vshCommandOptBool(cmd, "vcpu"))
+        stats |= VIR_DOMAIN_STATS_VCPU;
+
+    if (vshCommandOptBool(cmd, "interface"))
+        stats |= VIR_DOMAIN_STATS_INTERFACE;
+
+    if (vshCommandOptBool(cmd, "block"))
+        stats |= VIR_DOMAIN_STATS_BLOCK;
+
     if (vshCommandOptBool(cmd, "list-active"))
         flags |= VIR_CONNECT_GET_ALL_DOMAINS_STATS_ACTIVE;
 
@@ -2089,6 +2133,9 @@ cmdDomstats(vshControl *ctl, const vshCmd *cmd)
 
     if (vshCommandOptBool(cmd, "enforce"))
         flags |= VIR_CONNECT_GET_ALL_DOMAINS_STATS_ENFORCE_STATS;
+
+    if (vshCommandOptBool(cmd, "backing"))
+        flags |= VIR_CONNECT_GET_ALL_DOMAINS_STATS_BACKING;
 
     if (vshCommandOptBool(cmd, "domain")) {
         if (VIR_ALLOC_N(domlist, 1) < 0)

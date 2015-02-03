@@ -175,8 +175,8 @@
  * @retval: the return value
  * @...: pairs of parameter type and parameter name
  *
- * Define a replacement for @name which invokes wrap_@name
- * forwarding on all args, and passing back the return value.
+ * Define a replacement for @name which doesn't invoke anything, just
+ * returns @retval.
  */
 # define VIR_MOCK_STUB_RET_ARGS(name, rettype, retval, ...)             \
     rettype name(VIR_MOCK_ARGTYPENAMES_UNUSED(__VA_ARGS__))             \
@@ -188,9 +188,10 @@
  * VIR_MOCK_STUB_RET_VOID:
  * @name: the symbol name to replace
  * @rettype: the return type
+ * @retval: value to return
  *
- * Define a replacement for @name which invokes wrap_@name
- * with no arguments, and passing back the return value.
+ * Define a replacement for @name which doesn't invoke anything, just
+ * returns @retval.
  */
 # define VIR_MOCK_STUB_RET_VOID(name, rettype, retval)              \
     rettype name(void)                                              \
@@ -203,8 +204,8 @@
  * @name: the symbol name to replace
  * @...: pairs of parameter type and parameter name
  *
- * Define a replacement for @name which invokes wrap_@name
- * forwarding on all args, but with no return value.
+ * Define a replacement for @name which doesn't invoke or return
+ * anything.
  */
 # define VIR_MOCK_STUB_VOID_ARGS(name, ...)                         \
     void name(VIR_MOCK_ARGTYPENAMES_UNUSED(__VA_ARGS__))            \
@@ -217,8 +218,8 @@
  * VIR_MOCK_STUB_VOID_VOID:
  * @name: the symbol name to replace
  *
- * Define a replacement for @name which invokes wrap_@name
- * with no arguments and with no return value
+ * Define a replacement for @name which doesn't invoke or return
+ * anything.
  */
 # define VIR_MOCK_STUB_VOID_VOID(name)                              \
     void name(void)                                                 \
@@ -234,11 +235,54 @@
  */
 
 # define VIR_MOCK_IMPL_RET_ARGS(name, rettype, ...)                     \
+    rettype name(VIR_MOCK_ARGTYPENAMES(__VA_ARGS__));                   \
+    static rettype (*real_##name)(VIR_MOCK_ARGTYPES(__VA_ARGS__));      \
+    rettype name(VIR_MOCK_ARGTYPENAMES_UNUSED(__VA_ARGS__))
+
+# define VIR_MOCK_IMPL_RET_VOID(name, rettype)                          \
+    rettype name(void);                                                 \
+    static rettype (*real_##name)(void);                                \
+    rettype name(void)
+
+# define VIR_MOCK_IMPL_VOID_ARGS(name, ...)                             \
+    void name(VIR_MOCK_ARGTYPENAMES(__VA_ARGS__));                      \
+    static void (*real_##name)(VIR_MOCK_ARGTYPES(__VA_ARGS__));         \
+    void name(VIR_MOCK_ARGTYPENAMES_UNUSED(__VA_ARGS__))
+
+# define VIR_MOCK_IMPL_VOID_VOID(name)                                  \
+    void name(void);                                                    \
+    static void (*real_##name)(void);                                   \
+    void name(void)
+
+/*
+ * The VIR_MOCK_WRAP_NNN_MMM() macros are intended for use in the
+ * individual test suites. The define a stub implementation of
+ * the wrapped method and insert the caller provided code snippet
+ * as the body of the method.
+ */
+
+# define VIR_MOCK_WRAP_RET_ARGS(name, rettype, ...)                     \
     rettype wrap_##name(VIR_MOCK_ARGTYPENAMES(__VA_ARGS__));            \
     static rettype (*real_##name)(VIR_MOCK_ARGTYPES(__VA_ARGS__));      \
     rettype wrap_##name(VIR_MOCK_ARGTYPENAMES_UNUSED(__VA_ARGS__))
 
-# define VIR_MOCK_IMPL_INIT_REAL(name)                                  \
+# define VIR_MOCK_WRAP_RET_VOID(name, rettype)                          \
+    rettype wrap_##name(void);                                          \
+    static rettype (*real_##name)(void);                                \
+    rettype wrap_##name(void)
+
+# define VIR_MOCK_WRAP_VOID_ARGS(name, ...)                             \
+    void wrap_##name(VIR_MOCK_ARGTYPENAMES(__VA_ARGS__));               \
+    static void (*real_##name)(VIR_MOCK_ARGTYPES(__VA_ARGS__));         \
+    void wrap_##name(VIR_MOCK_ARGTYPENAMES_UNUSED(__VA_ARGS__))
+
+# define VIR_MOCK_WRAP_VOID_VOID(name)                                  \
+    void wrap_##name(void);                                             \
+    static void (*real_##name)(void);                                   \
+    void wrap_##name(void)
+
+
+# define VIR_MOCK_REAL_INIT(name)                                       \
     do {                                                                \
         if (real_##name == NULL &&                                      \
             !(real_##name = dlsym(RTLD_NEXT,                            \
@@ -247,20 +291,5 @@
             abort();                                                    \
         }                                                               \
     } while (0)
-
-# define VIR_MOCK_IMPL_RET_VOID(name, rettype)                          \
-    rettype wrap_##name(void);                                          \
-    static rettype (*real_##name)(void);                                \
-    rettype wrap_##name(void)
-
-# define VIR_MOCK_IMPL_VOID_ARGS(name, ...)                             \
-    void wrap_##name(VIR_MOCK_ARGTYPENAMES(__VA_ARGS__));               \
-    static void (*real_##name)(VIR_MOCK_ARGTYPES(__VA_ARGS__));         \
-    void wrap_##name(VIR_MOCK_ARGTYPENAMES_UNUSED(__VA_ARGS__))
-
-# define VIR_MOCK_IMPL_VOID_VOID(name)                                  \
-    void wrap_##name(void);                                             \
-    static void (*real_##name)(void);                                   \
-    void wrap_##name(void)
 
 #endif /* __VIR_MOCK_H__ */

@@ -11,6 +11,7 @@ src/access/viraccessmanager.c
 src/bhyve/bhyve_command.c
 src/bhyve/bhyve_device.c
 src/bhyve/bhyve_driver.c
+src/bhyve/bhyve_monitor.c
 src/bhyve/bhyve_process.c
 src/conf/capabilities.c
 src/conf/cpu_conf.c
@@ -24,6 +25,7 @@ src/conf/netdev_bandwidth_conf.c
 src/conf/netdev_vlan_conf.c
 src/conf/netdev_vport_profile_conf.c
 src/conf/network_conf.c
+src/conf/networkcommon_conf.c
 src/conf/node_device_conf.c
 src/conf/numatune_conf.c
 src/conf/nwfilter_conf.c
@@ -44,6 +46,7 @@ src/esx/esx_network_driver.c
 src/esx/esx_storage_backend_iscsi.c
 src/esx/esx_storage_backend_vmfs.c
 src/esx/esx_storage_driver.c
+src/esx/esx_stream.c
 src/esx/esx_util.c
 src/esx/esx_vi.c
 src/esx/esx_vi_methods.c
@@ -56,7 +59,15 @@ src/interface/interface_backend_netcf.c
 src/interface/interface_backend_udev.c
 src/internal.h
 src/libvirt.c
+src/libvirt-domain.c
+src/libvirt-domain-snapshot.c
+src/libvirt-host.c
 src/libvirt-lxc.c
+src/libvirt-network.c
+src/libvirt-nwfilter.c
+src/libvirt-secret.c
+src/libvirt-storage.c
+src/libvirt-stream.c
 src/libvirt-qemu.c
 src/locking/lock_daemon.c
 src/locking/lock_daemon_config.c
@@ -83,7 +94,6 @@ src/network/bridge_driver_linux.c
 src/network/leaseshelper.c
 src/node_device/node_device_driver.c
 src/node_device/node_device_hal.c
-src/node_device/node_device_linux_sysfs.c
 src/node_device/node_device_udev.c
 src/nodeinfo.c
 src/nwfilter/nwfilter_dhcpsnoop.c
@@ -96,6 +106,7 @@ src/openvz/openvz_driver.c
 src/openvz/openvz_util.c
 src/parallels/parallels_driver.c
 src/parallels/parallels_network.c
+src/parallels/parallels_sdk.c
 src/parallels/parallels_utils.c
 src/parallels/parallels_utils.h
 src/parallels/parallels_storage.c
@@ -194,6 +205,7 @@ src/util/virnuma.c
 src/util/virobject.c
 src/util/virpci.c
 src/util/virpidfile.c
+src/util/virpolkit.c
 src/util/virportallocator.c
 src/util/virprocess.c
 src/util/virrandom.c
@@ -218,6 +230,8 @@ src/vbox/vbox_MSCOMGlue.c
 src/vbox/vbox_XPCOMCGlue.c
 src/vbox/vbox_driver.c
 src/vbox/vbox_common.c
+src/vbox/vbox_network.c
+src/vbox/vbox_storage.c
 src/vbox/vbox_snapshot_conf.c
 src/vbox/vbox_tmpl.c
 src/vmware/vmware_conf.c
@@ -234,7 +248,9 @@ src/xenapi/xenapi_driver.c
 src/xenapi/xenapi_utils.c
 src/xenconfig/xen_common.c
 src/xenconfig/xen_sxpr.c
+src/xenconfig/xen_xl.c
 src/xenconfig/xen_xm.c
+tests/virpolkittest.c
 tools/libvirt-guests.sh.in
 tools/virsh.c
 tools/virsh.h

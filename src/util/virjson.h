@@ -26,6 +26,8 @@
 
 # include "internal.h"
 
+# include <stdarg.h>
+
 
 typedef enum {
     VIR_JSON_TYPE_OBJECT,
@@ -79,6 +81,11 @@ struct _virJSONValue {
 
 void virJSONValueFree(virJSONValuePtr value);
 
+int virJSONValueObjectCreate(virJSONValuePtr *obj, ...)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_SENTINEL;
+int virJSONValueObjectCreateVArgs(virJSONValuePtr *obj, va_list args)
+    ATTRIBUTE_NONNULL(1);
+
 virJSONValuePtr virJSONValueNewString(const char *data);
 virJSONValuePtr virJSONValueNewStringLen(const char *data, size_t length);
 virJSONValuePtr virJSONValueNewNumberInt(int data);
@@ -98,7 +105,7 @@ int virJSONValueObjectHasKey(virJSONValuePtr object, const char *key);
 virJSONValuePtr virJSONValueObjectGet(virJSONValuePtr object, const char *key);
 
 bool virJSONValueIsArray(virJSONValuePtr array);
-int virJSONValueArraySize(virJSONValuePtr object);
+int virJSONValueArraySize(const virJSONValue *array);
 virJSONValuePtr virJSONValueArrayGet(virJSONValuePtr object, unsigned int element);
 virJSONValuePtr virJSONValueArraySteal(virJSONValuePtr object, unsigned int element);
 

@@ -42,6 +42,9 @@
 #if HAVE_MMAP
 # include <sys/mman.h>
 #endif
+#if HAVE_SYS_SYSCALL_H
+# include <sys/syscall.h>
+#endif
 
 #ifdef __linux__
 # if HAVE_LINUX_MAGIC_H
@@ -745,13 +748,13 @@ int virFileLoopDeviceAssociate(const char *file,
 
 
 static int
-virFileNBDDeviceIsBusy(const char *devname)
+virFileNBDDeviceIsBusy(const char *dev_name)
 {
     char *path;
     int ret = -1;
 
     if (virAsprintf(&path, SYSFS_BLOCK_DIR "/%s/pid",
-                    devname) < 0)
+                    dev_name) < 0)
         return -1;
 
     if (!virFileExists(path)) {
@@ -760,7 +763,7 @@ virFileNBDDeviceIsBusy(const char *devname)
         else
             virReportSystemError(errno,
                                  _("Cannot check NBD device %s pid"),
-                                 devname);
+                                 dev_name);
         goto cleanup;
     }
     ret = 1;
@@ -1035,8 +1038,8 @@ safewrite(int fd, const void *buf, size_t count)
 }
 
 #ifdef HAVE_POSIX_FALLOCATE
-int
-safezero(int fd, off_t offset, off_t len)
+static int
+safezero_posix_fallocate(int fd, off_t offset, off_t len)
 {
     int ret = posix_fallocate(fd, offset, len);
     if (ret == 0)
@@ -1044,17 +1047,41 @@ safezero(int fd, off_t offset, off_t len)
     errno = ret;
     return -1;
 }
+#else /* !HAVE_POSIX_FALLOCATE */
+static int
+safezero_posix_fallocate(int fd ATTRIBUTE_UNUSED,
+                         off_t offset ATTRIBUTE_UNUSED,
+                         off_t len ATTRIBUTE_UNUSED)
+{
+    return -2;
+}
+#endif /* !HAVE_POSIX_FALLOCATE */
 
-#else
+#if HAVE_SYS_SYSCALL_H && defined(SYS_fallocate)
+static int
+safezero_sys_fallocate(int fd,
+                       off_t offset,
+                       off_t len)
+{
+    return syscall(SYS_fallocate, fd, 0, offset, len);
+}
+#else /* !HAVE_SYS_SYSCALL_H || !defined(SYS_fallocate) */
+static int
+safezero_sys_fallocate(int fd ATTRIBUTE_UNUSED,
+                       off_t offset ATTRIBUTE_UNUSED,
+                       off_t len ATTRIBUTE_UNUSED)
+{
+    return -2;
+}
+#endif /* !HAVE_SYS_SYSCALL_H || !defined(SYS_fallocate) */
 
-int
-safezero(int fd, off_t offset, off_t len)
+#ifdef HAVE_MMAP
+static int
+safezero_mmap(int fd, off_t offset, off_t len)
 {
     int r;
     char *buf;
-    unsigned long long remain, bytes;
-# ifdef HAVE_MMAP
-    static long pagemask = 0;
+    static long pagemask;
     off_t map_skip;
 
     /* align offset and length, rounding offset down and length up */
@@ -1080,7 +1107,24 @@ safezero(int fd, off_t offset, off_t len)
 
     /* fall back to writing zeroes using safewrite if mmap fails (for
      * example because of virtual memory limits) */
-# endif /* HAVE_MMAP */
+    return -2;
+}
+#else /* !HAVE_MMAP */
+static int
+safezero_mmap(int fd ATTRIBUTE_UNUSED,
+              off_t offset ATTRIBUTE_UNUSED,
+              off_t len ATTRIBUTE_UNUSED)
+{
+    return -2;
+}
+#endif /* !HAVE_MMAP */
+
+static int
+safezero_slow(int fd, off_t offset, off_t len)
+{
+    int r;
+    char *buf;
+    unsigned long long remain, bytes;
 
     if (lseek(fd, offset, SEEK_SET) < 0)
         return -1;
@@ -1111,8 +1155,23 @@ safezero(int fd, off_t offset, off_t len)
     VIR_FREE(buf);
     return 0;
 }
-#endif /* HAVE_POSIX_FALLOCATE */
 
+int safezero(int fd, off_t offset, off_t len)
+{
+    int ret;
+
+    ret = safezero_posix_fallocate(fd, offset, len);
+    if (ret != -2)
+        return ret;
+
+    if (safezero_sys_fallocate(fd, offset, len) == 0)
+        return 0;
+
+    ret = safezero_mmap(fd, offset, len);
+    if (ret != -2)
+        return ret;
+    return safezero_slow(fd, offset, len);
+}
 
 #if defined HAVE_MNTENT_H && defined HAVE_GETMNTENT_R
 /* search /proc/mounts for mount point of *type; return pointer to
@@ -1172,8 +1231,7 @@ virBuildPathInternal(char **path, ...)
     path_component = va_arg(ap, char *);
     virBufferAdd(&buf, path_component, -1);
 
-    while ((path_component = va_arg(ap, char *)) != NULL)
-    {
+    while ((path_component = va_arg(ap, char *)) != NULL) {
         virBufferAddChar(&buf, '/');
         virBufferAdd(&buf, path_component, -1);
     }
@@ -1181,9 +1239,8 @@ virBuildPathInternal(char **path, ...)
     va_end(ap);
 
     *path = virBufferContentAndReset(&buf);
-    if (*path == NULL) {
+    if (*path == NULL)
         ret = -1;
-    }
 
     return ret;
 }
@@ -2001,8 +2058,11 @@ virFileOpenForked(const char *path, int openflags, mode_t mode,
     }
 
     pid = virFork();
-    if (pid < 0)
-        return -errno;
+    if (pid < 0) {
+        ret = -errno;
+        VIR_FREE(groups);
+        return ret;
+    }
 
     if (pid == 0) {
 
@@ -2045,9 +2105,8 @@ virFileOpenForked(const char *path, int openflags, mode_t mode,
         /* XXX This makes assumptions about errno being < 255, which is
          * not true on Hurd.  */
         VIR_FORCE_CLOSE(pair[1]);
-        if (ret < 0) {
+        if (ret < 0)
             VIR_FORCE_CLOSE(fd);
-        }
         ret = -ret;
         if ((ret & 0xff) != ret) {
             VIR_WARN("unable to pass desired return value %d", ret);
@@ -2073,8 +2132,7 @@ virFileOpenForked(const char *path, int openflags, mode_t mode,
     }
 
     /* wait for child to complete, and retrieve its exit code */
-    while ((waitret = waitpid(pid, &status, 0) == -1)
-           && (errno == EINTR));
+    while ((waitret = waitpid(pid, &status, 0)) == -1 && errno == EINTR);
     if (waitret == -1) {
         ret = -errno;
         virReportSystemError(errno,
@@ -2291,7 +2349,7 @@ virDirCreate(const char *path,
     if (pid) { /* parent */
         /* wait for child to complete, and retrieve its exit code */
         VIR_FREE(groups);
-        while ((waitret = waitpid(pid, &status, 0) == -1)  && (errno == EINTR));
+        while ((waitret = waitpid(pid, &status, 0)) == -1 && errno == EINTR);
         if (waitret == -1) {
             ret = -errno;
             virReportSystemError(errno,

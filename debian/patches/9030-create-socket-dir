@@ -14,21 +14,18 @@ Signed-off-by: Serge Hallyn <serge.hallyn@ubuntu.com>
  src/rpc/virnetsocket.c | 4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/src/rpc/virnetsocket.c b/src/rpc/virnetsocket.c
-index 586a0d7..14f8cca 100644
---- a/src/rpc/virnetsocket.c
-+++ b/src/rpc/virnetsocket.c
-@@ -598,6 +598,10 @@ int virNetSocketNewConnectUNIX(const char *path,
+Index: libvirt-1.2.12/src/rpc/virnetsocket.c
+===================================================================
+--- libvirt-1.2.12.orig/src/rpc/virnetsocket.c	2015-02-03 13:21:49.837736090 -0500
++++ libvirt-1.2.12/src/rpc/virnetsocket.c	2015-02-03 13:22:59.269733914 -0500
+@@ -631,6 +631,10 @@
  
-             if (pid == 0) {
-                 umask(0077);
-+                if (path[0] != '@') {
-+                    if (virFileMakeParentPath(path) < 0)
-+                        virReportSystemError(errno, "%s", _("Failed to create directory"));
-+                }
-                 if (bind(passfd, &remoteAddr.data.sa, remoteAddr.len) < 0)
-                     _exit(EXIT_FAILURE);
+         if (pid == 0) {
+             umask(0077);
++			if (path[0] != '@') {
++				if (virFileMakeParentPath(path) < 0)
++						 virReportSystemError(errno, "%s", _("Failed to create directory"));
++			}
+             if (bind(passfd, &remoteAddr.data.sa, remoteAddr.len) < 0)
+                 _exit(EXIT_FAILURE);
  
--- 
-2.1.0
-

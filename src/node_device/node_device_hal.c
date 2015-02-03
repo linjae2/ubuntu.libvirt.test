@@ -255,9 +255,8 @@ gather_scsi_host_cap(LibHalContext *ctx, const char *udi,
 
     retval = detect_scsi_host_caps(d);
 
-    if (retval == -1) {
+    if (retval == -1)
         goto out;
-    }
 
  out:
     return retval;
@@ -546,13 +545,13 @@ dev_refresh(const char *udi)
          * to sub-capabilities (like net.80203) is nasty ... so avoid it.
          */
         virNodeDeviceObjRemove(&driverState->devs, dev);
-    } else
+    } else {
         VIR_DEBUG("no device named %s", name);
+    }
     nodeDeviceUnlock(driverState);
 
-    if (dev) {
+    if (dev)
         dev_create(udi);
-    }
 }
 
 static void
