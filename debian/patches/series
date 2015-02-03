@@ -2,7 +2,6 @@
 remove-RHism.diff.patch
 Don-t-enable-default-network-on-boot.patch
 Allow-libvirt-group-to-access-the-socket.patch
-fix-Debian-specific-path-to-hvm-loader.patch
 Disable-failing-virnetsockettest.patch
 Don-t-fail-if-we-can-t-setup-avahi.patch
 9004-libvirtd-group-name.patch
@@ -21,16 +20,8 @@ cgroups-ignore-systemd-failure
 9031-enable-lxc-apparmor
 9032-lxc-allow-no-security-driver
 ubuntu-xend-probe.patch
-ubuntu-libxl-Implement-basic-video-device-selection.patch
-ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch
-9033-apparmor-use-TEMPLATE.qemu-for-kvm.patch
-CVE-2014-3633.patch
 ubuntu_machine_type.patch
 9034-complete-9p-support
-dont-include-non-migrateable-features-in-host-model
-9036-util-prepare-uri-for-libxml2-2.9.2.patch
-CVE-2014-3657.patch
-CVE-2014-7823.patch
-add-ppc64le-support.patch
-upstream-libxl-Allow-libxl-to-find-pygrub-binary.patch
 cgmanager-mutex
+skip-vircgrouptest.patch
+disable-network-test.patch

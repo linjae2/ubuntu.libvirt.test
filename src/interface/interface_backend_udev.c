@@ -471,7 +471,7 @@ udevConnectListAllInterfaces(virConnectPtr conn,
 
     if (ifaces) {
         for (tmp_count = 0; tmp_count < count; tmp_count++)
-            virInterfaceFree(ifaces_list[tmp_count]);
+            virObjectUnref(ifaces_list[tmp_count]);
     }
 
     VIR_FREE(ifaces_list);
@@ -845,9 +845,8 @@ udevGetIfaceDefBond(struct udev *udev,
     return 0;
 
  error:
-    for (i = 0; slave_count != -1 && i < slave_count; i++) {
+    for (i = 0; slave_count != -1 && i < slave_count; i++)
         VIR_FREE(slave_list[i]);
-    }
     VIR_FREE(slave_list);
 
     return -1;
@@ -952,9 +951,8 @@ udevGetIfaceDefBridge(struct udev *udev,
     return 0;
 
  error:
-    for (i = 0; member_count != -1 && i < member_count; i++) {
+    for (i = 0; member_count != -1 && i < member_count; i++)
         VIR_FREE(member_list[i]);
-    }
     VIR_FREE(member_list);
 
     return -1;
@@ -1015,7 +1013,7 @@ udevGetIfaceDefVlan(struct udev *udev ATTRIBUTE_UNUSED,
 
     if (VIR_STRNDUP(ifacedef->data.vlan.tag, vid_pos, vid_len) < 0)
         goto cleanup;
-    if (VIR_STRNDUP(ifacedef->data.vlan.devname, dev_pos, dev_len) < 0) {
+    if (VIR_STRNDUP(ifacedef->data.vlan.dev_name, dev_pos, dev_len) < 0) {
         VIR_FREE(ifacedef->data.vlan.tag);
         goto cleanup;
     }
@@ -1102,14 +1100,12 @@ udevGetIfaceDef(struct udev *udev, const char *name)
          * to prevent false positives
          */
         vlan_parent_dev = strrchr(name, '.');
-        if (vlan_parent_dev) {
+        if (vlan_parent_dev)
             ifacedef->type = VIR_INTERFACE_TYPE_VLAN;
-        }
 
         /* Fallback check to see if this is a bond device */
-        if (udev_device_get_sysattr_value(dev, "bonding/mode")) {
+        if (udev_device_get_sysattr_value(dev, "bonding/mode"))
             ifacedef->type = VIR_INTERFACE_TYPE_BOND;
-        }
     }
 
     switch (ifacedef->type) {

@@ -51,6 +51,7 @@
 #include "viratomic.h"
 #include "virprocess.h"
 #include "virsystemd.h"
+#include "netdev_bandwidth_conf.h"
 
 #define VIR_FROM_THIS VIR_FROM_LXC
 
@@ -259,8 +260,6 @@ char *virLXCProcessSetupInterfaceBridged(virConnectPtr conn,
 
     if (virNetDevSetMAC(containerVeth, &net->mac) < 0)
         goto cleanup;
-    if (VIR_STRDUP(net->ifname_guest_actual, containerVeth) < 0)
-        goto cleanup;
 
     if (vport && vport->virtPortType == VIR_NETDEV_VPORT_PROFILE_OPENVSWITCH) {
         if (virNetDevOpenvswitchAddPort(brname, parentVeth, &net->mac,
@@ -272,11 +271,6 @@ char *virLXCProcessSetupInterfaceBridged(virConnectPtr conn,
     }
 
     if (virNetDevSetOnline(parentVeth, true) < 0)
-        goto cleanup;
-
-    if (virNetDevBandwidthSet(net->ifname,
-                              virDomainNetGetActualBandwidth(net),
-                              false) < 0)
         goto cleanup;
 
     if (net->filter &&
@@ -300,6 +294,8 @@ char *virLXCProcessSetupInterfaceDirect(virConnectPtr conn,
     virNetDevBandwidthPtr bw;
     virNetDevVPortProfilePtr prof;
     virLXCDriverConfigPtr cfg = virLXCDriverGetConfig(driver);
+    const char *linkdev = virDomainNetGetActualDirectDev(net);
+    unsigned int macvlan_create_flags = VIR_NETDEV_MACVLAN_CREATE_IFUP;
 
     /* XXX how todo bandwidth controls ?
      * Since the 'net-ifname' is about to be moved to a different
@@ -329,14 +325,14 @@ char *virLXCProcessSetupInterfaceDirect(virConnectPtr conn,
 
     if (virNetDevMacVLanCreateWithVPortProfile(
             net->ifname, &net->mac,
-            virDomainNetGetActualDirectDev(net),
+            linkdev,
             virDomainNetGetActualDirectMode(net),
-            false, false, def->uuid,
-            virDomainNetGetActualVirtPortProfile(net),
+            false, def->uuid,
+            prof,
             &res_ifname,
             VIR_NETDEV_VPORT_PROFILE_OP_CREATE,
             cfg->stateDir,
-            virDomainNetGetActualBandwidth(net)) < 0)
+            macvlan_create_flags) < 0)
         goto cleanup;
 
     ret = res_ifname;
@@ -368,53 +364,28 @@ static int virLXCProcessSetupInterfaces(virConnectPtr conn,
     int ret = -1;
     size_t i;
     size_t niface = 0;
+    virDomainNetDefPtr net;
+    virDomainNetType type;
 
     for (i = 0; i < def->nnets; i++) {
         char *veth = NULL;
+        virNetDevBandwidthPtr actualBandwidth;
         /* If appropriate, grab a physical device from the configured
          * network's pool of devices, or resolve bridge device name
          * to the one defined in the network definition.
          */
-        if (networkAllocateActualDevice(def, def->nets[i]) < 0)
+        net = def->nets[i];
+        if (networkAllocateActualDevice(def, net) < 0)
             goto cleanup;
 
         if (VIR_EXPAND_N(*veths, *nveths, 1) < 0)
             goto cleanup;
 
-        switch (virDomainNetGetActualType(def->nets[i])) {
-        case VIR_DOMAIN_NET_TYPE_NETWORK: {
-            virNetworkPtr network;
-            char *brname = NULL;
-            bool fail = false;
-            virErrorPtr errobj;
-
-            if (!(network = virNetworkLookupByName(conn,
-                                                   def->nets[i]->data.network.name)))
-                goto cleanup;
-            if (!(brname = virNetworkGetBridgeName(network)))
-               fail = true;
-
-            /* Make sure any above failure is preserved */
-            errobj = virSaveLastError();
-            virNetworkFree(network);
-            virSetError(errobj);
-            virFreeError(errobj);
-
-            if (fail)
-                goto cleanup;
-
-            if (!(veth = virLXCProcessSetupInterfaceBridged(conn,
-                                                            def,
-                                                            def->nets[i],
-                                                            brname))) {
-                VIR_FREE(brname);
-                goto cleanup;
-            }
-            VIR_FREE(brname);
-            break;
-        }
+        type = virDomainNetGetActualType(net);
+        switch (type) {
+        case VIR_DOMAIN_NET_TYPE_NETWORK:
         case VIR_DOMAIN_NET_TYPE_BRIDGE: {
-            const char *brname = virDomainNetGetActualBridgeName(def->nets[i]);
+            const char *brname = virDomainNetGetActualBridgeName(net);
             if (!brname) {
                 virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                                _("No bridge name specified"));
@@ -422,7 +393,7 @@ static int virLXCProcessSetupInterfaces(virConnectPtr conn,
             }
             if (!(veth = virLXCProcessSetupInterfaceBridged(conn,
                                                             def,
-                                                            def->nets[i],
+                                                            net,
                                                             brname)))
                 goto cleanup;
         }   break;
@@ -430,31 +401,49 @@ static int virLXCProcessSetupInterfaces(virConnectPtr conn,
         case VIR_DOMAIN_NET_TYPE_DIRECT:
             if (!(veth = virLXCProcessSetupInterfaceDirect(conn,
                                                            def,
-                                                           def->nets[i])))
+                                                           net)))
                 goto cleanup;
             break;
 
-        case VIR_DOMAIN_NET_TYPE_USER:
         case VIR_DOMAIN_NET_TYPE_ETHERNET:
+            break;
+
+        case VIR_DOMAIN_NET_TYPE_USER:
         case VIR_DOMAIN_NET_TYPE_VHOSTUSER:
         case VIR_DOMAIN_NET_TYPE_SERVER:
         case VIR_DOMAIN_NET_TYPE_CLIENT:
         case VIR_DOMAIN_NET_TYPE_MCAST:
         case VIR_DOMAIN_NET_TYPE_INTERNAL:
         case VIR_DOMAIN_NET_TYPE_LAST:
+        case VIR_DOMAIN_NET_TYPE_HOSTDEV:
             virReportError(VIR_ERR_INTERNAL_ERROR,
                            _("Unsupported network type %s"),
-                           virDomainNetTypeToString(
-                               virDomainNetGetActualType(def->nets[i])
-                               ));
+                           virDomainNetTypeToString(type));
             goto cleanup;
+
+        }
+
+        /* Set bandwidth or warn if requested and not supported. */
+        actualBandwidth = virDomainNetGetActualBandwidth(net);
+        if (actualBandwidth) {
+            if (virNetDevSupportBandwidth(type)) {
+                if (virNetDevBandwidthSet(net->ifname, actualBandwidth, false) < 0)
+                    goto cleanup;
+            } else {
+                VIR_WARN("setting bandwidth on interfaces of "
+                         "type '%s' is not implemented yet",
+                         virDomainNetTypeToString(type));
+            }
         }
 
         (*veths)[(*nveths)-1] = veth;
 
+        if (VIR_STRDUP(def->nets[i]->ifname_guest_actual, veth) < 0)
+            goto cleanup;
+
         /* Make sure all net definitions will have a name in the container */
-        if (!def->nets[i]->ifname_guest) {
-            if (virAsprintf(&def->nets[i]->ifname_guest, "eth%zu", niface) < 0)
+        if (!net->ifname_guest) {
+            if (virAsprintf(&net->ifname_guest, "eth%zu", niface) < 0)
                 return -1;
             niface++;
         }
@@ -536,9 +525,8 @@ static void virLXCProcessMonitorEOFNotify(virLXCMonitorPtr mon,
 
     if (vm)
         virObjectUnlock(vm);
-    if (event) {
+    if (event)
         virObjectEventStateQueue(driver->domainEventState, event);
-    }
 }
 
 static void virLXCProcessMonitorExitNotify(virLXCMonitorPtr mon ATTRIBUTE_UNUSED,
@@ -826,9 +814,8 @@ virLXCProcessBuildControllerCmd(virLXCDriverPtr driver,
     virCommandAddArgFormat(cmd, "%d", handshakefd);
     virCommandAddArg(cmd, "--background");
 
-    for (i = 0; i < nveths; i++) {
+    for (i = 0; i < nveths; i++)
         virCommandAddArgList(cmd, "--veth", veths[i], NULL);
-    }
 
     virCommandPassFD(cmd, handshakefd, 0);
 
@@ -1144,6 +1131,12 @@ int virLXCProcessStart(virConnectPtr conn,
                                       vm->def, NULL) < 0)
         goto cleanup;
 
+    if (vm->def->nconsoles == 0) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("At least one PTY console is required"));
+        goto cleanup;
+    }
+
     for (i = 0; i < vm->def->nconsoles; i++) {
         char *ttyPath;
         if (vm->def->consoles[i]->source.type != VIR_DOMAIN_CHR_TYPE_PTY) {
@@ -1388,6 +1381,7 @@ int virLXCProcessStart(virConnectPtr conn,
             VIR_FREE(vm->def->seclabels[0]->model);
             VIR_FREE(vm->def->seclabels[0]->label);
             VIR_FREE(vm->def->seclabels[0]->imagelabel);
+            VIR_DELETE_ELEMENT(vm->def->seclabels, 0, vm->def->nseclabels);
         }
     }
     for (i = 0; i < nttyFDs; i++)

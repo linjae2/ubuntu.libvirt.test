@@ -1105,15 +1105,15 @@ cmdNetworkEdit(vshControl *ctl, const vshCmd *cmd)
         goto cleanup;
 
 #define EDIT_GET_XML vshNetworkGetXMLDesc(network)
-#define EDIT_NOT_CHANGED \
-    vshPrint(ctl, _("Network %s XML configuration not changed.\n"), \
-             virNetworkGetName(network));                           \
-    ret = true; goto edit_cleanup;
+#define EDIT_NOT_CHANGED                                                \
+    do {                                                                \
+        vshPrint(ctl, _("Network %s XML configuration not changed.\n"), \
+                 virNetworkGetName(network));                           \
+        ret = true;                                                     \
+        goto edit_cleanup;                                              \
+    } while (0)
 #define EDIT_DEFINE \
     (network_edited = virNetworkDefineXML(ctl->conn, doc_edited))
-#define EDIT_FREE \
-    if (network_edited) \
-        virNetworkFree(network_edited);
 #include "virsh-edit.c"
 
     vshPrint(ctl, _("Network %s XML configuration edited.\n"),
@@ -1191,11 +1191,11 @@ static const vshCmdInfo info_network_event[] = {
 
 static const vshCmdOptDef opts_network_event[] = {
     {.name = "network",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .help = N_("filter by network name or uuid")
     },
     {.name = "event",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .help = N_("which event type to wait for")
     },
     {.name = "loop",
@@ -1305,7 +1305,7 @@ static const vshCmdOptDef opts_network_dhcp_leases[] = {
      .help = N_("network name or uuid")
     },
     {.name = "mac",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .flags = VSH_OFLAG_NONE,
      .help = N_("MAC address")
     },
@@ -1363,7 +1363,7 @@ cmdNetworkDHCPLeases(vshControl *ctl, const vshCmd *cmd)
                   "---------------------------------------------------------");
 
     for (i = 0; i < nleases; i++) {
-        const char *type = NULL;
+        const char *typestr = NULL;
         char *cidr_format = NULL;
         virNetworkDHCPLeasePtr lease = leases[i];
         time_t expirytime_tmp = lease->expirytime;
@@ -1372,15 +1372,20 @@ cmdNetworkDHCPLeases(vshControl *ctl, const vshCmd *cmd)
         ts = *localtime_r(&expirytime_tmp, &ts);
         strftime(expirytime, sizeof(expirytime), "%Y-%m-%d %H:%M:%S", &ts);
 
-        type = (lease->type == VIR_IP_ADDR_TYPE_IPV4) ? "ipv4" :
-            (lease->type == VIR_IP_ADDR_TYPE_IPV6) ? "ipv6" : "";
+        if (lease->type == VIR_IP_ADDR_TYPE_IPV4)
+            typestr = "ipv4";
+        else if (lease->type == VIR_IP_ADDR_TYPE_IPV6)
+            typestr = "ipv6";
 
         ignore_value(virAsprintf(&cidr_format, "%s/%d",
                                  lease->ipaddr, lease->prefix));
 
-        vshPrintExtra(ctl, " %-20s %-18s %-9s %-25s %-15s %s\n",
-                      expirytime, EMPTYSTR(lease->mac), EMPTYSTR(type), cidr_format,
-                      EMPTYSTR(lease->hostname), EMPTYSTR(lease->clientid));
+        vshPrint(ctl, " %-20s %-18s %-9s %-25s %-15s %s\n",
+                 expirytime, EMPTYSTR(lease->mac),
+                 EMPTYSTR(typestr), cidr_format,
+                 EMPTYSTR(lease->hostname), EMPTYSTR(lease->clientid));
+
+        VIR_FREE(cidr_format);
     }
 
     ret = true;

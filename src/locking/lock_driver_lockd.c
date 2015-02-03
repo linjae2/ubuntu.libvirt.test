@@ -1,7 +1,7 @@
 /*
  * lock_driver_lockd.c: A lock driver which locks nothing
  *
- * Copyright (C) 2010-2011 Red Hat, Inc.
+ * Copyright (C) 2010-2011, 2014 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -79,7 +79,7 @@ struct _virLockManagerLockDaemonDriver {
     char *scsiLockSpaceDir;
 };
 
-static virLockManagerLockDaemonDriverPtr driver = NULL;
+static virLockManagerLockDaemonDriverPtr driver;
 
 static int virLockManagerLockDaemonLoadConfig(const char *configFile)
 {
@@ -108,7 +108,7 @@ static int virLockManagerLockDaemonLoadConfig(const char *configFile)
     }
 
     p = virConfGetValue(conf, "auto_disk_leases");
-    CHECK_TYPE("auto_disk_leases", VIR_CONF_LONG);
+    CHECK_TYPE("auto_disk_leases", VIR_CONF_ULONG);
     if (p) driver->autoDiskLease = p->l;
 
     p = virConfGetValue(conf, "file_lockspace_dir");
@@ -142,7 +142,7 @@ static int virLockManagerLockDaemonLoadConfig(const char *configFile)
     }
 
     p = virConfGetValue(conf, "require_lease_for_disks");
-    CHECK_TYPE("require_lease_for_disks", VIR_CONF_LONG);
+    CHECK_TYPE("require_lease_for_disks", VIR_CONF_ULONG);
     if (p)
         driver->requireLeaseForDisks = p->l;
     else

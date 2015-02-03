@@ -107,6 +107,9 @@ void qemuDomainCmdlineDefFree(qemuDomainCmdlineDefPtr def)
     VIR_FREE(def);
 }
 
+#define VIR_QEMU_LOADER_FILE_PATH "/usr/share/OVMF/OVMF_CODE.fd"
+#define VIR_QEMU_NVRAM_FILE_PATH "/usr/share/OVMF/OVMF_VARS.fd"
+
 virQEMUDriverConfigPtr virQEMUDriverConfigNew(bool privileged)
 {
     virQEMUDriverConfigPtr cfg;
@@ -255,6 +258,15 @@ virQEMUDriverConfigPtr virQEMUDriverConfigNew(bool privileged)
 
     cfg->logTimestamp = true;
 
+    if (VIR_ALLOC_N(cfg->loader, 1) < 0 ||
+        VIR_ALLOC_N(cfg->nvram, 1) < 0)
+        goto error;
+    cfg->nloader = 1;
+
+    if (VIR_STRDUP(cfg->loader[0], VIR_QEMU_LOADER_FILE_PATH) < 0 ||
+        VIR_STRDUP(cfg->nvram[0], VIR_QEMU_NVRAM_FILE_PATH) < 0)
+        goto error;
+
     return cfg;
 
  error:
@@ -305,6 +317,14 @@ static void virQEMUDriverConfigDispose(void *obj)
     virStringFreeList(cfg->securityDriverNames);
 
     VIR_FREE(cfg->lockManagerName);
+
+    while (cfg->nloader) {
+        VIR_FREE(cfg->loader[cfg->nloader - 1]);
+        VIR_FREE(cfg->nvram[cfg->nloader - 1]);
+        cfg->nloader--;
+    }
+    VIR_FREE(cfg->loader);
+    VIR_FREE(cfg->nvram);
 }
 
 
@@ -324,6 +344,43 @@ virQEMUDriverConfigHugeTLBFSInit(virHugeTLBFSPtr hugetlbfs,
     hugetlbfs->deflt = deflt;
     ret = 0;
  cleanup:
+    return ret;
+}
+
+
+static int
+virQEMUDriverConfigNVRAMParse(const char *str,
+                              char **loader,
+                              char **nvram)
+{
+    int ret = -1;
+    char **token;
+
+    if (!(token = virStringSplit(str, ":", 0)))
+        goto cleanup;
+
+    if (token[0]) {
+        virSkipSpaces((const char **) &token[0]);
+        if (token[1])
+            virSkipSpaces((const char **) &token[1]);
+    }
+
+    /* Exactly two tokens are expected */
+    if (!token[0] || !token[1] || token[2] ||
+        STREQ(token[0], "") || STREQ(token[1], "")) {
+        virReportError(VIR_ERR_CONF_SYNTAX,
+                       _("Invalid nvram format: '%s'"),
+                       str);
+        goto cleanup;
+    }
+
+    if (VIR_STRDUP(*loader, token[0]) < 0 ||
+        VIR_STRDUP(*nvram, token[1]) < 0)
+        goto cleanup;
+
+    ret = 0;
+ cleanup:
+    virStringFreeList(token);
     return ret;
 }
 
@@ -355,15 +412,29 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
         goto cleanup;                                 \
     }
 
-#define GET_VALUE_LONG(NAME, VAR)     \
+#define CHECK_TYPE_ALT(name, type1, type2)                      \
+    if (p && (p->type != (type1) && p->type != (type2))) {      \
+        virReportError(VIR_ERR_INTERNAL_ERROR,                  \
+                       "%s: %s: expected type " #type1,         \
+                       filename, (name));                       \
+        goto cleanup;                                           \
+    }
+
+#define GET_VALUE_LONG(NAME, VAR)                               \
+    p = virConfGetValue(conf, NAME);                            \
+    CHECK_TYPE_ALT(NAME, VIR_CONF_LONG, VIR_CONF_ULONG);        \
+    if (p)                                                      \
+        VAR = p->l;
+
+#define GET_VALUE_ULONG(NAME, VAR)    \
     p = virConfGetValue(conf, NAME);  \
-    CHECK_TYPE(NAME, VIR_CONF_LONG);  \
+    CHECK_TYPE(NAME, VIR_CONF_ULONG); \
     if (p)                            \
         VAR = p->l;
 
 #define GET_VALUE_BOOL(NAME, VAR)     \
     p = virConfGetValue(conf, NAME);  \
-    CHECK_TYPE(NAME, VIR_CONF_LONG);  \
+    CHECK_TYPE(NAME, VIR_CONF_ULONG); \
     if (p)                            \
         VAR = p->l != 0;
 
@@ -389,7 +460,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
 
     p = virConfGetValue(conf, "security_driver");
     if (p && p->type == VIR_CONF_LIST) {
-        size_t len;
+        size_t len, j;
         virConfValuePtr pp;
 
         /* Calc length and check items */
@@ -405,6 +476,13 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
             goto cleanup;
 
         for (i = 0, pp = p->list; pp; i++, pp = pp->next) {
+            for (j = 0; j < i; j++) {
+                if (STREQ(pp->str, cfg->securityDriverNames[j])) {
+                    virReportError(VIR_ERR_CONF_SYNTAX,
+                                   _("Duplicate security driver %s"), pp->str);
+                    goto cleanup;
+                }
+            }
             if (VIR_STRDUP(cfg->securityDriverNames[i], pp->str) < 0)
                 goto cleanup;
         }
@@ -432,7 +510,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
     GET_VALUE_STR("spice_password", cfg->spicePassword);
 
 
-    GET_VALUE_LONG("remote_websocket_port_min", cfg->webSocketPortMin);
+    GET_VALUE_ULONG("remote_websocket_port_min", cfg->webSocketPortMin);
     if (cfg->webSocketPortMin < QEMU_WEBSOCKET_PORT_MIN) {
         /* if the port is too low, we can't get the display name
          * to tell to vnc (usually subtract 5700, e.g. localhost:1
@@ -444,7 +522,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
         goto cleanup;
     }
 
-    GET_VALUE_LONG("remote_websocket_port_max", cfg->webSocketPortMax);
+    GET_VALUE_ULONG("remote_websocket_port_max", cfg->webSocketPortMax);
     if (cfg->webSocketPortMax > QEMU_WEBSOCKET_PORT_MAX ||
         cfg->webSocketPortMax < cfg->webSocketPortMin) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -461,7 +539,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
         goto cleanup;
     }
 
-    GET_VALUE_LONG("remote_display_port_min", cfg->remotePortMin);
+    GET_VALUE_ULONG("remote_display_port_min", cfg->remotePortMin);
     if (cfg->remotePortMin < QEMU_REMOTE_PORT_MIN) {
         /* if the port is too low, we can't get the display name
          * to tell to vnc (usually subtract 5900, e.g. localhost:1
@@ -473,7 +551,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
         goto cleanup;
     }
 
-    GET_VALUE_LONG("remote_display_port_max", cfg->remotePortMax);
+    GET_VALUE_ULONG("remote_display_port_max", cfg->remotePortMax);
     if (cfg->remotePortMax > QEMU_REMOTE_PORT_MAX ||
         cfg->remotePortMax < cfg->remotePortMin) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -490,7 +568,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
         goto cleanup;
     }
 
-    GET_VALUE_LONG("migration_port_min", cfg->migrationPortMin);
+    GET_VALUE_ULONG("migration_port_min", cfg->migrationPortMin);
     if (cfg->migrationPortMin <= 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("%s: migration_port_min: port must be greater than 0"),
@@ -498,7 +576,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
         goto cleanup;
     }
 
-    GET_VALUE_LONG("migration_port_max", cfg->migrationPortMax);
+    GET_VALUE_ULONG("migration_port_max", cfg->migrationPortMax);
     if (cfg->migrationPortMax > 65535 ||
         cfg->migrationPortMax < cfg->migrationPortMin) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -637,22 +715,80 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
     GET_VALUE_BOOL("clear_emulator_capabilities", cfg->clearEmulatorCapabilities);
     GET_VALUE_BOOL("allow_disk_format_probing", cfg->allowDiskFormatProbing);
     GET_VALUE_BOOL("set_process_name", cfg->setProcessName);
-    GET_VALUE_LONG("max_processes", cfg->maxProcesses);
-    GET_VALUE_LONG("max_files", cfg->maxFiles);
+    GET_VALUE_ULONG("max_processes", cfg->maxProcesses);
+    GET_VALUE_ULONG("max_files", cfg->maxFiles);
 
     GET_VALUE_STR("lock_manager", cfg->lockManagerName);
 
-    GET_VALUE_LONG("max_queued", cfg->maxQueuedJobs);
+    GET_VALUE_ULONG("max_queued", cfg->maxQueuedJobs);
 
     GET_VALUE_LONG("keepalive_interval", cfg->keepAliveInterval);
-    GET_VALUE_LONG("keepalive_count", cfg->keepAliveCount);
+    GET_VALUE_ULONG("keepalive_count", cfg->keepAliveCount);
 
     GET_VALUE_LONG("seccomp_sandbox", cfg->seccompSandbox);
 
     GET_VALUE_STR("migration_host", cfg->migrateHost);
+    virStringStripIPv6Brackets(cfg->migrateHost);
+    if (cfg->migrateHost &&
+        (STRPREFIX(cfg->migrateHost, "localhost") ||
+         virSocketAddrIsNumericLocalhost(cfg->migrateHost))) {
+        virReportError(VIR_ERR_CONF_SYNTAX,
+                       _("migration_host must not be the address of"
+                         " the local machine: %s"),
+                       cfg->migrateHost);
+        goto cleanup;
+    }
+
     GET_VALUE_STR("migration_address", cfg->migrationAddress);
+    virStringStripIPv6Brackets(cfg->migrationAddress);
+    if (cfg->migrationAddress &&
+        (STRPREFIX(cfg->migrationAddress, "localhost") ||
+         virSocketAddrIsNumericLocalhost(cfg->migrationAddress))) {
+        virReportError(VIR_ERR_CONF_SYNTAX,
+                       _("migration_address must not be the address of"
+                         " the local machine: %s"),
+                       cfg->migrationAddress);
+        goto cleanup;
+    }
 
     GET_VALUE_BOOL("log_timestamp", cfg->logTimestamp);
+
+    if ((p = virConfGetValue(conf, "nvram"))) {
+        size_t len;
+        virConfValuePtr pp;
+
+        CHECK_TYPE("nvram", VIR_CONF_LIST);
+
+        while (cfg->nloader) {
+            VIR_FREE(cfg->loader[cfg->nloader - 1]);
+            VIR_FREE(cfg->nvram[cfg->nloader - 1]);
+            cfg->nloader--;
+        }
+        VIR_FREE(cfg->loader);
+        VIR_FREE(cfg->nvram);
+
+        /* Calc length and check items */
+        for (len = 0, pp = p->list; pp; len++, pp = pp->next) {
+            if (pp->type != VIR_CONF_STRING) {
+                virReportError(VIR_ERR_CONF_SYNTAX, "%s",
+                               _("nvram must be a list of strings"));
+                goto cleanup;
+            }
+        }
+
+        if (len &&
+            (VIR_ALLOC_N(cfg->loader, len) < 0 ||
+             VIR_ALLOC_N(cfg->nvram, len) < 0))
+            goto cleanup;
+        cfg->nloader = len;
+
+        for (i = 0, pp = p->list; pp; i++, pp = pp->next) {
+            if (virQEMUDriverConfigNVRAMParse(pp->str,
+                                              &cfg->loader[i],
+                                              &cfg->nvram[i]) < 0)
+                goto cleanup;
+        }
+    }
 
     ret = 0;
 
@@ -660,8 +796,9 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
     virConfFree(conf);
     return ret;
 }
-#undef GET_VALUE_BOOL
 #undef GET_VALUE_LONG
+#undef GET_VALUE_ULONG
+#undef GET_VALUE_BOOL
 #undef GET_VALUE_STR
 
 virQEMUDriverConfigPtr virQEMUDriverGetConfig(virQEMUDriverPtr driver)
@@ -903,9 +1040,8 @@ qemuSharedDeviceEntryFree(void *payload, const void *name ATTRIBUTE_UNUSED)
     if (!entry)
         return;
 
-    for (i = 0; i < entry->ref; i++) {
+    for (i = 0; i < entry->ref; i++)
         VIR_FREE(entry->domains[i]);
-    }
     VIR_FREE(entry->domains);
     VIR_FREE(entry);
 }
@@ -917,38 +1053,36 @@ qemuSharedDeviceEntryInsert(virQEMUDriverPtr driver,
                             const char *name)
 {
     qemuSharedDeviceEntry *entry = NULL;
-    int ret = -1;
 
     if ((entry = virHashLookup(driver->sharedDevices, key))) {
         /* Nothing to do if the shared scsi host device is already
          * recorded in the table.
          */
-        if (qemuSharedDeviceEntryDomainExists(entry, name, NULL)) {
-            ret = 0;
-            goto cleanup;
+        if (!qemuSharedDeviceEntryDomainExists(entry, name, NULL)) {
+            if (VIR_EXPAND_N(entry->domains, entry->ref, 1) < 0 ||
+                VIR_STRDUP(entry->domains[entry->ref - 1], name) < 0) {
+                /* entry is owned by the hash table here */
+                entry = NULL;
+                goto error;
+            }
         }
-
-        if (VIR_EXPAND_N(entry->domains, entry->ref, 1) < 0 ||
-            VIR_STRDUP(entry->domains[entry->ref - 1], name) < 0)
-            goto cleanup;
     } else {
         if (VIR_ALLOC(entry) < 0 ||
             VIR_ALLOC_N(entry->domains, 1) < 0 ||
             VIR_STRDUP(entry->domains[0], name) < 0)
-            goto cleanup;
+            goto error;
 
         entry->ref = 1;
 
         if (virHashAddEntry(driver->sharedDevices, key, entry))
-            goto cleanup;
+            goto error;
     }
 
-    ret = 0;
+    return 0;
 
- cleanup:
+ error:
     qemuSharedDeviceEntryFree(entry, NULL);
-
-    return ret;
+    return -1;
 }
 
 
@@ -1031,7 +1165,8 @@ qemuAddSharedHostdev(virQEMUDriverPtr driver,
 
     if (!hostdev->shareable ||
         !(hostdev->mode == VIR_DOMAIN_HOSTDEV_MODE_SUBSYS &&
-          hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI))
+          hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI &&
+          hostdev->source.subsys.u.scsi.protocol != VIR_DOMAIN_HOSTDEV_SCSI_PROTOCOL_TYPE_ISCSI))
         return 0;
 
     if (!(key = qemuGetSharedHostdevKey(hostdev)))
@@ -1134,7 +1269,8 @@ qemuRemoveSharedHostdev(virQEMUDriverPtr driver,
 
     if (!hostdev->shareable ||
         !(hostdev->mode == VIR_DOMAIN_HOSTDEV_MODE_SUBSYS &&
-          hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI))
+          hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI &&
+          hostdev->source.subsys.u.scsi.protocol != VIR_DOMAIN_HOSTDEV_SCSI_PROTOCOL_TYPE_ISCSI))
         return 0;
 
     if (!(key = qemuGetSharedHostdevKey(hostdev)))

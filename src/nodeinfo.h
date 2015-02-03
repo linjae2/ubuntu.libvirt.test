@@ -43,6 +43,7 @@ int nodeGetCellsFreeMemory(unsigned long long *freeMems,
 int nodeGetMemory(unsigned long long *mem,
                   unsigned long long *freeMem);
 
+virBitmapPtr nodeGetPresentCPUBitmap(void);
 virBitmapPtr nodeGetCPUBitmap(int *max_id);
 int nodeGetCPUCount(void);
 
@@ -63,4 +64,11 @@ int nodeGetFreePages(unsigned int npages,
                      int startCell,
                      unsigned int cellCount,
                      unsigned long long *counts);
+
+int nodeAllocPages(unsigned int npages,
+                   unsigned int *pageSizes,
+                   unsigned long long *pageCounts,
+                   int startCell,
+                   unsigned int cellCount,
+                   bool add);
 #endif /* __VIR_NODEINFO_H__*/

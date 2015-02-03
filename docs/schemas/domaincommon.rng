@@ -118,10 +118,7 @@
           </attribute>
           <optional>
             <attribute name='relabel'>
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
           <interleave>
@@ -237,12 +234,43 @@
     </choice>
   </define>
   <define name="oshvm">
+    <optional>
+      <ref name="bootloader"/>
+    </optional>
     <element name="os">
       <ref name="ostypehvm"/>
       <interleave>
         <optional>
           <element name="loader">
+            <optional>
+              <attribute name="readonly">
+                <choice>
+                  <value>yes</value>
+                  <value>no</value>
+                </choice>
+              </attribute>
+            </optional>
+            <optional>
+              <attribute name="type">
+                <choice>
+                  <value>rom</value>
+                  <value>pflash</value>
+                </choice>
+              </attribute>
+            </optional>
             <ref name="absFilePath"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="nvram">
+            <optional>
+              <attribute name="template">
+                <ref name="absFilePath"/>
+              </attribute>
+            </optional>
+            <optional>
+              <ref name="absFilePath"/>
+            </optional>
           </element>
         </optional>
         <optional>
@@ -254,10 +282,7 @@
         <optional>
           <element name="bootmenu">
             <attribute name="enable">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
             <optional>
               <attribute name="timeout">
@@ -556,10 +581,7 @@
         <ref name='scaledInteger'/>
         <optional>
           <attribute name="dumpCore">
-            <choice>
-              <value>on</value>
-              <value>off</value>
-            </choice>
+            <ref name="virOnOff"/>
           </attribute>
         </optional>
       </element>
@@ -740,48 +762,60 @@
   <!-- All the cpu related tunables would go in the cputune -->
   <define name="cputune">
     <element name="cputune">
-      <optional>
-        <element name="shares">
-          <ref name="cpushares"/>
-        </element>
-      </optional>
-      <optional>
-        <element name="period">
-          <ref name="cpuperiod"/>
-        </element>
-      </optional>
-      <optional>
-        <element name="quota">
-          <ref name="cpuquota"/>
-        </element>
-      </optional>
-      <optional>
-        <element name="emulator_period">
-          <ref name="cpuperiod"/>
-        </element>
-      </optional>
-      <optional>
-        <element name="emulator_quota">
-          <ref name="cpuquota"/>
-        </element>
-      </optional>
-      <zeroOrMore>
-        <element name="vcpupin">
-          <attribute name="vcpu">
-            <ref name="vcpuid"/>
-          </attribute>
-          <attribute name="cpuset">
-            <ref name="cpuset"/>
-          </attribute>
-        </element>
-      </zeroOrMore>
-      <optional>
-        <element name="emulatorpin">
-          <attribute name="cpuset">
-            <ref name="cpuset"/>
-          </attribute>
-        </element>
-      </optional>
+      <interleave>
+        <optional>
+          <element name="shares">
+            <ref name="cpushares"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="period">
+            <ref name="cpuperiod"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="quota">
+            <ref name="cpuquota"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="emulator_period">
+            <ref name="cpuperiod"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="emulator_quota">
+            <ref name="cpuquota"/>
+          </element>
+        </optional>
+        <zeroOrMore>
+          <element name="vcpupin">
+            <attribute name="vcpu">
+              <ref name="vcpuid"/>
+            </attribute>
+            <attribute name="cpuset">
+              <ref name="cpuset"/>
+            </attribute>
+          </element>
+        </zeroOrMore>
+        <optional>
+          <element name="emulatorpin">
+            <attribute name="cpuset">
+              <ref name="cpuset"/>
+            </attribute>
+          </element>
+        </optional>
+        <zeroOrMore>
+          <element name="iothreadpin">
+            <attribute name="iothread">
+              <ref name="unsignedInt"/>
+            </attribute>
+            <attribute name="cpuset">
+              <ref name="cpuset"/>
+            </attribute>
+          </element>
+        </zeroOrMore>
+      </interleave>
     </element>
   </define>
 
@@ -972,10 +1006,7 @@
       </choice>
       <optional>
         <attribute name="present">
-          <choice>
-            <value>yes</value>
-            <value>no</value>
-          </choice>
+          <ref name="virYesNo"/>
         </attribute>
       </optional>
       <empty/>
@@ -1026,12 +1057,14 @@
     -->
   <define name="bootloader">
     <interleave>
-      <element name="bootloader">
-        <choice>
-          <ref name="absFilePath"/>
-          <empty/>
-        </choice>
-      </element>
+      <optional>
+        <element name="bootloader">
+          <choice>
+            <ref name="absFilePath"/>
+            <empty/>
+          </choice>
+        </element>
+      </optional>
       <optional>
         <element name="bootloader_args">
           <text/>
@@ -1224,12 +1257,7 @@
             </choice>
           </attribute>
           <optional>
-            <attribute name="rawio">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
-            </attribute>
+            <ref name="rawIO"/>
           </optional>
           <optional>
             <attribute name="sgio">
@@ -1424,6 +1452,22 @@
             </choice>
           </element>
         </zeroOrMore>
+        <optional>
+          <element name="snapshot">
+            <attribute name="name">
+              <ref name="genericName"/>
+            </attribute>
+            <empty/>
+          </element>
+        </optional>
+        <optional>
+          <element name="config">
+            <attribute name="file">
+              <ref name="absFilePath"/>
+            </attribute>
+            <empty/>
+          </element>
+        </optional>
         <empty/>
       </element>
     </interleave>
@@ -1496,10 +1540,7 @@
       </optional>
       <optional>
         <attribute name="removable">
-          <choice>
-            <value>on</value>
-            <value>off</value>
-          </choice>
+          <ref name="virOnOff"/>
         </attribute>
       </optional>
     </element>
@@ -1632,26 +1673,17 @@
   </define>
   <define name="ioeventfd">
     <attribute name="ioeventfd">
-      <choice>
-        <value>on</value>
-        <value>off</value>
-      </choice>
+      <ref name="virOnOff"/>
     </attribute>
   </define>
   <define name="event_idx">
     <attribute name="event_idx">
-      <choice>
-        <value>on</value>
-        <value>off</value>
-      </choice>
+      <ref name="virOnOff"/>
     </attribute>
   </define>
   <define name="copy_on_read">
     <attribute name='copy_on_read'>
-      <choice>
-        <value>on</value>
-        <value>off</value>
-      </choice>
+      <ref name="virOnOff"/>
     </attribute>
     </define>
   <define name="discard">
@@ -1971,6 +2003,7 @@
             <value>handle</value>
             <value>loop</value>
             <value>nbd</value>
+            <value>ploop</value>
           </choice>
         </attribute>
       </optional>
@@ -2174,6 +2207,16 @@
                 <empty/>
               </element>
             </optional>
+            <optional>
+              <element name="model">
+                <attribute name="type">
+                  <data type="string">
+                    <param name='pattern'>[a-zA-Z0-9\-_]+</param>
+                  </data>
+                </attribute>
+                <empty/>
+              </element>
+            </optional>
           </interleave>
         </group>
         <group>
@@ -2182,20 +2225,14 @@
           </attribute>
           <optional>
             <attribute name="managed">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
           <interleave>
             <element name="source">
               <optional>
                 <attribute name="missing">
-                  <choice>
-                    <value>yes</value>
-                    <value>no</value>
-                  </choice>
+                  <ref name="virYesNo"/>
                 </attribute>
               </optional>
               <choice>
@@ -2235,6 +2272,11 @@
           </interleave>
         </group>
       </choice>
+      <optional>
+        <attribute name="trustGuestRxFilters">
+          <ref name="virYesNo"/>
+        </attribute>
+      </optional>
     </element>
   </define>
   <!--
@@ -2280,14 +2322,27 @@
           <empty/>
         </element>
       </optional>
-      <optional>
+      <zeroOrMore>
         <element name="ip">
           <attribute name="address">
-            <ref name="ipv4Addr"/>
+            <ref name="ipAddr"/>
           </attribute>
+          <optional>
+            <attribute name="family">
+              <ref name="addr-family"/>
+            </attribute>
+          </optional>
+          <optional>
+            <attribute name="prefix">
+              <ref name="ipPrefix"/>
+            </attribute>
+          </optional>
           <empty/>
         </element>
-      </optional>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="route"/>
+      </zeroOrMore>
       <optional>
         <element name="script">
           <attribute name="path">
@@ -2304,6 +2359,20 @@
             </data>
           </attribute>
           <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name="backend">
+          <optional>
+           <attribute name='tap'>
+             <ref name='absFilePath'/>
+           </attribute>
+          </optional>
+          <optional>
+           <attribute name='vhost'>
+             <ref name='absFilePath'/>
+           </attribute>
+          </optional>
         </element>
       </optional>
       <optional>
@@ -2347,7 +2416,71 @@
               </optional>
             </group>
           </choice>
-          <empty/>
+          <interleave>
+            <optional>
+              <element name='host'>
+                <optional>
+                  <attribute name='csum'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='gso'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='tso4'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='tso6'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='ecn'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='ufo'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+              </element>
+            </optional>
+            <optional>
+              <element name='guest'>
+                <optional>
+                  <attribute name='csum'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='tso4'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='tso6'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='ecn'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name='ufo'>
+                    <ref name="virOnOff"/>
+                  </attribute>
+                </optional>
+              </element>
+            </optional>
+          </interleave>
         </element>
       </optional>
       <optional>
@@ -2418,10 +2551,7 @@
           </optional>
           <optional>
             <attribute name="fullscreen">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
         </group>
@@ -2438,10 +2568,7 @@
               </optional>
               <optional>
                 <attribute name="autoport">
-                  <choice>
-                    <value>yes</value>
-                    <value>no</value>
-                  </choice>
+                  <ref name="virYesNo"/>
                 </attribute>
               </optional>
               <optional>
@@ -2512,10 +2639,7 @@
           </optional>
           <optional>
             <attribute name="autoport">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
           <optional>
@@ -2624,10 +2748,7 @@
             <optional>
               <element name="playback">
                 <attribute name="compression">
-                  <choice>
-                    <value>on</value>
-                    <value>off</value>
-                  </choice>
+                  <ref name="virOnOff"/>
                 </attribute>
                 <empty/>
               </element>
@@ -2647,10 +2768,7 @@
             <optional>
               <element name="clipboard">
                 <attribute name="copypaste">
-                  <choice>
-                    <value>yes</value>
-                    <value>no</value>
-                  </choice>
+                  <ref name="virYesNo"/>
                 </attribute>
                 <empty/>
               </element>
@@ -2669,10 +2787,7 @@
             <optional>
               <element name="filetransfer">
                 <attribute name="enable">
-                  <choice>
-                    <value>yes</value>
-                    <value>no</value>
-                  </choice>
+                  <ref name="virYesNo"/>
                 </attribute>
                 <empty/>
               </element>
@@ -2690,26 +2805,17 @@
           </optional>
           <optional>
             <attribute name="autoport">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
           <optional>
             <attribute name="replaceUser">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
           <optional>
             <attribute name="multiUser">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
           <optional>
@@ -2730,10 +2836,7 @@
           </optional>
           <optional>
             <attribute name="fullscreen">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
         </group>
@@ -2798,6 +2901,11 @@
                   <ref name="unsignedInt"/>
                 </attribute>
               </optional>
+              <optional>
+                <attribute name="vgamem">
+                  <ref name="unsignedInt"/>
+                </attribute>
+              </optional>
             </group>
           </choice>
           <optional>
@@ -2812,28 +2920,19 @@
           </optional>
           <optional>
             <attribute name="primary">
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
+              <ref name="virYesNo"/>
             </attribute>
           </optional>
           <optional>
             <element name="acceleration">
               <optional>
                 <attribute name="accel3d">
-                  <choice>
-                    <value>yes</value>
-                    <value>no</value>
-                  </choice>
+                  <ref name="virYesNo"/>
                 </attribute>
               </optional>
               <optional>
                 <attribute name="accel2d">
-                  <choice>
-                    <value>yes</value>
-                    <value>no</value>
-                  </choice>
+                  <ref name="virYesNo"/>
                 </attribute>
               </optional>
             </element>
@@ -2959,10 +3058,7 @@
   <define name="suspendChoices">
     <optional>
       <attribute name="enabled">
-        <choice>
-          <value>yes</value>
-          <value>no</value>
-        </choice>
+        <ref name="virYesNo"/>
       </attribute>
     </optional>
   </define>
@@ -3054,10 +3150,7 @@
   <define name="usbdevfilter">
     <element name="usbdev">
       <attribute name="allow">
-        <choice>
-          <value>yes</value>
-          <value>no</value>
-        </choice>
+        <ref name="virYesNo"/>
       </attribute>
       <optional>
         <attribute name="class">
@@ -3240,6 +3333,44 @@
       </optional>
     </element>
   </define>
+
+  <define name="shmem">
+    <element name="shmem">
+      <attribute name="name"/>
+      <interleave>
+        <optional>
+          <element name="size">
+            <ref name="scaledInteger"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="server">
+            <optional>
+              <attribute name="path">
+                <ref name="absFilePath"/>
+              </attribute>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <element name="msi">
+            <optional>
+              <ref name="ioeventfd"/>
+            </optional>
+            <optional>
+              <attribute name="vectors">
+                <ref name="unsignedInt"/>
+              </attribute>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <ref name="address"/>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+
   <define name="memballoon">
     <element name="memballoon">
       <attribute name="model">
@@ -3290,6 +3421,14 @@
       </attribute>
       <optional>
         <attribute name="name"/>
+      </optional>
+      <optional>
+        <attribute name="state">
+          <choice>
+            <value>connected</value>
+            <value>disconnected</value>
+          </choice>
+        </attribute>
       </optional>
     </element>
   </define>
@@ -3517,10 +3656,7 @@
     </optional>
     <optional>
       <attribute name="managed">
-        <choice>
-          <value>yes</value>
-          <value>no</value>
-        </choice>
+        <ref name="virYesNo"/>
       </attribute>
     </optional>
     <choice>
@@ -3608,6 +3744,9 @@
         </choice>
       </attribute>
     </optional>
+    <optional>
+      <ref name="rawIO"/>
+    </optional>
     <element name="source">
       <choice>
         <group>  <!-- scsi_host adapter -->
@@ -3683,11 +3822,34 @@
     <attribute name="type">
       <value>net</value>
     </attribute>
-    <element name="source">
-      <element name="interface">
-        <ref name="deviceName"/>
+    <interleave>
+      <element name="source">
+        <element name="interface">
+          <ref name="deviceName"/>
+        </element>
       </element>
-    </element>
+      <zeroOrMore>
+        <element name="ip">
+          <attribute name="address">
+            <ref name="ipAddr"/>
+          </attribute>
+          <optional>
+            <attribute name="family">
+              <ref name="addr-family"/>
+            </attribute>
+          </optional>
+          <optional>
+            <attribute name="prefix">
+              <ref name="ipPrefix"/>
+            </attribute>
+          </optional>
+          <empty/>
+        </element>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="route"/>
+      </zeroOrMore>
+    </interleave>
   </define>
 
   <define name="usbproduct">
@@ -3826,6 +3988,7 @@
             <ref name="redirfilter"/>
             <ref name="rng"/>
             <ref name="tpm"/>
+            <ref name="shmem"/>
           </choice>
         </zeroOrMore>
         <optional>
@@ -3860,10 +4023,7 @@
             <element name="apic">
               <optional>
                 <attribute name="eoi">
-                  <choice>
-                    <value>on</value>
-                    <value>off</value>
-                  </choice>
+                  <ref name="virOnOff"/>
                 </attribute>
               </optional>
             </element>
@@ -3905,6 +4065,9 @@
           <optional>
             <ref name="capabilities"/>
           </optional>
+          <optional>
+            <ref name="pmu"/>
+          </optional>
         </interleave>
       </element>
     </optional>
@@ -3914,50 +4077,29 @@
       -->
   <define name="cpu">
     <element name="cpu">
-      <choice>
-        <group>
-          <interleave>
-            <optional>
-              <ref name="cpuTopology"/>
-            </optional>
-            <optional>
-              <ref name="cpuNuma"/>
-            </optional>
-          </interleave>
-        </group>
-        <group>
-          <ref name="cpuMode"/>
-          <interleave>
-            <optional>
-              <ref name="cpuModel"/>
-            </optional>
-            <optional>
-              <ref name="cpuNuma"/>
-            </optional>
-          </interleave>
-        </group>
-        <group>
-          <optional>
-            <ref name="cpuMode"/>
-          </optional>
-          <ref name="cpuMatch"/>
-          <interleave>
-            <ref name="cpuModel"/>
-            <optional>
-              <ref name="cpuVendor"/>
-            </optional>
-            <optional>
-              <ref name="cpuTopology"/>
-            </optional>
-            <zeroOrMore>
-              <ref name="cpuFeature"/>
-            </zeroOrMore>
-            <optional>
-              <ref name="cpuNuma"/>
-            </optional>
-          </interleave>
-        </group>
-      </choice>
+      <optional>
+        <ref name="cpuMode"/>
+      </optional>
+      <optional>
+        <ref name="cpuMatch"/>
+      </optional>
+      <interleave>
+        <optional>
+          <ref name="cpuModel"/>
+        </optional>
+        <optional>
+          <ref name="cpuVendor"/>
+        </optional>
+        <optional>
+          <ref name="cpuTopology"/>
+        </optional>
+        <zeroOrMore>
+          <ref name="cpuFeature"/>
+        </zeroOrMore>
+        <optional>
+          <ref name="cpuNuma"/>
+        </optional>
+      </interleave>
     </element>
   </define>
 
@@ -4064,6 +4206,19 @@
       <attribute name="memory">
         <ref name="memoryKB"/>
       </attribute>
+      <optional>
+        <attribute name="unit">
+          <ref name="unit"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="memAccess">
+          <choice>
+            <value>shared</value>
+            <value>private</value>
+          </choice>
+        </attribute>
+      </optional>
     </element>
   </define>
 
@@ -4157,10 +4312,7 @@
     <element name="bios">
       <optional>
         <attribute name="useserial">
-          <choice>
-            <value>yes</value>
-            <value>no</value>
-          </choice>
+          <ref name="virYesNo"/>
         </attribute>
       </optional>
       <optional>
@@ -4230,10 +4382,7 @@
     <element name="rom">
       <optional>
         <attribute name="bar">
-          <choice>
-            <value>on</value>
-            <value>off</value>
-          </choice>
+          <ref name="virOnOff"/>
         </attribute>
       </optional>
       <optional>
@@ -4462,6 +4611,49 @@
             </interleave>
           </group>
         </choice>
+        <choice>
+          <element name="total_bytes_sec_max">
+            <data type="unsignedLong"/>
+          </element>
+          <group>
+            <interleave>
+              <optional>
+                <element name="read_bytes_sec_max">
+                  <data type="unsignedLong"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="write_bytes_sec_max">
+                  <data type="unsignedLong"/>
+                </element>
+              </optional>
+            </interleave>
+          </group>
+        </choice>
+        <choice>
+          <element name="total_iops_sec_max">
+            <data type="unsignedLong"/>
+          </element>
+          <group>
+            <interleave>
+              <optional>
+                <element name="read_iops_sec_max">
+                  <data type="unsignedLong"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="write_iops_sec_max">
+                  <data type="unsignedLong"/>
+                </element>
+              </optional>
+            </interleave>
+          </group>
+        </choice>
+        <optional>
+          <element name="size_iops_sec">
+            <data type="unsignedLong"/>
+          </element>
+        </optional>
       </interleave>
     </element>
   </define>
@@ -4701,12 +4893,17 @@
     </element>
   </define>
 
+  <define name="pmu">
+    <element name="pmu">
+      <optional>
+        <ref name="featurestate"/>
+      </optional>
+    </element>
+  </define>
+
   <define name="featurestate">
     <attribute name="state">
-      <choice>
-        <value>on</value>
-        <value>off</value>
-      </choice>
+      <ref name="virOnOff"/>
     </attribute>
   </define>
 
@@ -4971,5 +5168,10 @@
         <ref name="address"/>
       </optional>
     </element>
+  </define>
+  <define name="rawIO">
+    <attribute name="rawio">
+      <ref name="virYesNo"/>
+    </attribute>
   </define>
 </grammar>

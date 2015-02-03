@@ -341,19 +341,25 @@ create_profile(const char *profile, const char *profile_name,
     int tlen, plen;
     int fd;
     int rc = -1;
-    const char *virttype;
+    const char *driver_name = NULL;
 
     if (virFileExists(profile)) {
         vah_error(NULL, 0, _("profile exists"));
         goto end;
     }
 
-    virttype = virDomainVirtTypeToString(virtType);
-    if (strcmp(virttype, "kvm") == 0)
-	    virttype = "qemu";
+    switch (virtType) {
+    case VIR_DOMAIN_VIRT_QEMU:
+    case VIR_DOMAIN_VIRT_KQEMU:
+    case VIR_DOMAIN_VIRT_KVM:
+        driver_name = "qemu";
+        break;
+    default:
+        driver_name = virDomainVirtTypeToString(virtType);
+    }
 
     if (virAsprintfQuiet(&template, "%s/TEMPLATE.%s", APPARMOR_DIR "/libvirt",
-                         virttype) < 0) {
+                         driver_name) < 0) {
         vah_error(NULL, 0, _("template name exceeds maximum length"));
         goto end;
     }
@@ -565,7 +571,8 @@ valid_path(const char *path, const bool readonly)
     };
     /* override the above with these */
     const char * const override[] = {
-        "/sys/devices/pci"	/* for hostdev pci devices */
+        "/sys/devices/pci",              /* for hostdev pci devices */
+        "/etc/libvirt-sandbox/services/" /* for virt-sandbox service config */
     };
 
     if (path == NULL) {
@@ -583,9 +590,9 @@ valid_path(const char *path, const bool readonly)
     if (STRNEQLEN(path, "/", 1))
         return 1;
 
-    if (!virFileExists(path))
+    if (!virFileExists(path)) {
         vah_warning(_("path does not exist, skipping file type checks"));
-    else {
+    } else {
         if (stat(path, &sb) == -1)
             return -1;
 
@@ -733,7 +740,8 @@ get_definition(vahControl * ctl, const char *xmlStr)
 
     ctl->def = virDomainDefParseString(xmlStr,
                                        ctl->caps, ctl->xmlopt,
-                                       -1, VIR_DOMAIN_XML_INACTIVE);
+                                       -1,
+                                       VIR_DOMAIN_DEF_PARSE_INACTIVE);
     if (ctl->def == NULL) {
         vah_error(ctl, 0, _("could not parse XML"));
         goto exit;
@@ -781,9 +789,9 @@ vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursi
             vah_error(NULL, 0, _("could not find realpath for disk"));
             return rc;
         }
-    } else
-        if (VIR_STRDUP_QUIET(tmp, path) < 0)
-            return rc;
+    } else if (VIR_STRDUP_QUIET(tmp, path) < 0) {
+        return rc;
+    }
 
     if (strchr(perms, 'w') != NULL)
         readonly = false;
@@ -936,7 +944,7 @@ get_files(vahControl * ctl)
          */
         if (!disk->src->backingStore) {
             bool probe = ctl->allowDiskFormatProbing;
-            virStorageFileGetMetadata(disk->src, -1, -1, probe);
+            virStorageFileGetMetadata(disk->src, -1, -1, probe, false);
         }
 
         /* XXX passing ignoreOpenFailure = true to get back to the behavior
@@ -1010,8 +1018,8 @@ get_files(vahControl * ctl)
         if (vah_add_file(&buf, ctl->def->os.dtb, "r") != 0)
             goto cleanup;
 
-    if (ctl->def->os.loader && ctl->def->os.loader)
-        if (vah_add_file(&buf, ctl->def->os.loader, "r") != 0)
+    if (ctl->def->os.loader && ctl->def->os.loader->path)
+        if (vah_add_file(&buf, ctl->def->os.loader->path, "r") != 0)
             goto cleanup;
 
     for (i = 0; i < ctl->def->ngraphics; i++) {
@@ -1245,15 +1253,20 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    /* clear the environment */
-    environ = NULL;
-    if (setenv("PATH", "/sbin:/usr/sbin", 1) != 0) {
-        vah_error(ctl, 1, _("could not set PATH"));
+    if (virThreadInitialize() < 0 ||
+        virErrorInitialize() < 0) {
+        fprintf(stderr, _("%s: initialization failed\n"), argv[0]);
+        exit(EXIT_FAILURE);
     }
 
-    if (setenv("IFS", " \t\n", 1) != 0) {
+    /* clear the environment */
+    environ = NULL;
+    if (setenv("PATH", "/sbin:/usr/sbin", 1) != 0)
+        vah_error(ctl, 1, _("could not set PATH"));
+
+    /* ensure the traditional IFS setting */
+    if (setenv("IFS", " \t\n", 1) != 0)
         vah_error(ctl, 1, _("could not set IFS"));
-    }
 
     if (!(progname = strrchr(argv[0], '/')))
         progname = argv[0];
@@ -1273,9 +1286,9 @@ main(int argc, char **argv)
                          APPARMOR_DIR "/libvirt", ctl->uuid) < 0)
         vah_error(ctl, 0, _("could not allocate memory"));
 
-    if (ctl->cmd == 'a')
+    if (ctl->cmd == 'a') {
         rc = parserLoad(ctl->uuid);
-    else if (ctl->cmd == 'R' || ctl->cmd == 'D') {
+    } else if (ctl->cmd == 'R' || ctl->cmd == 'D') {
         rc = parserRemove(ctl->uuid);
         if (ctl->cmd == 'D') {
             unlink(include_file);
@@ -1284,9 +1297,8 @@ main(int argc, char **argv)
     } else if (ctl->cmd == 'c' || ctl->cmd == 'r') {
         char *included_files = NULL;
 
-        if (ctl->cmd == 'c' && virFileExists(profile)) {
+        if (ctl->cmd == 'c' && virFileExists(profile))
             vah_error(ctl, 1, _("profile exists"));
-        }
 
         if (ctl->append && ctl->newfile) {
             if (vah_add_file(&buf, ctl->newfile, "rw") != 0)

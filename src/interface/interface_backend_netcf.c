@@ -63,16 +63,16 @@ virNetcfDriverStateOnceInit(void)
 
 VIR_ONCE_GLOBAL_INIT(virNetcfDriverState)
 
-static virNetcfDriverStatePtr driverState = NULL;
+static virNetcfDriverStatePtr driver;
 
 
 static void
 virNetcfDriverStateDispose(void *obj)
 {
-    virNetcfDriverStatePtr driver = obj;
+    virNetcfDriverStatePtr _driver = obj;
 
-    if (driver->netcf)
-        ncf_close(driver->netcf);
+    if (_driver->netcf)
+        ncf_close(_driver->netcf);
 }
 
 
@@ -84,15 +84,15 @@ netcfStateInitialize(bool privileged ATTRIBUTE_UNUSED,
     if (virNetcfDriverStateInitialize() < 0)
         return -1;
 
-    if (!(driverState = virObjectLockableNew(virNetcfDriverStateClass)))
+    if (!(driver = virObjectLockableNew(virNetcfDriverStateClass)))
         return -1;
 
     /* open netcf */
-    if (ncf_init(&driverState->netcf, NULL) != 0) {
+    if (ncf_init(&driver->netcf, NULL) != 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("failed to initialize netcf"));
-        virObjectUnref(driverState);
-        driverState = NULL;
+        virObjectUnref(driver);
+        driver = NULL;
         return -1;
     }
     return 0;
@@ -102,16 +102,16 @@ netcfStateInitialize(bool privileged ATTRIBUTE_UNUSED,
 static int
 netcfStateCleanup(void)
 {
-    if (!driverState)
+    if (!driver)
         return -1;
 
-    if (virObjectUnref(driverState)) {
+    if (virObjectUnref(driver)) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("Attempt to close netcf state driver "
                          "with open connections"));
         return -1;
     }
-    driverState = NULL;
+    driver = NULL;
     return 0;
 }
 
@@ -121,13 +121,12 @@ netcfStateReload(void)
 {
     int ret = -1;
 
-    if (!driverState)
+    if (!driver)
         return 0;
 
-    virObjectLock(driverState);
-    ncf_close(driverState->netcf);
-    if (ncf_init(&driverState->netcf, NULL) != 0)
-    {
+    virObjectLock(driver);
+    ncf_close(driver->netcf);
+    if (ncf_init(&driver->netcf, NULL) != 0) {
         /* this isn't a good situation, because we can't shut down the
          * driver as there may still be connections to it. If we set
          * the netcf handle to NULL, any subsequent calls to netcf
@@ -136,13 +135,13 @@ netcfStateReload(void)
          */
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("failed to re-init netcf"));
-        driverState->netcf = NULL;
+        driver->netcf = NULL;
         goto cleanup;
     }
 
     ret = 0;
  cleanup:
-    virObjectUnlock(driverState);
+    virObjectUnlock(driver);
 
     return ret;
 }
@@ -178,8 +177,7 @@ netcfGetMinimalDefForDevice(struct netcf_if *iface)
 
 static int netcf_to_vir_err(int netcf_errcode)
 {
-    switch (netcf_errcode)
-    {
+    switch (netcf_errcode) {
         case NETCF_NOERROR:
             /* no error, everything ok */
             return VIR_ERR_OK;
@@ -247,10 +245,10 @@ netcfInterfaceObjIsActive(struct netcf_if *iface,
     int ret = -1;
     unsigned int flags = 0;
 
-    virObjectRef(driverState);
+    virObjectRef(driver);
     if (ncf_if_status(iface, &flags) < 0) {
         const char *errmsg, *details;
-        int errcode = ncf_error(driverState->netcf, &errmsg, &details);
+        int errcode = ncf_error(driver->netcf, &errmsg, &details);
         virReportError(netcf_to_vir_err(errcode),
                        _("failed to get status of interface %s: %s%s%s"),
                        ncf_if_name(iface), errmsg, details ? " - " : "",
@@ -262,34 +260,26 @@ netcfInterfaceObjIsActive(struct netcf_if *iface,
     ret = 0;
 
  cleanup:
-    virObjectUnref(driverState);
+    virObjectUnref(driver);
     return ret;
 }
 
 static virDrvOpenStatus
-netcfInterfaceOpen(virConnectPtr conn,
+netcfInterfaceOpen(virConnectPtr conn ATTRIBUTE_UNUSED,
                    virConnectAuthPtr auth ATTRIBUTE_UNUSED,
                    unsigned int flags)
 {
     virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
 
-    if (!driverState)
+    if (!driver)
         return VIR_DRV_OPEN_ERROR;
 
-    virObjectRef(driverState);
-    conn->interfacePrivateData = driverState;
     return VIR_DRV_OPEN_SUCCESS;
 }
 
 static int
-netcfInterfaceClose(virConnectPtr conn)
+netcfInterfaceClose(virConnectPtr conn ATTRIBUTE_UNUSED)
 {
-
-    if (conn->interfacePrivateData != NULL)
-    {
-        virObjectUnref(conn->interfacePrivateData);
-        conn->interfacePrivateData = NULL;
-    }
     return 0;
 }
 
@@ -297,7 +287,6 @@ static int netcfConnectNumOfInterfacesImpl(virConnectPtr conn,
                                            int status,
                                            virInterfaceObjListFilter filter)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int count;
     int want = 0;
     int ret = -1;
@@ -391,7 +380,6 @@ static int netcfConnectListInterfacesImpl(virConnectPtr conn,
                                           char **const names, int nnames,
                                           virInterfaceObjListFilter filter)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int count = 0;
     int want = 0;
     int ret = -1;
@@ -490,7 +478,6 @@ static int netcfConnectListInterfacesImpl(virConnectPtr conn,
 static int netcfConnectNumOfInterfaces(virConnectPtr conn)
 {
     int count;
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
 
     if (virConnectNumOfInterfacesEnsureACL(conn) < 0)
         return -1;
@@ -505,7 +492,6 @@ static int netcfConnectNumOfInterfaces(virConnectPtr conn)
 
 static int netcfConnectListInterfaces(virConnectPtr conn, char **const names, int nnames)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int count;
 
     if (virConnectListInterfacesEnsureACL(conn) < 0)
@@ -524,7 +510,6 @@ static int netcfConnectListInterfaces(virConnectPtr conn, char **const names, in
 static int netcfConnectNumOfDefinedInterfaces(virConnectPtr conn)
 {
     int count;
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
 
     if (virConnectNumOfDefinedInterfacesEnsureACL(conn) < 0)
         return -1;
@@ -539,7 +524,6 @@ static int netcfConnectNumOfDefinedInterfaces(virConnectPtr conn)
 
 static int netcfConnectListDefinedInterfaces(virConnectPtr conn, char **const names, int nnames)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int count;
 
     if (virConnectListDefinedInterfacesEnsureACL(conn) < 0)
@@ -561,7 +545,6 @@ netcfConnectListAllInterfaces(virConnectPtr conn,
                               virInterfacePtr **ifaces,
                               unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int count;
     size_t i;
     struct netcf_if *iface = NULL;
@@ -692,10 +675,8 @@ netcfConnectListAllInterfaces(virConnectPtr conn,
     VIR_FREE(names);
 
     if (tmp_iface_objs) {
-        for (i = 0; i < niface_objs; i++) {
-            if (tmp_iface_objs[i])
-                virInterfaceFree(tmp_iface_objs[i]);
-        }
+        for (i = 0; i < niface_objs; i++)
+            virObjectUnref(tmp_iface_objs[i]);
         VIR_FREE(tmp_iface_objs);
     }
 
@@ -707,7 +688,6 @@ netcfConnectListAllInterfaces(virConnectPtr conn,
 static virInterfacePtr netcfInterfaceLookupByName(virConnectPtr conn,
                                                   const char *name)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     struct netcf_if *iface;
     virInterfacePtr ret = NULL;
     virInterfaceDefPtr def = NULL;
@@ -747,7 +727,6 @@ static virInterfacePtr netcfInterfaceLookupByName(virConnectPtr conn,
 static virInterfacePtr netcfInterfaceLookupByMACString(virConnectPtr conn,
                                                        const char *macstr)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     struct netcf_if *iface;
     int niface;
     virInterfacePtr ret = NULL;
@@ -796,7 +775,6 @@ static virInterfacePtr netcfInterfaceLookupByMACString(virConnectPtr conn,
 static char *netcfInterfaceGetXMLDesc(virInterfacePtr ifinfo,
                                       unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = ifinfo->conn->interfacePrivateData;
     struct netcf_if *iface = NULL;
     char *xmlstr = NULL;
     virInterfaceDefPtr ifacedef = NULL;
@@ -858,7 +836,6 @@ static virInterfacePtr netcfInterfaceDefineXML(virConnectPtr conn,
                                                const char *xml,
                                                unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     struct netcf_if *iface = NULL;
     char *xmlstr = NULL;
     virInterfaceDefPtr ifacedef = NULL;
@@ -906,7 +883,6 @@ static virInterfacePtr netcfInterfaceDefineXML(virConnectPtr conn,
 
 static int netcfInterfaceUndefine(virInterfacePtr ifinfo)
 {
-    virNetcfDriverStatePtr driver = ifinfo->conn->interfacePrivateData;
     struct netcf_if *iface = NULL;
     virInterfaceDefPtr def = NULL;
     int ret = -1;
@@ -947,7 +923,6 @@ static int netcfInterfaceUndefine(virInterfacePtr ifinfo)
 static int netcfInterfaceCreate(virInterfacePtr ifinfo,
                                 unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = ifinfo->conn->interfacePrivateData;
     struct netcf_if *iface = NULL;
     virInterfaceDefPtr def = NULL;
     int ret = -1;
@@ -1000,7 +975,6 @@ static int netcfInterfaceCreate(virInterfacePtr ifinfo,
 static int netcfInterfaceDestroy(virInterfacePtr ifinfo,
                                  unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = ifinfo->conn->interfacePrivateData;
     struct netcf_if *iface = NULL;
     virInterfaceDefPtr def = NULL;
     int ret = -1;
@@ -1052,7 +1026,6 @@ static int netcfInterfaceDestroy(virInterfacePtr ifinfo,
 
 static int netcfInterfaceIsActive(virInterfacePtr ifinfo)
 {
-    virNetcfDriverStatePtr driver = ifinfo->conn->interfacePrivateData;
     struct netcf_if *iface = NULL;
     virInterfaceDefPtr def = NULL;
     int ret = -1;
@@ -1087,7 +1060,6 @@ static int netcfInterfaceIsActive(virInterfacePtr ifinfo)
 #ifdef HAVE_NETCF_TRANSACTIONS
 static int netcfInterfaceChangeBegin(virConnectPtr conn, unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int ret;
 
     virCheckFlags(0, -1); /* currently flags must be 0 */
@@ -1113,7 +1085,6 @@ static int netcfInterfaceChangeBegin(virConnectPtr conn, unsigned int flags)
 
 static int netcfInterfaceChangeCommit(virConnectPtr conn, unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int ret;
 
     virCheckFlags(0, -1); /* currently flags must be 0 */
@@ -1139,7 +1110,6 @@ static int netcfInterfaceChangeCommit(virConnectPtr conn, unsigned int flags)
 
 static int netcfInterfaceChangeRollback(virConnectPtr conn, unsigned int flags)
 {
-    virNetcfDriverStatePtr driver = conn->interfacePrivateData;
     int ret;
 
     virCheckFlags(0, -1); /* currently flags must be 0 */

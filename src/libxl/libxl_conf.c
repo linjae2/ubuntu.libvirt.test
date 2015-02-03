@@ -40,6 +40,7 @@
 #include "viralloc.h"
 #include "viruuid.h"
 #include "capabilities.h"
+#include "vircommand.h"
 #include "libxl_domain.h"
 #include "libxl_conf.h"
 #include "libxl_utils.h"
@@ -101,6 +102,62 @@ libxlDriverConfigDispose(void *obj)
     VIR_FREE(cfg->saveDir);
     VIR_FREE(cfg->autoDumpDir);
 }
+
+
+static libxl_action_on_shutdown
+libxlActionFromVirLifecycle(virDomainLifecycleAction action)
+{
+    switch (action) {
+    case VIR_DOMAIN_LIFECYCLE_DESTROY:
+        return LIBXL_ACTION_ON_SHUTDOWN_DESTROY;
+
+    case VIR_DOMAIN_LIFECYCLE_RESTART:
+        return  LIBXL_ACTION_ON_SHUTDOWN_RESTART;
+
+    case VIR_DOMAIN_LIFECYCLE_RESTART_RENAME:
+        return LIBXL_ACTION_ON_SHUTDOWN_RESTART_RENAME;
+
+    case VIR_DOMAIN_LIFECYCLE_PRESERVE:
+        return LIBXL_ACTION_ON_SHUTDOWN_PRESERVE;
+
+    case VIR_DOMAIN_LIFECYCLE_LAST:
+        break;
+    }
+
+    return 0;
+}
+
+
+static libxl_action_on_shutdown
+libxlActionFromVirLifecycleCrash(virDomainLifecycleCrashAction action)
+{
+
+    switch (action) {
+    case VIR_DOMAIN_LIFECYCLE_CRASH_DESTROY:
+        return LIBXL_ACTION_ON_SHUTDOWN_DESTROY;
+
+    case VIR_DOMAIN_LIFECYCLE_CRASH_RESTART:
+        return  LIBXL_ACTION_ON_SHUTDOWN_RESTART;
+
+    case VIR_DOMAIN_LIFECYCLE_CRASH_RESTART_RENAME:
+        return LIBXL_ACTION_ON_SHUTDOWN_RESTART_RENAME;
+
+    case VIR_DOMAIN_LIFECYCLE_CRASH_PRESERVE:
+        return LIBXL_ACTION_ON_SHUTDOWN_PRESERVE;
+
+    case VIR_DOMAIN_LIFECYCLE_CRASH_COREDUMP_DESTROY:
+        return LIBXL_ACTION_ON_SHUTDOWN_COREDUMP_DESTROY;
+
+    case VIR_DOMAIN_LIFECYCLE_CRASH_COREDUMP_RESTART:
+        return LIBXL_ACTION_ON_SHUTDOWN_COREDUMP_RESTART;
+
+    case VIR_DOMAIN_LIFECYCLE_CRASH_LAST:
+        break;
+    }
+
+    return 0;
+}
+
 
 static int
 libxlCapsInitHost(libxl_ctx *ctx, virCapsPtr caps)
@@ -312,17 +369,14 @@ libxlCapsInitGuests(libxl_ctx *ctx, virCapsPtr caps)
                     pae = 1;
                 else
                     nonpae = 1;
-            }
-            else if (STRPREFIX(&token[subs[2].rm_so], "x86_64")) {
+            } else if (STRPREFIX(&token[subs[2].rm_so], "x86_64")) {
                 arch = VIR_ARCH_X86_64;
-            }
-            else if (STRPREFIX(&token[subs[2].rm_so], "ia64")) {
+            } else if (STRPREFIX(&token[subs[2].rm_so], "ia64")) {
                 arch = VIR_ARCH_ITANIUM;
                 if (subs[3].rm_so != -1 &&
                     STRPREFIX(&token[subs[3].rm_so], "be"))
                     ia64_be = 1;
-            }
-            else if (STRPREFIX(&token[subs[2].rm_so], "powerpc64")) {
+            } else if (STRPREFIX(&token[subs[2].rm_so], "powerpc64")) {
                 arch = VIR_ARCH_PPC64;
             } else if (STRPREFIX(&token[subs[2].rm_so], "armv7l")) {
                 arch = VIR_ARCH_ARMV7L;
@@ -583,7 +637,7 @@ libxlMakeDomBuildInfo(virDomainDefPtr def,
 
     b_info->max_vcpus = def->maxvcpus;
     if (libxl_cpu_bitmap_alloc(ctx, &b_info->avail_vcpus, def->maxvcpus))
-        goto error;
+        return -1;
     libxl_bitmap_set_none(&b_info->avail_vcpus);
     for (i = 0; i < def->vcpus; i++)
         libxl_bitmap_set((&b_info->avail_vcpus), i);
@@ -642,29 +696,50 @@ libxlMakeDomBuildInfo(virDomainDefPtr def,
         if (def->os.nBootDevs == 0) {
             bootorder[0] = 'c';
             bootorder[1] = '\0';
-        }
-        else {
+        } else {
             bootorder[def->os.nBootDevs] = '\0';
         }
         if (VIR_STRDUP(b_info->u.hvm.boot, bootorder) < 0)
-            goto error;
+            return -1;
+
+        if (def->emulator) {
+            if (!virFileExists(def->emulator)) {
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                               _("emulator '%s' not found"),
+                               def->emulator);
+                return -1;
+            }
+
+            if (!virFileIsExecutable(def->emulator)) {
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                               _("emulator '%s' is not executable"),
+                               def->emulator);
+                return -1;
+            }
+
+            VIR_FREE(b_info->device_model);
+            if (VIR_STRDUP(b_info->device_model, def->emulator) < 0)
+                return -1;
+
+            b_info->device_model_version = libxlDomainGetEmulatorType(def);
+        }
 
         if (def->nserials) {
             if (def->nserials > 1) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                                "%s",
                                _("Only one serial device is supported by libxl"));
-                goto error;
+                return -1;
             }
             if (libxlMakeChrdevStr(def->serials[0], &b_info->u.hvm.serial) < 0)
-                goto error;
+                return -1;
         }
 
         if (def->nparallels) {
             virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                            "%s",
                            _("Parallel devices are not supported by libxl"));
-            goto error;
+            return -1;
         }
 
         /*
@@ -683,33 +758,29 @@ libxlMakeDomBuildInfo(virDomainDefPtr def,
          */
         if (def->os.bootloader) {
             if (VIR_STRDUP(b_info->u.pv.bootloader, def->os.bootloader) < 0)
-                goto error;
+                return -1;
         } else if (def->os.kernel == NULL) {
             if (VIR_STRDUP(b_info->u.pv.bootloader, LIBXL_BOOTLOADER_PATH) < 0)
-                goto error;
+                return -1;
         }
         if (def->os.bootloaderArgs) {
             if (!(b_info->u.pv.bootloader_args =
                   virStringSplit(def->os.bootloaderArgs, " \t\n", 0)))
-                goto error;
+                return -1;
         }
         if (VIR_STRDUP(b_info->u.pv.cmdline, def->os.cmdline) < 0)
-            goto error;
+            return -1;
         if (def->os.kernel) {
             /* libxl_init_build_info() sets VIR_STRDUP(kernel.path, "hvmloader") */
             VIR_FREE(b_info->u.pv.kernel);
             if (VIR_STRDUP(b_info->u.pv.kernel, def->os.kernel) < 0)
-                goto error;
+                return -1;
         }
         if (VIR_STRDUP(b_info->u.pv.ramdisk, def->os.initrd) < 0)
-            goto error;
+            return -1;
     }
 
     return 0;
-
- error:
-    libxl_domain_build_info_dispose(b_info);
-    return -1;
 }
 
 static int
@@ -738,6 +809,37 @@ libxlDiskSetDiscard(libxl_device_disk *x_disk, int discard)
                      "disk 'discard' option passing"));
     return -1;
 #endif
+}
+
+
+#define LIBXL_QEMU_DM_STR  "Options specific to the Xen version:"
+
+int
+libxlDomainGetEmulatorType(const virDomainDef *def)
+{
+    int ret = LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN;
+    virCommandPtr cmd = NULL;
+    char *output = NULL;
+
+    if (STREQ(def->os.type, "hvm")) {
+        if (def->emulator) {
+            cmd = virCommandNew(def->emulator);
+
+            virCommandAddArgList(cmd, "-help", NULL);
+            virCommandSetOutputBuffer(cmd, &output);
+
+            if (virCommandRun(cmd, NULL) < 0)
+                goto cleanup;
+
+            if (strstr(output, LIBXL_QEMU_DM_STR))
+                ret = LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL;
+        }
+    }
+
+ cleanup:
+    VIR_FREE(output);
+    virCommandFree(cmd);
+    return ret;
 }
 
 
@@ -953,7 +1055,6 @@ libxlMakeNic(virDomainDefPtr def,
             char *brname = NULL;
             virNetworkPtr network;
             virConnectPtr conn;
-            virErrorPtr errobj;
 
             if (!(conn = virConnectOpen("xen:///system")))
                 return -1;
@@ -973,11 +1074,7 @@ libxlMakeNic(virDomainDefPtr def,
 
             VIR_FREE(brname);
 
-            /* Preserve any previous failure */
-            errobj = virSaveLastError();
-            virNetworkFree(network);
-            virSetError(errobj);
-            virFreeError(errobj);
+            virObjectUnref(network);
             virObjectUnref(conn);
             if (fail)
                 return -1;
@@ -1145,6 +1242,7 @@ libxlMakeVfbList(virPortAllocatorPtr graphicsports,
             if (VIR_STRDUP(b_info->u.hvm.sdl.xauthority, vfb.sdl.xauthority) < 0)
                 goto error;
         }
+
         if (VIR_STRDUP(b_info->u.hvm.keymap, vfb.keymap) < 0)
             goto error;
     }
@@ -1345,6 +1443,72 @@ libxlMakePCIList(virDomainDefPtr def, libxl_domain_config *d_config)
     return -1;
 }
 
+static int
+libxlMakeVideo(virDomainDefPtr def, libxl_domain_config *d_config)
+
+{
+    libxl_domain_build_info *b_info = &d_config->b_info;
+    int dm_type = libxlDomainGetEmulatorType(def);
+
+    if (d_config->c_info.type != LIBXL_DOMAIN_TYPE_HVM)
+        return 0;
+
+    /*
+     * Take the first defined video device (graphics card) to display
+     * on the first graphics device (display).
+     */
+    if (def->nvideos) {
+        switch (def->videos[0]->type) {
+        case VIR_DOMAIN_VIDEO_TYPE_VGA:
+        case VIR_DOMAIN_VIDEO_TYPE_XEN:
+            b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_STD;
+            if (dm_type == LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN) {
+                if (def->videos[0]->vram < 16 * 1024) {
+                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                                   _("videoram must be at least 16MB for VGA"));
+                    return -1;
+                }
+            } else {
+                if (def->videos[0]->vram < 8 * 1024) {
+                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                                   _("videoram must be at least 8MB for VGA"));
+                    return -1;
+                }
+            }
+            break;
+
+        case VIR_DOMAIN_VIDEO_TYPE_CIRRUS:
+            b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_CIRRUS;
+            if (dm_type == LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN) {
+                if (def->videos[0]->vram < 8 * 1024) {
+                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                                   _("videoram must be at least 8MB for CIRRUS"));
+                    return -1;
+                }
+            } else {
+                if (def->videos[0]->vram < 4 * 1024) {
+                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                                   _("videoram must be at least 4MB for CIRRUS"));
+                    return -1;
+                }
+            }
+            break;
+
+        default:
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("video type %s is not supported by libxl"),
+                           virDomainVideoTypeToString(def->videos[0]->type));
+            return -1;
+        }
+        /* vram validated for each video type, now set it */
+        b_info->video_memkb = def->videos[0]->vram;
+    } else {
+        libxl_defbool_set(&b_info->u.hvm.nographic, 1);
+    }
+
+    return 0;
+}
+
 int
 libxlDriverNodeGetInfo(libxlDriverPrivatePtr driver, virNodeInfoPtr info)
 {
@@ -1409,70 +1573,6 @@ libxlMakeCapabilities(libxl_ctx *ctx)
     return NULL;
 }
 
-static int
-libxlMakeVideo(virDomainDefPtr def, libxl_domain_config *d_config)
-{
-    libxl_domain_build_info *b_info = &d_config->b_info;
-
-    if (d_config->c_info.type != LIBXL_DOMAIN_TYPE_HVM)
-        return 0;
-
-    /*
-     * Take the first defined video device (graphics card) to display
-     * on the first graphics device (display).
-     * Right now only type and vram info is used and anything beside
-     * type xen and vga is mapped to cirrus.
-     */
-    if (def->nvideos) {
-        unsigned int min_vram = 8 * 1024;
-
-        switch (def->videos[0]->type) {
-            case VIR_DOMAIN_VIDEO_TYPE_VGA:
-            case VIR_DOMAIN_VIDEO_TYPE_XEN:
-                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_STD;
-                /*
-                 * Libxl enforces a minimal VRAM size of 8M when using
-                 * LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL or
-                 * 16M for LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN.
-                 * Avoid build failures and go with the minimum if less
-                 * is specified.
-                 */
-                switch (b_info->device_model_version) {
-                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
-                        min_vram = 8 * 1024;
-                        break;
-                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
-                    default:
-                        min_vram = 16 * 1024;
-                }
-                break;
-            case VIR_DOMAIN_VIDEO_TYPE_CIRRUS:
-                b_info->u.hvm.vga.kind = LIBXL_VGA_INTERFACE_TYPE_CIRRUS;
-                switch (b_info->device_model_version) {
-                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL:
-                        min_vram = 4 * 1024; /* Actually the max, too */
-                        break;
-                    case LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN:
-                    default:
-                        min_vram = 8 * 1024;
-                }
-                break;
-            default:
-                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               "%s",
-                               _("video type not supported by libxl"));
-                return -1;
-        }
-        b_info->video_memkb = (def->videos[0]->vram >= min_vram) ?
-                              def->videos[0]->vram :
-                              LIBXL_MEMKB_DEFAULT;
-    } else {
-        libxl_defbool_set(&b_info->u.hvm.nographic, 1);
-    }
-
-    return 0;
-}
-
 int
 libxlBuildDomainConfig(virPortAllocatorPtr graphicsports,
                        virDomainDefPtr def,
@@ -1500,17 +1600,16 @@ libxlBuildDomainConfig(virPortAllocatorPtr graphicsports,
         return -1;
 
     /*
-     * Now that any potential VFBs are defined, it is time to update the
-     * build info with the data of the primary display. Some day libxl
-     * might implicitely do so but as it does not right now, better be
-     * explicit.
+     * Now that any potential VFBs are defined, update the build info with
+     * the data of the primary display. Some day libxl might implicitely do
+     * so but as it does not right now, better be explicit.
      */
     if (libxlMakeVideo(def, d_config) < 0)
         return -1;
 
-    d_config->on_reboot = def->onReboot;
-    d_config->on_poweroff = def->onPoweroff;
-    d_config->on_crash = def->onCrash;
+    d_config->on_reboot = libxlActionFromVirLifecycle(def->onReboot);
+    d_config->on_poweroff = libxlActionFromVirLifecycle(def->onPoweroff);
+    d_config->on_crash = libxlActionFromVirLifecycleCrash(def->onCrash);
 
     return 0;
 }

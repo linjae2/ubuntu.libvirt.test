@@ -3,6 +3,7 @@
 <grammar xmlns="http://relaxng.org/ns/structure/1.0"
     datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
   <include href='basictypes.rng'/>
+  <include href='storagecommon.rng'/>
   <start>
     <ref name='pool'/>
   </start>
@@ -166,6 +167,9 @@
       <ref name='commonmetadata'/>
       <ref name='sizing'/>
       <ref name='sourcezfs'/>
+      <optional>
+        <ref name='target'/>
+      </optional>
     </interleave>
   </define>
 
@@ -219,35 +223,6 @@
         </element>
       </optional>
     </interleave>
-  </define>
-
-  <define name='permissions'>
-    <optional>
-      <element name='permissions'>
-        <interleave>
-          <element name='mode'>
-            <ref name='octalMode'/>
-          </element>
-          <element name='owner'>
-            <choice>
-              <ref name='unsignedInt'/>
-              <value>-1</value>
-            </choice>
-          </element>
-          <element name='group'>
-            <choice>
-              <ref name='unsignedInt'/>
-              <value>-1</value>
-            </choice>
-          </element>
-          <optional>
-            <element name='label'>
-              <text/>
-            </element>
-          </optional>
-        </interleave>
-      </element>
-    </optional>
   </define>
 
   <define name='target'>
@@ -386,6 +361,9 @@
     <element name='source'>
       <interleave>
         <ref name='sourceinfoname'/>
+        <optional>
+          <ref name='sourceinfodev'/>
+        </optional>
       </interleave>
     </element>
   </define>
@@ -459,7 +437,7 @@
       <element name='format'>
         <attribute name='type'>
           <choice>
-            <value>auto</value>
+            <value>unknown</value> <!-- back-compat requires keeping 'unknown' not 'auto' -->
             <value>lvm2</value>
           </choice>
         </attribute>

@@ -171,9 +171,8 @@ virStorageBackendDiskMakeFreeExtent(virStoragePoolObjPtr pool,
         return -1; /* Don't bother to re-alloc freeExtents - it'll be free'd shortly */
 
     /* first block reported as free, even if it is not */
-    if (dev->freeExtents[dev->nfreeExtent].start == 0) {
+    if (dev->freeExtents[dev->nfreeExtent].start == 0)
         dev->freeExtents[dev->nfreeExtent].start = SECTOR_SIZE;
-    }
 
     pool->def->available +=
         (dev->freeExtents[dev->nfreeExtent].end -
@@ -349,9 +348,8 @@ virStorageBackendDiskRefreshPool(virConnectPtr conn ATTRIBUTE_UNUSED,
         return -1;
     }
 
-    if (virStorageBackendDiskReadGeometry(pool) != 0) {
+    if (virStorageBackendDiskReadGeometry(pool) != 0)
         return -1;
-    }
 
     return virStorageBackendDiskReadPartitions(pool, NULL);
 }
@@ -372,21 +370,26 @@ virStorageBackendDiskFindLabel(const char* device)
     };
     virCommandPtr cmd = virCommandNew(PARTED);
     char *output = NULL;
+    char *error = NULL;
     int ret = -1;
 
     virCommandAddArgSet(cmd, args);
     virCommandAddEnvString(cmd, "LC_ALL=C");
     virCommandSetOutputBuffer(cmd, &output);
+    virCommandSetErrorBuffer(cmd, &error);
 
     /* if parted succeeds we have a valid partition table */
     ret = virCommandRun(cmd, NULL);
     if (ret < 0) {
-        if (strstr(output, "unrecognised disk label"))
+        if (strstr(output, "unrecognised disk label") ||
+            strstr(error, "unrecognised disk label")) {
             ret = 1;
+        }
     }
 
     virCommandFree(cmd);
     VIR_FREE(output);
+    VIR_FREE(error);
     return ret;
 }
 
@@ -414,9 +417,9 @@ virStorageBackendDiskBuildPool(virConnectPtr conn ATTRIBUTE_UNUSED,
         goto error;
     }
 
-    if (flags & VIR_STORAGE_POOL_BUILD_OVERWRITE)
+    if (flags & VIR_STORAGE_POOL_BUILD_OVERWRITE) {
         ok_to_mklabel = true;
-    else {
+    } else {
         int check;
 
         check = virStorageBackendDiskFindLabel(
@@ -467,9 +470,8 @@ virStorageBackendDiskPartTypeToCreate(virStoragePoolObjPtr pool)
                 partType == VIR_STORAGE_VOL_DISK_TYPE_EXTENDED)
                 count++;
         }
-        if (count >= 4) {
+        if (count >= 4)
             return VIR_STORAGE_VOL_DISK_TYPE_LOGICAL;
-        }
     }
 
     /* for all other cases, all partitions are primary */
@@ -560,7 +562,7 @@ virStorageBackendDiskPartBoundaries(virStoragePoolObjPtr pool,
     unsigned long long extraBytes = 0;
     unsigned long long alignedAllocation = allocation;
     virStoragePoolSourceDevicePtr dev = &pool->def->source.devices[0];
-    unsigned long long cylinderSize = dev->geometry.heads *
+    unsigned long long cylinderSize = (unsigned long long)dev->geometry.heads *
                                       dev->geometry.sectors * SECTOR_SIZE;
 
     VIR_DEBUG("find free area: allocation %llu, cyl size %llu", allocation,
@@ -587,9 +589,8 @@ virStorageBackendDiskPartBoundaries(virStoragePoolObjPtr pool,
              }
              /* if we are creating a logical partition, we need one extra
                 block between partitions (or actually move start one block) */
-             if (partType == VIR_STORAGE_VOL_DISK_TYPE_LOGICAL) {
+             if (partType == VIR_STORAGE_VOL_DISK_TYPE_LOGICAL)
                  size -= SECTOR_SIZE;
-             }
          }
          if (size > neededSize &&
              (smallestSize == 0 ||
@@ -659,9 +660,8 @@ virStorageBackendDiskCreateVol(virConnectPtr conn ATTRIBUTE_UNUSED,
         goto cleanup;
     }
 
-    if (virStorageBackendDiskPartFormat(pool, vol, &partFormat) != 0) {
+    if (virStorageBackendDiskPartFormat(pool, vol, &partFormat) != 0)
         goto cleanup;
-    }
     virCommandAddArg(cmd, partFormat);
 
     if (virStorageBackendDiskPartBoundaries(pool, &startOffset,

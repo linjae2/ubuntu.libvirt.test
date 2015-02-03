@@ -67,7 +67,7 @@ struct _virLockDaemon {
 
 virLockDaemonPtr lockDaemon = NULL;
 
-static bool execRestart = false;
+static bool execRestart;
 
 enum {
     VIR_LOCK_DAEMON_ERR_NONE = 0,
@@ -362,42 +362,6 @@ virLockDaemonForkIntoBackground(const char *argv0)
             _exit(ret == 1 && status == 0 ? 0 : 1);
         }
     }
-}
-
-
-static int
-virLockDaemonPidFilePath(bool privileged,
-                         char **pidfile)
-{
-    if (privileged) {
-        if (VIR_STRDUP(*pidfile, LOCALSTATEDIR "/run/virtlockd.pid") < 0)
-            goto error;
-    } else {
-        char *rundir = NULL;
-        mode_t old_umask;
-
-        if (!(rundir = virGetUserRuntimeDirectory()))
-            goto error;
-
-        old_umask = umask(077);
-        if (virFileMakePath(rundir) < 0) {
-            umask(old_umask);
-            goto error;
-        }
-        umask(old_umask);
-
-        if (virAsprintf(pidfile, "%s/virtlockd.pid", rundir) < 0) {
-            VIR_FREE(rundir);
-            goto error;
-        }
-
-        VIR_FREE(rundir);
-    }
-
-    return 0;
-
- error:
-    return -1;
 }
 
 
@@ -1196,9 +1160,8 @@ int main(int argc, char **argv) {
 
         c = getopt_long(argc, argv, "ldf:p:t:vVh", opts, &optidx);
 
-        if (c == -1) {
+        if (c == -1)
             break;
-        }
 
         switch (c) {
         case 0:
@@ -1283,8 +1246,10 @@ int main(int argc, char **argv) {
     }
 
     if (!pid_file &&
-        virLockDaemonPidFilePath(privileged,
-                                 &pid_file) < 0) {
+        virPidFileConstructPath(privileged,
+                                LOCALSTATEDIR,
+                                "virtlockd",
+                                &pid_file) < 0) {
         VIR_ERROR(_("Can't determine pid file path."));
         exit(EXIT_FAILURE);
     }

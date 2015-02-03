@@ -60,9 +60,8 @@ void virInterfaceProtocolDefFree(virInterfaceProtocolDefPtr def)
 
     if (def == NULL)
         return;
-    for (i = 0; i < def->nips; i++) {
+    for (i = 0; i < def->nips; i++)
         virInterfaceIpDefFree(def->ips[i]);
-    }
     VIR_FREE(def->ips);
     VIR_FREE(def->family);
     VIR_FREE(def->gateway);
@@ -101,14 +100,13 @@ void virInterfaceDefFree(virInterfaceDefPtr def)
             break;
         case VIR_INTERFACE_TYPE_VLAN:
             VIR_FREE(def->data.vlan.tag);
-            VIR_FREE(def->data.vlan.devname);
+            VIR_FREE(def->data.vlan.dev_name);
             break;
     }
 
     /* free all protos */
-    for (pp = 0; pp < def->nprotos; pp++) {
+    for (pp = 0; pp < def->nprotos; pp++)
         virInterfaceProtocolDefFree(def->protos[pp]);
-    }
     VIR_FREE(def->protos);
     VIR_FREE(def);
 }
@@ -154,15 +152,15 @@ virInterfaceDefParseStartMode(virInterfaceDefPtr def,
     char *tmp;
 
     tmp = virXPathString("string(./start/@mode)", ctxt);
-    if (tmp == NULL)
+    if (tmp == NULL) {
         def->startmode = VIR_INTERFACE_START_UNSPECIFIED;
-    else if (STREQ(tmp, "onboot"))
+    } else if (STREQ(tmp, "onboot")) {
         def->startmode = VIR_INTERFACE_START_ONBOOT;
-    else if (STREQ(tmp, "hotplug"))
+    } else if (STREQ(tmp, "hotplug")) {
         def->startmode = VIR_INTERFACE_START_HOTPLUG;
-    else if (STREQ(tmp, "none"))
+    } else if (STREQ(tmp, "none")) {
         def->startmode = VIR_INTERFACE_START_NONE;
-    else {
+    } else {
         virReportError(VIR_ERR_XML_ERROR,
                        _("unknown interface startmode %s"), tmp);
         VIR_FREE(tmp);
@@ -181,21 +179,21 @@ virInterfaceDefParseBondMode(xmlXPathContextPtr ctxt)
     tmp = virXPathString("string(./@mode)", ctxt);
     if (tmp == NULL)
         return VIR_INTERFACE_BOND_NONE;
-    if (STREQ(tmp, "balance-rr"))
+    if (STREQ(tmp, "balance-rr")) {
         ret = VIR_INTERFACE_BOND_BALRR;
-    else if (STREQ(tmp, "active-backup"))
+    } else if (STREQ(tmp, "active-backup")) {
         ret = VIR_INTERFACE_BOND_ABACKUP;
-    else if (STREQ(tmp, "balance-xor"))
+    } else if (STREQ(tmp, "balance-xor")) {
         ret = VIR_INTERFACE_BOND_BALXOR;
-    else if (STREQ(tmp, "broadcast"))
+    } else if (STREQ(tmp, "broadcast")) {
         ret = VIR_INTERFACE_BOND_BCAST;
-    else if (STREQ(tmp, "802.3ad"))
+    } else if (STREQ(tmp, "802.3ad")) {
         ret = VIR_INTERFACE_BOND_8023AD;
-    else if (STREQ(tmp, "balance-tlb"))
+    } else if (STREQ(tmp, "balance-tlb")) {
         ret = VIR_INTERFACE_BOND_BALTLB;
-    else if (STREQ(tmp, "balance-alb"))
+    } else if (STREQ(tmp, "balance-alb")) {
         ret = VIR_INTERFACE_BOND_BALALB;
-    else {
+    } else {
         virReportError(VIR_ERR_XML_ERROR,
                        _("unknown bonding mode %s"), tmp);
         ret = -1;
@@ -213,11 +211,11 @@ virInterfaceDefParseBondMiiCarrier(xmlXPathContextPtr ctxt)
     tmp = virXPathString("string(./miimon/@carrier)", ctxt);
     if (tmp == NULL)
         return VIR_INTERFACE_BOND_MII_NONE;
-    if (STREQ(tmp, "ioctl"))
+    if (STREQ(tmp, "ioctl")) {
         ret = VIR_INTERFACE_BOND_MII_IOCTL;
-    else if (STREQ(tmp, "netif"))
+    } else if (STREQ(tmp, "netif")) {
         ret = VIR_INTERFACE_BOND_MII_NETIF;
-    else {
+    } else {
         virReportError(VIR_ERR_XML_ERROR,
                        _("unknown mii bonding carrier %s"), tmp);
         ret = -1;
@@ -235,13 +233,13 @@ virInterfaceDefParseBondArpValid(xmlXPathContextPtr ctxt)
     tmp = virXPathString("string(./arpmon/@validate)", ctxt);
     if (tmp == NULL)
         return VIR_INTERFACE_BOND_ARP_NONE;
-    if (STREQ(tmp, "active"))
+    if (STREQ(tmp, "active")) {
         ret = VIR_INTERFACE_BOND_ARP_ACTIVE;
-    else if (STREQ(tmp, "backup"))
+    } else if (STREQ(tmp, "backup")) {
         ret = VIR_INTERFACE_BOND_ARP_BACKUP;
-    else if (STREQ(tmp, "all"))
+    } else if (STREQ(tmp, "all")) {
         ret = VIR_INTERFACE_BOND_ARP_ALL;
-    else {
+    } else {
         virReportError(VIR_ERR_XML_ERROR,
                        _("unknown arp bonding validate %s"), tmp);
         ret = -1;
@@ -264,18 +262,19 @@ virInterfaceDefParseDhcp(virInterfaceProtocolDefPtr def,
     /* Not much to do in the current version */
     tmp = virXPathString("string(./@peerdns)", ctxt);
     if (tmp) {
-        if (STREQ(tmp, "yes"))
+        if (STREQ(tmp, "yes")) {
             def->peerdns = 1;
-        else if (STREQ(tmp, "no"))
+        } else if (STREQ(tmp, "no")) {
             def->peerdns = 0;
-        else {
+        } else {
             virReportError(VIR_ERR_XML_ERROR,
                            _("unknown dhcp peerdns value %s"), tmp);
             ret = -1;
         }
         VIR_FREE(tmp);
-    } else
+    } else {
         def->peerdns = -1;
+    }
 
     ctxt->node = save;
     return ret;
@@ -293,9 +292,9 @@ virInterfaceDefParseIp(virInterfaceIpDefPtr def,
     def->address = tmp;
     if (tmp != NULL) {
         ret = virXPathLong("string(./@prefix)", ctxt, &l);
-        if (ret == 0)
+        if (ret == 0) {
             def->prefix = (int) l;
-        else if (ret == -2) {
+        } else if (ret == -2) {
             virReportError(VIR_ERR_XML_ERROR,
                            "%s", _("Invalid ip address prefix value"));
             return -1;
@@ -670,9 +669,9 @@ virInterfaceDefParseVlan(virInterfaceDefPtr def,
         return -1;
     }
 
-    def->data.vlan.devname =
+    def->data.vlan.dev_name =
          virXPathString("string(./interface/@name)", ctxt);
-    if (def->data.vlan.devname == NULL) {
+    if (def->data.vlan.dev_name == NULL) {
         virReportError(VIR_ERR_XML_ERROR,
                        "%s", _("vlan interface misses name attribute"));
         return -1;
@@ -954,15 +953,16 @@ virInterfaceVlanDefFormat(virBufferPtr buf, const virInterfaceDef *def)
     }
 
     virBufferAsprintf(buf, "<vlan tag='%s'", def->data.vlan.tag);
-    if (def->data.vlan.devname != NULL) {
+    if (def->data.vlan.dev_name != NULL) {
         virBufferAddLit(buf, ">\n");
         virBufferAdjustIndent(buf, 2);
         virBufferAsprintf(buf, "<interface name='%s'/>\n",
-                          def->data.vlan.devname);
+                          def->data.vlan.dev_name);
         virBufferAdjustIndent(buf, -2);
         virBufferAddLit(buf, "</vlan>\n");
-    } else
+    } else {
         virBufferAddLit(buf, "/>\n");
+    }
     return 0;
 }
 
@@ -1079,9 +1079,8 @@ virInterfaceDefDevFormat(virBufferPtr buf, const virInterfaceDef *def,
         virInterfaceProtocolDefFormat(buf, def);
     }
 
-    if (def->type != VIR_INTERFACE_TYPE_BRIDGE) {
+    if (def->type != VIR_INTERFACE_TYPE_BRIDGE)
         virInterfaceLinkFormat(buf, &def->lnk);
-    }
     switch (def->type) {
         case VIR_INTERFACE_TYPE_ETHERNET:
             if (def->mac)

@@ -124,7 +124,7 @@ umlConnectTapDevice(virConnectPtr conn,
     }
 
     if (virNetDevTapCreateInBridgePort(bridge, &net->ifname, &net->mac,
-                                       vm->uuid, &tapfd, 1,
+                                       vm->uuid, net->backend.tap, &tapfd, 1,
                                        virDomainNetGetActualVirtPortProfile(net),
                                        virDomainNetGetActualVlan(net),
                                        VIR_NETDEV_TAP_CREATE_IFUP |
@@ -172,10 +172,9 @@ umlBuildCommandLineNet(virConnectPtr conn,
     case VIR_DOMAIN_NET_TYPE_ETHERNET:
         /* ethNNN=tuntap,tapname,macaddr,gateway */
         virBufferAddLit(&buf, "tuntap,");
-        if (def->ifname) {
+        if (def->ifname)
             virBufferAdd(&buf, def->ifname, -1);
-        }
-        if (def->data.ethernet.ipaddr) {
+        if (def->nips > 0) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("IP address not supported for ethernet interface"));
             goto error;
@@ -214,10 +213,9 @@ umlBuildCommandLineNet(virConnectPtr conn,
             goto error;
         }
         bridge = virNetworkGetBridgeName(network);
-        virNetworkFree(network);
-        if (bridge == NULL) {
+        virObjectUnref(network);
+        if (bridge == NULL)
             goto error;
-        }
 
         if (umlConnectTapDevice(conn, vm, def, bridge) < 0) {
             VIR_FREE(bridge);

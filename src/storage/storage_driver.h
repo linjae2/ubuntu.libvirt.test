@@ -50,11 +50,17 @@ bool virStorageFileSupportsSecurityDriver(virStorageSourcePtr src);
 
 int virStorageFileGetMetadata(virStorageSourcePtr src,
                               uid_t uid, gid_t gid,
-                              bool allow_probe)
+                              bool allow_probe,
+                              bool report_broken)
     ATTRIBUTE_NONNULL(1);
 
 int virStorageTranslateDiskSourcePool(virConnectPtr conn,
                                       virDomainDiskDefPtr def);
+
+virStoragePoolPtr
+storagePoolLookupByTargetPath(virConnectPtr conn,
+                              const char *path)
+    ATTRIBUTE_NONNULL(2);
 
 int storageRegister(void);
 

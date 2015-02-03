@@ -38,7 +38,7 @@
 
 VIR_LOG_INIT("cpu.cpu_powerpc");
 
-static const virArch archs[] = { VIR_ARCH_PPC64 };
+static const virArch archs[] = { VIR_ARCH_PPC64, VIR_ARCH_PPC64LE };
 
 struct ppc_vendor {
     char *name;
@@ -650,6 +650,49 @@ ppcBaseline(virCPUDefPtr *cpus,
     goto cleanup;
 }
 
+static int
+ppcGetModels(char ***models)
+{
+    struct ppc_map *map;
+    struct ppc_model *model;
+    char *name;
+    size_t nmodels = 0;
+
+    if (!(map = ppcLoadMap()))
+        goto error;
+
+    if (models && VIR_ALLOC_N(*models, 0) < 0)
+        goto error;
+
+    model = map->models;
+    while (model != NULL) {
+        if (models) {
+            if (VIR_STRDUP(name, model->name) < 0)
+                goto error;
+
+            if (VIR_APPEND_ELEMENT(*models, nmodels, name) < 0)
+                goto error;
+        } else {
+            nmodels++;
+        }
+
+        model = model->next;
+    }
+
+ cleanup:
+    ppcMapFree(map);
+
+    return nmodels;
+
+ error:
+    if (models) {
+        virStringFreeList(*models);
+        *models = NULL;
+    }
+    nmodels = -1;
+    goto cleanup;
+}
+
 struct cpuArchDriver cpuDriverPowerPC = {
     .name = "ppc64",
     .arch = archs,
@@ -663,4 +706,5 @@ struct cpuArchDriver cpuDriverPowerPC = {
     .baseline   = ppcBaseline,
     .update     = ppcUpdate,
     .hasFeature = NULL,
+    .getModels  = ppcGetModels,
 };

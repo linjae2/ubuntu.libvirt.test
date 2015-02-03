@@ -43,9 +43,6 @@
 #include "viruri.h"
 #include "dirname.h"
 #include "virbuffer.h"
-#if HAVE_SYS_SYSCALL_H
-# include <sys/syscall.h>
-#endif
 
 #define VIR_FROM_THIS VIR_FROM_STORAGE
 
@@ -164,7 +161,7 @@ qedGetBackingStore(char **, int *, const char *, size_t);
 #define QCOWX_HDR_BACKING_FILE_SIZE (QCOWX_HDR_BACKING_FILE_OFFSET+8)
 #define QCOWX_HDR_IMAGE_SIZE (QCOWX_HDR_BACKING_FILE_SIZE+4+4)
 
-#define QCOW1_HDR_CRYPT (QCOWX_HDR_IMAGE_SIZE+8+1+1)
+#define QCOW1_HDR_CRYPT (QCOWX_HDR_IMAGE_SIZE+8+1+1+2)
 #define QCOW2_HDR_CRYPT (QCOWX_HDR_IMAGE_SIZE+8)
 
 #define QCOW1_HDR_TOTAL_SIZE (QCOW1_HDR_CRYPT+4+8)
@@ -385,15 +382,22 @@ qcowXGetBackingStore(char **res,
     offset = virReadBufInt64BE(buf + QCOWX_HDR_BACKING_FILE_OFFSET);
     if (offset > buf_size)
         return BACKING_STORE_INVALID;
+
+    if (offset == 0) {
+        if (format)
+            *format = VIR_STORAGE_FILE_NONE;
+        return BACKING_STORE_OK;
+    }
+
     size = virReadBufInt32BE(buf + QCOWX_HDR_BACKING_FILE_SIZE);
     if (size == 0) {
         if (format)
             *format = VIR_STORAGE_FILE_NONE;
         return BACKING_STORE_OK;
     }
-    if (offset + size > buf_size || offset + size < offset)
+    if (size > 1023)
         return BACKING_STORE_INVALID;
-    if (size + 1 == 0)
+    if (offset + size > buf_size || offset + size < offset)
         return BACKING_STORE_INVALID;
     if (VIR_ALLOC_N(*res, size + 1) < 0)
         return BACKING_STORE_ERROR;
@@ -1113,25 +1117,12 @@ virStorageFileResize(const char *path,
     }
 
     if (pre_allocate) {
-#if HAVE_POSIX_FALLOCATE
-        if ((rc = posix_fallocate(fd, offset, len)) != 0) {
-            virReportSystemError(rc,
-                                 _("Failed to pre-allocate space for "
-                                   "file '%s'"), path);
-            goto cleanup;
-        }
-#elif HAVE_SYS_SYSCALL_H && defined(SYS_fallocate)
-        if (syscall(SYS_fallocate, fd, 0, offset, len) != 0) {
+        if (safezero(fd, offset, len) != 0) {
             virReportSystemError(errno,
                                  _("Failed to pre-allocate space for "
                                    "file '%s'"), path);
             goto cleanup;
         }
-#else
-        virReportError(VIR_ERR_OPERATION_UNSUPPORTED, "%s",
-                       _("preallocate is not supported on this platform"));
-        goto cleanup;
-#endif
     } else {
         if (ftruncate(fd, capacity) < 0) {
             virReportSystemError(errno,
@@ -1197,9 +1188,8 @@ int virStorageFileGetLVMKey(const char *path,
         char *tmp = *key;
 
         /* Find first non-space character */
-        while (*tmp && c_isspace(*tmp)) {
+        while (*tmp && c_isspace(*tmp))
             tmp++;
-        }
         /* Kill leading spaces */
         if (tmp != *key)
             memmove(*key, tmp, strlen(tmp)+1);
@@ -1829,8 +1819,9 @@ virStorageSourceCopy(const virStorageSource *src,
     ret->type = src->type;
     ret->protocol = src->protocol;
     ret->format = src->format;
-    ret->allocation = src->allocation;
     ret->capacity = src->capacity;
+    ret->allocation = src->allocation;
+    ret->physical = src->physical;
     ret->readonly = src->readonly;
     ret->shared = src->shared;
 
@@ -1842,12 +1833,17 @@ virStorageSourceCopy(const virStorageSource *src,
         VIR_STRDUP(ret->driverName, src->driverName) < 0 ||
         VIR_STRDUP(ret->relPath, src->relPath) < 0 ||
         VIR_STRDUP(ret->backingStoreRaw, src->backingStoreRaw) < 0 ||
+        VIR_STRDUP(ret->snapshot, src->snapshot) < 0 ||
+        VIR_STRDUP(ret->configFile, src->configFile) < 0 ||
         VIR_STRDUP(ret->compat, src->compat) < 0)
         goto error;
 
-    if (!(ret->hosts = virStorageNetHostDefCopy(src->nhosts, src->hosts)))
-        goto error;
-    ret->nhosts = src->nhosts;
+    if (src->nhosts) {
+        if (!(ret->hosts = virStorageNetHostDefCopy(src->nhosts, src->hosts)))
+            goto error;
+
+        ret->nhosts = src->nhosts;
+    }
 
     if (src->srcpool &&
         !(ret->srcpool = virStorageSourcePoolDefCopy(src->srcpool)))
@@ -1894,30 +1890,31 @@ virStorageSourceCopy(const virStorageSource *src,
  * virStorageSourceInitChainElement:
  * @newelem: New backing chain element disk source
  * @old: Existing top level disk source
- * @force: Force-copy the information
+ * @transferLabels: Transfer security lables.
  *
  * Transfers relevant information from the existing disk source to the new
  * backing chain element if they weren't supplied so that labelling info
  * and possibly other stuff is correct.
  *
- * If @force is true, user-supplied information for the new backing store
- * element is overwritten from @old instead of keeping it.
+ * If @transferLabels is true, security labels from the existing disk are copied
+ * to the new disk. Otherwise the default domain imagelabel label will be used.
  *
  * Returns 0 on success, -1 on error.
  */
 int
 virStorageSourceInitChainElement(virStorageSourcePtr newelem,
                                  virStorageSourcePtr old,
-                                 bool force)
+                                 bool transferLabels)
 {
     int ret = -1;
 
-    if (force) {
-        virStorageSourceSeclabelsClear(newelem);
-    }
-
-    if (!newelem->seclabels &&
+    if (transferLabels &&
+        !newelem->seclabels &&
         virStorageSourceSeclabelsCopy(newelem, old) < 0)
+        goto cleanup;
+
+    if (!newelem->driverName &&
+        VIR_STRDUP(newelem->driverName, old->driverName) < 0)
         goto cleanup;
 
     newelem->shared = old->shared;
@@ -1956,7 +1953,43 @@ virStorageSourceGetActualType(virStorageSourcePtr def)
 bool
 virStorageSourceIsLocalStorage(virStorageSourcePtr src)
 {
-    return virStorageSourceGetActualType(src) != VIR_STORAGE_TYPE_NETWORK;
+    virStorageType type = virStorageSourceGetActualType(src);
+
+    switch (type) {
+    case VIR_STORAGE_TYPE_FILE:
+    case VIR_STORAGE_TYPE_BLOCK:
+    case VIR_STORAGE_TYPE_DIR:
+        return true;
+
+    case VIR_STORAGE_TYPE_NETWORK:
+    case VIR_STORAGE_TYPE_VOLUME:
+    case VIR_STORAGE_TYPE_LAST:
+    case VIR_STORAGE_TYPE_NONE:
+        return false;
+    }
+
+    return false;
+}
+
+
+/**
+ * virStorageSourceIsEmpty:
+ *
+ * @src: disk source to check
+ *
+ * Returns true if the guest disk has no associated host storage source
+ * (such as an empty cdrom drive).
+ */
+bool
+virStorageSourceIsEmpty(virStorageSourcePtr src)
+{
+    if (virStorageSourceIsLocalStorage(src) && !src->path)
+        return true;
+
+    if (src->type == VIR_STORAGE_TYPE_NONE)
+        return true;
+
+    return false;
 }
 
 
@@ -2049,9 +2082,13 @@ virStorageSourceNewFromBackingRelative(virStorageSourcePtr parent,
 
         /* copy the host network part */
         ret->protocol = parent->protocol;
-        if (!(ret->hosts = virStorageNetHostDefCopy(parent->nhosts, parent->hosts)))
-            goto error;
-        ret->nhosts = parent->nhosts;
+        if (parent->nhosts) {
+            if (!(ret->hosts = virStorageNetHostDefCopy(parent->nhosts,
+                                                        parent->hosts)))
+                goto error;
+
+            ret->nhosts = parent->nhosts;
+        }
 
         if (VIR_STRDUP(ret->volume, parent->volume) < 0)
             goto error;
@@ -2085,6 +2122,11 @@ virStorageSourceParseBackingURI(virStorageSourcePtr src,
                        path);
         goto cleanup;
     }
+
+    if (VIR_ALLOC(src->hosts) < 0)
+        goto cleanup;
+
+    src->nhosts = 1;
 
     if (!(scheme = virStringSplit(uri->scheme, "+", 2)))
         goto cleanup;
@@ -2136,11 +2178,6 @@ virStorageSourceParseBackingURI(virStorageSourcePtr src,
         tmp[0] = '\0';
     }
 
-    if (VIR_ALLOC(src->hosts) < 0)
-        goto cleanup;
-
-    src->nhosts = 1;
-
     if (uri->port > 0) {
         if (virAsprintf(&src->hosts->port, "%d", uri->port) < 0)
             goto cleanup;
@@ -2159,85 +2196,277 @@ virStorageSourceParseBackingURI(virStorageSourcePtr src,
 
 
 static int
-virStorageSourceParseBackingColon(virStorageSourcePtr src,
-                                  const char *path)
+virStorageSourceRBDAddHost(virStorageSourcePtr src,
+                           char *hostport)
+{
+    char *port;
+    size_t skip;
+    char **parts;
+
+    if (VIR_EXPAND_N(src->hosts, src->nhosts, 1) < 0)
+        return -1;
+
+    if ((port = strchr(hostport, ']'))) {
+        /* ipv6, strip brackets */
+        hostport += 1;
+        skip = 3;
+    } else {
+        port = strstr(hostport, "\\:");
+        skip = 2;
+    }
+
+    if (port) {
+        *port = '\0';
+        port += skip;
+        if (VIR_STRDUP(src->hosts[src->nhosts - 1].port, port) < 0)
+            goto error;
+    } else {
+        if (VIR_STRDUP(src->hosts[src->nhosts - 1].port, "6789") < 0)
+            goto error;
+    }
+
+    parts = virStringSplit(hostport, "\\:", 0);
+    if (!parts)
+        goto error;
+    src->hosts[src->nhosts-1].name = virStringJoin((const char **)parts, ":");
+    virStringFreeList(parts);
+    if (!src->hosts[src->nhosts-1].name)
+        goto error;
+
+    src->hosts[src->nhosts-1].transport = VIR_STORAGE_NET_HOST_TRANS_TCP;
+    src->hosts[src->nhosts-1].socket = NULL;
+
+    return 0;
+
+ error:
+    VIR_FREE(src->hosts[src->nhosts-1].port);
+    VIR_FREE(src->hosts[src->nhosts-1].name);
+    return -1;
+}
+
+
+int
+virStorageSourceParseRBDColonString(const char *rbdstr,
+                                    virStorageSourcePtr src)
+{
+    char *options = NULL;
+    char *p, *e, *next;
+    virStorageAuthDefPtr authdef = NULL;
+
+    /* optionally skip the "rbd:" prefix if provided */
+    if (STRPREFIX(rbdstr, "rbd:"))
+        rbdstr += strlen("rbd:");
+
+    if (VIR_STRDUP(src->path, rbdstr) < 0)
+        goto error;
+
+    p = strchr(src->path, ':');
+    if (p) {
+        if (VIR_STRDUP(options, p + 1) < 0)
+            goto error;
+        *p = '\0';
+    }
+
+    /* snapshot name */
+    if ((p = strchr(src->path, '@'))) {
+        if (VIR_STRDUP(src->snapshot, p + 1) < 0)
+            goto error;
+        *p = '\0';
+    }
+
+    /* options */
+    if (!options)
+        return 0; /* all done */
+
+    p = options;
+    while (*p) {
+        /* find : delimiter or end of string */
+        for (e = p; *e && *e != ':'; ++e) {
+            if (*e == '\\') {
+                e++;
+                if (*e == '\0')
+                    break;
+            }
+        }
+        if (*e == '\0') {
+            next = e;    /* last kv pair */
+        } else {
+            next = e + 1;
+            *e = '\0';
+        }
+
+        if (STRPREFIX(p, "id=")) {
+            /* formulate authdef for src->auth */
+            if (VIR_ALLOC(authdef) < 0)
+                goto error;
+
+            if (VIR_STRDUP(authdef->username, p + strlen("id=")) < 0)
+                goto error;
+
+            if (VIR_STRDUP(authdef->secrettype,
+                           virStorageAuthTypeToString(VIR_STORAGE_AUTH_TYPE_CEPHX)) < 0)
+                goto error;
+            src->auth = authdef;
+            authdef = NULL;
+
+            /* Cannot formulate a secretType (eg, usage or uuid) given
+             * what is provided.
+             */
+        }
+        if (STRPREFIX(p, "mon_host=")) {
+            char *h, *sep;
+
+            h = p + strlen("mon_host=");
+            while (h < e) {
+                for (sep = h; sep < e; ++sep) {
+                    if (*sep == '\\' && (sep[1] == ',' ||
+                                         sep[1] == ';' ||
+                                         sep[1] == ' ')) {
+                        *sep = '\0';
+                        sep += 2;
+                        break;
+                    }
+                }
+
+                if (virStorageSourceRBDAddHost(src, h) < 0)
+                    goto error;
+
+                h = sep;
+            }
+        }
+
+        if (STRPREFIX(p, "conf=") &&
+            VIR_STRDUP(src->configFile, p + strlen("conf=")) < 0)
+            goto error;
+
+        p = next;
+    }
+    VIR_FREE(options);
+    return 0;
+
+ error:
+    VIR_FREE(options);
+    virStorageAuthDefFree(authdef);
+    return -1;
+}
+
+
+static int
+virStorageSourceParseNBDColonString(const char *nbdstr,
+                                    virStorageSourcePtr src)
 {
     char **backing = NULL;
     int ret = -1;
 
-    if (!(backing = virStringSplit(path, ":", 0)))
+    if (!(backing = virStringSplit(nbdstr, ":", 0)))
         goto cleanup;
 
-    if (!backing[0] ||
-        (src->protocol = virStorageNetProtocolTypeFromString(backing[0])) < 0) {
+    /* we know that backing[0] now equals to "nbd" */
+
+    if (VIR_ALLOC_N(src->hosts, 1) < 0)
+        goto cleanup;
+
+    src->nhosts = 1;
+    src->hosts->transport = VIR_STORAGE_NET_HOST_TRANS_TCP;
+
+    /* format: [] denotes optional sections, uppercase are variable strings
+     * nbd:unix:/PATH/TO/SOCKET[:exportname=EXPORTNAME]
+     * nbd:HOSTNAME:PORT[:exportname=EXPORTNAME]
+     */
+    if (!backing[1]) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("missing remote information in '%s' for protocol nbd"),
+                       nbdstr);
+        goto cleanup;
+    } else if (STREQ(backing[1], "unix")) {
+        if (!backing[2]) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("missing unix socket path in nbd backing string %s"),
+                           nbdstr);
+            goto cleanup;
+        }
+
+        if (VIR_STRDUP(src->hosts->socket, backing[2]) < 0)
+            goto cleanup;
+
+   } else {
+        if (!backing[1]) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("missing host name in nbd string '%s'"),
+                           nbdstr);
+            goto cleanup;
+        }
+
+        if (VIR_STRDUP(src->hosts->name, backing[1]) < 0)
+            goto cleanup;
+
+        if (!backing[2]) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("missing port in nbd string '%s'"),
+                           nbdstr);
+            goto cleanup;
+        }
+
+        if (VIR_STRDUP(src->hosts->port, backing[2]) < 0)
+            goto cleanup;
+    }
+
+    if (backing[3] && STRPREFIX(backing[3], "exportname=")) {
+        if (VIR_STRDUP(src->path, backing[3] + strlen("exportname=")) < 0)
+            goto cleanup;
+    }
+
+    ret = 0;
+
+ cleanup:
+    virStringFreeList(backing);
+
+    return ret;
+}
+
+
+static int
+virStorageSourceParseBackingColon(virStorageSourcePtr src,
+                                  const char *path)
+{
+    char *protocol = NULL;
+    const char *p;
+    int ret = -1;
+
+    if (!(p = strchr(path, ':'))) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("invalid backing protocol string '%s'"),
+                       path);
+        goto cleanup;
+    }
+
+    if (VIR_STRNDUP(protocol, path, p - path) < 0)
+        goto cleanup;
+
+    if ((src->protocol = virStorageNetProtocolTypeFromString(protocol)) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("invalid backing protocol '%s'"),
-                       NULLSTR(backing[0]));
+                       protocol);
         goto cleanup;
     }
 
     switch ((virStorageNetProtocol) src->protocol) {
     case VIR_STORAGE_NET_PROTOCOL_NBD:
-        if (VIR_ALLOC_N(src->hosts, 1) < 0)
+        if (virStorageSourceParseNBDColonString(path, src) < 0)
             goto cleanup;
-        src->nhosts = 1;
-        src->hosts->transport = VIR_STORAGE_NET_HOST_TRANS_TCP;
+        break;
 
-        /* format: [] denotes optional sections, uppercase are variable strings
-         * nbd:unix:/PATH/TO/SOCKET[:exportname=EXPORTNAME]
-         * nbd:HOSTNAME:PORT[:exportname=EXPORTNAME]
-         */
-        if (!backing[1]) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("missing remote information in '%s' for protocol nbd"),
-                           path);
+    case VIR_STORAGE_NET_PROTOCOL_RBD:
+        if (virStorageSourceParseRBDColonString(path, src) < 0)
             goto cleanup;
-        } else if (STREQ(backing[1], "unix")) {
-            if (!backing[2]) {
-                virReportError(VIR_ERR_INTERNAL_ERROR,
-                               _("missing unix socket path in nbd backing string %s"),
-                               path);
-                goto cleanup;
-            }
-
-            if (VIR_STRDUP(src->hosts->socket, backing[2]) < 0)
-                goto cleanup;
-
-       } else {
-            if (!backing[1]) {
-                virReportError(VIR_ERR_INTERNAL_ERROR,
-                               _("missing host name in nbd string '%s'"),
-                               path);
-                goto cleanup;
-            }
-
-            if (VIR_STRDUP(src->hosts->name, backing[1]) < 0)
-                goto cleanup;
-
-            if (!backing[2]) {
-                virReportError(VIR_ERR_INTERNAL_ERROR,
-                               _("missing port in nbd string '%s'"),
-                               path);
-                goto cleanup;
-            }
-
-            if (VIR_STRDUP(src->hosts->port, backing[2]) < 0)
-                goto cleanup;
-        }
-
-        if (backing[3] && STRPREFIX(backing[3], "exportname=")) {
-            if (VIR_STRDUP(src->path, backing[3] + strlen("exportname=")) < 0)
-                goto cleanup;
-        }
-     break;
+        break;
 
     case VIR_STORAGE_NET_PROTOCOL_SHEEPDOG:
-    case VIR_STORAGE_NET_PROTOCOL_RBD:
     case VIR_STORAGE_NET_PROTOCOL_LAST:
     case VIR_STORAGE_NET_PROTOCOL_NONE:
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("backing store parser is not implemented for protocol %s"),
-                       backing[0]);
+                       protocol);
         goto cleanup;
 
     case VIR_STORAGE_NET_PROTOCOL_HTTP:
@@ -2249,16 +2478,15 @@ virStorageSourceParseBackingColon(virStorageSourcePtr src,
     case VIR_STORAGE_NET_PROTOCOL_GLUSTER:
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("malformed backing store path for protocol %s"),
-                       backing[0]);
+                       protocol);
         goto cleanup;
     }
 
     ret = 0;
 
  cleanup:
-    virStringFreeList(backing);
+    VIR_FREE(protocol);
     return ret;
-
 }
 
 
@@ -2322,7 +2550,7 @@ virStorageSourceNewFromBacking(virStorageSourcePtr parent)
         }
 
         /* copy parent's labelling and other top level stuff */
-        if (virStorageSourceInitChainElement(ret, parent, false) < 0)
+        if (virStorageSourceInitChainElement(ret, parent, true) < 0)
             goto error;
     }
 

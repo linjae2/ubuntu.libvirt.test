@@ -121,9 +121,8 @@ xenXMConfigReaper(const void *payload,
     if (entry->refreshedAt != args->now) {
         const char *olddomname = entry->def->name;
         char *nameowner = (char *)virHashLookup(args->priv->nameConfigMap, olddomname);
-        if (nameowner && STREQ(nameowner, key)) {
+        if (nameowner && STREQ(nameowner, key))
             virHashRemoveEntry(args->priv->nameConfigMap, olddomname);
-        }
         return 1;
     }
     return 0;
@@ -231,9 +230,8 @@ xenXMConfigCacheAddFile(virConnectPtr conn, const char *filename)
         /* If we currently own the name, then release it and
             re-acquire it later - just in case it was renamed */
         nameowner = (char *)virHashLookup(priv->nameConfigMap, entry->def->name);
-        if (nameowner && STREQ(nameowner, filename)) {
+        if (nameowner && STREQ(nameowner, filename))
             virHashRemoveEntry(priv->nameConfigMap, entry->def->name);
-        }
 
         /* Clear existing config entry which needs refresh */
         virDomainDefFree(entry->def);
@@ -1253,7 +1251,7 @@ xenXMDomainAttachDeviceFlags(virConnectPtr conn,
     if (!(dev = virDomainDeviceDefParse(xml, entry->def,
                                         priv->caps,
                                         priv->xmlopt,
-                                        VIR_DOMAIN_XML_INACTIVE)))
+                                        VIR_DOMAIN_DEF_PARSE_INACTIVE)))
         goto cleanup;
 
     switch (dev->type) {
@@ -1340,7 +1338,7 @@ xenXMDomainDetachDeviceFlags(virConnectPtr conn,
     if (!(dev = virDomainDeviceDefParse(xml, entry->def,
                                         priv->caps,
                                         priv->xmlopt,
-                                        VIR_DOMAIN_XML_INACTIVE)))
+                                        VIR_DOMAIN_DEF_PARSE_INACTIVE)))
         goto cleanup;
 
     switch (dev->type) {

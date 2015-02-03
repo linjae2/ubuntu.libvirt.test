@@ -55,6 +55,8 @@
 # define QEMU_MIGRATION_PORT_MIN 49152
 # define QEMU_MIGRATION_PORT_MAX 49215
 
+# define QEMU_QXL_VGAMEM_DEFAULT 16 * 1024
+
 typedef struct _qemuBuildCommandLineCallbacks qemuBuildCommandLineCallbacks;
 typedef qemuBuildCommandLineCallbacks *qemuBuildCommandLineCallbacksPtr;
 struct _qemuBuildCommandLineCallbacks {
@@ -78,7 +80,9 @@ virCommandPtr qemuBuildCommandLine(virConnectPtr conn,
                                    virDomainSnapshotObjPtr current_snapshot,
                                    virNetDevVPortProfileOp vmop,
                                    qemuBuildCommandLineCallbacksPtr callbacks,
-                                   bool forXMLToArgv)
+                                   bool forXMLToArgv,
+                                   bool enableFips,
+                                   virBitmapPtr nodeset)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(11);
 
 /* Generate '-device' string for chardev device */
@@ -94,9 +98,9 @@ char *qemuBuildHostNetStr(virDomainNetDefPtr net,
                           char type_sep,
                           int vlan,
                           char **tapfd,
-                          int tapfdSize,
+                          size_t tapfdSize,
                           char **vhostfd,
-                          int vhostfdSize);
+                          size_t vhostfdSize);
 
 /* Legacy, pre device support */
 char *qemuBuildNicStr(virDomainNetDefPtr net,
@@ -108,7 +112,7 @@ char *qemuBuildNicDevStr(virDomainDefPtr def,
                          virDomainNetDefPtr net,
                          int vlan,
                          int bootindex,
-                         int vhostfdSize,
+                         size_t vhostfdSize,
                          virQEMUCapsPtr qemuCaps);
 
 char *qemuDeviceDriveHostAlias(virDomainDiskDefPtr disk,
@@ -191,7 +195,7 @@ int qemuNetworkIfaceConnect(virDomainDefPtr def,
                             virDomainNetDefPtr net,
                             virQEMUCapsPtr qemuCaps,
                             int *tapfd,
-                            int *tapfdSize)
+                            size_t *tapfdSize)
     ATTRIBUTE_NONNULL(2);
 
 int qemuPhysIfaceConnect(virDomainDefPtr def,
@@ -204,7 +208,7 @@ int qemuOpenVhostNet(virDomainDefPtr def,
                      virDomainNetDefPtr net,
                      virQEMUCapsPtr qemuCaps,
                      int *vhostfd,
-                     int *vhostfdSize);
+                     size_t *vhostfdSize);
 
 int qemuNetworkPrepareDevices(virDomainDefPtr def);
 
@@ -245,7 +249,6 @@ virDomainPCIAddressSetPtr qemuDomainPCIAddressSetCreate(virDomainDefPtr def,
                                                         bool dryRun);
 
 int qemuAssignDevicePCISlots(virDomainDefPtr def,
-                             virQEMUCapsPtr qemuCaps,
                              virDomainPCIAddressSetPtr addrs);
 
 int qemuAssignDeviceAliases(virDomainDefPtr def, virQEMUCapsPtr qemuCaps);
@@ -273,4 +276,7 @@ int qemuGetDriveSourceString(virStorageSourcePtr src,
                              char **source);
 
 int qemuCheckDiskConfig(virDomainDiskDefPtr disk);
+
+bool
+qemuCheckFips(void);
 #endif /* __QEMU_COMMAND_H__*/

@@ -1,7 +1,7 @@
 /*
  * nwfilter_gentech_driver.c: generic technology driver
  *
- * Copyright (C) 2011, 2013 Red Hat, Inc.
+ * Copyright (C) 2011-2014 Red Hat, Inc.
  * Copyright (C) 2010 IBM Corp.
  * Copyright (C) 2010 Stefan Berger
  *
@@ -567,9 +567,8 @@ virNWFilterDetermineMissingVarsRec(virNWFilterDefPtr filter,
 
                 switch (useNewFilter) {
                 case INSTANTIATE_FOLLOW_NEWFILTER:
-                    if (obj->newDef) {
+                    if (obj->newDef)
                         next_filter = obj->newDef;
-                    }
                     break;
                 case INSTANTIATE_ALWAYS:
                     break;
@@ -699,8 +698,9 @@ virNWFilterInstantiate(const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                filter->name, learning);
                 goto err_exit;
             }
-        } else
+        } else {
             goto err_unresolvable_vars;
+        }
     } else if (virHashSize(missing_vars->hashTable) > 1) {
         goto err_unresolvable_vars;
     } else if (!forceWithPendingReq &&
@@ -1138,15 +1138,13 @@ virNWFilterDomainFWUpdateCB(virDomainObjPtr obj,
                     break;
 
                 case STEP_TEAR_NEW:
-                    if (!virHashLookup(cb->skipInterfaces, net->ifname)) {
+                    if (!virHashLookup(cb->skipInterfaces, net->ifname))
                         ret = virNWFilterRollbackUpdateFilter(net);
-                    }
                     break;
 
                 case STEP_TEAR_OLD:
-                    if (!virHashLookup(cb->skipInterfaces, net->ifname)) {
+                    if (!virHashLookup(cb->skipInterfaces, net->ifname))
                         ret = virNWFilterTearOldFilter(net);
-                    }
                     break;
 
                 case STEP_APPLY_CURRENT:

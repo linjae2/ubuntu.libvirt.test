@@ -74,20 +74,20 @@ static unsigned int testVerbose = -1;
 static unsigned int testExpensive = -1;
 
 #ifdef TEST_OOM
-static unsigned int testOOM = 0;
+static unsigned int testOOM;
 static unsigned int testOOMStart = -1;
 static unsigned int testOOMEnd = -1;
-static unsigned int testOOMTrace = 0;
+static unsigned int testOOMTrace;
 # ifdef TEST_OOM_TRACE
 void *testAllocStack[30];
 int ntestAllocStack;
 # endif
 #endif
-static bool testOOMActive = false;
+static bool testOOMActive;
 
-static size_t testCounter = 0;
-static size_t testStart = 0;
-static size_t testEnd = 0;
+static size_t testCounter;
+static size_t testStart;
+static size_t testEnd;
 
 char *progname;
 
@@ -115,9 +115,9 @@ void virtTestResult(const char *name, int ret, const char *msg, ...)
     testCounter++;
     if (virTestGetVerbose()) {
         fprintf(stderr, "%3zu) %-60s ", testCounter, name);
-        if (ret == 0)
+        if (ret == 0) {
             fprintf(stderr, "OK\n");
-        else {
+        } else {
             fprintf(stderr, "FAILED\n");
             if (msg) {
                 char *str;
@@ -450,14 +450,19 @@ virtTestCaptureProgramOutput(const char *const argv[] ATTRIBUTE_UNUSED,
 /**
  * @param stream: output stream write to differences to
  * @param expect: expected output text
+ * @param expectName: name designator of the expected text
  * @param actual: actual output text
+ * @param actualName: name designator of the actual text
  *
- * Display expected and actual output text, trimmed to
- * first and last characters at which differences occur
+ * Display expected and actual output text, trimmed to first and last
+ * characters at which differences occur. Displays names of the text strings if
+ * non-NULL.
  */
-int virtTestDifference(FILE *stream,
-                       const char *expect,
-                       const char *actual)
+int virtTestDifferenceFull(FILE *stream,
+                           const char *expect,
+                           const char *expectName,
+                           const char *actual,
+                           const char *actualName)
 {
     const char *expectStart;
     const char *expectEnd;
@@ -495,11 +500,15 @@ int virtTestDifference(FILE *stream,
     }
 
     /* Show the trimmed differences */
+    if (expectName)
+        fprintf(stream, "\nIn '%s':", expectName);
     fprintf(stream, "\nOffset %d\nExpect [", (int) (expectStart - expect));
     if ((expectEnd - expectStart + 1) &&
         fwrite(expectStart, (expectEnd-expectStart+1), 1, stream) != 1)
         return -1;
     fprintf(stream, "]\n");
+    if (actualName)
+        fprintf(stream, "In '%s':\n", actualName);
     fprintf(stream, "Actual [");
     if ((actualEnd - actualStart + 1) &&
         fwrite(actualStart, (actualEnd-actualStart+1), 1, stream) != 1)
@@ -511,6 +520,22 @@ int virtTestDifference(FILE *stream,
 
     return 0;
 }
+
+/**
+ * @param stream: output stream write to differences to
+ * @param expect: expected output text
+ * @param actual: actual output text
+ *
+ * Display expected and actual output text, trimmed to
+ * first and last characters at which differences occur
+ */
+int virtTestDifference(FILE *stream,
+                       const char *expect,
+                       const char *actual)
+{
+    return virtTestDifferenceFull(stream, expect, NULL, actual, NULL);
+}
+
 
 /**
  * @param stream: output stream write to differences to

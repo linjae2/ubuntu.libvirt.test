@@ -40,6 +40,14 @@ typedef enum {
 } virNetDevMacVLanMode;
 VIR_ENUM_DECL(virNetDevMacVLanMode)
 
+typedef enum {
+   VIR_NETDEV_MACVLAN_CREATE_NONE     = 0,
+   /* Create with a tap device */
+   VIR_NETDEV_MACVLAN_CREATE_WITH_TAP = 1 << 0,
+   /* Bring the interface up */
+   VIR_NETDEV_MACVLAN_CREATE_IFUP     = 1 << 1,
+} virNetDevMacVLanCreateFlags;
+
 int virNetDevMacVLanCreate(const char *ifname,
                            const char *type,
                            const virMacAddr *macaddress,
@@ -56,16 +64,15 @@ int virNetDevMacVLanCreateWithVPortProfile(const char *ifname,
                                            const virMacAddr *macaddress,
                                            const char *linkdev,
                                            virNetDevMacVLanMode mode,
-                                           bool withTap,
                                            int vnet_hdr,
                                            const unsigned char *vmuuid,
                                            virNetDevVPortProfilePtr virtPortProfile,
                                            char **res_ifname,
                                            virNetDevVPortProfileOp vmop,
                                            char *stateDir,
-                                           virNetDevBandwidthPtr bandwidth)
-    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(7)
-    ATTRIBUTE_NONNULL(9) ATTRIBUTE_NONNULL(11) ATTRIBUTE_RETURN_CHECK;
+                                           unsigned int flags)
+    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(6)
+    ATTRIBUTE_NONNULL(8) ATTRIBUTE_NONNULL(10) ATTRIBUTE_RETURN_CHECK;
 
 int virNetDevMacVLanDeleteWithVPortProfile(const char *ifname,
                                            const virMacAddr *macaddress,

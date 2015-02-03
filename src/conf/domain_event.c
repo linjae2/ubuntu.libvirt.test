@@ -34,6 +34,7 @@
 #include "viralloc.h"
 #include "virerror.h"
 #include "virstring.h"
+#include "virtypedparam.h"
 
 #define VIR_FROM_THIS VIR_FROM_NONE
 
@@ -52,6 +53,8 @@ static virClassPtr virDomainEventBalloonChangeClass;
 static virClassPtr virDomainEventDeviceRemovedClass;
 static virClassPtr virDomainEventPMClass;
 static virClassPtr virDomainQemuMonitorEventClass;
+static virClassPtr virDomainEventTunableClass;
+static virClassPtr virDomainEventAgentLifecycleClass;
 
 
 static void virDomainEventDispose(void *obj);
@@ -67,6 +70,8 @@ static void virDomainEventBalloonChangeDispose(void *obj);
 static void virDomainEventDeviceRemovedDispose(void *obj);
 static void virDomainEventPMDispose(void *obj);
 static void virDomainQemuMonitorEventDispose(void *obj);
+static void virDomainEventTunableDispose(void *obj);
+static void virDomainEventAgentLifecycleDispose(void *obj);
 
 static void
 virDomainEventDispatchDefaultFunc(virConnectPtr conn,
@@ -203,6 +208,24 @@ struct _virDomainQemuMonitorEvent {
 typedef struct _virDomainQemuMonitorEvent virDomainQemuMonitorEvent;
 typedef virDomainQemuMonitorEvent *virDomainQemuMonitorEventPtr;
 
+struct _virDomainEventTunable {
+    virDomainEvent parent;
+
+    virTypedParameterPtr params;
+    int nparams;
+};
+typedef struct _virDomainEventTunable virDomainEventTunable;
+typedef virDomainEventTunable *virDomainEventTunablePtr;
+
+struct _virDomainEventAgentLifecycle {
+    virDomainEvent parent;
+
+    int state;
+    int reason;
+};
+typedef struct _virDomainEventAgentLifecycle virDomainEventAgentLifecycle;
+typedef virDomainEventAgentLifecycle *virDomainEventAgentLifecyclePtr;
+
 
 static int
 virDomainEventsOnceInit(void)
@@ -284,6 +307,18 @@ virDomainEventsOnceInit(void)
                       "virDomainQemuMonitorEvent",
                       sizeof(virDomainQemuMonitorEvent),
                       virDomainQemuMonitorEventDispose)))
+        return -1;
+    if (!(virDomainEventTunableClass =
+          virClassNew(virDomainEventClass,
+                      "virDomainEventTunable",
+                      sizeof(virDomainEventTunable),
+                      virDomainEventTunableDispose)))
+        return -1;
+    if (!(virDomainEventAgentLifecycleClass =
+          virClassNew(virDomainEventClass,
+                      "virDomainEventAgentLifecycle",
+                      sizeof(virDomainEventAgentLifecycle),
+                      virDomainEventAgentLifecycleDispose)))
         return -1;
     return 0;
 }
@@ -419,6 +454,22 @@ virDomainQemuMonitorEventDispose(void *obj)
     VIR_FREE(event->event);
     VIR_FREE(event->details);
 }
+
+static void
+virDomainEventTunableDispose(void *obj)
+{
+    virDomainEventTunablePtr event = obj;
+    VIR_DEBUG("obj=%p", event);
+
+    virTypedParamsFree(event->params, event->nparams);
+}
+
+static void
+virDomainEventAgentLifecycleDispose(void *obj)
+{
+    virDomainEventAgentLifecyclePtr event = obj;
+    VIR_DEBUG("obj=%p", event);
+};
 
 
 static void *
@@ -1176,6 +1227,104 @@ virDomainEventDeviceRemovedNewFromDom(virDomainPtr dom,
 }
 
 
+static virObjectEventPtr
+virDomainEventAgentLifecycleNew(int id,
+                                const char *name,
+                                const unsigned char *uuid,
+                                int state,
+                                int reason)
+{
+    virDomainEventAgentLifecyclePtr ev;
+
+    if (virDomainEventsInitialize() < 0)
+        return NULL;
+
+    if (!(ev = virDomainEventNew(virDomainEventAgentLifecycleClass,
+                                 VIR_DOMAIN_EVENT_ID_AGENT_LIFECYCLE,
+                                 id, name, uuid)))
+        return NULL;
+
+    ev->state = state;
+    ev->reason = reason;
+
+    return (virObjectEventPtr)ev;
+}
+
+virObjectEventPtr
+virDomainEventAgentLifecycleNewFromObj(virDomainObjPtr obj,
+                                       int state,
+                                       int reason)
+{
+    return virDomainEventAgentLifecycleNew(obj->def->id, obj->def->name,
+                                           obj->def->uuid, state, reason);
+}
+
+virObjectEventPtr
+virDomainEventAgentLifecycleNewFromDom(virDomainPtr dom,
+                                       int state,
+                                       int reason)
+{
+    return virDomainEventAgentLifecycleNew(dom->id, dom->name, dom->uuid,
+                                           state, reason);
+}
+
+
+/* This function consumes the params so caller don't have to care about
+ * freeing it even if error occurs. The reason is to not have to do deep
+ * copy of params.
+ */
+static virObjectEventPtr
+virDomainEventTunableNew(int id,
+                         const char *name,
+                         unsigned char *uuid,
+                         virTypedParameterPtr params,
+                         int nparams)
+{
+    virDomainEventTunablePtr ev;
+
+    if (virDomainEventsInitialize() < 0)
+        goto error;
+
+    if (!(ev = virDomainEventNew(virDomainEventTunableClass,
+                                 VIR_DOMAIN_EVENT_ID_TUNABLE,
+                                 id, name, uuid)))
+        goto error;
+
+    ev->params = params;
+    ev->nparams = nparams;
+
+    return (virObjectEventPtr)ev;
+
+ error:
+    virTypedParamsFree(params, nparams);
+    return NULL;
+}
+
+virObjectEventPtr
+virDomainEventTunableNewFromObj(virDomainObjPtr obj,
+                                virTypedParameterPtr params,
+                                int nparams)
+{
+    return virDomainEventTunableNew(obj->def->id,
+                                    obj->def->name,
+                                    obj->def->uuid,
+                                    params,
+                                    nparams);
+}
+
+virObjectEventPtr
+virDomainEventTunableNewFromDom(virDomainPtr dom,
+                                virTypedParameterPtr params,
+                                int nparams)
+{
+    return virDomainEventTunableNew(dom->id,
+                                    dom->name,
+                                    dom->uuid,
+                                    params,
+                                    nparams);
+}
+
+
 static void
 virDomainEventDispatchDefaultFunc(virConnectPtr conn,
                                   virObjectEventPtr event,
@@ -1366,6 +1515,28 @@ virDomainEventDispatchDefaultFunc(virConnectPtr conn,
             goto cleanup;
         }
 
+    case VIR_DOMAIN_EVENT_ID_TUNABLE:
+        {
+            virDomainEventTunablePtr tunableEvent;
+            tunableEvent = (virDomainEventTunablePtr)event;
+            ((virConnectDomainEventTunableCallback)cb)(conn, dom,
+                                                       tunableEvent->params,
+                                                       tunableEvent->nparams,
+                                                       cbopaque);
+            goto cleanup;
+        }
+
+    case VIR_DOMAIN_EVENT_ID_AGENT_LIFECYCLE:
+        {
+            virDomainEventAgentLifecyclePtr agentLifecycleEvent;
+            agentLifecycleEvent = (virDomainEventAgentLifecyclePtr)event;
+            ((virConnectDomainEventAgentLifecycleCallback)cb)(conn, dom,
+                                                              agentLifecycleEvent->state,
+                                                              agentLifecycleEvent->reason,
+                                                              cbopaque);
+            goto cleanup;
+        }
+
     case VIR_DOMAIN_EVENT_ID_LAST:
         break;
     }
@@ -1373,7 +1544,7 @@ virDomainEventDispatchDefaultFunc(virConnectPtr conn,
     VIR_WARN("Unexpected event ID %d", event->eventID);
 
  cleanup:
-    virDomainFree(dom);
+    virObjectUnref(dom);
 }
 
 
@@ -1447,7 +1618,7 @@ virDomainQemuMonitorEventDispatchFunc(virConnectPtr conn,
                                                    qemuMonitorEvent->micros,
                                                    qemuMonitorEvent->details,
                                                    data->opaque);
-    virDomainFree(dom);
+    virObjectUnref(dom);
 }
 
 
@@ -1705,7 +1876,7 @@ virDomainQemuMonitorEventStateRegisterID(virConnectPtr conn,
     if (VIR_ALLOC(data) < 0)
         return -1;
     data->flags = flags;
-    if (flags != -1) {
+    if (event && flags != -1) {
         int rflags = REG_NOSUB;
 
         if (flags & VIR_CONNECT_DOMAIN_QEMU_MONITOR_EVENT_REGISTER_NOCASE)

@@ -79,7 +79,7 @@ struct _virLockManagerSanlockDriver {
     gid_t group;
 };
 
-static virLockManagerSanlockDriver *driver = NULL;
+static virLockManagerSanlockDriver *driver;
 
 struct _virLockManagerSanlockPrivate {
     const char *vm_uri;
@@ -127,7 +127,7 @@ static int virLockManagerSanlockLoadConfig(const char *configFile)
     }
 
     p = virConfGetValue(conf, "auto_disk_leases");
-    CHECK_TYPE("auto_disk_leases", VIR_CONF_LONG);
+    CHECK_TYPE("auto_disk_leases", VIR_CONF_ULONG);
     if (p) driver->autoDiskLease = p->l;
 
     p = virConfGetValue(conf, "disk_lease_dir");
@@ -141,11 +141,11 @@ static int virLockManagerSanlockLoadConfig(const char *configFile)
     }
 
     p = virConfGetValue(conf, "host_id");
-    CHECK_TYPE("host_id", VIR_CONF_LONG);
+    CHECK_TYPE("host_id", VIR_CONF_ULONG);
     if (p) driver->hostID = p->l;
 
     p = virConfGetValue(conf, "require_lease_for_disks");
-    CHECK_TYPE("require_lease_for_disks", VIR_CONF_LONG);
+    CHECK_TYPE("require_lease_for_disks", VIR_CONF_ULONG);
     if (p)
         driver->requireLeaseForDisks = p->l;
     else
@@ -885,7 +885,7 @@ static int virLockManagerSanlockAcquire(virLockManagerPtr lock,
                                         int *fd)
 {
     virLockManagerSanlockPrivatePtr priv = lock->privateData;
-    struct sanlk_options *opt;
+    struct sanlk_options *opt = NULL;
     struct sanlk_resource **res_args;
     int res_count;
     bool res_free = false;
@@ -1008,9 +1008,8 @@ static int virLockManagerSanlockAcquire(virLockManagerPtr lock,
     VIR_DEBUG("Acquire completed fd=%d", sock);
 
     if (res_free) {
-        for (i = 0; i < res_count; i++) {
+        for (i = 0; i < res_count; i++)
             VIR_FREE(res_args[i]);
-        }
         VIR_FREE(res_args);
     }
 
@@ -1021,9 +1020,8 @@ static int virLockManagerSanlockAcquire(virLockManagerPtr lock,
 
  error:
     if (res_free) {
-        for (i = 0; i < res_count; i++) {
+        for (i = 0; i < res_count; i++)
             VIR_FREE(res_args[i]);
-        }
         VIR_FREE(res_args);
     }
     VIR_FREE(opt);

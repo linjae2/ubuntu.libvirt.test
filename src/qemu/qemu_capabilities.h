@@ -127,8 +127,8 @@ typedef enum {
     QEMU_CAPS_SCSI_DISK_CHANNEL  = 87, /* Is scsi-disk.channel available? */
     QEMU_CAPS_SCSI_BLOCK         = 88, /* -device scsi-block */
     QEMU_CAPS_TRANSACTION        = 89, /* transaction monitor command */
-    QEMU_CAPS_BLOCKJOB_SYNC      = 90, /* RHEL 6.2 block_job_cancel */
-    QEMU_CAPS_BLOCKJOB_ASYNC     = 91, /* qemu 1.1 block-job-cancel */
+    QEMU_CAPS_BLOCKJOB_SYNC      = 90, /* old block_job_cancel, block_stream */
+    QEMU_CAPS_BLOCKJOB_ASYNC     = 91, /* new block-job-cancel, block-stream */
     QEMU_CAPS_SCSI_CD            = 92, /* -device scsi-cd */
     QEMU_CAPS_IDE_CD             = 93, /* -device ide-cd */
     QEMU_CAPS_NO_USER_CONFIG     = 94, /* -no-user-config */
@@ -216,6 +216,13 @@ typedef enum {
     QEMU_CAPS_RTC_RESET_REINJECTION = 174, /* rtc-reset-reinjection monitor command */
     QEMU_CAPS_SPLASH_TIMEOUT     = 175, /* -boot splash-time */
     QEMU_CAPS_OBJECT_IOTHREAD    = 176, /* -object iothread */
+    QEMU_CAPS_MIGRATE_RDMA       = 177, /* have rdma migration */
+    QEMU_CAPS_DEVICE_IVSHMEM     = 178, /* -device ivshmem */
+    QEMU_CAPS_DRIVE_IOTUNE_MAX   = 179, /* -drive bps_max= and friends */
+    QEMU_CAPS_VGA_VGAMEM         = 180, /* -device VGA.vgamem_mb */
+    QEMU_CAPS_VMWARE_SVGA_VGAMEM = 181, /* -device vmware-svga.vgamem_mb */
+    QEMU_CAPS_QXL_VGAMEM         = 182, /* -device qxl.vgamem_mb */
+    QEMU_CAPS_QXL_VGA_VGAMEM     = 183, /* -device qxl-vga.vgamem_mb */
 
     QEMU_CAPS_LAST,                   /* this must always be the last item */
 } virQEMUCapsFlags;
@@ -301,7 +308,8 @@ int virQEMUCapsParseHelpStr(const char *qemu,
                             unsigned int *version,
                             bool *is_kvm,
                             unsigned int *kvm_version,
-                            bool check_yajl);
+                            bool check_yajl,
+                            const char *qmperr);
 /* Only for use by test suite */
 int virQEMUCapsParseDeviceStr(virQEMUCapsPtr qemuCaps, const char *str);
 
@@ -324,7 +332,9 @@ int virQEMUCapsInitGuestFromBinary(virCapsPtr caps,
                                    virQEMUCapsPtr kvmbinCaps,
                                    virArch guestarch);
 
-void virQEMUCapsFillDomainCaps(virDomainCapsPtr domCaps,
-                               virQEMUCapsPtr qemuCaps);
+int virQEMUCapsFillDomainCaps(virDomainCapsPtr domCaps,
+                              virQEMUCapsPtr qemuCaps,
+                              char **loader,
+                              size_t nloader);
 
 #endif /* __QEMU_CAPABILITIES_H__*/

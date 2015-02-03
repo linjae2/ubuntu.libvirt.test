@@ -34,12 +34,14 @@
 # endif
 
 int virNetDevTapCreate(char **ifname,
+                       const char *tunpath,
                        int *tapfd,
-                       int tapfdSize,
+                       size_t tapfdSize,
                        unsigned int flags)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
 
-int virNetDevTapDelete(const char *ifname)
+int virNetDevTapDelete(const char *ifname,
+                       const char *tunpath)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
 
 int virNetDevTapGetName(int tapfd, char **ifname)
@@ -64,8 +66,9 @@ int virNetDevTapCreateInBridgePort(const char *brname,
                                    char **ifname,
                                    const virMacAddr *macaddr,
                                    const unsigned char *vmuuid,
+                                   const char *tunpath,
                                    int *tapfd,
-                                   int tapfdSize,
+                                   size_t tapfdSize,
                                    virNetDevVPortProfilePtr virtPortProfile,
                                    virNetDevVlanPtr virtVlan,
                                    unsigned int flags)

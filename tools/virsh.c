@@ -151,22 +151,40 @@ vshNameSorter(const void *a, const void *b)
 double
 vshPrettyCapacity(unsigned long long val, const char **unit)
 {
-    if (val < 1024) {
+    double limit = 1024;
+
+    if (val < limit) {
         *unit = "B";
-        return (double)val;
-    } else if (val < (1024.0l * 1024.0l)) {
-        *unit = "KiB";
-        return (((double)val / 1024.0l));
-    } else if (val < (1024.0l * 1024.0l * 1024.0l)) {
-        *unit = "MiB";
-        return (double)val / (1024.0l * 1024.0l);
-    } else if (val < (1024.0l * 1024.0l * 1024.0l * 1024.0l)) {
-        *unit = "GiB";
-        return (double)val / (1024.0l * 1024.0l * 1024.0l);
-    } else {
-        *unit = "TiB";
-        return (double)val / (1024.0l * 1024.0l * 1024.0l * 1024.0l);
+        return val;
     }
+    limit *= 1024;
+    if (val < limit) {
+        *unit = "KiB";
+        return val / (limit / 1024);
+    }
+    limit *= 1024;
+    if (val < limit) {
+        *unit = "MiB";
+        return val / (limit / 1024);
+    }
+    limit *= 1024;
+    if (val < limit) {
+        *unit = "GiB";
+        return val / (limit / 1024);
+    }
+    limit *= 1024;
+    if (val < limit) {
+        *unit = "TiB";
+        return val / (limit / 1024);
+    }
+    limit *= 1024;
+    if (val < limit) {
+        *unit = "PiB";
+        return val / (limit / 1024);
+    }
+    limit *= 1024;
+    *unit = "EiB";
+    return val / (limit / 1024);
 }
 
 /*
@@ -298,7 +316,7 @@ vshReportError(vshControl *ctl)
 /*
  * Detection of disconnections and automatic reconnection support
  */
-static int disconnected = 0; /* we may have been disconnected */
+static int disconnected; /* we may have been disconnected */
 
 /*
  * vshCatchDisconnect:
@@ -397,6 +415,7 @@ vshReconnect(vshControl *ctl)
     disconnected = 0;
     ctl->useGetInfo = false;
     ctl->useSnapshotOld = false;
+    ctl->blockJobNoBytes = false;
 }
 
 
@@ -416,7 +435,7 @@ static const vshCmdInfo info_connect[] = {
 
 static const vshCmdOptDef opts_connect[] = {
     {.name = "name",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .flags = VSH_OFLAG_EMPTY_OK,
      .help = N_("hypervisor connection URI")
     },
@@ -454,6 +473,7 @@ cmdConnect(vshControl *ctl, const vshCmd *cmd)
 
     ctl->useGetInfo = false;
     ctl->useSnapshotOld = false;
+    ctl->blockJobNoBytes = false;
     ctl->readonly = ro;
 
     ctl->conn = vshConnect(ctl, ctl->name, ctl->readonly);
@@ -479,9 +499,8 @@ vshPrintRaw(vshControl *ctl, ...)
     char *key;
 
     va_start(ap, ctl);
-    while ((key = va_arg(ap, char *)) != NULL) {
+    while ((key = va_arg(ap, char *)) != NULL)
         vshPrint(ctl, "%s\r\n", key);
-    }
     va_end(ap);
 }
 
@@ -575,7 +594,7 @@ static const vshCmdInfo info_help[] = {
 
 static const vshCmdOptDef opts_help[] = {
     {.name = "command",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .help = N_("Prints global help, command specific help, or help for a group of related commands")
     },
     {.name = NULL}
@@ -765,7 +784,7 @@ vshEditFile(vshControl *ctl, const char *filename)
     if (!editor)
         editor = virGetEnvBlockSUID("EDITOR");
     if (!editor)
-        editor = "vi"; /* could be cruel & default to ed(1) here */
+        editor = DEFAULT_EDITOR;
 
     /* Check that filename doesn't contain shell meta-characters, and
      * if it does, refuse to run.  Follow the Unix conventions for
@@ -835,7 +854,7 @@ static const vshCmdInfo info_cd[] = {
 
 static const vshCmdOptDef opts_cd[] = {
     {.name = "dir",
-     .type = VSH_OT_DATA,
+     .type = VSH_OT_STRING,
      .help = N_("directory to switch to (default: home or else root)")
     },
     {.name = NULL}
@@ -854,9 +873,8 @@ cmdCd(vshControl *ctl, const vshCmd *cmd)
         return false;
     }
 
-    if (vshCommandOptString(cmd, "dir", &dir) <= 0) {
+    if (vshCommandOptString(cmd, "dir", &dir) <= 0)
         dir = dir_malloced = virGetUserDirectory();
-    }
     if (!dir)
         dir = "/";
 
@@ -1053,6 +1071,7 @@ vshCmddefOptParse(const vshCmdDef *cmd, uint32_t *opts_need_arg,
         if (i > 31)
             return -1; /* too many options */
         if (opt->type == VSH_OT_BOOL) {
+            optional = true;
             if (opt->flags & VSH_OFLAG_REQ)
                 return -1; /* bool options can't be mandatory */
             continue;
@@ -1085,12 +1104,14 @@ vshCmddefOptParse(const vshCmdDef *cmd, uint32_t *opts_need_arg,
         if (opt->flags & VSH_OFLAG_REQ_OPT) {
             if (opt->flags & VSH_OFLAG_REQ)
                 *opts_required |= 1 << i;
+            else
+                optional = true;
             continue;
         }
 
         *opts_need_arg |= 1 << i;
         if (opt->flags & VSH_OFLAG_REQ) {
-            if (optional)
+            if (optional && opt->type != VSH_OT_ARGV)
                 return -1; /* mandatory options must be listed first */
             *opts_required |= 1 << i;
         } else {
@@ -1116,9 +1137,8 @@ vshCmddefGetOption(vshControl *ctl, const vshCmdDef *cmd, const char *name,
     const vshCmdOptDef *ret = NULL;
     char *alias = NULL;
 
-    if (STREQ(name, helpopt.name)) {
+    if (STREQ(name, helpopt.name))
         return &helpopt;
-    }
 
     for (i = 0; cmd->opts && cmd->opts[i].name; i++) {
         const vshCmdOptDef *opt = &cmd->opts[i];
@@ -1363,9 +1383,22 @@ vshCmddefHelp(vshControl *ctl, const char *cmdname)
                     break;
                 case VSH_OT_STRING:
                     /* OT_STRING should never be VSH_OFLAG_REQ */
+                    if (opt->flags & VSH_OFLAG_REQ) {
+                        vshError(ctl,
+                                 _("internal error: bad options in command: '%s'"),
+                                 def->name);
+                        return false;
+                    }
                     snprintf(buf, sizeof(buf), _("--%s <string>"), opt->name);
                     break;
                 case VSH_OT_DATA:
+                    /* OT_DATA should always be VSH_OFLAG_REQ */
+                    if (!(opt->flags & VSH_OFLAG_REQ)) {
+                        vshError(ctl,
+                                 _("internal error: bad options in command: '%s'"),
+                                 def->name);
+                        return false;
+                    }
                     snprintf(buf, sizeof(buf), _("[--%s] <string>"),
                              opt->name);
                     break;
@@ -1622,9 +1655,8 @@ vshCommandOptString(const vshCmd *cmd, const char *name, const char **value)
     if (ret <= 0)
         return ret;
 
-    if (!*arg->data && !(arg->def->flags & VSH_OFLAG_EMPTY_OK)) {
+    if (!*arg->data && !(arg->def->flags & VSH_OFLAG_EMPTY_OK))
         return -1;
-    }
     *value = arg->data;
     return 1;
 }
@@ -1819,9 +1851,8 @@ vshCommandOptArgv(const vshCmd *cmd, const vshCmdOpt *opt)
     opt = opt ? opt->next : cmd->opts;
 
     while (opt) {
-        if (opt->def->type == VSH_OT_ARGV) {
+        if (opt->def->type == VSH_OT_ARGV)
             return opt;
-        }
         opt = opt->next;
     }
     return NULL;
@@ -1933,9 +1964,6 @@ vshCommandRun(vshControl *ctl, const vshCmd *cmd)
 
         if (!ret)
             vshReportError(ctl);
-
-        if (!ret && disconnected != 0)
-            vshReconnect(ctl);
 
         if (STREQ(cmd->def->name, "quit") ||
             STREQ(cmd->def->name, "exit"))        /* hack ... */
@@ -2965,7 +2993,7 @@ static char *
 vshReadlineOptionsGenerator(const char *text, int state)
 {
     static int list_index, len;
-    static const vshCmdDef *cmd = NULL;
+    static const vshCmdDef *cmd;
     const char *name;
 
     if (!state) {
@@ -3683,9 +3711,8 @@ main(int argc, char **argv)
     else
         progname++;
 
-    if ((defaultConn = virGetEnvBlockSUID("VIRSH_DEFAULT_CONNECT_URI"))) {
+    if ((defaultConn = virGetEnvBlockSUID("VIRSH_DEFAULT_CONNECT_URI")))
         ctl->name = vshStrdup(ctl, defaultConn);
-    }
 
     vshInitDebug(ctl);
 
