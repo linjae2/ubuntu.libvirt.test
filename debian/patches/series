@@ -25,3 +25,4 @@ ubuntu_machine_type.patch
 cgmanager-mutex
 skip-vircgrouptest.patch
 disable-network-test.patch
+docs-remove-xpath.patch
