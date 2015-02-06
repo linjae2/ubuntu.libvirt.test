@@ -1,3 +1,10 @@
+libvirt (1.2.12-0ubuntu2) vivid; urgency=medium
+
+  * debian/control: Use libxml-libxml-perl instead of libxml-xpath-perl. 
+  * debian/patches/docs-remove-xpath.patch: Use libxml instead of XPath.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 06 Feb 2015 11:28:15 -0500
+
 libvirt (1.2.12-0ubuntu1) vivid; urgency=medium
 
   * New upstream release
