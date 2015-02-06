@@ -259,8 +259,6 @@ char *virLXCProcessSetupInterfaceBridged(virConnectPtr conn,
 
     if (virNetDevSetMAC(containerVeth, &net->mac) < 0)
         goto cleanup;
-    if (VIR_STRDUP(net->ifname_guest_actual, containerVeth) < 0)
-        goto cleanup;
 
     if (vport && vport->virtPortType == VIR_NETDEV_VPORT_PROFILE_OPENVSWITCH) {
         if (virNetDevOpenvswitchAddPort(brname, parentVeth, &net->mac,
@@ -451,6 +449,9 @@ static int virLXCProcessSetupInterfaces(virConnectPtr conn,
         }
 
         (*veths)[(*nveths)-1] = veth;
+
+        if (VIR_STRDUP(def->nets[i]->ifname_guest_actual, veth) < 0)
+            goto cleanup;
 
         /* Make sure all net definitions will have a name in the container */
         if (!def->nets[i]->ifname_guest) {
