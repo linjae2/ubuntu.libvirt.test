@@ -26,3 +26,4 @@ cgmanager-mutex
 skip-vircgrouptest.patch
 disable-network-test.patch
 docs-remove-xpath.patch
+smoser-ppc64le-is-ppc64.patch
