@@ -1,3 +1,10 @@
+libvirt (1.2.12-0ubuntu3) vivid; urgency=medium
+
+  * Apply patch from smoser to make libvirt on ppc64le functional.
+    (LP: #1418221)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 09 Feb 2015 12:09:49 -0600
+
 libvirt (1.2.12-0ubuntu2) vivid; urgency=medium
 
   * debian/control: Use libxml-libxml-perl instead of libxml-xpath-perl. 
