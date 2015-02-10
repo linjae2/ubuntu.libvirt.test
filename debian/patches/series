@@ -40,3 +40,5 @@ CVE-2014-3657.patch
 CVE-2014-7823.patch
 9034-complete-9p-support
 numa-cgroups-fix-cpuset-mems-init.patch
+9035-qemu-snapshot-save-persistent-domain-config
+9036-dont-fail-without-cpu-model.patch
