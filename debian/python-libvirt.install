@@ -1,2 +1,3 @@
 usr/lib/python*/*/*.so
 usr/lib/python*/*/*.py
+debian/libvirt_python-0.9.8.egg-info /usr/lib/python2.7/dist-packages/
