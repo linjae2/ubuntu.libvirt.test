@@ -1,3 +1,13 @@
+libvirt (1.2.2-0ubuntu13.1.10) trusty-proposed; urgency=medium
+
+  * 9035-qemu-snapshot-save-persistent-domain-config: upstream fix for a
+    regression where persistent domain config was not saved after an external
+    snapshot.  (LP: #1403841)
+  * 9036-dont-fail-without-cpu-model.patch: fix virsh safe with cpu mode =
+    host-passthrough (LP: #1262641)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 10 Feb 2015 14:34:16 -0600
+
 libvirt (1.2.2-0ubuntu13.1.9) trusty-proposed; urgency=medium
 
   * apparmor libvirt-qemu template: allow reading charm-specific ceph config
