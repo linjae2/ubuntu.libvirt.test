@@ -1,3 +1,9 @@
+libvirt (1.2.8-0ubuntu11.4) utopic-proposed; urgency=medium
+
+  * d/p/dont-include-non-migrateable-features-in-host-model: (LP: #1386503)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 10 Feb 2015 15:17:05 -0600
+
 libvirt (1.2.8-0ubuntu11.3) utopic-proposed; urgency=medium
 
   * apparmor libvirt-qemu template: allow reading charm-specific ceph config
