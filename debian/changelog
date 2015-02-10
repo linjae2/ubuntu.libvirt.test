@@ -1,3 +1,9 @@
+libvirt (0.9.8-2ubuntu17.21) precise-proposed; urgency=medium
+
+  * Add egg-info file (LP: #1379585)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 10 Feb 2015 15:34:28 -0600
+
 libvirt (0.9.8-2ubuntu17.20) precise-security; urgency=medium
 
   * SECURITY UPDATE: denial of service via crafted XML document
