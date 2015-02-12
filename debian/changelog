@@ -1,3 +1,10 @@
+libvirt (1.2.12-0ubuntu5) vivid; urgency=medium
+
+  * Remove smoser-ppc64le-is-ppc64.patch - the problem will be solved by the
+    qemu-system-ppcle symlink in qemu-system-ppc package.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 12 Feb 2015 15:38:39 -0600
+
 libvirt (1.2.12-0ubuntu4) vivid; urgency=medium
 
   * libvirt-qemu: allow kvm script on ppc to execute uname
