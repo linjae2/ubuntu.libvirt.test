@@ -135,6 +135,9 @@
   /etc/pki/libvirt/ r,
   /etc/pki/libvirt/** r,
 
+  # kvm.powerpc executes this
+  /bin/uname rmix,
+
   # for rbd
   /etc/ceph/ceph.conf r,
 
