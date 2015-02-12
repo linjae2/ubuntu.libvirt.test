@@ -169,8 +169,6 @@ virArch virArchFromHost(void)
         arch = VIR_ARCH_I686;
     } else if (STREQ(ut.machine, "amd64")) {
         arch = VIR_ARCH_X86_64;
-    } else if (STREQ(ut.machine, "ppc64le")) {
-        arch = VIR_ARCH_PPC64;
     } else {
         /* Otherwise assume the canonical name */
         if ((arch = virArchFromString(ut.machine)) == VIR_ARCH_NONE) {
