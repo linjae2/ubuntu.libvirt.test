@@ -1565,6 +1565,11 @@ lxcSecurityInit(virLXCDriverConfigPtr cfg)
                                                       cfg->securityDefaultConfined,
                                                       cfg->securityRequireConfined);
     if (!mgr)
+        mgr = virSecurityManagerNew(NULL, LXC_DRIVER_NAME, false,
+                                                      cfg->securityDefaultConfined,
+                                                      cfg->securityRequireConfined);
+
+    if (!mgr)
         goto error;
 
     return mgr;
