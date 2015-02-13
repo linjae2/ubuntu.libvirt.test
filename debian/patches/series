@@ -26,3 +26,4 @@ cgmanager-mutex
 skip-vircgrouptest.patch
 disable-network-test.patch
 docs-remove-xpath.patch
+ubuntu-libxl-migrate-dm.patch
