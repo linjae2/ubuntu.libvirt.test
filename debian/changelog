@@ -1,3 +1,12 @@
+libvirt (1.2.12-0ubuntu6) vivid; urgency=low
+
+  * Fix xml validation for Xen by allowing non-absolute path values
+    in loader and bootloader elements (LP: #1425497).
+  * Fix up Xen emulator in old configurations and for new definitions to
+    point to /usr/bin/qemu-system-i386 (LP: #1425497).
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Fri, 13 Feb 2015 17:57:27 +0100
+
 libvirt (1.2.12-0ubuntu5) vivid; urgency=medium
 
   * Remove smoser-ppc64le-is-ppc64.patch - the problem will be solved by the
