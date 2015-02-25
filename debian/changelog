@@ -1,3 +1,9 @@
+libvirt (1.2.12-0ubuntu7) vivid; urgency=low
+
+  * No-change rebuild to pull in libxen-dev 4.5
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Wed, 25 Feb 2015 18:31:16 +0100
+
 libvirt (1.2.12-0ubuntu6) vivid; urgency=low
 
   * Fix xml validation for Xen by allowing non-absolute path values
