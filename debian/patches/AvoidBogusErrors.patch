@@ -1,0 +1,69 @@
+Description:  Avoid bogus I/O event errors when closing the QEMU monitor
+* Quiet the following errors.
+  "error : virNetSocketReadWire:1377 : End of file while reading data:
+  Input/output error" (LP: #1451598)
+
+back-ported from upstream
+"
+commit 89563efc0209b854d2b2e554423423d7602acdbd
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Fri Sep 28 15:27:39 2012 +0100
+
+    Avoid bogus I/O event errors when closing the QEMU monitor
+
+    After calling qemuMonitorClose(), it is still possible for
+    the QEMU monitor I/O event callback to get invoked. This
+    will trigger an error message because mon->fd has been set
+    to -1 at this point. Silently ignore the case where mon->fd
+    is -1, likewise for mon->watch being zero.
+
+    Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+"
+
+Author: Dave Chiluk <chiluk@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1451598
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: upstream, http://libvirt.org/git/?p=libvirt.git;a=commitdiff;h=89563efc0209b854d2b2e554423423d7602acdbd
+Index: libvirt-0.9.8/src/qemu/qemu_monitor.c
+===================================================================
+--- libvirt-0.9.8.orig/src/qemu/qemu_monitor.c	2015-05-04 17:08:31.196736069 -0500
++++ libvirt-0.9.8/src/qemu/qemu_monitor.c	2015-05-06 11:30:27.152050369 -0500
+@@ -537,6 +537,9 @@
+         VIR_EVENT_HANDLE_HANGUP |
+         VIR_EVENT_HANDLE_ERROR;
+ 
++    if (!mon->watch)
++        return;
++
+     if (mon->lastError.code == VIR_ERR_OK) {
+         events |= VIR_EVENT_HANDLE_READABLE;
+ 
+@@ -560,6 +563,11 @@
+ #if DEBUG_IO
+     VIR_DEBUG("Monitor %p I/O on watch %d fd %d events %d", mon, watch, fd, events);
+ #endif
++    if (mon->fd == -1 || mon->watch == 0) {
++	if (qemuMonitorUnref(mon) > 0)
++            qemuMonitorUnlock(mon);
++        return;
++    }
+ 
+     if (mon->fd != fd || mon->watch != watch) {
+         if (events & (VIR_EVENT_HANDLE_HANGUP | VIR_EVENT_HANDLE_ERROR))
+@@ -788,8 +796,10 @@
+           "mon=%p refs=%d", mon, mon->refs);
+ 
+     if (mon->fd >= 0) {
+-        if (mon->watch)
++        if (mon->watch) {
+             virEventRemoveHandle(mon->watch);
++            mon->watch = 0;
++        }
+         VIR_FORCE_CLOSE(mon->fd);
+     }
+ 

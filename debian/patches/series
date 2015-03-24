@@ -58,3 +58,4 @@ CVE-2014-1447.patch
 ubuntu/qemu-fix-race-between-async-and-query-jobs.patch
 CVE-2014-0179.patch
 CVE-2014-3633.patch
+AvoidBogusErrors.patch
