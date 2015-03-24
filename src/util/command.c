@@ -86,7 +86,6 @@ struct _virCommand {
     char **errbuf;
 
     int infd;
-    int inpipe;
     int outfd;
     int errfd;
     int *outfdptr;
@@ -690,7 +689,6 @@ virCommandNewArgs(const char *const*args)
     FD_ZERO(&cmd->preserve);
     FD_ZERO(&cmd->transfer);
     cmd->infd = cmd->outfd = cmd->errfd = -1;
-    cmd->inpipe = -1;
     cmd->pid = -1;
 
     virCommandAddArgSet(cmd, args);
@@ -1576,7 +1574,7 @@ virCommandTranslateStatus(int status)
  * Manage input and output to the child process.
  */
 static int
-virCommandProcessIO(virCommandPtr cmd)
+virCommandProcessIO(virCommandPtr cmd, int *inpipe)
 {
     int infd = -1, outfd = -1, errfd = -1;
     size_t inlen = 0, outlen = 0, errlen = 0;
@@ -1587,7 +1585,7 @@ virCommandProcessIO(virCommandPtr cmd)
      * via pipe */
     if (cmd->inbuf) {
         inlen = strlen(cmd->inbuf);
-        infd = cmd->inpipe;
+        infd = *inpipe;
     }
 
     /* With out/err buffer, the outfd/errfd have been filled with an
@@ -1702,10 +1700,9 @@ virCommandProcessIO(virCommandPtr cmd)
                 } else {
                     inoff += done;
                     if (inoff == inlen) {
-                        int tmpfd ATTRIBUTE_UNUSED;
-                        tmpfd = infd;
-                        if (VIR_CLOSE(infd) < 0)
-                            VIR_DEBUG("ignoring failed close on fd %d", tmpfd);
+                        if (VIR_CLOSE(*inpipe) < 0)
+                            VIR_DEBUG("ignoring failed close on fd %d", infd);
+                        infd = -1;
                     }
                 }
             }
@@ -1833,7 +1830,6 @@ virCommandRun(virCommandPtr cmd, int *exitstatus)
             return -1;
         }
         cmd->infd = infd[0];
-        cmd->inpipe = infd[1];
     }
 
     /* If caller hasn't requested capture of stdout/err, then capture
@@ -1869,7 +1865,7 @@ virCommandRun(virCommandPtr cmd, int *exitstatus)
     }
 
     if (string_io)
-        ret = virCommandProcessIO(cmd);
+        ret = virCommandProcessIO(cmd, &infd[1]);
 
     if (virCommandWait(cmd, exitstatus) < 0)
         ret = -1;
