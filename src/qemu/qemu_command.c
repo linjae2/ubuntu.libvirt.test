@@ -3585,8 +3585,14 @@ qemuBuildCommandLine(virConnectPtr conn,
      * a machine in the capabilities data for QEMU. So this
      * check is just here as a safety in case the unexpected
      * happens */
-    if (def->os.machine)
+    if (def->os.machine) {
+        if (STREQ(def->os.machine, "pc-0.12")) {
+            VIR_WARN("Starting machine %s with type %s.  We suggest a newer type.",
+                def->name, def->os.machine);
+            VIR_WARN("Please see the libvirt-migrate-qemu-machinetype(1) manpage.");
+        }
         virCommandAddArgList(cmd, "-M", def->os.machine, NULL);
+    }
 
     if (qemuBuildCpuArgStr(driver, def, emulator, qemuCaps,
                            &ut, &cpu, &hasHwVirt) < 0)
