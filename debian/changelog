@@ -1,3 +1,11 @@
+libvirt (0.9.8-2ubuntu17.22) precise; urgency=medium
+
+  * Quiet some of the following errors.
+    "error : virNetSocketReadWire:1006 : End of file while reading data: 
+     Input/output error" (LP: #1451598)
+
+ -- Dave Chiluk <chiluk@canonical.com>  Tue, 24 Mar 2015 18:01:03 -0500
+
 libvirt (0.9.8-2ubuntu17.21) precise-proposed; urgency=medium
 
   * Add egg-info file (LP: #1379585)
