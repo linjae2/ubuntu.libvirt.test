@@ -43,6 +43,7 @@
 #include "virfile.h"
 #include "event.h"
 #include "threads.h"
+#include "virprocess.h"
 
 #include "passfd.h"
 
@@ -826,29 +827,38 @@ int virNetSocketGetPort(virNetSocketPtr sock)
 #ifdef SO_PEERCRED
 int virNetSocketGetLocalIdentity(virNetSocketPtr sock,
                                  uid_t *uid,
-                                 pid_t *pid)
+                                pid_t *pid,
+                                unsigned long long *timestamp)
 {
     struct ucred cr;
     socklen_t cr_len = sizeof (cr);
+    int ret = -1;
+
     virMutexLock(&sock->lock);
 
     if (getsockopt(sock->fd, SOL_SOCKET, SO_PEERCRED, &cr, &cr_len) < 0) {
         virReportSystemError(errno, "%s",
                              _("Failed to get client socket identity"));
-        virMutexUnlock(&sock->lock);
-        return -1;
+        goto cleanup;
     }
+
+    if (virProcessGetStartTime(cr.pid, timestamp) < 0)
+        goto cleanup;
 
     *pid = cr.pid;
     *uid = cr.uid;
 
+    ret = 0;
+
+cleanup:
     virMutexUnlock(&sock->lock);
-    return 0;
+    return ret;
 }
 #else
 int virNetSocketGetLocalIdentity(virNetSocketPtr sock ATTRIBUTE_UNUSED,
                                  uid_t *uid ATTRIBUTE_UNUSED,
-                                 pid_t *pid ATTRIBUTE_UNUSED)
+                                pid_t *pid ATTRIBUTE_UNUSED,
+                                unsigned long long *timestamp ATTRIBUTE_UNUSED)
 {
     /* XXX Many more OS support UNIX socket credentials we could port to. See dbus ....*/
     virReportSystemError(ENOSYS, "%s",
