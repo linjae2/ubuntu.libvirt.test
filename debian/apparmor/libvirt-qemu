@@ -164,6 +164,9 @@
   deny /tmp/{,**} r,
   deny /var/tmp/{,**} r,
 
+  # silence refusals to open lttng files (see lp#1432644)
+  deny /dev/shm/lttng-ust-wait-* r,
+
   /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
   # child profile for bridge helper process
   profile qemu_bridge_helper {
