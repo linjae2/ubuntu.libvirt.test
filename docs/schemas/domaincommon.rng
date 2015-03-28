@@ -258,7 +258,7 @@
                 </choice>
               </attribute>
             </optional>
-            <ref name="absFilePath"/>
+            <ref name="filePath"/>
           </element>
         </optional>
         <optional>
@@ -1060,7 +1060,7 @@
       <optional>
         <element name="bootloader">
           <choice>
-            <ref name="absFilePath"/>
+            <ref name="filePath"/>
             <empty/>
           </choice>
         </element>
