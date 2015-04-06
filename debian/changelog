@@ -1,3 +1,10 @@
+libvirt (1.2.12-0ubuntu9) vivid; urgency=medium
+
+  * 9037-virt-aa-helper-add-unix-channels-esp-for-qemu-guest-.patch: Allow
+    libvirt domains to start when using qemu guest agent.  (LP: #1393842)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 06 Apr 2015 11:14:03 -0500
+
 libvirt (1.2.12-0ubuntu8) vivid; urgency=medium
 
   * silence denial of attempted reads of lttng files (LP: #1432644)

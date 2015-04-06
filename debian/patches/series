@@ -27,3 +27,4 @@ skip-vircgrouptest.patch
 disable-network-test.patch
 docs-remove-xpath.patch
 ubuntu-libxl-migrate-dm.patch
+9037-virt-aa-helper-add-unix-channels-esp-for-qemu-guest-.patch
