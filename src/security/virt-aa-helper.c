@@ -1000,7 +1000,8 @@ get_files(vahControl * ctl)
              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_FILE ||
              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_UNIX ||
              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
-            ctl->def->channels[i]->source.data.file.path)
+             ctl->def->channels[i]->source.data.file.path &&
+             *ctl->def->channels[i]->source.data.file.path != '\0')
             if (vah_add_file_chardev(&buf,
                                      ctl->def->channels[i]->source.data.file.path,
                                      "rw",

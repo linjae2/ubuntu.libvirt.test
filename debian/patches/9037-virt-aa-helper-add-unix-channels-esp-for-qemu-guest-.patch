@@ -9,18 +9,19 @@ Signed-off-by: Serge Hallyn <serge.hallyn@ubuntu.com>
  src/security/virt-aa-helper.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
-index e53779e..8ec95c1 100644
---- a/src/security/virt-aa-helper.c
-+++ b/src/security/virt-aa-helper.c
-@@ -998,6 +998,7 @@ get_files(vahControl * ctl)
+Index: libvirt-1.2.12/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-1.2.12.orig/src/security/virt-aa-helper.c
++++ libvirt-1.2.12/src/security/virt-aa-helper.c
+@@ -998,8 +998,10 @@ get_files(vahControl * ctl)
              (ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PTY ||
               ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_DEV ||
               ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_FILE ||
 +             ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_UNIX ||
               ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
-             ctl->def->channels[i]->source.data.file.path)
+-            ctl->def->channels[i]->source.data.file.path)
++             ctl->def->channels[i]->source.data.file.path &&
++             *ctl->def->channels[i]->source.data.file.path != '\0')
              if (vah_add_file_chardev(&buf,
--- 
-2.1.4
-
+                                      ctl->def->channels[i]->source.data.file.path,
+                                      "rw",

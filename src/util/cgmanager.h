@@ -47,5 +47,6 @@ bool cgm_get_pid_cgroup(const char *controller, pid_t pid, char **cgpath);
 bool cgm_get_pid_cgroup_abs(const char *controller, pid_t pid, char **cgpath);
 bool cgm_controller_exists(const char *controller);
 bool cgm_enter(const char *controller, const char *cgroup_path, pid_t pid);
-bool cgm_escape(const char *controller);
+void cgm_escape(void);
+bool cgm_list_controllers(char ***output);
 #endif
