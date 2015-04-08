@@ -534,6 +534,11 @@ libxlDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
         }
     }
 
+    if (def->emulator && STREQ(def->emulator, "qemu-dm")) {
+        VIR_FREE(def->emulator);
+        if (VIR_STRDUP(def->emulator, "/usr/bin/qemu-system-i386") < 0)
+            return -1;
+    }
     return 0;
 }
 
