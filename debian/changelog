@@ -1,3 +1,12 @@
+libvirt (1.2.12-0ubuntu11) vivid; urgency=medium
+
+  * create /var/lib/libvirt/qemu/channel/target (LP: #1393842)
+    - libvirt-bin.dirs: add /var/lib/libvirt/qemu/channel/target
+    - libvirt-bin.postinst: chown target directory to libvirt-qemu:kvm so
+      qemu can create the unix sockets.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 09 Apr 2015 10:40:05 -0500
+
 libvirt (1.2.12-0ubuntu10) vivid; urgency=medium
 
   * Fix previous patch to ignore any abstract unix domain sockets
