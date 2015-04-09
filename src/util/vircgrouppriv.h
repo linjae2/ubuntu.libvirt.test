@@ -33,6 +33,7 @@
 
 struct virCgroupController {
     int type;
+    char *comount;
     char *mountPoint;
     /* If mountPoint holds several controllers co-mounted,
      * then linkPoint is path of the symlink to the mountPoint
