@@ -178,6 +178,9 @@ build/libvirt-bin::
 		sed -i "s/^\( *\)\(network netlink,.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-qemu; \
 		sed -i "s/^\( *\)\(network netlink,.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-lxc; \
 	fi
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
 
 binary-install/libvirt-doc::
 	find $(EXAMPLES_DIR) -name "*.o" -type f -delete -o -name .libs -type d -exec rm -rf {} \;

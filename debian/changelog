@@ -1,3 +1,11 @@
+libvirt (1.2.12-0ubuntu12) vivid; urgency=low
+
+  * Add profile script to automatically set the default URI based on
+    the currently running hyperisor (Xen or KVM/Qemu).
+    (LP: #1334749)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Tue, 14 Apr 2015 09:02:52 -0500
+
 libvirt (1.2.12-0ubuntu11) vivid; urgency=medium
 
   * create /var/lib/libvirt/qemu/channel/target (LP: #1393842)
