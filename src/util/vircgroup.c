@@ -337,6 +337,12 @@ virCgroupCopyMounts(virCgroupPtr group,
         if (!parent->controllers[i].mountPoint)
             continue;
 
+#ifdef HAVE_CGMANAGER
+        if (VIR_STRDUP(group->controllers[i].comount,
+                       parent->controllers[i].comount) < 0)
+            return -1;
+#endif
+
         if (VIR_STRDUP(group->controllers[i].mountPoint,
                        parent->controllers[i].mountPoint) < 0)
             return -1;
@@ -349,48 +355,50 @@ virCgroupCopyMounts(virCgroupPtr group,
 }
 
 #ifdef HAVE_CGMANAGER
-static void cg_add_cgroup(virCgroupPtr group, const char *g)
+static void do_add_cgroup(virCgroupPtr group, char *g, char *comount)
 {
     int i = virCgroupControllerTypeFromString(g);
     if (i < 0)
         return;
-    if (VIR_STRDUP(group->controllers[i].mountPoint, "/") < 0) {
-        VIR_WARN("Out of memory copying \"/\".  Proceeding without cgroup controll %s.", g);
-        return;
-    }
+    if (VIR_STRDUP(group->controllers[i].mountPoint, "/") < 0)
+        VIR_ERROR("Out of memory copying \"/\". for cgroup mountpoint %s", g);
     group->controllers[i].linkPoint = NULL;
+    if (comount && VIR_STRDUP(group->controllers[i].comount, comount) < 0)
+        VIR_ERROR("Out of memory copying cgroup comount %s for %s", comount, g);
+}
+
+static void cg_add_cgroup(virCgroupPtr group, char *g)
+{
+    char *first = NULL;
+    char *comma = strchr(g, ',');
+    while (comma) {
+        *comma = '\0';
+        if (!first)
+            first = g;
+        do_add_cgroup(group, g, first);
+        g = comma+1;
+        comma = strchr(g, ',');
+    }
+    do_add_cgroup(group, g, first ? first : g);
 }
 
 static bool cg_get_cgroups(virCgroupPtr group)
 {
-    FILE *fin = NULL;
-    char *line = NULL;
-    size_t len = 0;
+    char **list;
 
     if (!cgm_dbus_connect()) {
         return false;
     }
-    /* check to see if name=systemd is mounted */
-    if (cgm_controller_exists("name=systemd"))
-        cg_add_cgroup(group, "name=systemd");
+    if (!cgm_list_controllers(&list)) {
+	    cgm_dbus_disconnect();
+	    return false;
+    }
     cgm_dbus_disconnect();
-    fin = fopen("/proc/cgroups", "r");
-    if (fin == NULL) {
-        virReportSystemError(errno, "%s",
-                             _("Unable to open /proc/cgroups"));
-        return false;
+
+    for (int i = 0; list[i]; i++) {
+        cg_add_cgroup(group, list[i]);
     }
-    while (getline(&line, &len, fin) > 0) {
-        char *p;
-        if (line[0] == '#')
-            continue;
-        p = strchr(line, '\t');
-        if (p)
-            *p = '\0';
-        cg_add_cgroup(group, line);
-    }
-    VIR_FREE(line);
-    VIR_FORCE_FCLOSE(fin);
+    nih_free(list);
     return true;
 }
 #else
@@ -1083,11 +1091,6 @@ virCgroupSetMemoryUseHierarchy(virCgroupPtr group)
     unsigned long long value;
     const char *filename = "memory.use_hierarchy";
 
-#ifdef HAVE_CGMANAGER
-    /* cgmanager will have set up inheritence for us */
-    if (cgm_running)
-        return 0;
-#endif
     if (virCgroupGetValueU64(group,
                              VIR_CGROUP_CONTROLLER_MEMORY,
                              filename, &value) < 0)
@@ -1142,7 +1145,7 @@ virCgroupMakeGroup(virCgroupPtr parent,
         if (usecgm) {
             int32_t existed;
             if (!cgm_create(virCgroupControllerTypeToString(i),
-                    group->path, &existed))
+                    group->path, &existed) && existed != 1)
                 goto cleanup;
             continue;
         }
@@ -1272,6 +1275,24 @@ virCgroupNew(pid_t pid,
     return -1;
 }
 
+static bool in_handled_controllers(char *list, char *which)
+{
+    char *comma;
+
+    if (!list)
+        return false;
+    comma = strchr(list, ',');
+    while (comma) {
+        if (strncmp(list, which, comma-list) == 0)
+            return true;
+        list = comma + 1;
+        comma = strchr(list, ',');
+    }
+    if (strcmp(list, which) == 0)
+        return true;
+    return false;
+}
+
 
 /**
  * virCgroupAddTask:
@@ -1286,6 +1307,9 @@ virCgroupAddTask(virCgroupPtr group, pid_t pid)
 {
     int ret = -1;
     size_t i;
+#ifdef HAVE_CGMANAGER
+    nih_local char *handled_controllers = NULL;
+#endif
 
     for (i = 0; i < VIR_CGROUP_CONTROLLER_LAST; i++) {
         /* Skip over controllers not mounted */
@@ -1297,6 +1321,8 @@ virCgroupAddTask(virCgroupPtr group, pid_t pid)
             continue;
 
 #ifdef HAVE_CGMANAGER
+        if (in_handled_controllers(handled_controllers, group->controllers[i].comount))
+            continue;
         if (cgm_dbus_connect()) {
             if (!cgm_enter(virCgroupControllerTypeToString(i), group->path, pid)) {
                 cgm_dbus_disconnect();
@@ -1307,6 +1333,10 @@ virCgroupAddTask(virCgroupPtr group, pid_t pid)
             cgm_dbus_disconnect();
             VIR_INFO("Moved %d to %s:%s", pid,
                     virCgroupControllerTypeToString(i), group->path);
+            if (group->controllers[i].comount)
+		    NIH_MUST( nih_strcat_sprintf(&handled_controllers, NULL, "%s%s",
+			handled_controllers ? "," : "",
+			group->controllers[i].comount) );
         } else
 #endif
         if (virCgroupSetValueU64(group, i, "tasks", pid) < 0)
@@ -1317,7 +1347,6 @@ virCgroupAddTask(virCgroupPtr group, pid_t pid)
  cleanup:
     return ret;
 }
-
 
 /**
  * virCgroupAddTaskController:
@@ -1423,6 +1452,7 @@ virCgroupMoveTask(virCgroupPtr src_group, virCgroupPtr dest_group)
     char *content = NULL;
     size_t i;
 #ifdef HAVE_CGMANAGER
+    nih_local char *handled_controllers = NULL;
     bool usecgm = false;
 
     if (cgm_dbus_connect())
@@ -1431,6 +1461,14 @@ virCgroupMoveTask(virCgroupPtr src_group, virCgroupPtr dest_group)
 
     for (i = 0; i < VIR_CGROUP_CONTROLLER_LAST; i++) {
         bool firstrun = true;
+#ifdef HAVE_CGMANAGER
+        const char *typestr = virCgroupControllerTypeToString(i);
+        if (in_handled_controllers(handled_controllers, typestr))
+            continue;
+        NIH_MUST( nih_strcat_sprintf(&handled_controllers, NULL, "%s%s",
+			handled_controllers ? "," : "",
+			src_group->controllers[i].comount) );
+#endif
         if (!src_group->controllers[i].mountPoint ||
             !dest_group->controllers[i].mountPoint)
             continue;
@@ -1445,7 +1483,6 @@ virCgroupMoveTask(virCgroupPtr src_group, virCgroupPtr dest_group)
          * until content is empty.  */
         while (1) {
 #ifdef HAVE_CGMANAGER
-            const char *typestr = virCgroupControllerTypeToString(i);
             pid_t *pids = NULL;
             size_t j, nrpids;
             if (usecgm) {
@@ -1958,6 +1995,14 @@ int virCgroupTerminateMachine(const char *name,
                               const char *drivername,
                               bool privileged)
 {
+#ifdef HAVE_CGMANAGER
+    bool usecgm = false;
+    if (cgm_dbus_connect())
+        usecgm = true;
+    cgm_dbus_disconnect();
+    if (usecgm)
+        return 0;
+#endif
     return virSystemdTerminateMachine(name, drivername, privileged);
 }
 
@@ -2025,9 +2070,17 @@ virCgroupNewMachine(const char *name,
                     virCgroupPtr *group)
 {
     int rv;
+    bool usecgm = false;
+#ifdef HAVE_CGMANAGER
+    if (cgm_dbus_connect())
+        usecgm = true;
+    cgm_dbus_disconnect();
+#endif
 
     *group = NULL;
 
+    if (usecgm)
+        goto skip;
     if ((rv = virCgroupNewMachineSystemd(name,
                                          drivername,
                                          privileged,
@@ -2045,6 +2098,7 @@ virCgroupNewMachine(const char *name,
     if (rv == -1)
         return -1;
 
+skip:
     return virCgroupNewMachineManual(name,
                                      drivername,
                                      pidleader,
@@ -2085,6 +2139,7 @@ virCgroupFree(virCgroupPtr *group)
         VIR_FREE((*group)->controllers[i].mountPoint);
         VIR_FREE((*group)->controllers[i].linkPoint);
         VIR_FREE((*group)->controllers[i].placement);
+        VIR_FREE((*group)->controllers[i].comount);
     }
 
     VIR_FREE((*group)->path);
@@ -3830,7 +3885,7 @@ static int cgm_kill(virCgroupPtr group, int signum, virHashTablePtr pidhash)
 
     if ((i = cgm_get_controller_path(group, -1)) < 0) {
         VIR_ERROR("cgm_kill: Could not get controller path");
-        return -1;
+        return 0;
     }
 
     controller = virCgroupControllerTypeToString(i);
@@ -3865,7 +3920,8 @@ static int cgm_kill(virCgroupPtr group, int signum, virHashTablePtr pidhash)
             }
             ignore_value(virHashAddEntry(pidhash, (void*)upid, (void*)1));
         }
-        nih_free(pids);
+        if (nrpids)
+            nih_free(pids);
     }
 
  done:
@@ -3873,7 +3929,7 @@ static int cgm_kill(virCgroupPtr group, int signum, virHashTablePtr pidhash)
 
 cleanup:
 
-    VIR_DEBUG("cgm_kill: returning %d, killedAny %d", ret, killedAny);
+    VIR_ERROR("cgm_kill: returning %d, killedAny %d", ret, killedAny);
     return ret;
 }
 
@@ -4526,16 +4582,6 @@ virCgroupHasEmptyTasks(virCgroupPtr cgroup, int controller)
     return ret;
 }
 
-void virCgroupEscape(void) {
-#ifdef HAVE_CGMANAGER
-    int i;
-    if (cgm_dbus_connect()) {
-        for (i = 0; i < VIR_CGROUP_CONTROLLER_LAST; i++)
-            cgm_escape(virCgroupControllerTypeToString(i));
-        cgm_dbus_disconnect();
-    }
-#endif
-}
 #else /* !VIR_CGROUP_SUPPORTED */
 
 bool
@@ -5273,8 +5319,5 @@ virCgroupHasEmptyTasks(virCgroupPtr cgroup ATTRIBUTE_UNUSED,
     virReportSystemError(ENOSYS, "%s",
                          _("Control groups not supported on this platform"));
     return -1;
-}
-
-void virCgroupEscape(void) {
 }
 #endif /* !VIR_CGROUP_SUPPORTED */
