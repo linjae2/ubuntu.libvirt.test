@@ -1,3 +1,9 @@
+libvirt (1.2.14-3) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 27 Apr 2015 11:19:39 +0200
+
 libvirt (1.2.14-2) experimental; urgency=medium
 
   * [51ba06c] Allow testsuite to output to stderr
@@ -106,6 +112,53 @@ libvirt (1.2.10~rc1-1) experimental; urgency=medium
   * [4f5511b] Update symbols
 
  -- Guido Günther <agx@sigxcpu.org>  Thu, 30 Oct 2014 09:53:20 +0100
+
+libvirt (1.2.9-10) unstable; urgency=medium
+
+  * [f5e46fb] postinst: Use '--' for all adduser options
+  * [a8fee3f] Don't validata filesystem target type.  Since 'virsh' validates
+    XML this can lead to uneditable (but perfectly valid) configs.
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 07 Apr 2015 11:29:47 +0200
+
+libvirt (1.2.9-9) unstable; urgency=medium
+
+  * [4c14b83] qemu: Don't try to parse -help for new QEMU.
+    Closes: #777138, #775773
+    Thanks to Mathieu Malaterre for the debugging
+  * [1addae5] Force capability refresh on upgrades. This makes sure we
+    refresh the capabilities at least once when upgrading from Wheezy.
+    (Closes: #731815)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 06 Feb 2015 15:40:21 +0100
+
+libvirt (1.2.9-8) unstable; urgency=medium
+
+  * [885f33d] Fix CVE-2015-0236.
+    Patches cherry-picked from upstream (Closes: #776065)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 23 Jan 2015 19:01:40 +0100
+
+libvirt (1.2.9-7) unstable; urgency=medium
+
+  * [d7df883] CVE-2014-8131: Fix possible deadlock and segfault in
+    qemuConnectGetAllDomainStats()
+    (Closes: #773858)
+  * [d0085e0] qemu: bulk stats: Fix logic in monitor handling
+  * [b5e081c] CVE-2014-8135: storage: fix crash caused by no check return
+    before set close
+    (Closes: #773855)
+  * [a5452de] CVE-2014-8136: qemu: migration: Unlock vm on failed ACL check in
+    protocol v2 APIs
+    (Closes: #773856)
+  * [5aaafc9] qemu: Fix crash in tunnelled migration (Closes: #773503)
+  * [87b3713] lxc: Fix crash when using interface type 'direct'
+    Thanks to Bastian Blank for the patch (Closes: #769600)
+  * [17807c0] Document surprises on CPU microcode updates (Closes: #773706)
+  * [66a3ca6] Install lock drivers (Closes: #773706)
+  * [f6ffda7] vbox: fix a bug in _machineStateInactive (Closes: #770202)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 24 Dec 2014 10:33:31 +0100
 
 libvirt (1.2.9-6) unstable; urgency=medium
 
