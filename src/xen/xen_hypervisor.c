@@ -2142,7 +2142,7 @@ xenHypervisorBuildCapabilities(virConnectPtr conn, virArch hostarch,
             goto no_memory;
 
         if ((guest = virCapabilitiesAddGuest(caps,
-                                             guest_archs[i].hvm ? "hvm" : "xen",
+                                             guest_archs[i].hvm ? VIR_DOMAIN_OSTYPE_HVM : VIR_DOMAIN_OSTYPE_XEN,
                                              guest_archs[i].arch,
                                              "qemu-dm",
                                              (guest_archs[i].hvm ?
@@ -2156,7 +2156,7 @@ xenHypervisorBuildCapabilities(virConnectPtr conn, virArch hostarch,
         machines = NULL;
 
         if (virCapabilitiesAddGuestDomain(guest,
-                                          "xen",
+                                          VIR_DOMAIN_VIRT_XEN,
                                           NULL,
                                           NULL,
                                           0,
