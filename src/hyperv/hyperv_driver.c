@@ -30,12 +30,6 @@
 #include "virlog.h"
 #include "viruuid.h"
 #include "hyperv_driver.h"
-#include "hyperv_interface_driver.h"
-#include "hyperv_network_driver.h"
-#include "hyperv_storage_driver.h"
-#include "hyperv_device_monitor.h"
-#include "hyperv_secret_driver.h"
-#include "hyperv_nwfilter_driver.h"
 #include "hyperv_private.h"
 #include "hyperv_util.h"
 #include "hyperv_wmi.h"
@@ -876,14 +870,12 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
     if (VIR_STRDUP(def->description, virtualSystemSettingData->data->Notes) < 0)
         goto cleanup;
 
-    def->mem.max_balloon = memorySettingData->data->Limit * 1024; /* megabyte to kilobyte */
+    virDomainDefSetMemoryInitial(def, memorySettingData->data->Limit * 1024); /* megabyte to kilobyte */
     def->mem.cur_balloon = memorySettingData->data->VirtualQuantity * 1024; /* megabyte to kilobyte */
 
     def->vcpus = processorSettingData->data->VirtualQuantity;
     def->maxvcpus = processorSettingData->data->VirtualQuantity;
-
-    if (VIR_STRDUP(def->os.type, "hvm") < 0)
-        goto cleanup;
+    def->os.type = VIR_DOMAIN_OSTYPE_HVM;
 
     /* FIXME: devices section is totally missing */
 
@@ -1326,8 +1318,7 @@ hypervConnectListAllDomains(virConnectPtr conn,
 
 
 
-static virHypervisorDriver hypervDriver = {
-    .no = VIR_DRV_HYPERV,
+static virHypervisorDriver hypervHypervisorDriver = {
     .name = "Hyper-V",
     .connectOpen = hypervConnectOpen, /* 0.9.5 */
     .connectClose = hypervConnectClose, /* 0.9.5 */
@@ -1386,22 +1377,16 @@ hypervDebugHandler(const char *message, debug_level_e level,
 }
 
 
+static virConnectDriver hypervConnectDriver = {
+    .hypervisorDriver = &hypervHypervisorDriver,
+};
 
 int
 hypervRegister(void)
 {
-    if (virRegisterHypervisorDriver(&hypervDriver) < 0 ||
-        hypervInterfaceRegister() < 0 ||
-        hypervNetworkRegister() < 0 ||
-        hypervStorageRegister() < 0 ||
-        hypervDeviceRegister() < 0 ||
-        hypervSecretRegister() < 0 ||
-        hypervNWFilterRegister() < 0) {
-        return -1;
-    }
-
     /* Forward openwsman errors and warnings to libvirt's logging */
     debug_add_handler(hypervDebugHandler, DEBUG_LEVEL_WARNING, NULL);
 
-    return 0;
+    return virRegisterConnectDriver(&hypervConnectDriver,
+                                    false);
 }

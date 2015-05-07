@@ -1,7 +1,7 @@
 /*
  * virsh.c: a shell to exercise the libvirt API
  *
- * Copyright (C) 2005, 2007-2014 Red Hat, Inc.
+ * Copyright (C) 2005, 2007-2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -44,11 +44,6 @@
 #include <strings.h>
 #include <signal.h>
 
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
-#include <libxml/xmlsave.h>
-
 #if WITH_READLINE
 # include <readline/readline.h>
 # include <readline/history.h>
@@ -56,19 +51,14 @@
 
 #include "internal.h"
 #include "virerror.h"
-#include "base64.h"
 #include "virbuffer.h"
 #include "viralloc.h"
-#include "virxml.h"
 #include <libvirt/libvirt-qemu.h>
 #include <libvirt/libvirt-lxc.h>
 #include "virfile.h"
 #include "configmake.h"
 #include "virthread.h"
 #include "vircommand.h"
-#include "virkeycode.h"
-#include "virnetdevbandwidth.h"
-#include "virbitmap.h"
 #include "conf/domain_conf.h"
 #include "virtypedparam.h"
 #include "virstring.h"
@@ -512,13 +502,14 @@ vshPrintRaw(vshControl *ctl, ...)
  * edited file.
  *
  * Returns 'y' if he wants to
- *         'f' if he forcibly wants to
  *         'n' if he doesn't want to
+ *         'i' if he wants to try defining it again while ignoring validation
+ *         'f' if he forcibly wants to
  *         -1  on error
  *          0  otherwise
  */
 int
-vshAskReedit(vshControl *ctl, const char *msg)
+vshAskReedit(vshControl *ctl, const char *msg, bool relax_avail)
 {
     int c = -1;
 
@@ -531,9 +522,8 @@ vshAskReedit(vshControl *ctl, const char *msg)
         return -1;
 
     while (true) {
-        /* TRANSLATORS: For now, we aren't using LC_MESSAGES, and the user
-         * choices really are limited to just 'y', 'n', 'f' and '?'  */
-        vshPrint(ctl, "\r%s %s", msg, _("Try again? [y,n,f,?]:"));
+        vshPrint(ctl, "\r%s %s %s: ", msg, _("Try again?"),
+                 relax_avail ? "[y,n,i,f,?]" : "[y,n,f,?]");
         c = c_tolower(getchar());
 
         if (c == '?') {
@@ -541,11 +531,21 @@ vshAskReedit(vshControl *ctl, const char *msg)
                         "",
                         _("y - yes, start editor again"),
                         _("n - no, throw away my changes"),
+                        NULL);
+
+            if (relax_avail) {
+                vshPrintRaw(ctl,
+                            _("i - turn off validation and try to redefine again"),
+                            NULL);
+            }
+
+            vshPrintRaw(ctl,
                         _("f - force, try to redefine again"),
                         _("? - print this help"),
                         NULL);
             continue;
-        } else if (c == 'y' || c == 'n' || c == 'f') {
+        } else if (c == 'y' || c == 'n' || c == 'f' ||
+                   (relax_avail && c == 'i')) {
             break;
         }
     }
@@ -557,7 +557,9 @@ vshAskReedit(vshControl *ctl, const char *msg)
 }
 #else /* WIN32 */
 int
-vshAskReedit(vshControl *ctl, const char *msg ATTRIBUTE_UNUSED)
+vshAskReedit(vshControl *ctl,
+             const char *msg ATTRIBUTE_UNUSED,
+             bool relax_avail ATTRIBUTE_UNUSED)
 {
     vshDebug(ctl, VSH_ERR_WARNING, "%s", _("This function is not "
                                            "supported on WIN32 platform"));
@@ -1856,29 +1858,6 @@ vshCommandOptArgv(const vshCmd *cmd, const vshCmdOpt *opt)
         opt = opt->next;
     }
     return NULL;
-}
-
-/* Determine whether CMD->opts includes an option with name OPTNAME.
-   If not, give a diagnostic and return false.
-   If so, return true.  */
-bool
-vshCmdHasOption(vshControl *ctl, const vshCmd *cmd, const char *optname)
-{
-    /* Iterate through cmd->opts, to ensure that there is an entry
-       with name OPTNAME and type VSH_OT_DATA. */
-    bool found = false;
-    const vshCmdOpt *opt;
-    for (opt = cmd->opts; opt; opt = opt->next) {
-        if (STREQ(opt->def->name, optname) && opt->def->type == VSH_OT_DATA) {
-            found = true;
-            break;
-        }
-    }
-
-    if (!found)
-        vshError(ctl, _("internal error: virsh %s: no %s VSH_OT_DATA option"),
-                 cmd->def->name, optname);
-    return found;
 }
 
 /* Parse an optional --timeout parameter in seconds, but store the

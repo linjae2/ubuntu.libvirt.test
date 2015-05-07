@@ -1,7 +1,7 @@
 /*
  * qemu_monitor.h: interaction with QEMU monitor console
  *
- * Copyright (C) 2006-2014 Red Hat, Inc.
+ * Copyright (C) 2006-2015 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -233,7 +233,8 @@ int qemuMonitorSetCapabilities(qemuMonitorPtr mon);
 
 int qemuMonitorSetLink(qemuMonitorPtr mon,
                        const char *name,
-                       virDomainNetInterfaceLinkState state);
+                       virDomainNetInterfaceLinkState state)
+    ATTRIBUTE_NONNULL(2);
 
 /* These APIs are for use by the internal Text/JSON monitor impl code only */
 char *qemuMonitorNextCommandID(qemuMonitorPtr mon);
@@ -334,7 +335,8 @@ int qemuMonitorVMStatusToPausedReason(const char *status);
 
 int qemuMonitorGetStatus(qemuMonitorPtr mon,
                          bool *running,
-                         virDomainPausedReason *reason);
+                         virDomainPausedReason *reason)
+    ATTRIBUTE_NONNULL(2);
 
 int qemuMonitorSystemReset(qemuMonitorPtr mon);
 int qemuMonitorSystemPowerdown(qemuMonitorPtr mon);
@@ -356,18 +358,6 @@ virHashTablePtr qemuMonitorGetBlockInfo(qemuMonitorPtr mon);
 struct qemuDomainDiskInfo *
 qemuMonitorBlockInfoLookup(virHashTablePtr blockInfo,
                            const char *dev_name);
-
-int qemuMonitorGetBlockStatsInfo(qemuMonitorPtr mon,
-                                 const char *dev_name,
-                                 long long *rd_req,
-                                 long long *rd_bytes,
-                                 long long *rd_total_times,
-                                 long long *wr_req,
-                                 long long *wr_bytes,
-                                 long long *wr_total_times,
-                                 long long *flush_req,
-                                 long long *flush_total_times,
-                                 long long *errs);
 
 typedef struct _qemuBlockStats qemuBlockStats;
 typedef qemuBlockStats *qemuBlockStatsPtr;
@@ -394,9 +384,6 @@ int qemuMonitorBlockStatsUpdateCapacity(qemuMonitorPtr mon,
                                         virHashTablePtr stats,
                                         bool backingChain)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-
-int qemuMonitorGetBlockStatsParamsNumber(qemuMonitorPtr mon,
-                                         int *nparams);
 
 int qemuMonitorGetBlockExtent(qemuMonitorPtr mon,
                               const char *dev_name,
@@ -456,6 +443,7 @@ enum {
     QEMU_MONITOR_MIGRATION_STATUS_ACTIVE,
     QEMU_MONITOR_MIGRATION_STATUS_COMPLETED,
     QEMU_MONITOR_MIGRATION_STATUS_ERROR,
+    QEMU_MONITOR_MIGRATION_STATUS_CANCELLING,
     QEMU_MONITOR_MIGRATION_STATUS_CANCELLED,
     QEMU_MONITOR_MIGRATION_STATUS_SETUP,
 
@@ -661,6 +649,7 @@ struct _qemuMonitorChardevInfo {
     char *ptyPath;
     virDomainChrDeviceState state;
 };
+void qemuMonitorChardevInfoFree(void *data, const void *name);
 int qemuMonitorGetChardevInfo(qemuMonitorPtr mon,
                               virHashTablePtr *retinfo);
 
@@ -724,7 +713,7 @@ int qemuMonitorDiskSnapshot(qemuMonitorPtr mon,
                             const char *format,
                             bool reuse);
 int qemuMonitorTransaction(qemuMonitorPtr mon, virJSONValuePtr actions)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+    ATTRIBUTE_NONNULL(2);
 int qemuMonitorDriveMirror(qemuMonitorPtr mon,
                            const char *device,
                            const char *file,
@@ -733,12 +722,10 @@ int qemuMonitorDriveMirror(qemuMonitorPtr mon,
                            unsigned int granularity,
                            unsigned long long buf_size,
                            unsigned int flags)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
+    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
 int qemuMonitorDrivePivot(qemuMonitorPtr mon,
-                          const char *device,
-                          const char *file,
-                          const char *format)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
+                          const char *device)
+    ATTRIBUTE_NONNULL(2);
 
 int qemuMonitorBlockCommit(qemuMonitorPtr mon,
                            const char *device,
@@ -746,9 +733,13 @@ int qemuMonitorBlockCommit(qemuMonitorPtr mon,
                            const char *base,
                            const char *backingName,
                            unsigned long long bandwidth)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
-    ATTRIBUTE_NONNULL(4);
+    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
 bool qemuMonitorSupportsActiveCommit(qemuMonitorPtr mon);
+char *qemuMonitorDiskNameLookup(qemuMonitorPtr mon,
+                                const char *device,
+                                virStorageSourcePtr top,
+                                virStorageSourcePtr target)
+    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
 
 int qemuMonitorArbitraryCommand(qemuMonitorPtr mon,
                                 const char *cmd,
@@ -765,26 +756,29 @@ int qemuMonitorSendKey(qemuMonitorPtr mon,
                        unsigned int *keycodes,
                        unsigned int nkeycodes);
 
-typedef enum {
-    BLOCK_JOB_ABORT,
-    BLOCK_JOB_SPEED,
-    BLOCK_JOB_PULL,
-} qemuMonitorBlockJobCmd;
+int qemuMonitorBlockStream(qemuMonitorPtr mon,
+                           const char *device,
+                           const char *base,
+                           const char *backingName,
+                           unsigned long long bandwidth,
+                           bool modern)
+    ATTRIBUTE_NONNULL(2);
 
-int qemuMonitorBlockJob(qemuMonitorPtr mon,
-                        const char *device,
-                        const char *base,
-                        const char *backingName,
-                        unsigned long long bandwidth,
-                        qemuMonitorBlockJobCmd mode,
-                        bool modern)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+int qemuMonitorBlockJobCancel(qemuMonitorPtr mon,
+                              const char *device,
+                              bool modern)
+    ATTRIBUTE_NONNULL(2);
+
+int qemuMonitorBlockJobSetSpeed(qemuMonitorPtr mon,
+                                const char *device,
+                                unsigned long long bandwidth,
+                                bool modern);
 
 int qemuMonitorBlockJobInfo(qemuMonitorPtr mon,
                             const char *device,
                             virDomainBlockJobInfoPtr info,
                             unsigned long long *bandwidth)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
+    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
 
 int qemuMonitorOpenGraphics(qemuMonitorPtr mon,
                             const char *protocol,
@@ -880,17 +874,29 @@ int qemuMonitorGetGuestCPU(qemuMonitorPtr mon,
 
 int qemuMonitorRTCResetReinjection(qemuMonitorPtr mon);
 
-typedef struct _qemuMonitorIOThreadsInfo qemuMonitorIOThreadsInfo;
-typedef qemuMonitorIOThreadsInfo *qemuMonitorIOThreadsInfoPtr;
+typedef struct _qemuMonitorIOThreadInfo qemuMonitorIOThreadInfo;
+typedef qemuMonitorIOThreadInfo *qemuMonitorIOThreadInfoPtr;
 
-struct _qemuMonitorIOThreadsInfo {
-    char *name;
+struct _qemuMonitorIOThreadInfo {
+    unsigned int iothread_id;
     int thread_id;
 };
 int qemuMonitorGetIOThreads(qemuMonitorPtr mon,
-                            qemuMonitorIOThreadsInfoPtr **iothreads);
+                            qemuMonitorIOThreadInfoPtr **iothreads);
 
-void qemuMonitorIOThreadsInfoFree(qemuMonitorIOThreadsInfoPtr iothread);
+typedef struct _qemuMonitorMemoryDeviceInfo qemuMonitorMemoryDeviceInfo;
+typedef qemuMonitorMemoryDeviceInfo *qemuMonitorMemoryDeviceInfoPtr;
+
+struct _qemuMonitorMemoryDeviceInfo {
+    unsigned long long address;
+    unsigned int slot;
+    bool hotplugged;
+    bool hotpluggable;
+};
+
+int qemuMonitorGetMemoryDeviceInfo(qemuMonitorPtr mon,
+                                   virHashTablePtr *info)
+    ATTRIBUTE_NONNULL(2);
 
 /**
  * When running two dd process and using <> redirection, we need a

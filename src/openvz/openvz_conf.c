@@ -179,7 +179,7 @@ virCapsPtr openvzCapsInit(void)
         goto no_memory;
 
     if ((guest = virCapabilitiesAddGuest(caps,
-                                         "exe",
+                                         VIR_DOMAIN_OSTYPE_EXE,
                                          caps->host.arch,
                                          NULL,
                                          NULL,
@@ -188,7 +188,7 @@ virCapsPtr openvzCapsInit(void)
         goto no_memory;
 
     if (virCapabilitiesAddGuestDomain(guest,
-                                      "openvz",
+                                      VIR_DOMAIN_VIRT_OPENVZ,
                                       NULL,
                                       NULL,
                                       0,
@@ -479,12 +479,12 @@ openvzReadMemConf(virDomainDefPtr def, int veid)
             goto error;
         }
         if (barrier == LONG_MAX)
-            def->mem.soft_limit = 0ull;
+            def->mem.soft_limit = VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
         else
             def->mem.soft_limit = barrier * kb_per_pages;
 
         if (limit == LONG_MAX)
-            def->mem.hard_limit = 0ull;
+            def->mem.hard_limit = VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
         else
             def->mem.hard_limit = limit * kb_per_pages;
     }
@@ -543,7 +543,7 @@ int openvzLoadDomains(struct openvz_driver *driver)
         }
         *line++ = '\0';
 
-        if (VIR_ALLOC(def) < 0)
+        if (!(def = virDomainDefNew()))
             goto cleanup;
 
         def->virtType = VIR_DOMAIN_VIRT_OPENVZ;
@@ -564,8 +564,7 @@ int openvzLoadDomains(struct openvz_driver *driver)
             goto cleanup;
         }
 
-        if (VIR_STRDUP(def->os.type, "exe") < 0)
-            goto cleanup;
+        def->os.type = VIR_DOMAIN_OSTYPE_EXE;
         if (VIR_STRDUP(def->os.init, "/sbin/init") < 0)
             goto cleanup;
 

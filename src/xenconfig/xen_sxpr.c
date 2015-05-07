@@ -1093,7 +1093,7 @@ xenParseSxpr(const struct sexpr *root,
     virDomainDefPtr def;
     int hvm = 0, vmlocaltime;
 
-    if (VIR_ALLOC(def) < 0)
+    if (!(def = virDomainDefNew()))
         goto error;
 
     tmp = sexpr_node(root, "domain/domid");
@@ -1145,8 +1145,7 @@ xenParseSxpr(const struct sexpr *root,
             goto error;
     }
 
-    if (VIR_STRDUP(def->os.type, hvm ? "hvm" : "linux") < 0)
-        goto error;
+    def->os.type = (hvm ? VIR_DOMAIN_OSTYPE_HVM : VIR_DOMAIN_OSTYPE_LINUX);
 
     if (def->id != 0) {
         if (sexpr_lookup(root, "domain/image")) {
@@ -1155,15 +1154,23 @@ xenParseSxpr(const struct sexpr *root,
         }
     }
 
-    def->mem.max_balloon = (sexpr_u64(root, "domain/maxmem") << 10);
+    virDomainDefSetMemoryInitial(def, (sexpr_u64(root, "domain/maxmem") << 10));
     def->mem.cur_balloon = (sexpr_u64(root, "domain/memory") << 10);
-    if (def->mem.cur_balloon > def->mem.max_balloon)
-        def->mem.cur_balloon = def->mem.max_balloon;
+
+    if (def->mem.cur_balloon > virDomainDefGetMemoryActual(def))
+        def->mem.cur_balloon = virDomainDefGetMemoryActual(def);
 
     if (cpus != NULL) {
         if (virBitmapParse(cpus, 0, &def->cpumask,
                            VIR_DOMAIN_CPUMASK_LEN) < 0)
             goto error;
+
+        if (virBitmapIsAllClear(def->cpumask)) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("Invalid value of 'cpumask': %s"),
+                           cpus);
+            goto error;
+        }
     }
 
     def->maxvcpus = sexpr_int(root, "domain/vcpus");
@@ -2213,7 +2220,7 @@ xenFormatSxpr(virConnectPtr conn,
     virBufferEscapeSexpr(&buf, "(name '%s')", def->name);
     virBufferAsprintf(&buf, "(memory %llu)(maxmem %llu)",
                       VIR_DIV_UP(def->mem.cur_balloon, 1024),
-                      VIR_DIV_UP(def->mem.max_balloon, 1024));
+                      VIR_DIV_UP(virDomainDefGetMemoryActual(def), 1024));
     virBufferAsprintf(&buf, "(vcpus %u)", def->maxvcpus);
     /* Computing the vcpu_avail bitmask works because MAX_VIRT_CPUS is
        either 32, or 64 on a platform where long is big enough.  */
@@ -2265,7 +2272,7 @@ xenFormatSxpr(virConnectPtr conn,
     }
     virBufferAsprintf(&buf, "(on_crash '%s')", tmp);
 
-    if (STREQ(def->os.type, "hvm"))
+    if (def->os.type == VIR_DOMAIN_OSTYPE_HVM)
         hvm = 1;
 
     if (!def->os.bootloader) {

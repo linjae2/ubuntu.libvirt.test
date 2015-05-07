@@ -49,7 +49,6 @@
 #include "viralloc.h"
 #include "virconf.h"
 #include "virnetlink.h"
-#include "vircgroup.h"
 #include "virnetserver.h"
 #include "remote.h"
 #include "virhook.h"
@@ -102,12 +101,10 @@
 #  include "nwfilter/nwfilter_driver.h"
 # endif
 #endif
-#include "util/cgmanager.h"
 
 #include "configmake.h"
 
 #include "virdbus.h"
-#include "cpu/cpu_map.h"
 
 VIR_LOG_INIT("daemon.libvirtd");
 
@@ -336,12 +333,7 @@ static void daemonInitialize(void)
      * priority when calling virStateInitialize. We must register the
      * network, storage and nodedev drivers before any stateful domain
      * driver, since their resources must be auto-started before any
-     * domains can be auto-started. Moreover, some stateless drivers
-     * implement their own subdrivers (e.g. the vbox driver has its
-     * own network and storage subdriers) which need to have higher
-     * priority. Otherwise, when connecting to such driver the generic
-     * subdriver may be opened instead of the one corresponding to the
-     * stateless driver.
+     * domains can be auto-started.
      */
 #ifdef WITH_DRIVER_MODULES
     /* We don't care if any of these fail, because the whole point
@@ -349,17 +341,11 @@ static void daemonInitialize(void)
      * If they try to open a connection for a module that
      * is not loaded they'll get a suitable error at that point
      */
-# ifdef WITH_VBOX
-    virDriverLoadModule("vbox_network");
-# endif
 # ifdef WITH_NETWORK
     virDriverLoadModule("network");
 # endif
 # ifdef WITH_INTERFACE
     virDriverLoadModule("interface");
-# endif
-# ifdef WITH_VBOX
-    virDriverLoadModule("vbox_storage");
 # endif
 # ifdef WITH_STORAGE
     virDriverLoadModule("storage");
@@ -395,17 +381,11 @@ static void daemonInitialize(void)
     virDriverLoadModule("bhyve");
 # endif
 #else
-# ifdef WITH_VBOX
-    vboxNetworkRegister();
-# endif
 # ifdef WITH_NETWORK
     networkRegister();
 # endif
 # ifdef WITH_INTERFACE
     interfaceRegister();
-# endif
-# ifdef WITH_VBOX
-    vboxStorageRegister();
 # endif
 # ifdef WITH_STORAGE
     storageRegister();
@@ -746,13 +726,13 @@ daemonSetupAccessManager(struct daemonConfig *config)
 {
     virAccessManagerPtr mgr;
     const char *none[] = { "none", NULL };
-    const char **driver = (const char **)config->access_drivers;
+    const char **drv = (const char **)config->access_drivers;
 
-    if (!driver ||
-        !driver[0])
-        driver = none;
+    if (!drv ||
+        !drv[0])
+        drv = none;
 
-    if (!(mgr = virAccessManagerNewStack(driver)))
+    if (!(mgr = virAccessManagerNewStack(drv)))
         return -1;
 
     virAccessManagerSetDefault(mgr);
@@ -804,6 +784,11 @@ static void daemonReloadHandler(virNetServerPtr srv ATTRIBUTE_UNUSED,
                                 siginfo_t *sig ATTRIBUTE_UNUSED,
                                 void *opaque ATTRIBUTE_UNUSED)
 {
+    if (!driversInitialized) {
+        VIR_WARN("Drivers are not initialized, reload ignored");
+        return;
+    }
+
     VIR_INFO("Reloading configuration on SIGHUP");
     virHookCall(VIR_HOOK_DRIVER_DAEMON, "-",
                 VIR_HOOK_DAEMON_OP_RELOAD, SIGHUP, "SIGHUP", NULL, NULL);
@@ -1111,7 +1096,6 @@ daemonUsage(const char *argv0, bool privileged)
     }
 }
 
-#define MAX_LISTEN 5
 int main(int argc, char **argv) {
     virNetServerPtr srv = NULL;
     char *remote_config_file = NULL;
@@ -1264,9 +1248,6 @@ int main(int argc, char **argv) {
         VIR_ERROR(_("invalid host UUID: %s"), config->host_uuid);
         exit(EXIT_FAILURE);
     }
-
-    /* move ourselves to root cgroup if necessary */
-    cgm_escape();
 
     if (daemonSetupLogging(config, privileged, verbose, godaemon) < 0) {
         VIR_ERROR(_("Can't initialize logging"));
@@ -1541,8 +1522,10 @@ int main(int argc, char **argv) {
 
     daemonConfigFree(config);
 
-    if (driversInitialized)
+    if (driversInitialized) {
+        driversInitialized = false;
         virStateCleanup();
+    }
 
     return ret;
 }

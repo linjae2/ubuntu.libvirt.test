@@ -1,7 +1,7 @@
 /*
  * libvirt-domain.c: entry points for virDomainPtr APIs
  *
- * Copyright (C) 2006-2014 Red Hat, Inc.
+ * Copyright (C) 2006-2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -385,9 +385,7 @@ virDomainLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
     virCheckNonNullArgGoto(uuidstr, error);
 
     if (virUUIDParse(uuidstr, uuid) < 0) {
-        virReportInvalidArg(uuidstr,
-                            _("uuidstr in %s must be a valid UUID"),
-                            __FUNCTION__);
+        virReportInvalidArg(uuidstr, "%s", _("Invalid UUID"));
         goto error;
     }
 
@@ -1441,8 +1439,8 @@ virDomainScreenshot(virDomainPtr domain,
 
     if (domain->conn != stream->conn) {
         virReportInvalidArg(stream,
-                            _("stream in %s must match connection of domain '%s'"),
-                            __FUNCTION__, domain->name);
+                            _("stream must match connection of domain '%s'"),
+                            domain->name);
         goto error;
     }
 
@@ -2075,6 +2073,9 @@ virDomainSetMemoryStatsPeriod(virDomainPtr domain, int period,
  * Change all or a subset of the memory tunables.
  * This function may require privileged access to the hypervisor.
  *
+ * Possible values for all *_limit memory tunables are in range from 0 to
+ * VIR_DOMAIN_MEMORY_PARAM_UNLIMITED.
+ *
  * Returns -1 in case of error, 0 in case of success.
  */
 int
@@ -2176,10 +2177,8 @@ virDomainGetMemoryParameters(virDomainPtr domain,
     /* At most one of these two flags should be set.  */
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' are mutually exclusive"));
         goto error;
     }
     conn = domain->conn;
@@ -2420,10 +2419,8 @@ virDomainGetBlkioParameters(virDomainPtr domain,
     /* At most one of these two flags should be set.  */
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' are mutually exclusive"));
         goto error;
     }
     conn = domain->conn;
@@ -2639,7 +2636,7 @@ virDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
  *
  * Reads native configuration data  describing a domain, and
  * generates libvirt domain XML. The format of the native
- * data is hypervisor dependant.
+ * data is hypervisor dependent.
  *
  * Returns a 0 terminated UTF-8 encoded XML instance, or NULL in case of error.
  *         the caller must free() the returned value.
@@ -2689,7 +2686,7 @@ virConnectDomainXMLFromNative(virConnectPtr conn,
  *
  * Reads a domain XML configuration document, and generates
  * a native configuration file describing the domain.
- * The format of the native data is hypervisor dependant.
+ * The format of the native data is hypervisor dependent.
  *
  * Returns a 0 terminated UTF-8 encoded native config datafile, or NULL in case of error.
  *         the caller must free() the returned value.
@@ -3340,9 +3337,8 @@ virDomainMigratePeer2PeerFull(virDomainPtr domain,
     if (!(tempuri = virURIParse(dconnuri)))
         return -1;
     if (!tempuri->server || STRPREFIX(tempuri->server, "localhost")) {
-        virReportInvalidArg(dconnuri,
-                            _("unable to parse server from dconnuri in %s"),
-                            __FUNCTION__);
+        virReportInvalidArg(dconnuri, "%s",
+                            _("unable to parse server from dconnuri"));
         virURIFree(tempuri);
         return -1;
     }
@@ -3577,10 +3573,9 @@ virDomainMigrate(virDomainPtr domain,
 
     if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
         flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags,
-                            _("flags 'shared disk' and 'shared incremental' "
-                              "in %s are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'shared disk' and 'shared incremental'"
+                              " are mutually exclusive"));
         goto error;
     }
 
@@ -3806,10 +3801,9 @@ virDomainMigrate2(virDomainPtr domain,
 
     if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
         flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags,
+        virReportInvalidArg(flags, "%s",
                             _("flags 'shared disk' and 'shared incremental' "
-                              "in %s are mutually exclusive"),
-                            __FUNCTION__);
+                              "are mutually exclusive"));
         goto error;
     }
 
@@ -3986,10 +3980,9 @@ virDomainMigrate3(virDomainPtr domain,
 
     if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
         flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags,
+        virReportInvalidArg(flags, "%s",
                             _("flags 'shared disk' and 'shared incremental' "
-                              "in %s are mutually exclusive"),
-                            __FUNCTION__);
+                              "are mutually exclusive"));
         goto error;
     }
     if (flags & VIR_MIGRATE_PEER2PEER) {
@@ -4209,10 +4202,9 @@ virDomainMigrateToURI(virDomainPtr domain,
 
     if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
         flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags,
+        virReportInvalidArg(flags, "%s",
                             _("flags 'shared disk' and 'shared incremental' "
-                              "in %s are mutually exclusive"),
-                            __FUNCTION__);
+                              "are mutually exclusive"));
         goto error;
     }
 
@@ -4369,10 +4361,9 @@ virDomainMigrateToURI2(virDomainPtr domain,
 
     if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
         flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags,
+        virReportInvalidArg(flags, "%s",
                             _("flags 'shared disk' and 'shared incremental' "
-                              "in %s are mutually exclusive"),
-                            __FUNCTION__);
+                              "are mutually exclusive"));
         goto error;
     }
 
@@ -4478,10 +4469,9 @@ virDomainMigrateToURI3(virDomainPtr domain,
 
     if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
         flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags,
+        virReportInvalidArg(flags, "%s",
                             _("flags 'shared disk' and 'shared incremental' "
-                              "in %s are mutually exclusive"),
-                            __FUNCTION__);
+                              "are mutually exclusive"));
         goto error;
     }
 
@@ -4788,9 +4778,8 @@ virDomainMigratePrepareTunnel(virConnectPtr conn,
     virCheckReadOnlyGoto(conn->flags, error);
 
     if (conn != st->conn) {
-        virReportInvalidArg(conn,
-                            _("conn in %s must match stream connection"),
-                            __FUNCTION__);
+        virReportInvalidArg(conn, "%s",
+                            _("conn must match stream connection"));
         goto error;
     }
 
@@ -4934,9 +4923,8 @@ virDomainMigratePrepareTunnel3(virConnectPtr conn,
     virCheckReadOnlyGoto(conn->flags, error);
 
     if (conn != st->conn) {
-        virReportInvalidArg(conn,
-                            _("conn in %s must match stream connection"),
-                            __FUNCTION__);
+        virReportInvalidArg(conn, "%s",
+                            _("conn must match stream connection"));
         goto error;
     }
 
@@ -5217,9 +5205,8 @@ virDomainMigratePrepareTunnel3Params(virConnectPtr conn,
     virCheckReadOnlyGoto(conn->flags, error);
 
     if (conn != st->conn) {
-        virReportInvalidArg(conn,
-                            _("conn in %s must match stream connection"),
-                            __FUNCTION__);
+        virReportInvalidArg(conn, "%s",
+                            _("conn must match stream connection"));
         goto error;
     }
 
@@ -5526,10 +5513,9 @@ virDomainGetSchedulerParametersFlags(virDomainPtr domain,
     /* At most one of these two flags should be set.  */
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' in "
+                              "are mutually exclusive"));
         goto error;
     }
     conn = domain->conn;
@@ -5707,8 +5693,8 @@ virDomainBlockStats(virDomainPtr dom, const char *disk,
     virCheckNonNullArgGoto(stats, error);
     if (size > sizeof(stats2)) {
         virReportInvalidArg(size,
-                            _("size in %s must not exceed %zu"),
-                            __FUNCTION__, sizeof(stats2));
+                            _("size must not exceed %zu"),
+                            sizeof(stats2));
         goto error;
     }
     conn = dom->conn;
@@ -5848,8 +5834,8 @@ virDomainInterfaceStats(virDomainPtr dom, const char *path,
     virCheckNonNullArgGoto(stats, error);
     if (size > sizeof(stats2)) {
         virReportInvalidArg(size,
-                            _("size in %s must not exceed %zu"),
-                            __FUNCTION__, sizeof(stats2));
+                            _("size must not exceed %zu"),
+                            sizeof(stats2));
         goto error;
     }
 
@@ -6294,10 +6280,9 @@ virDomainMemoryPeek(virDomainPtr dom,
 
     /* Exactly one of these two flags must be set.  */
     if (!(flags & VIR_MEMORY_VIRTUAL) == !(flags & VIR_MEMORY_PHYSICAL)) {
-        virReportInvalidArg(flags,
-                            _("flags in %s must include VIR_MEMORY_VIRTUAL or "
-                              "VIR_MEMORY_PHYSICAL"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags must include VIR_MEMORY_VIRTUAL or "
+                              "VIR_MEMORY_PHYSICAL"));
         goto error;
     }
 
@@ -7142,8 +7127,8 @@ virDomainSendKey(virDomainPtr domain,
 
     if (nkeycodes > VIR_DOMAIN_SEND_KEY_MAX_KEYS) {
         virReportInvalidArg(nkeycodes,
-                            _("nkeycodes in %s must be <= %d"),
-                            __FUNCTION__, VIR_DOMAIN_SEND_KEY_MAX_KEYS);
+                            _("nkeycodes must be <= %d"),
+                            VIR_DOMAIN_SEND_KEY_MAX_KEYS);
         goto error;
     }
 
@@ -7339,10 +7324,10 @@ virDomainSetVcpusFlags(virDomainPtr domain, unsigned int nvcpus,
 
     if (flags & VIR_DOMAIN_VCPU_GUEST &&
         flags & VIR_DOMAIN_VCPU_MAXIMUM) {
-        virReportInvalidArg(flags,
+        virReportInvalidArg(flags, "%s",
                             _("flags 'VIR_DOMAIN_VCPU_MAXIMUM' and "
-                              "'VIR_DOMAIN_VCPU_GUEST' in '%s' are mutually "
-                              "exclusive"), __FUNCTION__);
+                              "'VIR_DOMAIN_VCPU_GUEST' in are mutually "
+                              "exclusive"));
         goto error;
     }
 
@@ -7416,10 +7401,9 @@ virDomainGetVcpusFlags(virDomainPtr domain, unsigned int flags)
     /* At most one of these two flags should be set.  */
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' "
+                              "are mutually exclusive"));
         goto error;
     }
 
@@ -7622,10 +7606,9 @@ virDomainGetVcpuPinInfo(virDomainPtr domain, int ncpumaps,
     /* At most one of these two flags should be set.  */
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' "
+                              "are mutually exclusive"));
         goto error;
     }
 
@@ -7752,10 +7735,9 @@ virDomainGetEmulatorPinInfo(virDomainPtr domain, unsigned char *cpumap,
     /* At most one of these two flags should be set.  */
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' "
+                              "are mutually exclusive"));
         goto error;
     }
     conn = domain->conn;
@@ -7877,6 +7859,271 @@ virDomainGetMaxVcpus(virDomainPtr domain)
     if (conn->driver->domainGetMaxVcpus) {
         int ret;
         ret = conn->driver->domainGetMaxVcpus(domain);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virReportUnsupportedError();
+
+ error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
+
+/**
+ * virDomainGetIOThreadInfo:
+ * @dom: a domain object
+ * @info: pointer to an array of virDomainIOThreadInfo structures (OUT)
+ * @flags: bitwise-OR of virDomainModificationImpact
+ *     Must not be VIR_DOMAIN_AFFECT_LIVE and
+ *     VIR_DOMAIN_AFFECT_CONFIG concurrently.
+ *
+ * Fetch IOThreads of an active domain including the cpumap information to
+ * determine on which CPU the IOThread has affinity to run.
+ *
+ * Returns the number of IOThreads or -1 in case of error.
+ * On success, the array of information is stored into @info. The caller is
+ * responsible for calling virDomainIOThreadInfoFree() on each array element,
+ * then calling free() on @info. On error, @info is set to NULL.
+ */
+int
+virDomainGetIOThreadInfo(virDomainPtr dom,
+                         virDomainIOThreadInfoPtr **info,
+                         unsigned int flags)
+{
+    VIR_DOMAIN_DEBUG(dom, "info=%p flags=%x", info, flags);
+
+    virResetLastError();
+
+    virCheckDomainReturn(dom, -1);
+    virCheckNonNullArgGoto(info, error);
+    *info = NULL;
+
+    /* At most one of these two flags should be set.  */
+    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
+        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' "
+                              "are mutually exclusive"));
+        goto error;
+    }
+
+    if (dom->conn->driver->domainGetIOThreadInfo) {
+        int ret;
+        ret = dom->conn->driver->domainGetIOThreadInfo(dom, info, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virReportUnsupportedError();
+
+ error:
+    virDispatchError(dom->conn);
+    return -1;
+}
+
+
+/**
+ * virDomainIOThreadInfoFree:
+ * @info: pointer to a virDomainIOThreadInfo object
+ *
+ * Frees the memory used by @info.
+ */
+void
+virDomainIOThreadInfoFree(virDomainIOThreadInfoPtr info)
+{
+    if (!info)
+        return;
+
+    VIR_FREE(info->cpumap);
+    VIR_FREE(info);
+}
+
+
+/**
+ * virDomainPinIOThread:
+ * @domain: a domain object
+ * @iothread_id: the IOThread ID to set the CPU affinity
+ * @cpumap: pointer to a bit map of real CPUs (in 8-bit bytes) (IN)
+ *      Each bit set to 1 means that corresponding CPU is usable.
+ *      Bytes are stored in little-endian order: CPU0-7, 8-15...
+ *      In each byte, lowest CPU number is least significant bit.
+ * @maplen: number of bytes in cpumap, from 1 up to size of CPU map in
+ *      underlying virtualization system (Xen...).
+ *      If maplen < size, missing bytes are set to zero.
+ *      If maplen > size, failure code is returned.
+ * @flags: bitwise-OR of virDomainModificationImpact
+ *
+ * Dynamically change the real CPUs which can be allocated to an IOThread.
+ * This function may require privileged access to the hypervisor.
+ *
+ * @flags may include VIR_DOMAIN_AFFECT_LIVE or VIR_DOMAIN_AFFECT_CONFIG.
+ * Both flags may be set.
+ * If VIR_DOMAIN_AFFECT_LIVE is set, the change affects a running domain
+ * and may fail if domain is not alive.
+ * If VIR_DOMAIN_AFFECT_CONFIG is set, the change affects persistent state,
+ * and will fail for transient domains. If neither flag is specified (that is,
+ * @flags is VIR_DOMAIN_AFFECT_CURRENT), then an inactive domain modifies
+ * persistent setup, while an active domain is hypervisor-dependent on whether
+ * just live or both live and persistent state is changed.
+ * Not all hypervisors can support all flag combinations.
+ *
+ * See also virDomainGetIOThreadInfo for querying this information.
+ *
+ * Returns 0 in case of success, -1 in case of failure.
+ */
+int
+virDomainPinIOThread(virDomainPtr domain,
+                     unsigned int iothread_id,
+                     unsigned char *cpumap,
+                     int maplen,
+                     unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "iothread_id=%u, cpumap=%p, maplen=%d",
+                     iothread_id, cpumap, maplen);
+
+    virResetLastError();
+
+    virCheckDomainReturn(domain, -1);
+    conn = domain->conn;
+
+    virCheckReadOnlyGoto(conn->flags, error);
+    if ((unsigned short) iothread_id != iothread_id) {
+        virReportError(VIR_ERR_OVERFLOW, _("input too large: %u"),
+                       iothread_id);
+        goto error;
+    }
+    virCheckPositiveArgGoto(iothread_id, error);
+    virCheckNonNullArgGoto(cpumap, error);
+    virCheckPositiveArgGoto(maplen, error);
+
+    if (conn->driver->domainPinIOThread) {
+        int ret;
+        ret = conn->driver->domainPinIOThread(domain, iothread_id,
+                                              cpumap, maplen, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virReportUnsupportedError();
+
+ error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
+
+/**
+ * virDomainAddIOThread:
+ * @domain: a domain object
+ * @iothread_id: the specific IOThread ID value to add
+ * @flags: bitwise-OR of virDomainModificationImpact
+ *
+ * Dynamically add an IOThread to the domain. If @iothread_id is a positive
+ * non-zero value, then attempt to add the specific IOThread ID and error
+ * out if the iothread id already exists.
+ *
+ * Note that this call can fail if the underlying virtualization hypervisor
+ * does not support it or if growing the number is arbitrarily limited.
+ * This function requires privileged access to the hypervisor.
+ *
+ * @flags may include VIR_DOMAIN_AFFECT_LIVE or VIR_DOMAIN_AFFECT_CONFIG.
+ * Both flags may be set.
+ * If VIR_DOMAIN_AFFECT_LIVE is set, the change affects a running domain
+ * and may fail if domain is not alive.
+ * If VIR_DOMAIN_AFFECT_CONFIG is set, the change affects persistent state,
+ * and will fail for transient domains. If neither flag is specified (that is,
+ * @flags is VIR_DOMAIN_AFFECT_CURRENT), then an inactive domain modifies
+ * persistent setup, while an active domain is hypervisor-dependent on whether
+ * just live or both live and persistent state is changed.
+ *
+ * Returns 0 in case of success, -1 in case of failure.
+ */
+int
+virDomainAddIOThread(virDomainPtr domain,
+                     unsigned int iothread_id,
+                     unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "iothread_id=%u, flags=%x",
+                     iothread_id, flags);
+
+    virResetLastError();
+
+    virCheckDomainReturn(domain, -1);
+    virCheckReadOnlyGoto(domain->conn->flags, error);
+
+    conn = domain->conn;
+
+    if (conn->driver->domainAddIOThread) {
+        int ret;
+        ret = conn->driver->domainAddIOThread(domain, iothread_id, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virReportUnsupportedError();
+
+ error:
+    virDispatchError(domain->conn);
+    return -1;
+}
+
+
+/**
+ * virDomainDelIOThread:
+ * @domain: a domain object
+ * @iothread_id: the specific IOThread ID value to delete
+ * @flags: bitwise-OR of virDomainModificationImpact
+ *
+ * Dynamically delete an IOThread from the domain. The @iothread_id to be
+ * deleted must not have a resource associated with it and can be any of
+ * the currently valid IOThread ID's.
+ *
+ * Note that this call can fail if the underlying virtualization hypervisor
+ * does not support it or if reducing the number is arbitrarily limited.
+ * This function requires privileged access to the hypervisor.
+ *
+ * @flags may include VIR_DOMAIN_AFFECT_LIVE or VIR_DOMAIN_AFFECT_CONFIG.
+ * Both flags may be set.
+ * If VIR_DOMAIN_AFFECT_LIVE is set, the change affects a running domain
+ * and may fail if domain is not alive.
+ * If VIR_DOMAIN_AFFECT_CONFIG is set, the change affects persistent state,
+ * and will fail for transient domains. If neither flag is specified (that is,
+ * @flags is VIR_DOMAIN_AFFECT_CURRENT), then an inactive domain modifies
+ * persistent setup, while an active domain is hypervisor-dependent on whether
+ * just live or both live and persistent state is changed.
+ *
+ * Returns 0 in case of success, -1 in case of failure.
+ */
+int
+virDomainDelIOThread(virDomainPtr domain,
+                     unsigned int iothread_id,
+                     unsigned int flags)
+{
+    virConnectPtr conn;
+
+    VIR_DOMAIN_DEBUG(domain, "iothread_id=%u, flags=%x", iothread_id, flags);
+
+    virResetLastError();
+
+    virCheckDomainReturn(domain, -1);
+    virCheckReadOnlyGoto(domain->conn->flags, error);
+    virCheckNonZeroArgGoto(iothread_id, error);
+
+    conn = domain->conn;
+
+    if (conn->driver->domainDelIOThread) {
+        int ret;
+        ret = conn->driver->domainDelIOThread(domain, iothread_id, flags);
         if (ret < 0)
             goto error;
         return ret;
@@ -8030,10 +8277,9 @@ virDomainSetMetadata(virDomainPtr domain,
     switch (type) {
     case VIR_DOMAIN_METADATA_TITLE:
         if (metadata && strchr(metadata, '\n')) {
-            virReportInvalidArg(metadata,
-                                _("metadata title in %s can't contain "
-                                  "newlines"),
-                                __FUNCTION__);
+            virReportInvalidArg(metadata, "%s",
+                                _("metadata title can't contain "
+                                  "newlines"));
             goto error;
         }
         /* fallthrough */
@@ -8108,10 +8354,9 @@ virDomainGetMetadata(virDomainPtr domain,
 
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' "
+                              "are mutually exclusive"));
         goto error;
     }
 
@@ -8266,6 +8511,13 @@ virDomainAttachDeviceFlags(virDomainPtr domain,
  * into S4 state (also known as hibernation) unless you also modify the
  * persistent domain definition.
  *
+ * The supplied XML description of the device should be as specific
+ * as its definition in the domain XML. The set of attributes used
+ * to match the device are internal to the drivers. Using a partial definition,
+ * or attempting to detach a device that is not present in the domain XML,
+ * but shares some specific attributes with one that is present,
+ * may lead to unexpected results.
+ *
  * Returns 0 in case of success, -1 in case of failure.
  */
 int
@@ -8329,7 +8581,7 @@ virDomainDetachDevice(virDomainPtr domain, const char *xml)
  * configuration before it was actually removed by the hypervisor causing
  * various failures on subsequent operations. To check whether the device was
  * successfully removed, either recheck domain configuration using
- * virDomainGetXMLDesc() or add handler for VIR_DOMAIN_EVENT_ID_DEVICE_REMOVED
+ * virDomainGetXMLDesc() or add a handler for the VIR_DOMAIN_EVENT_ID_DEVICE_REMOVED
  * event. In case the device is already gone when virDomainDetachDeviceFlags
  * returns, the event is delivered before this API call ends. To help existing
  * clients work better in most cases, this API will try to transform an
@@ -8340,6 +8592,13 @@ virDomainDetachDevice(virDomainPtr domain, const char *xml)
  * Be aware that hotplug changes might not persist across a domain going
  * into S4 state (also known as hibernation) unless you also modify the
  * persistent domain definition.
+ *
+ * The supplied XML description of the device should be as specific
+ * as its definition in the domain XML. The set of attributes used
+ * to match the device are internal to the drivers. Using a partial definition,
+ * or attempting to detach a device that is not present in the domain XML,
+ * but shares some specific attributes with one that is present,
+ * may lead to unexpected results.
  *
  * Returns 0 in case of success, -1 in case of failure.
  */
@@ -9035,8 +9294,8 @@ virConnectDomainEventRegisterAny(virConnectPtr conn,
         virCheckDomainGoto(dom, error);
         if (dom->conn != conn) {
             virReportInvalidArg(dom,
-                                _("domain '%s' in %s must match connection"),
-                                dom->name, __FUNCTION__);
+                                _("domain '%s' must match connection"),
+                                dom->name);
             goto error;
         }
     }
@@ -9044,8 +9303,8 @@ virConnectDomainEventRegisterAny(virConnectPtr conn,
     virCheckNonNegativeArgGoto(eventID, error);
     if (eventID >= VIR_DOMAIN_EVENT_ID_LAST) {
         virReportInvalidArg(eventID,
-                            _("eventID in %s must be less than %d"),
-                            __FUNCTION__, VIR_DOMAIN_EVENT_ID_LAST);
+                            _("eventID must be less than %d"),
+                            VIR_DOMAIN_EVENT_ID_LAST);
         goto error;
     }
 
@@ -9145,10 +9404,9 @@ virDomainManagedSave(virDomainPtr dom, unsigned int flags)
     virCheckReadOnlyGoto(conn->flags, error);
 
     if ((flags & VIR_DOMAIN_SAVE_RUNNING) && (flags & VIR_DOMAIN_SAVE_PAUSED)) {
-        virReportInvalidArg(flags,
-                            _("running and paused flags in %s are mutually "
-                              "exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("running and paused flags are mutually "
+                              "exclusive"));
         goto error;
     }
 
@@ -9302,8 +9560,8 @@ virDomainOpenConsole(virDomainPtr dom,
 
     if (conn != st->conn) {
         virReportInvalidArg(st,
-                            _("stream in %s must match connection of domain '%s'"),
-                            __FUNCTION__, dom->name);
+                            _("stream must match connection of domain '%s'"),
+                            dom->name);
         goto error;
     }
 
@@ -9366,8 +9624,8 @@ virDomainOpenChannel(virDomainPtr dom,
 
     if (conn != st->conn) {
         virReportInvalidArg(st,
-                            _("stream in %s must match connection of domain '%s'"),
-                            __FUNCTION__, dom->name);
+                            _("stream must match connection of domain '%s'"),
+                            dom->name);
         goto error;
     }
 
@@ -9790,9 +10048,8 @@ virDomainBlockRebase(virDomainPtr dom, const char *disk,
                         VIR_DOMAIN_BLOCK_REBASE_REUSE_EXT |
                         VIR_DOMAIN_BLOCK_REBASE_COPY_RAW |
                         VIR_DOMAIN_BLOCK_REBASE_COPY_DEV)) {
-        virReportInvalidArg(flags,
-                            _("use of flags in %s requires a copy job"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("use of flags requires a copy job"));
         goto error;
     }
 
@@ -10112,8 +10369,8 @@ virDomainOpenGraphics(virDomainPtr dom,
 
     if (!S_ISSOCK(sb.st_mode)) {
         virReportInvalidArg(fd,
-                          _("fd %d in %s must be a socket"),
-                            fd, __FUNCTION__);
+                            _("fd %d must be a socket"),
+                            fd);
         goto error;
     }
 
@@ -10324,10 +10581,9 @@ virDomainGetBlockIoTune(virDomainPtr dom,
     /* At most one of these two flags should be set.  */
     if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
         (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags,
-                            _("flags 'affect live' and 'affect config' in %s "
-                              "are mutually exclusive"),
-                            __FUNCTION__);
+        virReportInvalidArg(flags, "%s",
+                            _("flags 'affect live' and 'affect config' "
+                              "are mutually exclusive"));
         goto error;
     }
     conn = dom->conn;
@@ -10449,9 +10705,8 @@ virDomainGetCPUStats(virDomainPtr domain,
      */
     if (start_cpu == -1) {
         if (ncpus != 1) {
-            virReportInvalidArg(start_cpu,
-                                _("ncpus in %s must be 1 when start_cpu is -1"),
-                                __FUNCTION__);
+            virReportInvalidArg(start_cpu, "%s",
+                                _("ncpus must be 1 when start_cpu is -1"));
             goto error;
         }
     } else {
@@ -11139,9 +11394,9 @@ virDomainListGetStats(virDomainPtr *doms,
         virCheckDomainGoto(dom, cleanup);
 
         if (dom->conn != conn) {
-            virReportError(VIR_ERR_INVALID_ARG,
+            virReportError(VIR_ERR_INVALID_ARG, "%s",
                            _("domains in 'doms' array must belong to a "
-                             "single connection in %s"), __FUNCTION__);
+                             "single connection"));
             goto cleanup;
         }
 
@@ -11248,4 +11503,126 @@ virDomainFSInfoFree(virDomainFSInfoPtr info)
     for (i = 0; i < info->ndevAlias; i++)
         VIR_FREE(info->devAlias[i]);
     VIR_FREE(info->devAlias);
+
+    VIR_FREE(info);
+}
+
+/**
+ * virDomainInterfaceAddresses:
+ * @dom: domain object
+ * @ifaces: pointer to an array of pointers pointing to interface objects
+ * @source: one of the virDomainInterfaceAddressesSource constants
+ * @flags: currently unused, pass zero
+ *
+ * Return a pointer to the allocated array of pointers to interfaces
+ * present in given domain along with their IP and MAC addresses. Note that
+ * single interface can have multiple or even 0 IP addresses.
+ *
+ * This API dynamically allocates the virDomainInterfacePtr struct based on
+ * how many interfaces domain @dom has, usually there's 1:1 correlation. The
+ * count of the interfaces is returned as the return value.
+ *
+ * If @source is VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE, the DHCP lease
+ * file associated with any virtual networks will be examined to obtain
+ * the interface addresses. This only returns data for interfaces which
+ * are connected to virtual networks managed by libvirt.
+ *
+ * If @source is VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, a configured
+ * guest agent is needed for successful return from this API. Moreover, if
+ * guest agent is used then the interface name is the one seen by guest OS.
+ * To match such interface with the one from @dom XML use MAC address or IP
+ * range.
+ *
+ * @ifaces->name and @ifaces->hwaddr are never NULL.
+ *
+ * The caller *must* free @ifaces when no longer needed. Usual use case
+ * looks like this:
+ *
+ *  virDomainInterfacePtr *ifaces = NULL;
+ *  int ifaces_count = 0;
+ *  size_t i, j;
+ *  virDomainPtr dom = ... obtain a domain here ...;
+ *
+ *  if ((ifaces_count = virDomainInterfaceAddresses(dom, &ifaces,
+ *           VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE)) < 0)
+ *      goto cleanup;
+ *
+ *  ... do something with returned values, for example:
+ *  for (i = 0; i < ifaces_count; i++) {
+ *      printf("name: %s", ifaces[i]->name);
+ *      if (ifaces[i]->hwaddr)
+ *          printf(" hwaddr: %s", ifaces[i]->hwaddr);
+ *
+ *      for (j = 0; j < ifaces[i]->naddrs; j++) {
+ *          virDomainIPAddressPtr ip_addr = ifaces[i]->addrs + j;
+ *          printf("[addr: %s prefix: %d type: %d]",
+ *                 ip_addr->addr, ip_addr->prefix, ip_addr->type);
+ *      }
+ *      printf("\n");
+ *  }
+ *
+ *  cleanup:
+ *      if (ifaces && ifaces_count > 0)
+ *          for (i = 0; i < ifaces_count; i++)
+ *              virDomainInterfaceFree(ifaces[i]);
+ *      free(ifaces);
+ *
+ * Returns the number of interfaces on success, -1 in case of error.
+ */
+int
+virDomainInterfaceAddresses(virDomainPtr dom,
+                            virDomainInterfacePtr **ifaces,
+                            unsigned int source,
+                            unsigned int flags)
+{
+    VIR_DOMAIN_DEBUG(dom, "ifaces=%p, source=%d, flags=%x", ifaces, source, flags);
+
+    virResetLastError();
+
+    if (ifaces)
+        *ifaces = NULL;
+    virCheckDomainReturn(dom, -1);
+    virCheckNonNullArgGoto(ifaces, error);
+    virCheckReadOnlyGoto(dom->conn->flags, error);
+
+    if (dom->conn->driver->domainInterfaceAddresses) {
+        int ret;
+        ret = dom->conn->driver->domainInterfaceAddresses(dom, ifaces, source, flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virReportError(VIR_ERR_NO_SUPPORT, __FUNCTION__);
+
+ error:
+    virDispatchError(dom->conn);
+    return -1;
+}
+
+
+/**
+ * virDomainInterfaceFree:
+ * @iface: an interface object
+ *
+ * Free the interface object. The data structure is
+ * freed and should not be used thereafter. If @iface
+ * is NULL, then this method has no effect.
+ */
+void
+virDomainInterfaceFree(virDomainInterfacePtr iface)
+{
+    size_t i;
+
+    if (!iface)
+        return;
+
+    VIR_FREE(iface->name);
+    VIR_FREE(iface->hwaddr);
+
+    for (i = 0; i < iface->naddrs; i++)
+        VIR_FREE(iface->addrs[i].addr);
+    VIR_FREE(iface->addrs);
+
+    VIR_FREE(iface);
 }

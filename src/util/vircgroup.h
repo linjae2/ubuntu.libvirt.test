@@ -1,7 +1,7 @@
 /*
  * vircgroup.h: methods for managing control cgroups
  *
- * Copyright (C) 2011-2014 Red Hat, Inc.
+ * Copyright (C) 2011-2015 Red Hat, Inc.
  * Copyright IBM Corp. 2008
  *
  * This library is free software; you can redistribute it and/or
@@ -46,6 +46,19 @@ enum {
 };
 
 VIR_ENUM_DECL(virCgroupController);
+/* Items of this enum are used later in virCgroupNew to create
+ * bit array stored in int. Like this:
+ *   1 << VIR_CGROUP_CONTROLLER_CPU
+ * Make sure we will not overflow */
+verify(VIR_CGROUP_CONTROLLER_LAST < 8 * sizeof(int));
+
+typedef enum {
+    VIR_CGROUP_THREAD_VCPU = 0,
+    VIR_CGROUP_THREAD_EMULATOR,
+    VIR_CGROUP_THREAD_IOTHREAD,
+
+    VIR_CGROUP_THREAD_LAST
+} virCgroupThreadName;
 
 bool virCgroupAvailable(void);
 
@@ -65,22 +78,12 @@ int virCgroupNewDomainPartition(virCgroupPtr partition,
                                 virCgroupPtr *group)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(5);
 
-int virCgroupNewVcpu(virCgroupPtr domain,
-                     int vcpuid,
-                     bool create,
-                     virCgroupPtr *group)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(4);
-
-int virCgroupNewEmulator(virCgroupPtr domain,
-                         bool create,
-                         virCgroupPtr *group)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(3);
-
-int virCgroupNewIOThread(virCgroupPtr domain,
-                         int iothreadid,
-                         bool create,
-                         virCgroupPtr *group)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(4);
+int virCgroupNewThread(virCgroupPtr domain,
+                       virCgroupThreadName nameval,
+                       int id,
+                       bool create,
+                       virCgroupPtr *group)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(5);
 
 int virCgroupNewDetect(pid_t pid,
                        int controllers,
@@ -251,6 +254,9 @@ int virCgroupGetFreezerState(virCgroupPtr group, char **state);
 int virCgroupSetCpusetMems(virCgroupPtr group, const char *mems);
 int virCgroupGetCpusetMems(virCgroupPtr group, char **mems);
 
+int virCgroupSetCpusetMemoryMigrate(virCgroupPtr group, bool migrate);
+int virCgroupGetCpusetMemoryMigrate(virCgroupPtr group, bool *migrate);
+
 int virCgroupSetCpusetCpus(virCgroupPtr group, const char *cpus);
 int virCgroupGetCpusetCpus(virCgroupPtr group, char **cpus);
 
@@ -274,8 +280,5 @@ int virCgroupSetOwner(virCgroupPtr cgroup,
 
 int virCgroupHasEmptyTasks(virCgroupPtr cgroup, int controller);
 
-int virCgroupDetectPlacement(virCgroupPtr group,
-                             pid_t pid,
-                             const char *path);
-
+bool virCgroupControllerAvailable(int controller);
 #endif /* __VIR_CGROUP_H__ */

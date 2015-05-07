@@ -57,6 +57,12 @@ int qemuDomainAttachHostDevice(virConnectPtr conn,
                                virDomainHostdevDefPtr hostdev);
 int qemuDomainFindGraphicsIndex(virDomainDefPtr def,
                                 virDomainGraphicsDefPtr dev);
+int qemuDomainAttachMemory(virQEMUDriverPtr driver,
+                           virDomainObjPtr vm,
+                           virDomainMemoryDefPtr mem);
+int qemuDomainDetachMemoryDevice(virQEMUDriverPtr driver,
+                                 virDomainObjPtr vm,
+                                 virDomainMemoryDefPtr memdef);
 int qemuDomainChangeGraphics(virQEMUDriverPtr driver,
                              virDomainObjPtr vm,
                              virDomainGraphicsDefPtr dev);
@@ -68,7 +74,6 @@ int qemuDomainChangeGraphicsPasswords(virQEMUDriverPtr driver,
                                       int asyncJob);
 int qemuDomainChangeNet(virQEMUDriverPtr driver,
                         virDomainObjPtr vm,
-                        virDomainPtr dom,
                         virDomainDeviceDefPtr dev);
 int qemuDomainChangeNetLinkState(virQEMUDriverPtr driver,
                                  virDomainObjPtr vm,
@@ -98,7 +103,12 @@ int qemuDomainAttachChrDevice(virQEMUDriverPtr driver,
 int qemuDomainDetachChrDevice(virQEMUDriverPtr driver,
                               virDomainObjPtr vm,
                               virDomainChrDefPtr chr);
-
+int qemuDomainAttachRNGDevice(virQEMUDriverPtr driver,
+                              virDomainObjPtr vm,
+                              virDomainRNGDefPtr rng);
+int qemuDomainDetachRNGDevice(virQEMUDriverPtr driver,
+                              virDomainObjPtr vm,
+                              virDomainRNGDefPtr rng);
 
 int
 qemuDomainChrInsert(virDomainDefPtr vmdef,

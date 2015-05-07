@@ -15,8 +15,12 @@ static int remoteDispatchAuthListHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchAuthList");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchAuthList(server, client, msg, rerr, ret);
+  rv = remoteDispatchAuthList(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchAuthList body has to be implemented manually */
 
@@ -36,8 +40,12 @@ static int remoteDispatchAuthPolkitHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchAuthPolkit");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchAuthPolkit(server, client, msg, rerr, ret);
+  rv = remoteDispatchAuthPolkit(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchAuthPolkit body has to be implemented manually */
 
@@ -57,8 +65,12 @@ static int remoteDispatchAuthSaslInitHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchAuthSaslInit");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchAuthSaslInit(server, client, msg, rerr, ret);
+  rv = remoteDispatchAuthSaslInit(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchAuthSaslInit body has to be implemented manually */
 
@@ -79,8 +91,12 @@ static int remoteDispatchAuthSaslStartHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchAuthSaslStart");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchAuthSaslStart(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchAuthSaslStart(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchAuthSaslStart body has to be implemented manually */
 
@@ -101,8 +117,12 @@ static int remoteDispatchAuthSaslStepHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchAuthSaslStep");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchAuthSaslStep(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchAuthSaslStep(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchAuthSaslStep body has to be implemented manually */
 
@@ -123,8 +143,12 @@ static int remoteDispatchConnectBaselineCPUHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectBaselineCPU");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectBaselineCPU(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectBaselineCPU(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectBaselineCPU(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -171,8 +195,12 @@ static int remoteDispatchConnectCloseHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectClose");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectClose(server, client, msg, rerr);
+  rv = remoteDispatchConnectClose(server, client, msg, rerr);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectClose body has to be implemented manually */
 
@@ -193,8 +221,12 @@ static int remoteDispatchConnectCompareCPUHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectCompareCPU");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectCompareCPU(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectCompareCPU(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectCompareCPU(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -242,8 +274,12 @@ static int remoteDispatchConnectDomainEventCallbackDeregisterAnyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainEventCallbackDeregisterAny");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainEventCallbackDeregisterAny(server, client, msg, rerr, args);
+  rv = remoteDispatchConnectDomainEventCallbackDeregisterAny(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectDomainEventCallbackDeregisterAny body has to be implemented manually */
 
@@ -264,8 +300,12 @@ static int remoteDispatchConnectDomainEventCallbackRegisterAnyHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainEventCallbackRegisterAny");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainEventCallbackRegisterAny(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectDomainEventCallbackRegisterAny(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectDomainEventCallbackRegisterAny body has to be implemented manually */
 
@@ -285,8 +325,12 @@ static int remoteDispatchConnectDomainEventDeregisterHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainEventDeregister");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainEventDeregister(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectDomainEventDeregister(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectDomainEventDeregister body has to be implemented manually */
 
@@ -306,8 +350,12 @@ static int remoteDispatchConnectDomainEventDeregisterAnyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainEventDeregisterAny");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainEventDeregisterAny(server, client, msg, rerr, args);
+  rv = remoteDispatchConnectDomainEventDeregisterAny(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectDomainEventDeregisterAny body has to be implemented manually */
 
@@ -327,8 +375,12 @@ static int remoteDispatchConnectDomainEventRegisterHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainEventRegister");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainEventRegister(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectDomainEventRegister(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectDomainEventRegister body has to be implemented manually */
 
@@ -348,8 +400,12 @@ static int remoteDispatchConnectDomainEventRegisterAnyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainEventRegisterAny");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainEventRegisterAny(server, client, msg, rerr, args);
+  rv = remoteDispatchConnectDomainEventRegisterAny(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectDomainEventRegisterAny body has to be implemented manually */
 
@@ -370,8 +426,12 @@ static int remoteDispatchConnectDomainXMLFromNativeHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainXMLFromNative");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainXMLFromNative(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectDomainXMLFromNative(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectDomainXMLFromNative(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -420,8 +480,12 @@ static int remoteDispatchConnectDomainXMLToNativeHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectDomainXMLToNative");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectDomainXMLToNative(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectDomainXMLToNative(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectDomainXMLToNative(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -470,8 +534,12 @@ static int remoteDispatchConnectFindStoragePoolSourcesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectFindStoragePoolSources");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectFindStoragePoolSources(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectFindStoragePoolSources(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectFindStoragePoolSources(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -523,8 +591,12 @@ static int remoteDispatchConnectGetAllDomainStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetAllDomainStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetAllDomainStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectGetAllDomainStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectGetAllDomainStats body has to be implemented manually */
 
@@ -544,8 +616,12 @@ static int remoteDispatchConnectGetCapabilitiesHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetCapabilities");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetCapabilities(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectGetCapabilities(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetCapabilities(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -593,8 +669,12 @@ static int remoteDispatchConnectGetCPUModelNamesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetCPUModelNames");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetCPUModelNames(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectGetCPUModelNames(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectGetCPUModelNames body has to be implemented manually */
 
@@ -615,8 +695,12 @@ static int remoteDispatchConnectGetDomainCapabilitiesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetDomainCapabilities");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetDomainCapabilities(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectGetDomainCapabilities(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetDomainCapabilities(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -673,8 +757,12 @@ static int remoteDispatchConnectGetHostnameHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetHostname");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetHostname(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectGetHostname(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetHostname(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -721,8 +809,12 @@ static int remoteDispatchConnectGetLibVersionHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetLibVersion");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetLibVersion(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectGetLibVersion(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetLibVersion(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -770,8 +862,12 @@ static int remoteDispatchConnectGetMaxVcpusHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetMaxVcpus");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetMaxVcpus(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectGetMaxVcpus(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetMaxVcpus(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -823,8 +919,12 @@ static int remoteDispatchConnectGetSysinfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetSysinfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetSysinfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectGetSysinfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetSysinfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -872,8 +972,12 @@ static int remoteDispatchConnectGetTypeHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetType");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetType(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectGetType(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetType(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -923,8 +1027,12 @@ static int remoteDispatchConnectGetURIHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetURI");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetURI(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectGetURI(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetURI(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -971,8 +1079,12 @@ static int remoteDispatchConnectGetVersionHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectGetVersion");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectGetVersion(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectGetVersion(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectGetVersion(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1019,8 +1131,12 @@ static int remoteDispatchConnectIsSecureHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectIsSecure");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectIsSecure(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectIsSecure(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectIsSecure(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1068,8 +1184,12 @@ static int remoteDispatchConnectListAllDomainsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListAllDomains");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListAllDomains(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListAllDomains(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectListAllDomains body has to be implemented manually */
 
@@ -1090,8 +1210,12 @@ static int remoteDispatchConnectListAllInterfacesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListAllInterfaces");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListAllInterfaces(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListAllInterfaces(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectListAllInterfaces body has to be implemented manually */
 
@@ -1112,8 +1236,12 @@ static int remoteDispatchConnectListAllNetworksHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListAllNetworks");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListAllNetworks(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListAllNetworks(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectListAllNetworks body has to be implemented manually */
 
@@ -1134,8 +1262,12 @@ static int remoteDispatchConnectListAllNodeDevicesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListAllNodeDevices");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListAllNodeDevices(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListAllNodeDevices(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectListAllNodeDevices body has to be implemented manually */
 
@@ -1156,8 +1288,12 @@ static int remoteDispatchConnectListAllNWFiltersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListAllNWFilters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListAllNWFilters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListAllNWFilters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectListAllNWFilters body has to be implemented manually */
 
@@ -1178,8 +1314,12 @@ static int remoteDispatchConnectListAllSecretsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListAllSecrets");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListAllSecrets(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListAllSecrets(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectListAllSecrets body has to be implemented manually */
 
@@ -1200,8 +1340,12 @@ static int remoteDispatchConnectListAllStoragePoolsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListAllStoragePools");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListAllStoragePools(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListAllStoragePools(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectListAllStoragePools body has to be implemented manually */
 
@@ -1222,8 +1366,12 @@ static int remoteDispatchConnectListDefinedDomainsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListDefinedDomains");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListDefinedDomains(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListDefinedDomains(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListDefinedDomains(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1284,8 +1432,12 @@ static int remoteDispatchConnectListDefinedInterfacesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListDefinedInterfaces");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListDefinedInterfaces(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListDefinedInterfaces(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListDefinedInterfaces(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1346,8 +1498,12 @@ static int remoteDispatchConnectListDefinedNetworksHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListDefinedNetworks");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListDefinedNetworks(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListDefinedNetworks(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListDefinedNetworks(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1408,8 +1564,12 @@ static int remoteDispatchConnectListDefinedStoragePoolsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListDefinedStoragePools");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListDefinedStoragePools(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListDefinedStoragePools(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListDefinedStoragePools(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1470,8 +1630,12 @@ static int remoteDispatchConnectListDomainsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListDomains");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListDomains(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListDomains(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListDomains(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1532,8 +1696,12 @@ static int remoteDispatchConnectListInterfacesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListInterfaces");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListInterfaces(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListInterfaces(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListInterfaces(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1594,8 +1762,12 @@ static int remoteDispatchConnectListNetworksHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListNetworks");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListNetworks(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListNetworks(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListNetworks(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1656,8 +1828,12 @@ static int remoteDispatchConnectListNWFiltersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListNWFilters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListNWFilters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListNWFilters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListNWFilters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1718,8 +1894,12 @@ static int remoteDispatchConnectListSecretsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListSecrets");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListSecrets(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListSecrets(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListSecrets(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1780,8 +1960,12 @@ static int remoteDispatchConnectListStoragePoolsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectListStoragePools");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectListStoragePools(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectListStoragePools(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectListStoragePools(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1841,8 +2025,12 @@ static int remoteDispatchConnectNetworkEventDeregisterAnyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNetworkEventDeregisterAny");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNetworkEventDeregisterAny(server, client, msg, rerr, args);
+  rv = remoteDispatchConnectNetworkEventDeregisterAny(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectNetworkEventDeregisterAny body has to be implemented manually */
 
@@ -1863,8 +2051,12 @@ static int remoteDispatchConnectNetworkEventRegisterAnyHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNetworkEventRegisterAny");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNetworkEventRegisterAny(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectNetworkEventRegisterAny(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectNetworkEventRegisterAny body has to be implemented manually */
 
@@ -1884,8 +2076,12 @@ static int remoteDispatchConnectNumOfDefinedDomainsHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfDefinedDomains");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfDefinedDomains(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfDefinedDomains(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfDefinedDomains(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1932,8 +2128,12 @@ static int remoteDispatchConnectNumOfDefinedInterfacesHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfDefinedInterfaces");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfDefinedInterfaces(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfDefinedInterfaces(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfDefinedInterfaces(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -1980,8 +2180,12 @@ static int remoteDispatchConnectNumOfDefinedNetworksHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfDefinedNetworks");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfDefinedNetworks(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfDefinedNetworks(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfDefinedNetworks(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2028,8 +2232,12 @@ static int remoteDispatchConnectNumOfDefinedStoragePoolsHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfDefinedStoragePools");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfDefinedStoragePools(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfDefinedStoragePools(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfDefinedStoragePools(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2076,8 +2284,12 @@ static int remoteDispatchConnectNumOfDomainsHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfDomains");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfDomains(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfDomains(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfDomains(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2124,8 +2336,12 @@ static int remoteDispatchConnectNumOfInterfacesHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfInterfaces");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfInterfaces(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfInterfaces(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfInterfaces(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2172,8 +2388,12 @@ static int remoteDispatchConnectNumOfNetworksHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfNetworks");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfNetworks(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfNetworks(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfNetworks(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2220,8 +2440,12 @@ static int remoteDispatchConnectNumOfNWFiltersHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfNWFilters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfNWFilters(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfNWFilters(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfNWFilters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2268,8 +2492,12 @@ static int remoteDispatchConnectNumOfSecretsHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfSecrets");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfSecrets(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfSecrets(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfSecrets(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2316,8 +2544,12 @@ static int remoteDispatchConnectNumOfStoragePoolsHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectNumOfStoragePools");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectNumOfStoragePools(server, client, msg, rerr, ret);
+  rv = remoteDispatchConnectNumOfStoragePools(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchConnectNumOfStoragePools(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2364,8 +2596,12 @@ static int remoteDispatchConnectOpenHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectOpen");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectOpen(server, client, msg, rerr, args);
+  rv = remoteDispatchConnectOpen(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectOpen body has to be implemented manually */
 
@@ -2386,8 +2622,12 @@ static int remoteDispatchConnectSupportsFeatureHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchConnectSupportsFeature");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchConnectSupportsFeature(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchConnectSupportsFeature(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchConnectSupportsFeature body has to be implemented manually */
 
@@ -2407,8 +2647,12 @@ static int remoteDispatchDomainAbortJobHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainAbortJob");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainAbortJob(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainAbortJob(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainAbortJob(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2444,6 +2688,61 @@ cleanup:
 
 
 
+static int remoteDispatchDomainAddIOThread(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_domain_add_iothread_args *args);
+static int remoteDispatchDomainAddIOThreadHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret ATTRIBUTE_UNUSED)
+{
+  int rv;
+  virThreadJobSet("remoteDispatchDomainAddIOThread");
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainAddIOThread(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
+}
+static int remoteDispatchDomainAddIOThread(
+    virNetServerPtr server ATTRIBUTE_UNUSED,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg ATTRIBUTE_UNUSED,
+    virNetMessageErrorPtr rerr,
+    remote_domain_add_iothread_args *args)
+{
+    int rv = -1;
+    virDomainPtr dom = NULL;
+    struct daemonClientPrivate *priv =
+        virNetServerClientGetPrivateData(client);
+
+    if (!priv->conn) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("connection not open"));
+        goto cleanup;
+    }
+
+    if (!(dom = get_nonnull_domain(priv->conn, args->dom)))
+        goto cleanup;
+
+    if (virDomainAddIOThread(dom, args->iothread_id, args->flags) < 0)
+        goto cleanup;
+
+    rv = 0;
+
+cleanup:
+    if (rv < 0)
+        virNetMessageSaveError(rerr);
+    virObjectUnref(dom);
+    return rv;
+}
+
+
+
 static int remoteDispatchDomainAttachDevice(
     virNetServerPtr server,
     virNetServerClientPtr client,
@@ -2458,8 +2757,12 @@ static int remoteDispatchDomainAttachDeviceHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainAttachDevice");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainAttachDevice(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainAttachDevice(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainAttachDevice(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2509,8 +2812,12 @@ static int remoteDispatchDomainAttachDeviceFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainAttachDeviceFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainAttachDeviceFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainAttachDeviceFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainAttachDeviceFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2560,8 +2867,12 @@ static int remoteDispatchDomainBlockCommitHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockCommit");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockCommit(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainBlockCommit(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockCommit(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2619,8 +2930,12 @@ static int remoteDispatchDomainBlockCopyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockCopy");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockCopy(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainBlockCopy(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockCopy(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2679,8 +2994,12 @@ static int remoteDispatchDomainBlockJobAbortHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockJobAbort");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockJobAbort(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainBlockJobAbort(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockJobAbort(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2730,8 +3049,12 @@ static int remoteDispatchDomainBlockJobSetSpeedHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockJobSetSpeed");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockJobSetSpeed(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainBlockJobSetSpeed(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockJobSetSpeed(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2785,8 +3108,12 @@ static int remoteDispatchDomainBlockPeekHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockPeek");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockPeek(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainBlockPeek(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainBlockPeek body has to be implemented manually */
 
@@ -2806,8 +3133,12 @@ static int remoteDispatchDomainBlockPullHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockPull");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockPull(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainBlockPull(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockPull(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2860,8 +3191,12 @@ static int remoteDispatchDomainBlockRebaseHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockRebase");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockRebase(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainBlockRebase(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockRebase(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2917,8 +3252,12 @@ static int remoteDispatchDomainBlockResizeHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockResize");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockResize(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainBlockResize(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockResize(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -2969,8 +3308,12 @@ static int remoteDispatchDomainBlockStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainBlockStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainBlockStats(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3028,8 +3371,12 @@ static int remoteDispatchDomainBlockStatsFlagsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainBlockStatsFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainBlockStatsFlags(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainBlockStatsFlags(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainBlockStatsFlags body has to be implemented manually */
 
@@ -3049,8 +3396,12 @@ static int remoteDispatchDomainCoreDumpHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainCoreDump");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainCoreDump(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainCoreDump(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainCoreDump(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3100,8 +3451,12 @@ static int remoteDispatchDomainCoreDumpWithFormatHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainCoreDumpWithFormat");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainCoreDumpWithFormat(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainCoreDumpWithFormat(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainCoreDumpWithFormat(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3151,8 +3506,12 @@ static int remoteDispatchDomainCreateHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainCreate");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainCreate(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainCreate(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainCreate(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3203,8 +3562,12 @@ static int remoteDispatchDomainCreateWithFilesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainCreateWithFiles");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainCreateWithFiles(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainCreateWithFiles(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainCreateWithFiles body has to be implemented manually */
 
@@ -3225,8 +3588,12 @@ static int remoteDispatchDomainCreateWithFlagsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainCreateWithFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainCreateWithFlags(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainCreateWithFlags(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainCreateWithFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3279,8 +3646,12 @@ static int remoteDispatchDomainCreateXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainCreateXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainCreateXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainCreateXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainCreateXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3330,8 +3701,12 @@ static int remoteDispatchDomainCreateXMLWithFilesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainCreateXMLWithFiles");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainCreateXMLWithFiles(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainCreateXMLWithFiles(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainCreateXMLWithFiles body has to be implemented manually */
 
@@ -3352,8 +3727,12 @@ static int remoteDispatchDomainDefineXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainDefineXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainDefineXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainDefineXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainDefineXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3403,8 +3782,12 @@ static int remoteDispatchDomainDefineXMLFlagsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainDefineXMLFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainDefineXMLFlags(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainDefineXMLFlags(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainDefineXMLFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3439,6 +3822,61 @@ cleanup:
 
 
 
+static int remoteDispatchDomainDelIOThread(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_domain_del_iothread_args *args);
+static int remoteDispatchDomainDelIOThreadHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret ATTRIBUTE_UNUSED)
+{
+  int rv;
+  virThreadJobSet("remoteDispatchDomainDelIOThread");
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainDelIOThread(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
+}
+static int remoteDispatchDomainDelIOThread(
+    virNetServerPtr server ATTRIBUTE_UNUSED,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg ATTRIBUTE_UNUSED,
+    virNetMessageErrorPtr rerr,
+    remote_domain_del_iothread_args *args)
+{
+    int rv = -1;
+    virDomainPtr dom = NULL;
+    struct daemonClientPrivate *priv =
+        virNetServerClientGetPrivateData(client);
+
+    if (!priv->conn) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("connection not open"));
+        goto cleanup;
+    }
+
+    if (!(dom = get_nonnull_domain(priv->conn, args->dom)))
+        goto cleanup;
+
+    if (virDomainDelIOThread(dom, args->iothread_id, args->flags) < 0)
+        goto cleanup;
+
+    rv = 0;
+
+cleanup:
+    if (rv < 0)
+        virNetMessageSaveError(rerr);
+    virObjectUnref(dom);
+    return rv;
+}
+
+
+
 static int remoteDispatchDomainDestroy(
     virNetServerPtr server,
     virNetServerClientPtr client,
@@ -3453,8 +3891,12 @@ static int remoteDispatchDomainDestroyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainDestroy");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainDestroy(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainDestroy(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainDestroy(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3504,8 +3946,12 @@ static int remoteDispatchDomainDestroyFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainDestroyFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainDestroyFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainDestroyFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainDestroyFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3555,8 +4001,12 @@ static int remoteDispatchDomainDetachDeviceHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainDetachDevice");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainDetachDevice(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainDetachDevice(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainDetachDevice(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3606,8 +4056,12 @@ static int remoteDispatchDomainDetachDeviceFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainDetachDeviceFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainDetachDeviceFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainDetachDeviceFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainDetachDeviceFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3658,8 +4112,12 @@ static int remoteDispatchDomainFSFreezeHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainFSFreeze");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainFSFreeze(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainFSFreeze(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainFSFreeze(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3713,8 +4171,12 @@ static int remoteDispatchDomainFSThawHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainFSThaw");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainFSThaw(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainFSThaw(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainFSThaw(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3767,8 +4229,12 @@ static int remoteDispatchDomainFSTrimHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainFSTrim");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainFSTrim(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainFSTrim(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainFSTrim(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3822,8 +4288,12 @@ static int remoteDispatchDomainGetAutostartHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetAutostart");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetAutostart(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetAutostart(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetAutostart(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3877,8 +4347,12 @@ static int remoteDispatchDomainGetBlkioParametersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetBlkioParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetBlkioParameters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetBlkioParameters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetBlkioParameters body has to be implemented manually */
 
@@ -3899,8 +4373,12 @@ static int remoteDispatchDomainGetBlockInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetBlockInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetBlockInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetBlockInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetBlockInfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -3956,8 +4434,12 @@ static int remoteDispatchDomainGetBlockIoTuneHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetBlockIoTune");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetBlockIoTune(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetBlockIoTune(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetBlockIoTune body has to be implemented manually */
 
@@ -3978,8 +4460,12 @@ static int remoteDispatchDomainGetBlockJobInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetBlockJobInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetBlockJobInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetBlockJobInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetBlockJobInfo body has to be implemented manually */
 
@@ -4000,8 +4486,12 @@ static int remoteDispatchDomainGetControlInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetControlInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetControlInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetControlInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetControlInfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4057,8 +4547,12 @@ static int remoteDispatchDomainGetCPUStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetCPUStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetCPUStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetCPUStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetCPUStats body has to be implemented manually */
 
@@ -4079,8 +4573,12 @@ static int remoteDispatchDomainGetDiskErrorsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetDiskErrors");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetDiskErrors(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetDiskErrors(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetDiskErrors body has to be implemented manually */
 
@@ -4101,8 +4599,12 @@ static int remoteDispatchDomainGetEmulatorPinInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetEmulatorPinInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetEmulatorPinInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetEmulatorPinInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetEmulatorPinInfo body has to be implemented manually */
 
@@ -4123,8 +4625,12 @@ static int remoteDispatchDomainGetFSInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetFSInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetFSInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetFSInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetFSInfo body has to be implemented manually */
 
@@ -4145,8 +4651,12 @@ static int remoteDispatchDomainGetHostnameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetHostname");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetHostname(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetHostname(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetHostname(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4200,8 +4710,12 @@ static int remoteDispatchDomainGetInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetInfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4259,10 +4773,40 @@ static int remoteDispatchDomainGetInterfaceParametersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetInterfaceParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetInterfaceParameters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetInterfaceParameters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetInterfaceParameters body has to be implemented manually */
+
+
+
+static int remoteDispatchDomainGetIOThreadInfo(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_domain_get_iothread_info_args *args,
+    remote_domain_get_iothread_info_ret *ret);
+static int remoteDispatchDomainGetIOThreadInfoHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret)
+{
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetIOThreadInfo");
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetIOThreadInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
+}
+/* remoteDispatchDomainGetIOThreadInfo body has to be implemented manually */
 
 
 
@@ -4281,8 +4825,12 @@ static int remoteDispatchDomainGetJobInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetJobInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetJobInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetJobInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetJobInfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4347,8 +4895,12 @@ static int remoteDispatchDomainGetJobStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetJobStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetJobStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetJobStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetJobStats body has to be implemented manually */
 
@@ -4369,8 +4921,12 @@ static int remoteDispatchDomainGetMaxMemoryHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetMaxMemory");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetMaxMemory(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetMaxMemory(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetMaxMemory(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4424,8 +4980,12 @@ static int remoteDispatchDomainGetMaxVcpusHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetMaxVcpus");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetMaxVcpus(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetMaxVcpus(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetMaxVcpus(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4479,8 +5039,12 @@ static int remoteDispatchDomainGetMemoryParametersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetMemoryParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetMemoryParameters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetMemoryParameters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetMemoryParameters body has to be implemented manually */
 
@@ -4501,8 +5065,12 @@ static int remoteDispatchDomainGetMetadataHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetMetadata");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetMetadata(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetMetadata(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetMetadata(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4559,8 +5127,12 @@ static int remoteDispatchDomainGetNumaParametersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetNumaParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetNumaParameters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetNumaParameters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetNumaParameters body has to be implemented manually */
 
@@ -4581,8 +5153,12 @@ static int remoteDispatchDomainGetOSTypeHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetOSType");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetOSType(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetOSType(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetOSType(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4636,8 +5212,12 @@ static int remoteDispatchDomainGetSchedulerParametersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetSchedulerParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetSchedulerParameters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetSchedulerParameters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetSchedulerParameters body has to be implemented manually */
 
@@ -4658,8 +5238,12 @@ static int remoteDispatchDomainGetSchedulerParametersFlagsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetSchedulerParametersFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetSchedulerParametersFlags(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetSchedulerParametersFlags(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetSchedulerParametersFlags body has to be implemented manually */
 
@@ -4680,8 +5264,12 @@ static int remoteDispatchDomainGetSchedulerTypeHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetSchedulerType");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetSchedulerType(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetSchedulerType(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetSchedulerType body has to be implemented manually */
 
@@ -4702,8 +5290,12 @@ static int remoteDispatchDomainGetSecurityLabelHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetSecurityLabel");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetSecurityLabel(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetSecurityLabel(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetSecurityLabel body has to be implemented manually */
 
@@ -4724,8 +5316,12 @@ static int remoteDispatchDomainGetSecurityLabelListHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetSecurityLabelList");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetSecurityLabelList(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetSecurityLabelList(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetSecurityLabelList body has to be implemented manually */
 
@@ -4746,8 +5342,12 @@ static int remoteDispatchDomainGetStateHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetState");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetState(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetState(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetState body has to be implemented manually */
 
@@ -4768,8 +5368,12 @@ static int remoteDispatchDomainGetTimeHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetTime");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetTime(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetTime(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetTime body has to be implemented manually */
 
@@ -4790,8 +5394,12 @@ static int remoteDispatchDomainGetVcpuPinInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetVcpuPinInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetVcpuPinInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetVcpuPinInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetVcpuPinInfo body has to be implemented manually */
 
@@ -4812,8 +5420,12 @@ static int remoteDispatchDomainGetVcpusHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetVcpus");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetVcpus(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetVcpus(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainGetVcpus body has to be implemented manually */
 
@@ -4834,8 +5446,12 @@ static int remoteDispatchDomainGetVcpusFlagsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetVcpusFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetVcpusFlags(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetVcpusFlags(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetVcpusFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4889,8 +5505,12 @@ static int remoteDispatchDomainGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4944,8 +5564,12 @@ static int remoteDispatchDomainHasCurrentSnapshotHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainHasCurrentSnapshot");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainHasCurrentSnapshot(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainHasCurrentSnapshot(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainHasCurrentSnapshot(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -4999,8 +5623,12 @@ static int remoteDispatchDomainHasManagedSaveImageHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainHasManagedSaveImage");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainHasManagedSaveImage(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainHasManagedSaveImage(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainHasManagedSaveImage(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5053,8 +5681,12 @@ static int remoteDispatchDomainInjectNMIHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainInjectNMI");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainInjectNMI(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainInjectNMI(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainInjectNMI(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5090,6 +5722,32 @@ cleanup:
 
 
 
+static int remoteDispatchDomainInterfaceAddresses(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_domain_interface_addresses_args *args,
+    remote_domain_interface_addresses_ret *ret);
+static int remoteDispatchDomainInterfaceAddressesHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret)
+{
+  int rv;
+  virThreadJobSet("remoteDispatchDomainInterfaceAddresses");
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainInterfaceAddresses(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
+}
+/* remoteDispatchDomainInterfaceAddresses body has to be implemented manually */
+
+
+
 static int remoteDispatchDomainInterfaceStats(
     virNetServerPtr server,
     virNetServerClientPtr client,
@@ -5105,8 +5763,12 @@ static int remoteDispatchDomainInterfaceStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainInterfaceStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainInterfaceStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainInterfaceStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainInterfaceStats(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5167,8 +5829,12 @@ static int remoteDispatchDomainIsActiveHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainIsActive");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainIsActive(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainIsActive(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainIsActive(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5222,8 +5888,12 @@ static int remoteDispatchDomainIsPersistentHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainIsPersistent");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainIsPersistent(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainIsPersistent(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainIsPersistent(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5277,8 +5947,12 @@ static int remoteDispatchDomainIsUpdatedHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainIsUpdated");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainIsUpdated(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainIsUpdated(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainIsUpdated(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5332,8 +6006,12 @@ static int remoteDispatchDomainListAllSnapshotsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainListAllSnapshots");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainListAllSnapshots(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainListAllSnapshots(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainListAllSnapshots body has to be implemented manually */
 
@@ -5354,8 +6032,12 @@ static int remoteDispatchDomainLookupByIDHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainLookupByID");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainLookupByID(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainLookupByID(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainLookupByID(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5405,8 +6087,12 @@ static int remoteDispatchDomainLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5456,8 +6142,12 @@ static int remoteDispatchDomainLookupByUUIDHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainLookupByUUID");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainLookupByUUID(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainLookupByUUID(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainLookupByUUID(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5506,8 +6196,12 @@ static int remoteDispatchDomainManagedSaveHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainManagedSave");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainManagedSave(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainManagedSave(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainManagedSave(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5557,8 +6251,12 @@ static int remoteDispatchDomainManagedSaveRemoveHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainManagedSaveRemove");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainManagedSaveRemove(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainManagedSaveRemove(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainManagedSaveRemove(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5609,8 +6307,12 @@ static int remoteDispatchDomainMemoryPeekHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMemoryPeek");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMemoryPeek(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMemoryPeek(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMemoryPeek body has to be implemented manually */
 
@@ -5631,8 +6333,12 @@ static int remoteDispatchDomainMemoryStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMemoryStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMemoryStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMemoryStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMemoryStats body has to be implemented manually */
 
@@ -5653,8 +6359,12 @@ static int remoteDispatchDomainMigrateBegin3Helper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateBegin3");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateBegin3(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateBegin3(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigrateBegin3 body has to be implemented manually */
 
@@ -5675,8 +6385,12 @@ static int remoteDispatchDomainMigrateBegin3ParamsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateBegin3Params");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateBegin3Params(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateBegin3Params(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigrateBegin3Params body has to be implemented manually */
 
@@ -5696,8 +6410,12 @@ static int remoteDispatchDomainMigrateConfirm3Helper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateConfirm3");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateConfirm3(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainMigrateConfirm3(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigrateConfirm3 body has to be implemented manually */
 
@@ -5717,8 +6435,12 @@ static int remoteDispatchDomainMigrateConfirm3ParamsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateConfirm3Params");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateConfirm3Params(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainMigrateConfirm3Params(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigrateConfirm3Params body has to be implemented manually */
 
@@ -5739,8 +6461,12 @@ static int remoteDispatchDomainMigrateFinishHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateFinish");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateFinish(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateFinish(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigrateFinish(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5793,8 +6519,12 @@ static int remoteDispatchDomainMigrateFinish2Helper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateFinish2");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateFinish2(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateFinish2(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigrateFinish2(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5847,8 +6577,12 @@ static int remoteDispatchDomainMigrateFinish3Helper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateFinish3");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateFinish3(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateFinish3(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigrateFinish3 body has to be implemented manually */
 
@@ -5869,8 +6603,12 @@ static int remoteDispatchDomainMigrateFinish3ParamsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateFinish3Params");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateFinish3Params(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateFinish3Params(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigrateFinish3Params body has to be implemented manually */
 
@@ -5891,8 +6629,12 @@ static int remoteDispatchDomainMigrateGetCompressionCacheHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateGetCompressionCache");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateGetCompressionCache(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateGetCompressionCache(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigrateGetCompressionCache(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -5946,8 +6688,12 @@ static int remoteDispatchDomainMigrateGetMaxSpeedHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateGetMaxSpeed");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateGetMaxSpeed(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigrateGetMaxSpeed(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigrateGetMaxSpeed(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6000,8 +6746,12 @@ static int remoteDispatchDomainMigratePerformHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePerform");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePerform(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainMigratePerform(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigratePerform(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6061,8 +6811,12 @@ static int remoteDispatchDomainMigratePerform3Helper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePerform3");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePerform3(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePerform3(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigratePerform3 body has to be implemented manually */
 
@@ -6083,8 +6837,12 @@ static int remoteDispatchDomainMigratePerform3ParamsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePerform3Params");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePerform3Params(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePerform3Params(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigratePerform3Params body has to be implemented manually */
 
@@ -6105,8 +6863,12 @@ static int remoteDispatchDomainMigratePrepareHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePrepare");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePrepare(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePrepare(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigratePrepare body has to be implemented manually */
 
@@ -6127,8 +6889,12 @@ static int remoteDispatchDomainMigratePrepare2Helper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePrepare2");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePrepare2(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePrepare2(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigratePrepare2 body has to be implemented manually */
 
@@ -6149,8 +6915,12 @@ static int remoteDispatchDomainMigratePrepare3Helper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePrepare3");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePrepare3(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePrepare3(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigratePrepare3 body has to be implemented manually */
 
@@ -6171,8 +6941,12 @@ static int remoteDispatchDomainMigratePrepare3ParamsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePrepare3Params");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePrepare3Params(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePrepare3Params(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigratePrepare3Params body has to be implemented manually */
 
@@ -6192,8 +6966,12 @@ static int remoteDispatchDomainMigratePrepareTunnelHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePrepareTunnel");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePrepareTunnel(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainMigratePrepareTunnel(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigratePrepareTunnel(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6266,8 +7044,12 @@ static int remoteDispatchDomainMigratePrepareTunnel3Helper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePrepareTunnel3");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePrepareTunnel3(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePrepareTunnel3(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigratePrepareTunnel3(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6346,8 +7128,12 @@ static int remoteDispatchDomainMigratePrepareTunnel3ParamsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigratePrepareTunnel3Params");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigratePrepareTunnel3Params(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainMigratePrepareTunnel3Params(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainMigratePrepareTunnel3Params body has to be implemented manually */
 
@@ -6367,8 +7153,12 @@ static int remoteDispatchDomainMigrateSetCompressionCacheHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateSetCompressionCache");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateSetCompressionCache(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainMigrateSetCompressionCache(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigrateSetCompressionCache(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6418,8 +7208,12 @@ static int remoteDispatchDomainMigrateSetMaxDowntimeHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateSetMaxDowntime");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateSetMaxDowntime(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainMigrateSetMaxDowntime(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigrateSetMaxDowntime(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6469,8 +7263,12 @@ static int remoteDispatchDomainMigrateSetMaxSpeedHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainMigrateSetMaxSpeed");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainMigrateSetMaxSpeed(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainMigrateSetMaxSpeed(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainMigrateSetMaxSpeed(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6523,8 +7321,12 @@ static int remoteDispatchDomainOpenChannelHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainOpenChannel");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainOpenChannel(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainOpenChannel(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainOpenChannel(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6595,8 +7397,12 @@ static int remoteDispatchDomainOpenConsoleHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainOpenConsole");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainOpenConsole(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainOpenConsole(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainOpenConsole(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6667,8 +7473,12 @@ static int remoteDispatchDomainOpenGraphicsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainOpenGraphics");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainOpenGraphics(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainOpenGraphics(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainOpenGraphics body has to be implemented manually */
 
@@ -6688,8 +7498,12 @@ static int remoteDispatchDomainOpenGraphicsFdHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainOpenGraphicsFd");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainOpenGraphicsFd(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainOpenGraphicsFd(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainOpenGraphicsFd body has to be implemented manually */
 
@@ -6709,10 +7523,69 @@ static int remoteDispatchDomainPinEmulatorHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainPinEmulator");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainPinEmulator(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainPinEmulator(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainPinEmulator body has to be implemented manually */
+
+
+
+static int remoteDispatchDomainPinIOThread(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    remote_domain_pin_iothread_args *args);
+static int remoteDispatchDomainPinIOThreadHelper(
+    virNetServerPtr server,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg,
+    virNetMessageErrorPtr rerr,
+    void *args,
+    void *ret ATTRIBUTE_UNUSED)
+{
+  int rv;
+  virThreadJobSet("remoteDispatchDomainPinIOThread");
+  VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainPinIOThread(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
+}
+static int remoteDispatchDomainPinIOThread(
+    virNetServerPtr server ATTRIBUTE_UNUSED,
+    virNetServerClientPtr client,
+    virNetMessagePtr msg ATTRIBUTE_UNUSED,
+    virNetMessageErrorPtr rerr,
+    remote_domain_pin_iothread_args *args)
+{
+    int rv = -1;
+    virDomainPtr dom = NULL;
+    struct daemonClientPrivate *priv =
+        virNetServerClientGetPrivateData(client);
+
+    if (!priv->conn) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("connection not open"));
+        goto cleanup;
+    }
+
+    if (!(dom = get_nonnull_domain(priv->conn, args->dom)))
+        goto cleanup;
+
+    if (virDomainPinIOThread(dom, args->iothreads_id, (unsigned char *) args->cpumap.cpumap_val, args->cpumap.cpumap_len, args->flags) < 0)
+        goto cleanup;
+
+    rv = 0;
+
+cleanup:
+    if (rv < 0)
+        virNetMessageSaveError(rerr);
+    virObjectUnref(dom);
+    return rv;
+}
 
 
 
@@ -6730,8 +7603,12 @@ static int remoteDispatchDomainPinVcpuHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainPinVcpu");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainPinVcpu(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainPinVcpu(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainPinVcpu(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6781,8 +7658,12 @@ static int remoteDispatchDomainPinVcpuFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainPinVcpuFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainPinVcpuFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainPinVcpuFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainPinVcpuFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6832,8 +7713,12 @@ static int remoteDispatchDomainPMSuspendForDurationHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainPMSuspendForDuration");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainPMSuspendForDuration(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainPMSuspendForDuration(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainPMSuspendForDuration(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6883,8 +7768,12 @@ static int remoteDispatchDomainPMWakeupHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainPMWakeup");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainPMWakeup(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainPMWakeup(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainPMWakeup(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6934,8 +7823,12 @@ static int remoteDispatchDomainRebootHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainReboot");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainReboot(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainReboot(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainReboot(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -6985,8 +7878,12 @@ static int remoteDispatchDomainResetHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainReset");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainReset(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainReset(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainReset(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7036,8 +7933,12 @@ static int remoteDispatchDomainRestoreHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainRestore");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainRestore(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainRestore(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainRestore(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7082,8 +7983,12 @@ static int remoteDispatchDomainRestoreFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainRestoreFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainRestoreFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainRestoreFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainRestoreFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7131,8 +8036,12 @@ static int remoteDispatchDomainResumeHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainResume");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainResume(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainResume(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainResume(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7182,8 +8091,12 @@ static int remoteDispatchDomainRevertToSnapshotHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainRevertToSnapshot");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainRevertToSnapshot(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainRevertToSnapshot(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainRevertToSnapshot(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7238,8 +8151,12 @@ static int remoteDispatchDomainSaveHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSave");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSave(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSave(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSave(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7289,8 +8206,12 @@ static int remoteDispatchDomainSaveFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSaveFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSaveFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSaveFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSaveFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7343,8 +8264,12 @@ static int remoteDispatchDomainSaveImageDefineXMLHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSaveImageDefineXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSaveImageDefineXML(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSaveImageDefineXML(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSaveImageDefineXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7390,8 +8315,12 @@ static int remoteDispatchDomainSaveImageGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSaveImageGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSaveImageGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSaveImageGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSaveImageGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7440,8 +8369,12 @@ static int remoteDispatchDomainScreenshotHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainScreenshot");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainScreenshot(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainScreenshot(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainScreenshot(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7521,8 +8454,12 @@ static int remoteDispatchDomainSendKeyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSendKey");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSendKey(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSendKey(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSendKey(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7572,8 +8509,12 @@ static int remoteDispatchDomainSendProcessSignalHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSendProcessSignal");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSendProcessSignal(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSendProcessSignal(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSendProcessSignal(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7623,8 +8564,12 @@ static int remoteDispatchDomainSetAutostartHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetAutostart");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetAutostart(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetAutostart(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetAutostart(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7674,8 +8619,12 @@ static int remoteDispatchDomainSetBlkioParametersHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetBlkioParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetBlkioParameters(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetBlkioParameters(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetBlkioParameters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7734,8 +8683,12 @@ static int remoteDispatchDomainSetBlockIoTuneHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetBlockIoTune");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetBlockIoTune(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetBlockIoTune(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetBlockIoTune(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7794,8 +8747,12 @@ static int remoteDispatchDomainSetInterfaceParametersHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetInterfaceParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetInterfaceParameters(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetInterfaceParameters(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetInterfaceParameters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7854,8 +8811,12 @@ static int remoteDispatchDomainSetMaxMemoryHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetMaxMemory");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetMaxMemory(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetMaxMemory(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetMaxMemory(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7908,8 +8869,12 @@ static int remoteDispatchDomainSetMemoryHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetMemory");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetMemory(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetMemory(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetMemory(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -7962,8 +8927,12 @@ static int remoteDispatchDomainSetMemoryFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetMemoryFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetMemoryFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetMemoryFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetMemoryFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8016,8 +8985,12 @@ static int remoteDispatchDomainSetMemoryParametersHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetMemoryParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetMemoryParameters(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetMemoryParameters(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetMemoryParameters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8076,8 +9049,12 @@ static int remoteDispatchDomainSetMemoryStatsPeriodHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetMemoryStatsPeriod");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetMemoryStatsPeriod(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetMemoryStatsPeriod(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetMemoryStatsPeriod(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8127,8 +9104,12 @@ static int remoteDispatchDomainSetMetadataHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetMetadata");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetMetadata(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetMetadata(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetMetadata(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8185,8 +9166,12 @@ static int remoteDispatchDomainSetNumaParametersHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetNumaParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetNumaParameters(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetNumaParameters(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetNumaParameters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8245,8 +9230,12 @@ static int remoteDispatchDomainSetSchedulerParametersHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetSchedulerParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetSchedulerParameters(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetSchedulerParameters(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetSchedulerParameters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8305,8 +9294,12 @@ static int remoteDispatchDomainSetSchedulerParametersFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetSchedulerParametersFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetSchedulerParametersFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetSchedulerParametersFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetSchedulerParametersFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8365,8 +9358,12 @@ static int remoteDispatchDomainSetTimeHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetTime");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetTime(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetTime(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetTime(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8416,8 +9413,12 @@ static int remoteDispatchDomainSetVcpusHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetVcpus");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetVcpus(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetVcpus(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetVcpus(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8467,8 +9468,12 @@ static int remoteDispatchDomainSetVcpusFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSetVcpusFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSetVcpusFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSetVcpusFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSetVcpusFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8518,8 +9523,12 @@ static int remoteDispatchDomainShutdownHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainShutdown");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainShutdown(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainShutdown(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainShutdown(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8569,8 +9578,12 @@ static int remoteDispatchDomainShutdownFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainShutdownFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainShutdownFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainShutdownFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainShutdownFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8621,8 +9634,12 @@ static int remoteDispatchDomainSnapshotCreateXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotCreateXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotCreateXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotCreateXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotCreateXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8677,8 +9694,12 @@ static int remoteDispatchDomainSnapshotCurrentHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotCurrent");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotCurrent(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotCurrent(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotCurrent(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8732,8 +9753,12 @@ static int remoteDispatchDomainSnapshotDeleteHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotDelete");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotDelete(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSnapshotDelete(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotDelete(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8789,8 +9814,12 @@ static int remoteDispatchDomainSnapshotGetParentHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotGetParent");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotGetParent(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotGetParent(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotGetParent(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8850,8 +9879,12 @@ static int remoteDispatchDomainSnapshotGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8910,8 +9943,12 @@ static int remoteDispatchDomainSnapshotHasMetadataHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotHasMetadata");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotHasMetadata(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotHasMetadata(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotHasMetadata(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -8970,8 +10007,12 @@ static int remoteDispatchDomainSnapshotIsCurrentHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotIsCurrent");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotIsCurrent(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotIsCurrent(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotIsCurrent(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9030,8 +10071,12 @@ static int remoteDispatchDomainSnapshotListAllChildrenHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotListAllChildren");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotListAllChildren(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotListAllChildren(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchDomainSnapshotListAllChildren body has to be implemented manually */
 
@@ -9052,8 +10097,12 @@ static int remoteDispatchDomainSnapshotListChildrenNamesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotListChildrenNames");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotListChildrenNames(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotListChildrenNames(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotListChildrenNames(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9124,8 +10173,12 @@ static int remoteDispatchDomainSnapshotListNamesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotListNames");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotListNames(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotListNames(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotListNames(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9191,8 +10244,12 @@ static int remoteDispatchDomainSnapshotLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9247,8 +10304,12 @@ static int remoteDispatchDomainSnapshotNumHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotNum");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotNum(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotNum(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotNum(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9302,8 +10363,12 @@ static int remoteDispatchDomainSnapshotNumChildrenHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSnapshotNumChildren");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSnapshotNumChildren(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchDomainSnapshotNumChildren(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSnapshotNumChildren(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9361,8 +10426,12 @@ static int remoteDispatchDomainSuspendHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainSuspend");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainSuspend(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainSuspend(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainSuspend(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9412,8 +10481,12 @@ static int remoteDispatchDomainUndefineHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainUndefine");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainUndefine(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainUndefine(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainUndefine(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9463,8 +10536,12 @@ static int remoteDispatchDomainUndefineFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainUndefineFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainUndefineFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainUndefineFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainUndefineFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9514,8 +10591,12 @@ static int remoteDispatchDomainUpdateDeviceFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchDomainUpdateDeviceFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchDomainUpdateDeviceFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchDomainUpdateDeviceFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchDomainUpdateDeviceFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9565,8 +10646,12 @@ static int remoteDispatchInterfaceChangeBeginHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceChangeBegin");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceChangeBegin(server, client, msg, rerr, args);
+  rv = remoteDispatchInterfaceChangeBegin(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceChangeBegin(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9611,8 +10696,12 @@ static int remoteDispatchInterfaceChangeCommitHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceChangeCommit");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceChangeCommit(server, client, msg, rerr, args);
+  rv = remoteDispatchInterfaceChangeCommit(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceChangeCommit(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9657,8 +10746,12 @@ static int remoteDispatchInterfaceChangeRollbackHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceChangeRollback");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceChangeRollback(server, client, msg, rerr, args);
+  rv = remoteDispatchInterfaceChangeRollback(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceChangeRollback(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9703,8 +10796,12 @@ static int remoteDispatchInterfaceCreateHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceCreate");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceCreate(server, client, msg, rerr, args);
+  rv = remoteDispatchInterfaceCreate(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceCreate(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9755,8 +10852,12 @@ static int remoteDispatchInterfaceDefineXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceDefineXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceDefineXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchInterfaceDefineXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceDefineXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9805,8 +10906,12 @@ static int remoteDispatchInterfaceDestroyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceDestroy");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceDestroy(server, client, msg, rerr, args);
+  rv = remoteDispatchInterfaceDestroy(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceDestroy(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9857,8 +10962,12 @@ static int remoteDispatchInterfaceGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchInterfaceGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9912,8 +11021,12 @@ static int remoteDispatchInterfaceIsActiveHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceIsActive");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceIsActive(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchInterfaceIsActive(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceIsActive(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -9967,8 +11080,12 @@ static int remoteDispatchInterfaceLookupByMACStringHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceLookupByMACString");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceLookupByMACString(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchInterfaceLookupByMACString(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceLookupByMACString(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10018,8 +11135,12 @@ static int remoteDispatchInterfaceLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchInterfaceLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10068,8 +11189,12 @@ static int remoteDispatchInterfaceUndefineHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchInterfaceUndefine");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchInterfaceUndefine(server, client, msg, rerr, args);
+  rv = remoteDispatchInterfaceUndefine(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchInterfaceUndefine(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10119,8 +11244,12 @@ static int remoteDispatchNetworkCreateHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkCreate");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkCreate(server, client, msg, rerr, args);
+  rv = remoteDispatchNetworkCreate(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkCreate(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10171,8 +11300,12 @@ static int remoteDispatchNetworkCreateXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkCreateXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkCreateXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkCreateXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkCreateXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10222,8 +11355,12 @@ static int remoteDispatchNetworkDefineXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkDefineXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkDefineXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkDefineXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkDefineXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10272,8 +11409,12 @@ static int remoteDispatchNetworkDestroyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkDestroy");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkDestroy(server, client, msg, rerr, args);
+  rv = remoteDispatchNetworkDestroy(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkDestroy(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10324,8 +11465,12 @@ static int remoteDispatchNetworkGetAutostartHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkGetAutostart");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkGetAutostart(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkGetAutostart(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkGetAutostart(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10379,8 +11524,12 @@ static int remoteDispatchNetworkGetBridgeNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkGetBridgeName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkGetBridgeName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkGetBridgeName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkGetBridgeName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10434,8 +11583,12 @@ static int remoteDispatchNetworkGetDHCPLeasesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkGetDHCPLeases");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkGetDHCPLeases(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkGetDHCPLeases(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNetworkGetDHCPLeases body has to be implemented manually */
 
@@ -10456,8 +11609,12 @@ static int remoteDispatchNetworkGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10511,8 +11668,12 @@ static int remoteDispatchNetworkIsActiveHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkIsActive");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkIsActive(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkIsActive(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkIsActive(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10566,8 +11727,12 @@ static int remoteDispatchNetworkIsPersistentHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkIsPersistent");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkIsPersistent(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkIsPersistent(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkIsPersistent(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10621,8 +11786,12 @@ static int remoteDispatchNetworkLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10672,8 +11841,12 @@ static int remoteDispatchNetworkLookupByUUIDHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkLookupByUUID");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkLookupByUUID(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNetworkLookupByUUID(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkLookupByUUID(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10722,8 +11895,12 @@ static int remoteDispatchNetworkSetAutostartHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkSetAutostart");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkSetAutostart(server, client, msg, rerr, args);
+  rv = remoteDispatchNetworkSetAutostart(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkSetAutostart(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10773,8 +11950,12 @@ static int remoteDispatchNetworkUndefineHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkUndefine");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkUndefine(server, client, msg, rerr, args);
+  rv = remoteDispatchNetworkUndefine(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkUndefine(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10824,8 +12005,12 @@ static int remoteDispatchNetworkUpdateHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNetworkUpdate");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNetworkUpdate(server, client, msg, rerr, args);
+  rv = remoteDispatchNetworkUpdate(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNetworkUpdate(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10876,8 +12061,12 @@ static int remoteDispatchNodeAllocPagesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeAllocPages");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeAllocPages(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeAllocPages(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeAllocPages body has to be implemented manually */
 
@@ -10898,8 +12087,12 @@ static int remoteDispatchNodeDeviceCreateXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceCreateXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceCreateXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeDeviceCreateXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceCreateXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10948,8 +12141,12 @@ static int remoteDispatchNodeDeviceDestroyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceDestroy");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceDestroy(server, client, msg, rerr, args);
+  rv = remoteDispatchNodeDeviceDestroy(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceDestroy(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -10999,8 +12196,12 @@ static int remoteDispatchNodeDeviceDetachFlagsHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceDetachFlags");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceDetachFlags(server, client, msg, rerr, args);
+  rv = remoteDispatchNodeDeviceDetachFlags(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceDetachFlags(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11053,8 +12254,12 @@ static int remoteDispatchNodeDeviceDettachHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceDettach");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceDettach(server, client, msg, rerr, args);
+  rv = remoteDispatchNodeDeviceDettach(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceDettach(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11105,8 +12310,12 @@ static int remoteDispatchNodeDeviceGetParentHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceGetParent");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceGetParent(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeDeviceGetParent(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeDeviceGetParent body has to be implemented manually */
 
@@ -11127,8 +12336,12 @@ static int remoteDispatchNodeDeviceGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeDeviceGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11182,8 +12395,12 @@ static int remoteDispatchNodeDeviceListCapsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceListCaps");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceListCaps(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeDeviceListCaps(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceListCaps(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11249,8 +12466,12 @@ static int remoteDispatchNodeDeviceLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeDeviceLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11300,8 +12521,12 @@ static int remoteDispatchNodeDeviceLookupSCSIHostByWWNHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceLookupSCSIHostByWWN");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceLookupSCSIHostByWWN(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeDeviceLookupSCSIHostByWWN(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceLookupSCSIHostByWWN(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11351,8 +12576,12 @@ static int remoteDispatchNodeDeviceNumOfCapsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceNumOfCaps");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceNumOfCaps(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeDeviceNumOfCaps(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceNumOfCaps(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11405,8 +12634,12 @@ static int remoteDispatchNodeDeviceReAttachHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceReAttach");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceReAttach(server, client, msg, rerr, args);
+  rv = remoteDispatchNodeDeviceReAttach(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceReAttach(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11456,8 +12689,12 @@ static int remoteDispatchNodeDeviceResetHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeDeviceReset");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeDeviceReset(server, client, msg, rerr, args);
+  rv = remoteDispatchNodeDeviceReset(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeDeviceReset(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11508,8 +12745,12 @@ static int remoteDispatchNodeGetCellsFreeMemoryHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetCellsFreeMemory");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetCellsFreeMemory(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeGetCellsFreeMemory(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeGetCellsFreeMemory(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11570,8 +12811,12 @@ static int remoteDispatchNodeGetCPUMapHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetCPUMap");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetCPUMap(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeGetCPUMap(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeGetCPUMap body has to be implemented manually */
 
@@ -11592,8 +12837,12 @@ static int remoteDispatchNodeGetCPUStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetCPUStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetCPUStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeGetCPUStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeGetCPUStats body has to be implemented manually */
 
@@ -11613,8 +12862,12 @@ static int remoteDispatchNodeGetFreeMemoryHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetFreeMemory");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetFreeMemory(server, client, msg, rerr, ret);
+  rv = remoteDispatchNodeGetFreeMemory(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeGetFreeMemory(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11662,8 +12915,12 @@ static int remoteDispatchNodeGetFreePagesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetFreePages");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetFreePages(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeGetFreePages(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeGetFreePages body has to be implemented manually */
 
@@ -11683,8 +12940,12 @@ static int remoteDispatchNodeGetInfoHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetInfo(server, client, msg, rerr, ret);
+  rv = remoteDispatchNodeGetInfo(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeGetInfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11739,8 +13000,12 @@ static int remoteDispatchNodeGetMemoryParametersHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetMemoryParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetMemoryParameters(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeGetMemoryParameters(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeGetMemoryParameters body has to be implemented manually */
 
@@ -11761,8 +13026,12 @@ static int remoteDispatchNodeGetMemoryStatsHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetMemoryStats");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetMemoryStats(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeGetMemoryStats(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeGetMemoryStats body has to be implemented manually */
 
@@ -11782,8 +13051,12 @@ static int remoteDispatchNodeGetSecurityModelHelper(
     void *args ATTRIBUTE_UNUSED,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeGetSecurityModel");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeGetSecurityModel(server, client, msg, rerr, ret);
+  rv = remoteDispatchNodeGetSecurityModel(server, client, msg, rerr, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchNodeGetSecurityModel body has to be implemented manually */
 
@@ -11804,8 +13077,12 @@ static int remoteDispatchNodeListDevicesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeListDevices");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeListDevices(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeListDevices(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeListDevices(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11869,8 +13146,12 @@ static int remoteDispatchNodeNumOfDevicesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeNumOfDevices");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeNumOfDevices(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNodeNumOfDevices(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeNumOfDevices(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11921,8 +13202,12 @@ static int remoteDispatchNodeSetMemoryParametersHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeSetMemoryParameters");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeSetMemoryParameters(server, client, msg, rerr, args);
+  rv = remoteDispatchNodeSetMemoryParameters(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeSetMemoryParameters(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -11976,8 +13261,12 @@ static int remoteDispatchNodeSuspendForDurationHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNodeSuspendForDuration");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNodeSuspendForDuration(server, client, msg, rerr, args);
+  rv = remoteDispatchNodeSuspendForDuration(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNodeSuspendForDuration(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12023,8 +13312,12 @@ static int remoteDispatchNWFilterDefineXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNWFilterDefineXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNWFilterDefineXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNWFilterDefineXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNWFilterDefineXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12074,8 +13367,12 @@ static int remoteDispatchNWFilterGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNWFilterGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNWFilterGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNWFilterGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNWFilterGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12129,8 +13426,12 @@ static int remoteDispatchNWFilterLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNWFilterLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNWFilterLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNWFilterLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNWFilterLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12180,8 +13481,12 @@ static int remoteDispatchNWFilterLookupByUUIDHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNWFilterLookupByUUID");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNWFilterLookupByUUID(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchNWFilterLookupByUUID(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNWFilterLookupByUUID(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12230,8 +13535,12 @@ static int remoteDispatchNWFilterUndefineHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchNWFilterUndefine");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchNWFilterUndefine(server, client, msg, rerr, args);
+  rv = remoteDispatchNWFilterUndefine(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchNWFilterUndefine(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12282,8 +13591,12 @@ static int remoteDispatchSecretDefineXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchSecretDefineXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchSecretDefineXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchSecretDefineXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchSecretDefineXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12333,8 +13646,12 @@ static int remoteDispatchSecretGetValueHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchSecretGetValue");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchSecretGetValue(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchSecretGetValue(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchSecretGetValue body has to be implemented manually */
 
@@ -12355,8 +13672,12 @@ static int remoteDispatchSecretGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchSecretGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchSecretGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchSecretGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchSecretGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12410,8 +13731,12 @@ static int remoteDispatchSecretLookupByUsageHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchSecretLookupByUsage");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchSecretLookupByUsage(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchSecretLookupByUsage(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchSecretLookupByUsage(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12461,8 +13786,12 @@ static int remoteDispatchSecretLookupByUUIDHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchSecretLookupByUUID");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchSecretLookupByUUID(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchSecretLookupByUUID(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchSecretLookupByUUID(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12511,8 +13840,12 @@ static int remoteDispatchSecretSetValueHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchSecretSetValue");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchSecretSetValue(server, client, msg, rerr, args);
+  rv = remoteDispatchSecretSetValue(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchSecretSetValue(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12562,8 +13895,12 @@ static int remoteDispatchSecretUndefineHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchSecretUndefine");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchSecretUndefine(server, client, msg, rerr, args);
+  rv = remoteDispatchSecretUndefine(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchSecretUndefine(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12613,8 +13950,12 @@ static int remoteDispatchStoragePoolBuildHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolBuild");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolBuild(server, client, msg, rerr, args);
+  rv = remoteDispatchStoragePoolBuild(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolBuild(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12664,8 +14005,12 @@ static int remoteDispatchStoragePoolCreateHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolCreate");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolCreate(server, client, msg, rerr, args);
+  rv = remoteDispatchStoragePoolCreate(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolCreate(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12716,8 +14061,12 @@ static int remoteDispatchStoragePoolCreateXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolCreateXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolCreateXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolCreateXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolCreateXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12767,8 +14116,12 @@ static int remoteDispatchStoragePoolDefineXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolDefineXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolDefineXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolDefineXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolDefineXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12817,8 +14170,12 @@ static int remoteDispatchStoragePoolDeleteHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolDelete");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolDelete(server, client, msg, rerr, args);
+  rv = remoteDispatchStoragePoolDelete(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolDelete(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12868,8 +14225,12 @@ static int remoteDispatchStoragePoolDestroyHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolDestroy");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolDestroy(server, client, msg, rerr, args);
+  rv = remoteDispatchStoragePoolDestroy(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolDestroy(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12920,8 +14281,12 @@ static int remoteDispatchStoragePoolGetAutostartHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolGetAutostart");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolGetAutostart(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolGetAutostart(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolGetAutostart(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -12975,8 +14340,12 @@ static int remoteDispatchStoragePoolGetInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolGetInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolGetInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolGetInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolGetInfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13033,8 +14402,12 @@ static int remoteDispatchStoragePoolGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13088,8 +14461,12 @@ static int remoteDispatchStoragePoolIsActiveHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolIsActive");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolIsActive(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolIsActive(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolIsActive(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13143,8 +14520,12 @@ static int remoteDispatchStoragePoolIsPersistentHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolIsPersistent");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolIsPersistent(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolIsPersistent(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolIsPersistent(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13198,8 +14579,12 @@ static int remoteDispatchStoragePoolListAllVolumesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolListAllVolumes");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolListAllVolumes(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolListAllVolumes(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 /* remoteDispatchStoragePoolListAllVolumes body has to be implemented manually */
 
@@ -13220,8 +14605,12 @@ static int remoteDispatchStoragePoolListVolumesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolListVolumes");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolListVolumes(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolListVolumes(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolListVolumes(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13287,8 +14676,12 @@ static int remoteDispatchStoragePoolLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13338,8 +14731,12 @@ static int remoteDispatchStoragePoolLookupByUUIDHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolLookupByUUID");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolLookupByUUID(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolLookupByUUID(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolLookupByUUID(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13389,8 +14786,12 @@ static int remoteDispatchStoragePoolLookupByVolumeHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolLookupByVolume");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolLookupByVolume(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolLookupByVolume(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolLookupByVolume(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13445,8 +14846,12 @@ static int remoteDispatchStoragePoolNumOfVolumesHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolNumOfVolumes");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolNumOfVolumes(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStoragePoolNumOfVolumes(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolNumOfVolumes(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13499,8 +14904,12 @@ static int remoteDispatchStoragePoolRefreshHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolRefresh");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolRefresh(server, client, msg, rerr, args);
+  rv = remoteDispatchStoragePoolRefresh(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolRefresh(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13550,8 +14959,12 @@ static int remoteDispatchStoragePoolSetAutostartHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolSetAutostart");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolSetAutostart(server, client, msg, rerr, args);
+  rv = remoteDispatchStoragePoolSetAutostart(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolSetAutostart(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13601,8 +15014,12 @@ static int remoteDispatchStoragePoolUndefineHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStoragePoolUndefine");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStoragePoolUndefine(server, client, msg, rerr, args);
+  rv = remoteDispatchStoragePoolUndefine(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStoragePoolUndefine(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13653,8 +15070,12 @@ static int remoteDispatchStorageVolCreateXMLHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolCreateXML");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolCreateXML(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolCreateXML(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolCreateXML(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13709,8 +15130,12 @@ static int remoteDispatchStorageVolCreateXMLFromHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolCreateXMLFrom");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolCreateXMLFrom(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolCreateXMLFrom(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolCreateXMLFrom(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13769,8 +15194,12 @@ static int remoteDispatchStorageVolDeleteHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolDelete");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolDelete(server, client, msg, rerr, args);
+  rv = remoteDispatchStorageVolDelete(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolDelete(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13820,8 +15249,12 @@ static int remoteDispatchStorageVolDownloadHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolDownload");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolDownload(server, client, msg, rerr, args);
+  rv = remoteDispatchStorageVolDownload(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolDownload(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13890,8 +15323,12 @@ static int remoteDispatchStorageVolGetInfoHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolGetInfo");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolGetInfo(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolGetInfo(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolGetInfo(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -13947,8 +15384,12 @@ static int remoteDispatchStorageVolGetPathHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolGetPath");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolGetPath(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolGetPath(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolGetPath(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14002,8 +15443,12 @@ static int remoteDispatchStorageVolGetXMLDescHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolGetXMLDesc");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolGetXMLDesc(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolGetXMLDesc(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolGetXMLDesc(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14057,8 +15502,12 @@ static int remoteDispatchStorageVolLookupByKeyHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolLookupByKey");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolLookupByKey(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolLookupByKey(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolLookupByKey(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14108,8 +15557,12 @@ static int remoteDispatchStorageVolLookupByNameHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolLookupByName");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolLookupByName(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolLookupByName(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolLookupByName(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14164,8 +15617,12 @@ static int remoteDispatchStorageVolLookupByPathHelper(
     void *args,
     void *ret)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolLookupByPath");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolLookupByPath(server, client, msg, rerr, args, ret);
+  rv = remoteDispatchStorageVolLookupByPath(server, client, msg, rerr, args, ret);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolLookupByPath(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14214,8 +15671,12 @@ static int remoteDispatchStorageVolResizeHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolResize");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolResize(server, client, msg, rerr, args);
+  rv = remoteDispatchStorageVolResize(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolResize(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14265,8 +15726,12 @@ static int remoteDispatchStorageVolUploadHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolUpload");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolUpload(server, client, msg, rerr, args);
+  rv = remoteDispatchStorageVolUpload(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolUpload(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14334,8 +15799,12 @@ static int remoteDispatchStorageVolWipeHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolWipe");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolWipe(server, client, msg, rerr, args);
+  rv = remoteDispatchStorageVolWipe(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolWipe(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -14385,8 +15854,12 @@ static int remoteDispatchStorageVolWipePatternHelper(
     void *args,
     void *ret ATTRIBUTE_UNUSED)
 {
+  int rv;
+  virThreadJobSet("remoteDispatchStorageVolWipePattern");
   VIR_DEBUG("server=%p client=%p msg=%p rerr=%p args=%p ret=%p", server, client, msg, rerr, args, ret);
-  return remoteDispatchStorageVolWipePattern(server, client, msg, rerr, args);
+  rv = remoteDispatchStorageVolWipePattern(server, client, msg, rerr, args);
+  virThreadJobClear(rv);
+  return rv;
 }
 static int remoteDispatchStorageVolWipePattern(
     virNetServerPtr server ATTRIBUTE_UNUSED,
@@ -17581,6 +19054,60 @@ virNetServerProgramProc remoteProcs[] = {
    (xdrproc_t)xdr_remote_domain_define_xml_flags_ret,
    true,
    1
+},
+{ /* Method DomainGetIOThreadInfo => 351 */
+   remoteDispatchDomainGetIOThreadInfoHelper,
+   sizeof(remote_domain_get_iothread_info_args),
+   (xdrproc_t)xdr_remote_domain_get_iothread_info_args,
+   sizeof(remote_domain_get_iothread_info_ret),
+   (xdrproc_t)xdr_remote_domain_get_iothread_info_ret,
+   true,
+   0
+},
+{ /* Method DomainPinIOThread => 352 */
+   remoteDispatchDomainPinIOThreadHelper,
+   sizeof(remote_domain_pin_iothread_args),
+   (xdrproc_t)xdr_remote_domain_pin_iothread_args,
+   0,
+   (xdrproc_t)xdr_void,
+   true,
+   0
+},
+{ /* Method DomainInterfaceAddresses => 353 */
+   remoteDispatchDomainInterfaceAddressesHelper,
+   sizeof(remote_domain_interface_addresses_args),
+   (xdrproc_t)xdr_remote_domain_interface_addresses_args,
+   sizeof(remote_domain_interface_addresses_ret),
+   (xdrproc_t)xdr_remote_domain_interface_addresses_ret,
+   true,
+   0
+},
+{ /* Async event DomainEventCallbackDeviceAdded => 354 */
+   NULL,
+   0,
+   (xdrproc_t)xdr_void,
+   0,
+   (xdrproc_t)xdr_void,
+   true,
+   0
+},
+{ /* Method DomainAddIOThread => 355 */
+   remoteDispatchDomainAddIOThreadHelper,
+   sizeof(remote_domain_add_iothread_args),
+   (xdrproc_t)xdr_remote_domain_add_iothread_args,
+   0,
+   (xdrproc_t)xdr_void,
+   true,
+   0
+},
+{ /* Method DomainDelIOThread => 356 */
+   remoteDispatchDomainDelIOThreadHelper,
+   sizeof(remote_domain_del_iothread_args),
+   (xdrproc_t)xdr_remote_domain_del_iothread_args,
+   0,
+   (xdrproc_t)xdr_void,
+   true,
+   0
 },
 };
 size_t remoteNProcs = ARRAY_CARDINALITY(remoteProcs);

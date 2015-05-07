@@ -772,8 +772,8 @@ lxcSetMemTune(virDomainDefPtr def, virConfPtr properties)
         if (lxcConvertSize(value->str, &size) < 0)
             return -1;
         size = size / 1024;
-        def->mem.max_balloon = size;
-        def->mem.hard_limit = size;
+        virDomainDefSetMemoryInitial(def, size);
+        def->mem.hard_limit = virMemoryLimitTruncate(size);
     }
 
     if ((value = virConfGetValue(properties,
@@ -782,7 +782,7 @@ lxcSetMemTune(virDomainDefPtr def, virConfPtr properties)
         if (lxcConvertSize(value->str, &size) < 0)
             return -1;
 
-        def->mem.soft_limit = size / 1024;
+        def->mem.soft_limit = virMemoryLimitTruncate(size / 1024);
     }
 
     if ((value = virConfGetValue(properties,
@@ -791,7 +791,7 @@ lxcSetMemTune(virDomainDefPtr def, virConfPtr properties)
         if (lxcConvertSize(value->str, &size) < 0)
             return -1;
 
-       def->mem.swap_hard_limit = size / 1024;
+        def->mem.swap_hard_limit = virMemoryLimitTruncate(size / 1024);
     }
     return 0;
 }
@@ -847,7 +847,7 @@ lxcSetCpusetTune(virDomainDefPtr def, virConfPtr properties)
         value->str) {
         if (virBitmapParse(value->str, 0, &nodeset, VIR_DOMAIN_CPUMASK_LEN) < 0)
             return -1;
-        if (virDomainNumatuneSet(&def->numatune,
+        if (virDomainNumatuneSet(def->numa,
                                  def->placement_mode ==
                                  VIR_DOMAIN_CPU_PLACEMENT_MODE_STATIC,
                                  VIR_DOMAIN_NUMATUNE_PLACEMENT_STATIC,
@@ -1002,7 +1002,7 @@ lxcParseConfigString(const char *config)
     if (!(properties = virConfReadMem(config, 0, VIR_CONF_FLAG_LXC_FORMAT)))
         return NULL;
 
-    if (VIR_ALLOC(vmdef) < 0)
+    if (!(vmdef = virDomainDefNew()))
         goto error;
 
     if (virUUIDGenerate(vmdef->uuid) < 0) {
@@ -1012,7 +1012,7 @@ lxcParseConfigString(const char *config)
     }
 
     vmdef->id = -1;
-    vmdef->mem.max_balloon = 64 * 1024;
+    virDomainDefSetMemoryInitial(vmdef, 64 * 1024);
 
     vmdef->onReboot = VIR_DOMAIN_LIFECYCLE_RESTART;
     vmdef->onCrash = VIR_DOMAIN_LIFECYCLE_DESTROY;
@@ -1025,9 +1025,7 @@ lxcParseConfigString(const char *config)
     vmdef->vcpus = 1;
 
     vmdef->nfss = 0;
-
-    if (VIR_STRDUP(vmdef->os.type, "exe") < 0)
-        goto error;
+    vmdef->os.type = VIR_DOMAIN_OSTYPE_EXE;
 
     if ((value = virConfGetValue(properties, "lxc.arch")) && value->str) {
         virArch arch = virArchFromString(value->str);

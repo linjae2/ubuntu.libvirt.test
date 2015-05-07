@@ -40,8 +40,6 @@ DAEMON_SOURCES =					\
 		libvirtd.c libvirtd.h			\
 		remote.c remote.h			\
 		stream.c stream.h			\
-		$(top_srcdir)/src/util/cgmanager.c      \
-		$(top_srcdir)/src/util/cgmanager.h      \
 		$(DAEMON_GENERATED)
 
 LIBVIRTD_CONF_SOURCES = libvirtd-config.c libvirtd-config.h
@@ -79,21 +77,21 @@ REMOTE_PROTOCOL = $(top_srcdir)/src/remote/remote_protocol.x
 LXC_PROTOCOL = $(top_srcdir)/src/remote/lxc_protocol.x
 QEMU_PROTOCOL = $(top_srcdir)/src/remote/qemu_protocol.x
 
-remote_dispatch.h: $(srcdir)/../src/rpc/gendispatch.pl \
+remote_dispatch.h: $(top_srcdir)/src/rpc/gendispatch.pl \
 		$(REMOTE_PROTOCOL)
-	$(AM_V_GEN)$(PERL) -w $(srcdir)/../src/rpc/gendispatch.pl \
+	$(AM_V_GEN)$(PERL) -w $(top_srcdir)/src/rpc/gendispatch.pl \
 	  --mode=server remote REMOTE $(REMOTE_PROTOCOL) \
 	  > $(srcdir)/remote_dispatch.h
 
-lxc_dispatch.h: $(srcdir)/../src/rpc/gendispatch.pl \
+lxc_dispatch.h: $(top_srcdir)/src/rpc/gendispatch.pl \
 		$(LXC_PROTOCOL)
-	$(AM_V_GEN)$(PERL) -w $(srcdir)/../src/rpc/gendispatch.pl \
+	$(AM_V_GEN)$(PERL) -w $(top_srcdir)/src/rpc/gendispatch.pl \
 	  --mode=server lxc LXC $(LXC_PROTOCOL) \
 	  > $(srcdir)/lxc_dispatch.h
 
-qemu_dispatch.h: $(srcdir)/../src/rpc/gendispatch.pl \
+qemu_dispatch.h: $(top_srcdir)/src/rpc/gendispatch.pl \
 		$(QEMU_PROTOCOL)
-	$(AM_V_GEN)$(PERL) -w $(srcdir)/../src/rpc/gendispatch.pl \
+	$(AM_V_GEN)$(PERL) -w $(top_srcdir)/src/rpc/gendispatch.pl \
 	  --mode=server qemu QEMU $(QEMU_PROTOCOL) \
 	  > $(srcdir)/qemu_dispatch.h
 
@@ -107,16 +105,14 @@ libvirtd_conf_la_CFLAGS = \
 	$(XDR_CFLAGS) \
 	$(WARN_CFLAGS) $(PIE_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
-	$(CGMANAGER_CFLAGS) \
 	$(NULL)
 libvirtd_conf_la_LDFLAGS =				\
 	$(RELRO_LDFLAGS)				\
 	$(PIE_LDFLAGS)					\
 	$(COVERAGE_LDFLAGS)				\
 	$(NO_INDIRECT_LDFLAGS)				\
-	$(NO_INDIRECT_LDFLAGS)				\
 	$(NULL)
-libvirtd_conf_la_LIBADD = $(LIBXML_LIBS) $(CGMANAGER_LIBS)
+libvirtd_conf_la_LIBADD = $(LIBXML_LIBS)
 
 man8_MANS = libvirtd.8
 
@@ -147,12 +143,8 @@ libvirtd_CFLAGS = \
 	$(LIBXML_CFLAGS) $(GNUTLS_CFLAGS) $(SASL_CFLAGS) \
 	$(XDR_CFLAGS) $(DBUS_CFLAGS) $(LIBNL_CFLAGS) \
 	$(WARN_CFLAGS) $(PIE_CFLAGS) \
-	$(COVERAGE_CFLAGS) $(CGMANAGER_CFLAGS) \
+	$(COVERAGE_CFLAGS) \
 	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\""
-
-if ENABLE_CGMANAGER
-libvirtd_CFLAGS += -DHAVE_CGMANAGER
-endif
 
 libvirtd_LDFLAGS =					\
 	$(RELRO_LDFLAGS)				\
@@ -166,7 +158,6 @@ libvirtd_LDADD =					\
 	$(GNUTLS_LIBS)					\
 	$(SASL_LIBS)					\
 	$(DBUS_LIBS)					\
-    $(CGMANAGER_LIBS)               \
 	$(LIBNL_LIBS)
 
 if WITH_DTRACE_PROBES
@@ -350,10 +341,10 @@ if WITH_SYSCTL
 install-sysctl:
 	$(MKDIR_P) $(DESTDIR)$(prefix)/lib/sysctl.d
 	$(INSTALL_DATA) $(srcdir)/libvirtd.sysctl \
-	  $(DESTDIR)$(prefix)/lib/sysctl.d/libvirtd.conf
+	  $(DESTDIR)$(prefix)/lib/sysctl.d/60-libvirtd.conf
 
 uninstall-sysctl:
-	rm -f $(DESTDIR)$(prefix)/lib/sysctl.d/libvirtd.conf
+	rm -f $(DESTDIR)$(prefix)/lib/sysctl.d/60-libvirtd.conf
 	rmdir $(DESTDIR)$(prefix)/lib/sysctl.d || :
 else ! WITH_SYSCTL
 install-sysctl:

@@ -919,17 +919,13 @@ virCommandNewArgs(const char *const*args)
 virCommandPtr
 virCommandNewArgList(const char *binary, ...)
 {
-    virCommandPtr cmd = virCommandNew(binary);
+    virCommandPtr cmd;
     va_list list;
-    const char *arg;
-
-    if (!cmd || cmd->has_error)
-        return cmd;
 
     va_start(list, binary);
-    while ((arg = va_arg(list, const char *)) != NULL)
-        virCommandAddArg(cmd, arg);
+    cmd = virCommandNewVAList(binary, list);
     va_end(list);
+
     return cmd;
 }
 
@@ -1017,6 +1013,30 @@ virCommandPassListenFDs(virCommandPtr cmd)
         return;
 
     cmd->flags |= VIR_EXEC_LISTEN_FDS;
+}
+
+/*
+ * virCommandPassFDGetFDIndex:
+ * @cmd: pointer to virCommand
+ * @fd: FD to get index of
+ *
+ * Determine the index of the FD in the transfer set.
+ *
+ * Returns index >= 0 if @set contains @fd,
+ * -1 otherwise.
+ */
+int
+virCommandPassFDGetFDIndex(virCommandPtr cmd, int fd)
+{
+    size_t i = 0;
+
+    while (i < cmd->npassfd) {
+        if (cmd->passfd[i].fd == fd)
+            return i;
+        i++;
+    }
+
+    return -1;
 }
 
 /**
@@ -2073,7 +2093,7 @@ virCommandProcessIO(virCommandPtr cmd)
                 }
             }
 
-            if (fds[i].revents & (POLLOUT | POLLERR) &&
+            if (fds[i].revents & (POLLOUT | POLLHUP | POLLERR) &&
                 fds[i].fd == cmd->inpipe) {
                 int done;
 

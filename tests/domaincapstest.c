@@ -105,6 +105,7 @@ fillQemuCaps(virDomainCapsPtr domCaps,
     struct fillQemuCapsData *data = (struct fillQemuCapsData *) opaque;
     virQEMUCapsPtr qemuCaps = data->qemuCaps;
     virQEMUDriverConfigPtr cfg = data->cfg;
+    virDomainCapsLoaderPtr loader = &domCaps->os.loader;
 
     if (virQEMUCapsFillDomainCaps(domCaps, qemuCaps,
                                   cfg->loader, cfg->nloader) < 0)
@@ -122,14 +123,15 @@ fillQemuCaps(virDomainCapsPtr domCaps,
 
     /* Moreover, as of f05b6a918e28 we are expecting to see
      * OVMF_CODE.fd file which may not exists everywhere. */
-    if (!domCaps->os.loader.values.nvalues) {
-        virDomainCapsLoaderPtr loader = &domCaps->os.loader;
+    while (loader->values.nvalues)
+        VIR_FREE(loader->values.values[--loader->values.nvalues]);
 
-        if (fillStringValues(&loader->values,
-                             "/usr/share/OVMF/OVMF_CODE.fd",
-                             NULL) < 0)
-            return -1;
-    }
+    if (fillStringValues(&loader->values,
+                         "/usr/share/AAVMF/AAVMF_CODE.fd",
+                         "/usr/share/OVMF/OVMF_CODE.fd",
+                         NULL) < 0)
+        return -1;
+
     return 0;
 }
 #endif /* WITH_QEMU */
@@ -176,14 +178,10 @@ test_virDomainCapsFormat(const void *opaque)
     virDomainCapsPtr domCaps = NULL;
     char *path = NULL;
     char *domCapsXML = NULL;
-    char *domCapsFromFile = NULL;
     int ret = -1;
 
     if (virAsprintf(&path, "%s/domaincapsschemadata/domaincaps-%s.xml",
                     abs_srcdir, data->filename) < 0)
-        goto cleanup;
-
-    if (virFileReadAll(path, 8192, &domCapsFromFile) < 0)
         goto cleanup;
 
     if (!(domCaps = buildVirDomainCaps(data->emulatorbin, data->machine,
@@ -194,14 +192,11 @@ test_virDomainCapsFormat(const void *opaque)
     if (!(domCapsXML = virDomainCapsFormat(domCaps)))
         goto cleanup;
 
-    if (STRNEQ(domCapsFromFile, domCapsXML)) {
-        virtTestDifference(stderr, domCapsFromFile, domCapsXML);
+    if (virtTestCompareToFile(domCapsXML, path) < 0)
         goto cleanup;
-    }
 
     ret = 0;
  cleanup:
-    VIR_FREE(domCapsFromFile);
     VIR_FREE(domCapsXML);
     VIR_FREE(path);
     virObjectUnref(domCaps);
@@ -247,6 +242,7 @@ mymain(void)
             ret = -1;                                                                   \
         } else if (virtTestRun(Filename, test_virDomainCapsFormat, &data) < 0)          \
             ret = -1;                                                                   \
+        virObjectUnref(qemuCaps);                                                             \
     } while (0)
 
     DO_TEST_QEMU("qemu_1.6.50-1", "caps_1.6.50-1", "/usr/bin/qemu-system-x86_64",

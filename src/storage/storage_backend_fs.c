@@ -80,7 +80,7 @@ virStorageBackendProbeTarget(virStorageSourcePtr target,
         return rc; /* Take care to propagate rc, it is not always -1 */
     fd = rc;
 
-    if (virStorageBackendUpdateVolTargetInfoFD(target, fd, &sb, true) < 0)
+    if (virStorageBackendUpdateVolTargetInfoFD(target, fd, &sb) < 0)
         goto cleanup;
 
     if (S_ISDIR(sb.st_mode)) {
@@ -533,8 +533,7 @@ virStorageBackendFileSystemUnmount(virStoragePoolObjPtr pool)
 
 
 static int
-virStorageBackendFileSystemCheck(virConnectPtr conn ATTRIBUTE_UNUSED,
-                                 virStoragePoolObjPtr pool,
+virStorageBackendFileSystemCheck(virStoragePoolObjPtr pool,
                                  bool *isActive)
 {
     if (pool->def->type == VIR_STORAGE_POOL_DIR) {
@@ -861,6 +860,12 @@ virStorageBackendFileSystemRefresh(virConnectPtr conn ATTRIBUTE_UNUSED,
     while ((direrr = virDirRead(dir, &ent, pool->def->target.path)) > 0) {
         int ret;
 
+        if (virStringHasControlChars(ent->d_name)) {
+            VIR_WARN("Ignoring file with control characters under '%s'",
+                     pool->def->target.path);
+            continue;
+        }
+
         if (VIR_ALLOC(vol) < 0)
             goto error;
 
@@ -902,7 +907,7 @@ virStorageBackendFileSystemRefresh(virConnectPtr conn ATTRIBUTE_UNUSED,
 
         if (vol->target.backingStore) {
             ignore_value(virStorageBackendUpdateVolTargetInfo(vol->target.backingStore,
-                                                              true, false,
+                                                              false,
                                                               VIR_STORAGE_VOL_OPEN_DEFAULT));
             /* If this failed, the backing file is currently unavailable,
              * the capacity, allocation, owner, group and mode are unknown.
@@ -1037,6 +1042,13 @@ static int createFileDir(virConnectPtr conn ATTRIBUTE_UNUSED,
         return -1;
     }
 
+    if (vol->target.backingStore) {
+        virReportError(VIR_ERR_NO_SUPPORT, "%s",
+                       _("backing storage not supported for directories volumes"));
+        return -1;
+    }
+
+
     if ((err = virDirCreate(vol->target.path, vol->target.perms->mode,
                             vol->target.perms->uid,
                             vol->target.perms->gid,
@@ -1105,7 +1117,9 @@ virStorageBackendFileSystemVolBuild(virConnectPtr conn,
                                     virStorageVolDefPtr vol,
                                     unsigned int flags)
 {
-    virCheckFlags(VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA, -1);
+    virCheckFlags(VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA |
+                  VIR_STORAGE_VOL_CREATE_REFLINK,
+                  -1);
 
     return _virStorageBackendFileSystemVolBuild(conn, pool, vol, NULL, flags);
 }
@@ -1120,7 +1134,9 @@ virStorageBackendFileSystemVolBuildFrom(virConnectPtr conn,
                                         virStorageVolDefPtr inputvol,
                                         unsigned int flags)
 {
-    virCheckFlags(VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA, -1);
+    virCheckFlags(VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA |
+                  VIR_STORAGE_VOL_CREATE_REFLINK,
+                  -1);
 
     return _virStorageBackendFileSystemVolBuild(conn, pool, vol, inputvol, flags);
 }
@@ -1179,10 +1195,8 @@ virStorageBackendFileSystemVolRefresh(virConnectPtr conn,
 {
     int ret;
 
-    /* Refresh allocation / permissions info in case its changed
-     * don't update the capacity value for this pass
-     */
-    ret = virStorageBackendUpdateVolInfo(vol, false, false,
+    /* Refresh allocation / capacity / permissions info in case its changed */
+    ret = virStorageBackendUpdateVolInfo(vol, false,
                                          VIR_STORAGE_VOL_FS_OPEN_FLAGS);
     if (ret < 0)
         return ret;
@@ -1262,7 +1276,8 @@ virStorageBackendFileSystemVolResize(virConnectPtr conn ATTRIBUTE_UNUSED,
                                      unsigned long long capacity,
                                      unsigned int flags)
 {
-    virCheckFlags(VIR_STORAGE_VOL_RESIZE_ALLOCATE, -1);
+    virCheckFlags(VIR_STORAGE_VOL_RESIZE_ALLOCATE |
+                  VIR_STORAGE_VOL_RESIZE_SHRINK, -1);
 
     bool pre_allocate = flags & VIR_STORAGE_VOL_RESIZE_ALLOCATE;
 

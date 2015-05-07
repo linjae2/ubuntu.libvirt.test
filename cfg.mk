@@ -160,7 +160,6 @@ useless_free_options =				\
   --name=virNWFilterRuleDefFree			\
   --name=virNWFilterRuleInstFree		\
   --name=virNetworkDefFree			\
-  --name=virNetworkObjFree			\
   --name=virNodeDeviceDefFree			\
   --name=virNodeDeviceObjFree			\
   --name=virObjectUnref                         \
@@ -249,8 +248,6 @@ useless_free_options =				\
 # y virNetworkDefFree
 # n virNetworkFree (returns int)
 # n virNetworkFreeName (returns int)
-# y virNetworkObjFree
-# n virNetworkObjListFree FIXME
 # n virNodeDevCapsDefFree FIXME
 # y virNodeDeviceDefFree
 # n virNodeDeviceFree (returns int)
@@ -565,6 +562,11 @@ sc_avoid_attribute_unused_in_header:
 	@prohibit='^[^#]*ATTRIBUTE_UNUSED([^:]|$$)'			\
 	in_vc_files='\.h$$'						\
 	halt='use ATTRIBUTE_UNUSED in .c rather than .h files'		\
+	  $(_sc_search_regexp)
+
+sc_prohibit_int_index:
+	@prohibit='\<(int|unsigned)\s*\*?index\>(\s|,|;)'	\
+	halt='use different name than 'index' for declaration'	        \
 	  $(_sc_search_regexp)
 
 sc_prohibit_int_ijk:
@@ -997,6 +999,17 @@ sc_prohibit_virXXXFree:
 	halt='avoid using 'virXXXFree', use 'virObjectUnref' instead' \
 	  $(_sc_search_regexp)
 
+sc_prohibit_sysconf_pagesize:
+	@prohibit='sysconf\(_SC_PAGESIZE' \
+	halt='use virGetSystemPageSize[KB] instead of sysconf(_SC_PAGESIZE)' \
+	  $(_sc_search_regexp)
+
+sc_prohibit_pthread_create:
+	@prohibit='\bpthread_create\b' \
+	exclude='sc_prohibit_pthread_create' \
+	halt="avoid using 'pthread_create', use 'virThreadCreate' instead" \
+	  $(_sc_search_regexp)
+
 # We don't use this feature of maint.mk.
 prev_version_file = /dev/null
 
@@ -1177,7 +1190,7 @@ exclude_file_name_regexp--sc_prohibit_mixed_case_abbreviations = \
   ^src/(vbox/vbox_CAPI.*.h|esx/esx_vi.(c|h)|esx/esx_storage_backend_iscsi.c)$$
 
 exclude_file_name_regexp--sc_prohibit_empty_first_line = \
-  ^(README|daemon/THREADS\.txt|src/esx/README|docs/library.xen|tests/vmwareverdata/fusion-5.0.3.txt|tests/nodeinfodata/linux-raspberrypi/cpu/offline)$$
+  ^(README|daemon/THREADS\.txt|src/esx/README|docs/library.xen|tests/(vmwarever|nodeinfo)data/.*)$$
 
 exclude_file_name_regexp--sc_prohibit_useless_translation = \
   ^tests/virpolkittest.c
@@ -1187,3 +1200,9 @@ exclude_file_name_regexp--sc_prohibit_devname = \
 
 exclude_file_name_regexp--sc_prohibit_virXXXFree = \
   ^(docs/|tests/|examples/|tools/|cfg.mk|src/test/test_driver.c|src/libvirt_public.syms|include/libvirt/libvirt-(domain|network|nodedev|storage|stream|secret|nwfilter|interface|domain-snapshot).h|src/libvirt-(domain|qemu|network|nodedev|storage|stream|secret|nwfilter|interface|domain-snapshot).c$$)
+
+exclude_file_name_regexp--sc_prohibit_sysconf_pagesize = \
+  ^(cfg\.mk|src/util/virutil\.c)$$
+
+exclude_file_name_regexp--sc_prohibit_pthread_create = \
+  ^(cfg\.mk|src/util/virthread\.c|tests/.*)$$

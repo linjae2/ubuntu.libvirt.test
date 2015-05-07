@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 Red Hat, Inc.
+ * Copyright (C) 2010-2015 Red Hat, Inc.
  * Copyright IBM Corp. 2009
  *
  * phyp_driver.c: ssh layer to access Power Hypervisors
@@ -342,13 +342,13 @@ phypCapsInit(void)
     }
 
     if ((guest = virCapabilitiesAddGuest(caps,
-                                         "linux",
+                                         VIR_DOMAIN_OSTYPE_LINUX,
                                          caps->host.arch,
                                          NULL, NULL, 0, NULL)) == NULL)
         goto no_memory;
 
-    if (virCapabilitiesAddGuestDomain(guest,
-                                      "phyp", NULL, NULL, 0, NULL) == NULL)
+    if (virCapabilitiesAddGuestDomain(guest, VIR_DOMAIN_VIRT_PHYP,
+                                      NULL, NULL, 0, NULL) == NULL)
         goto no_memory;
 
     return caps;
@@ -1094,10 +1094,14 @@ openSSHSession(virConnectPtr conn, virConnectAuthPtr auth,
 
 
 static int
-phypDomainDefPostParse(virDomainDefPtr def ATTRIBUTE_UNUSED,
+phypDomainDefPostParse(virDomainDefPtr def,
                        virCapsPtr caps ATTRIBUTE_UNUSED,
                        void *opaque ATTRIBUTE_UNUSED)
 {
+    /* memory hotplug tunables are not supported by this driver */
+    if (virDomainDefCheckUnsupportedMemoryHotplug(def) < 0)
+        return -1;
+
     return 0;
 }
 
@@ -1708,7 +1712,7 @@ phypDomainAttachDevice(virDomainPtr domain, const char *xml)
     virBuffer buf = VIR_BUFFER_INITIALIZER;
     char *domain_name = NULL;
 
-    if (VIR_ALLOC(def) < 0)
+    if (!(def = virDomainDefNew()))
         goto cleanup;
 
     domain_name = escape_specialcharacters(domain->name);
@@ -1716,8 +1720,7 @@ phypDomainAttachDevice(virDomainPtr domain, const char *xml)
     if (domain_name == NULL)
         goto cleanup;
 
-    if (VIR_STRDUP(def->os.type, "aix") < 0)
-        goto cleanup;
+    def->os.type = VIR_DOMAIN_OSTYPE_LINUX;
 
     dev = virDomainDeviceDefParse(xml, def, phyp_driver->caps, NULL,
                                   VIR_DOMAIN_DEF_PARSE_INACTIVE);
@@ -2026,7 +2029,7 @@ phypStorageVolCreateXML(virStoragePoolPtr pool,
         goto err;
     }
 
-    if ((voldef = virStorageVolDefParseString(spdef, xml)) == NULL) {
+    if ((voldef = virStorageVolDefParseString(spdef, xml, 0)) == NULL) {
         VIR_ERROR(_("Error parsing volume XML."));
         goto err;
     }
@@ -3252,6 +3255,7 @@ phypDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
     LIBSSH2_SESSION *session = phyp_driver->session;
     virDomainDef def;
     char *managed_system = phyp_driver->managed_system;
+    unsigned long long memory;
 
     /* Flags checked by virDomainDefFormat */
 
@@ -3273,11 +3277,12 @@ phypDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
         goto err;
     }
 
-    if ((def.mem.max_balloon =
-         phypGetLparMem(dom->conn, managed_system, dom->id, 0)) == 0) {
+    if ((memory = phypGetLparMem(dom->conn, managed_system, dom->id, 0)) == 0) {
         VIR_ERROR(_("Unable to determine domain's max memory."));
         goto err;
     }
+
+    virDomainDefSetMemoryInitial(&def, memory);
 
     if ((def.mem.cur_balloon =
          phypGetLparMem(dom->conn, managed_system, dom->id, 1)) == 0) {
@@ -3486,15 +3491,15 @@ phypBuildLpar(virConnectPtr conn, virDomainDefPtr def)
 
     if (!def->mem.cur_balloon) {
         virReportError(VIR_ERR_XML_ERROR, "%s",
-                       _("Field <memory> on the domain XML file is missing or has "
-                         "invalid value."));
+                       _("Field <currentMemory> on the domain XML file is "
+                         "missing or has invalid value"));
         goto cleanup;
     }
 
-    if (!def->mem.max_balloon) {
+    if (!virDomainDefGetMemoryInitial(def)) {
         virReportError(VIR_ERR_XML_ERROR, "%s",
-                       _("Field <currentMemory> on the domain XML file is missing or "
-                         "has invalid value."));
+                       _("Field <memory> on the domain XML file is missing or "
+                         "has invalid value"));
         goto cleanup;
     }
 
@@ -3517,7 +3522,8 @@ phypBuildLpar(virConnectPtr conn, virDomainDefPtr def)
     virBufferAsprintf(&buf, " -r lpar -p %s -i min_mem=%lld,desired_mem=%lld,"
                       "max_mem=%lld,desired_procs=%d,virtual_scsi_adapters=%s",
                       def->name, def->mem.cur_balloon,
-                      def->mem.cur_balloon, def->mem.max_balloon,
+                      def->mem.cur_balloon,
+                      virDomainDefGetMemoryInitial(def),
                       (int) def->vcpus, virDomainDiskGetSource(def->disks[0]));
     ret = phypExecBuffer(session, &buf, &exit_status, conn, false);
 
@@ -3562,7 +3568,6 @@ phypDomainCreateXML(virConnectPtr conn,
 
     if (!(def = virDomainDefParseString(xml, phyp_driver->caps,
                                         phyp_driver->xmlopt,
-                                        1 << VIR_DOMAIN_VIRT_PHYP,
                                         parse_flags)))
         goto err;
 
@@ -3669,46 +3674,33 @@ phypDomainSetVcpus(virDomainPtr dom, unsigned int nvcpus)
     return phypDomainSetVcpusFlags(dom, nvcpus, VIR_DOMAIN_VCPU_LIVE);
 }
 
-static virDrvOpenStatus
-phypStorageOpen(virConnectPtr conn,
-                virConnectAuthPtr auth ATTRIBUTE_UNUSED,
-                unsigned int flags)
-{
-    virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
-
-    if (conn->driver->no != VIR_DRV_PHYP)
-        return VIR_DRV_OPEN_DECLINED;
-
-    return VIR_DRV_OPEN_SUCCESS;
-}
-
 static int
-phypStorageClose(virConnectPtr conn ATTRIBUTE_UNUSED)
+phypDomainHasManagedSaveImage(virDomainPtr dom, unsigned int flags)
 {
-    return 0;
+
+    phyp_driverPtr phyp_driver = dom->conn->privateData;
+    LIBSSH2_SESSION *session = phyp_driver->session;
+    char *managed_system = phyp_driver->managed_system;
+    char *lpar_name = NULL;
+    int ret = -1;
+
+    virCheckFlags(0, -1);
+
+    lpar_name = phypGetLparNAME(session, managed_system, dom->id, dom->conn);
+
+    if (lpar_name == NULL) {
+        VIR_ERROR(_("Unable to determine domain's name."));
+        goto cleanup;
+    }
+
+    ret = 0;
+
+ cleanup:
+    VIR_FREE(lpar_name);
+    return ret;
 }
 
-static virDrvOpenStatus
-phypInterfaceOpen(virConnectPtr conn,
-                virConnectAuthPtr auth ATTRIBUTE_UNUSED,
-                unsigned int flags)
-{
-    virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
-
-    if (conn->driver->no != VIR_DRV_PHYP)
-        return VIR_DRV_OPEN_DECLINED;
-
-    return VIR_DRV_OPEN_SUCCESS;
-}
-
-static int
-phypInterfaceClose(virConnectPtr conn ATTRIBUTE_UNUSED)
-{
-    return 0;
-}
-
-static virHypervisorDriver phypDriver = {
-    .no = VIR_DRV_PHYP,
+static virHypervisorDriver phypHypervisorDriver = {
     .name = "PHYP",
     .connectOpen = phypConnectOpen, /* 0.7.0 */
     .connectClose = phypConnectClose, /* 0.7.0 */
@@ -3737,13 +3729,10 @@ static virHypervisorDriver phypDriver = {
     .connectIsSecure = phypConnectIsSecure, /* 0.7.3 */
     .domainIsUpdated = phypDomainIsUpdated, /* 0.8.6 */
     .connectIsAlive = phypConnectIsAlive, /* 0.9.8 */
+    .domainHasManagedSaveImage = phypDomainHasManagedSaveImage, /* 1.2.13 */
 };
 
 static virStorageDriver phypStorageDriver = {
-    .name = "PHYP",
-    .storageOpen = phypStorageOpen, /* 0.8.2 */
-    .storageClose = phypStorageClose, /* 0.8.2 */
-
     .connectNumOfStoragePools = phypConnectNumOfStoragePools, /* 0.8.2 */
     .connectListStoragePools = phypConnectListStoragePools, /* 0.8.2 */
     .storagePoolLookupByName = phypStoragePoolLookupByName, /* 0.8.2 */
@@ -3762,9 +3751,6 @@ static virStorageDriver phypStorageDriver = {
 };
 
 static virInterfaceDriver phypInterfaceDriver = {
-    .name = "PHYP",
-    .interfaceOpen = phypInterfaceOpen, /* 0.9.1 */
-    .interfaceClose = phypInterfaceClose, /* 0.9.1 */
     .connectNumOfInterfaces = phypConnectNumOfInterfaces, /* 0.9.1 */
     .connectListInterfaces = phypConnectListInterfaces, /* 0.9.1 */
     .interfaceLookupByName = phypInterfaceLookupByName, /* 0.9.1 */
@@ -3773,15 +3759,15 @@ static virInterfaceDriver phypInterfaceDriver = {
     .interfaceIsActive = phypInterfaceIsActive /* 0.9.1 */
 };
 
+static virConnectDriver phypConnectDriver = {
+    .hypervisorDriver = &phypHypervisorDriver,
+    .interfaceDriver = &phypInterfaceDriver,
+    .storageDriver = &phypStorageDriver,
+};
+
 int
 phypRegister(void)
 {
-    if (virRegisterHypervisorDriver(&phypDriver) < 0)
-        return -1;
-    if (virRegisterStorageDriver(&phypStorageDriver) < 0)
-        return -1;
-    if (virRegisterInterfaceDriver(&phypInterfaceDriver) < 0)
-        return -1;
-
-    return 0;
+    return virRegisterConnectDriver(&phypConnectDriver,
+                                    false);
 }

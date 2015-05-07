@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*/
 /*
- * Copyright (C) 2011-2012 Red Hat, Inc.
+ * Copyright (C) 2011-2015 Red Hat, Inc.
  * Copyright 2010, diateam (www.diateam.net)
  * Copyright (C) 2013. Doug Goldstein <cardoe@cardoe.com>
  *
@@ -83,10 +83,14 @@ vmwareDataFreeFunc(void *data)
 }
 
 static int
-vmwareDomainDefPostParse(virDomainDefPtr def ATTRIBUTE_UNUSED,
+vmwareDomainDefPostParse(virDomainDefPtr def,
                          virCapsPtr caps ATTRIBUTE_UNUSED,
                          void *opaque ATTRIBUTE_UNUSED)
 {
+    /* memory hotplug tunables are not supported by this driver */
+    if (virDomainDefCheckUnsupportedMemoryHotplug(def) < 0)
+        return -1;
+
     return 0;
 }
 
@@ -381,7 +385,6 @@ vmwareDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int fla
 
     vmwareDriverLock(driver);
     if ((vmdef = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
-                                         1 << VIR_DOMAIN_VIRT_VMWARE,
                                          parse_flags)) == NULL)
         goto cleanup;
 
@@ -673,7 +676,6 @@ vmwareDomainCreateXML(virConnectPtr conn, const char *xml,
     vmwareDriverLock(driver);
 
     if ((vmdef = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
-                                         1 << VIR_DOMAIN_VIRT_VMWARE,
                                          parse_flags)) == NULL)
         goto cleanup;
 
@@ -866,7 +868,7 @@ vmwareDomainGetOSType(virDomainPtr dom)
         goto cleanup;
     }
 
-    ignore_value(VIR_STRDUP(ret, vm->def->os.type));
+    ignore_value(VIR_STRDUP(ret, virDomainOSTypeToString(vm->def->os.type)));
 
  cleanup:
     if (vm)
@@ -1126,7 +1128,7 @@ vmwareDomainGetInfo(virDomainPtr dom, virDomainInfoPtr info)
 
     info->state = virDomainObjGetState(vm, NULL);
     info->cpuTime = 0;
-    info->maxMem = vm->def->mem.max_balloon;
+    info->maxMem = virDomainDefGetMemoryActual(vm->def);
     info->memory = vm->def->mem.cur_balloon;
     info->nrVirtCpu = vm->def->vcpus;
     ret = 0;
@@ -1195,10 +1197,33 @@ vmwareConnectListAllDomains(virConnectPtr conn,
     return ret;
 }
 
+static int
+vmwareDomainHasManagedSaveImage(virDomainPtr dom, unsigned int flags)
+{
+    struct vmware_driver *driver = dom->conn->privateData;
+    virDomainObjPtr obj;
+    int ret = -1;
+
+    virCheckFlags(0, -1);
+
+    vmwareDriverLock(driver);
+    obj = virDomainObjListFindByUUID(driver->domains, dom->uuid);
+    vmwareDriverUnlock(driver);
+    if (!obj) {
+        virReportError(VIR_ERR_NO_DOMAIN, NULL);
+        goto cleanup;
+    }
+    ret = 0;
+
+ cleanup:
+    if (obj)
+        virObjectUnlock(obj);
+    return ret;
+}
 
 
-static virHypervisorDriver vmwareDriver = {
-    .no = VIR_DRV_VMWARE,
+
+static virHypervisorDriver vmwareHypervisorDriver = {
     .name = "VMWARE",
     .connectOpen = vmwareConnectOpen, /* 0.8.7 */
     .connectClose = vmwareConnectClose, /* 0.8.7 */
@@ -1234,12 +1259,16 @@ static virHypervisorDriver vmwareDriver = {
     .domainIsActive = vmwareDomainIsActive, /* 0.8.7 */
     .domainIsPersistent = vmwareDomainIsPersistent, /* 0.8.7 */
     .connectIsAlive = vmwareConnectIsAlive, /* 0.9.8 */
+    .domainHasManagedSaveImage = vmwareDomainHasManagedSaveImage, /* 1.2.13 */
+};
+
+static virConnectDriver vmwareConnectDriver = {
+    .hypervisorDriver = &vmwareHypervisorDriver,
 };
 
 int
 vmwareRegister(void)
 {
-    if (virRegisterHypervisorDriver(&vmwareDriver) < 0)
-        return -1;
-    return 0;
+    return virRegisterConnectDriver(&vmwareConnectDriver,
+                                    false);
 }

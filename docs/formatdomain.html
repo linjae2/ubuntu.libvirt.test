@@ -261,6 +261,8 @@
                       </li><li>
                         <a href="#elementsNICSROM">Interface ROM BIOS configuration</a>
                       </li><li>
+                        <a href="#elementDomain">Setting up a network backend in a driver domain</a>
+                      </li><li>
                         <a href="#elementQoS">Quality of service</a>
                       </li><li>
                         <a href="#elementVlanTag">Setting VLAN tag (on supported network types only)</a>
@@ -336,6 +338,8 @@
                     <a href="#elementsPanic">panic device</a>
                   </li><li>
                     <a href="#elementsShmem">Shared memory device</a>
+                  </li><li>
+                    <a href="#elementsMemory">Memory devices</a>
                   </li></ul>
               </li><li>
                 <a href="#seclabel">Security label</a>
@@ -444,7 +448,8 @@
         and <code>machine</code> referring to the machine
         type. The <a href="formatcaps.html" shape="rect">Capabilities XML</a>
         provides details on allowed values for
-        these. <span class="since">Since 0.0.1</span></dd><dt><code>loader</code></dt><dd>The optional <code>loader</code> tag refers to a firmware blob
+        these. <span class="since">Since 0.0.1</span></dd><dt><code>loader</code></dt><dd>The optional <code>loader</code> tag refers to a firmware blob,
+        which is specified by absolute path,
         used to assist the domain creation process. It is used by Xen
         fully virtualized domains as well as setting the QEMU BIOS file
         path for QEMU/KVM domains. <span class="since">Xen since 0.1.0,
@@ -458,10 +463,10 @@
         memory the file should be mapped.  For instance, if the loader
         path points to an UEFI image, <code>type</code> should be
         <code>pflash</code>.</dd><dt><code>nvram</code></dt><dd>Some UEFI firmwares may want to use a non-volatile memory to store
-        some variables. In the host, this is represented as a file and the path
-        to the file is stored in this element. Moreover, when the domain is
-        started up libvirt copies so called master NVRAM store file defined
-        in <code>qemu.conf</code>. If needed, the <code>template</code>
+        some variables. In the host, this is represented as a file and the
+        absolute path to the file is stored in this element. Moreover, when the
+        domain is started up libvirt copies so called master NVRAM store file
+        defined in <code>qemu.conf</code>. If needed, the <code>template</code>
         attribute can be used to per domain override map of master NVRAM stores
         from the config file. Note, that for transient domains if the NVRAM file
         has been created by libvirt it is left behind and it is management
@@ -750,13 +755,41 @@
   ...
 &lt;/domain&gt;
 </pre>
+        <pre xml:space="preserve">
+&lt;domain&gt;
+  ...
+  &lt;iothreadids&gt;
+    &lt;iothread id="2"/&gt;
+    &lt;iothread id="4"/&gt;
+    &lt;iothread id="6"/&gt;
+    &lt;iothread id="8"/&gt;
+  &lt;/iothreadids&gt;
+  ...
+&lt;/domain&gt;
+</pre>
         <dl><dt><code>iothreads</code></dt><dd>
         The content of this optional element defines the number
         of IOThreads to be assigned to the domain for use by
         virtio-blk-pci and virtio-blk-ccw target storage devices. There
         should be only 1 or 2 IOThreads per host CPU. There may be more
         than one supported device assigned to each IOThread.
-      </dd></dl>
+        <span class="since">Since 1.2.8</span>
+      </dd><dt><code>iothreadids</code></dt><dd>
+        The optional <code>iothreadids</code> element provides the capability
+        to specifically define the IOThread ID's for the domain.  By default,
+        IOThread ID's are sequentially numbered starting from 1 through the
+        number of <code>iothreads</code> defined for the domain. The
+        <code>id</code> attribute is used to define the IOThread ID. The
+        <code>id</code> attribute must be a positive integer greater than 0.
+        If there are less <code>iothreadids</code> defined than
+        <code>iothreads</code> defined for the domain, then libvirt will
+        sequentially fill <code>iothreadids</code> starting at 1 avoiding
+        any predefined <code>id</code>. If there are more
+        <code>iothreadids</code> defined than <code>iothreads</code>
+        defined for the domain, then the <code>iothreads</code> value
+        will be adjusted accordingly.
+        <span class="since">Since 1.2.15</span>
+       </dd></dl>
         <h3>
           <a name="elementsCPUTuning" shape="rect" id="elementsCPUTuning">CPU Tuning</a>
           <a class="headerlink" href="#elementsCPUTuning" title="Permalink to this headline">¶</a>
@@ -777,6 +810,8 @@
     &lt;quota&gt;-1&lt;/quota&gt;
     &lt;emulator_period&gt;1000000&lt;/emulator_period&gt;
     &lt;emulator_quota&gt;-1&lt;/emulator_quota&gt;
+    &lt;vcpusched vcpus='0-4,^3' scheduler='fifo' priority='1'/&gt;
+    &lt;iothreadsched iothreads='2' scheduler='batch'/&gt;
   &lt;/cputune&gt;
   ...
 &lt;/domain&gt;
@@ -797,27 +832,23 @@
         <span class="since">Since 0.9.0</span>
        </dd><dt><code>emulatorpin</code></dt><dd>
          The optional <code>emulatorpin</code> element specifies which of host
-         physical CPUs the "emulator", a subset of a domain not including vcpu,
-         will be pinned to. If this is omitted, and attribute
+         physical CPUs the "emulator", a subset of a domain not including vcpu
+         or iothreads will be pinned to. If this is omitted, and attribute
          <code>cpuset</code> of element <code>vcpu</code> is not specified,
          "emulator" is pinned to all the physical CPUs by default. It contains
          one required attribute <code>cpuset</code> specifying which physical
-         CPUs to pin to. NB, <code>emulatorpin</code> is not allowed if
-         attribute <code>placement</code> of element <code>vcpu</code> is
-         "auto".
+         CPUs to pin to.
        </dd><dt><code>iothreadpin</code></dt><dd>
          The optional <code>iothreadpin</code> element specifies which of host
          physical CPUs the IOThreads will be pinned to. If this is omitted
          and attribute <code>cpuset</code> of element <code>vcpu</code> is
          not specified, the IOThreads are pinned to all the physical CPUs
          by default. There are two required attributes, the attribute
-         <code>iothread</code> specifies the IOThread id and the attribute
-         <code>cpuset</code> specifying which physical CPUs to pin to. The
-         <code>iothread</code> value begins at "1" through the number of
-          <a href="#elementsIOThreadsAllocation" shape="rect"><code>iothreads</code></a>
-         allocated to the domain. A value of "0" is not permitted.
-         NB, <code>iothreadpin</code> is not allowed if attribute
-         <code>placement</code> of element <code>vcpu</code> is "auto".
+         <code>iothread</code> specifies the IOThread ID and the attribute
+         <code>cpuset</code> specifying which physical CPUs to pin to. See
+         the <code>iothreadids</code>
+         <a href="#elementsIOThreadsAllocation" shape="rect"><code>description</code></a>
+         for valid <code>iothread</code> values.
         <span class="since">Since 1.2.9</span>
        </dd><dt><code>shares</code></dt><dd>
         The optional <code>shares</code> element specifies the proportional
@@ -861,6 +892,24 @@
         The value should be in range [1000, 18446744073709551] or less than 0. A
         quota with value 0 means no value.
         <span class="since">Only QEMU driver support since 0.10.0</span>
+      </dd><dt><code>vcpusched</code> and <code>iothreadsched</code></dt><dd>
+        The optional <code>vcpusched</code> elements specifies the scheduler
+        type (values <code>batch</code>, <code>idle</code>, <code>fifo</code>,
+        <code>rr</code>) for particular vCPU/IOThread threads (based on
+        <code>vcpus</code> and <code>iothreads</code>, leaving out
+        <code>vcpus</code>/<code>iothreads</code> sets the default). Valid
+        <code>vcpus</code> values start at 0 through one less than the
+        number of vCPU's defined for the domain. Valid <code>iothreads</code>
+        values are described in the <code>iothreadids</code>
+        <a href="#elementsIOThreadsAllocation" shape="rect"><code>description</code></a>.
+        If no <code>iothreadids</code> are defined, then libvirt numbers
+        IOThreads from 1 to the number of <code>iothreads</code> available
+        for the domain. For real-time schedulers (<code>fifo</code>,
+        <code>rr</code>), priority must real-time schedulers
+        (<code>fifo</code>, <code>rr</code>), priority must be specified as
+        well (and is ignored for non-real-time ones). The value range
+        for the priority depends on the host kernel (usually 1-99).
+        <span class="since">Since 1.2.13</span>
       </dd></dl>
         <h3>
           <a name="elementsMemoryAllocation" shape="rect" id="elementsMemoryAllocation">Memory Allocation</a>
@@ -869,12 +918,15 @@
         <pre xml:space="preserve">
 &lt;domain&gt;
   ...
+  &lt;maxMemory slots='16' unit='KiB'&gt;1524288&lt;/maxMemory&gt;
   &lt;memory unit='KiB'&gt;524288&lt;/memory&gt;
   &lt;currentMemory unit='KiB'&gt;524288&lt;/currentMemory&gt;
   ...
 &lt;/domain&gt;
 </pre>
-        <dl><dt><code>memory</code></dt><dd>The maximum allocation of memory for the guest at boot time.
+        <dl><dt><code>memory</code></dt><dd>The maximum allocation of memory for the guest at boot time. The
+        memory allocation includes possible additional memory devices specified
+        at start or hotplugged later.
         The units for this value are determined by the optional
         attribute <code>unit</code>, which defaults to "KiB"
         (kibibytes, 2<sup>10</sup> or blocks of 1024 bytes).  Valid
@@ -892,13 +944,32 @@
         supported by the hypervisor.  Some hypervisors also enforce a
         minimum, such as 4000KiB.
 
+        In case <a href="#elementsCPU" shape="rect">NUMA</a> is configured for the guest the
+        <code>memory</code> element can be omitted.
+
         In the case of crash, optional attribute <code>dumpCore</code>
         can be used to control whether the guest memory should be
         included in the generated coredump or not (values "on", "off").
 
         <span class="since"><code>unit</code> since 0.9.11</span>,
         <span class="since"><code>dumpCore</code> since 0.10.2
-        (QEMU only)</span></dd><dt><code>currentMemory</code></dt><dd>The actual allocation of memory for the guest. This value can
+        (QEMU only)</span></dd><dt><code>maxMemory</code></dt><dd>The run time maximum memory allocation of the guest. The initial
+        memory specified by either the <code>&lt;memory&gt;</code> element or
+        the NUMA cell size configuration can be increased by hot-plugging of
+        memory to the limit specified by this element.
+
+        The <code>unit</code> attribute behaves the same as for
+        <code>&lt;memory&gt;</code>.
+
+        The <code>slots</code> attribute specifies the number of slots
+        available for adding memory to the guest. The bounds are hypervisor
+        specific.
+
+        Note that due to alignment of the memory chunks added via memory
+        hotplug the full size allocation specified by this element may be
+        impossible to achieve.
+        <span class="since">Since 1.2.14 supported by the QEMU driver.</span>
+      </dd><dt><code>currentMemory</code></dt><dd>The actual allocation of memory for the guest. This value can
         be less than the maximum allocation, to allow for ballooning
         up the guests memory on the fly. If this is omitted, it defaults
         to the same value as the <code>memory</code> element.
@@ -974,7 +1045,9 @@
         for <code>&lt;memory&gt;</code>.  For backwards
         compatibility, output is always in
         KiB.  <span class="since"><code>unit</code>
-        since 0.9.11</span></dd><dt><code>hard_limit</code></dt><dd> The optional <code>hard_limit</code> element is the maximum memory
+        since 0.9.11</span>
+        Possible values for all *_limit parameters are in range from 0 to
+        VIR_DOMAIN_MEMORY_PARAM_UNLIMITED.</dd><dt><code>hard_limit</code></dt><dd> The optional <code>hard_limit</code> element is the maximum memory
         the guest can use. The units for this value are kibibytes (i.e. blocks
         of 1024 bytes). <strong>However, users of QEMU and KVM are strongly
         advised not to set this limit as domain may get killed by the kernel
@@ -1096,7 +1169,7 @@
       resource partitions, potentially with nesting of said partitions.
       The <code>resource</code> element groups together configuration
       related to resource partitioning. It currently supports a child
-      element <code>partition</code> whose content defines the path
+      element <code>partition</code> whose content defines the absolute path
       of the resource partition in which to place the domain. If no
       partition is listed, then the domain will be placed in a default
       partition. It is the responsibility of the app/admin to ensure
@@ -1862,8 +1935,8 @@
               path to the file holding the disk.
               </dd><dt><code>type='block'</code>
             <span class="since">since 0.0.3</span></dt><dd>
-              The <code>dev</code> attribute specifies the path to the
-              host device to serve as the disk.
+              The <code>dev</code> attribute specifies the fully-qualified path
+              to the host device to serve as the disk.
               </dd><dt><code>type='dir'</code>
             <span class="since">since 0.7.5</span></dt><dd>
               The <code>dir</code> attribute specifies the fully-qualified path
@@ -1975,14 +2048,22 @@
         This feature doesn't support migration currently.
         </p>
         </dd><dt><code>backingStore</code></dt><dd>
-        This element describes the backing store used by the disk specified by
-        sibling <code>source</code> element. It is currently ignored on input
-        and only used for output to describe the detected backing chains.
-        <span class="since">Since 1.2.4</span>. An empty
-        <code>backingStore</code> element means the sibling source is
-        self-contained and is not based on any backing store. The following
-        attributes and sub-elements are supported in
-        <code>backingStore</code>:
+        This element describes the backing store used by the disk
+        specified by sibling <code>source</code> element. It is
+        currently ignored on input and only used for output to
+        describe the detected backing chains of running
+        domains <span class="since">since 1.2.4</span> (although a
+        future version of libvirt may start accepting chains on input,
+        or output information for offline domains). An
+        empty <code>backingStore</code> element means the sibling
+        source is self-contained and is not based on any backing
+        store. For backing chain information to be accurate, the
+        backing format must be correctly specified in the metadata of
+        each file of the chain (files created by libvirt satisfy this
+        property, but using existing external files for snapshot or
+        block copy operations requires the end user to pre-create the
+        file correctly). The following attributes and sub-elements are
+        supported in <code>backingStore</code>:
         <dl><dt><code>type</code> attribute</dt><dd>
             The <code>type</code> attribute represents the type of disk used
             by the backing store, see disk type attribute above for more
@@ -2184,6 +2265,10 @@
             are numbered from 1 to the domain iothreads value.
             <span class="since">Since 1.2.8 (QEMU only)</span>
           </li></ul>
+      </dd><dt><code>backenddomain</code></dt><dd>The optional <code>backenddomain</code> element allows specifying a
+          backend domain (aka driver domain) hosting the disk.  Use the
+          <code>name</code> attribute to specify the backend domain name.
+          <span class="since">Since 1.2.13 (Xen only)</span>
       </dd><dt><code>boot</code></dt><dd>Specifies that the disk is bootable. The <code>order</code>
         attribute determines the order in which devices will be tried during
         boot sequence. The per-device <code>boot</code> elements cannot be
@@ -2210,7 +2295,8 @@
           <span class="since">Since 0.7.1</span>
       </dd><dt><code>wwn</code></dt><dd>If present, this element specifies the WWN (World Wide Name)
         of a virtual hard disk or CD-ROM drive. It must be composed
-        of 16 hexadecimal digits.
+        of 16 hexadecimal digits and must be unique (at least among
+        disks of a single domain)
         <span class="since">Since 0.10.1</span>
       </dd><dt><code>vendor</code></dt><dd>If present, this element specifies the vendor of a virtual hard
         disk or CD-ROM device. It must not be longer than 8 printable
@@ -2483,9 +2569,8 @@
         <code>devno</code> (a hex value between 0 and 0xffff, inclusive).
         Partially specified bus addresses are not allowed.
         If omitted, libvirt will assign a free bus address with
-        cssid=0xfe and ssid=0. Virtio devices for s390 must have their
-        cssid set to 0xfe in order to be recognized by the guest
-        operating system.
+        cssid=0xfe and ssid=0. Virtio-ccw devices must have their cssid
+        set to 0xfe.
         <span class="since">Since 1.0.4</span>
       </dd><dt><code>type='isa'</code></dt><dd>ISA addresses have the following additional
         attributes: <code>iobase</code> and <code>irq</code>.
@@ -2753,19 +2838,18 @@
         host devices. For each device, the <code>mode</code> is always
         "subsystem" and the <code>type</code> is one of the following values
         with additional attributes noted.
-        <dl><dt>usb</dt><dd>For USB devices, the user is responsible to call
-            <code>virNodeDeviceDettach</code> (or
-            <code>virsh nodedev-detach</code>) before starting the guest
-            or hot-plugging the device and <code>virNodeDeviceReAttach</code>
-            (or <code>virsh nodedev-reattach</code>) after hot-unplug or
-            stopping the guest.
+        <dl><dt>usb</dt><dd>USB devices are detached from the host on guest startup
+            and reattached after the guest exits or the device is
+            hot-unplugged.
           </dd><dt>pci</dt><dd>For PCI devices, when <code>managed</code> is "yes" it is
             detached from the host before being passed on to the guest
             and reattached to the host after the guest exits. If
-            <code>managed</code> is omitted or "no", follow the steps
-            described for a USB device to detach before starting the
-            guest or hot-plugging and reattach after stopping the guest
-            or hot-unplug.
+            <code>managed</code> is omitted or "no", the user is
+            responsible to call <code>virNodeDeviceDetachFlags</code>
+            (or <code>virsh nodedev-detach</code> before starting the guest
+            or hot-plugging the device and <code>virNodeDeviceReAttach</code>
+            (or <code>virsh nodedev-reattach</code>) after hot-unplug or
+            stopping the guest.
           </dd><dt>scsi</dt><dd>For SCSI devices, user is responsible to make sure the device
             is not used by host. The optional <code>sgio</code>
             (<span class="since">since 1.0.6</span>) attribute indicates
@@ -2779,6 +2863,12 @@
             If a disk lun in the domain already has the rawio capability,
             then this setting not required.
           </dd></dl>
+        <p>
+          Note: The <code>managed</code> attribute is only used with PCI devices
+          and is ignored by all the other device types, thus setting
+          <code>managed</code> explicitly with other than PCI device has the same
+          effect as omitting it.
+        </p>
       </dd><dt><code>source</code></dt><dd>The source element describes the device as seen from the host using
         the following mechanism to describe:
         <dl><dt>usb</dt><dd>The USB device can either be addressed by vendor / product id
@@ -2827,7 +2917,7 @@
         versions of qemu used a default of "off", while newer qemus
         have a default of "on"). <span class="since">Since
         0.9.7 (QEMU and KVM only)</span>. The optional
-        <code>file</code> attribute is used to point to a binary file
+        <code>file</code> attribute contains an absolute path to a binary file
         to be presented to the guest as the device's ROM BIOS. This
         can be useful, for example, to provide a PXE boot ROM for a
         virtual function of an sr-iov capable ethernet device (which
@@ -2877,7 +2967,8 @@
         <p>
       Block / character devices from the host can be passed through
       to the guest using the <code>hostdev</code> element. This is
-      only possible with container based virtualization.
+      only possible with container based virtualization. Devices are specified
+      by a fully qualified path.
       <span class="since">since after 1.0.1 for LXC</span>:
     </p>
         <pre xml:space="preserve">
@@ -2935,7 +3026,7 @@
       &lt;boot order='1'/&gt;
     &lt;/redirdev&gt;
     &lt;redirfilter&gt;
-      &lt;usbdev class='0x08' vendor='0x1234' product='0xbeef' version='2.00' allow='yes'/&gt;
+      &lt;usbdev class='0x08' vendor='0x1234' product='0xbeef' version='2.56' allow='yes'/&gt;
       &lt;usbdev allow='no'/&gt;
     &lt;/redirfilter&gt;
   &lt;/devices&gt;
@@ -2970,7 +3061,8 @@
         <code>class</code> attribute is the USB Class code, for example,
         0x08 represents mass storage devices. The USB device can be addressed by
         vendor / product id using the <code>vendor</code> and <code>product</code> attributes.
-        <code>version</code> is the bcdDevice value of USB device, such as 1.00, 1.10 and 2.00.
+        <code>version</code> is the device revision from the bcdDevice field (not
+        the version of the USB protocol).
         These four attributes are optional and <code>-1</code> can be used to allow
         any value for them. <code>allow</code> attribute is mandatory,
         'yes' means allow, 'no' for deny.
@@ -3253,6 +3345,39 @@
       &lt;source bridge='ovsbr'/&gt;
       &lt;virtualport type='openvswitch'&gt;
         &lt;parameters profileid='menial' interfaceid='09b11c53-8b5c-4eeb-8f00-d84eaa0aaa4f'/&gt;
+      &lt;/virtualport&gt;
+    &lt;/interface&gt;
+    ...
+  &lt;/devices&gt;
+  ...</pre>
+        <p>
+      On hosts that support Open vSwitch on the kernel side and have the
+      Midonet Host Agent configured, it is also possible to connect to the
+      'midonet' bridge device by adding a
+      <code>&lt;virtualport type='midonet'/&gt;</code> to the
+      interface definition.  (<span class="since">Since
+      1.2.13</span>). The Midonet virtualport type requires an
+      <code>interfaceid</code> attribute in its
+      <code>&lt;parameters&gt;</code> element. This interface id is the UUID
+      that specifies which port in the virtual network topology will be bound
+      to the interface.
+    </p>
+        <pre xml:space="preserve">
+  ...
+  &lt;devices&gt;
+    ...
+    &lt;interface type='bridge'&gt;
+      &lt;source bridge='br0'/&gt;
+    &lt;/interface&gt;
+    &lt;interface type='bridge'&gt;
+      &lt;source bridge='br1'/&gt;
+      &lt;target dev='vnet7'/&gt;
+      &lt;mac address="00:11:22:33:44:55"/&gt;
+    &lt;/interface&gt;
+    &lt;interface type='bridge'&gt;
+      &lt;source bridge='midonet'/&gt;
+      &lt;virtualport type='midonet'&gt;
+        &lt;parameters interfaceid='0b2d64da-3d0e-431e-afdd-804415d6ebbb'/&gt;
       &lt;/virtualport&gt;
     &lt;/interface&gt;
     ...
@@ -3587,7 +3712,7 @@ qemu-kvm -net nic,model=? /dev/null
       &lt;target dev='vnet1'/&gt;
       &lt;model type='virtio'/&gt;
       <b>&lt;driver name='vhost' txmode='iothread' ioeventfd='on' event_idx='off' queues='5'&gt;
-        &lt;host csum='off' gso='off' tso4='off' tso6='off' ecn='off' ufo='off'/&gt;
+        &lt;host csum='off' gso='off' tso4='off' tso6='off' ecn='off' ufo='off' mrg_rxbuf='off'/&gt;
         &lt;guest csum='off' tso4='off' tso6='off' ecn='off' ufo='off'/&gt;
       &lt;/driver&gt;
       </b>
@@ -3686,6 +3811,10 @@ qemu-kvm -net nic,model=? /dev/null
         and <code>off</code> can be used to turn off host offloading options.
         By default, the supported offloads are enabled by QEMU.
         <span class="since">Since 1.2.9 (QEMU only)</span>
+        The <code>mrg_rxbuf</code> attribute can be used to control
+        mergeable rx buffers on the host side. Possible values are
+        <code>on</code> (default) and <code>off</code>.
+        <span class="since">Since 1.2.13 (QEMU only)</span>
       </dd><dt><code>guest</code> offloading options</dt><dd>
         The <code>csum</code>, <code>tso4</code>,
         <code>tso6</code>, <code>ecn</code> and <code>ufo</code>
@@ -3712,8 +3841,11 @@ qemu-kvm -net nic,model=? /dev/null
   ...</pre>
         <p>
       For tuning the backend of the network, the <code>backend</code> element
-      can be used. Supported attributes are <code>tap</code> and <code>vhost</code>,
-      allowing to override the default devices for creating tap and vhost devices.
+      can be used. The <code>vhost</code> attribute can override the default vhost
+      device path (<code>/dev/vhost-net</code>) for devices with <code>virtio</code> model.
+      The <code>tap</code> attribute overrides the tun/tap device path (default:
+      <code>/dev/net/tun</code>) for network and bridge interfaces. This does not work
+      in session mode.
     </p>
         <h5>
           <a name="elementsNICSTargetOverride" shape="rect" id="elementsNICSTargetOverride">Overriding the target element</a>
@@ -3803,6 +3935,31 @@ qemu-kvm -net nic,model=? /dev/null
       BIOS. This can be useful to provide an alternative boot ROM for a
       network device.
       <span class="since">Since 0.9.10 (QEMU and KVM only)</span>.
+    </p>
+        <h5>
+          <a name="elementDomain" shape="rect" id="elementDomain">Setting up a network backend in a driver domain</a>
+          <a class="headerlink" href="#elementDomain" title="Permalink to this headline">¶</a>
+        </h5>
+        <pre xml:space="preserve">
+  ...
+  &lt;devices&gt;
+    ...
+    &lt;interface type='bridge'&gt;
+      &lt;source bridge='br0'/&gt;
+      <b>&lt;backenddomain name='netvm'/&gt;</b>
+    &lt;/interface&gt;
+    ...
+  &lt;/devices&gt;
+  ...</pre>
+        <p>
+      The optional <code>backenddomain</code> element allows specifying a
+      backend domain (aka driver domain) for the interface. Use the
+      <code>name</code> attribute to specify the backend domain name. You
+      can use it to create a direct network link between domains (so data
+      will not go through host system). Use with type 'ethernet' to create
+      plain network link, or with type 'bridge' to connect to a bridge inside
+      the backend domain.
+      <span class="since">Since 1.2.13 (Xen only)</span>
     </p>
         <h5>
           <a name="elementQoS" shape="rect" id="elementQoS">Quality of service</a>
@@ -3916,8 +4073,8 @@ qemu-kvm -net nic,model=? /dev/null
       &lt;source network='default'/&gt;
       &lt;target dev='vnet0'/&gt;
       <b>&lt;ip address='192.168.122.5' prefix='24'/&gt;</b>
-      <b>&lt;route family='ipv4' address='192.168.122.0' prefix='24' via='192.168.122.1'/&gt;</b>
-      <b>&lt;route family='ipv4' via='192.168.122.1'/&gt;</b>
+      <b>&lt;route family='ipv4' address='192.168.122.0' prefix='24' gateway='192.168.122.1'/&gt;</b>
+      <b>&lt;route family='ipv4' address='192.168.122.8' gateway='192.168.122.1'/&gt;</b>
     &lt;/interface&gt;
     ...
     &lt;hostdev mode='capabilities' type='net'&gt;
@@ -3925,8 +4082,8 @@ qemu-kvm -net nic,model=? /dev/null
         &lt;interface&gt;eth0&lt;/interface&gt;
       &lt;/source&gt;
       <b>&lt;ip address='192.168.122.6' prefix='24'/&gt;</b>
-      <b>&lt;route family='ipv4' address='192.168.122.0' prefix='24' via='192.168.122.1'/&gt;</b>
-      <b>&lt;route family='ipv4' via='192.168.122.1'/&gt;</b>
+      <b>&lt;route family='ipv4' address='192.168.122.0' prefix='24' gateway='192.168.122.1'/&gt;</b>
+      <b>&lt;route family='ipv4' address='192.168.122.8' gateway='192.168.122.1'/&gt;</b>
     &lt;/hostdev&gt;
 
   &lt;/devices&gt;
@@ -4816,6 +4973,11 @@ qemu-kvm -net nic,model=? /dev/null
       under a channel name specified in the <code>channel</code>
       attribute.  <span class="since">Since 1.2.2</span>
     </p>
+        <p>
+      Note: depending on the hypervisor, spiceports might (or might not)
+      be enabled on domains with or without <a href="#elementsGraphics" shape="rect">spice
+      graphics</a>.
+    </p>
         <pre xml:space="preserve">
   ...
   &lt;devices&gt;
@@ -4845,8 +5007,9 @@ qemu-kvm -net nic,model=? /dev/null
         <p>
       The <code>source</code> element has these attributes:
     </p>
-        <dl><dt><code>master</code></dt><dd>Master device of the pair, that is passed to the hypervisor.</dd><dt><code>slave</code></dt><dd>Slave device of the pair, that is passed to the clients for connection
-      to the guest console.</dd></dl>
+        <dl><dt><code>master</code></dt><dd>Master device of the pair, that is passed to the hypervisor.
+      Device is specified by a fully qualified path.</dd><dt><code>slave</code></dt><dd>Slave device of the pair, that is passed to the clients for connection
+      to the guest console. Device is specified by a fully qualified path.</dd></dl>
         <h4>
           <a name="elementsSound" shape="rect" id="elementsSound">Sound devices</a>
           <a class="headerlink" href="#elementsSound" title="Permalink to this headline">¶</a>
@@ -5004,18 +5167,17 @@ qemu-kvm -net nic,model=? /dev/null
         <ul><li>'virtio' — default with QEMU/KVM</li><li>'xen' — default with Xen</li></ul>
       </dd><dt><code>period</code></dt><dd>
         <p>
-          The optional <code>period</code> allows the QEMU virtio memory
-          balloon driver to provide statistics through the <code>virsh
-          dommemstat [domain]</code> command. By default, collection is
-          not enabled. In order to enable, use the <code>virsh dommemstat
-          [domain] --period [number]</code> command or <code>virsh edit</code>
-          command to add the option to the XML definition.
-          The <code>virsh dommemstat</code> will accept the options
-          <code>--live</code>, <code>--current</code>, or <code>--config</code>.
-          If an option is not provided, the change for a running domain will
-          only be made to the active guest.
-          If the QEMU driver is not at the right
-          revision, the attempt to set the period will fail.
+          The optional <code>period</code> allows the QEMU virtio memory balloon
+          driver to provide statistics through the <code>virsh dommemstat
+          [domain]</code> command. By default, collection is not enabled. In
+          order to enable, use the <code>virsh dommemstat [domain] --period
+          [number]</code> command or <code>virsh edit</code> command to add the
+          option to the XML definition.  The <code>virsh dommemstat</code> will
+          accept the options <code>--live</code>, <code>--current</code>,
+          or <code>--config</code>.  If an option is not provided, the change
+          for a running domain will only be made to the active guest.  If the
+          QEMU driver is not at the right revision, the attempt to set the
+          period will fail.  Large values (e.g. many years) might be ignored.
           <span class="since">Since 1.1.1, requires QEMU 1.5</span>
         </p>
       </dd></dl>
@@ -5130,8 +5292,8 @@ qemu-kvm -net nic,model=? /dev/null
         <p>
           This backend type requires exclusive access to a TPM device on
           the host.
-          An example for such a device is /dev/tpm0. The filename is
-          specified as path attribute of the <code>source</code> element.
+          An example for such a device is /dev/tpm0. The fully qualified file
+          name is specified by path attribute of the <code>source</code> element.
           If no file name is specified then /dev/tpm0 is automatically used.
         </p>
       </dd></dl>
@@ -5225,8 +5387,8 @@ qemu-kvm -net nic,model=? /dev/null
     </dd><dt><code>server</code></dt><dd>
       The optional <code>server</code> element can be used to configure a server
       socket the device is supposed to connect to.  The optional
-      <code>path</code> attribute specifies the path to the unix socket and
-      defaults to <code>/var/lib/libvirt/shmem/$shmem-$name-sock</code>.
+      <code>path</code> attribute specifies the absolute path to the unix socket
+      and defaults to <code>/var/lib/libvirt/shmem/$shmem-$name-sock</code>.
     </dd><dt><code>msi</code></dt><dd>
       The optional <code>msi</code> element enables/disables (values "on"/"off",
       respectively) MSI interrupts. This option can currently be used only
@@ -5235,6 +5397,82 @@ qemu-kvm -net nic,model=? /dev/null
       vectors. The <code>ioeventd</code> attribute enables/disables (values
       "on"/"off", respectively) ioeventfd.
     </dd></dl>
+        <h4>
+          <a name="elementsMemory" shape="rect" id="elementsMemory">Memory devices</a>
+          <a class="headerlink" href="#elementsMemory" title="Permalink to this headline">¶</a>
+        </h4>
+        <p>
+        In addition to the initial memory assigned to the guest, memory devices
+        allow additional memory to be assigned to the guest in the form of
+        memory modules.
+
+        A memory device can be hot-plugged or hot-unplugged depending on the
+        guests' memory resource needs.
+
+        Some hypervisors may require NUMA configured for the guest.
+      <span class="since">Since 1.2.14</span>
+    </p>
+        <p>
+      Example: usage of the memory devices
+    </p>
+        <pre xml:space="preserve">
+  ...
+  &lt;devices&gt;
+    &lt;memory model='dimm'&gt;
+      &lt;target&gt;
+        &lt;size unit='KiB'&gt;524287&lt;/size&gt;
+        &lt;node&gt;0&lt;/node&gt;
+      &lt;/target&gt;
+    &lt;/memory&gt;
+    &lt;memory model='dimm'&gt;
+      &lt;source&gt;
+        &lt;pagesize unit='KiB'&gt;4096&lt;/pagesize&gt;
+        &lt;nodemask&gt;1-3&lt;/nodemask&gt;
+      &lt;/source&gt;
+      &lt;target&gt;
+        &lt;size unit='KiB'&gt;524287&lt;/size&gt;
+        &lt;node&gt;1&lt;/node&gt;
+      &lt;/target&gt;
+    &lt;/memory&gt;
+  &lt;/devices&gt;
+  ...
+</pre>
+        <dl><dt><code>model</code></dt><dd>
+        <p>
+          Currently only the <code>dimm</code> model is supported in order to
+          add a virtual DIMM module to the guest.
+        </p>
+      </dd><dt><code>source</code></dt><dd>
+        <p>
+          The optional source element allows to fine tune the source of the
+          memory used for the given memory device. If the element is not
+          provided defaults configured via <code>numatune</code> are used.
+        </p>
+        <p>
+          <code>pagesize</code> can optionally be used to override the default
+          host page size used for backing the memory device.
+
+          The configured value must correspond to a page size supported by the
+          host.
+        </p>
+        <p>
+          <code>nodemask</code> can optionally be used to override the default
+          set of NUMA nodes where the memory would be allocated.
+        </p>
+      </dd><dt><code>target</code></dt><dd>
+        <p>
+          The mandatory <code>target</code> element configures the placement and
+          sizing of the added memory from the perspective of the guest.
+        </p>
+        <p>
+          The mandatory <code>size</code> subelement configures the size of the
+          added memory as a scaled integer.
+        </p>
+        <p>
+          The mandatory <code>node</code> subelement configures the guest NUMA
+          node to attach the memory to.
+        </p>
+      </dd></dl>
         <h3>
           <a name="seclabel" shape="rect" id="seclabel">Security label</a>
           <a class="headerlink" href="#seclabel" title="Permalink to this headline">¶</a>

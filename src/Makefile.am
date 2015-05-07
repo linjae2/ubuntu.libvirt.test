@@ -20,6 +20,7 @@
 abs_builddir = $(shell pwd)
 abs_topbuilddir = $(shell cd .. && pwd)
 abs_srcdir = $(shell cd $(srcdir) && pwd)
+abs_topsrcdir = $(shell cd $(top_srcdir) && pwd)
 
 # No libraries with the exception of LIBXML should be listed
 # here. List them against the individual XXX_la_CFLAGS targets
@@ -32,6 +33,7 @@ INCLUDES =	-I../gnulib/lib					\
 		-I$(srcdir)/util				\
 		-DIN_LIBVIRT					\
 		-Dabs_topbuilddir="\"$(abs_topbuilddir)\""	\
+		-Dabs_topsrcdir="\"$(abs_topsrcdir)\""		\
 		$(GETTEXT_CPPFLAGS)
 
 AM_CFLAGS =	$(LIBXML_CFLAGS)				\
@@ -96,7 +98,6 @@ UTIL_SOURCES =							\
 		util/virbitmap.c util/virbitmap.h		\
 		util/virbuffer.c util/virbuffer.h		\
 		util/vircgroup.c util/vircgroup.h util/vircgrouppriv.h	\
-                util/cgmanager.c util/cgmanager.h 		\
 		util/virclosecallbacks.c util/virclosecallbacks.h		\
 		util/vircommand.c util/vircommand.h util/vircommandpriv.h \
 		util/virconf.c util/virconf.h			\
@@ -130,6 +131,7 @@ UTIL_SOURCES =							\
 		util/virnetdevbandwidth.h util/virnetdevbandwidth.c \
 		util/virnetdevbridge.h util/virnetdevbridge.c	\
 		util/virnetdevmacvlan.c util/virnetdevmacvlan.h	\
+		util/virnetdevmidonet.h util/virnetdevmidonet.c \
 		util/virnetdevopenvswitch.h util/virnetdevopenvswitch.c \
 		util/virnetdevtap.h util/virnetdevtap.c		\
 		util/virnetdevveth.h util/virnetdevveth.c	\
@@ -158,6 +160,7 @@ UTIL_SOURCES =							\
 		util/virsysinfo.c util/virsysinfo.h		\
 		util/virsystemd.c util/virsystemd.h		\
 		util/virthread.c util/virthread.h		\
+		util/virthreadjob.c util/virthreadjob.h		\
 		util/virthreadpool.c util/virthreadpool.h	\
 		util/virtime.h util/virtime.c			\
 		util/virtpm.h util/virtpm.c			\
@@ -274,7 +277,7 @@ DOMAIN_CONF_SOURCES =						\
 		conf/domain_audit.c conf/domain_audit.h		\
 		conf/domain_nwfilter.c conf/domain_nwfilter.h	\
 		conf/snapshot_conf.c conf/snapshot_conf.h	\
-		conf/numatune_conf.c conf/numatune_conf.h
+		conf/numa_conf.c conf/numa_conf.h
 
 OBJECT_EVENT_SOURCES =						\
 		conf/object_event.c conf/object_event.h \
@@ -540,8 +543,6 @@ DRIVER_SOURCE_FILES = \
 	$(TEST_DRIVER_SOURCES) \
 	$(UML_DRIVER_SOURCES) \
 	$(VBOX_DRIVER_SOURCES) \
-	$(VBOX_NETWORK_DRIVER_SOURCES) \
-	$(VBOX_STORAGE_DRIVER_SOURCES) \
 	vbox/vbox_tmpl.c \
 	$(VMWARE_DRIVER_SOURCES) \
 	$(XEN_DRIVER_SOURCES) \
@@ -702,15 +703,9 @@ VBOX_DRIVER_SOURCES =						\
 	vbox/vbox_V4_3_4.c vbox/vbox_CAPI_v4_3_4.h              \
 	vbox/vbox_common.c vbox/vbox_common.h                   \
 	vbox/vbox_uniformed_api.h                               \
-	vbox/vbox_get_driver.h
-
-VBOX_NETWORK_DRIVER_SOURCES =					\
-	vbox/vbox_driver.c vbox/vbox_driver.h			\
-	vbox/vbox_network.c vbox/vbox_get_driver.h
-
-VBOX_STORAGE_DRIVER_SOURCES =					\
-	vbox/vbox_driver.c vbox/vbox_driver.h			\
-	vbox/vbox_storage.c vbox/vbox_get_driver.h
+	vbox/vbox_get_driver.h					\
+	vbox/vbox_network.c					\
+	vbox/vbox_storage.c
 
 VBOX_DRIVER_EXTRA_DIST =					\
 		vbox/vbox_tmpl.c vbox/README			\
@@ -719,6 +714,7 @@ VBOX_DRIVER_EXTRA_DIST =					\
 
 QEMU_DRIVER_SOURCES =							\
 		qemu/qemu_agent.c qemu/qemu_agent.h			\
+		qemu/qemu_blockjob.c qemu/qemu_blockjob.h		\
 		qemu/qemu_capabilities.c qemu/qemu_capabilities.h	\
 		qemu/qemu_command.c qemu/qemu_command.h			\
 		qemu/qemu_domain.c qemu/qemu_domain.h			\
@@ -761,10 +757,7 @@ ESX_DRIVER_SOURCES =							\
 		esx/esx_storage_driver.c esx/esx_storage_driver.h	\
 		esx/esx_storage_backend_vmfs.c esx/esx_storage_backend_vmfs.h	\
 		esx/esx_storage_backend_iscsi.c esx/esx_storage_backend_iscsi.h	\
-		esx/esx_device_monitor.c esx/esx_device_monitor.h	\
-		esx/esx_secret_driver.c esx/esx_secret_driver.h		\
 		esx/esx_stream.c esx/esx_stream.h			\
-		esx/esx_nwfilter_driver.c esx/esx_nwfilter_driver.h	\
 		esx/esx_util.c esx/esx_util.h				\
 		esx/esx_vi.c esx/esx_vi.h				\
 		esx/esx_vi_methods.c esx/esx_vi_methods.h		\
@@ -792,12 +785,6 @@ ESX_DRIVER_EXTRA_DIST =							\
 HYPERV_DRIVER_SOURCES =									\
 		hyperv/hyperv_private.h							\
 		hyperv/hyperv_driver.c hyperv/hyperv_driver.h				\
-		hyperv/hyperv_interface_driver.c hyperv/hyperv_interface_driver.h	\
-		hyperv/hyperv_network_driver.c hyperv/hyperv_network_driver.h		\
-		hyperv/hyperv_storage_driver.c hyperv/hyperv_storage_driver.h		\
-		hyperv/hyperv_device_monitor.c hyperv/hyperv_device_monitor.h		\
-		hyperv/hyperv_secret_driver.c hyperv/hyperv_secret_driver.h		\
-		hyperv/hyperv_nwfilter_driver.c hyperv/hyperv_nwfilter_driver.h		\
 		hyperv/hyperv_util.c hyperv/hyperv_util.h				\
 		hyperv/hyperv_wmi.c hyperv/hyperv_wmi.h					\
 		hyperv/hyperv_wmi_classes.c hyperv/hyperv_wmi_classes.h			\
@@ -1031,13 +1018,12 @@ libvirt_util_la_CFLAGS = $(CAPNG_CFLAGS) $(YAJL_CFLAGS) $(LIBNL_CFLAGS) \
 		$(AM_CFLAGS) $(AUDIT_CFLAGS) $(DEVMAPPER_CFLAGS) \
 		$(DBUS_CFLAGS) $(LDEXP_LIBM) $(NUMACTL_CFLAGS)	\
 		$(SYSTEMD_DAEMON_CFLAGS) $(POLKIT_CFLAGS) \
-		-I$(srcdir)/conf \
-        $(CGMANAGER_CFLAGS)
+		-I$(srcdir)/conf
 libvirt_util_la_LIBADD = $(CAPNG_LIBS) $(YAJL_LIBS) $(LIBNL_LIBS) \
 		$(THREAD_LIBS) $(AUDIT_LIBS) $(DEVMAPPER_LIBS) \
 		$(LIB_CLOCK_GETTIME) $(DBUS_LIBS) $(MSCOM_LIBS) $(LIBXML_LIBS) \
 		$(SECDRIVER_LIBS) $(NUMACTL_LIBS) $(SYSTEMD_DAEMON_LIBS) \
-		$(CGMANAGER_LIBS) $(POLKIT_LIBS)
+		$(POLKIT_LIBS)
 
 
 noinst_LTLIBRARIES += libvirt_conf.la
@@ -1052,10 +1038,6 @@ libvirt_la_BUILT_LIBADD += libvirt_cpu.la
 libvirt_cpu_la_CFLAGS = \
 		-I$(srcdir)/conf $(AM_CFLAGS)
 libvirt_cpu_la_SOURCES = $(CPU_SOURCES)
-libvirt_cpu_la_DEPENDENCIES = $(abs_builddir)/cpu/cpu_map.xml
-
-$(abs_builddir)/cpu/cpu_map.xml:
-	$(AM_V_GEN)ln -s $(abs_srcdir)/cpu/cpu_map.xml $@
 
 if WITH_VMX
 noinst_LTLIBRARIES += libvirt_vmx.la
@@ -1074,9 +1056,6 @@ libvirt_xenconfig_la_CFLAGS = \
 libvirt_xenconfig_la_SOURCES = $(XENCONFIG_SOURCES)
 endif WITH_XENCONFIG
 
-if ENABLE_CGMANAGER
-AM_CFLAGS += -DHAVE_CGMANAGER
-endif
 
 noinst_LTLIBRARIES += libvirt_driver.la
 libvirt_la_BUILT_LIBADD += libvirt_driver.la
@@ -1185,33 +1164,19 @@ endif WITH_VMWARE
 
 if WITH_VBOX
 noinst_LTLIBRARIES += \
-		libvirt_driver_vbox_impl.la	\
-		libvirt_driver_vbox_network_impl.la	\
-		libvirt_driver_vbox_storage_impl.la
+		libvirt_driver_vbox_impl.la
 libvirt_driver_vbox_la_SOURCES =
 libvirt_driver_vbox_la_LIBADD = libvirt_driver_vbox_impl.la
-libvirt_driver_vbox_network_la_SOURCES =
-libvirt_driver_vbox_network_la_LIBADD = libvirt_driver_vbox_network_impl.la
-libvirt_driver_vbox_storage_la_SOURCES =
-libvirt_driver_vbox_storage_la_LIBADD = libvirt_driver_vbox_storage_impl.la
 if WITH_DRIVER_MODULES
 mod_LTLIBRARIES += \
-		libvirt_driver_vbox.la	\
-		libvirt_driver_vbox_network.la	\
-		libvirt_driver_vbox_storage.la
+		libvirt_driver_vbox.la
 libvirt_driver_vbox_la_LIBADD += ../gnulib/lib/libgnu.la
 libvirt_driver_vbox_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
-libvirt_driver_vbox_network_la_LIBADD += ../gnulib/lib/libgnu.la
-libvirt_driver_vbox_network_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
-libvirt_driver_vbox_storage_la_LIBADD += ../gnulib/lib/libgnu.la
-libvirt_driver_vbox_storage_la_LDFLAGS = -module -avoid-version $(AM_LDFLAGS)
 else ! WITH_DRIVER_MODULES
 noinst_LTLIBRARIES += libvirt_driver_vbox.la
 # GPLv2-only license requries that it be linked into
 # libvirtd and *not* libvirt.so
 #libvirt_la_BUILT_LIBADD += libvirt_driver_vbox.la
-libvirt_driver_vbox_la_LIBADD += libvirt_driver_vbox_network_impl.la \
-				 libvirt_driver_vbox_storage_impl.la
 endif ! WITH_DRIVER_MODULES
 
 libvirt_driver_vbox_impl_la_CFLAGS =				\
@@ -1223,28 +1188,6 @@ libvirt_driver_vbox_impl_la_LIBADD =  $(DLOPEN_LIBS)		\
 		$(MSCOM_LIBS)					\
 		$(LIBXML_LIBS)
 libvirt_driver_vbox_impl_la_SOURCES = $(VBOX_DRIVER_SOURCES)
-
-libvirt_driver_vbox_network_impl_la_CFLAGS =	\
-		-I$(srcdir)/conf	\
-		$(AM_CFLAGS)	\
-		-DVBOX_NETWORK_DRIVER
-libvirt_driver_vbox_network_impl_la_LDFLAGS = $(AM_LDFLAGS)
-libvirt_driver_vbox_network_impl_la_LIBADD = $(DLOPEN_LIBS)		\
-		$(MSCOM_LIBS)					\
-		$(LIBXML_LIBS)					\
-		libvirt_driver_vbox_impl.la
-libvirt_driver_vbox_network_impl_la_SOURCES = $(VBOX_NETWORK_DRIVER_SOURCES)
-
-libvirt_driver_vbox_storage_impl_la_CFLAGS =	\
-		-I$(srcdir)/conf	\
-		$(AM_CFLAGS)	\
-		-DVBOX_STORAGE_DRIVER
-libvirt_driver_vbox_storage_impl_la_LDFLAGS = $(AM_LDFLAGS)
-libvirt_driver_vbox_storage_impl_la_LIBADD = $(DLOPEN_LIBS)		\
-		$(MSCOM_LIBS)					\
-		$(LIBXML_LIBS)					\
-		libvirt_driver_vbox_impl.la
-libvirt_driver_vbox_storage_impl_la_SOURCES = $(VBOX_STORAGE_DRIVER_SOURCES)
 endif WITH_VBOX
 
 if WITH_XENAPI
@@ -1280,7 +1223,15 @@ libvirt_driver_libxl_impl_la_CFLAGS = 		\
 libvirt_driver_libxl_impl_la_LDFLAGS = $(AM_LDFLAGS)
 libvirt_driver_libxl_impl_la_LIBADD = $(LIBXL_LIBS) libvirt_xenconfig.la
 libvirt_driver_libxl_impl_la_SOURCES = $(LIBXL_DRIVER_SOURCES)
+
+conf_DATA += libxl/libxl.conf
+augeas_DATA += libxl/libvirtd_libxl.aug
+augeastest_DATA += test_libvirtd_libxl.aug
+CLEANFILES += test_libvirtd_libxl.aug
+
 endif WITH_LIBXL
+EXTRA_DIST += libxl/libxl.conf libxl/libvirtd_libxl.aug \
+		libxl/test_libvirtd_libxl.aug.in
 
 if WITH_QEMU
 noinst_LTLIBRARIES += libvirt_driver_qemu_impl.la
@@ -1441,8 +1392,8 @@ noinst_LTLIBRARIES += libvirt_driver_parallels.la
 libvirt_la_BUILT_LIBADD += libvirt_driver_parallels.la
 libvirt_driver_parallels_la_CFLAGS = \
 		-I$(srcdir)/conf $(AM_CFLAGS) \
-		$(PARALLELS_SDK_CFLAGS)
-libvirt_driver_parallels_la_LIBADD = $(PARALLELS_SDK_LIBS)
+		$(PARALLELS_SDK_CFLAGS) $(LIBNL_CFLAGS)
+libvirt_driver_parallels_la_LIBADD = $(PARALLELS_SDK_LIBS) $(LIBNL_LIBS)
 libvirt_driver_parallels_la_SOURCES = $(PARALLELS_DRIVER_SOURCES)
 endif WITH_PARALLELS
 
@@ -1512,12 +1463,11 @@ libvirt_driver_interface_la_LIBADD =
 if WITH_NETCF
 libvirt_driver_interface_la_CFLAGS += $(NETCF_CFLAGS)
 libvirt_driver_interface_la_LIBADD += $(NETCF_LIBS)
-else ! WITH_NETCF
+endif WITH_NETCF
 if WITH_UDEV
 libvirt_driver_interface_la_CFLAGS += $(UDEV_CFLAGS)
 libvirt_driver_interface_la_LIBADD += $(UDEV_LIBS)
 endif WITH_UDEV
-endif ! WITH_NETCF
 if WITH_DRIVER_MODULES
 libvirt_driver_interface_la_LIBADD += ../gnulib/lib/libgnu.la
 libvirt_driver_interface_la_LDFLAGS += -module -avoid-version
@@ -1844,10 +1794,11 @@ check-local: check-augeas
 	check-augeas-lxc \
 	check-augeas-sanlock \
 	check-augeas-lockd \
+	check-augeas-libxl \
 	$(NULL)
 
 check-augeas: check-augeas-qemu check-augeas-lxc check-augeas-sanlock \
-	check-augeas-lockd check-augeas-virtlockd
+	check-augeas-lockd check-augeas-virtlockd check-augeas-libxl
 
 AUG_GENTEST = $(PERL) $(top_srcdir)/build-aux/augeas-gentest.pl
 EXTRA_DIST += $(top_srcdir)/build-aux/augeas-gentest.pl
@@ -1917,6 +1868,19 @@ check-augeas-virtlockd: test_virtlockd.aug
 	    '$(AUGPARSE)' -I $(srcdir)/locking test_virtlockd.aug; \
 	fi
 
+if WITH_LIBXL
+test_libvirtd_libxl.aug: libxl/test_libvirtd_libxl.aug.in \
+		$(srcdir)/libxl/libxl.conf $(AUG_GENTEST)
+	$(AM_V_GEN)$(AUG_GENTEST) $(srcdir)/libxl/libxl.conf $< $@
+
+check-augeas-libxl: test_libvirtd_libxl.aug
+	$(AM_V_GEN)if test -x '$(AUGPARSE)'; then \
+	    '$(AUGPARSE)' -I $(srcdir)/libxl test_libvirtd_libxl.aug; \
+	fi
+else ! WITH_LIBXL
+check-augeas-libxl:
+endif ! WITH_LIBXL
+
 #
 # Build our version script.  This is composed of three parts:
 #
@@ -1953,12 +1917,6 @@ USED_SYM_FILES += $(srcdir)/libvirt_esx.syms
 else ! WITH_ESX
 SYM_FILES += $(srcdir)/libvirt_esx.syms
 endif ! WITH_ESX
-
-if WITH_LIBVIRTD
-USED_SYM_FILES += $(srcdir)/libvirt_daemon.syms
-else ! WITH_LIBVIRTD
-SYM_FILES += $(srcdir)/libvirt_daemon.syms
-endif ! WITH_LIBVIRTD
 
 if WITH_REMOTE
 USED_SYM_FILES += $(srcdir)/libvirt_remote.syms
@@ -2209,6 +2167,7 @@ libvirt_setuid_rpc_client_la_SOURCES = 		\
 		util/virstring.c		\
 		util/virtime.c			\
 		util/virthread.c		\
+		util/virthreadjob.c		\
 		util/virtypedparam.c		\
 		util/viruri.c			\
 		util/virutil.c			\
@@ -2287,6 +2246,12 @@ nodist_conf_DATA += locking/qemu-lockd.conf
 BUILT_SOURCES += locking/qemu-lockd.conf
 DISTCLEANFILES += locking/qemu-lockd.conf
 endif WITH_QEMU
+
+if WITH_LIBXL
+nodist_conf_DATA += locking/libxl-lockd.conf
+BUILT_SOURCES += locking/libxl-lockd.conf
+DISTCLEANFILES += locking/libxl-lockd.conf
+endif WITH_LIBXL
 
 locking/%-lockd.conf: $(srcdir)/locking/lockd.conf
 	$(AM_V_GEN)$(MKDIR_P) locking ; \
@@ -2473,6 +2438,12 @@ nodist_conf_DATA += locking/qemu-sanlock.conf
 BUILT_SOURCES += locking/qemu-sanlock.conf
 DISTCLEANFILES += locking/qemu-sanlock.conf
 endif WITH_QEMU
+
+if WITH_LIBXL
+nodist_conf_DATA += locking/libxl-sanlock.conf
+BUILT_SOURCES += locking/libxl-sanlock.conf
+DISTCLEANFILES += locking/libxl-sanlock.conf
+endif WITH_LIBXL
 else ! WITH_SANLOCK
 EXTRA_DIST += $(LOCK_DRIVER_SANLOCK_SOURCES)
 endif ! WITH_SANLOCK
@@ -2747,8 +2718,6 @@ if WITH_SANLOCK
 endif WITH_SANLOCK
 if WITH_QEMU
 	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/lib/libvirt/qemu"
-	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/lib/libvirt/qemu/channel/target"
-	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/lib/libvirt/qemu/nvram"
 	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/run/libvirt/qemu"
 	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/cache/libvirt/qemu"
 	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/log/libvirt/qemu"

@@ -1,7 +1,7 @@
 /*
  * virsh.h: a shell to exercise the libvirt API
  *
- * Copyright (C) 2005, 2007-2014 Red Hat, Inc.
+ * Copyright (C) 2005, 2007-2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,14 +31,11 @@
 # include <stdarg.h>
 # include <unistd.h>
 # include <sys/stat.h>
-# include <inttypes.h>
 # include <termios.h>
 
 # include "internal.h"
 # include "virerror.h"
 # include "virthread.h"
-# include "virnetdevbandwidth.h"
-# include "virstring.h"
 
 # define VSH_MAX_XML_FILE (10*1024*1024)
 
@@ -319,8 +316,6 @@ int vshCommandOptScaledInt(const vshCmd *cmd, const char *name,
 bool vshCommandOptBool(const vshCmd *cmd, const char *name);
 const vshCmdOpt *vshCommandOptArgv(const vshCmd *cmd,
                                    const vshCmdOpt *opt);
-bool vshCmdHasOption(vshControl *ctl, const vshCmd *cmd, const char *optname);
-
 int vshCommandOptTimeoutToMs(vshControl *ctl, const vshCmd *cmd, int *timeout);
 
 /* Filter flags for various vshCommandOpt*By() functions */
@@ -359,7 +354,7 @@ char *vshGetTypedParamValue(vshControl *ctl, virTypedParameterPtr item)
 char *vshEditWriteToTempFile(vshControl *ctl, const char *doc);
 int vshEditFile(vshControl *ctl, const char *filename);
 char *vshEditReadBackFile(vshControl *ctl, const char *filename);
-int vshAskReedit(vshControl *ctl, const char *msg);
+int vshAskReedit(vshControl *ctl, const char *msg, bool relax_avail);
 int vshStreamSink(virStreamPtr st, const char *bytes, size_t nbytes,
                   void *opaque);
 double vshPrettyCapacity(unsigned long long val, const char **unit);
