@@ -232,9 +232,7 @@ xenDomainUsedCpus(virDomainPtr dom, virDomainDefPtr def)
                                                   cpumap, cpumaplen)) >= 0) {
         for (n = 0; n < ncpus; n++) {
             for (m = 0; m < priv->nbNodeCpus; m++) {
-                bool used;
-                ignore_value(virBitmapGetBit(cpulist, m, &used));
-                if ((!used) &&
+                if (!virBitmapIsBitSet(cpulist, m) &&
                     (VIR_CPU_USABLE(cpumap, cpumaplen, n, m))) {
                     ignore_value(virBitmapSetBit(cpulist, m));
                     nb++;
@@ -340,7 +338,7 @@ xenDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
     if (dev->type == VIR_DOMAIN_DEVICE_CHR &&
         dev->data.chr->deviceType == VIR_DOMAIN_CHR_DEVICE_TYPE_CONSOLE &&
         dev->data.chr->targetType == VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_NONE &&
-        STRNEQ(def->os.type, "hvm"))
+        def->os.type != VIR_DOMAIN_OSTYPE_HVM)
         dev->data.chr->targetType = VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_XEN;
 
     /* forbid capabilities mode hostdev in this kind of hypervisor */
@@ -372,6 +370,9 @@ xenDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
         }
     }
 
+    if (virDomainDeviceDefCheckUnsupportedMemoryDevice(dev) < 0)
+        return -1;
+
     return 0;
 }
 
@@ -389,6 +390,10 @@ xenDomainDefPostParse(virDomainDefPtr def,
         memballoon->model = VIR_DOMAIN_MEMBALLOON_MODEL_XEN;
         def->memballoon = memballoon;
     }
+
+    /* memory hotplug tunables are not supported by this driver */
+    if (virDomainDefCheckUnsupportedMemoryHotplug(def) < 0)
+        return -1;
 
     return 0;
 }
@@ -778,7 +783,6 @@ xenUnifiedDomainCreateXML(virConnectPtr conn,
         parse_flags |= VIR_DOMAIN_DEF_PARSE_VALIDATE;
 
     if (!(def = virDomainDefParseString(xml, priv->caps, priv->xmlopt,
-                                        1 << VIR_DOMAIN_VIRT_XEN,
                                         parse_flags)))
         goto cleanup;
 
@@ -1690,7 +1694,6 @@ xenUnifiedConnectDomainXMLToNative(virConnectPtr conn,
     }
 
     if (!(def = virDomainDefParseString(xmlData, priv->caps, priv->xmlopt,
-                                        1 << VIR_DOMAIN_VIRT_XEN,
                                         VIR_DOMAIN_DEF_PARSE_INACTIVE)))
         goto cleanup;
 
@@ -1900,7 +1903,6 @@ xenUnifiedDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int
         parse_flags |= VIR_DOMAIN_DEF_PARSE_VALIDATE;
 
     if (!(def = virDomainDefParseString(xml, priv->caps, priv->xmlopt,
-                                        1 << VIR_DOMAIN_VIRT_XEN,
                                         parse_flags)))
         goto cleanup;
 
@@ -2759,8 +2761,7 @@ xenUnifiedNodeSuspendForDuration(virConnectPtr conn,
 /*----- Register with libvirt.c, and initialize Xen drivers. -----*/
 
 /* The interface which we export upwards to libvirt.c. */
-static virHypervisorDriver xenUnifiedDriver = {
-    .no = VIR_DRV_XEN_UNIFIED,
+static virHypervisorDriver xenUnifiedHypervisorDriver = {
     .name = "Xen",
     .connectOpen = xenUnifiedConnectOpen, /* 0.0.3 */
     .connectClose = xenUnifiedConnectClose, /* 0.0.3 */
@@ -2856,6 +2857,11 @@ static virHypervisorDriver xenUnifiedDriver = {
     .nodeSetMemoryParameters = xenUnifiedNodeSetMemoryParameters, /* 0.10.2 */
 };
 
+
+static virConnectDriver xenUnifiedConnectDriver = {
+    .hypervisorDriver = &xenUnifiedHypervisorDriver,
+};
+
 /**
  * xenRegister:
  *
@@ -2868,7 +2874,8 @@ xenRegister(void)
 {
     if (virRegisterStateDriver(&state_driver) == -1) return -1;
 
-    return virRegisterHypervisorDriver(&xenUnifiedDriver);
+    return virRegisterConnectDriver(&xenUnifiedConnectDriver,
+                                    true);
 }
 
 /**

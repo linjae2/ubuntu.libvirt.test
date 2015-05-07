@@ -81,10 +81,6 @@
 #include "virstring.h"
 #include "virutil.h"
 
-#ifndef NSIG
-# define NSIG 32
-#endif
-
 verify(sizeof(gid_t) <= sizeof(unsigned int) &&
        sizeof(uid_t) <= sizeof(unsigned int));
 
@@ -1819,6 +1815,8 @@ virFindSCSIHostByPCI(const char *sysfs_prefix,
         if (virStrToLong_ui(buf, NULL, 10, &read_unique_id) < 0)
             goto cleanup;
 
+        VIR_FREE(buf);
+
         if (read_unique_id != unique_id) {
             VIR_FREE(unique_path);
             continue;
@@ -1833,6 +1831,7 @@ virFindSCSIHostByPCI(const char *sysfs_prefix,
     VIR_FREE(unique_path);
     VIR_FREE(host_link);
     VIR_FREE(host_path);
+    VIR_FREE(buf);
     return ret;
 }
 
@@ -2365,29 +2364,6 @@ virFindFCHostCapableVport(const char *sysfs_prefix ATTRIBUTE_UNUSED)
 #endif /* __linux__ */
 
 /**
- * virCompareLimitUlong:
- *
- * Compare two unsigned long long numbers. Value '0' of the arguments has a
- * special meaning of 'unlimited' and thus greater than any other value.
- *
- * Returns 0 if the numbers are equal, -1 if b is greater, 1 if a is greater.
- */
-int
-virCompareLimitUlong(unsigned long long a, unsigned long long b)
-{
-    if (a == b)
-        return 0;
-
-    if (!b)
-        return -1;
-
-    if (a == 0 || a > b)
-        return 1;
-
-    return -1;
-}
-
-/**
  * virParseOwnershipIds:
  *
  * Parse the usual "uid:gid" ownership specification into uid_t and
@@ -2577,3 +2553,48 @@ virGetListenFDs(void)
 }
 
 #endif /* WIN32 */
+
+#ifndef WIN32
+long virGetSystemPageSize(void)
+{
+    return sysconf(_SC_PAGESIZE);
+}
+#else /* WIN32 */
+long virGetSystemPageSize(void)
+{
+    errno = ENOSYS;
+    return -1;
+}
+#endif /* WIN32 */
+
+long virGetSystemPageSizeKB(void)
+{
+    long val = virGetSystemPageSize();
+    if (val < 0)
+        return val;
+    return val / 1024;
+}
+
+/**
+ * virMemoryLimitTruncate
+ *
+ * Return truncated memory limit to VIR_DOMAIN_MEMORY_PARAM_UNLIMITED as maximum
+ * which means that the limit is not set => unlimited.
+ */
+unsigned long long
+virMemoryLimitTruncate(unsigned long long value)
+{
+    return value < VIR_DOMAIN_MEMORY_PARAM_UNLIMITED ? value :
+        VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
+}
+
+/**
+ * virMemoryLimitIsSet
+ *
+ * Returns true if the limit is set and false for unlimited value.
+ */
+bool
+virMemoryLimitIsSet(unsigned long long value)
+{
+    return value < VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
+}

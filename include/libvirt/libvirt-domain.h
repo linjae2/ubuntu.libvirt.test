@@ -4,7 +4,7 @@
  * Description: Provides APIs for the management of domains
  * Author: Daniel Veillard <veillard@redhat.com>
  *
- * Copyright (C) 2006-2014 Red Hat, Inc.
+ * Copyright (C) 2006-2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -116,6 +116,7 @@ typedef enum {
     VIR_DOMAIN_PAUSED_SHUTTING_DOWN = 8, /* paused during shutdown process */
     VIR_DOMAIN_PAUSED_SNAPSHOT = 9,      /* paused while creating a snapshot */
     VIR_DOMAIN_PAUSED_CRASHED = 10,     /* paused due to a guest crash */
+    VIR_DOMAIN_PAUSED_STARTING_UP = 11, /* the domain is being started */
 
 # ifdef VIR_ENUM_SENTINELS
     VIR_DOMAIN_PAUSED_LAST
@@ -182,12 +183,34 @@ typedef enum {
                                         monitored by virDomainGetJobInfo); only
                                         limited set of commands may be allowed */
     VIR_DOMAIN_CONTROL_OCCUPIED = 2, /* occupied by a running command */
-    VIR_DOMAIN_CONTROL_ERROR = 3,    /* unusable, domain cannot be fully operated */
+    VIR_DOMAIN_CONTROL_ERROR = 3,    /* unusable, domain cannot be fully
+                                        operated, possible reason is provided
+                                        in the details field */
 
 # ifdef VIR_ENUM_SENTINELS
     VIR_DOMAIN_CONTROL_LAST
 # endif
 } virDomainControlState;
+
+/**
+ * virDomainControlErrorReason:
+ *
+ * Reason for the error state.
+ */
+typedef enum {
+    VIR_DOMAIN_CONTROL_ERROR_REASON_NONE = 0,     /* server didn't provide a
+                                                     reason */
+    VIR_DOMAIN_CONTROL_ERROR_REASON_UNKNOWN = 1,  /* unknown reason for the
+                                                     error */
+    VIR_DOMAIN_CONTROL_ERROR_REASON_MONITOR = 2,  /* monitor connection is
+                                                     broken */
+    VIR_DOMAIN_CONTROL_ERROR_REASON_INTERNAL = 3, /* error caused due to
+                                                     internal failure in libvirt
+                                                  */
+# ifdef VIR_ENUM_SENTINELS
+    VIR_DOMAIN_CONTROL_ERROR_REASON_LAST
+# endif
+} virDomainControlErrorReason;
 
 /**
  * virDomainControlInfo:
@@ -198,7 +221,8 @@ typedef enum {
 typedef struct _virDomainControlInfo virDomainControlInfo;
 struct _virDomainControlInfo {
     unsigned int state;     /* control state, one of virDomainControlState */
-    unsigned int details;   /* state details, currently 0 */
+    unsigned int details;   /* state details, currently 0 except for ERROR
+                               state (one of virDomainControlErrorReason) */
     unsigned long long stateTime; /* for how long (in msec) control interface
                                      has been in current state (except for OK
                                      and ERROR states) */
@@ -1568,6 +1592,37 @@ int                     virDomainGetEmulatorPinInfo (virDomainPtr domain,
                                                      unsigned int flags);
 
 /**
+ * virIOThreadInfo:
+ *
+ * The data structure for information about all IOThreads in a domain
+ */
+typedef struct _virDomainIOThreadInfo virDomainIOThreadInfo;
+typedef virDomainIOThreadInfo *virDomainIOThreadInfoPtr;
+struct _virDomainIOThreadInfo {
+    unsigned int iothread_id;          /* IOThread ID */
+    unsigned char *cpumap;             /* CPU map for thread. A pointer to an */
+                                       /* array of real CPUs (in 8-bit bytes) */
+    int cpumaplen;                     /* cpumap size */
+};
+
+void                 virDomainIOThreadInfoFree(virDomainIOThreadInfoPtr info);
+
+int                  virDomainGetIOThreadInfo(virDomainPtr domain,
+                                               virDomainIOThreadInfoPtr **info,
+                                               unsigned int flags);
+int                  virDomainPinIOThread(virDomainPtr domain,
+                                          unsigned int iothread_id,
+                                          unsigned char *cpumap,
+                                          int maplen,
+                                          unsigned int flags);
+int                  virDomainAddIOThread(virDomainPtr domain,
+                                          unsigned int iothread_id,
+                                          unsigned int flags);
+int                  virDomainDelIOThread(virDomainPtr domain,
+                                          unsigned int iothread_id,
+                                          unsigned int flags);
+
+/**
  * VIR_USE_CPU:
  * @cpumap: pointer to a bit map of real CPUs (in 8-bit bytes) (IN/OUT)
  * @cpu: the physical CPU number
@@ -2499,6 +2554,16 @@ int virDomainAbortJob(virDomainPtr dom);
 # define VIR_DOMAIN_JOB_TIME_ELAPSED             "time_elapsed"
 
 /**
+ * VIR_DOMAIN_JOB_TIME_ELAPSED_NET:
+ *
+ * virDomainGetJobStats field: time (ms) since the beginning of the
+ * migration job NOT including the time required to transfer control
+ * flow from the source host to the destination host,
+ * as VIR_TYPED_PARAM_ULLONG.
+ */
+# define VIR_DOMAIN_JOB_TIME_ELAPSED_NET         "time_elapsed_net"
+
+/**
  * VIR_DOMAIN_JOB_TIME_REMAINING:
  *
  * virDomainGetJobStats field: remaining time (ms) for VIR_DOMAIN_JOB_BOUNDED
@@ -2512,9 +2577,20 @@ int virDomainAbortJob(virDomainPtr dom);
  * VIR_DOMAIN_JOB_DOWNTIME:
  *
  * virDomainGetJobStats field: downtime (ms) that is expected to happen
- * during migration, as VIR_TYPED_PARAM_ULLONG.
+ * during migration, as VIR_TYPED_PARAM_ULLONG. The real computed downtime
+ * between the time guest CPUs were paused and the time they were resumed
+ * is reported for completed migration.
  */
 # define VIR_DOMAIN_JOB_DOWNTIME                 "downtime"
+
+/**
+ * VIR_DOMAIN_JOB_DOWNTIME_NET:
+ *
+ * virDomainGetJobStats field: real measured downtime (ms) NOT including
+ * the time required to transfer control flow from the source host to the
+ * destination host, as VIR_TYPED_PARAM_ULLONG.
+ */
+# define VIR_DOMAIN_JOB_DOWNTIME_NET             "downtime_net"
 
 /**
  * VIR_DOMAIN_JOB_SETUP_TIME:
@@ -3153,6 +3229,23 @@ typedef void (*virConnectDomainEventDeviceRemovedCallback)(virConnectPtr conn,
                                                            void *opaque);
 
 /**
+ * virConnectDomainEventDeviceAddedCallback:
+ * @conn: connection object
+ * @dom: domain on which the event occurred
+ * @devAlias: device alias
+ * @opaque: application specified data
+ *
+ * This callback occurs when a device is added to the domain.
+ *
+ * The callback signature to use when registering for an event of type
+ * VIR_DOMAIN_EVENT_ID_DEVICE_ADDED with virConnectDomainEventRegisterAny()
+ */
+typedef void (*virConnectDomainEventDeviceAddedCallback)(virConnectPtr conn,
+                                                         virDomainPtr dom,
+                                                         const char *devAlias,
+                                                         void *opaque);
+
+/**
  * VIR_DOMAIN_TUNABLE_CPU_VCPUPIN:
  *
  * Macro represents formatted pinning for one vcpu specified by id which is
@@ -3168,6 +3261,15 @@ typedef void (*virConnectDomainEventDeviceRemovedCallback)(virConnectPtr conn,
  * as VIR_TYPED_PARAM_STRING.
  */
 # define VIR_DOMAIN_TUNABLE_CPU_EMULATORPIN "cputune.emulatorpin"
+
+/**
+ * VIR_DOMAIN_TUNABLE_CPU_IOTHREADSPIN:
+ *
+ * Macro represents formatted pinning for one IOThread specified by id which is
+ * appended to the parameter name, for example "cputune.iothreadpin1",
+ * as VIR_TYPED_PARAM_STRING.
+ */
+# define VIR_DOMAIN_TUNABLE_CPU_IOTHREADSPIN "cputune.iothreadpin%u"
 
 /**
  * VIR_DOMAIN_TUNABLE_CPU_CPU_SHARES:
@@ -3425,6 +3527,7 @@ typedef enum {
     VIR_DOMAIN_EVENT_ID_BLOCK_JOB_2 = 16,    /* virConnectDomainEventBlockJobCallback */
     VIR_DOMAIN_EVENT_ID_TUNABLE = 17,        /* virConnectDomainEventTunableCallback */
     VIR_DOMAIN_EVENT_ID_AGENT_LIFECYCLE = 18,/* virConnectDomainEventAgentLifecycleCallback */
+    VIR_DOMAIN_EVENT_ID_DEVICE_ADDED = 19,   /* virConnectDomainEventDeviceAddedCallback */
 
 # ifdef VIR_ENUM_SENTINELS
     VIR_DOMAIN_EVENT_ID_LAST
@@ -3682,5 +3785,37 @@ typedef struct _virTypedParameter virMemoryParameter;
  */
 typedef virMemoryParameter *virMemoryParameterPtr;
 
+typedef enum {
+    VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE = 0, /* Parse DHCP lease file */
+    VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT = 1, /* Query qemu guest agent */
+
+# ifdef VIR_ENUM_SENTINELS
+    VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LAST
+# endif
+} virDomainInterfaceAddressesSource;
+
+typedef struct _virDomainInterfaceIPAddress virDomainIPAddress;
+typedef virDomainIPAddress *virDomainIPAddressPtr;
+struct _virDomainInterfaceIPAddress {
+    int type;                /* virIPAddrType */
+    char *addr;              /* IP address */
+    unsigned int prefix;     /* IP address prefix */
+};
+
+typedef struct _virDomainInterface virDomainInterface;
+typedef virDomainInterface *virDomainInterfacePtr;
+struct _virDomainInterface {
+    char *name;                     /* interface name */
+    char *hwaddr;                   /* hardware address, may be NULL */
+    unsigned int naddrs;            /* number of items in @addrs */
+    virDomainIPAddressPtr addrs;    /* array of IP addresses */
+};
+
+int virDomainInterfaceAddresses(virDomainPtr dom,
+                                virDomainInterfacePtr **ifaces,
+                                unsigned int source,
+                                unsigned int flags);
+
+void virDomainInterfaceFree(virDomainInterfacePtr iface);
 
 #endif /* __VIR_LIBVIRT_DOMAIN_H__ */

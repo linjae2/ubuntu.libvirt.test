@@ -412,7 +412,6 @@ prlsdkDomObjFreePrivate(void *p)
         return;
 
     PrlHandle_Free(pdom->sdkdom);
-    virBitmapFree(pdom->cpumask);
     VIR_FREE(pdom->uuid);
     VIR_FREE(pdom->home);
     VIR_FREE(p);
@@ -463,7 +462,7 @@ prlsdkGetDiskInfo(PRL_HANDLE prldisk,
     PRL_UINT32 emulatedType;
     PRL_UINT32 ifType;
     PRL_UINT32 pos;
-    PRL_UINT32 prldiskIndex;
+    virDomainDeviceDriveAddressPtr address;
     int ret = -1;
 
     pret = PrlVmDev_GetEmulatedType(prldisk, &emulatedType);
@@ -479,10 +478,12 @@ prlsdkGetDiskInfo(PRL_HANDLE prldisk,
         virDomainDiskSetFormat(disk, VIR_STORAGE_FILE_RAW);
     }
 
-    if (isCdrom)
+    if (isCdrom) {
         disk->device = VIR_DOMAIN_DISK_DEVICE_CDROM;
-    else
+        disk->src->readonly = true;
+    } else {
         disk->device = VIR_DOMAIN_DISK_DEVICE_DISK;
+    }
 
     pret = PrlVmDev_GetFriendlyName(prldisk, NULL, &buflen);
     prlsdkCheckRetGoto(pret, cleanup);
@@ -498,15 +499,32 @@ prlsdkGetDiskInfo(PRL_HANDLE prldisk,
 
     pret = PrlVmDev_GetIfaceType(prldisk, &ifType);
     prlsdkCheckRetGoto(pret, cleanup);
+
+    pret = PrlVmDev_GetStackIndex(prldisk, &pos);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    address = &disk->info.addr.drive;
     switch (ifType) {
     case PMS_IDE_DEVICE:
         disk->bus = VIR_DOMAIN_DISK_BUS_IDE;
+        disk->dst = virIndexToDiskName(pos, "hd");
+        address->bus = pos / 2;
+        address->target = 0;
+        address->unit = pos % 2;
         break;
     case PMS_SCSI_DEVICE:
         disk->bus = VIR_DOMAIN_DISK_BUS_SCSI;
+        disk->dst = virIndexToDiskName(pos, "sd");
+        address->bus = 0;
+        address->target = 0;
+        address->unit = pos;
         break;
     case PMS_SATA_DEVICE:
         disk->bus = VIR_DOMAIN_DISK_BUS_SATA;
+        disk->dst = virIndexToDiskName(pos, "sd");
+        address->bus = 0;
+        address->target = 0;
+        address->unit = pos;
         break;
     default:
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -515,17 +533,10 @@ prlsdkGetDiskInfo(PRL_HANDLE prldisk,
         break;
     }
 
-    pret = PrlVmDev_GetStackIndex(prldisk, &pos);
-    prlsdkCheckRetGoto(pret, cleanup);
+    if (!disk->dst)
+        goto cleanup;
 
     disk->info.type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_DRIVE;
-    disk->info.addr.drive.target = pos;
-
-    pret = PrlVmDev_GetIndex(prldisk, &prldiskIndex);
-    prlsdkCheckRetGoto(pret, cleanup);
-
-    if (!(disk->dst = virIndexToDiskName(prldiskIndex, "sd")))
-        goto cleanup;
 
     ret = 0;
 
@@ -692,9 +703,6 @@ prlsdkGetNetInfo(PRL_HANDLE netAdapter, virDomainNetDefPtr net, bool isCt)
 
     /* use device name, shown by prlctl as target device
      * for identifying network adapter in virDomainDefineXML */
-    pret = PrlVmDev_GetIndex(netAdapter, &netAdapterIndex);
-    prlsdkCheckRetGoto(pret, cleanup);
-
     pret = PrlVmDevNet_GetHostInterfaceName(netAdapter, NULL, &buflen);
     prlsdkCheckRetGoto(pret, cleanup);
 
@@ -702,14 +710,17 @@ prlsdkGetNetInfo(PRL_HANDLE netAdapter, virDomainNetDefPtr net, bool isCt)
         goto cleanup;
 
     pret = PrlVmDevNet_GetHostInterfaceName(netAdapter, net->ifname, &buflen);
-        prlsdkCheckRetGoto(pret, cleanup);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    pret = PrlVmDev_GetIndex(netAdapter, &netAdapterIndex);
+    prlsdkCheckRetGoto(pret, cleanup);
 
     if (isCt && netAdapterIndex == (PRL_UINT32) -1) {
         /* venet devices don't have mac address and
          * always up */
         net->linkstate = VIR_DOMAIN_NET_INTERFACE_LINK_STATE_UP;
         if (VIR_STRDUP(net->data.network.name,
-                       PARALLELS_ROUTED_NETWORK_NAME) < 0)
+                       PARALLELS_DOMAIN_ROUTED_NETWORK_NAME) < 0)
             goto cleanup;
         return 0;
     }
@@ -728,7 +739,7 @@ prlsdkGetNetInfo(PRL_HANDLE netAdapter, virDomainNetDefPtr net, bool isCt)
 
     if (emulatedType == PNA_ROUTED) {
         if (VIR_STRDUP(net->data.network.name,
-                       PARALLELS_ROUTED_NETWORK_NAME) < 0)
+                       PARALLELS_DOMAIN_ROUTED_NETWORK_NAME) < 0)
             goto cleanup;
     } else {
         pret = PrlVmDevNet_GetVirtualNetworkId(netAdapter, NULL, &buflen);
@@ -741,6 +752,41 @@ prlsdkGetNetInfo(PRL_HANDLE netAdapter, virDomainNetDefPtr net, bool isCt)
                                                net->data.network.name,
                                                &buflen);
         prlsdkCheckRetGoto(pret, cleanup);
+
+        /*
+         * We use VIR_DOMAIN_NET_TYPE_NETWORK for all network adapters
+         * except those whose Virtual Network Id differ from Parallels
+         * predefined ones such as PARALLELS_DOMAIN_BRIDGED_NETWORK_NAME
+         * and PARALLELS_DONAIN_ROUTED_NETWORK_NAME
+         */
+        if (STRNEQ(net->data.network.name, PARALLELS_DOMAIN_BRIDGED_NETWORK_NAME))
+            net->type = VIR_DOMAIN_NET_TYPE_BRIDGE;
+
+    }
+
+    if (!isCt) {
+        PRL_VM_NET_ADAPTER_TYPE type;
+        pret = PrlVmDevNet_GetAdapterType(netAdapter, &type);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        switch (type) {
+        case PNT_RTL:
+            if (VIR_STRDUP(net->model, "rtl8139") < 0)
+                goto cleanup;
+            break;
+        case PNT_E1000:
+            if (VIR_STRDUP(net->model, "e1000") < 0)
+                goto cleanup;
+            break;
+        case PNT_VIRTIO:
+            if (VIR_STRDUP(net->model, "virtio") < 0)
+                goto cleanup;
+            break;
+        default:
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("Unknown adapter type: %X"), type);
+            goto cleanup;
+        }
     }
 
     pret = PrlVmDev_IsConnected(netAdapter, &isConnected);
@@ -961,6 +1007,25 @@ prlsdkAddVNCInfo(PRL_HANDLE sdkdom, virDomainDefPtr def)
     if (VIR_APPEND_ELEMENT(def->graphics, def->ngraphics, gr) < 0)
         goto error;
 
+    if (IS_CT(def)) {
+        virDomainVideoDefPtr video;
+        if (VIR_ALLOC(video) < 0)
+            goto error;
+        video->type = virDomainVideoDefaultType(def);
+        if (video->type < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                           _("cannot determine default video type"));
+            VIR_FREE(video);
+            goto error;
+        }
+        video->vram = virDomainVideoDefaultRAM(def, video->type);
+        video->heads = 1;
+        if (VIR_ALLOC_N(def->videos, 1) < 0) {
+            virDomainVideoDefFree(video);
+            goto error;
+        }
+        def->videos[def->nvideos++] = video;
+    }
     return 0;
 
  error:
@@ -1053,8 +1118,7 @@ prlsdkConvertDomainState(VIRTUAL_MACHINE_STATE domainState,
 
 static int
 prlsdkConvertCpuInfo(PRL_HANDLE sdkdom,
-                     virDomainDefPtr def,
-                     parallelsDomObjPtr pdom)
+                     virDomainDefPtr def)
 {
     char *buf;
     PRL_UINT32 buflen = 0;
@@ -1085,11 +1149,11 @@ prlsdkConvertCpuInfo(PRL_HANDLE sdkdom,
     pret = PrlVmCfg_GetCpuMask(sdkdom, buf, &buflen);
 
     if (strlen(buf) == 0) {
-        if (!(pdom->cpumask = virBitmapNew(hostcpus)))
+        if (!(def->cpumask = virBitmapNew(hostcpus)))
             goto cleanup;
-        virBitmapSetAll(pdom->cpumask);
+        virBitmapSetAll(def->cpumask);
     } else {
-        if (virBitmapParse(buf, 0, &pdom->cpumask, hostcpus) < 0)
+        if (virBitmapParse(buf, 0, &def->cpumask, hostcpus) < 0)
             goto cleanup;
     }
 
@@ -1110,12 +1174,10 @@ prlsdkConvertDomainType(PRL_HANDLE sdkdom, virDomainDefPtr def)
 
     switch (domainType) {
     case PVT_VM:
-        if (VIR_STRDUP(def->os.type, "hvm") < 0)
-            return -1;
+        def->os.type = VIR_DOMAIN_OSTYPE_HVM;
         break;
     case PVT_CT:
-        if (VIR_STRDUP(def->os.type, "exe") < 0)
-            return -1;
+        def->os.type = VIR_DOMAIN_OSTYPE_EXE;
         if (VIR_STRDUP(def->os.init, "/sbin/init") < 0)
             return -1;
         break;
@@ -1186,7 +1248,7 @@ prlsdkLoadDomain(parallelsConnPtr privconn,
     virCheckNonNullArgGoto(privconn, error);
     virCheckNonNullArgGoto(sdkdom, error);
 
-    if (VIR_ALLOC(def) < 0)
+    if (!(def = virDomainDefNew()))
         goto error;
 
     if (!olddom) {
@@ -1213,11 +1275,11 @@ prlsdkLoadDomain(parallelsConnPtr privconn,
     /* get RAM parameters */
     pret = PrlVmCfg_GetRamSize(sdkdom, &ram);
     prlsdkCheckRetGoto(pret, error);
-    def->mem.max_balloon = ram << 10; /* RAM size obtained in Mbytes,
-                                         convert to Kbytes */
-    def->mem.cur_balloon = def->mem.max_balloon;
+    virDomainDefSetMemoryInitial(def, ram << 10); /* RAM size obtained in Mbytes,
+                                                     convert to Kbytes */
+    def->mem.cur_balloon = ram << 10;
 
-    if (prlsdkConvertCpuInfo(sdkdom, def, pdom) < 0)
+    if (prlsdkConvertCpuInfo(sdkdom, def) < 0)
         goto error;
 
     if (prlsdkConvertCpuMode(sdkdom, def) < 0)
@@ -1246,6 +1308,32 @@ prlsdkLoadDomain(parallelsConnPtr privconn,
 
     pret = PrlVmCfg_GetHomePath(sdkdom, pdom->home, &buflen);
     prlsdkCheckRetGoto(pret, error);
+
+    /* For VMs pdom->home is actually /directory/config.pvs */
+    if (!IS_CT(def)) {
+        /* Get rid of /config.pvs in path string */
+        char *s = strrchr(pdom->home, '/');
+        if (s)
+            *s = '\0';
+    }
+
+    if (virDomainDefAddImplicitControllers(def) < 0)
+        goto error;
+
+    if (def->ngraphics > 0) {
+        int bus = IS_CT(def) ? VIR_DOMAIN_INPUT_BUS_PARALLELS:
+                                VIR_DOMAIN_INPUT_BUS_PS2;
+
+        if (virDomainDefMaybeAddInput(def,
+                                      VIR_DOMAIN_INPUT_TYPE_MOUSE,
+                                      bus) < 0)
+            goto error;
+
+        if (virDomainDefMaybeAddInput(def,
+                                      VIR_DOMAIN_INPUT_TYPE_KBD,
+                                      bus) < 0)
+            goto error;
+    }
 
     if (olddom) {
         /* assign new virDomainDef without any checks */
@@ -1344,7 +1432,6 @@ prlsdkLoadDomains(parallelsConnPtr privconn)
 
  error:
     PrlHandle_Free(result);
-    PrlHandle_Free(job);
     return -1;
 }
 
@@ -1705,27 +1792,25 @@ PRL_RESULT prlsdkResume(parallelsConnPtr privconn, PRL_HANDLE sdkdom)
     return waitJob(job, privconn->jobTimeout);
 }
 
-int
-prlsdkDomainChangeState(virDomainPtr domain,
-                        prlsdkChangeStateFunc chstate)
+PRL_RESULT prlsdkSuspend(parallelsConnPtr privconn, PRL_HANDLE sdkdom)
 {
-    parallelsConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr dom;
+    PRL_HANDLE job = PRL_INVALID_HANDLE;
+
+    job = PrlVm_Suspend(sdkdom);
+    return waitJob(job, privconn->jobTimeout);
+}
+
+int
+prlsdkDomainChangeStateLocked(parallelsConnPtr privconn,
+                              virDomainObjPtr dom,
+                              prlsdkChangeStateFunc chstate)
+{
     parallelsDomObjPtr pdom;
     PRL_RESULT pret;
-    int ret = -1;
     virErrorNumber virerr;
-
-    dom = virDomainObjListFindByUUID(privconn->domains, domain->uuid);
-    if (dom == NULL) {
-        parallelsDomNotFoundError(domain);
-        return -1;
-    }
 
     pdom = dom->privateData;
     pret = chstate(privconn, pdom->sdkdom);
-    virReportError(VIR_ERR_OPERATION_FAILED,
-                   _("Can't change domain state: %d"), pret);
     if (PRL_FAILED(pret)) {
         virResetLastError();
 
@@ -1739,12 +1824,24 @@ prlsdkDomainChangeState(virDomainPtr domain,
         }
 
         virReportError(virerr, "%s", _("Can't change domain state."));
-        goto cleanup;
+        return -1;
     }
 
-    ret = prlsdkUpdateDomain(privconn, dom);
+    return prlsdkUpdateDomain(privconn, dom);
+}
 
- cleanup:
+int
+prlsdkDomainChangeState(virDomainPtr domain,
+                        prlsdkChangeStateFunc chstate)
+{
+    parallelsConnPtr privconn = domain->conn->privateData;
+    virDomainObjPtr dom;
+    int ret = -1;
+
+    if (!(dom = parallelsDomObjFromDomain(domain)))
+        return -1;
+
+    ret = prlsdkDomainChangeStateLocked(privconn, dom, chstate);
     virObjectUnlock(dom);
     return ret;
 }
@@ -1769,24 +1866,24 @@ prlsdkCheckUnsupportedParams(PRL_HANDLE sdkdom, virDomainDefPtr def)
         return -1;
     }
 
-    if (def->mem.max_balloon != def->mem.cur_balloon) {
+    if (virDomainDefGetMemoryActual(def) != def->mem.cur_balloon) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                    _("changing balloon parameters is not supported "
                      "by parallels driver"));
        return -1;
     }
 
-    if (def->mem.max_balloon % (1 << 10) != 0) {
+    if (virDomainDefGetMemoryActual(def) % (1 << 10) != 0) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                    _("Memory size should be multiple of 1Mb."));
         return -1;
     }
 
     if (def->mem.nhugepages ||
-        def->mem.hard_limit ||
-        def->mem.soft_limit ||
+        virMemoryLimitIsSet(def->mem.hard_limit) ||
+        virMemoryLimitIsSet(def->mem.soft_limit) ||
         def->mem.min_guarantee ||
-        def->mem.swap_hard_limit) {
+        virMemoryLimitIsSet(def->mem.swap_hard_limit)) {
 
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("Memory parameter is not supported "
@@ -1807,25 +1904,36 @@ prlsdkCheckUnsupportedParams(PRL_HANDLE sdkdom, virDomainDefPtr def)
         return -1;
     }
 
-    if (def->cpumask != NULL) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("changing cpu mask is not supported "
-                         "by parallels driver"));
-        return -1;
-    }
-
     if (def->cputune.shares ||
         def->cputune.sharesSpecified ||
         def->cputune.period ||
-        def->cputune.quota ||
-        def->cputune.nvcpupin) {
+        def->cputune.quota) {
 
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("cputune is not supported by parallels driver"));
         return -1;
     }
 
-    if (def->numatune) {
+    if (def->cputune.vcpupin) {
+       for (i = 0; i < def->vcpus; i++) {
+            if (!virBitmapEqual(def->cpumask,
+                                def->cputune.vcpupin[i]->cpumask)) {
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                               "%s", _("vcpupin cpumask differs from default cpumask"));
+                return -1;
+            }
+        }
+    }
+
+
+    /*
+     * Though we don't support NUMA configuration at the moment
+     * virDomainDefPtr always contain non zero NUMA configuration
+     * So, just make sure this configuration does't differ from auto generated.
+     */
+    if ((virDomainNumatuneGetMode(def->numa, -1) !=
+         VIR_DOMAIN_NUMATUNE_MEM_STRICT) ||
+         virDomainNumatuneHasPerNodeBinding(def->numa)) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                         _("numa parameters are not supported "
                           "by parallels driver"));
@@ -1865,8 +1973,8 @@ prlsdkCheckUnsupportedParams(PRL_HANDLE sdkdom, virDomainDefPtr def)
         return -1;
     }
 
-    if (!(vmType == PVT_VM && STREQ(def->os.type, "hvm")) &&
-        !(vmType == PVT_CT && STREQ(def->os.type, "exe"))) {
+    if (!(vmType == PVT_VM && !IS_CT(def)) &&
+        !(vmType == PVT_CT && IS_CT(def))) {
 
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("changing OS type is not supported "
@@ -1874,7 +1982,7 @@ prlsdkCheckUnsupportedParams(PRL_HANDLE sdkdom, virDomainDefPtr def)
         return -1;
     }
 
-    if (STREQ(def->os.type, "hvm")) {
+    if (!IS_CT(def)) {
         if (def->os.nBootDevs != 1 ||
             def->os.bootDevs[0] != VIR_DOMAIN_BOOT_DISK ||
             def->os.init != NULL || def->os.initargv != NULL) {
@@ -1987,6 +2095,69 @@ static int prlsdkClearDevices(PRL_HANDLE sdkdom)
     return ret;
 }
 
+static int
+prlsdkRemoveBootDevices(PRL_HANDLE sdkdom)
+{
+    PRL_RESULT pret;
+    PRL_UINT32 i, devCount;
+    PRL_HANDLE dev = PRL_INVALID_HANDLE;
+    PRL_DEVICE_TYPE devType;
+
+    pret = PrlVmCfg_GetBootDevCount(sdkdom, &devCount);
+    prlsdkCheckRetGoto(pret, error);
+
+    for (i = 0; i < devCount; i++) {
+
+        /* always get device by index 0, because device list resort after delete */
+        pret = PrlVmCfg_GetBootDev(sdkdom, 0, &dev);
+        prlsdkCheckRetGoto(pret, error);
+
+        pret = PrlBootDev_GetType(dev, &devType);
+        prlsdkCheckRetGoto(pret, error);
+
+        pret = PrlBootDev_Remove(dev);
+        prlsdkCheckRetGoto(pret, error);
+    }
+
+    return 0;
+
+ error:
+    return -1;
+}
+
+static int
+prlsdkAddDeviceToBootList(PRL_HANDLE sdkdom,
+                          PRL_UINT32 devIndex,
+                          PRL_DEVICE_TYPE devType,
+                          PRL_UINT32 bootSequence)
+{
+    PRL_RESULT pret;
+    PRL_HANDLE bootDev = PRL_INVALID_HANDLE;
+
+    pret = PrlVmCfg_CreateBootDev(sdkdom, &bootDev);
+    prlsdkCheckRetGoto(pret, error);
+
+    pret = PrlBootDev_SetIndex(bootDev, devIndex);
+    prlsdkCheckRetGoto(pret, error);
+
+    pret = PrlBootDev_SetType(bootDev, devType);
+    prlsdkCheckRetGoto(pret, error);
+
+    pret = PrlBootDev_SetSequenceIndex(bootDev, bootSequence);
+    prlsdkCheckRetGoto(pret, error);
+
+    pret = PrlBootDev_SetInUse(bootDev, PRL_TRUE);
+    prlsdkCheckRetGoto(pret, error);
+
+    return 0;
+
+ error:
+    if (bootDev != PRL_INVALID_HANDLE)
+        PrlBootDev_Remove(bootDev);
+
+    return -1;
+}
+
 static int prlsdkCheckGraphicsUnsupportedParams(virDomainDefPtr def)
 {
     virDomainGraphicsDefPtr gr;
@@ -2072,10 +2243,9 @@ static int prlsdkCheckGraphicsUnsupportedParams(virDomainDefPtr def)
 
 static int prlsdkCheckVideoUnsupportedParams(virDomainDefPtr def)
 {
-    bool isCt = STREQ(def->os.type, "exe");
     virDomainVideoDefPtr v;
 
-    if (isCt) {
+    if (IS_CT(def)) {
         if (def->nvideos == 0) {
             return 0;
         } else {
@@ -2165,7 +2335,8 @@ static int prlsdkCheckSerialUnsupportedParams(virDomainChrDefPtr chr)
 
 static int prlsdkCheckNetUnsupportedParams(virDomainNetDefPtr net)
 {
-    if (net->type != VIR_DOMAIN_NET_TYPE_NETWORK) {
+    if (net->type != VIR_DOMAIN_NET_TYPE_NETWORK &&
+        net->type != VIR_DOMAIN_NET_TYPE_BRIDGE) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("Specified network adapter type is not "
                          "supported by Parallels Cloud Server."));
@@ -2245,7 +2416,7 @@ static int prlsdkCheckDiskUnsupportedParams(virDomainDiskDefPtr disk)
 
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("Only hard disks and cdroms are supported "
-                         "supported by parallels driver."));
+                         "by parallels driver."));
         return -1;
     }
 
@@ -2271,10 +2442,8 @@ static int prlsdkCheckDiskUnsupportedParams(virDomainDiskDefPtr disk)
     }
 
     if (disk->serial) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("Setting disk serial number is not "
+        VIR_INFO("%s", _("Setting disk serial number is not "
                          "supported by parallels driver."));
-        return -1;
     }
 
     if (disk->wwn) {
@@ -2554,10 +2723,15 @@ static const char * prlsdkFormatMac(virMacAddrPtr mac, char *macstr)
     return macstr;
 }
 
-static int prlsdkAddNet(PRL_HANDLE sdkdom, virDomainNetDefPtr net)
+static int prlsdkAddNet(PRL_HANDLE sdkdom,
+                        parallelsConnPtr privconn,
+                        virDomainNetDefPtr net,
+                        bool isCt)
 {
     PRL_RESULT pret;
     PRL_HANDLE sdknet = PRL_INVALID_HANDLE;
+    PRL_HANDLE vnet = PRL_INVALID_HANDLE;
+    PRL_HANDLE job = PRL_INVALID_HANDLE;
     int ret = -1;
     char macstr[PRL_MAC_STRING_BUFNAME];
 
@@ -2570,7 +2744,9 @@ static int prlsdkAddNet(PRL_HANDLE sdkdom, virDomainNetDefPtr net)
     pret = PrlVmDev_SetEnabled(sdknet, 1);
     prlsdkCheckRetGoto(pret, cleanup);
 
-    pret = PrlVmDev_SetConnected(sdknet, net->linkstate);
+    pret = PrlVmDev_SetConnected(sdknet, net->linkstate !=
+                                 VIR_DOMAIN_NET_INTERFACE_LINK_STATE_DOWN);
+
     prlsdkCheckRetGoto(pret, cleanup);
 
     if (net->ifname) {
@@ -2582,10 +2758,59 @@ static int prlsdkAddNet(PRL_HANDLE sdkdom, virDomainNetDefPtr net)
     pret = PrlVmDevNet_SetMacAddress(sdknet, macstr);
     prlsdkCheckRetGoto(pret, cleanup);
 
-    if (STREQ(net->data.network.name, PARALLELS_ROUTED_NETWORK_NAME)) {
-        pret = PrlVmDev_SetEmulatedType(sdknet, PNA_ROUTED);
-        prlsdkCheckRetGoto(pret, cleanup);
+    if (isCt) {
+        if (net->model)
+             VIR_WARN("Setting network adapter for containers is not "
+                      "supported by Parallels Cloud Server.");
     } else {
+        if (STREQ(net->model, "rtl8139")) {
+            pret = PrlVmDevNet_SetAdapterType(sdknet, PNT_RTL);
+        } else if (STREQ(net->model, "e1000")) {
+            pret = PrlVmDevNet_SetAdapterType(sdknet, PNT_E1000);
+        } else if (STREQ(net->model, "virtio")) {
+            pret = PrlVmDevNet_SetAdapterType(sdknet, PNT_VIRTIO);
+        } else {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("Specified network adapter model is not "
+                         "supported by Parallels Cloud Server."));
+            goto cleanup;
+        }
+        prlsdkCheckRetGoto(pret, cleanup);
+    }
+
+    if (net->type == VIR_DOMAIN_NET_TYPE_NETWORK) {
+        if (STREQ(net->data.network.name, PARALLELS_DOMAIN_ROUTED_NETWORK_NAME)) {
+            pret = PrlVmDev_SetEmulatedType(sdknet, PNA_ROUTED);
+            prlsdkCheckRetGoto(pret, cleanup);
+        } else if (STREQ(net->data.network.name, PARALLELS_DOMAIN_BRIDGED_NETWORK_NAME)) {
+            pret = PrlVmDev_SetEmulatedType(sdknet, PNA_BRIDGED_ETHERNET);
+            prlsdkCheckRetGoto(pret, cleanup);
+
+            pret = PrlVmDevNet_SetVirtualNetworkId(sdknet, net->data.network.name);
+            prlsdkCheckRetGoto(pret, cleanup);
+        }
+    } else if (net->type == VIR_DOMAIN_NET_TYPE_BRIDGE) {
+        /*
+         * For this type of adapter we create a new
+         * Virtual Network assuming that bridge with given name exists
+         * Failing creating this means domain creation failure
+         */
+        pret = PrlVirtNet_Create(&vnet);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        pret = PrlVirtNet_SetNetworkId(vnet, net->data.network.name);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        pret = PrlVirtNet_SetNetworkType(vnet, PVN_BRIDGED_ETHERNET);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        job = PrlSrv_AddVirtualNetwork(privconn->server, vnet, 0);
+        if (PRL_FAILED(pret = waitJob(job, privconn->jobTimeout)))
+            goto cleanup;
+
+        pret = PrlVmDev_SetEmulatedType(sdknet, PNA_BRIDGED_ETHERNET);
+        prlsdkCheckRetGoto(pret, cleanup);
+
         pret = PrlVmDevNet_SetVirtualNetworkId(sdknet, net->data.network.name);
         prlsdkCheckRetGoto(pret, cleanup);
     }
@@ -2598,11 +2823,54 @@ static int prlsdkAddNet(PRL_HANDLE sdkdom, virDomainNetDefPtr net)
 
     ret = 0;
  cleanup:
+    PrlHandle_Free(vnet);
     PrlHandle_Free(sdknet);
     return ret;
 }
 
-static int prlsdkAddDisk(PRL_HANDLE sdkdom, virDomainDiskDefPtr disk)
+static void prlsdkDelNet(parallelsConnPtr privconn, virDomainNetDefPtr net)
+{
+    PRL_RESULT pret;
+    PRL_HANDLE vnet = PRL_INVALID_HANDLE;
+    PRL_HANDLE job = PRL_INVALID_HANDLE;
+
+    if (net->type != VIR_DOMAIN_NET_TYPE_BRIDGE)
+        return;
+
+    pret = PrlVirtNet_Create(&vnet);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    pret = PrlVirtNet_SetNetworkId(vnet, net->data.network.name);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    PrlSrv_DeleteVirtualNetwork(privconn->server, vnet, 0);
+    if (PRL_FAILED(pret = waitJob(job, privconn->jobTimeout)))
+        goto cleanup;
+
+ cleanup:
+    PrlHandle_Free(vnet);
+}
+
+static int prlsdkDelDisk(PRL_HANDLE sdkdom, int idx)
+{
+    int ret = -1;
+    PRL_RESULT pret;
+    PRL_HANDLE sdkdisk = PRL_INVALID_HANDLE;
+
+    pret = PrlVmCfg_GetHardDisk(sdkdom, idx, &sdkdisk);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    pret = PrlVmDev_Remove(sdkdisk);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    ret = 0;
+
+ cleanup:
+    PrlHandle_Free(sdkdisk);
+    return ret;
+}
+
+static int prlsdkAddDisk(PRL_HANDLE sdkdom, virDomainDiskDefPtr disk, bool bootDisk)
 {
     PRL_RESULT pret;
     PRL_HANDLE sdkdisk = PRL_INVALID_HANDLE;
@@ -2611,14 +2879,19 @@ static int prlsdkAddDisk(PRL_HANDLE sdkdom, virDomainDiskDefPtr disk)
     PRL_MASS_STORAGE_INTERFACE_TYPE sdkbus;
     int idx;
     virDomainDeviceDriveAddressPtr drive;
+    PRL_UINT32 devIndex;
+    PRL_DEVICE_TYPE devType;
+    char *dst = NULL;
 
     if (prlsdkCheckDiskUnsupportedParams(disk) < 0)
         return -1;
 
     if (disk->device == VIR_DOMAIN_DISK_DEVICE_DISK)
-        pret = PrlVmCfg_CreateVmDev(sdkdom, PDE_HARD_DISK, &sdkdisk);
+        devType = PDE_HARD_DISK;
     else
-        pret = PrlVmCfg_CreateVmDev(sdkdom, PDE_OPTICAL_DISK, &sdkdisk);
+        devType = PDE_OPTICAL_DISK;
+
+    pret = PrlVmCfg_CreateVmDev(sdkdom, devType, &sdkdisk);
     prlsdkCheckRetGoto(pret, cleanup);
 
     pret = PrlVmDev_SetEnabled(sdkdisk, 1);
@@ -2666,27 +2939,65 @@ static int prlsdkAddDisk(PRL_HANDLE sdkdom, virDomainDiskDefPtr disk)
         /* We have only one controller of each type */
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, _("Invalid drive "
                        "address of disk %s, Parallels Cloud Server has "
-                       "only one controller."), disk->src->path);
+                       "only one controller."), disk->dst);
+        goto cleanup;
+    }
+
+    if (drive->target > 0) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, _("Invalid drive "
+                       "address of disk %s, Parallels Cloud Server has "
+                       "only target 0."), disk->dst);
         goto cleanup;
     }
 
     switch (disk->bus) {
     case VIR_DOMAIN_DISK_BUS_IDE:
+        if (drive->unit > 1) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, _("Invalid drive "
+                           "address of disk %s, Parallels Cloud Server has "
+                           "only units 0-1 for IDE bus."), disk->dst);
+            goto cleanup;
+        }
         sdkbus = PMS_IDE_DEVICE;
         idx = 2 * drive->bus + drive->unit;
+        dst = virIndexToDiskName(idx, "hd");
         break;
     case VIR_DOMAIN_DISK_BUS_SCSI:
+        if (drive->bus > 0) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, _("Invalid drive "
+                           "address of disk %s, Parallels Cloud Server has "
+                           "only bus 0 for SCSI bus."), disk->dst);
+            goto cleanup;
+        }
         sdkbus = PMS_SCSI_DEVICE;
         idx = drive->unit;
+        dst = virIndexToDiskName(idx, "sd");
         break;
     case VIR_DOMAIN_DISK_BUS_SATA:
+        if (drive->bus > 0) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, _("Invalid drive "
+                           "address of disk %s, Parallels Cloud Server has "
+                           "only bus 0 for SATA bus."), disk->dst);
+            goto cleanup;
+        }
         sdkbus = PMS_SATA_DEVICE;
         idx = drive->unit;
+        dst = virIndexToDiskName(idx, "sd");
         break;
     default:
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("Specified disk bus is not "
                          "supported by Parallels Cloud Server."));
+        goto cleanup;
+    }
+
+    if (!dst)
+        goto cleanup;
+
+    if (STRNEQ(dst, disk->dst)) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, _("Invalid drive "
+                       "address of disk %s, Parallels Cloud Server supports "
+                       "only defaults address to logical device name."), disk->dst);
         goto cleanup;
     }
 
@@ -2714,9 +3025,121 @@ static int prlsdkAddDisk(PRL_HANDLE sdkdom, virDomainDiskDefPtr disk)
         goto cleanup;
     }
 
+    if (bootDisk == true) {
+        pret = PrlVmDev_GetIndex(sdkdisk, &devIndex);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        if (prlsdkAddDeviceToBootList(sdkdom, devIndex, devType, 0) < 0)
+            goto cleanup;
+    }
+
     return 0;
  cleanup:
     PrlHandle_Free(sdkdisk);
+    VIR_FREE(dst);
+    return ret;
+}
+
+int
+prlsdkAttachVolume(virConnectPtr conn,
+                   virDomainObjPtr dom,
+                   virDomainDiskDefPtr disk)
+{
+    int ret = -1;
+    parallelsConnPtr privconn = conn->privateData;
+    parallelsDomObjPtr privdom = dom->privateData;
+    PRL_HANDLE job = PRL_INVALID_HANDLE;
+
+    job = PrlVm_BeginEdit(privdom->sdkdom);
+    if (PRL_FAILED(waitJob(job, privconn->jobTimeout)))
+        goto cleanup;
+
+    ret = prlsdkAddDisk(privdom->sdkdom, disk, false);
+    if (ret == 0) {
+        job = PrlVm_CommitEx(privdom->sdkdom, PVCF_DETACH_HDD_BUNDLE);
+        if (PRL_FAILED(waitJob(job, privconn->jobTimeout))) {
+            ret = -1;
+            goto cleanup;
+        }
+    }
+
+ cleanup:
+    return ret;
+}
+
+static int
+prlsdkGetDiskIndex(PRL_HANDLE sdkdom, virDomainDiskDefPtr disk)
+{
+    int idx = -1;
+    char *buf = NULL;
+    PRL_UINT32 buflen = 0;
+    PRL_RESULT pret;
+    PRL_UINT32 hddCount;
+    PRL_UINT32 i;
+    PRL_HANDLE hdd = PRL_INVALID_HANDLE;
+
+    pret = PrlVmCfg_GetHardDisksCount(sdkdom, &hddCount);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    for (i = 0; i < hddCount; ++i) {
+
+        pret = PrlVmCfg_GetHardDisk(sdkdom, i, &hdd);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        pret = PrlVmDev_GetFriendlyName(hdd, 0, &buflen);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        if (VIR_ALLOC_N(buf, buflen) < 0)
+            goto cleanup;
+
+        pret = PrlVmDev_GetFriendlyName(hdd, buf, &buflen);
+        prlsdkCheckRetGoto(pret, cleanup);
+
+        if (STRNEQ(disk->src->path, buf)) {
+
+            PrlHandle_Free(hdd);
+            hdd = PRL_INVALID_HANDLE;
+            VIR_FREE(buf);
+            continue;
+        }
+
+        VIR_FREE(buf);
+        idx = i;
+        break;
+    }
+
+ cleanup:
+    PrlHandle_Free(hdd);
+    return idx;
+}
+
+int prlsdkDetachVolume(virConnectPtr conn,
+                   virDomainObjPtr dom,
+                   virDomainDiskDefPtr disk)
+{
+    int ret = -1, idx;
+    parallelsConnPtr privconn = conn->privateData;
+    parallelsDomObjPtr privdom = dom->privateData;
+    PRL_HANDLE job = PRL_INVALID_HANDLE;
+
+    idx = prlsdkGetDiskIndex(privdom->sdkdom, disk);
+    if (idx < 0)
+        goto cleanup;
+
+    job = PrlVm_BeginEdit(privdom->sdkdom);
+    if (PRL_FAILED(waitJob(job, privconn->jobTimeout)))
+        goto cleanup;
+
+    ret = prlsdkDelDisk(privdom->sdkdom, idx);
+    if (ret == 0) {
+        job = PrlVm_CommitEx(privdom->sdkdom, PVCF_DETACH_HDD_BUNDLE);
+        if (PRL_FAILED(waitJob(job, privconn->jobTimeout))) {
+            ret = -1;
+            goto cleanup;
+        }
+    }
+
+ cleanup:
     return ret;
 }
 
@@ -2761,12 +3184,16 @@ prlsdkAddFS(PRL_HANDLE sdkdom, virDomainFSDefPtr fs)
     return ret;
 }
 static int
-prlsdkDoApplyConfig(PRL_HANDLE sdkdom,
-                    virDomainDefPtr def)
+prlsdkDoApplyConfig(virConnectPtr conn,
+                    PRL_HANDLE sdkdom,
+                    virDomainDefPtr def,
+                    virDomainDefPtr olddef)
 {
     PRL_RESULT pret;
     size_t i;
     char uuidstr[VIR_UUID_STRING_BUFLEN + 2];
+    bool needBoot = true;
+    char *mask = NULL;
 
     if (prlsdkCheckUnsupportedParams(sdkdom, def) < 0)
         return -1;
@@ -2788,14 +3215,49 @@ prlsdkDoApplyConfig(PRL_HANDLE sdkdom,
         prlsdkCheckRetGoto(pret, error);
     }
 
-    pret = PrlVmCfg_SetRamSize(sdkdom, def->mem.max_balloon >> 10);
+    pret = PrlVmCfg_SetRamSize(sdkdom, virDomainDefGetMemoryActual(def) >> 10);
     prlsdkCheckRetGoto(pret, error);
 
     pret = PrlVmCfg_SetCpuCount(sdkdom, def->vcpus);
     prlsdkCheckRetGoto(pret, error);
 
+    if (!(mask = virBitmapFormat(def->cpumask)))
+        goto error;
+
+    pret = PrlVmCfg_SetCpuMask(sdkdom, mask);
+    prlsdkCheckRetGoto(pret, error);
+    VIR_FREE(mask);
+
+    switch (def->os.arch) {
+        case VIR_ARCH_X86_64:
+            pret = PrlVmCfg_SetCpuMode(sdkdom, PCM_CPU_MODE_64);
+            break;
+        case VIR_ARCH_I686:
+            pret = PrlVmCfg_SetCpuMode(sdkdom, PCM_CPU_MODE_32);
+            break;
+        default:
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("Unknown CPU mode: %s"),
+                           virArchToString(def->os.arch));
+            goto error;
+    }
+    prlsdkCheckRetGoto(pret, error);
+
     if (prlsdkClearDevices(sdkdom) < 0)
         goto error;
+
+    if (prlsdkRemoveBootDevices(sdkdom) < 0)
+        goto error;
+
+    if (olddef) {
+        for (i = 0; i < olddef->nnets; i++)
+            prlsdkDelNet(conn->privateData, olddef->nets[i]);
+    }
+
+    for (i = 0; i < def->nnets; i++) {
+        if (prlsdkAddNet(sdkdom, conn->privateData, def->nets[i], IS_CT(def)) < 0)
+           goto error;
+    }
 
     if (prlsdkApplyGraphicsParams(sdkdom, def) < 0)
         goto error;
@@ -2804,29 +3266,37 @@ prlsdkDoApplyConfig(PRL_HANDLE sdkdom,
         goto error;
 
     for (i = 0; i < def->nserials; i++) {
-       if (prlsdkAddSerial(sdkdom, def->serials[i]) < 0)
-           goto error;
-    }
-
-    for (i = 0; i < def->nnets; i++) {
-       if (prlsdkAddNet(sdkdom, def->nets[i]) < 0)
-           goto error;
+        if (prlsdkAddSerial(sdkdom, def->serials[i]) < 0)
+            goto error;
     }
 
     for (i = 0; i < def->ndisks; i++) {
-       if (prlsdkAddDisk(sdkdom, def->disks[i]) < 0)
-           goto error;
+        bool bootDisk = false;
+
+        if (needBoot == true &&
+            def->disks[i]->device == VIR_DOMAIN_DISK_DEVICE_DISK) {
+
+            needBoot = false;
+            bootDisk = true;
+        }
+        if (prlsdkAddDisk(sdkdom, def->disks[i], bootDisk) < 0)
+            goto error;
     }
 
     for (i = 0; i < def->nfss; i++) {
-       if (prlsdkAddFS(sdkdom, def->fss[i]) < 0)
-           goto error;
+        if (prlsdkAddFS(sdkdom, def->fss[i]) < 0)
+            goto error;
     }
 
     return 0;
 
  error:
-    return -1;
+    VIR_FREE(mask);
+
+    for (i = 0; i < def->nnets; i++)
+        prlsdkDelNet(conn->privateData, def->nets[i]);
+
+   return -1;
 }
 
 int
@@ -2847,7 +3317,7 @@ prlsdkApplyConfig(virConnectPtr conn,
     if (PRL_FAILED(waitJob(job, privconn->jobTimeout)))
         return -1;
 
-    ret = prlsdkDoApplyConfig(sdkdom, new);
+    ret = prlsdkDoApplyConfig(conn, sdkdom, new, dom->def);
 
     if (ret == 0) {
         job = PrlVm_CommitEx(sdkdom, PVCF_DETACH_HDD_BUNDLE);
@@ -2884,7 +3354,10 @@ prlsdkCreateVm(virConnectPtr conn, virDomainDefPtr def)
     pret = PrlVmCfg_SetDefaultConfig(sdkdom, srvconf, PVS_GUEST_VER_LIN_REDHAT, 0);
     prlsdkCheckRetGoto(pret, cleanup);
 
-    ret = prlsdkDoApplyConfig(sdkdom, def);
+    pret = PrlVmCfg_SetOfflineManagementEnabled(sdkdom, 0);
+    prlsdkCheckRetGoto(pret, cleanup);
+
+    ret = prlsdkDoApplyConfig(conn, sdkdom, def, NULL);
     if (ret)
         goto cleanup;
 
@@ -2946,7 +3419,7 @@ prlsdkCreateCt(virConnectPtr conn, virDomainDefPtr def)
 
     }
 
-    ret = prlsdkDoApplyConfig(sdkdom, def);
+    ret = prlsdkDoApplyConfig(conn, sdkdom, def, NULL);
     if (ret)
         goto cleanup;
 
@@ -2965,6 +3438,10 @@ prlsdkUnregisterDomain(parallelsConnPtr privconn, virDomainObjPtr dom)
 {
     parallelsDomObjPtr privdom = dom->privateData;
     PRL_HANDLE job;
+    size_t i;
+
+    for (i = 0; i < dom->def->nnets; i++)
+       prlsdkDelNet(privconn, dom->def->nets[i]);
 
     job = PrlVm_Unreg(privdom->sdkdom);
     if (PRL_FAILED(waitJob(job, privconn->jobTimeout)))
@@ -2975,5 +3452,18 @@ prlsdkUnregisterDomain(parallelsConnPtr privconn, virDomainObjPtr dom)
         return -1;
 
     virDomainObjListRemove(privconn->domains, dom);
+    return 0;
+}
+
+int
+prlsdkDomainManagedSaveRemove(parallelsConnPtr privconn, virDomainObjPtr dom)
+{
+    parallelsDomObjPtr privdom = dom->privateData;
+    PRL_HANDLE job;
+
+    job = PrlVm_DropSuspendedState(privdom->sdkdom);
+    if (PRL_FAILED(waitJob(job, privconn->jobTimeout)))
+        return -1;
+
     return 0;
 }

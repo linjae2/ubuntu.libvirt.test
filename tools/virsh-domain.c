@@ -1,7 +1,7 @@
 /*
  * virsh-domain.c: Commands to manage domain
  *
- * Copyright (C) 2005, 2007-2014 Red Hat, Inc.
+ * Copyright (C) 2005, 2007-2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -47,6 +47,7 @@
 #include "virjson.h"
 #include "virkeycode.h"
 #include "virmacaddr.h"
+#include "virnetdevbandwidth.h"
 #include "virprocess.h"
 #include "virstring.h"
 #include "virsh-console.h"
@@ -117,9 +118,6 @@ vshCommandOptDomainBy(vshControl *ctl, const vshCmd *cmd,
 {
     const char *n = NULL;
     const char *optname = "domain";
-
-    if (!vshCmdHasOption(ctl, cmd, optname))
-        return NULL;
 
     if (vshCommandOptStringReq(ctl, cmd, optname, &n) < 0)
         return NULL;
@@ -404,6 +402,7 @@ enum {
     DISK_ADDR_TYPE_PCI,
     DISK_ADDR_TYPE_SCSI,
     DISK_ADDR_TYPE_IDE,
+    DISK_ADDR_TYPE_CCW,
 };
 
 struct PCIAddress {
@@ -425,12 +424,19 @@ struct IDEAddress {
     unsigned int unit;
 };
 
+struct CCWAddress {
+    unsigned int cssid;
+    unsigned int ssid;
+    unsigned int devno;
+};
+
 struct DiskAddress {
     int type;
     union {
         struct PCIAddress pci;
         struct SCSIAddress scsi;
         struct IDEAddress ide;
+        struct CCWAddress ccw;
     } addr;
 };
 
@@ -513,9 +519,35 @@ static int str2IDEAddress(const char *str, struct IDEAddress *ideAddr)
     return 0;
 }
 
+static int str2CCWAddress(const char *str, struct CCWAddress *ccwAddr)
+{
+    char *cssid, *ssid, *devno;
+
+    if (!ccwAddr)
+        return -1;
+    if (!str)
+        return -1;
+
+    cssid = (char *)str;
+
+    if (virStrToLong_ui(cssid, &ssid, 0, &ccwAddr->cssid) != 0)
+        return -1;
+
+    ssid++;
+    if (virStrToLong_ui(ssid, &devno, 0, &ccwAddr->ssid) != 0)
+        return -1;
+
+    devno++;
+    if (virStrToLong_ui(devno, NULL, 0, &ccwAddr->devno) != 0)
+        return -1;
+
+    return 0;
+}
+
 /* pci address pci:0000.00.0x0a.0 (domain:bus:slot:function)
  * ide disk address: ide:00.00.0 (controller:bus:unit)
  * scsi disk address: scsi:00.00.0 (controller:bus:unit)
+ * ccw disk address: ccw:0xfe.0.0000 (cssid:ssid:devno)
  */
 
 static int str2DiskAddress(const char *str, struct DiskAddress *diskAddr)
@@ -541,6 +573,9 @@ static int str2DiskAddress(const char *str, struct DiskAddress *diskAddr)
     } else if (STREQLEN(type, "ide", addr - type)) {
         diskAddr->type = DISK_ADDR_TYPE_IDE;
         return str2IDEAddress(addr + 1, &diskAddr->addr.ide);
+    } else if (STREQLEN(type, "ccw", addr - type)) {
+        diskAddr->type = DISK_ADDR_TYPE_CCW;
+        return str2CCWAddress(addr + 1, &diskAddr->addr.ccw);
     }
 
     return -1;
@@ -675,8 +710,15 @@ cmdAttachDisk(vshControl *ctl, const vshCmd *cmd)
                 if (vshCommandOptBool(cmd, "multifunction"))
                     virBufferAddLit(&buf, " multifunction='on'");
                 virBufferAddLit(&buf, "/>\n");
+            } else if (diskAddr.type == DISK_ADDR_TYPE_CCW) {
+                virBufferAsprintf(&buf,
+                                  "<address type='ccw' cssid='0x%02x'"
+                                  " ssid='0x%01x' devno='0x%04x' />\n",
+                                  diskAddr.addr.ccw.cssid, diskAddr.addr.ccw.ssid,
+                                  diskAddr.addr.ccw.devno);
             } else {
-                vshError(ctl, "%s", _("expecting a pci:0000.00.00.00 address."));
+                vshError(ctl, "%s",
+                         _("expecting a pci:0000.00.00.00 or ccw:00.0.0000 address."));
                 goto cleanup;
             }
         } else if (STRPREFIX((const char *)target, "sd")) {
@@ -862,7 +904,7 @@ cmdAttachInterface(vshControl *ctl, const vshCmd *cmd)
                 *type = NULL, *source = NULL, *model = NULL,
                 *inboundStr = NULL, *outboundStr = NULL;
     virNetDevBandwidthRate inbound, outbound;
-    int typ;
+    virDomainNetType typ;
     int ret;
     bool functionReturn = false;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
@@ -901,11 +943,7 @@ cmdAttachInterface(vshControl *ctl, const vshCmd *cmd)
         goto cleanup;
 
     /* check interface type */
-    if (STREQ(type, "network")) {
-        typ = 1;
-    } else if (STREQ(type, "bridge")) {
-        typ = 2;
-    } else {
+    if ((int)(typ = virDomainNetTypeFromString(type)) < 0) {
         vshError(ctl, _("No support for %s in command 'attach-interface'"),
                  type);
         goto cleanup;
@@ -938,10 +976,30 @@ cmdAttachInterface(vshControl *ctl, const vshCmd *cmd)
     virBufferAsprintf(&buf, "<interface type='%s'>\n", type);
     virBufferAdjustIndent(&buf, 2);
 
-    if (typ == 1)
-        virBufferAsprintf(&buf, "<source network='%s'/>\n", source);
-    else if (typ == 2)
-        virBufferAsprintf(&buf, "<source bridge='%s'/>\n", source);
+    switch (typ) {
+    case VIR_DOMAIN_NET_TYPE_NETWORK:
+    case VIR_DOMAIN_NET_TYPE_BRIDGE:
+        virBufferAsprintf(&buf, "<source %s='%s'/>\n",
+                          virDomainNetTypeToString(typ), source);
+        break;
+    case VIR_DOMAIN_NET_TYPE_DIRECT:
+        virBufferAsprintf(&buf, "<source dev='%s'/>\n", source);
+        break;
+
+    case VIR_DOMAIN_NET_TYPE_USER:
+    case VIR_DOMAIN_NET_TYPE_ETHERNET:
+    case VIR_DOMAIN_NET_TYPE_VHOSTUSER:
+    case VIR_DOMAIN_NET_TYPE_SERVER:
+    case VIR_DOMAIN_NET_TYPE_CLIENT:
+    case VIR_DOMAIN_NET_TYPE_MCAST:
+    case VIR_DOMAIN_NET_TYPE_INTERNAL:
+    case VIR_DOMAIN_NET_TYPE_HOSTDEV:
+    case VIR_DOMAIN_NET_TYPE_LAST:
+        vshError(ctl, _("No support for %s in command 'attach-interface'"),
+                 type);
+        goto cleanup;
+        break;
+    }
 
     if (target != NULL)
         virBufferAsprintf(&buf, "<target dev='%s'/>\n", target);
@@ -1958,7 +2016,7 @@ cmdBlockCommit(vshControl *ctl, const vshCmd *cmd)
         vshPrint(ctl, "\n%s", _("Commit aborted"));
     else if (pivot)
         vshPrint(ctl, "\n%s", _("Successfully pivoted"));
-    else if (!finish)
+    else if (!finish && active)
         vshPrint(ctl, "\n%s", _("Now in synchronized phase"));
     else
         vshPrint(ctl, "\n%s", _("Commit complete"));
@@ -2193,9 +2251,8 @@ cmdBlockCopy(vshControl *ctl, const vshCmd *cmd)
                  * ullong bytes/s; make sure we don't overflow */
                 unsigned long long limit = MIN(ULONG_MAX, ULLONG_MAX >> 20);
                 if (bandwidth > limit) {
-                    virReportError(VIR_ERR_OVERFLOW,
-                                   _("bandwidth must be less than %llu"),
-                                   ULLONG_MAX >> 20);
+                    vshError(ctl, _("bandwidth must be less than %llu"), limit);
+                    goto cleanup;
                 }
                 if (virTypedParameterAssign(&params[nparams++],
                                             VIR_DOMAIN_BLOCK_COPY_BANDWIDTH,
@@ -5707,6 +5764,15 @@ cmdDomjobinfo(vshControl *ctl, const vshCmd *cmd)
     }
 
     vshPrint(ctl, "%-17s %-12llu ms\n", _("Time elapsed:"), info.timeElapsed);
+    if ((rc = virTypedParamsGetULLong(params, nparams,
+                                      VIR_DOMAIN_JOB_TIME_ELAPSED_NET,
+                                      &value)) < 0) {
+        goto save_error;
+    } else if (rc) {
+        vshPrint(ctl, "%-17s %-12llu ms\n", _("Time elapsed w/o network:"),
+                 value);
+    }
+
     if (info.type == VIR_DOMAIN_JOB_BOUNDED)
         vshPrint(ctl, "%-17s %-12llu ms\n", _("Time remaining:"),
                  info.timeRemaining);
@@ -5794,6 +5860,13 @@ cmdDomjobinfo(vshControl *ctl, const vshCmd *cmd)
                      _("Expected downtime:"), value);
         }
     }
+
+    if ((rc = virTypedParamsGetULLong(params, nparams,
+                                      VIR_DOMAIN_JOB_DOWNTIME_NET,
+                                      &value)) < 0)
+        goto save_error;
+    else if (rc)
+        vshPrint(ctl, "%-17s %-12llu ms\n", _("Downtime w/o network:"), value);
 
     if ((rc = virTypedParamsGetULLong(params, nparams,
                                       VIR_DOMAIN_JOB_SETUP_TIME,
@@ -6262,148 +6335,55 @@ static const vshCmdOptDef opts_vcpupin[] = {
  * Helper function to print vcpupin info.
  */
 static bool
-vshPrintPinInfo(unsigned char *cpumaps, size_t cpumaplen,
-                int maxcpu, int vcpuindex)
+vshPrintPinInfo(unsigned char *cpumap, size_t cpumaplen)
 {
-    int cpu, lastcpu;
-    bool bit, lastbit, isInvert;
+    char *str = NULL;
 
-    if (!cpumaps || cpumaplen <= 0 || maxcpu <= 0 || vcpuindex < 0)
+    if (!(str = virBitmapDataToString(cpumap, cpumaplen)))
         return false;
 
-    bit = lastbit = isInvert = false;
-    lastcpu = -1;
-
-    for (cpu = 0; cpu < maxcpu; cpu++) {
-        bit = VIR_CPU_USABLE(cpumaps, cpumaplen, vcpuindex, cpu);
-
-        isInvert = (bit ^ lastbit);
-        if (bit && isInvert) {
-            if (lastcpu == -1)
-                vshPrint(ctl, "%d", cpu);
-            else
-                vshPrint(ctl, ",%d", cpu);
-            lastcpu = cpu;
-        }
-        if (!bit && isInvert && lastcpu != cpu - 1)
-            vshPrint(ctl, "-%d", cpu - 1);
-        lastbit = bit;
-    }
-    if (bit && !isInvert)
-        vshPrint(ctl, "-%d", maxcpu - 1);
-
+    vshPrint(ctl, "%s", str);
+    VIR_FREE(str);
     return true;
 }
 
 static unsigned char *
-vshParseCPUList(vshControl *ctl, const char *cpulist,
-                int maxcpu, size_t cpumaplen)
+vshParseCPUList(int *cpumaplen, const char *cpulist, int maxcpu)
 {
     unsigned char *cpumap = NULL;
-    const char *cur;
-    bool unuse = false;
-    int cpu, lastcpu;
-    size_t i;
+    virBitmapPtr map = NULL;
 
-    cpumap = vshCalloc(ctl, cpumaplen, sizeof(*cpumap));
-
-    /* Parse cpulist */
-    cur = cpulist;
-    if (*cur == 'r') {
-        for (cpu = 0; cpu < maxcpu; cpu++)
-            VIR_USE_CPU(cpumap, cpu);
-        return cpumap;
-    } else if (*cur == 0) {
-        goto error;
+    if (cpulist[0] == 'r') {
+        if (!(map = virBitmapNew(maxcpu)))
+            return NULL;
+        virBitmapSetAll(map);
+    } else {
+        if (virBitmapParse(cpulist, '\0', &map, maxcpu) < 0)
+            return NULL;
     }
 
-    while (*cur != 0) {
-        /* The char '^' denotes exclusive */
-        if (*cur == '^') {
-            cur++;
-            unuse = true;
-        }
+    if (virBitmapToData(map, &cpumap, cpumaplen) < 0)
+        goto cleanup;
 
-        /* Parse physical CPU number */
-        if (!c_isdigit(*cur))
-            goto error;
-
-        if ((cpu = virParseNumber(&cur)) < 0)
-            goto error;
-
-        if (cpu >= maxcpu) {
-            vshError(ctl, _("Physical CPU %d doesn't exist."), cpu);
-            goto cleanup;
-        }
-
-        virSkipSpaces(&cur);
-
-        if (*cur == ',' || *cur == 0) {
-            if (unuse)
-                VIR_UNUSE_CPU(cpumap, cpu);
-            else
-                VIR_USE_CPU(cpumap, cpu);
-        } else if (*cur == '-') {
-            /* The char '-' denotes range */
-            if (unuse)
-                goto error;
-            cur++;
-            virSkipSpaces(&cur);
-
-            /* Parse the end of range */
-            lastcpu = virParseNumber(&cur);
-
-            if (lastcpu < cpu)
-                goto error;
-
-            if (lastcpu >= maxcpu) {
-                vshError(ctl, _("Physical CPU %d doesn't exist."), lastcpu);
-                goto cleanup;
-            }
-
-            for (i = cpu; i <= lastcpu; i++)
-                VIR_USE_CPU(cpumap, i);
-
-            virSkipSpaces(&cur);
-        }
-
-        if (*cur == ',') {
-            cur++;
-            virSkipSpaces(&cur);
-            unuse = false;
-        } else if (*cur == 0) {
-            break;
-        } else {
-            goto error;
-        }
-    }
-
-    return cpumap;
-
- error:
-    vshError(ctl, "%s", _("cpulist: Invalid format."));
  cleanup:
-    VIR_FREE(cpumap);
-    return NULL;
+    virBitmapFree(map);
+    return cpumap;
 }
 
 static bool
 cmdVcpuPin(vshControl *ctl, const vshCmd *cmd)
 {
-    virDomainInfo info;
     virDomainPtr dom;
     unsigned int vcpu = 0;
     const char *cpulist = NULL;
     bool ret = false;
     unsigned char *cpumap = NULL;
-    unsigned char *cpumaps = NULL;
-    size_t cpumaplen;
+    int cpumaplen;
     int maxcpu, ncpus;
     size_t i;
     bool config = vshCommandOptBool(cmd, "config");
     bool live = vshCommandOptBool(cmd, "live");
     bool current = vshCommandOptBool(cmd, "current");
-    bool query = false; /* Query mode if no cpulist */
     int got_vcpu;
     unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
 
@@ -6421,79 +6401,76 @@ cmdVcpuPin(vshControl *ctl, const vshCmd *cmd)
     if (vshCommandOptStringReq(ctl, cmd, "cpulist", &cpulist) < 0)
         return false;
 
-    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
-        return false;
-
-    query = !cpulist;
+    if (!cpulist)
+        VSH_EXCLUSIVE_OPTIONS_VAR(live, config);
 
     if ((got_vcpu = vshCommandOptUInt(cmd, "vcpu", &vcpu)) < 0) {
         vshError(ctl, "%s", _("vcpupin: Invalid vCPU number."));
-        goto cleanup;
+        return false;
     }
 
     /* In pin mode, "vcpu" is necessary */
-    if (!query && got_vcpu == 0) {
+    if (cpulist && got_vcpu == 0) {
         vshError(ctl, "%s", _("vcpupin: Missing vCPU number in pin mode."));
-        goto cleanup;
-    }
-
-    if (virDomainGetInfo(dom, &info) != 0) {
-        vshError(ctl, "%s", _("vcpupin: failed to get domain information."));
-        goto cleanup;
-    }
-
-    if (vcpu >= info.nrVirtCpu) {
-        vshError(ctl, "%s", _("vcpupin: vCPU index out of range."));
-        goto cleanup;
+        return false;
     }
 
     if ((maxcpu = vshNodeGetCPUCount(ctl->conn)) < 0)
-        goto cleanup;
+        return false;
 
-    cpumaplen = VIR_CPU_MAPLEN(maxcpu);
+    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
+        return false;
 
     /* Query mode: show CPU affinity information then exit.*/
-    if (query) {
+    if (!cpulist) {
         /* When query mode and neither "live", "config" nor "current"
          * is specified, set VIR_DOMAIN_AFFECT_CURRENT as flags */
         if (flags == -1)
             flags = VIR_DOMAIN_AFFECT_CURRENT;
 
-        cpumaps = vshMalloc(ctl, info.nrVirtCpu * cpumaplen);
-        if ((ncpus = virDomainGetVcpuPinInfo(dom, info.nrVirtCpu,
-                                             cpumaps, cpumaplen, flags)) >= 0) {
+        if ((ncpus = vshCPUCountCollect(ctl, dom, flags, true)) < 0) {
+            if (ncpus == -1) {
+                if (flags & VIR_DOMAIN_AFFECT_LIVE)
+                    vshError(ctl, "%s", _("cannot get vcpupin for offline domain"));
+                else
+                    vshError(ctl, "%s", _("cannot get vcpupin for transient domain"));
+            }
+            goto cleanup;
+        }
 
+        cpumaplen = VIR_CPU_MAPLEN(maxcpu);
+        cpumap = vshMalloc(ctl, ncpus * cpumaplen);
+        if ((ncpus = virDomainGetVcpuPinInfo(dom, ncpus, cpumap,
+                                             cpumaplen, flags)) >= 0) {
             vshPrintExtra(ctl, "%s %s\n", _("VCPU:"), _("CPU Affinity"));
             vshPrintExtra(ctl, "----------------------------------\n");
             for (i = 0; i < ncpus; i++) {
-               if (got_vcpu && i != vcpu)
-                   continue;
+                if (got_vcpu && i != vcpu)
+                    continue;
 
-               vshPrint(ctl, "%4zu: ", i);
-               ret = vshPrintPinInfo(cpumaps, cpumaplen, maxcpu, i);
-               vshPrint(ctl, "\n");
-               if (!ret)
-                   break;
+                vshPrint(ctl, "%4zu: ", i);
+                ret = vshPrintPinInfo(VIR_GET_CPUMAP(cpumap, cpumaplen, i),
+                                      cpumaplen);
+                vshPrint(ctl, "\n");
+                if (!ret)
+                    break;
             }
         }
-
-        VIR_FREE(cpumaps);
-        goto cleanup;
-    }
-
-    /* Pin mode: pinning specified vcpu to specified physical cpus*/
-    if (!(cpumap = vshParseCPUList(ctl, cpulist, maxcpu, cpumaplen)))
-        goto cleanup;
-
-    if (flags == -1) {
-        if (virDomainPinVcpu(dom, vcpu, cpumap, cpumaplen) != 0)
-            goto cleanup;
     } else {
-        if (virDomainPinVcpuFlags(dom, vcpu, cpumap, cpumaplen, flags) != 0)
+        /* Pin mode: pinning specified vcpu to specified physical cpus*/
+        if (!(cpumap = vshParseCPUList(&cpumaplen, cpulist, maxcpu)))
             goto cleanup;
+
+        if (flags == -1) {
+            if (virDomainPinVcpu(dom, vcpu, cpumap, cpumaplen) != 0)
+                goto cleanup;
+        } else {
+            if (virDomainPinVcpuFlags(dom, vcpu, cpumap, cpumaplen, flags) != 0)
+                goto cleanup;
+        }
+        ret = true;
     }
 
-    ret = true;
  cleanup:
     VIR_FREE(cpumap);
     virDomainFree(dom);
@@ -6546,8 +6523,7 @@ cmdEmulatorPin(vshControl *ctl, const vshCmd *cmd)
     const char *cpulist = NULL;
     bool ret = false;
     unsigned char *cpumap = NULL;
-    unsigned char *cpumaps = NULL;
-    size_t cpumaplen;
+    int cpumaplen;
     int maxcpu;
     bool config = vshCommandOptBool(cmd, "config");
     bool live = vshCommandOptBool(cmd, "live");
@@ -6580,8 +6556,6 @@ cmdEmulatorPin(vshControl *ctl, const vshCmd *cmd)
         return false;
     }
 
-    cpumaplen = VIR_CPU_MAPLEN(maxcpu);
-
     /* Query mode: show CPU affinity information then exit.*/
     if (query) {
         /* When query mode and neither "live", "config" nor "current"
@@ -6589,21 +6563,21 @@ cmdEmulatorPin(vshControl *ctl, const vshCmd *cmd)
         if (flags == -1)
             flags = VIR_DOMAIN_AFFECT_CURRENT;
 
-        cpumaps = vshMalloc(ctl, cpumaplen);
-        if (virDomainGetEmulatorPinInfo(dom, cpumaps,
+        cpumaplen = VIR_CPU_MAPLEN(maxcpu);
+        cpumap = vshMalloc(ctl, cpumaplen);
+        if (virDomainGetEmulatorPinInfo(dom, cpumap,
                                         cpumaplen, flags) >= 0) {
             vshPrintExtra(ctl, "%s %s\n", _("emulator:"), _("CPU Affinity"));
             vshPrintExtra(ctl, "----------------------------------\n");
             vshPrintExtra(ctl, "       *: ");
-            ret = vshPrintPinInfo(cpumaps, cpumaplen, maxcpu, 0);
+            ret = vshPrintPinInfo(cpumap, cpumaplen);
             vshPrint(ctl, "\n");
         }
-        VIR_FREE(cpumaps);
         goto cleanup;
     }
 
     /* Pin mode: pinning emulator threads to specified physical cpus*/
-    if (!(cpumap = vshParseCPUList(ctl, cpulist, maxcpu, cpumaplen)))
+    if (!(cpumap = vshParseCPUList(&cpumaplen, cpulist, maxcpu)))
         goto cleanup;
 
     if (flags == -1)
@@ -6737,6 +6711,351 @@ cmdSetvcpus(vshControl *ctl, const vshCmd *cmd)
 }
 
 /*
+ * "iothreadinfo" command
+ */
+static const vshCmdInfo info_iothreadinfo[] = {
+    {.name = "help",
+     .data = N_("view domain IOThreads")
+    },
+    {.name = "desc",
+     .data = N_("Returns basic information about the domain IOThreads.")
+    },
+    {.name = NULL}
+};
+static const vshCmdOptDef opts_iothreadinfo[] = {
+    {.name = "domain",
+     .type = VSH_OT_DATA,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("domain name, id or uuid")
+    },
+    {.name = "config",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect next boot")
+    },
+    {.name = "live",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect running domain")
+    },
+    {.name = "current",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect current domain")
+    },
+    {.name = NULL}
+};
+
+static bool
+cmdIOThreadInfo(vshControl *ctl, const vshCmd *cmd)
+{
+    virDomainPtr dom;
+    bool config = vshCommandOptBool(cmd, "config");
+    bool live = vshCommandOptBool(cmd, "live");
+    bool current = vshCommandOptBool(cmd, "current");
+    int niothreads = 0;
+    virDomainIOThreadInfoPtr *info;
+    size_t i;
+    int maxcpu;
+    unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
+
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, live);
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, config);
+
+    if (config)
+        flags |= VIR_DOMAIN_AFFECT_CONFIG;
+    if (live)
+        flags |= VIR_DOMAIN_AFFECT_LIVE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
+        return false;
+
+    if ((maxcpu = vshNodeGetCPUCount(ctl->conn)) < 0)
+        goto cleanup;
+
+    if ((niothreads = virDomainGetIOThreadInfo(dom, &info, flags)) < 0) {
+        vshError(ctl, _("Unable to get domain IOThreads information"));
+        goto cleanup;
+    }
+
+    if (niothreads == 0) {
+        vshPrintExtra(ctl, _("No IOThreads found for the domain"));
+        goto cleanup;
+    }
+
+    vshPrintExtra(ctl, " %-15s %-15s\n",
+                  _("IOThread ID"), _("CPU Affinity"));
+    vshPrintExtra(ctl, "---------------------------------------------------\n");
+    for (i = 0; i < niothreads; i++) {
+
+        vshPrint(ctl, " %-15u ", info[i]->iothread_id);
+        ignore_value(vshPrintPinInfo(info[i]->cpumap, info[i]->cpumaplen));
+        vshPrint(ctl, "\n");
+        virDomainIOThreadInfoFree(info[i]);
+    }
+    VIR_FREE(info);
+
+ cleanup:
+    virDomainFree(dom);
+    return niothreads >= 0;
+}
+
+/*
+ * "iothreadpin" command
+ */
+static const vshCmdInfo info_iothreadpin[] = {
+    {.name = "help",
+     .data = N_("control domain IOThread affinity")
+    },
+    {.name = "desc",
+     .data = N_("Pin domain IOThreads to host physical CPUs.")
+    },
+    {.name = NULL}
+};
+
+static const vshCmdOptDef opts_iothreadpin[] = {
+    {.name = "domain",
+     .type = VSH_OT_DATA,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("domain name, id or uuid")
+    },
+    {.name = "iothread",
+     .type = VSH_OT_INT,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("IOThread ID number")
+    },
+    {.name = "cpulist",
+     .type = VSH_OT_DATA,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("host cpu number(s) to set")
+    },
+    {.name = "config",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect next boot")
+    },
+    {.name = "live",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect running domain")
+    },
+    {.name = "current",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect current domain")
+    },
+    {.name = NULL}
+};
+
+static bool
+cmdIOThreadPin(vshControl *ctl, const vshCmd *cmd)
+{
+    virDomainPtr dom;
+    const char *cpulist = NULL;
+    bool config = vshCommandOptBool(cmd, "config");
+    bool live = vshCommandOptBool(cmd, "live");
+    bool current = vshCommandOptBool(cmd, "current");
+    unsigned int iothread_id = 0;
+    int maxcpu;
+    bool ret = false;
+    unsigned char *cpumap = NULL;
+    int cpumaplen;
+    unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
+
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, live);
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, config);
+
+    if (config)
+        flags |= VIR_DOMAIN_AFFECT_CONFIG;
+    if (live)
+        flags |= VIR_DOMAIN_AFFECT_LIVE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
+        return false;
+
+    if (vshCommandOptUInt(cmd, "iothread", &iothread_id) < 0) {
+        vshError(ctl, "%s", _("iothreadpin: Invalid IOThread number."));
+        goto cleanup;
+    }
+
+    if (vshCommandOptString(cmd, "cpulist", &cpulist) < 0) {
+        vshError(ctl, "%s", _("iothreadpin: invalid cpulist."));
+        goto cleanup;
+    }
+
+    if ((maxcpu = vshNodeGetCPUCount(ctl->conn)) < 0)
+        goto cleanup;
+
+    if (!(cpumap = vshParseCPUList(&cpumaplen, cpulist, maxcpu)))
+        goto cleanup;
+
+    if (virDomainPinIOThread(dom, iothread_id,
+                             cpumap, cpumaplen, flags) != 0)
+        goto cleanup;
+
+    ret = true;
+
+ cleanup:
+    VIR_FREE(cpumap);
+    virDomainFree(dom);
+    return ret;
+}
+
+/*
+ * "iothreadadd" command
+ */
+static const vshCmdInfo info_iothreadadd[] = {
+    {.name = "help",
+     .data = N_("add an IOThread to the guest domain")
+    },
+    {.name = "desc",
+     .data = N_("Add an IOThread to the guest domain.")
+    },
+    {.name = NULL}
+};
+
+static const vshCmdOptDef opts_iothreadadd[] = {
+    {.name = "domain",
+     .type = VSH_OT_DATA,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("domain name, id or uuid")
+    },
+    {.name = "id",
+     .type = VSH_OT_INT,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("iothread for the new IOThread")
+    },
+    {.name = "config",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect next boot")
+    },
+    {.name = "live",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect running domain")
+    },
+    {.name = "current",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect current domain")
+    },
+    {.name = NULL}
+};
+
+static bool
+cmdIOThreadAdd(vshControl *ctl, const vshCmd *cmd)
+{
+    virDomainPtr dom;
+    int iothread_id = 0;
+    bool ret = false;
+    bool config = vshCommandOptBool(cmd, "config");
+    bool live = vshCommandOptBool(cmd, "live");
+    bool current = vshCommandOptBool(cmd, "current");
+    unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
+
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, live);
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, config);
+
+    if (config)
+        flags |= VIR_DOMAIN_AFFECT_CONFIG;
+    if (live)
+        flags |= VIR_DOMAIN_AFFECT_LIVE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
+        return false;
+
+    if (vshCommandOptInt(cmd, "id", &iothread_id) < 0) {
+        vshError(ctl, "%s", _("Unable to parse integer parameter"));
+        goto cleanup;
+    }
+    if (iothread_id <= 0) {
+        vshError(ctl, _("Invalid IOThread id value: '%d'"), iothread_id);
+        goto cleanup;
+    }
+
+    if (virDomainAddIOThread(dom, iothread_id, flags) < 0)
+        goto cleanup;
+
+    ret = true;
+
+ cleanup:
+    virDomainFree(dom);
+    return ret;
+}
+
+/*
+ * "iothreaddel" command
+ */
+static const vshCmdInfo info_iothreaddel[] = {
+    {.name = "help",
+     .data = N_("delete an IOThread from the guest domain")
+    },
+    {.name = "desc",
+     .data = N_("Delete an IOThread from the guest domain.")
+    },
+    {.name = NULL}
+};
+
+static const vshCmdOptDef opts_iothreaddel[] = {
+    {.name = "domain",
+     .type = VSH_OT_DATA,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("domain name, id or uuid")
+    },
+    {.name = "id",
+     .type = VSH_OT_INT,
+     .flags = VSH_OFLAG_REQ,
+     .help = N_("iothread_id for the IOThread to delete")
+    },
+    {.name = "config",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect next boot")
+    },
+    {.name = "live",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect running domain")
+    },
+    {.name = "current",
+     .type = VSH_OT_BOOL,
+     .help = N_("affect current domain")
+    },
+    {.name = NULL}
+};
+
+static bool
+cmdIOThreadDel(vshControl *ctl, const vshCmd *cmd)
+{
+    virDomainPtr dom;
+    int iothread_id = 0;
+    bool ret = false;
+    bool config = vshCommandOptBool(cmd, "config");
+    bool live = vshCommandOptBool(cmd, "live");
+    bool current = vshCommandOptBool(cmd, "current");
+    unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
+
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, live);
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, config);
+
+    if (config)
+        flags |= VIR_DOMAIN_AFFECT_CONFIG;
+    if (live)
+        flags |= VIR_DOMAIN_AFFECT_LIVE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
+        return false;
+
+    if (vshCommandOptInt(cmd, "id", &iothread_id) < 0) {
+        vshError(ctl, "%s", _("Unable to parse integer parameter"));
+        goto cleanup;
+    }
+    if (iothread_id <= 0) {
+        vshError(ctl, _("Invalid IOThread id value: '%d'"), iothread_id);
+        goto cleanup;
+    }
+
+    if (virDomainDelIOThread(dom, iothread_id, flags) < 0)
+        goto cleanup;
+
+    ret = true;
+
+ cleanup:
+    virDomainFree(dom);
+    return ret;
+}
+
+/*
  * "cpu-compare" command
  */
 static const vshCmdInfo info_cpu_compare[] = {
@@ -6860,6 +7179,10 @@ static const vshCmdOptDef opts_cpu_baseline[] = {
      .type = VSH_OT_BOOL,
      .help = N_("Show features that are part of the CPU model type")
     },
+    {.name = "migratable",
+     .type = VSH_OT_BOOL,
+     .help = N_("Do not include features that block migration")
+    },
     {.name = NULL}
 };
 
@@ -6882,6 +7205,8 @@ cmdCPUBaseline(vshControl *ctl, const vshCmd *cmd)
 
     if (vshCommandOptBool(cmd, "features"))
         flags |= VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES;
+    if (vshCommandOptBool(cmd, "migratable"))
+        flags |= VIR_CONNECT_BASELINE_CPU_MIGRATABLE;
 
     if (vshCommandOptStringReq(ctl, cmd, "file", &from) < 0)
         return false;
@@ -8196,6 +8521,22 @@ static const vshCmdOptDef opts_memtune[] = {
     {.name = NULL}
 };
 
+/**
+ * vshMemtuneGetSize
+ *
+ * @cmd: pointer to vshCmd
+ * @name: name of a parameter for which we would like to get a value
+ * @value: pointer to variable where the value will be stored
+ *
+ * This function will parse virsh command line in order to load a value of
+ * specified parameter. If the value is -1 we will handle it as unlimited and
+ * use VIR_DOMAIN_MEMORY_PARAM_UNLIMITED instead.
+ *
+ * Returns:
+ *  >0 if option found and valid
+ *  0 if option not found and not required
+ *  <0 in all other cases
+ */
 static int
 vshMemtuneGetSize(const vshCmd *cmd, const char *name, long long *value)
 {
@@ -8217,17 +8558,17 @@ vshMemtuneGetSize(const vshCmd *cmd, const char *name, long long *value)
     if (virScaleInteger(&tmp, end, 1024, LLONG_MAX) < 0)
         return -1;
     *value = VIR_DIV_UP(tmp, 1024);
-    return 0;
+    return 1;
 }
 
 static bool
 cmdMemtune(vshControl *ctl, const vshCmd *cmd)
 {
     virDomainPtr dom;
-    long long hard_limit = 0, soft_limit = 0, swap_hard_limit = 0;
-    long long min_guarantee = 0;
+    long long tmpVal;
     int nparams = 0;
     int maxparams = 0;
+    int rc;
     size_t i;
     virTypedParameterPtr params = NULL;
     bool ret = false;
@@ -8247,50 +8588,24 @@ cmdMemtune(vshControl *ctl, const vshCmd *cmd)
     if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
         return false;
 
-    if (vshMemtuneGetSize(cmd, "hard-limit", &hard_limit) < 0 ||
-        vshMemtuneGetSize(cmd, "soft-limit", &soft_limit) < 0 ||
-        vshMemtuneGetSize(cmd, "swap-hard-limit", &swap_hard_limit) < 0 ||
-        vshMemtuneGetSize(cmd, "min-guarantee", &min_guarantee) < 0) {
-        vshError(ctl, "%s",
-                 _("Unable to parse integer parameter"));
-        goto cleanup;
-    }
+#define PARSE_MEMTUNE_PARAM(NAME, FIELD)                                    \
+    if ((rc = vshMemtuneGetSize(cmd, NAME, &tmpVal)) < 0) {                 \
+        vshError(ctl, _("Unable to parse integer parameter %s"), NAME);     \
+        goto cleanup;                                                       \
+    }                                                                       \
+    if (rc == 1) {                                                          \
+        if (virTypedParamsAddULLong(&params, &nparams, &maxparams,          \
+                                    FIELD, tmpVal) < 0)                     \
+            goto save_error;                                                \
+    }                                                                       \
 
-    if (hard_limit) {
-        if (hard_limit == -1)
-            hard_limit = VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
-        if (virTypedParamsAddULLong(&params, &nparams, &maxparams,
-                                    VIR_DOMAIN_MEMORY_HARD_LIMIT,
-                                    hard_limit) < 0)
-            goto save_error;
-    }
 
-    if (soft_limit) {
-        if (soft_limit == -1)
-            soft_limit = VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
-        if (virTypedParamsAddULLong(&params, &nparams, &maxparams,
-                                    VIR_DOMAIN_MEMORY_SOFT_LIMIT,
-                                    soft_limit) < 0)
-            goto save_error;
-    }
+    PARSE_MEMTUNE_PARAM("hard-limit", VIR_DOMAIN_MEMORY_HARD_LIMIT);
+    PARSE_MEMTUNE_PARAM("soft-limit", VIR_DOMAIN_MEMORY_SOFT_LIMIT);
+    PARSE_MEMTUNE_PARAM("swap-hard-limit", VIR_DOMAIN_MEMORY_SWAP_HARD_LIMIT);
+    PARSE_MEMTUNE_PARAM("min-guarantee", VIR_DOMAIN_MEMORY_MIN_GUARANTEE);
 
-    if (swap_hard_limit) {
-        if (swap_hard_limit == -1)
-            swap_hard_limit = VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
-        if (virTypedParamsAddULLong(&params, &nparams, &maxparams,
-                                    VIR_DOMAIN_MEMORY_SWAP_HARD_LIMIT,
-                                    swap_hard_limit) < 0)
-            goto save_error;
-    }
-
-    if (min_guarantee) {
-        if (min_guarantee == -1)
-            min_guarantee = VIR_DOMAIN_MEMORY_PARAM_UNLIMITED;
-        if (virTypedParamsAddULLong(&params, &nparams, &maxparams,
-                                    VIR_DOMAIN_MEMORY_MIN_GUARANTEE,
-                                    min_guarantee) < 0)
-            goto save_error;
-    }
+#undef PARSE_MEMTUNE_PARAM
 
     if (nparams == 0) {
         /* get the number of memory parameters */
@@ -9980,7 +10295,7 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
     int tmp;
     int flags = 0;
     bool params = false;
-    const char *xpath_fmt = "string(/domain/devices/graphics[@type='%s']/@%s)";
+    const char *xpath_fmt = "string(/domain/devices/graphics[@type='%s']/%s)";
     virSocketAddr addr;
 
     if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
@@ -10010,7 +10325,7 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
             continue;
 
         /* Create our XPATH lookup for the current display's port */
-        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "port") < 0)
+        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "@port") < 0)
             goto cleanup;
 
         /* Attempt to get the port number for the current graphics scheme */
@@ -10024,7 +10339,7 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
 
         /* Create our XPATH lookup for TLS Port (automatically skipped
          * for unsupported schemes */
-        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "tlsPort") < 0)
+        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "@tlsPort") < 0)
             goto cleanup;
 
         /* Attempt to get the TLS port number */
@@ -10037,7 +10352,7 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
             continue;
 
         /* Create our XPATH lookup for the current display's address */
-        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "listen") < 0)
+        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "@listen") < 0)
             goto cleanup;
 
         /* Attempt to get the listening addr if set for the current
@@ -10045,13 +10360,29 @@ cmdDomDisplay(vshControl *ctl, const vshCmd *cmd)
         listen_addr = virXPathString(xpath, ctxt);
         VIR_FREE(xpath);
 
+        if (!listen_addr) {
+            /* The subelement address - <listen address='xyz'/> -
+             * *should* have been automatically backfilled into its
+             * parent <graphics listen='xyz'> (which we just tried to
+             * retrieve into listen_addr above) but in some cases it
+             * isn't, so we also do an explicit check for the
+             * subelement (which, by the way, doesn't exist on libvirt
+             * < 0.9.4, so we really do need to check both places)
+             */
+            if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "listen/@address") < 0)
+                goto cleanup;
+
+            listen_addr = virXPathString(xpath, ctxt);
+            VIR_FREE(xpath);
+        }
+
         /* We can query this info for all the graphics types since we'll
          * get nothing for the unsupported ones (just rdp for now).
          * Also the parameter '--include-password' was already taken
          * care of when getting the XML */
 
         /* Create our XPATH lookup for the password */
-        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "passwd") < 0)
+        if (virAsprintf(&xpath, xpath_fmt, scheme[iter], "@passwd") < 0)
             goto cleanup;
 
         /* Attempt to get the password */
@@ -10193,6 +10524,18 @@ cmdVNCDisplay(vshControl *ctl, const vshCmd *cmd)
 
     listen_addr = virXPathString("string(/domain/devices/graphics"
                                  "[@type='vnc']/@listen)", ctxt);
+    if (!listen_addr) {
+        /* The subelement address - <listen address='xyz'/> -
+         * *should* have been automatically backfilled into its
+         * parent <graphics listen='xyz'> (which we just tried to
+         * retrieve into listen_addr above) but in some cases it
+         * isn't, so we also do an explicit check for the
+         * subelement (which, by the way, doesn't exist on libvirt
+         * < 0.9.4, so we really do need to check both places)
+         */
+        listen_addr = virXPathString("string(/domain/devices/graphics"
+                                     "[@type='vnc']/listen/@address)", ctxt);
+    }
     if (listen_addr == NULL || STREQ(listen_addr, "0.0.0.0"))
         vshPrint(ctl, ":%d\n", port-5900);
     else
@@ -10912,11 +11255,10 @@ vshFindDisk(const char *doc,
 }
 
 typedef enum {
-    VSH_PREPARE_DISK_XML_NONE = 0,
-    VSH_PREPARE_DISK_XML_EJECT,
-    VSH_PREPARE_DISK_XML_INSERT,
-    VSH_PREPARE_DISK_XML_UPDATE,
-} vshPrepareDiskXMLType;
+    VSH_UPDATE_DISK_XML_EJECT,
+    VSH_UPDATE_DISK_XML_INSERT,
+    VSH_UPDATE_DISK_XML_UPDATE,
+} vshUpdateDiskXMLType;
 
 /* Helper function to prepare disk XML. Could be used for disk
  * detaching, media changing(ejecting, inserting, updating)
@@ -10924,15 +11266,14 @@ typedef enum {
  * success, or NULL on failure. Caller must free the result.
  */
 static char *
-vshPrepareDiskXML(xmlNodePtr disk_node,
-                  const char *source,
-                  const char *path,
-                  int type)
+vshUpdateDiskXML(xmlNodePtr disk_node,
+                 const char *new_source,
+                 bool source_block,
+                 const char *target,
+                 vshUpdateDiskXMLType type)
 {
-    xmlNodePtr cur = NULL;
-    char *disk_type = NULL;
+    xmlNodePtr source = NULL;
     char *device_type = NULL;
-    xmlNodePtr new_node = NULL;
     char *ret = NULL;
 
     if (!disk_node)
@@ -10940,62 +11281,64 @@ vshPrepareDiskXML(xmlNodePtr disk_node,
 
     device_type = virXMLPropString(disk_node, "device");
 
-    if (STREQ_NULLABLE(device_type, "cdrom") ||
-        STREQ_NULLABLE(device_type, "floppy")) {
-        bool has_source = false;
-        disk_type = virXMLPropString(disk_node, "type");
+    if (!(STREQ_NULLABLE(device_type, "cdrom") ||
+          STREQ_NULLABLE(device_type, "floppy"))) {
+        vshError(NULL, _("The disk device '%s' is not removable"), target);
+        goto cleanup;
+    }
 
-        cur = disk_node->children;
-        while (cur != NULL) {
-            if (cur->type == XML_ELEMENT_NODE &&
-                xmlStrEqual(cur->name, BAD_CAST "source")) {
-                has_source = true;
-                break;
-            }
-            cur = cur->next;
+    /* find the current source subelement */
+    for (source = disk_node->children; source; source = source->next) {
+        if (source->type == XML_ELEMENT_NODE &&
+            xmlStrEqual(source->name, BAD_CAST "source"))
+            break;
+    }
+
+    if (type == VSH_UPDATE_DISK_XML_EJECT) {
+        if (!source) {
+            vshError(NULL, _("The disk device '%s' doesn't have media"), target);
+            goto cleanup;
         }
 
-        if (!has_source) {
-            if (type == VSH_PREPARE_DISK_XML_EJECT) {
-                vshError(NULL, _("The disk device '%s' doesn't have media"),
-                         path);
-                goto cleanup;
-            }
+        /* forcibly switch to empty file cdrom */
+        source_block = false;
+        new_source = NULL;
+    } else if (!new_source) {
+        vshError(NULL, _("New disk media source was not specified"));
+        goto cleanup;
+    }
 
-            if (source) {
-                new_node = xmlNewNode(NULL, BAD_CAST "source");
-                if (STREQ(disk_type, "block"))
-                    xmlNewProp(new_node, BAD_CAST "dev", BAD_CAST source);
-                else
-                    xmlNewProp(new_node, BAD_CAST disk_type, BAD_CAST source);
-                xmlAddChild(disk_node, new_node);
-            } else if (type == VSH_PREPARE_DISK_XML_INSERT) {
-                vshError(NULL, _("No source is specified for inserting media"));
-                goto cleanup;
-            } else if (type == VSH_PREPARE_DISK_XML_UPDATE) {
-                vshError(NULL, _("No source is specified for updating media"));
-                goto cleanup;
-            }
+    if (type == VSH_UPDATE_DISK_XML_INSERT && source) {
+        vshError(NULL, _("The disk device '%s' already has media"), target);
+        goto cleanup;
+    }
+
+    /* remove current source */
+    if (source) {
+        xmlUnlinkNode(source);
+        xmlFreeNode(source);
+        source = NULL;
+    }
+
+    /* set the correct disk type */
+    if (source_block)
+        xmlSetProp(disk_node, BAD_CAST "type", BAD_CAST "block");
+    else
+        xmlSetProp(disk_node, BAD_CAST "type", BAD_CAST "file");
+
+    if (new_source) {
+        /* create new source subelement */
+        if (!(source = xmlNewNode(NULL, BAD_CAST "source"))) {
+            vshError(NULL, _("Failed to allocate new source node"));
+            goto cleanup;
         }
 
-        if (has_source) {
-            if (type == VSH_PREPARE_DISK_XML_INSERT) {
-                vshError(NULL, _("The disk device '%s' already has media"),
-                         path);
-                goto cleanup;
-            }
+        if (source_block)
+            xmlNewProp(source, BAD_CAST "dev", BAD_CAST new_source);
+        else
+            xmlNewProp(source, BAD_CAST "file", BAD_CAST new_source);
 
-            /* Remove the source if it tends to eject/update media. */
-            xmlUnlinkNode(cur);
-            xmlFreeNode(cur);
-
-            if (source && (type == VSH_PREPARE_DISK_XML_UPDATE)) {
-                new_node = xmlNewNode(NULL, BAD_CAST "source");
-                xmlNewProp(new_node, (const xmlChar *)disk_type,
-                           (const xmlChar *)source);
-                xmlAddChild(disk_node, new_node);
-            }
-        }
+        xmlAddChild(disk_node, source);
     }
 
     if (!(ret = virXMLNodeToString(NULL, disk_node))) {
@@ -11005,7 +11348,6 @@ vshPrepareDiskXML(xmlNodePtr disk_node,
 
  cleanup:
     VIR_FREE(device_type);
-    VIR_FREE(disk_type);
     return ret;
 }
 
@@ -11100,9 +11442,10 @@ cmdDetachDisk(vshControl *ctl, const vshCmd *cmd)
     if (!(disk_node = vshFindDisk(doc, target, VSH_FIND_DISK_NORMAL)))
         goto cleanup;
 
-    if (!(disk_xml = vshPrepareDiskXML(disk_node, NULL, NULL,
-                                       VSH_PREPARE_DISK_XML_NONE)))
+    if (!(disk_xml = virXMLNodeToString(NULL, disk_node))) {
+        vshSaveLibvirtError();
         goto cleanup;
+    }
 
     if (flags != 0 || current)
         ret = virDomainDetachDeviceFlags(dom, disk_xml, flags);
@@ -11177,7 +11520,13 @@ cmdEdit(vshControl *ctl, const vshCmd *cmd)
     } while (0)
 #define EDIT_DEFINE \
     (dom_edited = vshDomainDefine(ctl->conn, doc_edited, define_flags))
+#define EDIT_RELAX                                      \
+    do {                                                \
+        define_flags &= ~VIR_DOMAIN_DEFINE_VALIDATE;    \
+    } while (0);
+
 #include "virsh-edit.c"
+#undef EDIT_RELAX
 
     vshPrint(ctl, _("Domain %s XML configuration edited.\n"),
              virDomainGetName(dom_edited));
@@ -11689,6 +12038,24 @@ vshEventDeviceRemovedPrint(virConnectPtr conn ATTRIBUTE_UNUSED,
 }
 
 static void
+vshEventDeviceAddedPrint(virConnectPtr conn ATTRIBUTE_UNUSED,
+                           virDomainPtr dom,
+                           const char *alias,
+                           void *opaque)
+{
+    vshDomEventData *data = opaque;
+
+    if (!data->loop && *data->count)
+        return;
+    vshPrint(data->ctl,
+             _("event 'device-added' for domain %s: %s\n"),
+             virDomainGetName(dom), alias);
+    (*data->count)++;
+    if (!data->loop)
+        vshEventDone(data->ctl);
+}
+
+static void
 vshEventTunablePrint(virConnectPtr conn ATTRIBUTE_UNUSED,
                      virDomainPtr dom,
                      virTypedParameterPtr params,
@@ -11793,6 +12160,8 @@ static vshEventCallback vshEventCallbacks[] = {
       VIR_DOMAIN_EVENT_CALLBACK(vshEventTunablePrint), },
     { "agent-lifecycle",
       VIR_DOMAIN_EVENT_CALLBACK(vshEventAgentLifecyclePrint), },
+    { "device-added",
+      VIR_DOMAIN_EVENT_CALLBACK(vshEventDeviceAddedPrint), },
 };
 verify(VIR_DOMAIN_EVENT_ID_LAST == ARRAY_CARDINALITY(vshEventCallbacks));
 
@@ -12002,6 +12371,14 @@ static const vshCmdOptDef opts_change_media[] = {
      .type = VSH_OT_BOOL,
      .help = N_("force media changing")
     },
+    {.name = "print-xml",
+     .type = VSH_OT_BOOL,
+     .help = N_("print XML document rather than change media")
+    },
+    {.name = "block",
+     .type = VSH_OT_BOOL,
+     .help = N_("source media is a block device")
+    },
     {.name = NULL}
 };
 
@@ -12015,8 +12392,9 @@ cmdChangeMedia(vshControl *ctl, const vshCmd *cmd)
     xmlNodePtr disk_node = NULL;
     char *disk_xml = NULL;
     bool ret = false;
-    int prepare_type = 0;
+    vshUpdateDiskXMLType update_type;
     const char *action = NULL;
+    const char *success_msg = NULL;
     bool config = vshCommandOptBool(cmd, "config");
     bool live = vshCommandOptBool(cmd, "live");
     bool current = vshCommandOptBool(cmd, "current");
@@ -12024,25 +12402,31 @@ cmdChangeMedia(vshControl *ctl, const vshCmd *cmd)
     bool eject = vshCommandOptBool(cmd, "eject");
     bool insert = vshCommandOptBool(cmd, "insert");
     bool update = vshCommandOptBool(cmd, "update");
+    bool block = vshCommandOptBool(cmd, "block");
     unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
 
     VSH_EXCLUSIVE_OPTIONS_VAR(eject, insert);
     VSH_EXCLUSIVE_OPTIONS_VAR(eject, update);
     VSH_EXCLUSIVE_OPTIONS_VAR(insert, update);
 
+    VSH_EXCLUSIVE_OPTIONS_VAR(eject, block);
+
     if (eject) {
-        prepare_type = VSH_PREPARE_DISK_XML_EJECT;
+        update_type = VSH_UPDATE_DISK_XML_EJECT;
         action = "eject";
+        success_msg = _("Successfully ejected media.");
     }
 
     if (insert) {
-        prepare_type = VSH_PREPARE_DISK_XML_INSERT;
+        update_type = VSH_UPDATE_DISK_XML_INSERT;
         action = "insert";
+        success_msg = _("Successfully inserted media.");
     }
 
     if (update || (!eject && !insert)) {
-        prepare_type = VSH_PREPARE_DISK_XML_UPDATE;
+        update_type = VSH_UPDATE_DISK_XML_UPDATE;
         action = "update";
+        success_msg = _("Successfully updated media.");
     }
 
     VSH_EXCLUSIVE_OPTIONS_VAR(current, live);
@@ -12056,18 +12440,13 @@ cmdChangeMedia(vshControl *ctl, const vshCmd *cmd)
         flags |= VIR_DOMAIN_DEVICE_MODIFY_FORCE;
 
     if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
-        goto cleanup;
+        return false;
 
     if (vshCommandOptStringReq(ctl, cmd, "path", &path) < 0)
         goto cleanup;
 
     if (vshCommandOptStringReq(ctl, cmd, "source", &source) < 0)
         goto cleanup;
-
-    if (insert && !source) {
-        vshError(ctl, "%s", _("No disk source specified for inserting"));
-        goto cleanup;
-    }
 
     if (flags & VIR_DOMAIN_AFFECT_CONFIG)
         doc = virDomainGetXMLDesc(dom, VIR_DOMAIN_XML_INACTIVE);
@@ -12079,23 +12458,28 @@ cmdChangeMedia(vshControl *ctl, const vshCmd *cmd)
     if (!(disk_node = vshFindDisk(doc, path, VSH_FIND_DISK_CHANGEABLE)))
         goto cleanup;
 
-    if (!(disk_xml = vshPrepareDiskXML(disk_node, source, path, prepare_type)))
+    if (!(disk_xml = vshUpdateDiskXML(disk_node, source, block, path,
+                                      update_type)))
         goto cleanup;
 
-    if (virDomainUpdateDeviceFlags(dom, disk_xml, flags) != 0) {
-        vshError(ctl, _("Failed to complete action %s on media"), action);
-        goto cleanup;
+    if (vshCommandOptBool(cmd, "print-xml")) {
+        vshPrint(ctl, "%s", disk_xml);
+    } else {
+        if (virDomainUpdateDeviceFlags(dom, disk_xml, flags) != 0) {
+            vshError(ctl, _("Failed to complete action %s on media"), action);
+            goto cleanup;
+        }
+
+        vshPrint(ctl, "%s", success_msg);
     }
 
-    vshPrint(ctl, _("succeeded to complete action %s on media\n"), action);
     ret = true;
 
  cleanup:
     VIR_FREE(doc);
     xmlFreeNode(disk_node);
     VIR_FREE(disk_xml);
-    if (dom)
-        virDomainFree(dom);
+    virDomainFree(dom);
     return ret;
 }
 
@@ -12607,6 +12991,30 @@ const vshCmdDef domManagementCmds[] = {
      .handler = cmdInjectNMI,
      .opts = opts_inject_nmi,
      .info = info_inject_nmi,
+     .flags = 0
+    },
+    {.name = "iothreadinfo",
+     .handler = cmdIOThreadInfo,
+     .opts = opts_iothreadinfo,
+     .info = info_iothreadinfo,
+     .flags = 0
+    },
+    {.name = "iothreadpin",
+     .handler = cmdIOThreadPin,
+     .opts = opts_iothreadpin,
+     .info = info_iothreadpin,
+     .flags = 0
+    },
+    {.name = "iothreadadd",
+     .handler = cmdIOThreadAdd,
+     .opts = opts_iothreadadd,
+     .info = info_iothreadadd,
+     .flags = 0
+    },
+    {.name = "iothreaddel",
+     .handler = cmdIOThreadDel,
+     .opts = opts_iothreaddel,
+     .info = info_iothreaddel,
      .flags = 0
     },
     {.name = "send-key",

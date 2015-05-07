@@ -1,7 +1,7 @@
 /*
  * driver-hypervisor.h: entry points for hypervisor drivers
  *
- * Copyright (C) 2006-2014 Red Hat, Inc.
+ * Copyright (C) 2006-2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,7 +32,6 @@ typedef virDrvOpenStatus
 
 typedef int
 (*virDrvConnectClose)(virConnectPtr conn);
-
 
 typedef int
 (*virDrvConnectSupportsFeature)(virConnectPtr conn,
@@ -380,6 +379,28 @@ typedef int
 
 typedef int
 (*virDrvDomainGetMaxVcpus)(virDomainPtr domain);
+
+typedef int
+(*virDrvDomainGetIOThreadInfo)(virDomainPtr domain,
+                               virDomainIOThreadInfoPtr **info,
+                               unsigned int flags);
+
+typedef int
+(*virDrvDomainPinIOThread)(virDomainPtr domain,
+                           unsigned int iothread_id,
+                           unsigned char *cpumap,
+                           int maplen,
+                           unsigned int flags);
+
+typedef int
+(*virDrvDomainAddIOThread)(virDomainPtr domain,
+                           unsigned int iothread_id,
+                           unsigned int flags);
+
+typedef int
+(*virDrvDomainDelIOThread)(virDomainPtr domain,
+                           unsigned int iothread_id,
+                           unsigned int flags);
 
 typedef int
 (*virDrvDomainGetSecurityLabel)(virDomainPtr domain,
@@ -1174,6 +1195,11 @@ typedef int
                         unsigned int cellCount,
                         unsigned int flags);
 
+typedef int
+(*virDrvDomainInterfaceAddresses)(virDomainPtr dom,
+                                  virDomainInterfacePtr **ifaces,
+                                  unsigned int source,
+                                  unsigned int flags);
 
 typedef struct _virHypervisorDriver virHypervisorDriver;
 typedef virHypervisorDriver *virHypervisorDriverPtr;
@@ -1185,13 +1211,11 @@ typedef virHypervisorDriver *virHypervisorDriverPtr;
  * entry points for it.
  *
  * All drivers must support the following fields/methods:
- *  - no
  *  - name
  *  - open
  *  - close
  */
 struct _virHypervisorDriver {
-    int no; /* the number virDrvNo */
     const char *name; /* the name of the driver */
     virDrvConnectOpen connectOpen;
     virDrvConnectClose connectClose;
@@ -1257,6 +1281,10 @@ struct _virHypervisorDriver {
     virDrvDomainGetEmulatorPinInfo domainGetEmulatorPinInfo;
     virDrvDomainGetVcpus domainGetVcpus;
     virDrvDomainGetMaxVcpus domainGetMaxVcpus;
+    virDrvDomainGetIOThreadInfo domainGetIOThreadInfo;
+    virDrvDomainPinIOThread domainPinIOThread;
+    virDrvDomainAddIOThread domainAddIOThread;
+    virDrvDomainDelIOThread domainDelIOThread;
     virDrvDomainGetSecurityLabel domainGetSecurityLabel;
     virDrvDomainGetSecurityLabelList domainGetSecurityLabelList;
     virDrvNodeGetSecurityModel nodeGetSecurityModel;
@@ -1401,6 +1429,7 @@ struct _virHypervisorDriver {
     virDrvConnectGetAllDomainStats connectGetAllDomainStats;
     virDrvNodeAllocPages nodeAllocPages;
     virDrvDomainGetFSInfo domainGetFSInfo;
+    virDrvDomainInterfaceAddresses domainInterfaceAddresses;
 };
 
 

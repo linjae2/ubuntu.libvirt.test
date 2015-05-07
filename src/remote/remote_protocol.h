@@ -40,6 +40,7 @@ typedef remote_nonnull_string *remote_string;
 #define REMOTE_CPUMAP_MAX 2048
 #define REMOTE_VCPUINFO_MAX 16384
 #define REMOTE_CPUMAPS_MAX 8388608
+#define REMOTE_IOTHREAD_INFO_MAX 16384
 #define REMOTE_MIGRATE_COOKIE_MAX 4194304
 #define REMOTE_NETWORK_LIST_MAX 16384
 #define REMOTE_INTERFACE_LIST_MAX 16384
@@ -86,6 +87,8 @@ typedef remote_nonnull_string *remote_string;
 #define REMOTE_DOMAIN_EVENT_TUNABLE_MAX 2048
 #define REMOTE_DOMAIN_FSINFO_MAX 256
 #define REMOTE_DOMAIN_FSINFO_DISKS_MAX 256
+#define REMOTE_DOMAIN_INTERFACE_MAX 2048
+#define REMOTE_DOMAIN_IP_ADDR_MAX 2048
 
 typedef char remote_uuid[VIR_UUID_BUFLEN];
 
@@ -1223,6 +1226,55 @@ struct remote_domain_get_max_vcpus_ret {
         int num;
 };
 typedef struct remote_domain_get_max_vcpus_ret remote_domain_get_max_vcpus_ret;
+
+struct remote_domain_iothread_info {
+        u_int iothread_id;
+        struct {
+                u_int cpumap_len;
+                char *cpumap_val;
+        } cpumap;
+};
+typedef struct remote_domain_iothread_info remote_domain_iothread_info;
+
+struct remote_domain_get_iothread_info_args {
+        remote_nonnull_domain dom;
+        u_int flags;
+};
+typedef struct remote_domain_get_iothread_info_args remote_domain_get_iothread_info_args;
+
+struct remote_domain_get_iothread_info_ret {
+        struct {
+                u_int info_len;
+                remote_domain_iothread_info *info_val;
+        } info;
+        u_int ret;
+};
+typedef struct remote_domain_get_iothread_info_ret remote_domain_get_iothread_info_ret;
+
+struct remote_domain_pin_iothread_args {
+        remote_nonnull_domain dom;
+        u_int iothreads_id;
+        struct {
+                u_int cpumap_len;
+                char *cpumap_val;
+        } cpumap;
+        u_int flags;
+};
+typedef struct remote_domain_pin_iothread_args remote_domain_pin_iothread_args;
+
+struct remote_domain_add_iothread_args {
+        remote_nonnull_domain dom;
+        u_int iothread_id;
+        u_int flags;
+};
+typedef struct remote_domain_add_iothread_args remote_domain_add_iothread_args;
+
+struct remote_domain_del_iothread_args {
+        remote_nonnull_domain dom;
+        u_int iothread_id;
+        u_int flags;
+};
+typedef struct remote_domain_del_iothread_args remote_domain_del_iothread_args;
 
 struct remote_domain_get_security_label_args {
         remote_nonnull_domain dom;
@@ -3606,6 +3658,13 @@ struct remote_domain_event_callback_tunable_msg {
 };
 typedef struct remote_domain_event_callback_tunable_msg remote_domain_event_callback_tunable_msg;
 
+struct remote_domain_event_callback_device_added_msg {
+        int callbackID;
+        remote_nonnull_domain dom;
+        remote_nonnull_string devAlias;
+};
+typedef struct remote_domain_event_callback_device_added_msg remote_domain_event_callback_device_added_msg;
+
 struct remote_connect_get_cpu_model_names_args {
         remote_nonnull_string arch;
         int need_results;
@@ -3805,6 +3864,38 @@ struct remote_domain_get_fsinfo_ret {
         u_int ret;
 };
 typedef struct remote_domain_get_fsinfo_ret remote_domain_get_fsinfo_ret;
+
+struct remote_domain_ip_addr {
+        int type;
+        remote_nonnull_string addr;
+        u_int prefix;
+};
+typedef struct remote_domain_ip_addr remote_domain_ip_addr;
+
+struct remote_domain_interface {
+        remote_nonnull_string name;
+        remote_string hwaddr;
+        struct {
+                u_int addrs_len;
+                remote_domain_ip_addr *addrs_val;
+        } addrs;
+};
+typedef struct remote_domain_interface remote_domain_interface;
+
+struct remote_domain_interface_addresses_args {
+        remote_nonnull_domain dom;
+        u_int source;
+        u_int flags;
+};
+typedef struct remote_domain_interface_addresses_args remote_domain_interface_addresses_args;
+
+struct remote_domain_interface_addresses_ret {
+        struct {
+                u_int ifaces_len;
+                remote_domain_interface *ifaces_val;
+        } ifaces;
+};
+typedef struct remote_domain_interface_addresses_ret remote_domain_interface_addresses_ret;
 #define REMOTE_PROGRAM 0x20008086
 #define REMOTE_PROTOCOL_VERSION 1
 
@@ -4159,6 +4250,12 @@ enum remote_procedure {
         REMOTE_PROC_DOMAIN_EVENT_CALLBACK_AGENT_LIFECYCLE = 348,
         REMOTE_PROC_DOMAIN_GET_FSINFO = 349,
         REMOTE_PROC_DOMAIN_DEFINE_XML_FLAGS = 350,
+        REMOTE_PROC_DOMAIN_GET_IOTHREAD_INFO = 351,
+        REMOTE_PROC_DOMAIN_PIN_IOTHREAD = 352,
+        REMOTE_PROC_DOMAIN_INTERFACE_ADDRESSES = 353,
+        REMOTE_PROC_DOMAIN_EVENT_CALLBACK_DEVICE_ADDED = 354,
+        REMOTE_PROC_DOMAIN_ADD_IOTHREAD = 355,
+        REMOTE_PROC_DOMAIN_DEL_IOTHREAD = 356,
 };
 typedef enum remote_procedure remote_procedure;
 
@@ -4336,6 +4433,12 @@ extern  bool_t xdr_remote_domain_get_vcpus_args (XDR *, remote_domain_get_vcpus_
 extern  bool_t xdr_remote_domain_get_vcpus_ret (XDR *, remote_domain_get_vcpus_ret*);
 extern  bool_t xdr_remote_domain_get_max_vcpus_args (XDR *, remote_domain_get_max_vcpus_args*);
 extern  bool_t xdr_remote_domain_get_max_vcpus_ret (XDR *, remote_domain_get_max_vcpus_ret*);
+extern  bool_t xdr_remote_domain_iothread_info (XDR *, remote_domain_iothread_info*);
+extern  bool_t xdr_remote_domain_get_iothread_info_args (XDR *, remote_domain_get_iothread_info_args*);
+extern  bool_t xdr_remote_domain_get_iothread_info_ret (XDR *, remote_domain_get_iothread_info_ret*);
+extern  bool_t xdr_remote_domain_pin_iothread_args (XDR *, remote_domain_pin_iothread_args*);
+extern  bool_t xdr_remote_domain_add_iothread_args (XDR *, remote_domain_add_iothread_args*);
+extern  bool_t xdr_remote_domain_del_iothread_args (XDR *, remote_domain_del_iothread_args*);
 extern  bool_t xdr_remote_domain_get_security_label_args (XDR *, remote_domain_get_security_label_args*);
 extern  bool_t xdr_remote_domain_get_security_label_ret (XDR *, remote_domain_get_security_label_ret*);
 extern  bool_t xdr_remote_domain_get_security_label_list_args (XDR *, remote_domain_get_security_label_list_args*);
@@ -4700,6 +4803,7 @@ extern  bool_t xdr_remote_domain_event_device_removed_msg (XDR *, remote_domain_
 extern  bool_t xdr_remote_domain_event_callback_device_removed_msg (XDR *, remote_domain_event_callback_device_removed_msg*);
 extern  bool_t xdr_remote_domain_event_block_job_2_msg (XDR *, remote_domain_event_block_job_2_msg*);
 extern  bool_t xdr_remote_domain_event_callback_tunable_msg (XDR *, remote_domain_event_callback_tunable_msg*);
+extern  bool_t xdr_remote_domain_event_callback_device_added_msg (XDR *, remote_domain_event_callback_device_added_msg*);
 extern  bool_t xdr_remote_connect_get_cpu_model_names_args (XDR *, remote_connect_get_cpu_model_names_args*);
 extern  bool_t xdr_remote_connect_get_cpu_model_names_ret (XDR *, remote_connect_get_cpu_model_names_ret*);
 extern  bool_t xdr_remote_connect_network_event_register_any_args (XDR *, remote_connect_network_event_register_any_args*);
@@ -4724,6 +4828,10 @@ extern  bool_t xdr_remote_connect_get_all_domain_stats_ret (XDR *, remote_connec
 extern  bool_t xdr_remote_domain_fsinfo (XDR *, remote_domain_fsinfo*);
 extern  bool_t xdr_remote_domain_get_fsinfo_args (XDR *, remote_domain_get_fsinfo_args*);
 extern  bool_t xdr_remote_domain_get_fsinfo_ret (XDR *, remote_domain_get_fsinfo_ret*);
+extern  bool_t xdr_remote_domain_ip_addr (XDR *, remote_domain_ip_addr*);
+extern  bool_t xdr_remote_domain_interface (XDR *, remote_domain_interface*);
+extern  bool_t xdr_remote_domain_interface_addresses_args (XDR *, remote_domain_interface_addresses_args*);
+extern  bool_t xdr_remote_domain_interface_addresses_ret (XDR *, remote_domain_interface_addresses_ret*);
 extern  bool_t xdr_remote_procedure (XDR *, remote_procedure*);
 
 #else /* K&R C */
@@ -4898,6 +5006,12 @@ extern bool_t xdr_remote_domain_get_vcpus_args ();
 extern bool_t xdr_remote_domain_get_vcpus_ret ();
 extern bool_t xdr_remote_domain_get_max_vcpus_args ();
 extern bool_t xdr_remote_domain_get_max_vcpus_ret ();
+extern bool_t xdr_remote_domain_iothread_info ();
+extern bool_t xdr_remote_domain_get_iothread_info_args ();
+extern bool_t xdr_remote_domain_get_iothread_info_ret ();
+extern bool_t xdr_remote_domain_pin_iothread_args ();
+extern bool_t xdr_remote_domain_add_iothread_args ();
+extern bool_t xdr_remote_domain_del_iothread_args ();
 extern bool_t xdr_remote_domain_get_security_label_args ();
 extern bool_t xdr_remote_domain_get_security_label_ret ();
 extern bool_t xdr_remote_domain_get_security_label_list_args ();
@@ -5262,6 +5376,7 @@ extern bool_t xdr_remote_domain_event_device_removed_msg ();
 extern bool_t xdr_remote_domain_event_callback_device_removed_msg ();
 extern bool_t xdr_remote_domain_event_block_job_2_msg ();
 extern bool_t xdr_remote_domain_event_callback_tunable_msg ();
+extern bool_t xdr_remote_domain_event_callback_device_added_msg ();
 extern bool_t xdr_remote_connect_get_cpu_model_names_args ();
 extern bool_t xdr_remote_connect_get_cpu_model_names_ret ();
 extern bool_t xdr_remote_connect_network_event_register_any_args ();
@@ -5286,6 +5401,10 @@ extern bool_t xdr_remote_connect_get_all_domain_stats_ret ();
 extern bool_t xdr_remote_domain_fsinfo ();
 extern bool_t xdr_remote_domain_get_fsinfo_args ();
 extern bool_t xdr_remote_domain_get_fsinfo_ret ();
+extern bool_t xdr_remote_domain_ip_addr ();
+extern bool_t xdr_remote_domain_interface ();
+extern bool_t xdr_remote_domain_interface_addresses_args ();
+extern bool_t xdr_remote_domain_interface_addresses_ret ();
 extern bool_t xdr_remote_procedure ();
 
 #endif /* K&R C */

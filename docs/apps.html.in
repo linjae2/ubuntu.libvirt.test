@@ -321,6 +321,12 @@
         For a full description, please refer to the libvirt section in the
         collectd.conf(5) manual page.
       </dd>
+      <dt><a href="http://host-sflow.sourceforge.net/">Host sFlow</a></dt>
+      <dd>
+        Host sFlow is a lightweight agent running on KVM hypervisors that
+        links to libvirt library and exports standardized cpu, memory, network
+        and disk metrics for all virtual machines.
+      </dd>
       <dt><a href="http://honk.sigxcpu.org/projects/libvirt/#munin">Munin</a></dt>
       <dd>
         The plugins provided by Guido G&uuml;nther allow to monitor various things
@@ -403,6 +409,14 @@
         but a large cluster of hypervisors.  It delivers a number of
         functions, such as live migration that allows for load
         balancing between cluster nodes, monitoring CPU, memory.
+      </dd>
+      <dt><a href="http://mist.io/">mist.io</a></dt>
+      <dd>
+        Mist.io is an open source project and a service that can assist you in
+        managing your virtual machines on a unified way, providing a simple
+        interface for all of your infrastructure (multiple public cloud
+        providers, OpenStack based public/private clouds, Docker servers, bare
+        metal servers and now KVM hypervisors).
       </dd>
     </dl>
 

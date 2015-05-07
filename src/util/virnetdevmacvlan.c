@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 Red Hat, Inc.
+ * Copyright (C) 2010-2015 Red Hat, Inc.
  * Copyright (C) 2010-2012 IBM Corporation
  *
  * This library is free software; you can redistribute it and/or
@@ -107,6 +107,7 @@ virNetDevMacVLanCreate(const char *ifname,
     unsigned int recvbuflen;
     struct nl_msg *nl_msg;
     struct nlattr *linkinfo, *info_data;
+    char macstr[VIR_MAC_STRING_BUFLEN];
 
     if (virNetDevGetIndex(srcdev, &ifindex) < 0)
         return -1;
@@ -177,8 +178,9 @@ virNetDevMacVLanCreate(const char *ifname,
 
         default:
             virReportSystemError(-err->error,
-                                 _("error creating %s type of interface attach to %s"),
-                                 type, srcdev);
+                                 _("error creating %s interface %s@%s (%s)"),
+                                 type, ifname, srcdev,
+                                 virMacAddrFormat(macaddress, macstr));
             goto cleanup;
         }
         break;
@@ -218,70 +220,7 @@ virNetDevMacVLanCreate(const char *ifname,
  */
 int virNetDevMacVLanDelete(const char *ifname)
 {
-    int rc = -1;
-    struct nlmsghdr *resp = NULL;
-    struct nlmsgerr *err;
-    struct ifinfomsg ifinfo = { .ifi_family = AF_UNSPEC };
-    unsigned int recvbuflen;
-    struct nl_msg *nl_msg;
-
-    nl_msg = nlmsg_alloc_simple(RTM_DELLINK,
-                                NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL);
-    if (!nl_msg) {
-        virReportOOMError();
-        return -1;
-    }
-
-    if (nlmsg_append(nl_msg,  &ifinfo, sizeof(ifinfo), NLMSG_ALIGNTO) < 0)
-        goto buffer_too_small;
-
-    if (nla_put(nl_msg, IFLA_IFNAME, strlen(ifname)+1, ifname) < 0)
-        goto buffer_too_small;
-
-    if (virNetlinkCommand(nl_msg, &resp, &recvbuflen, 0, 0,
-                          NETLINK_ROUTE, 0) < 0) {
-        goto cleanup;
-    }
-
-    if (recvbuflen < NLMSG_LENGTH(0) || resp == NULL)
-        goto malformed_resp;
-
-    switch (resp->nlmsg_type) {
-    case NLMSG_ERROR:
-        err = (struct nlmsgerr *)NLMSG_DATA(resp);
-        if (resp->nlmsg_len < NLMSG_LENGTH(sizeof(*err)))
-            goto malformed_resp;
-
-        if (err->error) {
-            virReportSystemError(-err->error,
-                                 _("error destroying %s interface"),
-                                 ifname);
-            goto cleanup;
-        }
-        break;
-
-    case NLMSG_DONE:
-        break;
-
-    default:
-        goto malformed_resp;
-    }
-
-    rc = 0;
- cleanup:
-    nlmsg_free(nl_msg);
-    VIR_FREE(resp);
-    return rc;
-
- malformed_resp:
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                   _("malformed netlink response message"));
-    goto cleanup;
-
- buffer_too_small:
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                   _("allocated netlink buffer is too small"));
-    goto cleanup;
+    return virNetlinkDelLink(ifname);
 }
 
 
@@ -297,19 +236,15 @@ static
 int virNetDevMacVLanTapOpen(const char *ifname,
                             int retries)
 {
-    FILE *file;
-    char path[64];
+    int ret = -1;
+    FILE *file = NULL;
+    char *path;
     int ifindex;
     char tapname[50];
     int tapfd;
 
-    if (snprintf(path, sizeof(path),
-                 "/sys/class/net/%s/ifindex", ifname) >= sizeof(path)) {
-        virReportSystemError(errno,
-                             "%s",
-                             _("buffer for ifindex path is too small"));
+    if (virNetDevSysfsFile(&path, ifname, "ifindex") < 0)
         return -1;
-    }
 
     file = fopen(path, "r");
 
@@ -317,15 +252,14 @@ int virNetDevMacVLanTapOpen(const char *ifname,
         virReportSystemError(errno,
                              _("cannot open macvtap file %s to determine "
                                "interface index"), path);
-        return -1;
+        goto cleanup;
     }
 
     if (fscanf(file, "%d", &ifindex) != 1) {
         virReportSystemError(errno,
                              "%s", _("cannot determine macvtap's tap device "
                              "interface index"));
-        VIR_FORCE_FCLOSE(file);
-        return -1;
+        goto cleanup;
     }
 
     VIR_FORCE_FCLOSE(file);
@@ -335,7 +269,7 @@ int virNetDevMacVLanTapOpen(const char *ifname,
         virReportSystemError(errno,
                              "%s",
                              _("internal buffer for tap device is too small"));
-        return -1;
+        goto cleanup;
     }
 
     while (1) {
@@ -349,12 +283,17 @@ int virNetDevMacVLanTapOpen(const char *ifname,
         break;
     }
 
-    if (tapfd < 0)
+    if (tapfd < 0) {
         virReportSystemError(errno,
                              _("cannot open macvtap tap device %s"),
                              tapname);
-
-    return tapfd;
+        goto cleanup;
+    }
+    ret = tapfd;
+ cleanup:
+    VIR_FREE(path);
+    VIR_FORCE_FCLOSE(file);
+    return ret;
 }
 
 
@@ -840,7 +779,7 @@ int virNetDevMacVLanCreateWithVPortProfile(const char *tgifname,
      * emulate their switch in firmware.
      */
     if (mode == VIR_NETDEV_MACVLAN_MODE_PASSTHRU) {
-        if (virNetDevReplaceMacAddress(linkdev, macaddress, stateDir) < 0)
+        if (virNetDevReplaceNetConfig(linkdev, -1, macaddress, -1, stateDir) < 0)
             return -1;
     }
 
@@ -975,7 +914,7 @@ int virNetDevMacVLanDeleteWithVPortProfile(const char *ifname,
     int vf = -1;
 
     if (mode == VIR_NETDEV_MACVLAN_MODE_PASSTHRU)
-        ignore_value(virNetDevRestoreMacAddress(linkdev, stateDir));
+        ignore_value(virNetDevRestoreNetConfig(linkdev, vf, stateDir));
 
     if (ifname) {
         if (virNetDevVPortProfileDisassociate(ifname,
@@ -1066,9 +1005,8 @@ int virNetDevMacVLanCreateWithVPortProfile(const char *ifname ATTRIBUTE_UNUSED,
                                            char **res_ifname ATTRIBUTE_UNUSED,
                                            virNetDevVPortProfileOp vmop ATTRIBUTE_UNUSED,
                                            char *stateDir ATTRIBUTE_UNUSED,
-                                           unsigned int flags)
+                                           unsigned int unused_flags ATTRIBUTE_UNUSED)
 {
-    virCheckFlags(0, -1);
     virReportSystemError(ENOSYS, "%s",
                          _("Cannot create macvlan devices on this platform"));
     return -1;

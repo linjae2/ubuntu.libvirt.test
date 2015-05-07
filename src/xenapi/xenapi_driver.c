@@ -1,6 +1,6 @@
 /*
  * xenapi_driver.c: Xen API driver.
- * Copyright (C) 2011-2014 Red Hat, Inc.
+ * Copyright (C) 2011-2015 Red Hat, Inc.
  * Copyright (C) 2009, 2010 Citrix Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -52,7 +52,7 @@ xenapiDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
     if (dev->type == VIR_DOMAIN_DEVICE_CHR &&
         dev->data.chr->deviceType == VIR_DOMAIN_CHR_DEVICE_TYPE_CONSOLE &&
         dev->data.chr->targetType == VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_NONE &&
-        STRNEQ(def->os.type, "hvm"))
+        def->os.type != VIR_DOMAIN_OSTYPE_HVM)
         dev->data.chr->targetType = VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_XEN;
 
     /* forbid capabilities mode hostdev in this kind of hypervisor */
@@ -65,15 +65,22 @@ xenapiDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
         return -1;
     }
 
+    if (virDomainDeviceDefCheckUnsupportedMemoryDevice(dev) < 0)
+        return -1;
+
     return 0;
 }
 
 
 static int
-xenapiDomainDefPostParse(virDomainDefPtr def ATTRIBUTE_UNUSED,
+xenapiDomainDefPostParse(virDomainDefPtr def,
                          virCapsPtr caps ATTRIBUTE_UNUSED,
                          void *opaque ATTRIBUTE_UNUSED)
 {
+    /* memory hotplug tunables are not supported by this driver */
+    if (virDomainDefCheckUnsupportedMemoryHotplug(def) < 0)
+        return -1;
+
     return 0;
 }
 
@@ -99,16 +106,16 @@ getCapsObject(void)
 
     if (!caps)
         return NULL;
-    guest1 = virCapabilitiesAddGuest(caps, "hvm", VIR_ARCH_X86_64, "", "", 0, NULL);
+    guest1 = virCapabilitiesAddGuest(caps, VIR_DOMAIN_OSTYPE_HVM, VIR_ARCH_X86_64, "", "", 0, NULL);
     if (!guest1)
         goto error_cleanup;
-    domain1 = virCapabilitiesAddGuestDomain(guest1, "xen", "", "", 0, NULL);
+    domain1 = virCapabilitiesAddGuestDomain(guest1, VIR_DOMAIN_VIRT_XEN, "", "", 0, NULL);
     if (!domain1)
         goto error_cleanup;
-    guest2 = virCapabilitiesAddGuest(caps, "xen", VIR_ARCH_X86_64, "", "", 0, NULL);
+    guest2 = virCapabilitiesAddGuest(caps, VIR_DOMAIN_OSTYPE_XEN, VIR_ARCH_X86_64, "", "", 0, NULL);
     if (!guest2)
         goto error_cleanup;
-    domain2 = virCapabilitiesAddGuestDomain(guest2, "xen", "", "", 0, NULL);
+    domain2 = virCapabilitiesAddGuestDomain(guest2, VIR_DOMAIN_VIRT_XEN, "", "", 0, NULL);
     if (!domain2)
         goto error_cleanup;
 
@@ -558,8 +565,9 @@ xenapiDomainCreateXML(virConnectPtr conn,
 
     virDomainDefPtr defPtr = virDomainDefParseString(xmlDesc,
                                                      priv->caps, priv->xmlopt,
-                                                     1 << VIR_DOMAIN_VIRT_XEN,
                                                      parse_flags);
+    if (!defPtr)
+        return NULL;
     createVMRecordFromXml(conn, defPtr, &record, &vm);
     virDomainDefFree(defPtr);
     if (record) {
@@ -1418,10 +1426,7 @@ xenapiDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
         goto error;
     xen_vm_get_hvm_boot_policy(session, &boot_policy, vm);
     if (STREQ(boot_policy, "BIOS order")) {
-        if (VIR_STRDUP(defPtr->os.type, "hvm") < 0) {
-            VIR_FREE(boot_policy);
-            goto error;
-        }
+        defPtr->os.type = VIR_DOMAIN_OSTYPE_HVM;
         xen_vm_get_hvm_boot_params(session, &result, vm);
         if (result != NULL) {
             size_t i;
@@ -1441,10 +1446,7 @@ xenapiDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
         VIR_FREE(boot_policy);
     } else {
         char *value = NULL;
-        if (VIR_STRDUP(defPtr->os.type, "xen") < 0) {
-            VIR_FREE(boot_policy);
-            goto error;
-        }
+        defPtr->os.type = VIR_DOMAIN_OSTYPE_XEN;
         if (VIR_ALLOC(defPtr->os.loader) < 0 ||
             VIR_STRDUP(defPtr->os.loader->path, "pygrub") < 0) {
             VIR_FREE(boot_policy);
@@ -1490,7 +1492,7 @@ xenapiDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
         VIR_FREE(val);
     }
     memory = xenapiDomainGetMaxMemory(dom);
-    defPtr->mem.max_balloon = memory;
+    virDomainDefSetMemoryInitial(defPtr, memory);
     if (xen_vm_get_memory_dynamic_max(session, &dynamic_mem, vm)) {
         defPtr->mem.cur_balloon = (unsigned long) (dynamic_mem / 1024);
     } else {
@@ -1561,8 +1563,7 @@ xenapiDomainGetXMLDesc(virDomainPtr dom, unsigned int flags)
         }
         xen_vif_set_free(vif_set);
     }
-    if (vms)
-        xen_vm_set_free(vms);
+    xen_vm_set_free(vms);
     xml = virDomainDefFormat(defPtr, flags);
     virDomainDefFree(defPtr);
     return xml;
@@ -1646,9 +1647,11 @@ xenapiConnectNumOfDefinedDomains(virConnectPtr conn)
                 xen_vm_set_free(result);
                 return -1;
             }
-            if (record->is_a_template == 0)
-                DomNum++;
-            xen_vm_record_free(record);
+            if (record) {
+                if (record->is_a_template == 0)
+                    DomNum++;
+                xen_vm_record_free(record);
+            }
         }
         xen_vm_set_free(result);
         return DomNum;
@@ -1736,7 +1739,6 @@ xenapiDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int fla
         return NULL;
     virDomainDefPtr defPtr = virDomainDefParseString(xml,
                                                      priv->caps, priv->xmlopt,
-                                                     1 << VIR_DOMAIN_VIRT_XEN,
                                                      parse_flags);
     if (!defPtr)
         return NULL;
@@ -1977,9 +1979,32 @@ xenapiConnectIsAlive(virConnectPtr conn)
         return 0;
 }
 
+static int
+xenapiDomainHasManagedSaveImage(virDomainPtr dom, unsigned int flags)
+{
+    struct xen_vm_set *vms;
+    xen_session *session = ((struct _xenapiPrivate *)(dom->conn->privateData))->session;
+
+    virCheckFlags(0, -1);
+
+    if (xen_vm_get_by_name_label(session, &vms, dom->name) && vms->size > 0) {
+        if (vms->size != 1) {
+            xenapiSessionErrorHandler(dom->conn, VIR_ERR_INTERNAL_ERROR,
+                                      _("Domain name is not unique"));
+            xen_vm_set_free(vms);
+            return -1;
+        }
+        xen_vm_set_free(vms);
+        return 0;
+    }
+    if (vms)
+        xen_vm_set_free(vms);
+    xenapiSessionErrorHandler(dom->conn, VIR_ERR_NO_DOMAIN, NULL);
+    return -1;
+}
+
 /* The interface which we export upwards to libvirt.c. */
-static virHypervisorDriver xenapiDriver = {
-    .no = VIR_DRV_XENAPI,
+static virHypervisorDriver xenapiHypervisorDriver = {
     .name = "XenAPI",
     .connectOpen = xenapiConnectOpen, /* 0.8.0 */
     .connectClose = xenapiConnectClose, /* 0.8.0 */
@@ -2030,6 +2055,12 @@ static virHypervisorDriver xenapiDriver = {
     .nodeGetFreeMemory = xenapiNodeGetFreeMemory, /* 0.8.0 */
     .domainIsUpdated = xenapiDomainIsUpdated, /* 0.8.6 */
     .connectIsAlive = xenapiConnectIsAlive, /* 0.9.8 */
+    .domainHasManagedSaveImage = xenapiDomainHasManagedSaveImage, /* 1.2.13 */
+};
+
+
+static virConnectDriver xenapiConnectDriver = {
+    .hypervisorDriver = &xenapiHypervisorDriver,
 };
 
 /**
@@ -2041,7 +2072,8 @@ static virHypervisorDriver xenapiDriver = {
 int
 xenapiRegister(void)
 {
-    return virRegisterHypervisorDriver(&xenapiDriver);
+    return virRegisterConnectDriver(&xenapiConnectDriver,
+                                    false);
 }
 
 /*

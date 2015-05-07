@@ -32,7 +32,7 @@
  * vbox_CAPI_v*.h. It tells the vbox_common.c
  * how to treat with this symbols. This file
  * can't be included with files such as
- * vbox_CAPI_v*.h, or it would casue multiple
+ * vbox_CAPI_v*.h, or it would cause multiple
  * definitions.
  *
  * You can see the more informations in vbox_api.h
@@ -341,6 +341,7 @@ typedef nsISupports IHost;
 typedef nsISupports IHostNetworkInterface;
 typedef nsISupports IDHCPServer;
 typedef IMedium IHardDisk;
+typedef nsISupports IKeyboard;
 
 /* Macros for all vbox drivers. */
 

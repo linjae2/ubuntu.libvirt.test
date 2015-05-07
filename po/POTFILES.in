@@ -27,7 +27,7 @@ src/conf/netdev_vport_profile_conf.c
 src/conf/network_conf.c
 src/conf/networkcommon_conf.c
 src/conf/node_device_conf.c
-src/conf/numatune_conf.c
+src/conf/numa_conf.c
 src/conf/nwfilter_conf.c
 src/conf/nwfilter_params.c
 src/conf/object_event.c
@@ -112,6 +112,7 @@ src/parallels/parallels_utils.h
 src/parallels/parallels_storage.c
 src/phyp/phyp_driver.c
 src/qemu/qemu_agent.c
+src/qemu/qemu_blockjob.c
 src/qemu/qemu_capabilities.c
 src/qemu/qemu_cgroup.c
 src/qemu/qemu_command.c
@@ -178,6 +179,8 @@ src/util/virconf.c
 src/util/vircrypto.c
 src/util/virdbus.c
 src/util/virdnsmasq.c
+src/util/virerror.c
+src/util/virerror.h
 src/util/vireventpoll.c
 src/util/virfile.c
 src/util/virfirewall.c
@@ -195,6 +198,7 @@ src/util/virnetdev.c
 src/util/virnetdevbandwidth.c
 src/util/virnetdevbridge.c
 src/util/virnetdevmacvlan.c
+src/util/virnetdevmidonet.c
 src/util/virnetdevopenvswitch.c
 src/util/virnetdevtap.c
 src/util/virnetdevveth.c
@@ -217,8 +221,7 @@ src/util/virstorageencryption.c
 src/util/virstoragefile.c
 src/util/virstring.c
 src/util/virsysinfo.c
-src/util/virerror.c
-src/util/virerror.h
+src/util/virthreadjob.c
 src/util/virtime.c
 src/util/virtpm.c
 src/util/virtypedparam.c

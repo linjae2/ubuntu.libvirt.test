@@ -35,12 +35,6 @@
 # include "qemu_capabilities.h"
 # include "virchrdev.h"
 
-# define QEMU_EXPECTED_VIRT_TYPES      \
-    ((1 << VIR_DOMAIN_VIRT_QEMU) |     \
-     (1 << VIR_DOMAIN_VIRT_KQEMU) |    \
-     (1 << VIR_DOMAIN_VIRT_KVM) |      \
-     (1 << VIR_DOMAIN_VIRT_XEN))
-
 # define QEMU_DOMAIN_FORMAT_LIVE_FLAGS      \
     (VIR_DOMAIN_XML_SECURE |                \
      VIR_DOMAIN_XML_UPDATE_CPU)
@@ -106,9 +100,19 @@ struct _qemuDomainJobInfo {
     virDomainJobType type;
     unsigned long long started; /* When the async job started */
     unsigned long long stopped; /* When the domain's CPUs were stopped */
+    unsigned long long sent; /* When the source sent status info to the
+                                destination (only for migrations). */
+    unsigned long long received; /* When the destination host received status
+                                    info from the source (migrations only). */
     /* Computed values */
     unsigned long long timeElapsed;
     unsigned long long timeRemaining;
+    long long timeDelta; /* delta = received - sent, i.e., the difference
+                            between the source and the destination time plus
+                            the time between the end of Perform phase on the
+                            source and the beginning of Finish phase on the
+                            destination. */
+    bool timeDeltaSet;
     /* Raw values from QEMU */
     qemuMonitorMigrationStatus status;
 };
@@ -117,10 +121,14 @@ struct qemuDomainJobObj {
     virCond cond;                       /* Use to coordinate jobs */
     qemuDomainJob active;               /* Currently running job */
     unsigned long long owner;           /* Thread id which set current job */
+    const char *ownerAPI;               /* The API which owns the job */
+    unsigned long long started;         /* When the current job started */
 
     virCond asyncCond;                  /* Use to coordinate with async jobs */
     qemuDomainAsyncJob asyncJob;        /* Currently active async job */
     unsigned long long asyncOwner;      /* Thread which set current async job */
+    const char *asyncOwnerAPI;          /* The API which owns the async job */
+    unsigned long long asyncStarted;    /* When the current async job started */
     int phase;                          /* Job phase (mainly for migrations) */
     unsigned long long mask;            /* Jobs allowed during async job */
     bool dump_memory_only;              /* use dump-guest-memory to do dump */
@@ -154,11 +162,9 @@ struct _qemuDomainObjPrivate {
     int nvcpupids;
     int *vcpupids;
 
-    int niothreadpids;
-    int *iothreadpids;
-
     virDomainPCIAddressSetPtr pciaddrs;
     virDomainCCWAddressSetPtr ccwaddrs;
+    virDomainVirtioSerialAddrSetPtr vioserialaddrs;
     int persistentAddrs;
 
     virQEMUCapsPtr qemuCaps;
@@ -187,7 +193,10 @@ struct _qemuDomainObjPrivate {
     char **qemuDevices; /* NULL-terminated list of devices aliases known to QEMU */
 
     bool hookRun;  /* true if there was a hook run over this domain */
+
+    /* Bitmaps below hold data from the auto NUMA feature */
     virBitmapPtr autoNodeset;
+    virBitmapPtr autoCpuset;
 };
 
 typedef enum {
@@ -196,6 +205,7 @@ typedef enum {
     QEMU_PROCESS_EVENT_DEVICE_DELETED,
     QEMU_PROCESS_EVENT_NIC_RX_FILTER_CHANGED,
     QEMU_PROCESS_EVENT_SERIAL_CHANGED,
+    QEMU_PROCESS_EVENT_BLOCK_JOB,
 
     QEMU_PROCESS_EVENT_LAST
 } qemuProcessEventType;
@@ -204,6 +214,7 @@ struct qemuProcessEvent {
     virDomainObjPtr vm;
     qemuProcessEventType eventType;
     int action;
+    int status;
     void *data;
 };
 
@@ -242,6 +253,8 @@ void qemuDomainObjDiscardAsyncJob(virQEMUDriverPtr driver,
                                   virDomainObjPtr obj);
 void qemuDomainObjReleaseAsyncJob(virDomainObjPtr obj);
 
+qemuMonitorPtr qemuDomainGetMonitor(virDomainObjPtr vm)
+    ATTRIBUTE_NONNULL(1);
 void qemuDomainObjEnterMonitor(virQEMUDriverPtr driver,
                                virDomainObjPtr obj)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
@@ -391,11 +404,15 @@ extern virDomainDefParserConfig virQEMUDriverDomainDefParserConfig;
 int qemuDomainUpdateDeviceList(virQEMUDriverPtr driver,
                                virDomainObjPtr vm, int asyncJob);
 
+int qemuDomainUpdateMemoryDeviceInfo(virQEMUDriverPtr driver,
+                                     virDomainObjPtr vm,
+                                     int asyncJob);
+
 bool qemuDomainDefCheckABIStability(virQEMUDriverPtr driver,
                                     virDomainDefPtr src,
                                     virDomainDefPtr dst);
 
-bool qemuDomainAgentAvailable(qemuDomainObjPrivatePtr priv,
+bool qemuDomainAgentAvailable(virDomainObjPtr vm,
                               bool reportError);
 
 int qemuDomainJobInfoUpdateTime(qemuDomainJobInfoPtr jobInfo)
@@ -412,6 +429,13 @@ int qemuDomainJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
     ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
 
-void qemuDomObjEndAPI(virDomainObjPtr *vm);
+int qemuDomainSupportsBlockJobs(virDomainObjPtr vm, bool *modern)
+    ATTRIBUTE_NONNULL(1);
+bool qemuDomainDiskBlockJobIsActive(virDomainDiskDefPtr disk);
+
+int qemuDomainAlignMemorySizes(virDomainDefPtr def);
+void qemuDomainMemoryDeviceAlignSize(virDomainMemoryDefPtr mem);
+
+virDomainChrSourceDefPtr qemuFindAgentConfig(virDomainDefPtr def);
 
 #endif /* __QEMU_DOMAIN_H__ */

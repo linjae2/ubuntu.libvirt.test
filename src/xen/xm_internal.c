@@ -479,7 +479,7 @@ xenXMDomainGetInfo(virConnectPtr conn,
         goto error;
 
     memset(info, 0, sizeof(virDomainInfo));
-    info->maxMem = entry->def->mem.max_balloon;
+    info->maxMem = virDomainDefGetMemoryActual(entry->def);
     info->memory = entry->def->mem.cur_balloon;
     info->nrVirtCpu = entry->def->vcpus;
     info->state = VIR_DOMAIN_SHUTOFF;
@@ -557,8 +557,8 @@ xenXMDomainSetMemory(virConnectPtr conn,
         goto cleanup;
 
     entry->def->mem.cur_balloon = memory;
-    if (entry->def->mem.cur_balloon > entry->def->mem.max_balloon)
-        entry->def->mem.cur_balloon = entry->def->mem.max_balloon;
+    if (entry->def->mem.cur_balloon > virDomainDefGetMemoryActual(entry->def))
+        entry->def->mem.cur_balloon = virDomainDefGetMemoryActual(entry->def);
 
     /* If this fails, should we try to undo our changes to the
      * in-memory representation of the config file. I say not!
@@ -600,10 +600,10 @@ xenXMDomainSetMaxMemory(virConnectPtr conn,
     if (!(entry = virHashLookup(priv->configCache, filename)))
         goto cleanup;
 
-    entry->def->mem.max_balloon = memory;
-    if (entry->def->mem.cur_balloon > entry->def->mem.max_balloon)
-        entry->def->mem.cur_balloon = entry->def->mem.max_balloon;
+    if (entry->def->mem.cur_balloon > memory)
+        entry->def->mem.cur_balloon = memory;
 
+    virDomainDefSetMemoryInitial(entry->def, memory);
     /* If this fails, should we try to undo our changes to the
      * in-memory representation of the config file. I say not!
      */
@@ -636,7 +636,7 @@ xenXMDomainGetMaxMemory(virConnectPtr conn,
     if (!(entry = virHashLookup(priv->configCache, filename)))
         goto cleanup;
 
-    ret = entry->def->mem.max_balloon;
+    ret = virDomainDefGetMemoryActual(entry->def);
 
  cleanup:
     xenUnifiedUnlock(priv);
@@ -844,7 +844,7 @@ xenXMDomainLookupByName(virConnectPtr conn, const char *domname)
     if (!(entry = virHashLookup(priv->configCache, filename)))
         goto cleanup;
 
-    ret = virDomainDefNew(domname, entry->def->uuid, -1);
+    ret = virDomainDefNewFull(domname, entry->def->uuid, -1);
 
  cleanup:
     xenUnifiedUnlock(priv);
@@ -887,7 +887,7 @@ xenXMDomainLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     if (!(entry = virHashSearch(priv->configCache, xenXMDomainSearchForUUID, (const void *)uuid)))
         goto cleanup;
 
-    ret = virDomainDefNew(entry->def->name, uuid, -1);
+    ret = virDomainDefNewFull(entry->def->name, uuid, -1);
 
  cleanup:
     xenUnifiedUnlock(priv);

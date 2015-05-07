@@ -35,13 +35,13 @@
 
 VIR_LOG_INIT("driver");
 
-#define DEFAULT_DRIVER_DIR LIBDIR "/libvirt/connection-driver"
 
 #ifdef WITH_DRIVER_MODULES
 
 /* XXX re-implment this for other OS, or use libtools helper lib ? */
 
 # include <dlfcn.h>
+# define DEFAULT_DRIVER_DIR LIBDIR "/libvirt/connection-driver"
 
 void *
 virDriverLoadModule(const char *name)
@@ -56,8 +56,8 @@ virDriverLoadModule(const char *name)
     if (!(modfile = virFileFindResourceFull(name,
                                             "libvirt_driver_",
                                             ".so",
-                                            "src/.libs",
-                                            LIBDIR "/libvirt/connection-driver",
+                                            abs_topbuilddir "/src/.libs",
+                                            DEFAULT_DRIVER_DIR,
                                             "LIBVIRT_DRIVER_DIR")))
         return NULL;
 

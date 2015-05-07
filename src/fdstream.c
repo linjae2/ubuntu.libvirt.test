@@ -610,7 +610,7 @@ virFDStreamOpenFileInternal(virStreamPtr st,
     }
 
     if (offset &&
-        lseek(fd, offset, SEEK_SET) != offset) {
+        lseek(fd, offset, SEEK_SET) < 0) {
         virReportSystemError(errno,
                              _("Unable to seek %s to %llu"),
                              path, offset);
@@ -641,7 +641,7 @@ virFDStreamOpenFileInternal(virStreamPtr st,
         }
 
         if (!(iohelper_path = virFileFindResource("libvirt_iohelper",
-                                                  "src",
+                                                  abs_topbuilddir "/src",
                                                   LIBEXECDIR)))
             goto error;
 

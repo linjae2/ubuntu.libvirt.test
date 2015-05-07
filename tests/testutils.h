@@ -73,14 +73,31 @@ int virtTestDifferenceBin(FILE *stream,
                           const char *expect,
                           const char *actual,
                           size_t length);
+int virtTestCompareToFile(const char *strcontent,
+                          const char *filename);
 
 unsigned int virTestGetDebug(void);
 unsigned int virTestGetVerbose(void);
 unsigned int virTestGetExpensive(void);
 
+# define VIR_TEST_DEBUG(...)                    \
+    do {                                        \
+        if (virTestGetDebug())                  \
+            fprintf(stderr, __VA_ARGS__);       \
+    } while (0)
+
+# define VIR_TEST_VERBOSE(...)                  \
+    do {                                        \
+        if (virTestGetVerbose())                \
+            fprintf(stderr, __VA_ARGS__);       \
+    } while (0)
+
 char *virtTestLogContentAndReset(void);
 
 void virtTestQuiesceLibvirtErrors(bool always);
+
+void virtTestCounterReset(const char *prefix);
+const char *virtTestCounterNext(void);
 
 int virtTestMain(int argc,
                  char **argv,

@@ -25,10 +25,8 @@
 #ifndef __VIR_UTIL_H__
 # define __VIR_UTIL_H__
 
-# include "verify.h"
 # include "internal.h"
 # include <unistd.h>
-# include <sys/select.h>
 # include <sys/types.h>
 
 # ifndef MIN
@@ -210,8 +208,6 @@ char *virGetFCHostNameByWWN(const char *sysfs_prefix,
 
 char *virFindFCHostCapableVport(const char *sysfs_prefix);
 
-int virCompareLimitUlong(unsigned long long a, unsigned long long b);
-
 int virParseOwnershipIds(const char *label, uid_t *uidPtr, gid_t *gidPtr);
 
 const char *virGetEnvBlockSUID(const char *name);
@@ -243,5 +239,11 @@ VIR_ENUM_DECL(virTristateBool)
 VIR_ENUM_DECL(virTristateSwitch)
 
 unsigned int virGetListenFDs(void);
+
+long virGetSystemPageSize(void);
+long virGetSystemPageSizeKB(void);
+
+unsigned long long virMemoryLimitTruncate(unsigned long long value);
+bool virMemoryLimitIsSet(unsigned long long value);
 
 #endif /* __VIR_UTIL_H__ */
