@@ -595,6 +595,8 @@ mymain(void)
     DO_TEST("machine-usb-opt", QEMU_CAPS_MACHINE_OPT,
             QEMU_CAPS_MACHINE_USB_OPT);
     DO_TEST("kvm", QEMU_CAPS_MACHINE_OPT);
+    DO_TEST("default-kvm-host-arch", QEMU_CAPS_MACHINE_OPT);
+    DO_TEST("default-qemu-host-arch", QEMU_CAPS_MACHINE_OPT);
     DO_TEST("boot-cdrom", NONE);
     DO_TEST("boot-network", NONE);
     DO_TEST("boot-floppy", NONE);
