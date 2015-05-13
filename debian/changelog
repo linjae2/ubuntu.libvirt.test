@@ -1,3 +1,9 @@
+libvirt (1.2.12-0ubuntu13) vivid-proposed; urgency=medium
+
+  * 9038-qemu-fix-setting-of-VM-CPU-affinity-with-TCG (LP: #1439280)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 13 May 2015 10:48:53 -0500
+
 libvirt (1.2.12-0ubuntu12) vivid; urgency=low
 
   * Add profile script to automatically set the default URI based on

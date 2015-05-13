@@ -29,3 +29,4 @@ docs-remove-xpath.patch
 ubuntu-libxl-migrate-dm.patch
 9037-virt-aa-helper-add-unix-channels-esp-for-qemu-guest-.patch
 cgm-ignore-machined-failure
+9038-qemu-fix-setting-of-VM-CPU-affinity-with-TCG

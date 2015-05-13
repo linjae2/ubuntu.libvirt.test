@@ -1,0 +1,77 @@
+commit b89978d53d7c2317f59a0c0ae982a45ad35a0a15
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Tue Feb 10 15:59:57 2015 +0000
+
+    qemu: fix setting of VM CPU affinity with TCG
+    
+    If a previous commit I fixed the incorrect handling of vcpu pids
+    for TCG mode QEMU:
+    
+      commit b07f3d821dfb11a118ee75ea275fd6ab737d9500
+      Author: Daniel P. Berrange <berrange@redhat.com>
+      Date:   Thu Dec 18 16:34:39 2014 +0000
+    
+        Don't setup fake CPU pids for old QEMU
+    
+        The code assumes that def->vcpus == nvcpupids, so when we setup
+        fake CPU pids for old QEMU with nvcpupids == 1, we cause the
+        later code to read off the end of the array. This has fun results
+        like sche_setaffinity(0, ...) which changes libvirtd's own CPU
+        affinity, or even better sched_setaffinity($RANDOM, ...) which
+        changes the affinity of a random OS process.
+    
+    The intent was that this would merely disable the ability to set
+    per-vCPU affinity. It should still have been possible to set VM
+    level host CPU affinity.
+    
+    Unfortunately, when you set  <vcpu cpuset='0-1'>4</vcpu>, the XML
+    parser will internally take this & initialize an entry in the
+    def->cputune.vcpupin array for every VCPU. IOW this is implicitly
+    being treated as
+    
+      <cputune>
+        <vcpupin cpuset='0-1' vcpu='0'/>
+        <vcpupin cpuset='0-1' vcpu='1'/>
+        <vcpupin cpuset='0-1' vcpu='2'/>
+        <vcpupin cpuset='0-1' vcpu='3'/>
+      </cputune>
+    
+    Even more fun, the faked cputune elements are hidden from view when
+    querying the live XML, because their cpuset mask is the same as the
+    VM default cpumask.
+    
+    The upshot was that it was impossible to set VM level CPU affinity.
+    
+    To fix this we must update qemuProcessSetVcpuAffinities so that it
+    only reports a fatal error if the per-VCPU cpu mask is different
+    from the VM level cpu mask.
+    
+    Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+    (cherry picked from commit a103bb105c0c189c3973311ff1826972b5bc6ad6)
+
+diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
+index 97c04f2..b829238 100644
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -2498,9 +2498,18 @@ qemuProcessSetVcpuAffinities(virDomainObjPtr vm)
+         return 0;
+ 
+     if (priv->vcpupids == NULL) {
+-        virReportError(VIR_ERR_OPERATION_INVALID,
+-                       "%s", _("cpu affinity is not supported"));
+-        return -1;
++        /* If any CPU has custom affinity that differs from the
++         * VM default affinity, we must reject it
++         */
++        for (n = 0; n < def->vcpus; n++) {
++            if (!virBitmapEqual(def->cpumask,
++                                def->cputune.vcpupin[n]->cpumask)) {
++                virReportError(VIR_ERR_OPERATION_INVALID,
++                               "%s", _("cpu affinity is not supported"));
++                return -1;
++            }
++        }
++        return 0;
+     }
+ 
+     for (n = 0; n < def->vcpus; n++) {
