@@ -102,6 +102,7 @@
 #  include "nwfilter/nwfilter_driver.h"
 # endif
 #endif
+#include "util/cgmanager.h"
 
 #include "configmake.h"
 
@@ -1265,8 +1266,7 @@ int main(int argc, char **argv) {
     }
 
     /* move ourselves to root cgroup if necessary */
-    // XXX todo - figure out how to get the fn included
-    // virCgroupEscape();
+    cgm_escape();
 
     if (daemonSetupLogging(config, privileged, verbose, godaemon) < 0) {
         VIR_ERROR(_("Can't initialize logging"));

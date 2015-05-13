@@ -274,7 +274,6 @@ int virCgroupSetOwner(virCgroupPtr cgroup,
 
 int virCgroupHasEmptyTasks(virCgroupPtr cgroup, int controller);
 
-void virCgroupEscape(void);
 int virCgroupDetectPlacement(virCgroupPtr group,
                              pid_t pid,
                              const char *path);
