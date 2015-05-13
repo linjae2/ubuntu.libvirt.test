@@ -1,3 +1,11 @@
+libvirt (1.2.15-0ubuntu2) wily; urgency=medium
+
+  * debian/apparmor/libvirt-qemu: add /sys read accesses needed by newer
+    qemu: /sys/devices/system/node/, /sys/devices/system/cpu/ and
+    /sys/devices/system/node/node[0-9]*/meminfo
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 13 May 2015 16:41:54 -0500
+
 libvirt (1.2.15-0ubuntu1) wily; urgency=medium
 
   * New upstream release:
