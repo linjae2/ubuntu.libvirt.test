@@ -1,3 +1,11 @@
+libvirt (1.2.15-0ubuntu4) wily; urgency=medium
+
+  * Add post-start to upstart (/etc/init/libvirt-bin.conf) and
+    sysv (/etc/init.d/libvirt-bin) jobs to ensure libvirt-sock
+    created before up (LP: #1455608)
+
+ -- Edward Hope-Morley <edward.hope-morley@canonical.com>  Thu, 28 May 2015 16:06:44 +0100
+
 libvirt (1.2.15-0ubuntu3) wily; urgency=low
 
   * d/p/ubuntu-libxl-qemu-path.patch: Set correct path for qemu binary
