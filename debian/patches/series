@@ -22,3 +22,5 @@ ubuntu_machine_type.patch
 skip-vircgrouptest.patch
 disable-network-test.patch
 docs-remove-xpath.patch
+ubuntu-libxl-qemu-path.patch
+ubuntu-libxl-hvmloader-path.patch
