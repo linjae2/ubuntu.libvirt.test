@@ -50,7 +50,7 @@
 
 VIR_LOG_INIT("conf.storage_conf");
 
-#define DEFAULT_POOL_PERM_MODE 0755
+#define DEFAULT_POOL_PERM_MODE 0711
 #define DEFAULT_VOL_PERM_MODE  0600
 
 VIR_ENUM_IMPL(virStorageVol,
