@@ -1,3 +1,16 @@
+libvirt (1.2.15-0ubuntu3) wily; urgency=low
+
+  * d/p/ubuntu-libxl-qemu-path.patch: Set correct path for qemu binary
+    for new configs and convert old configs using qemu-dm.
+    (LP: #1459600)
+  * d/p/ubuntu-libxl-hvmloader-path.patch: Get Xen version from dpkg-query
+    at compile time and set LIBXL_FIRMWARE_DIR as long as libxen-dev does
+    not provide a xenlight.pc file. Use that directory to update existing
+    configs.
+    (LP: #1459603)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Thu, 28 May 2015 12:21:23 +0200
+
 libvirt (1.2.15-0ubuntu2) wily; urgency=medium
 
   * debian/apparmor/libvirt-qemu: add /sys read accesses needed by newer
