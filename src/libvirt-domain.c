@@ -167,7 +167,7 @@ virDomainPtr
 virDomainCreateXML(virConnectPtr conn, const char *xmlDesc,
                    unsigned int flags)
 {
-    VIR_DEBUG("conn=%p, xmlDesc=%s, flags=%x", conn, xmlDesc, flags);
+    VIR_DEBUG("conn=%p, xmlDesc=%s, flags=%x", conn, NULLSTR(xmlDesc), flags);
 
     virResetLastError();
 
@@ -235,7 +235,7 @@ virDomainCreateXMLWithFiles(virConnectPtr conn, const char *xmlDesc,
                             unsigned int flags)
 {
     VIR_DEBUG("conn=%p, xmlDesc=%s, nfiles=%u, files=%p, flags=%x",
-              conn, xmlDesc, nfiles, files, flags);
+              conn, NULLSTR(xmlDesc), nfiles, files, flags);
 
     virResetLastError();
 
@@ -413,7 +413,7 @@ virDomainLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
 virDomainPtr
 virDomainLookupByName(virConnectPtr conn, const char *name)
 {
-    VIR_DEBUG("conn=%p, name=%s", conn, name);
+    VIR_DEBUG("conn=%p, name=%s", conn, NULLSTR(name));
 
     virResetLastError();
 
@@ -909,12 +909,9 @@ virDomainSaveFlags(virDomainPtr domain, const char *to,
     virCheckReadOnlyGoto(conn->flags, error);
     virCheckNonNullArgGoto(to, error);
 
-    if ((flags & VIR_DOMAIN_SAVE_RUNNING) && (flags & VIR_DOMAIN_SAVE_PAUSED)) {
-        virReportInvalidArg(flags, "%s",
-                            _("running and paused flags are mutually "
-                              "exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_SAVE_RUNNING,
+                             VIR_DOMAIN_SAVE_PAUSED,
+                             error);
 
     if (conn->driver->domainSaveFlags) {
         int ret;
@@ -958,7 +955,7 @@ virDomainSaveFlags(virDomainPtr domain, const char *to,
 int
 virDomainRestore(virConnectPtr conn, const char *from)
 {
-    VIR_DEBUG("conn=%p, from=%s", conn, from);
+    VIR_DEBUG("conn=%p, from=%s", conn, NULLSTR(from));
 
     virResetLastError();
 
@@ -1028,7 +1025,7 @@ virDomainRestoreFlags(virConnectPtr conn, const char *from, const char *dxml,
                       unsigned int flags)
 {
     VIR_DEBUG("conn=%p, from=%s, dxml=%s, flags=%x",
-              conn, from, NULLSTR(dxml), flags);
+              conn, NULLSTR(from), NULLSTR(dxml), flags);
 
     virResetLastError();
 
@@ -1036,12 +1033,9 @@ virDomainRestoreFlags(virConnectPtr conn, const char *from, const char *dxml,
     virCheckReadOnlyGoto(conn->flags, error);
     virCheckNonNullArgGoto(from, error);
 
-    if ((flags & VIR_DOMAIN_SAVE_RUNNING) && (flags & VIR_DOMAIN_SAVE_PAUSED)) {
-        virReportInvalidArg(flags, "%s",
-                            _("running and paused flags are mutually "
-                              "exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_SAVE_RUNNING,
+                             VIR_DOMAIN_SAVE_PAUSED,
+                             error);
 
     if (conn->driver->domainRestoreFlags) {
         int ret;
@@ -1095,7 +1089,7 @@ virDomainSaveImageGetXMLDesc(virConnectPtr conn, const char *file,
                              unsigned int flags)
 {
     VIR_DEBUG("conn=%p, file=%s, flags=%x",
-              conn, file, flags);
+              conn, NULLSTR(file), flags);
 
     virResetLastError();
 
@@ -1168,7 +1162,7 @@ virDomainSaveImageDefineXML(virConnectPtr conn, const char *file,
                             const char *dxml, unsigned int flags)
 {
     VIR_DEBUG("conn=%p, file=%s, dxml=%s, flags=%x",
-              conn, file, dxml, flags);
+              conn, NULLSTR(file), NULLSTR(dxml), flags);
 
     virResetLastError();
 
@@ -1177,12 +1171,9 @@ virDomainSaveImageDefineXML(virConnectPtr conn, const char *file,
     virCheckNonNullArgGoto(file, error);
     virCheckNonNullArgGoto(dxml, error);
 
-    if ((flags & VIR_DOMAIN_SAVE_RUNNING) && (flags & VIR_DOMAIN_SAVE_PAUSED)) {
-        virReportInvalidArg(flags, "%s",
-                            _("running and paused flags are mutually "
-                              "exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_SAVE_RUNNING,
+                             VIR_DOMAIN_SAVE_PAUSED,
+                             error);
 
     if (conn->driver->domainSaveImageDefineXML) {
         int ret;
@@ -1255,23 +1246,9 @@ virDomainCoreDump(virDomainPtr domain, const char *to, unsigned int flags)
     virCheckReadOnlyGoto(conn->flags, error);
     virCheckNonNullArgGoto(to, error);
 
-    if ((flags & VIR_DUMP_CRASH) && (flags & VIR_DUMP_LIVE)) {
-        virReportInvalidArg(flags, "%s",
-                            _("crash and live flags are mutually exclusive"));
-        goto error;
-    }
-
-    if ((flags & VIR_DUMP_CRASH) && (flags & VIR_DUMP_RESET)) {
-        virReportInvalidArg(flags, "%s",
-                         _("crash and reset flags are mutually exclusive"));
-        goto error;
-    }
-
-    if ((flags & VIR_DUMP_LIVE) && (flags & VIR_DUMP_RESET)) {
-        virReportInvalidArg(flags, "%s",
-                            _("live and reset flags are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DUMP_CRASH, VIR_DUMP_LIVE, error);
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DUMP_CRASH, VIR_DUMP_RESET, error);
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DUMP_LIVE, VIR_DUMP_RESET, error);
 
     if (conn->driver->domainCoreDump) {
         int ret;
@@ -1353,23 +1330,9 @@ virDomainCoreDumpWithFormat(virDomainPtr domain, const char *to,
         goto error;
     }
 
-    if ((flags & VIR_DUMP_CRASH) && (flags & VIR_DUMP_LIVE)) {
-        virReportInvalidArg(flags, "%s",
-                            _("crash and live flags are mutually exclusive"));
-        goto error;
-    }
-
-    if ((flags & VIR_DUMP_CRASH) && (flags & VIR_DUMP_RESET)) {
-        virReportInvalidArg(flags, "%s",
-                            _("crash and reset flags are mutually exclusive"));
-        goto error;
-    }
-
-    if ((flags & VIR_DUMP_LIVE) && (flags & VIR_DUMP_RESET)) {
-        virReportInvalidArg(flags, "%s",
-                            _("live and reset flags are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DUMP_CRASH, VIR_DUMP_LIVE, error);
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DUMP_CRASH, VIR_DUMP_RESET, error);
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DUMP_LIVE, VIR_DUMP_RESET, error);
 
     if (conn->driver->domainCoreDumpWithFormat) {
         int ret;
@@ -1887,6 +1850,12 @@ virDomainSetMaxMemory(virDomainPtr domain, unsigned long memory)
     virCheckReadOnlyGoto(conn->flags, error);
     virCheckNonZeroArgGoto(memory, error);
 
+    if (virMemoryMaxValue(true) / 1024 <= memory) {
+        virReportError(VIR_ERR_OVERFLOW, _("input too large: %lu"),
+                       memory);
+        goto error;
+    }
+
     if (conn->driver->domainSetMaxMemory) {
         int ret;
         ret = conn->driver->domainSetMaxMemory(domain, memory);
@@ -1932,6 +1901,12 @@ virDomainSetMemory(virDomainPtr domain, unsigned long memory)
 
     virCheckReadOnlyGoto(conn->flags, error);
     virCheckNonZeroArgGoto(memory, error);
+
+    if (virMemoryMaxValue(true) / 1024 <= memory) {
+        virReportError(VIR_ERR_OVERFLOW, _("input too large: %lu"),
+                       memory);
+        goto error;
+    }
 
     if (conn->driver->domainSetMemory) {
         int ret;
@@ -1989,6 +1964,12 @@ virDomainSetMemoryFlags(virDomainPtr domain, unsigned long memory,
 
     virCheckReadOnlyGoto(conn->flags, error);
     virCheckNonZeroArgGoto(memory, error);
+
+    if (virMemoryMaxValue(true) / 1024 <= memory) {
+        virReportError(VIR_ERR_OVERFLOW, _("input too large: %lu"),
+                       memory);
+        goto error;
+    }
 
     if (conn->driver->domainSetMemoryFlags) {
         int ret;
@@ -2174,13 +2155,10 @@ virDomainGetMemoryParameters(virDomainPtr domain,
                                  VIR_DRV_FEATURE_TYPED_PARAM_STRING))
         flags |= VIR_TYPED_PARAM_STRING_OKAY;
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
+
     conn = domain->conn;
 
     if (conn->driver->domainGetMemoryParameters) {
@@ -2416,13 +2394,10 @@ virDomainGetBlkioParameters(virDomainPtr domain,
                                  VIR_DRV_FEATURE_TYPED_PARAM_STRING))
         flags |= VIR_TYPED_PARAM_STRING_OKAY;
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
+
     conn = domain->conn;
 
     if (conn->driver->domainGetBlkioParameters) {
@@ -2648,7 +2623,7 @@ virConnectDomainXMLFromNative(virConnectPtr conn,
                               unsigned int flags)
 {
     VIR_DEBUG("conn=%p, format=%s, config=%s, flags=%x",
-              conn, nativeFormat, nativeConfig, flags);
+              conn, NULLSTR(nativeFormat), NULLSTR(nativeConfig), flags);
 
     virResetLastError();
 
@@ -2698,7 +2673,7 @@ virConnectDomainXMLToNative(virConnectPtr conn,
                             unsigned int flags)
 {
     VIR_DEBUG("conn=%p, format=%s, xml=%s, flags=%x",
-              conn, nativeFormat, domainXml, flags);
+              conn, NULLSTR(nativeFormat), NULLSTR(domainXml), flags);
 
     virResetLastError();
 
@@ -3571,13 +3546,9 @@ virDomainMigrate(virDomainPtr domain,
     virCheckConnectGoto(dconn, error);
     virCheckReadOnlyGoto(dconn->flags, error);
 
-    if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
-        flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'shared disk' and 'shared incremental'"
-                              " are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_MIGRATE_NON_SHARED_DISK,
+                             VIR_MIGRATE_NON_SHARED_INC,
+                             error);
 
     if (flags & VIR_MIGRATE_OFFLINE) {
         if (!VIR_DRV_SUPPORTS_FEATURE(domain->conn->driver, domain->conn,
@@ -3799,13 +3770,9 @@ virDomainMigrate2(virDomainPtr domain,
     virCheckConnectGoto(dconn, error);
     virCheckReadOnlyGoto(dconn->flags, error);
 
-    if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
-        flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'shared disk' and 'shared incremental' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_MIGRATE_NON_SHARED_DISK,
+                             VIR_MIGRATE_NON_SHARED_INC,
+                             error);
 
     if (flags & VIR_MIGRATE_OFFLINE) {
         if (!VIR_DRV_SUPPORTS_FEATURE(domain->conn->driver, domain->conn,
@@ -3975,16 +3942,12 @@ virDomainMigrate3(virDomainPtr domain,
     virCheckReadOnlyGoto(domain->conn->flags, error);
 
     /* Now checkout the destination */
-    virCheckConnectGoto(dconn, error);
     virCheckReadOnlyGoto(dconn->flags, error);
 
-    if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
-        flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'shared disk' and 'shared incremental' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_MIGRATE_NON_SHARED_DISK,
+                             VIR_MIGRATE_NON_SHARED_INC,
+                             error);
+
     if (flags & VIR_MIGRATE_PEER2PEER) {
         virReportInvalidArg(flags, "%s",
                             _("use virDomainMigrateToURI3 for peer-to-peer "
@@ -4200,13 +4163,9 @@ virDomainMigrateToURI(virDomainPtr domain,
 
     virCheckNonNullArgGoto(duri, error);
 
-    if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
-        flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'shared disk' and 'shared incremental' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_MIGRATE_NON_SHARED_DISK,
+                             VIR_MIGRATE_NON_SHARED_INC,
+                             error);
 
     if (flags & VIR_MIGRATE_OFFLINE &&
         !VIR_DRV_SUPPORTS_FEATURE(domain->conn->driver, domain->conn,
@@ -4359,13 +4318,9 @@ virDomainMigrateToURI2(virDomainPtr domain,
     virCheckDomainReturn(domain, -1);
     virCheckReadOnlyGoto(domain->conn->flags, error);
 
-    if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
-        flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'shared disk' and 'shared incremental' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_MIGRATE_NON_SHARED_DISK,
+                             VIR_MIGRATE_NON_SHARED_INC,
+                             error);
 
     if (flags & VIR_MIGRATE_PEER2PEER) {
         if (VIR_DRV_SUPPORTS_FEATURE(domain->conn->driver, domain->conn,
@@ -4467,13 +4422,9 @@ virDomainMigrateToURI3(virDomainPtr domain,
     virCheckDomainReturn(domain, -1);
     virCheckReadOnlyGoto(domain->conn->flags, error);
 
-    if (flags & VIR_MIGRATE_NON_SHARED_DISK &&
-        flags & VIR_MIGRATE_NON_SHARED_INC) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'shared disk' and 'shared incremental' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_MIGRATE_NON_SHARED_DISK,
+                             VIR_MIGRATE_NON_SHARED_INC,
+                             error);
 
     compat = virTypedParamsCheck(params, nparams, compatParams,
                                  ARRAY_CARDINALITY(compatParams));
@@ -4646,7 +4597,7 @@ virDomainMigrateFinish(virConnectPtr dconn,
 {
     VIR_DEBUG("dconn=%p, dname=%s, cookie=%p, cookielen=%d, uri=%s, "
               "flags=%lx", dconn, NULLSTR(dname), cookie, cookielen,
-              uri, flags);
+              NULLSTR(uri), flags);
 
     virResetLastError();
 
@@ -4688,8 +4639,8 @@ virDomainMigratePrepare2(virConnectPtr dconn,
 {
     VIR_DEBUG("dconn=%p, cookie=%p, cookielen=%p, uri_in=%s, uri_out=%p,"
               "flags=%lx, dname=%s, bandwidth=%lu, dom_xml=%s", dconn,
-              cookie, cookielen, uri_in, uri_out, flags, NULLSTR(dname),
-              bandwidth, dom_xml);
+              cookie, cookielen, NULLSTR(uri_in), uri_out, flags, NULLSTR(dname),
+              bandwidth, NULLSTR(dom_xml));
 
     virResetLastError();
 
@@ -4730,7 +4681,7 @@ virDomainMigrateFinish2(virConnectPtr dconn,
 {
     VIR_DEBUG("dconn=%p, dname=%s, cookie=%p, cookielen=%d, uri=%s, "
               "flags=%lx, retcode=%d", dconn, NULLSTR(dname), cookie,
-              cookielen, uri, flags, retcode);
+              cookielen, NULLSTR(uri), flags, retcode);
 
     virResetLastError();
 
@@ -4770,7 +4721,7 @@ virDomainMigratePrepareTunnel(virConnectPtr conn,
 {
     VIR_DEBUG("conn=%p, stream=%p, flags=%lx, dname=%s, "
               "bandwidth=%lu, dom_xml=%s", conn, st, flags,
-              NULLSTR(dname), bandwidth, dom_xml);
+              NULLSTR(dname), bandwidth, NULLSTR(dom_xml));
 
     virResetLastError();
 
@@ -4866,8 +4817,8 @@ virDomainMigratePrepare3(virConnectPtr dconn,
     VIR_DEBUG("dconn=%p, cookiein=%p, cookieinlen=%d, cookieout=%p, "
               "cookieoutlen=%p, uri_in=%s, uri_out=%p, flags=%lx, dname=%s, "
               "bandwidth=%lu, dom_xml=%s",
-              dconn, cookiein, cookieinlen, cookieout, cookieoutlen, uri_in,
-              uri_out, flags, NULLSTR(dname), bandwidth, dom_xml);
+              dconn, cookiein, cookieinlen, cookieout, cookieoutlen, NULLSTR(uri_in),
+              uri_out, flags, NULLSTR(dname), bandwidth, NULLSTR(dom_xml));
 
     virResetLastError();
 
@@ -4915,7 +4866,7 @@ virDomainMigratePrepareTunnel3(virConnectPtr conn,
               "cookieoutlen=%p, flags=%lx, dname=%s, bandwidth=%lu, "
               "dom_xml=%s",
               conn, st, cookiein, cookieinlen, cookieout, cookieoutlen, flags,
-              NULLSTR(dname), bandwidth, dom_xml);
+              NULLSTR(dname), bandwidth, NULLSTR(dom_xml));
 
     virResetLastError();
 
@@ -5510,14 +5461,10 @@ virDomainGetSchedulerParametersFlags(virDomainPtr domain,
                                  VIR_DRV_FEATURE_TYPED_PARAM_STRING))
         flags |= VIR_TYPED_PARAM_STRING_OKAY;
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' in "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
+
     conn = domain->conn;
 
     if (conn->driver->domainGetSchedulerParametersFlags) {
@@ -6278,13 +6225,7 @@ virDomainMemoryPeek(virDomainPtr dom,
      * because of incompatible licensing.
      */
 
-    /* Exactly one of these two flags must be set.  */
-    if (!(flags & VIR_MEMORY_VIRTUAL) == !(flags & VIR_MEMORY_PHYSICAL)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags must include VIR_MEMORY_VIRTUAL or "
-                              "VIR_MEMORY_PHYSICAL"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_MEMORY_VIRTUAL, VIR_MEMORY_PHYSICAL, error);
 
     /* Allow size == 0 as an access test. */
     if (size > 0)
@@ -6436,7 +6377,7 @@ virDomainGetBlockInfo(virDomainPtr domain, const char *disk,
 virDomainPtr
 virDomainDefineXML(virConnectPtr conn, const char *xml)
 {
-    VIR_DEBUG("conn=%p, xml=%s", conn, xml);
+    VIR_DEBUG("conn=%p, xml=%s", conn, NULLSTR(xml));
 
     virResetLastError();
 
@@ -6484,7 +6425,7 @@ virDomainDefineXML(virConnectPtr conn, const char *xml)
 virDomainPtr
 virDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int flags)
 {
-    VIR_DEBUG("conn=%p, xml=%s flags=%x", conn, xml, flags);
+    VIR_DEBUG("conn=%p, xml=%s flags=%x", conn, NULLSTR(xml), flags);
 
     virResetLastError();
 
@@ -7322,14 +7263,19 @@ virDomainSetVcpusFlags(virDomainPtr domain, unsigned int nvcpus,
     virCheckDomainReturn(domain, -1);
     virCheckReadOnlyGoto(domain->conn->flags, error);
 
-    if (flags & VIR_DOMAIN_VCPU_GUEST &&
-        flags & VIR_DOMAIN_VCPU_MAXIMUM) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'VIR_DOMAIN_VCPU_MAXIMUM' and "
-                              "'VIR_DOMAIN_VCPU_GUEST' in are mutually "
-                              "exclusive"));
-        goto error;
-    }
+    VIR_REQUIRE_FLAG_GOTO(VIR_DOMAIN_VCPU_MAXIMUM,
+                          VIR_DOMAIN_AFFECT_CONFIG,
+                          error);
+
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_CURRENT,
+                             VIR_DOMAIN_AFFECT_LIVE,
+                             error);
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_CURRENT,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_VCPU_GUEST,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
 
     virCheckNonZeroArgGoto(nvcpus, error);
 
@@ -7398,14 +7344,9 @@ virDomainGetVcpusFlags(virDomainPtr domain, unsigned int flags)
     if (flags & VIR_DOMAIN_VCPU_GUEST)
         virCheckReadOnlyGoto(conn->flags, error);
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
 
     if (conn->driver->domainGetVcpusFlags) {
         int ret;
@@ -7603,14 +7544,9 @@ virDomainGetVcpuPinInfo(virDomainPtr domain, int ncpumaps,
         goto error;
     }
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
 
     if (conn->driver->domainGetVcpuPinInfo) {
         int ret;
@@ -7732,14 +7668,10 @@ virDomainGetEmulatorPinInfo(virDomainPtr domain, unsigned char *cpumap,
     virCheckNonNullArgGoto(cpumap, error);
     virCheckPositiveArgGoto(maplen, error);
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
+
     conn = domain->conn;
 
     if (conn->driver->domainGetEmulatorPinInfo) {
@@ -7901,14 +7833,9 @@ virDomainGetIOThreadInfo(virDomainPtr dom,
     virCheckNonNullArgGoto(info, error);
     *info = NULL;
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
 
     if (dom->conn->driver->domainGetIOThreadInfo) {
         int ret;
@@ -8352,13 +8279,9 @@ virDomainGetMetadata(virDomainPtr domain,
 
     virCheckDomainReturn(domain, NULL);
 
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
 
     switch (type) {
     case VIR_DOMAIN_METADATA_TITLE:
@@ -9403,12 +9326,9 @@ virDomainManagedSave(virDomainPtr dom, unsigned int flags)
 
     virCheckReadOnlyGoto(conn->flags, error);
 
-    if ((flags & VIR_DOMAIN_SAVE_RUNNING) && (flags & VIR_DOMAIN_SAVE_PAUSED)) {
-        virReportInvalidArg(flags, "%s",
-                            _("running and paused flags are mutually "
-                              "exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_SAVE_RUNNING,
+                             VIR_DOMAIN_SAVE_PAUSED,
+                             error);
 
     if (conn->driver->domainManagedSave) {
         int ret;
@@ -10578,14 +10498,10 @@ virDomainGetBlockIoTune(virDomainPtr dom,
                                  VIR_DRV_FEATURE_TYPED_PARAM_STRING))
         flags |= VIR_TYPED_PARAM_STRING_OKAY;
 
-    /* At most one of these two flags should be set.  */
-    if ((flags & VIR_DOMAIN_AFFECT_LIVE) &&
-        (flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportInvalidArg(flags, "%s",
-                            _("flags 'affect live' and 'affect config' "
-                              "are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_LIVE,
+                             VIR_DOMAIN_AFFECT_CONFIG,
+                             error);
+
     conn = dom->conn;
 
     if (conn->driver->domainGetBlockIoTune) {
@@ -11084,6 +11000,53 @@ virDomainSetTime(virDomainPtr dom,
     return -1;
 }
 
+
+/**
+ * virDomainSetUserPassword:
+ * @dom: a domain object
+ * @user: the username that will get a new password
+ * @password: the password to set
+ * @flags: bitwise-OR of virDomainSetUserPasswordFlags
+ *
+ * Sets the @user password to the value specified by @password.
+ * If @flags contain VIR_DOMAIN_PASSWORD_ENCRYPTED, the password
+ * is assumed to be encrypted by the method required by the guest OS.
+ *
+ * Please note that some hypervisors may require guest agent to
+ * be configured and running in order to be able to run this API.
+ *
+ * Returns 0 on success, -1 otherwise.
+ */
+int
+virDomainSetUserPassword(virDomainPtr dom,
+                         const char *user,
+                         const char *password,
+                         unsigned int flags)
+{
+    VIR_DOMAIN_DEBUG(dom, "user=%s, password=%s, flags=%x",
+                     NULLSTR(user), NULLSTR(password), flags);
+
+    virResetLastError();
+
+    virCheckDomainReturn(dom, -1);
+    virCheckReadOnlyGoto(dom->conn->flags, error);
+    virCheckNonNullArgGoto(user, error);
+    virCheckNonNullArgGoto(password, error);
+
+    if (dom->conn->driver->domainSetUserPassword) {
+        int ret = dom->conn->driver->domainSetUserPassword(dom, user, password,
+                                                           flags);
+        if (ret < 0)
+            goto error;
+        return ret;
+    }
+
+    virReportUnsupportedError();
+
+ error:
+    virDispatchError(dom->conn);
+    return -1;
+}
 
 
 /**
