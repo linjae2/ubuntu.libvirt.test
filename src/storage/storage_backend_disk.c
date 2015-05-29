@@ -309,7 +309,12 @@ virStorageBackendDiskReadPartitions(virStoragePoolObjPtr pool,
                                pool->def->source.devices[0].path,
                                NULL);
 
-    pool->def->allocation = pool->def->capacity = pool->def->available = 0;
+    /* If a volume is passed, virStorageBackendDiskMakeVol only updates the
+     * pool allocation for that single volume.
+     */
+    if (!vol)
+        pool->def->allocation = 0;
+    pool->def->capacity = pool->def->available = 0;
 
     ret = virCommandRunNul(cmd,
                            6,
@@ -413,8 +418,8 @@ virStorageBackendDiskFindLabel(const char* device)
     /* if parted succeeds we have a valid partition table */
     ret = virCommandRun(cmd, NULL);
     if (ret < 0) {
-        if (strstr(output, "unrecognised disk label") ||
-            strstr(error, "unrecognised disk label")) {
+        if ((output && strstr(output, "unrecognised disk label")) ||
+            (error && strstr(error, "unrecognised disk label"))) {
             ret = 1;
         }
     }
@@ -441,13 +446,9 @@ virStorageBackendDiskBuildPool(virConnectPtr conn ATTRIBUTE_UNUSED,
     virCheckFlags(VIR_STORAGE_POOL_BUILD_OVERWRITE |
                   VIR_STORAGE_POOL_BUILD_NO_OVERWRITE, ret);
 
-    if (flags == (VIR_STORAGE_POOL_BUILD_OVERWRITE |
-                  VIR_STORAGE_POOL_BUILD_NO_OVERWRITE)) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Overwrite and no overwrite flags"
-                         " are mutually exclusive"));
-        goto error;
-    }
+    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_STORAGE_POOL_BUILD_OVERWRITE,
+                             VIR_STORAGE_POOL_BUILD_NO_OVERWRITE,
+                             error);
 
     if (flags & VIR_STORAGE_POOL_BUILD_OVERWRITE) {
         ok_to_mklabel = true;
