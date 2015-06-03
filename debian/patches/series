@@ -31,3 +31,4 @@ CVE-2014-7823.patch
 9034-complete-9p-support
 cgmanager-mutex
 dont-include-non-migrateable-features-in-host-model
+powerpc-make-qemu-system-ppc64-the-default
