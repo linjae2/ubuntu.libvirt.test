@@ -1,3 +1,16 @@
+libvirt (1.2.16-1) unstable; urgency=medium
+
+  * Upload to unstabl
+  * [50e9055] New upstream version 1.2.16
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 03 Jun 2015 08:44:53 +0200
+
+libvirt (1.2.16~rc2-3) experimental; urgency=medium
+
+  * [6d22215] Fix one more libxl leftover
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 01 Jun 2015 08:49:50 +0200
+
 libvirt (1.2.16~rc2-2) experimental; urgency=medium
 
   * [132348d] Only install libxl configuratin on hosts that support XEN
