@@ -1,3 +1,10 @@
+libvirt (1.2.8-0ubuntu11.5) utopic-proposed; urgency=medium
+
+  * powerpc-make-qemu-system-ppc64-the-default: fix failure starting kvm
+    through nova on ppc64le  (LP: #1418221)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 02 Jun 2015 19:01:33 -0500
+
 libvirt (1.2.8-0ubuntu11.4) utopic-proposed; urgency=medium
 
   * d/p/dont-include-non-migrateable-features-in-host-model: (LP: #1386503)

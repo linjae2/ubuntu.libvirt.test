@@ -1,0 +1,31 @@
+commit bdbe723fcd8b55678b0ad984134f7b79d6fbeb89
+Author: Prerna Saxena <prerna@linux.vnet.ibm.com>
+Date:   Sun Feb 15 09:48:00 2015 +0530
+
+    PowerPC : Make 'qemu-system-ppc64' the default emulator on ppc64[le].
+    
+    PowerPC : Explicitly associate 'qemu-system-ppc64' as the
+     default emulator for all 64-bit PowerPC guests ( both Big & Little Endian )
+    
+    Signed-off-by: Prerna Saxena <prerna@linux.vnet.ibm.com>
+
+Index: libvirt-1.2.8/src/qemu/qemu_capabilities.c
+===================================================================
+--- libvirt-1.2.8.orig/src/qemu/qemu_capabilities.c
++++ libvirt-1.2.8/src/qemu/qemu_capabilities.c
+@@ -664,9 +664,14 @@ virQEMUCapsFindBinaryForArch(virArch hos
+                              virArch guestarch)
+ {
+     char *ret;
+-    const char *archstr = virQEMUCapsArchToString(guestarch);
++    const char *archstr;
+     char *binary;
+ 
++    if (ARCH_IS_PPC64(guestarch))
++        archstr = virQEMUCapsArchToString(VIR_ARCH_PPC64);
++    else
++        archstr = virQEMUCapsArchToString(guestarch);
++
+     if (virAsprintf(&binary, "qemu-system-%s", archstr) < 0)
+         return NULL;
+ 
