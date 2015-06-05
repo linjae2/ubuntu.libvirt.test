@@ -1,3 +1,10 @@
+libvirt (1.2.8-0ubuntu11.6) utopic-proposed; urgency=medium
+
+  * Add two more upon which powerpc-make-qemu-system-ppc64-the-default
+    depends to fix ftbfs.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 05 Jun 2015 19:01:15 +0000
+
 libvirt (1.2.8-0ubuntu11.5) utopic-proposed; urgency=medium
 
   * powerpc-make-qemu-system-ppc64-the-default: fix failure starting kvm
