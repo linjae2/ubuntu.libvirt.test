@@ -1,3 +1,14 @@
+libvirt (1.2.8-0ubuntu11.7) utopic; urgency=medium
+
+  * virObjectUnref() libvirtd killed by SIGSEGV (LP: #1464175)
+    - upstream, util: identity: Harden virIdentitySetCurrent()
+    - upstream, daemon: Clear fake domain def object that is used to check 
+      ACL prior to use
+    - upstream, rpc: Don't unref identity object while callbacks still can 
+      be executed
+
+ -- Seyeong Kim <seyeong.kim@canonical.com>  Thu, 11 Jun 2015 19:26:18 +0900
+
 libvirt (1.2.8-0ubuntu11.6) utopic-proposed; urgency=medium
 
   * Add two more upon which powerpc-make-qemu-system-ppc64-the-default
