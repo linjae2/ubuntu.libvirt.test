@@ -34,3 +34,4 @@ dont-include-non-migrateable-features-in-host-model
 qemu-add-support-for-multiple-versions-pseries
 cpu-add-support-for-powerle.patch
 powerpc-make-qemu-system-ppc64-the-default
+fix_libvirtd_killed_by_sigsegv.patch
