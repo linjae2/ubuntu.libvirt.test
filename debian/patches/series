@@ -42,6 +42,6 @@ CVE-2014-7823.patch
 numa-cgroups-fix-cpuset-mems-init.patch
 9035-qemu-snapshot-save-persistent-domain-config
 9036-dont-fail-without-cpu-model.patch
-Support-incoming-migration-from-13.10-hosts.patch
+#Support-incoming-migration-from-13.10-hosts.patch
 qemu-filterref-crash.patch
 storage_backend_rbd-correct-arg-order-to-rbd_create3

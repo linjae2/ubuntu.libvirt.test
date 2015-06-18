@@ -1,3 +1,10 @@
+libvirt (1.2.2-0ubuntu13.1.12) trusty-proposed; urgency=medium
+
+  * Drop Support-incoming-migration-from-13.10-hosts.patch as it failed
+    verification.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 18 Jun 2015 14:21:06 -0500
+
 libvirt (1.2.2-0ubuntu13.1.11) trusty-proposed; urgency=medium
 
   * Support-incoming-migration-from-13.10-hosts.patch (LP: #1425619)
