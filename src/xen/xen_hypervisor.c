@@ -2144,7 +2144,9 @@ xenHypervisorBuildCapabilities(virConnectPtr conn, virArch hostarch,
         if ((guest = virCapabilitiesAddGuest(caps,
                                              guest_archs[i].hvm ? VIR_DOMAIN_OSTYPE_HVM : VIR_DOMAIN_OSTYPE_XEN,
                                              guest_archs[i].arch,
-                                             "qemu-dm",
+                                             (hostarch == VIR_ARCH_X86_64 ?
+                                              "qemu-dm" :
+                                              "qemu-dm"),
                                              (guest_archs[i].hvm ?
                                               "hvmloader" :
                                               NULL),
