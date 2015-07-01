@@ -22,7 +22,7 @@
 
 #include "testutils.h"
 
-#if defined HAVE_SYSFS_MOCK
+#ifdef HAVE_SYSFS_MOCK
 
 # include <stdlib.h>
 
