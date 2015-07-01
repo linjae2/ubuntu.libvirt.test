@@ -1,3 +1,22 @@
+libvirt (1.2.2-0ubuntu13.1.13) trusty; urgency=medium
+
+  [ Seyeong Kim ]
+  * virObjectUnref() libvirtd killed by SIGSEGV (LP: #1464175)
+    - upstream, util: identity: Harden virIdentitySetCurrent()
+    - upstream, daemon: Clear fake domain def object that is used to check 
+      ACL prior to use
+    - upstream, rpc: Don't unref identity object while callbacks still can 
+      be executed
+
+  [ Edward Hope-Morley ]
+  * Add post-start to upstart (/etc/init/libvirt-bin.conf) and
+    sysv (/etc/init.d/libvirt-bin) to ensure libvirt-sock
+    created before up (LP: #1455608)
+
+  * Re-enable Support-incoming-migration-from-13.10-hosts.patch. (LP: #1425619)
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Wed, 01 Jul 2015 09:07:08 -0500
+
 libvirt (1.2.2-0ubuntu13.1.12) trusty-proposed; urgency=medium
 
   * Drop Support-incoming-migration-from-13.10-hosts.patch as it failed
