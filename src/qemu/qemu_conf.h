@@ -164,6 +164,9 @@ struct _virQEMUDriverConfig {
     char *migrationAddress;
     int migrationPortMin;
     int migrationPortMax;
+
+    /* Whether incoming pc-1.0 migration should come from qemu-kvm */
+    bool allow_incoming_qemukvm;
 };
 
 /* Main driver state */
