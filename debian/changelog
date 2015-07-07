@@ -1,3 +1,10 @@
+libvirt (1.2.16-2ubuntu3) wily; urgency=medium
+
+  * debian/apparmor/libvirt-qemu:
+    allow serial console backed by pts chardev (LP: #1342083) 
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Tue, 07 Jul 2015 16:38:17 -0500
+
 libvirt (1.2.16-2ubuntu2) wily; urgency=low
 
   [ Chris J Arges ]

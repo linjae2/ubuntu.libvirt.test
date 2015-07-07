@@ -171,6 +171,10 @@
   # silence refusals to open lttng files (see lp#1432644)
   deny /dev/shm/lttng-ust-wait-* r,
 
+  # allow serial console backed by pts chardev (LP: #1342083)
+  /usr/lib/pt_chown ix,
+  owner @{PROC}/0-9*/fd/ r,
+
   /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
   # child profile for bridge helper process
   profile qemu_bridge_helper {
