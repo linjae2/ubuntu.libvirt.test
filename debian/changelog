@@ -1,3 +1,11 @@
+libvirt (1.2.2-0ubuntu13.1.14) trusty; urgency=medium
+
+  [ Seyeong Kim ]
+  * d/p/fix_libvirtd_killed_by_sigsegv.patch: fix incorrect backport
+    (LP: #1464175)
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Wed, 08 Jul 2015 10:52:41 -0500
+
 libvirt (1.2.2-0ubuntu13.1.13) trusty; urgency=medium
 
   [ Seyeong Kim ]
