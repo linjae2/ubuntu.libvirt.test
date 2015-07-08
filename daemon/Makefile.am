@@ -40,6 +40,8 @@ DAEMON_SOURCES =					\
 		libvirtd.c libvirtd.h			\
 		remote.c remote.h			\
 		stream.c stream.h			\
+		$(top_srcdir)/src/util/cgmanager.c      \
+		$(top_srcdir)/src/util/cgmanager.h      \
 		$(DAEMON_GENERATED)
 
 LIBVIRTD_CONF_SOURCES = libvirtd-config.c libvirtd-config.h
@@ -147,6 +149,10 @@ libvirtd_CFLAGS = \
 	$(WARN_CFLAGS) $(PIE_CFLAGS) \
 	$(COVERAGE_CFLAGS) $(CGMANAGER_CFLAGS) \
 	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\""
+
+if ENABLE_CGMANAGER
+libvirtd_CFLAGS += -DHAVE_CGMANAGER
+endif
 
 libvirtd_LDFLAGS =					\
 	$(RELRO_LDFLAGS)				\

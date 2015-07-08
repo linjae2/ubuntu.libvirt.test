@@ -50,6 +50,7 @@ bool cgm_dbus_connect(void)
     DBusError dbus_error;
     DBusConnection *connection;
     dbus_error_init(&dbus_error);
+    static int32_t api_version;
 
     virMutexLock(&cgmanager_lock);
 
@@ -71,21 +72,29 @@ bool cgm_dbus_connect(void)
         nerr = nih_error_get();
         VIR_ERROR("cgmanager: Error opening proxy: %s", nerr->message);
         nih_free(nerr);
-	virMutexUnlock(&cgmanager_lock);
+        virMutexUnlock(&cgmanager_lock);
         return false;
     }
 
-    // force fd passing negotiation
-    if (cgmanager_ping_sync(NULL, cgroup_manager, 0) != 0) {
+    if (cgmanager_get_api_version_sync(NULL, cgroup_manager, &api_version) != 0) {
         NihError *nerr;
         nerr = nih_error_get();
-        VIR_ERROR("cgmanager: Error pinging manager: %s", nerr->message);
+        VIR_ERROR("cgmanager: Error getting cgmanager version: %s", nerr->message);
         nih_free(nerr);
         nih_free(cgroup_manager);
         cgroup_manager = NULL;
-	virMutexUnlock(&cgmanager_lock);
+        virMutexUnlock(&cgmanager_lock);
         return false;
     }
+
+    if (api_version < 8) {
+        VIR_ERROR("cgmanager version is too old");
+        nih_free(cgroup_manager);
+        cgroup_manager = NULL;
+        virMutexUnlock(&cgmanager_lock);
+        return false;
+    }
+
     cgm_running = true;
     return true;
 }
@@ -136,10 +145,6 @@ bool cgm_remove(const char *controller, const char *cgroup_path, int recursive)
         return false;
     }
 
-    if (existed == -1) {
-        VIR_ERROR("cgmanager: cgm_remove failed: %s:%s did not exist", controller, cgroup_path);
-        return false;
-    }
     return true;
 }
 
@@ -251,10 +256,12 @@ bool cgm_get_tasks(const char *controller, const char *cgroup_path, pid_t **pids
     if (ret) {
         NihError *nerr;
         nerr = nih_error_get();
-        VIR_ERROR("cgmanager: cgm_get_tasks for controller=%s, cgroup_path=%s failed: %s",
+        if (*nrpids != 0)
+            VIR_ERROR("cgmanager: cgm_get_tasks for controller=%s, cgroup_path=%s failed: %s",
                   controller, cgroup_path, nerr->message);
         nih_free(nerr);
-        return false;
+        if (*nrpids != 0)
+            return false;
     }
 
     return true;
@@ -313,6 +320,18 @@ bool cgm_controller_exists(const char *controller)
     return true;
 }
 
+bool cgm_list_controllers(char ***output)
+{
+    if ( cgmanager_list_controllers_sync(NULL, cgroup_manager, output) != 0) {
+        NihError *nerr;
+        nerr = nih_error_get();
+        nih_free(nerr);
+        return false;
+    }
+
+    return true;
+}
+
 bool cgm_enter(const char *controller, const char *cgroup_path, pid_t pid)
 {
     if (cgroup_path[0] == '/')
@@ -330,16 +349,21 @@ bool cgm_enter(const char *controller, const char *cgroup_path, pid_t pid)
     return true;
 }
 
-bool cgm_escape(const char *controller)
+void cgm_escape(void)
 {
-    if (cgmanager_move_pid_sync(NULL, cgroup_manager, controller, "/",
+    if (!cgm_dbus_connect()) {
+        VIR_ERROR("cgm_escape: failed to connect to cgmanager");
+        return;
+    }
+    if (cgmanager_move_pid_abs_sync(NULL, cgroup_manager, "all", "/",
              getpid()) != 0) {
         NihError *nerr;
         nerr = nih_error_get();
-        VIR_DEBUG("cgmanager: Failed escaping to root cgroup for controller %s: %s",
-                  controller, nerr->message);
+        VIR_DEBUG("cgmanager: Failed escaping to root cgroup for %s",
+                  nerr->message);
         nih_free(nerr);
-    }
-    return true;
+    } else
+        VIR_DEBUG("Escaped to root cgroup");
+    cgm_dbus_disconnect();
 }
 #endif
