@@ -31,3 +31,6 @@ ubuntu-libxl-migrate-dm.patch
 cgm-ignore-machined-failure
 9038-qemu-fix-setting-of-VM-CPU-affinity-with-TCG
 fix_libvirtd_killed_by_sigsegv.patch
+PowerPC-Make-qemu-system-ppc64-the-default-emulator-.patch
+PowerPC-Forbid-NULL-CPU-model-with-host-model-mode.patch
+schema-Allow-multiple-machines-for-VMs-and-unite-arc.patch
