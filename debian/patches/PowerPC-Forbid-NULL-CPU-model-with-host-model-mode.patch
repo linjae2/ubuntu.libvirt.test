@@ -1,0 +1,40 @@
+From adc55cfcb509442fcf3e93a5a7d01e8db0b51b11 Mon Sep 17 00:00:00 2001
+From: Prerna Saxena <prerna@linux.vnet.ibm.com>
+Date: Sun, 15 Feb 2015 09:54:15 +0530
+Subject: [PATCH 2/3] PowerPC : Forbid NULL CPU model with 'host-model' mode.
+
+PowerPC : Forbid NULL CPU model with 'host-model' mode in qemu command line.
+
+This ensures that an XML such as following:
+...
+  <cpu mode='host-model'>
+    <model fallback='allow'/>
+  </cpu>
+...
+
+will not generate a '-cpu host,compat=(null)' command line with qemu-system-ppc64.
+
+Signed-off-by: Prerna Saxena <prerna@linux.vnet.ibm.com>
+(cherry picked from commit 5e4f49ab8aa2dc7e71b8482e2f15f2a7de1c1006)
+Signed-off-by: Chris J Arges <chris.j.arges@canonical.com>
+---
+ src/qemu/qemu_command.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_command.c b/src/qemu/qemu_command.c
+index 7314006..85feaef 100644
+--- a/src/qemu/qemu_command.c
++++ b/src/qemu/qemu_command.c
+@@ -6263,7 +6263,8 @@ qemuBuildCpuModelArgStr(virQEMUDriverPtr driver,
+         virBufferAddLit(buf, "host");
+ 
+         if (ARCH_IS_PPC64(def->os.arch) &&
+-            cpu->mode == VIR_CPU_MODE_HOST_MODEL) {
++            cpu->mode == VIR_CPU_MODE_HOST_MODEL &&
++            def->cpu->model != NULL) {
+             virBufferAsprintf(buf, ",compat=%s", def->cpu->model);
+         } else {
+             featCpu = cpu;
+-- 
+1.9.1
+

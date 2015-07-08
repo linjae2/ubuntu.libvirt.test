@@ -8,7 +8,7 @@ Origin: upstream, http://libvirt.org/git/?p=libvirt.git;a=commitdiff;h=ad886fa6c
         upstream, http://libvirt.org/git/?p=libvirt.git;a=commitdiff;h=6ca857c7c8a1f7b571132d6c7fff5a06301a5e9a
         upstream, http://libvirt.org/git/?p=libvirt.git;a=commitdiff;h=a98129c0ee52b6a8fdd39988a6d090057f149ae9
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1464175
-Last-Update: 2015-03-25
+Last-Update: 2015-07-08
 Index: libvirt-1.2.12/daemon/remote.c
 ===================================================================
 --- libvirt-1.2.12.orig/daemon/remote.c
@@ -54,7 +54,7 @@ Index: libvirt-1.2.12/src/util/viridentity.c
                            virObjectRef(ident)) < 0) {
          virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                         _("Unable to set thread local identity"));
-+        virObjectUnref(old);
++        virObjectUnref(ident);
          return -1;
      }
  
