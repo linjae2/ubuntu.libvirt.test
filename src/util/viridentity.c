@@ -116,7 +116,7 @@ int virIdentitySetCurrent(virIdentityPtr ident)
                           virObjectRef(ident)) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("Unable to set thread local identity"));
-        virObjectUnref(old);
+        virObjectUnref(ident);
         return -1;
     }
 

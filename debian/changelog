@@ -1,3 +1,16 @@
+libvirt (1.2.8-0ubuntu11.8) utopic; urgency=medium
+
+  [ Seyeong Kim ]
+  * d/p/fix_libvirtd_killed_by_sigsegv.patch: fix incorrect backport
+    (LP: #1464175)
+
+  [ Edward Hope-Morley ]
+  * Add post-start to upstart (/etc/init/libvirt-bin.conf) and
+    sysv (/etc/init.d/libvirt-bin) to ensure libvirt-sock
+    created before up (LP: #1455608)
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Wed, 08 Jul 2015 11:55:28 -0500
+
 libvirt (1.2.8-0ubuntu11.7) utopic; urgency=medium
 
   * virObjectUnref() libvirtd killed by SIGSEGV (LP: #1464175)
