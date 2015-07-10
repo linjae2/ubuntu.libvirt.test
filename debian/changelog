@@ -1,3 +1,12 @@
+libvirt (1.2.16-2ubuntu5) wily; urgency=medium
+
+  * debian/control changes:
+    - Replace module-init-tools with kmod
+  * debian/tests:
+    - add autopkgtests from Debian
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Fri, 10 Jul 2015 14:15:48 -0500
+
 libvirt (1.2.16-2ubuntu4) wily; urgency=medium
 
   * d/p/{storage-allow-zero-capacity-with-non-backing-file-to.patch,
