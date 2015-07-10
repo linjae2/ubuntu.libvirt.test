@@ -25,3 +25,5 @@ docs-remove-xpath.patch
 ubuntu-libxl-qemu-path.patch
 ubuntu-libxl-hvmloader-path.patch
 9040-virt-aa-helper-add-unix-channels.patch
+storage-allow-zero-capacity-with-non-backing-file-to.patch
+tests-add-vol-qcow2-zerocapacity-test-to-storagevolx.patch
