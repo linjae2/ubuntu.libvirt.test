@@ -6,7 +6,9 @@ Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-mind
 Testsuite: autopkgtest
 Build-Depends:
  debhelper (>= 7),
+ dh-autoreconf,
  dh-systemd (>= 1.18~),
+ dh-apparmor [linux-any],
  libxml2-dev,
  libncurses5-dev,
  libreadline-dev,
@@ -39,10 +41,11 @@ Build-Depends:
  libaudit-dev [linux-any],
  libselinux1-dev (>= 2.0.82) [linux-any],
  libapparmor-dev [linux-any],
- libsystemd-daemon-dev [linux-any],
+ libsystemd-dev [linux-any],
  nfs-common,
  systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc s390],
  python,
+ xsltproc,
 # for --with-storage-sheepdog
  sheepdog [linux-any],
 # for --with-storage-rados

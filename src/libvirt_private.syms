@@ -249,6 +249,7 @@ virDomainDiskDefFree;
 virDomainDiskDefNew;
 virDomainDiskDefSourceParse;
 virDomainDiskDeviceTypeToString;
+virDomainDiskDiffersSourceOnly;
 virDomainDiskDiscardTypeToString;
 virDomainDiskErrorPolicyTypeFromString;
 virDomainDiskErrorPolicyTypeToString;
@@ -265,6 +266,8 @@ virDomainDiskInsert;
 virDomainDiskInsertPreAlloced;
 virDomainDiskIoTypeFromString;
 virDomainDiskIoTypeToString;
+virDomainDiskMirrorStateTypeFromString;
+virDomainDiskMirrorStateTypeToString;
 virDomainDiskPathByName;
 virDomainDiskRemove;
 virDomainDiskRemoveByName;
@@ -273,8 +276,6 @@ virDomainDiskSetFormat;
 virDomainDiskSetSource;
 virDomainDiskSetType;
 virDomainDiskSourceIsBlockType;
-virDomainEmulatorPinAdd;
-virDomainEmulatorPinDel;
 virDomainFSDefFree;
 virDomainFSIndexByName;
 virDomainFSInsert;
@@ -382,10 +383,13 @@ virDomainNetTypeToString;
 virDomainNostateReasonTypeFromString;
 virDomainNostateReasonTypeToString;
 virDomainObjAssignDef;
+virDomainObjBroadcast;
 virDomainObjCopyPersistentDef;
 virDomainObjEndAPI;
 virDomainObjFormat;
+virDomainObjGetDefs;
 virDomainObjGetMetadata;
+virDomainObjGetOneDef;
 virDomainObjGetPersistentDef;
 virDomainObjGetState;
 virDomainObjListAdd;
@@ -410,6 +414,9 @@ virDomainObjSetDefTransient;
 virDomainObjSetMetadata;
 virDomainObjSetState;
 virDomainObjTaint;
+virDomainObjUpdateModificationImpact;
+virDomainObjWait;
+virDomainObjWaitUntil;
 virDomainOSTypeFromString;
 virDomainOSTypeToString;
 virDomainParseMemory;
@@ -591,6 +598,7 @@ virNetworkDefFormat;
 virNetworkDefFormatBuf;
 virNetworkDefFree;
 virNetworkDefGetIpByIndex;
+virNetworkDefGetRouteByIndex;
 virNetworkDefParseFile;
 virNetworkDefParseNode;
 virNetworkDefParseString;
@@ -992,7 +1000,6 @@ virLockManagerRelease;
 nodeAllocPages;
 nodeCapsInitNUMA;
 nodeGetCellsFreeMemory;
-nodeGetCPUBitmap;
 nodeGetCPUCount;
 nodeGetCPUMap;
 nodeGetCPUStats;
@@ -1001,6 +1008,8 @@ nodeGetInfo;
 nodeGetMemory;
 nodeGetMemoryParameters;
 nodeGetMemoryStats;
+nodeGetOnlineCPUBitmap;
+nodeGetPresentCPUBitmap;
 nodeSetMemoryParameters;
 
 
@@ -1122,6 +1131,7 @@ virBitmapSetBit;
 virBitmapSize;
 virBitmapString;
 virBitmapToData;
+virBitmapToDataBuf;
 
 
 # util/virbuffer.h
@@ -1358,6 +1368,7 @@ ebtablesRemoveForwardAllowIn;
 
 # util/virerror.h
 virDispatchError;
+virErrorCopyNew;
 virErrorInitialize;
 virErrorSetErrnoFromLastError;
 virLastErrorIsSystemErrno;
@@ -1469,6 +1480,9 @@ virFirewallStartTransaction;
 
 # util/virhash.h
 virHashAddEntry;
+virHashAtomicNew;
+virHashAtomicSteal;
+virHashAtomicUpdate;
 virHashCreate;
 virHashEqual;
 virHashForEach;
@@ -1584,6 +1598,7 @@ virJSONValueArrayAppend;
 virJSONValueArrayGet;
 virJSONValueArraySize;
 virJSONValueArraySteal;
+virJSONValueCopy;
 virJSONValueFree;
 virJSONValueFromString;
 virJSONValueGetArrayAsBitmap;
@@ -1623,13 +1638,16 @@ virJSONValueObjectCreate;
 virJSONValueObjectCreateVArgs;
 virJSONValueObjectForeachKeyValue;
 virJSONValueObjectGet;
+virJSONValueObjectGetArray;
 virJSONValueObjectGetBoolean;
+virJSONValueObjectGetByType;
 virJSONValueObjectGetKey;
 virJSONValueObjectGetNumberDouble;
 virJSONValueObjectGetNumberInt;
 virJSONValueObjectGetNumberLong;
 virJSONValueObjectGetNumberUint;
 virJSONValueObjectGetNumberUlong;
+virJSONValueObjectGetObject;
 virJSONValueObjectGetString;
 virJSONValueObjectGetValue;
 virJSONValueObjectHasKey;
@@ -1986,6 +2004,7 @@ virProcessAbort;
 virProcessExitWithStatus;
 virProcessGetAffinity;
 virProcessGetNamespaces;
+virProcessGetPids;
 virProcessGetStartTime;
 virProcessKill;
 virProcessKillPainfully;
@@ -2180,10 +2199,13 @@ virVasprintfInternal;
 
 
 # util/virsysinfo.h
+virSysinfoBaseBoardDefClear;
+virSysinfoBIOSDefFree;
 virSysinfoDefFree;
 virSysinfoFormat;
 virSysinfoRead;
 virSysinfoSetup;
+virSysinfoSystemDefFree;
 
 
 # util/virsystemd.h
@@ -2267,6 +2289,8 @@ virTypedParameterTypeFromString;
 virTypedParameterTypeToString;
 virTypedParamsCheck;
 virTypedParamsCopy;
+virTypedParamsFilter;
+virTypedParamsGetStringList;
 virTypedParamsReplaceString;
 virTypedParamsValidate;
 

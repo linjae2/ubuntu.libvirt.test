@@ -127,10 +127,11 @@ LOGROTATE = $(basename $(basename $(notdir $(wildcard daemon/libvirtd*.logrotate
 EXAMPLES_DIR = $(CURDIR)/debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
 
 %:
-	dh $@ --builddirectory=$(DEB_BUILDDIR) --parallel
+	dh $@ --builddirectory=$(DEB_BUILDDIR) --parallel --with autoreconf
 
 override_dh_auto_configure:
 	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_ARGS)
+	mkdir -p debian/build/docs/internals
 
 override_dh_auto_test:
 	export LD_PRELOAD="";     \
@@ -150,8 +151,6 @@ override_dh_install:
 	cp tools/libvirt-guests.sysconf \
 	    debian/libvirt-daemon-system.libvirt-guests.default
 	# Add our backward compat polkit rule
-	cp debian/polkit/60-libvirt.rules \
-	    debian/libvirt-daemon-system/usr/share/polkit-1/rules.d/
 	cp debian/polkit/60-libvirt.pkla \
 	    debian/libvirt-daemon-system/var/lib/polkit-1/localauthority/10-vendor.d/
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
@@ -159,6 +158,8 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	dh_install -p libvirt-daemon-system usr/lib/systemd/system lib/systemd/
 	dh_install -p libvirt-daemon-system usr/lib/libvirt/virt-aa-helper
 	dh_install -p libvirt-daemon-system etc/apparmor.d
+	dh_apparmor -p libvirt-daemon-system --profile-name=usr.lib.libvirt.virt-aa-helper
+	dh_apparmor -p libvirt-daemon-system --profile-name=usr.sbin.libvirtd
 	dh_install -p libvirt-daemon-system usr/share/polkit-1
 	# Not all linux arches have systemtap yet
 	mkdir -p debian/tmp/usr/share/systemtap
