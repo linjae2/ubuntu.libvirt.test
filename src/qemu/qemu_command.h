@@ -63,7 +63,7 @@ struct _qemuBuildCommandLineCallbacks {
                                       const char *adapter,
                                       unsigned int bus,
                                       unsigned int target,
-                                      unsigned int unit);
+                                      unsigned long long unit);
 };
 
 extern qemuBuildCommandLineCallbacks buildCommandLineCallbacks;
@@ -193,6 +193,13 @@ int qemuBuildRNGBackendProps(virDomainRNGDefPtr rng,
                              virQEMUCapsPtr qemuCaps,
                              const char **type,
                              virJSONValuePtr *props);
+
+char *qemuBuildShmemDevStr(virDomainDefPtr def,
+                           virDomainShmemDefPtr shmem,
+                           virQEMUCapsPtr qemuCaps);
+char *qemuBuildShmemBackendStr(virDomainShmemDefPtr shmem,
+                               virQEMUCapsPtr qemuCaps);
+
 
 int qemuOpenPCIConfig(virDomainHostdevDefPtr dev);
 
