@@ -45,6 +45,8 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   else
       WITH_LXC        = --with-lxc
   endif
+  WITH_INIT_SCRIPT    = --with-init-script=systemd
+  WITH_SYSTEMD        = --with-systemd-daemon
 else
   WITH_STORAGE_LVM    = --without-storage-lvm
   WITH_STORAGE_ISCSI  = --without-storage-iscsi
@@ -60,6 +62,8 @@ else
   WITH_NUMA           = --without-numactl
   WITH_NETCF          = --without-netcf
   WITH_AUDIT          = --without-audit
+  WITH_INIT_SCRIPT    = --with-init-script=none
+  WITH_SYSTEMD        = --without-systemd-daemon
 endif
 
 DEB_BUILDDIR := $(CURDIR)/debian/build
@@ -93,6 +97,7 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
 	$(WITH_XEN)		 \
 	$(WITH_LXC)		 \
 	$(WITH_AUDIT)		 \
+	$(WITH_INIT_SCRIPT)	 \
 	--with-apparmor		 \
 	--with-vbox \
     --without-firewalld \
@@ -102,7 +107,6 @@ DEB_CONFIGURE_EXTRA_FLAGS :=     \
 DEB_COMPRESS_EXCLUDE = .o event-test hellolibvirt info1 suspend
 DEB_PYTHON_SETUP_CMD = /dev/null
 DEB_DH_MAKESHLIBS_ARGS_libvirt0 += -V 'libvirt0 (>= 0.5.0)'
-DEB_DH_INSTALLINIT_ARGS = --upstart-only --restart-after-upgrade
 
 LOGROTATE = $(basename $(basename $(notdir $(wildcard daemon/libvirtd*.logrotate.in))))
 EXAMPLES_DIR = $(CURDIR)/debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
@@ -118,10 +122,18 @@ ifeq ($(shell dpkg --compare-versions "$(shell grep DISTRIB_RELEASE /etc/lsb-rel
 	DEB_DH_GENCONTROL_ARGS_libvirt-bin = -- -V'dist:Conflicts=apparmor (<< 2.8.96~2652-0ubuntu1)'
 endif
 
+install/libvirt-bin::
+	# helper to stop vms at shutdown
+	mkdir -p debian/libvirt-bin/usr/lib/libvirt
+	cp debian/libvirt-stop-guests debian/libvirt-bin/usr/lib/libvirt
+	chmod ugo+x debian/libvirt-bin/usr/lib/libvirt/libvirt-stop-guests
+	dh_systemd_enable
+	dh_installinit -p libvirt-bin --name=libvirt-bin --restart-after-upgrade -- defaults 28 72
+	dh_installinit -p libvirt-bin --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
+	dh_systemd_start -p libvirt-bin --restart-after-upgrade libvirt-bin.service
+	dh_systemd_start -p libvirt-bin --no-restart-on-upgrade libvirt-guests.service
+
 binary-install/libvirt-bin::
-	#cp $(CURDIR)/tools/libvirt-guests.init.sh $(CURDIR)/debian/libvirt-bin.libvirt-guests.init
-	#cp $(CURDIR)/tools/libvirt-guests.sysconf $(CURDIR)/debian/libvirt-bin.libvirt-guests.default
-	#dh_installinit --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
 	rm debian/libvirt-bin/usr/lib/libvirt/connection-driver/*.la
 	# Don't ship api files in the daemon package
 	rm -r debian/libvirt-bin/usr/share/libvirt/api/

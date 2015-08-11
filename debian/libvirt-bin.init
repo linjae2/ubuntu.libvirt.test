@@ -102,6 +102,50 @@ wait_on_sockfile() {
     return 0
 }
 
+libvirt_uris='qemu:///system lxc:/// xen:///'
+run_virsh()
+{
+    # We parse the output for things like domain state;
+    # make sure the output is in the language we expect.
+    LANG=C virsh "$@" 2>/dev/null
+}
+
+log_msg()
+{
+    logf="/var/log/libvirt/shutdownlog.log"
+    logger -p daemon.debug -s -t libvirt -- "$@" >> $logf 2>&1
+}
+
+wait_on_vms() {
+	for uri in $libvirt_uris; do
+		for domain in $(run_virsh -c "$uri" list | awk '$3 == "running" {print $2}'); do
+			log_msg "libvirt-bin: attempting clean shutdown of $domain at $(date)"
+			run_virsh -c "$uri" shutdown "$domain" >/dev/null
+		done
+	done
+
+	delay=$libvirtd_shutdown_timeout
+	while [ $delay -gt 0 ]; do
+		for uri in $libvirt_uris; do
+			if ! run_virsh -c "$uri" list | awk '$3 == "running" {exit 1}'; then
+				# VMs at this URI are still running. Wait, then
+				# start at the beginning looking for running VMs.
+				sleep 1
+				delay=$(($delay - 1))
+				continue 2
+			fi
+		done
+		break
+	done
+
+	for uri in $libvirt_uris; do
+		for domain in $(run_virsh -c "$uri" list | awk '$3 == "running" {print $2}'); do
+			log_msg "destroying $domain"
+			run_virsh -c "$uri" destroy "$domain" >/dev/null
+		done
+	done
+}
+
 case "$1" in
   start)
 	if check_start_libvirtd_option; then
@@ -126,9 +170,10 @@ case "$1" in
 	log_daemon_msg "Stopping $DESC" "$NAME"
 	if ! running ;  then
            	log_progress_msg "not running"
-            	log_end_msg 0
-            	exit 0
-       	fi
+                log_end_msg 0
+                exit 0
+        fi
+        wait_on_vms
 	start-stop-daemon --stop --quiet --pidfile $PIDFILE \
 		--exec $DAEMON
 	log_end_msg 0
