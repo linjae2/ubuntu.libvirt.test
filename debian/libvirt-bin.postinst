@@ -216,12 +216,21 @@ case "$1" in
     #    symlink wrongly, recreate it
     EXISTED="/etc/libvirt/qemu/networks/autostart/TMP_defaultexisted"
     if [ -z $2 ]; then
-    	maybe_set_autostart
+        maybe_set_autostart
     elif [ -e "$EXISTED" ]; then
         # on upgrade, if default network was previously autostarted,
-	# continue to do so.
-    	rm -f "$EXISTED"
-	set_autostart
+        # continue to do so.
+        rm -f "$EXISTED"
+        set_autostart
+    fi
+
+    # restart libvirt-bin if we had to turn it off.
+    # remove this after 16.10 release
+    WASRUNNING="/run/libvirt/wasrunning"
+    if [ -e "$WASRUNNING" ]; then
+        service libvirt-bin start
+        service libvirt-guests start
+        rm -f "$WASRUNNING"
     fi
 
     ;;

@@ -84,8 +84,7 @@ Recommends:
  iproute,
  parted,
  pm-utils
-Suggests: policykit-1 (>= 0.105-3ubuntu3), apparmor (>= 2.8.96~2541-0ubuntu4~),
- qemu-kvm | qemu (>= 0.9.1), radvd, systemd
+Suggests: policykit-1 (>= 0.105-3ubuntu3), apparmor (>= 2.8.96~2541-0ubuntu4~), qemu-kvm | qemu (>= 0.9.1), radvd
 Breaks: xen-utils-4.1, xen-utils-4.3
 Conflicts: ${dist:Conflicts}
 Description: programs for the libvirt library
