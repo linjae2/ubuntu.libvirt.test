@@ -127,9 +127,9 @@ install/libvirt-bin::
 	mkdir -p debian/libvirt-bin/usr/lib/libvirt
 	cp debian/libvirt-stop-guests debian/libvirt-bin/usr/lib/libvirt
 	chmod ugo+x debian/libvirt-bin/usr/lib/libvirt/libvirt-stop-guests
-	dh_systemd_enable
 	dh_installinit -p libvirt-bin --name=libvirt-bin --restart-after-upgrade -- defaults 28 72
 	dh_installinit -p libvirt-bin --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
+	dh_systemd_enable
 	dh_systemd_start -p libvirt-bin --restart-after-upgrade libvirt-bin.service
 	dh_systemd_start -p libvirt-bin --no-restart-on-upgrade libvirt-guests.service
 

@@ -10,7 +10,16 @@ case "${1}" in
 		if [ -e /etc/libvirt/qemu/networks/autostart/default.xml ]; then
 			touch "$EXISTED"
 		fi
-		;;
+		# Stop libvirt if we are switching to systemd
+		# remove this after 16.10 release
+		WASRUNNING="/run/libvirt/wasrunning"
+		if [ -n "$2" ] &&  dpkg --compare-versions "$2" le 1.2.16-2ubuntu7; then
+			if service libvirt-bin status > /dev/null 2>&1; then
+				service libvirt-bin stop
+				touch "$WASRUNNING"
+			fi
+		fi
+			;;
 
 	install|abort-upgrade)
 

@@ -3,6 +3,8 @@
 libvirt_uris='qemu:///system lxc:/// xen:///'
 libvirtd_shutdown_timeout=30
 
+[ -r /etc/default/libvirt-bin ] && . /etc/default/libvirt-bin
+
 run_virsh()
 {
     # We parse the output for things like domain state;

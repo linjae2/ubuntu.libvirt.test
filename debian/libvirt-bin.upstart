@@ -39,21 +39,6 @@ post-start script
 end script
 
 pre-stop script
-	[ -r /etc/default/libvirt-bin ] && . /etc/default/libvirt-bin
-
-	log_msg()
-	{
-		logf="/var/log/libvirt/shutdownlog.log"
-		logger -p daemon.debug -s -t libvirt -- "$@" >> $logf 2>&1
-	}
-
-	run_virsh()
-	{
-		# We parse the output for things like domain state;
-		# make sure the output is in the language we expect.
-		LANG=C virsh "$@" 2>/dev/null
-	}
-
 	if [ -z "$RUNLEVEL" ]; then
 		exit 0
 	fi
@@ -61,36 +46,8 @@ pre-stop script
 	if [ "$RUNLEVEL" -ne 0 ] && [ "$RUNLEVEL" -ne 1 ] && [ "$RUNLEVEL" -ne 6 ]; then
 		exit 0
 	fi
-	log_msg "libvirt-bin: entering pre-stop at $(date)"
 
-	for uri in $libvirt_uris; do
-		for domain in $(run_virsh -c "$uri" list | awk '$3 == "running" {print $2}'); do
-			log_msg "libvirt-bin: attempting clean shutdown of $domain at $(date)"
-			run_virsh -c "$uri" shutdown "$domain" >/dev/null
-		done
-	done
-
-	delay=$libvirtd_shutdown_timeout
-	while [ $delay -gt 0 ]; do
-		for uri in $libvirt_uris; do
-			if ! run_virsh -c "$uri" list | awk '$3 == "running" {exit 1}'; then
-				# VMs at this URI are still running. Wait, then
-				# start at the beginning looking for running VMs.
-				sleep 1
-				delay=$(($delay - 1))
-				continue 2
-			fi
-		done
-		break
-	done
-
-	for uri in $libvirt_uris; do
-		for domain in $(run_virsh -c "$uri" list | awk '$3 == "running" {print $2}'); do
-			log_msg "destroying $domain"
-			run_virsh -c "$uri" destroy "$domain" >/dev/null
-		done
-	done
-	log_msg "libvirt-bin: exiting pre-stop at $(date)"
+        /usr/lib/libvirt/libvirt-stop-guests
 end script
 
 # /etc/default/libvirt-bin will be deprecated soon.

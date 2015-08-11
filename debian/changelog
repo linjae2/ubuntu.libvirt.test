@@ -1,3 +1,11 @@
+libvirt (1.2.16-2ubuntu7) wily; urgency=medium
+
+  * Stop libvirt-bin at pre-inst if upgrading from a non-systemd version,
+    restart at postinst.  (This can be removed after 16.04 release)
+  * Commonize stopping of vms in upstart/systemd.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 11 Aug 2015 17:40:36 -0500
+
 libvirt (1.2.16-2ubuntu6) wily; urgency=medium
 
   * Add systemd units and libvirt-stop-guests script to stop VMs before
