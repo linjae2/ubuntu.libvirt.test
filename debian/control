@@ -7,6 +7,7 @@ Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-mind
 Testsuite: autopkgtest
 Build-Depends: cdbs (>= 0.4.90~),
  debhelper (>= 7),
+ dh-systemd (>= 1.18~),
  dh-autoreconf,
  libxml2-dev,
  libcurl4-gnutls-dev,
@@ -41,6 +42,7 @@ Build-Depends: cdbs (>= 0.4.90~),
  libnetcf-dev (>= 1:0.2.3-3~) [linux-any],
  libaudit-dev [linux-any],
  libapparmor-dev [linux-any],
+ libsystemd-daemon-dev [linux-any],
  nfs-common,
  librbd-dev [linux-any],
 # For "make check"
@@ -82,7 +84,8 @@ Recommends:
  iproute,
  parted,
  pm-utils
-Suggests: policykit-1 (>= 0.105-3ubuntu3), apparmor (>= 2.8.96~2541-0ubuntu4~), qemu-kvm | qemu (>= 0.9.1), radvd
+Suggests: policykit-1 (>= 0.105-3ubuntu3), apparmor (>= 2.8.96~2541-0ubuntu4~),
+ qemu-kvm | qemu (>= 0.9.1), radvd, systemd
 Breaks: xen-utils-4.1, xen-utils-4.3
 Conflicts: ${dist:Conflicts}
 Description: programs for the libvirt library

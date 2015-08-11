@@ -1,3 +1,10 @@
+libvirt (1.2.16-2ubuntu6) wily; urgency=medium
+
+  * Add systemd units and libvirt-stop-guests script to stop VMs before
+    a host completes shutdown  (LP: #1480440)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Tue, 11 Aug 2015 15:42:29 -0500
+
 libvirt (1.2.16-2ubuntu5) wily; urgency=medium
 
   * debian/control changes:

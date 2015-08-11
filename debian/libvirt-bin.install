@@ -16,3 +16,4 @@ usr/share/man/man8/*
 usr/share/apport/package-hooks/source_libvirt.py
 etc/dnsmasq.d-available/libvirt-bin
 etc/profile.d/libvirt-uri.sh
+usr/lib/libvirt
