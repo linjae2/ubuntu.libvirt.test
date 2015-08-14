@@ -1,3 +1,11 @@
+libvirt (1.2.16-2ubuntu8) wily; urgency=medium
+
+  * Support OVMF images in virt-aa-helper.  (LP: #1483071)
+  * Fix the libvirt-bin.preinst to not stop libvirt-bin on upgrade
+    from 1.2.16-2ubuntu7.
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 14 Aug 2015 07:34:30 -0500
+
 libvirt (1.2.16-2ubuntu7) wily; urgency=medium
 
   * Stop libvirt-bin at pre-inst if upgrading from a non-systemd version,
