@@ -1,3 +1,10 @@
+libvirt (1.2.12-0ubuntu14.2) vivid; urgency=medium
+
+  * Drop the cgmanager patches - they break under systemd, and are no longer
+    needed in containers due to lxcfs. (LP: #1486296)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 21 Aug 2015 15:16:17 -0700
+
 libvirt (1.2.12-0ubuntu14.1) vivid; urgency=medium
 
   [ Seyeong Kim ]
