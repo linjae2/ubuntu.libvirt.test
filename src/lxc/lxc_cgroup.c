@@ -484,7 +484,7 @@ virCgroupPtr virLXCCgroupCreate(virDomainDefPtr def)
                             true,
                             def->uuid,
                             NULL,
-                            -1,
+                            getpid(),
                             true,
                             0, NULL,
                             def->resource->partition,

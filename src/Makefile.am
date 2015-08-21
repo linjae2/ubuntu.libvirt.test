@@ -96,7 +96,6 @@ UTIL_SOURCES =							\
 		util/virbitmap.c util/virbitmap.h		\
 		util/virbuffer.c util/virbuffer.h		\
 		util/vircgroup.c util/vircgroup.h util/vircgrouppriv.h	\
-                util/cgmanager.c util/cgmanager.h 		\
 		util/virclosecallbacks.c util/virclosecallbacks.h		\
 		util/vircommand.c util/vircommand.h util/vircommandpriv.h \
 		util/virconf.c util/virconf.h			\
@@ -1031,13 +1030,12 @@ libvirt_util_la_CFLAGS = $(CAPNG_CFLAGS) $(YAJL_CFLAGS) $(LIBNL_CFLAGS) \
 		$(AM_CFLAGS) $(AUDIT_CFLAGS) $(DEVMAPPER_CFLAGS) \
 		$(DBUS_CFLAGS) $(LDEXP_LIBM) $(NUMACTL_CFLAGS)	\
 		$(SYSTEMD_DAEMON_CFLAGS) $(POLKIT_CFLAGS) \
-		-I$(srcdir)/conf \
-        $(CGMANAGER_CFLAGS)
+		-I$(srcdir)/conf
 libvirt_util_la_LIBADD = $(CAPNG_LIBS) $(YAJL_LIBS) $(LIBNL_LIBS) \
 		$(THREAD_LIBS) $(AUDIT_LIBS) $(DEVMAPPER_LIBS) \
 		$(LIB_CLOCK_GETTIME) $(DBUS_LIBS) $(MSCOM_LIBS) $(LIBXML_LIBS) \
 		$(SECDRIVER_LIBS) $(NUMACTL_LIBS) $(SYSTEMD_DAEMON_LIBS) \
-		$(CGMANAGER_LIBS) $(POLKIT_LIBS)
+		$(POLKIT_LIBS)
 
 
 noinst_LTLIBRARIES += libvirt_conf.la
@@ -1074,9 +1072,6 @@ libvirt_xenconfig_la_CFLAGS = \
 libvirt_xenconfig_la_SOURCES = $(XENCONFIG_SOURCES)
 endif WITH_XENCONFIG
 
-if ENABLE_CGMANAGER
-AM_CFLAGS += -DHAVE_CGMANAGER
-endif
 
 noinst_LTLIBRARIES += libvirt_driver.la
 libvirt_la_BUILT_LIBADD += libvirt_driver.la

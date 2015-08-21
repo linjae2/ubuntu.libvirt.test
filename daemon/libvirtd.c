@@ -49,7 +49,6 @@
 #include "viralloc.h"
 #include "virconf.h"
 #include "virnetlink.h"
-#include "vircgroup.h"
 #include "virnetserver.h"
 #include "remote.h"
 #include "virhook.h"
@@ -102,7 +101,6 @@
 #  include "nwfilter/nwfilter_driver.h"
 # endif
 #endif
-#include "util/cgmanager.h"
 
 #include "configmake.h"
 
@@ -1264,9 +1262,6 @@ int main(int argc, char **argv) {
         VIR_ERROR(_("invalid host UUID: %s"), config->host_uuid);
         exit(EXIT_FAILURE);
     }
-
-    /* move ourselves to root cgroup if necessary */
-    cgm_escape();
 
     if (daemonSetupLogging(config, privileged, verbose, godaemon) < 0) {
         VIR_ERROR(_("Can't initialize logging"));

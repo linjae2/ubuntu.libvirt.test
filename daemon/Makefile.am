@@ -40,8 +40,6 @@ DAEMON_SOURCES =					\
 		libvirtd.c libvirtd.h			\
 		remote.c remote.h			\
 		stream.c stream.h			\
-		$(top_srcdir)/src/util/cgmanager.c      \
-		$(top_srcdir)/src/util/cgmanager.h      \
 		$(DAEMON_GENERATED)
 
 LIBVIRTD_CONF_SOURCES = libvirtd-config.c libvirtd-config.h
@@ -107,16 +105,14 @@ libvirtd_conf_la_CFLAGS = \
 	$(XDR_CFLAGS) \
 	$(WARN_CFLAGS) $(PIE_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
-	$(CGMANAGER_CFLAGS) \
 	$(NULL)
 libvirtd_conf_la_LDFLAGS =				\
 	$(RELRO_LDFLAGS)				\
 	$(PIE_LDFLAGS)					\
 	$(COVERAGE_LDFLAGS)				\
 	$(NO_INDIRECT_LDFLAGS)				\
-	$(NO_INDIRECT_LDFLAGS)				\
 	$(NULL)
-libvirtd_conf_la_LIBADD = $(LIBXML_LIBS) $(CGMANAGER_LIBS)
+libvirtd_conf_la_LIBADD = $(LIBXML_LIBS)
 
 man8_MANS = libvirtd.8
 
@@ -147,12 +143,8 @@ libvirtd_CFLAGS = \
 	$(LIBXML_CFLAGS) $(GNUTLS_CFLAGS) $(SASL_CFLAGS) \
 	$(XDR_CFLAGS) $(DBUS_CFLAGS) $(LIBNL_CFLAGS) \
 	$(WARN_CFLAGS) $(PIE_CFLAGS) \
-	$(COVERAGE_CFLAGS) $(CGMANAGER_CFLAGS) \
+	$(COVERAGE_CFLAGS) \
 	-DQEMUD_PID_FILE="\"$(QEMUD_PID_FILE)\""
-
-if ENABLE_CGMANAGER
-libvirtd_CFLAGS += -DHAVE_CGMANAGER
-endif
 
 libvirtd_LDFLAGS =					\
 	$(RELRO_LDFLAGS)				\
@@ -166,7 +158,6 @@ libvirtd_LDADD =					\
 	$(GNUTLS_LIBS)					\
 	$(SASL_LIBS)					\
 	$(DBUS_LIBS)					\
-    $(CGMANAGER_LIBS)               \
 	$(LIBNL_LIBS)
 
 if WITH_DTRACE_PROBES
