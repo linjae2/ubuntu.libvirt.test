@@ -16,3 +16,12 @@ LIBVIRT_ADMIN_1.3.0 {
         virAdmConnectClose;
         virAdmConnectRef;
 };
+
+
+LIBVIRT_ADMIN_PRIVATE_1.2.18 {
+    global:
+        xdr_admin_connect_open_args;
+
+    local:
+        *;
+};
