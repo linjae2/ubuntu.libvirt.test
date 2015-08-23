@@ -17,7 +17,7 @@ Build-Depends:
  libgnutls28-dev,
  libavahi-client-dev,
  libsasl2-dev,
- libxen-dev (>= 4.3) [i386 amd64],
+ libxen-dev (>= 4.3) [i386 amd64 armhf arm64],
  lvm2 [linux-any],
  open-iscsi [linux-any],
  libparted0-dev (>= 2.2),
@@ -153,7 +153,8 @@ Recommends:
 Section: admin
 Suggests: radvd, auditd, systemtap, systemd, apparmor,
  nfs-common,
-Breaks: avahi-daemon (<< 0.6.31-3~)
+Breaks: avahi-daemon (<< 0.6.31-3~),
+ systemd-sysv (<< 224-1~)
 Replaces: libvirt-bin (<< 1.2.7-4~)
 Conflicts: libvirt-bin (<< 1.2.6-1~)
 Description: Libvirt daemon configuration files
@@ -205,7 +206,7 @@ Description: documentation for the libvirt library
 Package: libvirt-dev
 Architecture: any
 Section: libdevel
-Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64]
+Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64 armhf arm64]
 Replaces: libvirt-bin (<< 1.2.0~)
 Recommends: pkg-config
 Description: development files for the libvirt library
