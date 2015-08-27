@@ -159,3 +159,8 @@
   # workaround LP: #1403648 by allowing read access to the directory. This will be removed in future releases
   /tmp/ r,
   /var/tmp/ r,
+
+  # allow serial console backed by pts chardev (LP: #1342083)
+  /usr/lib/pt_chown ix,
+  owner @{PROC}/0-9*/fd/ r,
+

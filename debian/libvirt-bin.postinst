@@ -192,6 +192,7 @@ case "$1" in
 		update-rc.d -f libvirt-bin remove >/dev/null
 	    fi
 	fi
+	chown libvirt-qemu:kvm /var/lib/libvirt/qemu/channel/target
 
     for p in usr.sbin.libvirtd usr.lib.libvirt.virt-aa-helper ; do
         profile="/etc/apparmor.d/$p"
