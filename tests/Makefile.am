@@ -244,7 +244,7 @@ test_programs += xlconfigtest
 endif WITH_LIBXL
 
 if WITH_QEMU
-test_programs += qemuxml2argvtest qemuxml2xmltest qemuxmlnstest \
+test_programs += qemuxml2xmltest qemuxmlnstest \
 	qemuargv2xmltest qemuhelptest domainsnapshotxml2xmltest \
 	qemumonitortest qemumonitorjsontest qemuhotplugtest \
 	qemuagenttest qemucapabilitiestest qemucaps2xmltest \
@@ -364,7 +364,6 @@ test_scripts +=				\
 	read-bufsiz			\
 	read-non-seekable		\
 	start				\
-	virsh-uriprecedence		\
 	vcpupin				\
 	virsh-all			\
 	virsh-optparse			\
@@ -412,6 +411,7 @@ test_libraries = libshunload.la \
 		vircgroupmock.la \
 		virpcimock.la \
 		virnetdevmock.la \
+		nodeinfomock.la \
 		$(NULL)
 if WITH_QEMU
 test_libraries += libqemumonitortestutils.la \
@@ -1047,6 +1047,11 @@ virpcimock_la_CFLAGS = $(AM_CFLAGS)
 virpcimock_la_LIBADD = $(GNULIB_LIBS) \
 					   ../src/libvirt.la
 virpcimock_la_LDFLAGS = $(MOCKLIBS_LDFLAGS)
+
+nodeinfomock_la_SOURCES = \
+	nodeinfomock.c
+nodeinfomock_la_CFLAGS = $(AM_CFLAGS)
+nodeinfomock_la_LDFLAGS = $(MOCKLIBS_LDFLAGS)
 
 virnetdevtest_SOURCES = \
 	virnetdevtest.c testutils.h testutils.c
