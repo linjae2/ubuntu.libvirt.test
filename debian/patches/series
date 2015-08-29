@@ -13,6 +13,5 @@ debian/Use-upstreams-polkit-rule.patch
 Allow-access-to-libnl-3-config-files.patch
 debian/apparmor_profiles_local_include.patch
 debian/libsystemd.patch
-virNetSocketCheckProtocols-handle-EAI_NONAME-as-IPv6.patch
-Mark-symbols-in-libvirt-admin-as-local.patch
-Fix-path-to-qemu-bridge-helper.patch
+Disable-tests-affected-by-broken-libxml2.patch
+apparmor-Adjust-path-to-domain-monitor-socket.patch
