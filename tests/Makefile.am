@@ -244,7 +244,7 @@ test_programs += xlconfigtest
 endif WITH_LIBXL
 
 if WITH_QEMU
-test_programs += qemuxml2argvtest qemuxml2xmltest qemuxmlnstest \
+test_programs += qemuxml2xmltest qemuxmlnstest \
 	qemuargv2xmltest qemuhelptest domainsnapshotxml2xmltest \
 	qemumonitortest qemumonitorjsontest qemuhotplugtest \
 	qemuagenttest qemucapabilitiestest qemucaps2xmltest \
@@ -364,7 +364,6 @@ test_scripts +=				\
 	read-bufsiz			\
 	read-non-seekable		\
 	start				\
-	virsh-uriprecedence		\
 	vcpupin				\
 	virsh-all			\
 	virsh-optparse			\
