@@ -1,0 +1,380 @@
+commit a5250449de8d570992744f309fefaaaa6f8212cd
+Author: Pavel Boldin <pboldin@mirantis.com>
+Date:   Tue Jun 16 01:42:06 2015 +0300
+
+    util: multi-value virTypedParameter
+    
+    The `virTypedParamsValidate' function now can be instructed to allow
+    multiple entries for some of the keys. For this flag the type with
+    the `VIR_TYPED_PARAM_MULTIPLE' flag.
+    
+    Add unit tests for this new behaviour.
+    
+    Signed-off-by: Pavel Boldin <pboldin@mirantis.com>
+    Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+
+diff --git a/src/util/virtypedparam.c b/src/util/virtypedparam.c
+index de2d447..68620f5 100644
+--- a/src/util/virtypedparam.c
++++ b/src/util/virtypedparam.c
+@@ -47,11 +47,19 @@ VIR_ENUM_IMPL(virTypedParameter, VIR_TYPED_PARAM_LAST,
+  * internal utility functions (those in libvirt_private.syms) may
+  * report errors that the caller will dispatch.  */
+ 
++static int
++virTypedParamsSortName(const void *left, const void *right)
++{
++    const virTypedParameter *param_left = left, *param_right = right;
++    return strcmp(param_left->field, param_right->field);
++}
++
+ /* Validate that PARAMS contains only recognized parameter names with
+- * correct types, and with no duplicates.  Pass in as many name/type
+- * pairs as appropriate, and pass NULL to end the list of accepted
+- * parameters.  Return 0 on success, -1 on failure with error message
+- * already issued.  */
++ * correct types, and with no duplicates except for parameters
++ * specified with VIR_TYPED_PARAM_MULTIPLE flag in type.
++ * Pass in as many name/type pairs as appropriate, and pass NULL to end
++ * the list of accepted parameters.  Return 0 on success, -1 on failure
++ * with error message already issued.  */
+ int
+ virTypedParamsValidate(virTypedParameterPtr params, int nparams, ...)
+ {
+@@ -60,60 +68,83 @@ virTypedParamsValidate(virTypedParameterPtr params, int nparams, ...)
+     size_t i, j;
+     const char *name;
+     int type;
++    size_t nkeys = 0, nkeysalloc = 0;
++    virTypedParameterPtr sorted = NULL, keys = NULL;
+ 
+     va_start(ap, nparams);
+ 
+-    /* Yes, this is quadratic, but since we reject duplicates and
+-     * unknowns, it is constrained by the number of var-args passed
+-     * in, which is expected to be small enough to not be
+-     * noticeable.  */
+-    for (i = 0; i < nparams; i++) {
+-        va_end(ap);
+-        va_start(ap, nparams);
++    if (VIR_ALLOC_N(sorted, nparams) < 0)
++        goto cleanup;
+ 
+-        name = va_arg(ap, const char *);
+-        while (name) {
+-            type = va_arg(ap, int);
+-            if (STREQ(params[i].field, name)) {
+-                if (params[i].type != type) {
+-                    const char *badtype;
+-
+-                    badtype = virTypedParameterTypeToString(params[i].type);
+-                    if (!badtype)
+-                        badtype = virTypedParameterTypeToString(0);
+-                    virReportError(VIR_ERR_INVALID_ARG,
+-                                   _("invalid type '%s' for parameter '%s', "
+-                                     "expected '%s'"),
+-                                   badtype, params[i].field,
+-                                   virTypedParameterTypeToString(type));
+-                }
+-                break;
+-            }
+-            name = va_arg(ap, const char *);
+-        }
+-        if (!name) {
+-            virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED,
+-                           _("parameter '%s' not supported"),
+-                           params[i].field);
++    /* Here we intentionally don't copy values */
++    memcpy(sorted, params, sizeof(*params) * nparams);
++    qsort(sorted, nparams, sizeof(*sorted), virTypedParamsSortName);
++
++    name = va_arg(ap, const char *);
++    while (name) {
++        type = va_arg(ap, int);
++        if (VIR_RESIZE_N(keys, nkeysalloc, nkeys, 1) < 0)
++            goto cleanup;
++
++        if (virStrcpyStatic(keys[nkeys].field, name) == NULL) {
++            virReportError(VIR_ERR_INTERNAL_ERROR,
++                           _("Field name '%s' too long"), name);
+             goto cleanup;
+         }
+-        for (j = 0; j < i; j++) {
+-            if (STREQ(params[i].field, params[j].field)) {
++
++        keys[nkeys].type = type & ~VIR_TYPED_PARAM_MULTIPLE;
++        /* Value is not used anyway */
++        keys[nkeys].value.i = type & VIR_TYPED_PARAM_MULTIPLE;
++
++        nkeys++;
++        name = va_arg(ap, const char *);
++    }
++
++    qsort(keys, nkeys, sizeof(*keys), virTypedParamsSortName);
++
++    for (i = 0, j = 0; i < nparams && j < nkeys;) {
++        if (STRNEQ(sorted[i].field, keys[j].field)) {
++            j++;
++        } else {
++            if (i > j && !(keys[j].value.i & VIR_TYPED_PARAM_MULTIPLE)) {
+                 virReportError(VIR_ERR_INVALID_ARG,
+                                _("parameter '%s' occurs multiple times"),
+-                               params[i].field);
++                               sorted[i].field);
++                goto cleanup;
++            }
++            if (sorted[i].type != keys[j].type) {
++                const char *badtype;
++
++                badtype = virTypedParameterTypeToString(sorted[i].type);
++                if (!badtype)
++                    badtype = virTypedParameterTypeToString(0);
++                virReportError(VIR_ERR_INVALID_ARG,
++                               _("invalid type '%s' for parameter '%s', "
++                                 "expected '%s'"),
++                               badtype, sorted[i].field,
++                               virTypedParameterTypeToString(keys[j].type));
+                 goto cleanup;
+             }
++            i++;
+         }
+     }
+ 
++    if (j == nkeys && i != nparams) {
++        virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED,
++                       _("parameter '%s' not supported"),
++                       sorted[i].field);
++        goto cleanup;
++    }
++
+     ret = 0;
+  cleanup:
+     va_end(ap);
++    VIR_FREE(sorted);
++    VIR_FREE(keys);
+     return ret;
+-
+ }
+ 
++
+ /* Check if params contains only specified parameter names. Return true if
+  * only specified names are present in params, false if params contains any
+  * unspecified parameter name. */
+diff --git a/src/util/virtypedparam.h b/src/util/virtypedparam.h
+index 0c18504..b4ae007 100644
+--- a/src/util/virtypedparam.h
++++ b/src/util/virtypedparam.h
+@@ -26,6 +26,16 @@
+ # include "internal.h"
+ # include "virutil.h"
+ 
++/**
++ * VIR_TYPED_PARAM_MULTIPLE:
++ *
++ * Flag indicating that the params has multiple occurrences of the parameter.
++ * Only used as a flag for @type argument of the virTypedParamsValidate.
++ */
++# define VIR_TYPED_PARAM_MULTIPLE (1 << 31)
++
++verify(!(VIR_TYPED_PARAM_LAST & VIR_TYPED_PARAM_MULTIPLE));
++
+ int virTypedParamsValidate(virTypedParameterPtr params, int nparams,
+                            /* const char *name, int type ... */ ...)
+     ATTRIBUTE_SENTINEL ATTRIBUTE_RETURN_CHECK;
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index ddb30d8..b202195 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -183,6 +183,7 @@ test_programs = virshtest sockettest \
+ 	virhostdevtest \
+ 	vircaps2xmltest \
+ 	virnetdevtest \
++	virtypedparamtest \
+ 	$(NULL)
+ 
+ if WITH_REMOTE
+@@ -1233,6 +1234,11 @@ objecteventtest_SOURCES = \
+ 	testutils.c testutils.h
+ objecteventtest_LDADD = $(LDADDS)
+ 
++virtypedparamtest_SOURCES = \
++	virtypedparamtest.c testutils.h testutils.c
++virtypedparamtest_LDADD = $(LDADDS)
++
++
+ if WITH_LINUX
+ fchosttest_SOURCES = \
+        fchosttest.c testutils.h testutils.c
+diff --git a/tests/virtypedparamtest.c b/tests/virtypedparamtest.c
+new file mode 100644
+index 0000000..95e22a7
+--- /dev/null
++++ b/tests/virtypedparamtest.c
+@@ -0,0 +1,167 @@
++/*
++ * virtypedparamtest.c: Test typed param functions
++ *
++ * Copyright (C) 2015 Mirantis, Inc.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ *
++ */
++
++#include <config.h>
++
++#include <stdio.h>
++#include <virtypedparam.h>
++
++#include "testutils.h"
++
++#define VIR_FROM_THIS VIR_FROM_NONE
++
++typedef struct _TypedParameterTest {
++    /* Test name for logging */
++    const char          *name;
++    /* Flags of the "foobar" parameter check */
++    int                  foobar_flags;
++    /* Parameters to validate */
++    virTypedParameterPtr params;
++    /* Amount of parameters */
++    int                  nparams;
++
++    /* Expected error code */
++    int                  expected_errcode;
++    /* Expected error message */
++    const char          *expected_errmessage;
++} TypedParameterTest;
++
++static int
++testTypedParamsValidate(const void *opaque)
++{
++    int rv;
++    TypedParameterTest *test = (TypedParameterTest *)opaque;
++    virErrorPtr errptr;
++
++    rv = virTypedParamsValidate(
++            test->params, test->nparams,
++            "foobar", VIR_TYPED_PARAM_STRING | test->foobar_flags,
++            "foo", VIR_TYPED_PARAM_INT,
++            "bar", VIR_TYPED_PARAM_UINT,
++            NULL);
++
++    if (test->expected_errcode) {
++        errptr = virGetLastError();
++
++        rv = (errptr == NULL) || ((rv < 0) &&
++                                  !(errptr->code == test->expected_errcode));
++        if (errptr && test->expected_errmessage) {
++            rv = STRNEQ(test->expected_errmessage, errptr->message);
++            if (rv)
++                printf("%s\n", errptr->message);
++        }
++    }
++
++    return rv;
++}
++
++#define PARAMS_ARRAY(...) ((virTypedParameter[]){ __VA_ARGS__ })
++#define PARAMS_SIZE(...) ARRAY_CARDINALITY(PARAMS_ARRAY(__VA_ARGS__))
++
++#define PARAMS(...) \
++    .params  = PARAMS_ARRAY(__VA_ARGS__), \
++    .nparams = PARAMS_SIZE(__VA_ARGS__),
++
++static int
++testTypedParamsValidator(void)
++{
++    size_t i;
++    int rv = 0;
++
++    TypedParameterTest test[] = {
++        {
++            .name = "Invalid arg type",
++            .foobar_flags = 0,
++            PARAMS({ .field = "foobar", .type = VIR_TYPED_PARAM_INT })
++            .expected_errcode = VIR_ERR_INVALID_ARG,
++            .expected_errmessage =
++                "invalid argument: invalid type 'int' for parameter "
++                "'foobar', expected 'string'"
++        },
++        {
++            .name = "Extra arg",
++            .foobar_flags = 0,
++            PARAMS({ .field = "f", .type = VIR_TYPED_PARAM_INT })
++            .expected_errcode = VIR_ERR_INVALID_ARG,
++            .expected_errmessage =
++                "argument unsupported: parameter 'f' not supported"
++        },
++        {
++            .name = "Valid parameters",
++            .foobar_flags = 0,
++            PARAMS(
++                { .field = "bar",    .type = VIR_TYPED_PARAM_UINT },
++                { .field = "foobar", .type = VIR_TYPED_PARAM_STRING },
++                { .field = "foo",    .type = VIR_TYPED_PARAM_INT }
++            )
++            .expected_errcode = 0, .expected_errmessage = NULL,
++        },
++        {
++            .name = "Duplicates incorrect",
++            .foobar_flags = 0,
++            PARAMS(
++                { .field = "bar",    .type = VIR_TYPED_PARAM_UINT },
++                { .field = "foobar", .type = VIR_TYPED_PARAM_STRING },
++                { .field = "foobar", .type = VIR_TYPED_PARAM_STRING },
++                { .field = "foo",    .type = VIR_TYPED_PARAM_INT }
++            )
++            .expected_errcode = VIR_ERR_INVALID_ARG,
++            .expected_errmessage =
++                "invalid argument: parameter 'foobar' occurs multiple times"
++        },
++        {
++            .name = "Duplicates OK for marked",
++            .foobar_flags = VIR_TYPED_PARAM_MULTIPLE,
++            PARAMS(
++                { .field = "bar",    .type = VIR_TYPED_PARAM_UINT },
++                { .field = "foobar", .type = VIR_TYPED_PARAM_STRING },
++                { .field = "foobar", .type = VIR_TYPED_PARAM_STRING },
++                { .field = "foo",    .type = VIR_TYPED_PARAM_INT }
++            )
++            .expected_errcode = 0, .expected_errmessage = NULL,
++        },
++        {
++            .name = NULL
++        }
++    };
++
++    for (i = 0; test[i].name; ++i) {
++        if (virtTestRun(test[i].name, testTypedParamsValidate, &test[i]) < 0)
++            rv = -1;
++    }
++
++    return rv;
++}
++
++static int
++mymain(void)
++{
++    int rv = 0;
++
++    if (testTypedParamsValidator() < 0)
++        rv = -1;
++
++    if (rv < 0)
++        return EXIT_FAILURE;
++    return EXIT_SUCCESS;
++}
++
++VIRT_TEST_MAIN(mymain)

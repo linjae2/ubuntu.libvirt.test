@@ -1,0 +1,95 @@
+commit e9ef8565205bdb1438c9a5e40a3d54e29f562b4e
+Author: Pavel Boldin <pboldin@mirantis.com>
+Date:   Tue Jun 16 01:42:07 2015 +0300
+
+    util: multi-value parameters in virTypedParamsAdd*
+    
+    Allow multi-value parameters to be build using virTypedParamsAdd*
+    functions by removing check for duplicates.
+    
+    Signed-off-by: Pavel Boldin <pboldin@mirantis.com>
+    Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+
+diff --git a/src/util/virtypedparam.c b/src/util/virtypedparam.c
+index 68620f5..6f608d6 100644
+--- a/src/util/virtypedparam.c
++++ b/src/util/virtypedparam.c
+@@ -749,14 +749,6 @@ virTypedParamsGetString(virTypedParameterPtr params,
+ }
+ 
+ 
+-#define VIR_TYPED_PARAM_CHECK()                                     \
+-    do { if (virTypedParamsGet(*params, n, name)) {                 \
+-        virReportError(VIR_ERR_INVALID_ARG,                         \
+-                       _("Parameter '%s' is already set"), name);   \
+-        goto error;                                                 \
+-    } } while (0)
+-
+-
+ /**
+  * virTypedParamsAddInt:
+  * @params: pointer to the array of typed parameters
+@@ -787,7 +779,6 @@ virTypedParamsAddInt(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;
+@@ -835,7 +826,6 @@ virTypedParamsAddUInt(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;
+@@ -883,7 +873,6 @@ virTypedParamsAddLLong(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;
+@@ -931,7 +920,6 @@ virTypedParamsAddULLong(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;
+@@ -979,7 +967,6 @@ virTypedParamsAddDouble(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;
+@@ -1027,7 +1014,6 @@ virTypedParamsAddBoolean(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;
+@@ -1078,7 +1064,6 @@ virTypedParamsAddString(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;
+@@ -1136,7 +1121,6 @@ virTypedParamsAddFromString(virTypedParameterPtr *params,
+ 
+     virResetLastError();
+ 
+-    VIR_TYPED_PARAM_CHECK();
+     if (VIR_RESIZE_N(*params, max, n, 1) < 0)
+         goto error;
+     *maxparams = max;

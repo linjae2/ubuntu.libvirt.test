@@ -1,0 +1,37 @@
+commit 1049a8d8b4fa3efb63cfd39ae924f5ada3338115
+Author: Michal Privoznik <mprivozn@redhat.com>
+Date:   Tue Jun 16 01:42:03 2015 +0300
+
+    virDomainDiskGetSource: Mark passed disk as 'const'
+    
+    The disk is not changed anywhere in the function. Mark this fact
+    in the function header too.
+    
+    Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 76d7595..b10f6cd 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -1467,7 +1467,7 @@ virDomainDiskSetType(virDomainDiskDefPtr def, int type)
+ 
+ 
+ const char *
+-virDomainDiskGetSource(virDomainDiskDefPtr def)
++virDomainDiskGetSource(virDomainDiskDef const *def)
+ {
+     return def->src->path;
+ }
+diff --git a/src/conf/domain_conf.h b/src/conf/domain_conf.h
+index db49d46..afee272 100644
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -2450,7 +2450,7 @@ void virDomainDiskDefFree(virDomainDiskDefPtr def);
+ void virDomainLeaseDefFree(virDomainLeaseDefPtr def);
+ int virDomainDiskGetType(virDomainDiskDefPtr def);
+ void virDomainDiskSetType(virDomainDiskDefPtr def, int type);
+-const char *virDomainDiskGetSource(virDomainDiskDefPtr def);
++const char *virDomainDiskGetSource(virDomainDiskDef const *def);
+ int virDomainDiskSetSource(virDomainDiskDefPtr def, const char *src)
+     ATTRIBUTE_RETURN_CHECK;
+ const char *virDomainDiskGetDriver(virDomainDiskDefPtr def);

@@ -1,0 +1,136 @@
+commit 5eb03b6ea07d6e9178f5b8510681ea9ec9ca422f
+Author: Pavel Boldin <pboldin@mirantis.com>
+Date:   Tue Jun 16 01:42:09 2015 +0300
+
+    util: add virTypedParamsAddStringList
+    
+    The `virTypedParamsAddStringList' function provides interface to add a
+    NULL-terminated array of string values as a multi-value to the params.
+    
+    Signed-off-by: Pavel Boldin <pboldin@mirantis.com>
+    Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+
+diff --git a/include/libvirt/libvirt-host.h b/include/libvirt/libvirt-host.h
+index 070550b..3669711 100644
+--- a/include/libvirt/libvirt-host.h
++++ b/include/libvirt/libvirt-host.h
+@@ -326,6 +326,12 @@ virTypedParamsAddString (virTypedParameterPtr *params,
+                          const char *name,
+                          const char *value);
+ int
++virTypedParamsAddStringList(virTypedParameterPtr *params,
++                         int *nparams,
++                         int *maxparams,
++                         const char *name,
++                         const char **values);
++int
+ virTypedParamsAddFromString(virTypedParameterPtr *params,
+                          int *nparams,
+                          int *maxparams,
+diff --git a/src/libvirt_public.syms b/src/libvirt_public.syms
+index 716dd2f..59d8c12 100644
+--- a/src/libvirt_public.syms
++++ b/src/libvirt_public.syms
+@@ -715,4 +715,9 @@ LIBVIRT_1.2.16 {
+         virDomainSetUserPassword;
+ } LIBVIRT_1.2.15;
+ 
++LIBVIRT_1.3.0 {
++    global:
++        virTypedParamsAddStringList;
++} LIBVIRT_1.2.16;
++
+ # .... define new API here using predicted next version number ....
+diff --git a/src/util/virtypedparam.c b/src/util/virtypedparam.c
+index a9cc1bc..106403c 100644
+--- a/src/util/virtypedparam.c
++++ b/src/util/virtypedparam.c
+@@ -1187,6 +1187,42 @@ virTypedParamsAddString(virTypedParameterPtr *params,
+     return -1;
+ }
+ 
++/**
++ * virTypedParamsAddStringList:
++ * @params: array of typed parameters
++ * @nparams: number of parameters in the @params array
++ * @maxparams: maximum number of parameters that can be stored in @params
++ *      array without allocating more memory
++ * @name: name of the parameter to store values to
++ * @values: the values to store into the new parameters
++ *
++ * Packs NULL-terminated list of strings @values into @params under the
++ * key @name.
++ *
++ * Returns 0 on success, -1 on error.
++ */
++int
++virTypedParamsAddStringList(virTypedParameterPtr *params,
++                            int *nparams,
++                            int *maxparams,
++                            const char *name,
++                            const char **values)
++{
++    size_t i;
++    int rv = -1;
++
++    if (!values)
++        return 0;
++
++    for (i = 0; values[i]; i++) {
++        if ((rv = virTypedParamsAddString(params, nparams, maxparams,
++                                          name, values[i])) < 0)
++            break;
++    }
++
++    return rv;
++}
++
+ 
+ /**
+  * virTypedParamsAddFromString:
+diff --git a/tests/virtypedparamtest.c b/tests/virtypedparamtest.c
+index ef0be46..b7bd72f 100644
+--- a/tests/virtypedparamtest.c
++++ b/tests/virtypedparamtest.c
+@@ -126,6 +126,31 @@ testTypedParamsFilter(const void *opaque ATTRIBUTE_UNUSED)
+ }
+ 
+ static int
++testTypedParamsAddStringList(const void *opaque ATTRIBUTE_UNUSED)
++{
++    int rv = 0;
++    virTypedParameterPtr params = NULL;
++    int nparams = 0, maxparams = 0, i;
++
++    const char *values[] = {
++        "foo", "bar", "foobar", NULL
++    };
++
++    rv = virTypedParamsAddStringList(&params, &nparams, &maxparams, "param",
++                                     values);
++
++    for (i = 0; i < nparams; i++) {
++        if (STRNEQ(params[i].field, "param") ||
++            STRNEQ(params[i].value.s, values[i]) ||
++            params[i].type != VIR_TYPED_PARAM_STRING)
++            rv = -1;
++    }
++
++    virTypedParamsFree(params, nparams);
++    return rv;
++}
++
++static int
+ testTypedParamsGetStringList(const void *opaque ATTRIBUTE_UNUSED)
+ {
+     size_t i;
+@@ -260,6 +285,9 @@ mymain(void)
+     if (virtTestRun("Get All Strings", testTypedParamsGetStringList, NULL) < 0)
+         rv = -1;
+ 
++    if (virtTestRun("Add string list", testTypedParamsAddStringList, NULL) < 0)
++        rv = -1;
++
+     if (rv < 0)
+         return EXIT_FAILURE;
+     return EXIT_SUCCESS;

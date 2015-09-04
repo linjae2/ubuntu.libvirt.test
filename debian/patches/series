@@ -28,3 +28,12 @@ ubuntu-libxl-hvmloader-path.patch
 storage-allow-zero-capacity-with-non-backing-file-to.patch
 tests-add-vol-qcow2-zerocapacity-test-to-storagevolx.patch
 virt-aa-helper-handle-ovmf
+blockdev-migration/patch-1
+blockdev-migration/patch-2
+blockdev-migration/patch-3
+blockdev-migration/patch-4
+blockdev-migration/patch-5
+blockdev-migration/patch-6
+blockdev-migration/patch-7
+blockdev-migration/patch-8
+blockdev-migration/patch-9
