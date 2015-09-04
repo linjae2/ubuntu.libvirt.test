@@ -1,0 +1,47 @@
+commit cb7297c150639e9f70e414f3a82d1cde9fa3d9d6
+Author: Michal Privoznik <mprivozn@redhat.com>
+Date:   Tue Jun 16 01:42:05 2015 +0300
+
+    qemuMigrationDriveMirror: Force raw format for NBD
+    
+    When playing with disk migration lately, I've noticed this warning in
+    domain logs:
+    
+    WARNING: Image format was not specified for 'nbd://masina:49153/drive-virtio-disk0' and probing guessed raw.
+             Automatically detecting the format is dangerous for raw images, write operations on block 0 will be restricted.
+             Specify the 'raw' format explicitly to remove the restrictions.
+    
+    So I started digging into qemu source code to see what has triggered
+    the warning. I'd expect qemu to know formats of guest's disks since we
+    tell them on command line. This lead me to qmp_drive_mirror() where
+    the following can be found:
+    
+        if (!has_format) {
+            format = mode == NEW_IMAGE_MODE_EXISTING ? NULL : bs->drv->format_name;
+        }
+    
+    So, format is automatically initialized from the disk iff mode !=
+    "existing". Unfortunately, in migration we are tied to use this mode
+    (NBD doesn't support creating new images). Therefore the only way to
+    avoid this warning is to pass format. The discussion on the mail-list [1]
+    resulted in the code that always forces NBD export as "raw" format.
+    
+    [1] https://www.redhat.com/archives/libvir-list/2015-June/msg00153.html
+    Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+    Signed-off-by: Pavel Boldin <pboldin@mirantis.com>
+
+diff --git a/src/qemu/qemu_migration.c b/src/qemu/qemu_migration.c
+index ba6f6e5..f3e56f5 100644
+--- a/src/qemu/qemu_migration.c
++++ b/src/qemu/qemu_migration.c
+@@ -1966,8 +1966,9 @@ qemuMigrationDriveMirror(virQEMUDriverPtr driver,
+             goto cleanup;
+         }
+ 
++        /* Force "raw" format for NBD export */
+         mon_ret = qemuMonitorDriveMirror(priv->mon, diskAlias, nbd_dest,
+-                                         NULL, speed, 0, 0, mirror_flags);
++                                         "raw", speed, 0, 0, mirror_flags);
+ 
+         if (qemuDomainObjExitMonitor(driver, vm) < 0 || mon_ret < 0) {
+             qemuBlockJobSyncEnd(driver, vm, disk, NULL);
