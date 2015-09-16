@@ -1466,7 +1466,7 @@ virDomainDiskSetType(virDomainDiskDefPtr def, int type)
 
 
 const char *
-virDomainDiskGetSource(virDomainDiskDefPtr def)
+virDomainDiskGetSource(virDomainDiskDef const *def)
 {
     return def->src->path;
 }
