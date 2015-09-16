@@ -1,3 +1,9 @@
+libvirt (1.2.16-2ubuntu10) wily; urgency=medium
+
+  * Add qemu-block-extra libraries to libvirt apparmor profile (LP: #1495895)
+
+ -- Ryan Harper <ryan.harper@canonical.com>  Wed, 16 Sep 2015 13:20:48 -0500
+
 libvirt (1.2.16-2ubuntu9) wily; urgency=medium
 
   * Add upstream patches implementing a '--migrate-disks' option to virsh
