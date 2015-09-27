@@ -10,14 +10,14 @@ case "${1}" in
 		if [ -e /etc/libvirt/qemu/networks/autostart/default.xml ]; then
 			touch "$EXISTED"
 		fi
-		# Stop libvirt if we are switching to systemd
-		# remove this after 16.10 release
-		WASRUNNING="/run/libvirt/wasrunning"
+		# 1.2.16-2ubuntu6 added systemd scripts.  A systemd-based
+		# system before that used sysvinit to track libvirt.  By
+		# itself that results in libvirtd running untracked by
+		# systemd.  So in that case, stop the running libvirt-bin
+		# ourselves.
+		# XXX Remove this after 16.10 release
 		if [ -n "$2" ] &&  dpkg --compare-versions "$2" le 1.2.16-2ubuntu6; then
-			if service libvirt-bin status > /dev/null 2>&1; then
-				service libvirt-bin stop
-				touch "$WASRUNNING"
-			fi
+			service libvirt-bin stop || true
 		fi
 			;;
 

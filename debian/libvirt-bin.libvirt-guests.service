@@ -1,6 +1,6 @@
 [Unit]
 Description=Stop Active Libvirt Guests
-After=network.target libvirtd.service time-sync.target systemd-machined.target
+After=network.target libvirt-bin.service time-sync.target systemd-machined.target
 
 [Service]
 ExecStart=/bin/true

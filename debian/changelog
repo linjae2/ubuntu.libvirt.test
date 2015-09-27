@@ -1,3 +1,12 @@
+libvirt (1.2.16-2ubuntu11) wily; urgency=medium
+
+  * Fix the preinst and postinst: the check for whether libvirt-bin was
+    running was wrong for upstart systems, but we don't need to do that
+    anyway - just stop libvirt-bin unconditionally.  (LP: #1499199)
+  * libvirt-guests.service: fix libvirtd.service -> libvirt-bin.service
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Sun, 27 Sep 2015 15:47:08 +0000
+
 libvirt (1.2.16-2ubuntu10) wily; urgency=medium
 
   * Add qemu-block-extra libraries to libvirt apparmor profile (LP: #1495895)

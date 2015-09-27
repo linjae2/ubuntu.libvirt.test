@@ -224,15 +224,6 @@ case "$1" in
         set_autostart
     fi
 
-    # restart libvirt-bin if we had to turn it off.
-    # remove this after 16.10 release
-    WASRUNNING="/run/libvirt/wasrunning"
-    if [ -e "$WASRUNNING" ]; then
-        service libvirt-bin start
-        service libvirt-guests start
-        rm -f "$WASRUNNING"
-    fi
-
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
