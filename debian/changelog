@@ -1,3 +1,9 @@
+libvirt (1.2.16-2ubuntu12) xenial; urgency=medium
+
+  * virt-aa-helper apparmor policy:  add 'network inet6' (LP: #1511830)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 02 Nov 2015 11:49:56 -0600
+
 libvirt (1.2.16-2ubuntu11) wily; urgency=medium
 
   * Fix the preinst and postinst: the check for whether libvirt-bin was
