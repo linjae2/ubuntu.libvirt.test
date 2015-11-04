@@ -1,3 +1,9 @@
+libvirt (1.2.12-0ubuntu14.3) vivid; urgency=medium
+
+  * virt-aa-helper apparmor policy:  add 'network inet6' (LP: #1511830)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Wed, 04 Nov 2015 11:23:08 -0600
+
 libvirt (1.2.12-0ubuntu14.2) vivid; urgency=medium
 
   * Drop the cgmanager patches - they break under systemd, and are no longer
