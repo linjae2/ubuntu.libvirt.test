@@ -1,3 +1,10 @@
+libvirt (1.2.16-2ubuntu13) xenial; urgency=medium
+
+  * debian/control: switch ebtables from Recommends to Depends or default
+    configuration network doesn't get created. (LP: #1505576)
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Thu, 05 Nov 2015 15:14:04 -0600
+
 libvirt (1.2.16-2ubuntu12) xenial; urgency=medium
 
   * virt-aa-helper apparmor policy:  add 'network inet6' (LP: #1511830)
