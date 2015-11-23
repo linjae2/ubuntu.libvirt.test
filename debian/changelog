@@ -1,3 +1,10 @@
+libvirt (1.2.16-2ubuntu14) xenial; urgency=medium
+
+  * debian/apparmor/libvirt-qemu: add a bunch of newly available qemu-*
+    architecture binaries. (LP: #1519030)
+
+ -- Dimitri John Ledkov <xnox@ubuntu.com>  Mon, 23 Nov 2015 17:42:52 +0000
+
 libvirt (1.2.16-2ubuntu13) xenial; urgency=medium
 
   * debian/control: switch ebtables from Recommends to Depends or default
