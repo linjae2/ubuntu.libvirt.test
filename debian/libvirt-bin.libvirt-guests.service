@@ -1,0 +1,14 @@
+[Unit]
+Description=Stop Active Libvirt Guests
+After=network.target libvirt-bin.service time-sync.target systemd-machined.target
+
+[Service]
+ExecStart=/bin/true
+ExecStop=/usr/lib/libvirt/libvirt-stop-guests
+TimeoutStopSec=60
+Type=oneshot
+RemainAfterExit=yes
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target
