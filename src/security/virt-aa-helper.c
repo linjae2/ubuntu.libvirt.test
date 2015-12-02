@@ -575,7 +575,8 @@ valid_path(const char *path, const bool readonly)
     /* override the above with these */
     const char * const override[] = {
         "/sys/devices/pci",              /* for hostdev pci devices */
-        "/etc/libvirt-sandbox/services/" /* for virt-sandbox service config */
+        "/etc/libvirt-sandbox/services/", /* for virt-sandbox service config */
+	"/usr/share/ovmf/" /* for OVMF images */
     };
 
     const int nropaths = ARRAY_CARDINALITY(restricted);
@@ -1127,7 +1128,7 @@ get_files(vahControl * ctl)
                 ctl->def->fss[i]->src) {
             virDomainFSDefPtr fs = ctl->def->fss[i];
 
-            if (vah_add_path(&buf, fs->src, fs->readonly ? "r" : "rw", true) != 0)
+            if (vah_add_path(&buf, fs->src, fs->readonly ? "r" : "rwl", true) != 0)
                 goto cleanup;
         }
     }
