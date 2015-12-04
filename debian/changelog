@@ -1,3 +1,19 @@
+libvirt (1.3.0~rc1-1) experimental; urgency=medium
+
+  * [ae8211f] New upstream version 1.3.0~rc1
+  * [2721bee] Run build-tests with libvirt-dev only to make sure we have
+    everything in the dev packages
+  * [f4cbf4a] Drop patches applied upstream:
+      Disable-service-timeout-for-libvirt-guests.patch
+      qemu-Handle-default-IDE-controller-on-other-machine-types.patch
+  * [bf1a167] Bump symbol versions
+  * [f8eb83b] Create dir for doc generation and depend on xsltproc for it
+  * [9d46b57] Don't ship virt-admin yet, it's still in development upstream
+  * [71d0f8b] Ship virtlogd
+  * [02cd930] Override dh_install-arch instead of dh_install (Closes: #806064)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 04 Dec 2015 17:12:53 +0100
+
 libvirt (1.2.21-2) unstable; urgency=medium
 
   * [014a0c7] Add a build test to verify that the we can link against libvirt
