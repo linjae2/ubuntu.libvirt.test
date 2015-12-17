@@ -1,3 +1,10 @@
+libvirt (1.2.21-2ubuntu2) xenial; urgency=medium
+
+  * d/apparmor/libvirt-qemu: add permission to the systemd-mounted hugepages
+    path.  (LP: #1524737)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 17 Dec 2015 10:49:18 -0800
+
 libvirt (1.2.21-2ubuntu1) xenial; urgency=medium
 
   * Merge from Debian unstable.  Remaining changes:
