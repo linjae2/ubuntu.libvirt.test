@@ -3,7 +3,7 @@
 CFLAGS=$(shell pkg-config --cflags libvirt)
 LIBS=$(shell pkg-config --libs libvirt)
 
-a.out: ../../examples/dominfo/info1.c
-	gcc $(CFLAGS) $< $(LIBS)
+a.out: examples/dominfo/info1.c
+	gcc $(CFLAGS) $< $(LIBS) -o $(ADTTMP)/info1
 	@echo "Build test of $< succeeded"
-	@rm -f a.out
+	@rm -f $(ADTTMP)/info1

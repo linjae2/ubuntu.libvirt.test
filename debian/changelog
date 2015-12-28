@@ -1,3 +1,12 @@
+libvirt (1.2.21-2ubuntu3) xenial; urgency=medium
+
+  * Fix build-test autopkgtest: it now expects to run with the current
+    directory set to the root of the unpacked source package, writes to
+    $ADTTMP rather than to the source package, and declares dependencies on
+    build-essential and pkg-config.
+
+ -- Colin Watson <cjwatson@ubuntu.com>  Mon, 28 Dec 2015 05:25:54 +0000
+
 libvirt (1.2.21-2ubuntu2) xenial; urgency=medium
 
   * d/apparmor/libvirt-qemu: add permission to the systemd-mounted hugepages
