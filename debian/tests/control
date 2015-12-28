@@ -1,4 +1,6 @@
 Tests: smoke
-  build-test
 Depends: @
 Restrictions: allow-stderr
+
+Tests: build-test
+Depends: build-essential, pkg-config, libvirt-dev
