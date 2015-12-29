@@ -1,3 +1,11 @@
+libvirt (1.2.21-2ubuntu4) xenial; urgency=medium
+
+  * Revert Ubuntu-specific patch to build-depend on libsystemd-daemon-dev
+    instead of libsystemd-dev; libsystemd-daemon-dev is no longer built from
+    systemd source so we want libsystemd-dev.
+
+ -- Colin Watson <cjwatson@ubuntu.com>  Tue, 29 Dec 2015 00:31:16 +0000
+
 libvirt (1.2.21-2ubuntu3) xenial; urgency=medium
 
   * Fix build-test autopkgtest: it now expects to run with the current
