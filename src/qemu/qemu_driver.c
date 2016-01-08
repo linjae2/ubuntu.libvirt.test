@@ -5552,7 +5552,7 @@ qemuDomainSaveImageGetXMLDesc(virConnectPtr conn, const char *path,
     if (fd < 0)
         goto cleanup;
 
-    if (virDomainSaveImageGetXMLDescEnsureACL(conn, def) < 0)
+    if (virDomainSaveImageGetXMLDescEnsureACL(conn, def, flags) < 0)
         goto cleanup;
 
     ret = qemuDomainDefFormatXML(driver, def, flags);
@@ -10622,8 +10622,10 @@ qemuDomainMigratePerform(virDomainPtr dom,
     if (!(vm = qemuDomObjFromDomain(dom)))
         goto cleanup;
 
-    if (virDomainMigratePerformEnsureACL(dom->conn, vm->def) < 0)
+    if (virDomainMigratePerformEnsureACL(dom->conn, vm->def) < 0) {
+        virObjectUnlock(vm);
         goto cleanup;
+    }
 
     if (flags & VIR_MIGRATE_PEER2PEER) {
         dconnuri = uri;
@@ -10670,8 +10672,10 @@ qemuDomainMigrateFinish2(virConnectPtr dconn,
         goto cleanup;
     }
 
-    if (virDomainMigrateFinish2EnsureACL(dconn, vm->def) < 0)
+    if (virDomainMigrateFinish2EnsureACL(dconn, vm->def) < 0) {
+        virObjectUnlock(vm);
         goto cleanup;
+    }
 
     /* Do not use cookies in v2 protocol, since the cookie
      * length was not sufficiently large, causing failures
@@ -13772,7 +13776,7 @@ static char *qemuDomainSnapshotGetXMLDesc(virDomainSnapshotPtr snapshot,
     if (!(vm = qemuDomObjFromSnapshot(snapshot)))
         goto cleanup;
 
-    if (virDomainSnapshotGetXMLDescEnsureACL(snapshot->domain->conn, vm->def) < 0)
+    if (virDomainSnapshotGetXMLDescEnsureACL(snapshot->domain->conn, vm->def, flags) < 0)
         goto cleanup;
 
     if (!(snap = qemuSnapObjFromSnapshot(vm, snapshot)))

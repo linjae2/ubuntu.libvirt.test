@@ -46,3 +46,6 @@ Support-incoming-migration-from-13.10-hosts.patch
 qemu-filterref-crash.patch
 storage_backend_rbd-correct-arg-order-to-rbd_create3
 fix_libvirtd_killed_by_sigsegv.patch
+CVE-2014-8136.patch
+CVE-2015-0236.patch
+CVE-2015-5313.patch
