@@ -30,3 +30,4 @@ fix_libvirtd_killed_by_sigsegv.patch
 PowerPC-Make-qemu-system-ppc64-the-default-emulator-.patch
 PowerPC-Forbid-NULL-CPU-model-with-host-model-mode.patch
 schema-Allow-multiple-machines-for-VMs-and-unite-arc.patch
+CVE-2015-5313.patch
