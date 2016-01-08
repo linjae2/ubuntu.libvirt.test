@@ -37,3 +37,5 @@ blockdev-migration/patch-6
 blockdev-migration/patch-7
 blockdev-migration/patch-8
 blockdev-migration/patch-9
+CVE-2015-5247.patch
+CVE-2015-5313.patch
