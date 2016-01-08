@@ -1,3 +1,12 @@
+libvirt (0.9.8-2ubuntu17.23) precise-security; urgency=medium
+
+  * SECURITY UPDATE: unintended firewall port exposure
+    - debian/patches/CVE-2011-4600.patch: don't add iptables rules for
+      externally managed networks in src/network/bridge_driver.c.
+    - CVE-2011-4600
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Fri, 08 Jan 2016 10:00:16 -0500
+
 libvirt (0.9.8-2ubuntu17.22) precise; urgency=medium
 
   * Quiet some of the following errors.
