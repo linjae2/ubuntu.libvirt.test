@@ -36,3 +36,4 @@ ubuntu/ubuntu-libxl-qemu-path.patch
 ubuntu/ubuntu-libxl-hvmloader-path.patch
 ubuntu/virt-aa-helper-handle-ovmf
 ubuntu/ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch
+CVE-2015-5313.patch
