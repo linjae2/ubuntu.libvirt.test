@@ -428,7 +428,7 @@ libxlCapsInitGuests(libxl_ctx *ctx, virCapsPtr caps)
         if ((guest = virCapabilitiesAddGuest(caps,
                                              guest_archs[i].hvm ? "hvm" : "xen",
                                              guest_archs[i].arch,
-                                              "qemu-dm",
+                                              "/usr/bin/qemu-system-i386",
                                              (guest_archs[i].hvm ?
                                               "hvmloader" : NULL),
                                              1,
