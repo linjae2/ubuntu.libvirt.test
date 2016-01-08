@@ -1,3 +1,19 @@
+libvirt (1.2.16-2ubuntu11.15.10.2) wily-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service via NFS pool volume creation failure
+    - debian/patches/CVE-2015-5247.patch: correct the mode check in
+      src/storage/storage_backend.c, handle failure from refreshVol in
+      src/storage/storage_driver.c, introduce virFileUnlink in
+      src/libvirt_private.syms, src/storage/storage_backend_fs.c,
+      src/util/virfile.c, src/util/virfile.h.
+    - CVE-2015-5247
+  * SECURITY UPDATE: ACL bypass using storage pool directory traversal
+    - debian/patches/CVE-2015-5313.patch: filter filesystem volume names in
+      src/storage/storage_backend_fs.c.
+    - CVE-2015-5313
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Fri, 08 Jan 2016 10:11:57 -0500
+
 libvirt (1.2.16-2ubuntu11.15.10.1) wily; urgency=medium
 
   * virt-aa-helper apparmor policy:  add 'network inet6' (LP: #1511830)
