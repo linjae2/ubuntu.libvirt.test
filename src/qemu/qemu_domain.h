@@ -478,6 +478,9 @@ bool qemuDomainMachineIsQ35(const virDomainDef *def);
 bool qemuDomainMachineIsI440FX(const virDomainDef *def);
 bool qemuDomainMachineNeedsFDC(const virDomainDef *def);
 bool qemuDomainMachineIsS390CCW(const virDomainDef *def);
+bool qemuDomainMachineIsG3Beige(const virDomainDef *def);
+bool qemuDomainMachineIsSun4u(const virDomainDef *def);
+bool qemuDomainMachineIsMalta(const virDomainDef *def);
 
 int qemuDomainUpdateCurrentMemorySize(virQEMUDriverPtr driver,
                                       virDomainObjPtr vm);
