@@ -1,3 +1,10 @@
+libvirt (1.2.21-2ubuntu7) xenial; urgency=medium
+
+  * d/apparmor/libvirt-qemu: silence denial to shm/lttng file since shm
+    mountpoint has moved (LP: #1529319)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 11 Jan 2016 11:55:28 -0800
+
 libvirt (1.2.21-2ubuntu6) xenial; urgency=medium
 
   * d/apparmor/libvirt-qemu: add r access to max_mem_regions vhost module
