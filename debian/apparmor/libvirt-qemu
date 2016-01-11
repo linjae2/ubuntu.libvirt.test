@@ -196,6 +196,7 @@
 
   # silence refusals to open lttng files (see lp#1432644)
   deny /dev/shm/lttng-ust-wait-* r,
+  deny /run/shm/lttng-ust-wait-* r,
 
   # allow serial console backed by pts chardev (LP: #1342083)
   /usr/lib/pt_chown ix,
