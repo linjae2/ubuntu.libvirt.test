@@ -1,3 +1,10 @@
+libvirt (1.2.21-2ubuntu6) xenial; urgency=medium
+
+  * d/apparmor/libvirt-qemu: add r access to max_mem_regions vhost module
+    paramater (LP: #1531564)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Mon, 11 Jan 2016 11:33:02 -0800
+
 libvirt (1.2.21-2ubuntu5) xenial; urgency=medium
 
   * SECURITY UPDATE: ACL bypass using storage pool directory traversal
