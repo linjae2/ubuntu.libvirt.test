@@ -3552,6 +3552,27 @@ qemuDomainMachineIsS390CCW(const virDomainDef *def)
 }
 
 
+bool
+qemuDomainMachineIsG3Beige(const virDomainDef *def)
+{
+    return STREQ(def->os.machine, "g3beige");
+}
+
+
+bool
+qemuDomainMachineIsSun4u(const virDomainDef *def)
+{
+    return STREQ(def->os.machine, "sun4u");
+}
+
+
+bool
+qemuDomainMachineIsMalta(const virDomainDef *def)
+{
+    return STREQ(def->os.machine, "malta");
+}
+
+
 /**
  * qemuDomainUpdateCurrentMemorySize:
  *
