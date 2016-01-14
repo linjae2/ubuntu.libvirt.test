@@ -1,3 +1,11 @@
+libvirt (1.2.21-2ubuntu8) xenial; urgency=low
+
+  * d/libvirt-stop-guests: Skip Domain-0 on guest shutdown. Newer
+    versions of libvirt will include dom0 in the list of running domains
+    (with libxl). This special domain must be ignored.
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Thu, 14 Jan 2016 11:35:39 +0100
+
 libvirt (1.2.21-2ubuntu7) xenial; urgency=medium
 
   * d/apparmor/libvirt-qemu: silence denial to shm/lttng file since shm

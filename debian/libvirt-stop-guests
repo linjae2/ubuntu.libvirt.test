@@ -22,6 +22,10 @@ wait_on_vms() {
 	log_msg "libvirt-bin: starting wait_on_vms at $(date)"
 	for uri in $libvirt_uris; do
 		for domain in $(run_virsh -c "$uri" list | awk '$3 == "running" {print $2}'); do
+			# Skip Xen dom0
+			if [ "$domain" = "Domain-0" ]; then
+				continue
+			fi
 			log_msg "libvirt-bin: attempting clean shutdown of $uri:$domain at $(date)"
 			run_virsh -c "$uri" shutdown "$domain" >/dev/null
 		done
@@ -30,7 +34,7 @@ wait_on_vms() {
 	delay=$libvirtd_shutdown_timeout
 	while [ $delay -gt 0 ]; do
 		for uri in $libvirt_uris; do
-			if ! run_virsh -c "$uri" list | awk '$3 == "running" {exit 1}'; then
+			if ! run_virsh -c "$uri" list | awk '$2 != "Domain-0" && $3 == "running" {exit 1}'; then
 				# VMs at this URI are still running. Wait, then
 				# start at the beginning looking for running VMs.
 				sleep 1
@@ -43,6 +47,10 @@ wait_on_vms() {
 
 	for uri in $libvirt_uris; do
 		for domain in $(run_virsh -c "$uri" list | awk '$3 == "running" {print $2}'); do
+			# Skip Xen dom0
+			if [ "$domain" = "Domain-0" ]; then
+				continue
+			fi
 			log_msg "destroying $uri:$domain"
 			run_virsh -c "$uri" destroy "$domain" >/dev/null
 		done
