@@ -1,3 +1,9 @@
+libvirt (1.2.21-2ubuntu10) xenial; urgency=medium
+
+  * Multiarchify the library packages.
+
+ -- Matthias Klose <doko@ubuntu.com>  Thu, 28 Jan 2016 16:33:15 +0100
+
 libvirt (1.2.21-2ubuntu9) xenial; urgency=medium
 
   * debian/rules: Disable cdbs' implicitly generated dh_systemd_start calls.
