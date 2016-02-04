@@ -1,0 +1,88 @@
+|From 25df57db73adc3e610193ee1fcdd202c47ba471d Mon Sep 17 00:00:00 2001
+|From: zhang bo <oscar.zhangbo@huawei.com>
+|Date: Thu, 5 Mar 2015 10:01:50 +0800
+|Subject: [PATCH] util: don't fail if no PortData is found while getting
+| migrateData
+|
+|Introduced by f6a2f97e
+|
+|Problem Description:
+|After multiple times of migrating a domain, which has an ovs interface with no portData set,
+|with non-shared disk, nbd ports got overflowed.
+|
+|The steps to reproduce the problem:
+|1 define and start a domain with its network configured as:
+|    <interface type='bridge'>
+|          <source bridge='br0'/>
+|          <virtualport type='openvswitch'>
+|          </virtualport>
+|          <model type='virtio'/>
+|          <driver name='vhost' queues='4'/>
+|    </interface>
+|2 do not set the network's portData.
+|3 migrate(ToURI2) it with flag 91(1011011), which means:
+|  VIR_MIGRATE_LIVE
+|  VIR_MIGRATE_PEER2PEER
+|  VIR_MIGRATE_PERSIST_DEST
+|  VIR_MIGRATE_UNDEFINE_SOURCE
+|  VIR_MIGRATE_NON_SHARED_DISK
+|4 migrate success, but we got an error log in libvirtd.log:
+|  error : virCommandWait:2423 : internal error: Child process (ovs-vsctl --timeout=5 get Interface
+|  vnet1 external_ids:PortData) unexpected exit status 1: ovs-vsctl: no key "PortData" in Interface
+|  record "vnet1" column external_ids
+|5 migrate it back, migrate it , migrate it back, .......
+|6 nbd port got overflowed.
+|
+|The reasons for the problem is :
+|1 virNetDevOpenvswitchGetMigrateData() takes it as wrong if no portData is available for  the ovs
+| interface of a domain. (We think it's not appropriate, as portData is just OPTIONAL)
+|2 in func qemuMigrationBakeCookie(), it fails in qemuMigrationCookieAddNetwork(), and returns with -1.
+| qemuMigrationCookieAddNBD() is not called thereafter, and mig->nbd is still NULL.
+|3 However, qemuMigrationRun() just *WARN* if qemuMigrationBakeCookie() fails, migration still successes.
+| cookie is NULL, it's not baked on the src side.
+|4 On the destination side, it would alloc a port first and then free the nbd port in COOKIE.
+| But the cookie is NULL due to qemuMigrationCookieAddNetwork() failure at src side. thus the nbd port
+| is not freed.
+|
+|In this patch, we add "--if-exists" option to make ovs-vsctl not raise error if there's no portData available.
+|Further more, because portData may be NULL in the cookie at the dest side, check it before setting portData.
+|
+|Signed-off-by: Zhou Yimin <zhouyimin@huawei.com>
+|Signed-off-by: Zhang Bo <oscar.zhangbo@huawei.com>
+
+---
+
+Origin: upstream, https://github.com/libvirt/libvirt/commit/25df57db73adc3e610193ee1fcdd202c47ba471d
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1540537
+
+--- libvirt-1.2.2.orig/src/util/virnetdevopenvswitch.c
++++ libvirt-1.2.2/src/util/virnetdevopenvswitch.c
+@@ -30,6 +30,7 @@
+ #include "virerror.h"
+ #include "virmacaddr.h"
+ #include "virstring.h"
++#include "virlog.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_NONE
+ 
+@@ -208,7 +209,7 @@ int virNetDevOpenvswitchGetMigrateData(c
+     virCommandPtr cmd = NULL;
+     int ret = -1;
+ 
+-    cmd = virCommandNewArgList(OVSVSCTL, "--timeout=5", "get", "Interface",
++    cmd = virCommandNewArgList(OVSVSCTL, "--timeout=5", "--if-exists", "get", "Interface",
+                                ifname, "external_ids:PortData", NULL);
+ 
+     virCommandSetOutputBuffer(cmd, migrate);
+@@ -243,6 +244,11 @@ int virNetDevOpenvswitchSetMigrateData(c
+     virCommandPtr cmd = NULL;
+     int ret = -1;
+ 
++    if (!migrate) {
++        VIR_DEBUG("No OVS port data for interface %s", ifname);
++        return 0;
++    }
++
+     cmd = virCommandNewArgList(OVSVSCTL, "--timeout=5", "set",
+                                "Interface", ifname, NULL);
+     virCommandAddArgFormat(cmd, "external_ids:PortData=%s", migrate);
