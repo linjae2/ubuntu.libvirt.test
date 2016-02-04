@@ -1,3 +1,11 @@
+libvirt (1.2.2-0ubuntu13.1.17) trusty; urgency=medium
+
+  * d/p/fix-util-don-t-fail-if-no-portdata-is-found.patch: 
+    make ovs-vsctl not raise error if there's no portData available.
+    (LP: #1540537).
+
+ -- Jorge Niedbalski <jorge.niedbalski@canonical.com>  Thu, 04 Feb 2016 16:58:31 +0100
+
 libvirt (1.2.2-0ubuntu13.1.16) trusty-security; urgency=medium
 
   * SECURITY UPDATE: denial of service via incorrect ACL check handling

@@ -49,3 +49,4 @@ fix_libvirtd_killed_by_sigsegv.patch
 CVE-2014-8136.patch
 CVE-2015-0236.patch
 CVE-2015-5313.patch
+fix-util-don-t-fail-if-no-portdata-is-found.patch
