@@ -3,5 +3,5 @@ Depends: @
 Restrictions: allow-stderr
 
 Tests: build-test
-Depends: libvirt-dev
+Depends: libvirt-dev, build-essential, pkg-config
 Restrictions: allow-stderr
