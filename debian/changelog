@@ -1,3 +1,9 @@
+libvirt (1.3.1-1ubuntu2) xenial; urgency=medium
+
+  * No-change rebuild for gnutls transition.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 17 Feb 2016 22:41:20 +0000
+
 libvirt (1.3.1-1ubuntu1) xenial; urgency=low
 
   * Merge from Debian unstable.  Remaining changes:
