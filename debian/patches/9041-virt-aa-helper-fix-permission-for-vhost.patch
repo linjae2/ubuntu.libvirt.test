@@ -1,0 +1,74 @@
+commit a188c57d5432fce72daf818ccdb970ee6b71e936
+Author: Michal Dubiel <md@semihalf.com>
+Date:   Wed Jul 1 10:15:29 2015 +0200
+
+    virt-aa-helper: Fix permissions for vhost-user socket files
+    
+    QEMU working in vhost-user mode communicates with the other end (i.e.
+    some virtual router application) via unix domain sockets. This requires
+    that permissions for the socket files are correctly written into
+    /etc/apparmor.d/libvirt/libvirt-UUID.files.
+    
+    Signed-off-by: Michal Dubiel <md@semihalf.com>
+
+Index: libvirt-1.2.16/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-1.2.16.orig/src/security/virt-aa-helper.c
++++ libvirt-1.2.16/src/security/virt-aa-helper.c
+@@ -32,7 +32,6 @@
+ #include <unistd.h>
+ #include <errno.h>
+ #include <sys/types.h>
+-#include <sys/stat.h>
+ #include <fcntl.h>
+ #include <getopt.h>
+ #include <sys/utsname.h>
+@@ -542,7 +541,6 @@ array_starts_with(const char *str, const
+ static int
+ valid_path(const char *path, const bool readonly)
+ {
+-    struct stat sb;
+     int npaths, opaths;
+     const char * const restricted[] = {
+         "/bin/",
+@@ -591,20 +589,8 @@ valid_path(const char *path, const bool
+     if (STRNEQLEN(path, "/", 1))
+         return 1;
+ 
+-    if (!virFileExists(path)) {
++    if (!virFileExists(path))
+         vah_warning(_("path does not exist, skipping file type checks"));
+-    } else {
+-        if (stat(path, &sb) == -1)
+-            return -1;
+-
+-        switch (sb.st_mode & S_IFMT) {
+-            case S_IFSOCK:
+-                return 1;
+-                break;
+-            default:
+-                break;
+-        }
+-    }
+ 
+     opaths = sizeof(override)/sizeof(*(override));
+ 
+@@ -1107,6 +1093,18 @@ get_files(vahControl * ctl)
+                 goto cleanup;
+         }
+     }
++
++    for (i = 0; i < ctl->def->nnets; i++) {
++        if (ctl->def->nets[i] &&
++                ctl->def->nets[i]->type == VIR_DOMAIN_NET_TYPE_VHOSTUSER &&
++                ctl->def->nets[i]->data.vhostuser) {
++            virDomainChrSourceDefPtr vhu = ctl->def->nets[i]->data.vhostuser;
++
++            if (vah_add_file_chardev(&buf, vhu->data.nix.path, "rw",
++                       vhu->type) != 0)
++                goto cleanup;
++        }
++    }
+ 
+     if (ctl->def->virtType == VIR_DOMAIN_VIRT_KVM) {
+         for (i = 0; i < ctl->def->nnets; i++) {
