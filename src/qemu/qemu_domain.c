@@ -992,6 +992,7 @@ qemuDomainDefPostParse(virDomainDefPtr def,
             !STRPREFIX(def->os.machine, "pc-1.") &&
             !STRPREFIX(def->os.machine, "pc-i440") &&
             !STREQ(def->os.machine, "pc") &&
+			!STREQ(def->os.machine, "ubuntu") &&
             !STRPREFIX(def->os.machine, "rhel"))
             break;
         addPCIRoot = true;
@@ -3180,5 +3181,6 @@ qemuDomainMachineIsI440FX(const virDomainDef *def)
             STRPREFIX(def->os.machine, "pc-0.") ||
             STRPREFIX(def->os.machine, "pc-1.") ||
             STRPREFIX(def->os.machine, "pc-i440") ||
+			STREQ(def->os.machine, "ubuntu") ||
             STRPREFIX(def->os.machine, "rhel"));
 }
