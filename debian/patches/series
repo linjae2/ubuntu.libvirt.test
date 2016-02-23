@@ -39,3 +39,5 @@ blockdev-migration/patch-8
 blockdev-migration/patch-9
 CVE-2015-5247.patch
 CVE-2015-5313.patch
+9041-virt-aa-helper-fix-permission-for-vhost.patch
+9042-virt-aa-helper-add-nvram.patch
