@@ -1,3 +1,12 @@
+libvirt (1.2.2-0ubuntu13.1.18) trusty; urgency=medium
+
+  * d/p/virt-aa-helper-handle-ovmf and
+    d/p/virt-aa-helper-add-nvram-store-file.patch: Support OVMF images in
+    virt-aa-helper.  (LP: #1483071)
+  * virt-aa-helper apparmor policy:  add 'network inet6' (LP: #1511830)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Thu, 25 Feb 2016 20:30:29 -0800
+
 libvirt (1.2.2-0ubuntu13.1.17) trusty; urgency=medium
 
   * d/p/fix-util-don-t-fail-if-no-portdata-is-found.patch: 
