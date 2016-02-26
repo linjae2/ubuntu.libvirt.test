@@ -50,3 +50,5 @@ CVE-2014-8136.patch
 CVE-2015-0236.patch
 CVE-2015-5313.patch
 fix-util-don-t-fail-if-no-portdata-is-found.patch
+virt-aa-helper-handle-ovmf
+virt-aa-helper-add-nvram-store-file.patch

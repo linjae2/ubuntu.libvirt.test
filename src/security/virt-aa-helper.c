@@ -553,7 +553,8 @@ valid_path(const char *path, const bool readonly)
     };
     /* override the above with these */
     const char * const override[] = {
-        "/sys/devices/pci"	/* for hostdev pci devices */
+        "/sys/devices/pci",	/* for hostdev pci devices */
+	"/usr/share/ovmf/" /* for OVMF images */
     };
 
     if (path == NULL) {
@@ -1000,6 +1001,10 @@ get_files(vahControl * ctl)
 
     if (ctl->def->os.loader && ctl->def->os.loader)
         if (vah_add_file(&buf, ctl->def->os.loader, "r") != 0)
+            goto cleanup;
+
+    if (ctl->def->os.loader && ctl->def->os.loader->nvram)
+        if (vah_add_file(&buf, ctl->def->os.loader->nvram, "rw") != 0)
             goto cleanup;
 
     for (i = 0; i < ctl->def->ngraphics; i++) {
