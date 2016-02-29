@@ -412,6 +412,22 @@ libxlDomainDefPostParse(virDomainDefPtr def,
         if (VIR_STRDUP(def->emulator, "/usr/bin/qemu-system-i386") < 0)
             return -1;
     }
+    /*
+     * Similar, but slightly more complicated is the loader case for HVM.
+     * That binary resides in a versioned path. So we need to convert both
+     * a standalone "hvmloader" and anything that came from an older libxen.
+     */
+    if (def->os.type == VIR_DOMAIN_OSTYPE_HVM && def->os.loader->path) {
+        virDomainLoaderDefPtr loader = def->os.loader;
+
+        if (STREQ(loader->path, "hvmloader") ||
+            strncmp(loader->path, "/usr/lib/xen-", 13))
+        {
+            VIR_FREE(loader->path);
+            if (VIR_STRDUP(loader->path, LIBXL_FIRMWARE_DIR "/hvmloader") < 0)
+                return -1;
+        }
+    }
     return 0;
 }
 
