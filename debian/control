@@ -80,6 +80,7 @@ Depends:
  netcat-openbsd
 Enhances: qemu, qemu-kvm, xen
 Section: admin
+Provides: libvirt-daemon, libvirt-daemon-system
 Recommends:
  libxml2-utils,
  gawk,
