@@ -927,6 +927,10 @@ if test "$with_libxl" = "yes"; then
     AC_CHECK_HEADERS([libxlutil.h])
     LIBXL_LIBS="$LIBXL_LIBS -lxlutil"
     AC_DEFINE_UNQUOTED([WITH_LIBXL], 1, [whether libxenlight driver is enabled])
+    if test "x$LIBXL_FIRMWARE_DIR" = "x"; then
+        LIBXL_VERS=`dpkg-query -Wf '${Version}' libxen-dev|cut -d. -f1-2`
+        LIBXL_FIRMWARE_DIR="/usr/lib/xen-$LIBXL_VERS/boot"
+    fi
     if test "x$LIBXL_FIRMWARE_DIR" != "x"; then
         AC_DEFINE_UNQUOTED([LIBXL_FIRMWARE_DIR], ["$LIBXL_FIRMWARE_DIR"], [directory containing Xen firmware blobs])
     fi
