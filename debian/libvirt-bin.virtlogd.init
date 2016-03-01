@@ -26,7 +26,7 @@ test -x $DAEMON || exit 0
 PIDFILE=/var/run/$NAME.pid
 DODTIME=1                   # Time to wait for the server to die, in seconds
 
-# Include libvirtd defaults if available
+# Include virtlogd defaults if available
 if [ -f /etc/default/virtlogd ] ; then
 	. /etc/default/virtlogd
 fi
@@ -116,10 +116,10 @@ case "$1" in
   restart)
       log_daemon_msg "Restarting $DESC" "$DAEMON"
       start-stop-daemon --oknodo --stop --quiet --pidfile \
-			/var/run/$NAME.pid --exec $DAEMON
+			$PIDFILE --exec $DAEMON
       [ -n "$DODTIME" ] && sleep $DODTIME
       start-stop-daemon --start --quiet --pidfile \
-			/var/run/$NAME.pid --exec $DAEMON -- -d $libvirtd_opts
+			$PIDFILE --exec $DAEMON -- -d $VIRTLOGD_ARGS
       if running; then
 	  log_end_msg 0
       else
@@ -130,10 +130,10 @@ case "$1" in
       if running; then
           log_daemon_msg "Reloading configuration of $DESC" "$NAME"
 	  start-stop-daemon --stop --signal 1 --quiet --pidfile \
-			    /var/run/$NAME.pid --exec $DAEMON
+			    $PIDFILE --exec $DAEMON
 	  log_end_msg 0
       else
-          log_warning_msg "libvirtd not running, doing nothing."
+          log_warning_msg "$NAME not running, doing nothing."
       fi
       ;;
   status)
@@ -152,7 +152,7 @@ case "$1" in
       fi
       ;;
   *)
-      N=/etc/init.d/libvirtd
+      N=/etc/init.d/virtlogd
       echo "Usage: $N {start|stop|restart|reload|force-reload|status|force-stop}" >&2
       exit 1
       ;;
