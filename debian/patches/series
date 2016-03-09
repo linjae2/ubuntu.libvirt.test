@@ -28,7 +28,6 @@ ubuntu/9031-enable-lxc-apparmor
 ubuntu/9032-lxc-allow-no-security-driver
 ubuntu/ubuntu-xend-probe.patch
 ubuntu/ubuntu_machine_type.patch
-ubuntu/9034-complete-9p-support
 ubuntu/disable-network-test.patch
 ubuntu/docs-remove-xpath.patch
 ubuntu/ubuntu-libxl-qemu-path.patch
@@ -41,3 +40,6 @@ ubuntu/Debianize-virtlogd-service.patch
 ubuntu/Debianize-virtlockd-init.patch
 ubuntu/switch-service-files-to-libvirt-bin.patch
 ubuntu/libvirt-socket-fix-group.patch
+ubuntu/preup-virt-aa-helper-better-write-denials-handling.patch
+ubuntu/9034-complete-9p-support
+ubuntu/additional-libvirt-guest-tweaks.patch
