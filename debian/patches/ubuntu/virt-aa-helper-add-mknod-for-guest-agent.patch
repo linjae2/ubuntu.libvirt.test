@@ -1,0 +1,36 @@
+Index: libvirt/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt.orig/src/security/virt-aa-helper.c
++++ libvirt/src/security/virt-aa-helper.c
+@@ -939,6 +939,14 @@ add_file_path(virDomainDiskDefPtr disk,
+ }
+ 
+ static int
++is_qemu_guest_agent(virDomainChrDefPtr channel)
++{
++
++    return channel->targetType == VIR_DOMAIN_CHR_CHANNEL_TARGET_TYPE_VIRTIO &&
++                    STREQ_NULLABLE(channel->target.name, "org.qemu.guest_agent.0");
++}
++
++static int
+ get_files(vahControl * ctl)
+ {
+     virBuffer buf = VIR_BUFFER_INITIALIZER;
+@@ -1033,12 +1041,15 @@ get_files(vahControl * ctl)
+              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_UNIX ||
+              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
+             ctl->def->channels[i]->source.data.file.path &&
+-            ctl->def->channels[i]->source.data.file.path[0] != '\0')
++            ctl->def->channels[i]->source.data.file.path[0] != '\0') {
++            if (is_qemu_guest_agent(ctl->def->channels[i]))
++                virBufferAsprintf(&buf, "  capability mknod,\n");
+             if (vah_add_file_chardev(&buf,
+                                      ctl->def->channels[i]->source.data.file.path,
+                                      "rw",
+                                      ctl->def->channels[i]->source.type) != 0)
+                 goto cleanup;
++        }
+ 
+     if (ctl->def->os.kernel)
+         if (vah_add_file(&buf, ctl->def->os.kernel, "r") != 0)

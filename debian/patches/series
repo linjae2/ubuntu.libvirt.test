@@ -43,3 +43,4 @@ ubuntu/libvirt-socket-fix-group.patch
 ubuntu/preup-virt-aa-helper-better-write-denials-handling.patch
 ubuntu/9034-complete-9p-support
 ubuntu/additional-libvirt-guest-tweaks.patch
+ubuntu/virt-aa-helper-add-mknod-for-guest-agent.patch
