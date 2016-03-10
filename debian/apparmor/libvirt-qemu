@@ -165,10 +165,9 @@
 
   # for rbd
   /etc/ceph/ceph.conf r,
-  /usr/lib/x86_64-linux-gnu/qemu/block-rbd.so rm,
 
-  # for curl
-  /usr/lib/x86_64-linux-gnu/qemu/block-curl.so rm,
+  # for qemu-block-extra
+  /usr/lib/@{multiarch}/qemu/*.so rm,
 
   # for access to hugepages
   owner "/run/hugepages/kvm/libvirt/qemu/**" rw,
