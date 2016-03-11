@@ -31,7 +31,7 @@
     <arch name='ia64'>
       <wordsize>64</wordsize>
       <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
-      <loader>/usr/lib/xen/boot/hvmloader</loader>
+      <loader>/usr/lib/xen-default/boot/hvmloader</loader>
       <machine>xenfv</machine>
       <domain type='xen'/>
     </arch>
