@@ -46,6 +46,7 @@ Build-Depends:
  nfs-common,
  xsltproc,
  librbd-dev [linux-any],
+ zfsutils-linux [amd64 arm64 ppc64el],
 # For "make check"
  dwarves,
  libxml2-utils,

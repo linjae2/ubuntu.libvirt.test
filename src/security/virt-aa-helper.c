@@ -107,7 +107,7 @@ vah_usage(void)
             "  Options:\n"
             "    -a | --add                     load profile\n"
             "    -c | --create                  create profile from template\n"
-            "    -d | --dry-run                 dry run\n"
+            "    -d | --dryrun                  dry run\n"
             "    -D | --delete                  unload and delete profile\n"
             "    -f | --add-file <file>         add file to profile\n"
             "    -F | --append-file <file>      append file to profile\n"
@@ -791,12 +791,13 @@ get_definition(vahControl * ctl, const char *xmlStr)
  * for read with no explicit deny rule.
  */
 static int
-vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursive)
+vah_add_path(virBufferPtr buf, const char *path, const char *inperms, bool recursive)
 {
     char *tmp = NULL;
     int rc = -1;
     bool readonly = true;
     bool explicit_deny_rule = true;
+    char *perms = strdupa(inperms);
     char *sub = NULL;
 
     if (path == NULL)
@@ -939,11 +940,11 @@ add_file_path(virDomainDiskDefPtr disk,
 
     if (depth == 0) {
         if (disk->src->readonly)
-            ret = vah_add_file(buf, path, "r");
+            ret = vah_add_file(buf, path, "R");
         else
             ret = vah_add_file(buf, path, "rw");
     } else {
-        ret = vah_add_file(buf, path, "r");
+        ret = vah_add_file(buf, path, "R");
     }
 
     if (ret != 0)
