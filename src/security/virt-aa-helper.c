@@ -954,14 +954,6 @@ add_file_path(virDomainDiskDefPtr disk,
 }
 
 static int
-is_qemu_guest_agent(virDomainChrDefPtr channel)
-{
-
-    return channel->targetType == VIR_DOMAIN_CHR_CHANNEL_TARGET_TYPE_VIRTIO &&
-                    STREQ_NULLABLE(channel->target.name, "org.qemu.guest_agent.0");
-}
-
-static int
 get_files(vahControl * ctl)
 {
     virBuffer buf = VIR_BUFFER_INITIALIZER;
@@ -1048,6 +1040,10 @@ get_files(vahControl * ctl)
                                      ctl->def->parallels[i]->source.type) != 0)
                 goto cleanup;
 
+    virBufferAsprintf(&buf, "  # for qemu guest agent channel\n");
+    virBufferAsprintf(&buf, "  owner \"/var/lib/libvirt/qemu/channel/target/domain-%s/**\" rw,\n",
+                      ctl->def->name);
+
     for (i = 0; i < ctl->def->nchannels; i++)
         if (ctl->def->channels[i] &&
             (ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PTY ||
@@ -1056,15 +1052,12 @@ get_files(vahControl * ctl)
              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_UNIX ||
              ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PIPE) &&
             ctl->def->channels[i]->source.data.file.path &&
-            ctl->def->channels[i]->source.data.file.path[0] != '\0') {
-            if (is_qemu_guest_agent(ctl->def->channels[i]))
-                virBufferAsprintf(&buf, "  capability mknod,\n");
+            ctl->def->channels[i]->source.data.file.path[0] != '\0')
             if (vah_add_file_chardev(&buf,
                                      ctl->def->channels[i]->source.data.file.path,
                                      "rw",
                                      ctl->def->channels[i]->source.type) != 0)
                 goto cleanup;
-        }
 
     if (ctl->def->os.kernel)
         if (vah_add_file(&buf, ctl->def->os.kernel, "r") != 0)

@@ -1,3 +1,13 @@
+libvirt (1.3.1-1ubuntu8) xenial; urgency=medium
+
+  * d/p/u/virt-aa-helper-add-guest-agent-rule.patch: this actually solves
+    the qemu guest agent problem for rhel7 vms for me.  (LP: #1393842)
+    Also drop the mknod rule which isn't needed.
+  * d/apparmor/usr.lib.libvirt.virt-aa-helper: add permission to read under
+    /var/run.  This is needed for some openvswitch info. (LP: #1513367)
+
+ -- Serge Hallyn <serge.hallyn@ubuntu.com>  Fri, 11 Mar 2016 15:01:25 -0800
+
 libvirt (1.3.1-1ubuntu7) xenial; urgency=medium
 
   * zfs support (LP: #1553023)
