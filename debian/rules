@@ -28,6 +28,11 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_STORAGE_SHEEPDOG = --with-storage-sheepdog
   WITH_STORAGE_RBD    = --with-storage-rbd
   WITH_UDEV           = --with-udev --without-hal
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 arm64 ppc64el))
+    WITH_ZFS          = --with-storage-zfs
+  else
+    WITH_ZFS          = --without-storage-zfs
+  endif
   WITH_CAPNG          = --with-capng
   WITH_POLKIT         = --with-polkit
   WITH_MACVTAP        = --with-macvtap
@@ -101,6 +106,7 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	$(WITH_POLKIT)		 \
 	$(WITH_UDEV)		 \
 	--with-storage-fs        \
+	$(WITH_ZFS)		 \
 	$(WITH_STORAGE_LVM)	 \
 	$(WITH_STORAGE_ISCSI)	 \
 	$(WITH_STORAGE_DISK)	 \
