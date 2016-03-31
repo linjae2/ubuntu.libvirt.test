@@ -1367,6 +1367,8 @@ main(int argc, char **argv)
                                   LOCALSTATEDIR, ctl->def->name);
                 virBufferAsprintf(&buf, "  \"%s/lib/libvirt/qemu/domain-%s/monitor.sock\" rw,\n",
                                   LOCALSTATEDIR, ctl->def->name);
+                virBufferAsprintf(&buf, "  \"%s/lib/libvirt/qemu/domain-*-%.*s/monitor.sock\" rw,\n",
+                                  LOCALSTATEDIR, 20, ctl->def->name);
                 virBufferAsprintf(&buf, "  \"%s/run/libvirt/**/%s.pid\" rwk,\n",
                                   LOCALSTATEDIR, ctl->def->name);
                 virBufferAsprintf(&buf, "  \"/run/libvirt/**/%s.pid\" rwk,\n",
