@@ -553,7 +553,8 @@ valid_path(const char *path, const bool readonly)
     };
     /* override the above with these */
     const char * const override[] = {
-        "/sys/devices/pci"	/* for hostdev pci devices */
+        "/sys/devices/pci",	/* for hostdev pci devices */
+	"/usr/share/ovmf/" /* for OVMF images */
     };
 
     if (path == NULL) {
