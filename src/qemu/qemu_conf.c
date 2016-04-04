@@ -229,6 +229,8 @@ virQEMUDriverConfigPtr virQEMUDriverConfigNew(bool privileged)
     cfg->migrationPortMin = QEMU_MIGRATION_PORT_MIN;
     cfg->migrationPortMax = QEMU_MIGRATION_PORT_MAX;
 
+    cfg->allow_incoming_qemukvm = false;
+
 #if defined HAVE_MNTENT_H && defined HAVE_GETMNTENT_R
     /* For privileged driver, try and find hugepage mount automatically.
      * Non-privileged driver requires admin to create a dir for the
@@ -352,6 +354,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
             goto cleanup;                  \
     }
 
+    GET_VALUE_BOOL("allow_incoming_qemukvm", cfg->allow_incoming_qemukvm);
     GET_VALUE_BOOL("vnc_auto_unix_socket", cfg->vncAutoUnixSocket);
     GET_VALUE_BOOL("vnc_tls", cfg->vncTLS);
     GET_VALUE_BOOL("vnc_tls_x509_verify", cfg->vncTLSx509verify);
