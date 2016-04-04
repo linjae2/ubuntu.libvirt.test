@@ -1,0 +1,21 @@
+Description: virt-aa-helper: add a rule allowing all private channel access
+ Libvirt has changed the pathname for qemu guest agent channels, they are
+ under a domain-$name directory.  So always allow rw to things under that
+ directory.
+Author: Serge Hallyn <serge.hallyn@ubuntu.com>
+
+Index: libvirt-1.2.2/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt-1.2.2.orig/src/security/virt-aa-helper.c	2016-04-04 17:12:54.186103880 +0200
++++ libvirt-1.2.2/src/security/virt-aa-helper.c	2016-04-04 17:12:54.182103880 +0200
+@@ -974,6 +974,10 @@ get_files(vahControl * ctl)
+                                      ctl->def->parallels[i]->source.type) != 0)
+                 goto cleanup;
+ 
++    virBufferAsprintf(&buf, "  # for qemu guest agent channel\n");
++    virBufferAsprintf(&buf, "  owner \"/var/lib/libvirt/qemu/channel/target/domain-%s/**\" rw,\n",
++                      ctl->def->name);
++
+     for (i = 0; i < ctl->def->nchannels; i++)
+         if (ctl->def->channels[i] &&
+             (ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PTY ||

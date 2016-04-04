@@ -1,3 +1,14 @@
+libvirt (1.2.2-0ubuntu13.1.19) trusty; urgency=low
+
+  * Revert d/p/virt-aa-helper-add-nvram-store-file.patch: nvram does not
+    exist as a sub-element of loader. This breaks the build in 14.04/Trusty.
+  * d/apparmor/usr.sbin.libvirtd: Allow execution of qemu-dm from
+    libvirtd (LP: #1546978).
+  * d/p/virt-aa-helper-add-guest-agent-rule.patch: Fix qemu-guest-channel
+    permissions (LP: #1393842).
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Mon, 04 Apr 2016 14:40:16 +0200
+
 libvirt (1.2.2-0ubuntu13.1.18) trusty; urgency=medium
 
   * d/p/virt-aa-helper-handle-ovmf and
