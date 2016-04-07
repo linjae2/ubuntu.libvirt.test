@@ -1134,7 +1134,7 @@ endif WITH_VMX
 if WITH_XENCONFIG
 noinst_LTLIBRARIES += libvirt_xenconfig.la
 libvirt_la_BUILT_LIBADD += libvirt_xenconfig.la
-libvirt_la_LIBADD += $(LIBXL_LIBS)
+libvirt_xenconfig_la_LIBADD = $(LIBXL_LIBS)
 libvirt_xenconfig_la_CFLAGS = \
 		-I$(srcdir)/conf $(AM_CFLAGS)
 libvirt_xenconfig_la_SOURCES = $(XENCONFIG_SOURCES)
@@ -1218,9 +1218,7 @@ libvirt_driver_xen_impl_la_CFLAGS =				\
 		-I$(srcdir)/xenconfig				\
 		$(AM_CFLAGS)
 libvirt_driver_xen_impl_la_LDFLAGS = $(AM_LDFLAGS)
-libvirt_driver_xen_impl_la_LIBADD = $(XEN_LIBS) \
-		$(LIBXL_LIBS) \
-		libvirt_xenconfig.la
+libvirt_driver_xen_impl_la_LIBADD = $(XEN_LIBS) libvirt_xenconfig.la
 libvirt_driver_xen_impl_la_SOURCES = $(XEN_DRIVER_SOURCES)
 endif WITH_XEN
 
