@@ -54,3 +54,5 @@ ubuntu/virt-aa-helper-helpfix.patch
 ubuntu/virt-aa-helper-add-guest-agent-rule.patch
 libvirt-bin-service-nolimit.patch
 ubuntu/virt-aa-helper-apparmor-allow-usr-share-AAVMF-too.patch
+ubuntu/libvirt-bin-service-libvirtd-alias.patch
+ubuntu/libvirt-bin-service-set-notifyaccess.patch

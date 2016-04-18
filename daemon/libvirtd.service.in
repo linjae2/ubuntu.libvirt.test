@@ -20,8 +20,10 @@ Restart=on-failure
 LimitNOFILE=infinity
 LimitNPROC=infinity
 TasksMax=infinity
+NotifyAccess=all
 
 [Install]
+Alias=libvirtd.service
 WantedBy=multi-user.target
 Also=virtlockd.socket
 Also=virtlogd.socket
