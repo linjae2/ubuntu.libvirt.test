@@ -16,16 +16,11 @@ set -e
 
 case "$1" in
     install|upgrade)
-	# When renaming the .service file, systemd might become confused, we
-	# need to ensure that the libvirtd daemon is fully stopped before
-	# trying to restart it again. (Bug: #730604)
-	if dpkg --compare-versions "$2" lt "1.2.6-1~"; then
-	    if [ -d /run/systemd/system ]; then
-	        [ ! -f /lib/systemd/system/libvirt-bin.service ] || invoke-rc.d libvirt-bin stop
-	    fi
-	    # Remove everything we know about libvirt-bin.service
-	    deb-systemd-helper purge libvirt-bin.service >/dev/null
-	    deb-systemd-helper unmask libvirt-bin.service >/dev/null
+	# If the default network autostart symlink existed, then note
+	# that here so we can recreate it at postinst.
+	EXISTED="/etc/libvirt/qemu/networks/autostart/TMP_defaultexisted"
+	if [ -e /etc/libvirt/qemu/networks/autostart/default.xml ]; then
+		touch "$EXISTED"
 	fi
     ;;
 

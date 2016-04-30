@@ -1,0 +1,914 @@
+commit 6d8b6d2847f31a3d7a234536c12b8feca751a02f
+Author: Ján Tomko <jtomko@redhat.com>
+Date:   Mon Apr 11 14:26:06 2016 +0200
+
+    conf: also mark the implicit video as primary
+    
+    Commit 119cd06 started setting the primary bool for the first
+    user-specified video even if user omitted the 'primary' attribute.
+    
+    However this was done before the addition of the implicit device.
+    This broke startup of transient qemu domains with no <video>:
+    https://bugzilla.redhat.com/show_bug.cgi?id=1325757
+    
+    Move this default to virDomainDefPostParseInternal,
+    after the addition of the implicit video device, to catch the implicit
+    video as well.
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 5b831b6..31577ae 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -3926,6 +3926,11 @@ virDomainDefPostParseInternal(virDomainDefPtr def,
+     if (virDomainDefAddImplicitDevices(def) < 0)
+         return -1;
+ 
++    /* Mark the first video as primary. If the user specified primary="yes",
++     * the parser already inserted the device at def->videos[0] */
++    if (def->nvideos != 0)
++        def->videos[0]->primary = true;
++
+     /* clean up possibly duplicated metadata entries */
+     virDomainDefMetadataSanitize(def);
+ 
+@@ -16441,9 +16446,6 @@ virDomainDefParseXML(xmlDocPtr xml,
+             goto error;
+         }
+     }
+-    /* if not specified by user mark the first video as primary */
+-    if (n && !primaryVideo)
+-        def->videos[0]->primary = true;
+ 
+     VIR_FREE(nodes);
+ 
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl-fullscreen.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl-fullscreen.xml
+index 1b3ac30..0bc0436 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl-fullscreen.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl-fullscreen.xml
+@@ -27,7 +27,7 @@
+     <input type='keyboard' bus='ps2'/>
+     <graphics type='sdl' display=':0.1' xauth='/root/.Xauthority' fullscreen='yes'/>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl.xml
+index 2c1c781..7cd9d6c 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-sdl.xml
+@@ -27,7 +27,7 @@
+     <input type='keyboard' bus='ps2'/>
+     <graphics type='sdl' display=':0.1' xauth='/root/.Xauthority'/>
+     <video>
+-      <model type='vga' vram='16384' heads='1'/>
++      <model type='vga' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-policy.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-policy.xml
+index 36b8001..3ebb375 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-policy.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-policy.xml
+@@ -29,7 +29,7 @@
+       <listen type='address' address='::'/>
+     </graphics>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-sasl.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-sasl.xml
+index f29bb22..5b7d560 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-sasl.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-sasl.xml
+@@ -29,7 +29,7 @@
+       <listen type='address' address='127.0.0.1'/>
+     </graphics>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-socket.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-socket.xml
+index 57e808a..93daa76 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-socket.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-socket.xml
+@@ -27,7 +27,7 @@
+     <input type='keyboard' bus='ps2'/>
+     <graphics type='vnc' socket='/tmp/foo.socket'/>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-tls.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-tls.xml
+index f29bb22..5b7d560 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-tls.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-tls.xml
+@@ -29,7 +29,7 @@
+       <listen type='address' address='127.0.0.1'/>
+     </graphics>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-websocket.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-websocket.xml
+index 25e3bad..260ad1c 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-websocket.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc-websocket.xml
+@@ -22,7 +22,7 @@
+       <listen type='address' address='127.0.0.1'/>
+     </graphics>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc.xml b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc.xml
+index e18790f..374345b 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-graphics-vnc.xml
+@@ -29,7 +29,7 @@
+       <listen type='address' address='2001:1:2:3:4:5:1234:1234'/>
+     </graphics>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+   </devices>
+diff --git a/tests/qemuargv2xmldata/qemuargv2xml-pseries-disk.xml b/tests/qemuargv2xmldata/qemuargv2xml-pseries-disk.xml
+index 97225f4..8cec27c 100644
+--- a/tests/qemuargv2xmldata/qemuargv2xml-pseries-disk.xml
++++ b/tests/qemuargv2xmldata/qemuargv2xml-pseries-disk.xml
+@@ -34,7 +34,7 @@
+     <input type='mouse' bus='usb'/>
+     <graphics type='sdl'/>
+     <video>
+-      <model type='cirrus' vram='16384' heads='1'/>
++      <model type='cirrus' vram='16384' heads='1' primary='yes'/>
+     </video>
+     <memballoon model='none'/>
+     <panic model='pseries'/>
+diff --git a/tests/vmx2xmldata/vmx2xml-annotation.xml b/tests/vmx2xmldata/vmx2xml-annotation.xml
+index c58af07..9d99fd2 100644
+--- a/tests/vmx2xmldata/vmx2xml-annotation.xml
++++ b/tests/vmx2xmldata/vmx2xml-annotation.xml
+@@ -13,7 +13,7 @@
+   <on_crash>destroy</on_crash>
+   <devices>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-case-insensitive-1.xml b/tests/vmx2xmldata/vmx2xml-case-insensitive-1.xml
+index 4cd760e..fd38cfd 100644
+--- a/tests/vmx2xmldata/vmx2xml-case-insensitive-1.xml
++++ b/tests/vmx2xmldata/vmx2xml-case-insensitive-1.xml
+@@ -26,7 +26,7 @@
+       <source bridge='VM NETWORK'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-case-insensitive-2.xml b/tests/vmx2xmldata/vmx2xml-case-insensitive-2.xml
+index fa66028..eb81691 100644
+--- a/tests/vmx2xmldata/vmx2xml-case-insensitive-2.xml
++++ b/tests/vmx2xmldata/vmx2xml-case-insensitive-2.xml
+@@ -26,7 +26,7 @@
+       <source bridge='vm network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-ide-device.xml b/tests/vmx2xmldata/vmx2xml-cdrom-ide-device.xml
+index a4bf33c..d8bba13 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-ide-device.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-ide-device.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-ide-empty.xml b/tests/vmx2xmldata/vmx2xml-cdrom-ide-empty.xml
+index e086379..b11fe27 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-ide-empty.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-ide-empty.xml
+@@ -17,7 +17,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-ide-file.xml b/tests/vmx2xmldata/vmx2xml-cdrom-ide-file.xml
+index 8acea2d..7ca8ff7 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-ide-file.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-ide-file.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-auto-detect.xml b/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-auto-detect.xml
+index bce708d..68ad26d 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-auto-detect.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-auto-detect.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-device.xml b/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-device.xml
+index 530a29a..679cdb1 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-device.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-ide-raw-device.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-device.xml b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-device.xml
+index 0cdfb91..cf1275c 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-device.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-device.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='scsi' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-empty.xml b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-empty.xml
+index 56ad678..2045252 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-empty.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-empty.xml
+@@ -17,7 +17,7 @@
+     </disk>
+     <controller type='scsi' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-file.xml b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-file.xml
+index f814143..5765232 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-file.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-file.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='scsi' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-passthru.xml b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-passthru.xml
+index d3b382a..46e27bc 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-passthru.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-passthru.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='scsi' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-auto-detect.xml b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-auto-detect.xml
+index a81646a..9d706b5 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-auto-detect.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-auto-detect.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='scsi' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-device.xml b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-device.xml
+index bca8510..9052327 100644
+--- a/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-device.xml
++++ b/tests/vmx2xmldata/vmx2xml-cdrom-scsi-raw-device.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='scsi' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-datacenterpath.xml b/tests/vmx2xmldata/vmx2xml-datacenterpath.xml
+index a690c0f..7d458c5 100644
+--- a/tests/vmx2xmldata/vmx2xml-datacenterpath.xml
++++ b/tests/vmx2xmldata/vmx2xml-datacenterpath.xml
+@@ -12,7 +12,7 @@
+   <on_crash>destroy</on_crash>
+   <devices>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+   <vmware:datacenterpath>folder1/folder2/datacenter1</vmware:datacenterpath>
+diff --git a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-1.xml b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-1.xml
+index 26f609c..906cfe0 100644
+--- a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-1.xml
++++ b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-1.xml
+@@ -26,7 +26,7 @@
+       <source bridge='VM Network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-2.xml b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-2.xml
+index fd3b92c..2f85f82 100644
+--- a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-2.xml
++++ b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-2.xml
+@@ -53,7 +53,7 @@
+       <model type='vlance'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-3.xml b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-3.xml
+index dd681c1..8f21916 100644
+--- a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-3.xml
++++ b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-3.xml
+@@ -35,7 +35,7 @@
+       <source bridge='VM Network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-4.xml b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-4.xml
+index a2b457a..d5b3e84 100644
+--- a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-4.xml
++++ b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-4.xml
+@@ -42,7 +42,7 @@
+       <target type='serial' port='0'/>
+     </console>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-5.xml b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-5.xml
+index e6b6993..296d481 100644
+--- a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-5.xml
++++ b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-5.xml
+@@ -37,7 +37,7 @@
+       <model type='e1000'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-6.xml b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-6.xml
+index a03dd2a..19bace7 100644
+--- a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-6.xml
++++ b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-6.xml
+@@ -30,7 +30,7 @@
+       <model type='vmxnet3'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='8192'/>
++      <model type='vmvga' vram='8192' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-7.xml b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-7.xml
+index 5180a99..832c1ac 100644
+--- a/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-7.xml
++++ b/tests/vmx2xmldata/vmx2xml-esx-in-the-wild-7.xml
+@@ -29,7 +29,7 @@
+       <model type='vmxnet3'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='8192'/>
++      <model type='vmvga' vram='8192' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-bridged.xml b/tests/vmx2xmldata/vmx2xml-ethernet-bridged.xml
+index 52d8fab..0fe29cc 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-bridged.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-bridged.xml
+@@ -16,7 +16,7 @@
+       <source bridge='VM Network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-custom.xml b/tests/vmx2xmldata/vmx2xml-ethernet-custom.xml
+index 9f530ce..e10ecd7 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-custom.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-custom.xml
+@@ -17,7 +17,7 @@
+       <target dev='vmnet7'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-e1000.xml b/tests/vmx2xmldata/vmx2xml-ethernet-e1000.xml
+index 4170db5..d497a38 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-e1000.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-e1000.xml
+@@ -17,7 +17,7 @@
+       <model type='e1000'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-generated.xml b/tests/vmx2xmldata/vmx2xml-ethernet-generated.xml
+index b955c5f..23b54c8 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-generated.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-generated.xml
+@@ -16,7 +16,7 @@
+       <source bridge='VM Network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-nat.xml b/tests/vmx2xmldata/vmx2xml-ethernet-nat.xml
+index eb8e85b..562ddfc 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-nat.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-nat.xml
+@@ -15,7 +15,7 @@
+       <mac address='00:50:56:11:22:33'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-other.xml b/tests/vmx2xmldata/vmx2xml-ethernet-other.xml
+index 51421e2..e7abad0 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-other.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-other.xml
+@@ -16,7 +16,7 @@
+       <source bridge='VM Network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-static.xml b/tests/vmx2xmldata/vmx2xml-ethernet-static.xml
+index 52d8fab..0fe29cc 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-static.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-static.xml
+@@ -16,7 +16,7 @@
+       <source bridge='VM Network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-vmxnet2.xml b/tests/vmx2xmldata/vmx2xml-ethernet-vmxnet2.xml
+index 19d7096..bbe7dfd 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-vmxnet2.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-vmxnet2.xml
+@@ -17,7 +17,7 @@
+       <model type='vmxnet2'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ethernet-vpx.xml b/tests/vmx2xmldata/vmx2xml-ethernet-vpx.xml
+index 88c15d0..5dbdb52 100644
+--- a/tests/vmx2xmldata/vmx2xml-ethernet-vpx.xml
++++ b/tests/vmx2xmldata/vmx2xml-ethernet-vpx.xml
+@@ -16,7 +16,7 @@
+       <source bridge='VM Network'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-floppy-device.xml b/tests/vmx2xmldata/vmx2xml-floppy-device.xml
+index 5980bad..3b13172 100644
+--- a/tests/vmx2xmldata/vmx2xml-floppy-device.xml
++++ b/tests/vmx2xmldata/vmx2xml-floppy-device.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='fdc' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-floppy-file.xml b/tests/vmx2xmldata/vmx2xml-floppy-file.xml
+index 40f70d3..6699f15 100644
+--- a/tests/vmx2xmldata/vmx2xml-floppy-file.xml
++++ b/tests/vmx2xmldata/vmx2xml-floppy-file.xml
+@@ -23,7 +23,7 @@
+     </disk>
+     <controller type='fdc' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-fusion-in-the-wild-1.xml b/tests/vmx2xmldata/vmx2xml-fusion-in-the-wild-1.xml
+index ef785d7..cfc0d95 100644
+--- a/tests/vmx2xmldata/vmx2xml-fusion-in-the-wild-1.xml
++++ b/tests/vmx2xmldata/vmx2xml-fusion-in-the-wild-1.xml
+@@ -33,7 +33,7 @@
+       <source bridge=''/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-graphics-vnc.xml b/tests/vmx2xmldata/vmx2xml-graphics-vnc.xml
+index 9fee026..8501907 100644
+--- a/tests/vmx2xmldata/vmx2xml-graphics-vnc.xml
++++ b/tests/vmx2xmldata/vmx2xml-graphics-vnc.xml
+@@ -13,7 +13,7 @@
+   <devices>
+     <graphics type='vnc' port='5903' autoport='no' keymap='de' passwd='password'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-1.xml b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-1.xml
+index 94c0f87..e507cfc 100644
+--- a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-1.xml
++++ b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-1.xml
+@@ -24,7 +24,7 @@
+       <target dev='/dev/vmnet1'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-2.xml b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-2.xml
+index 9550c6b..39e89bb 100644
+--- a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-2.xml
++++ b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-2.xml
+@@ -24,7 +24,7 @@
+       <target dev='/dev/vmnet1'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-3.xml b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-3.xml
+index c2f845f..51101de 100644
+--- a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-3.xml
++++ b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-3.xml
+@@ -29,7 +29,7 @@
+       <target dev='/dev/vmnet2'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-4.xml b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-4.xml
+index 668b947..849367a 100644
+--- a/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-4.xml
++++ b/tests/vmx2xmldata/vmx2xml-gsx-in-the-wild-4.xml
+@@ -24,7 +24,7 @@
+       <target dev='/dev/vmnet2'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-harddisk-ide-file.xml b/tests/vmx2xmldata/vmx2xml-harddisk-ide-file.xml
+index 80fcef7..d452e6e 100644
+--- a/tests/vmx2xmldata/vmx2xml-harddisk-ide-file.xml
++++ b/tests/vmx2xmldata/vmx2xml-harddisk-ide-file.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-harddisk-scsi-file.xml b/tests/vmx2xmldata/vmx2xml-harddisk-scsi-file.xml
+index a1d3efd..64b89c6 100644
+--- a/tests/vmx2xmldata/vmx2xml-harddisk-scsi-file.xml
++++ b/tests/vmx2xmldata/vmx2xml-harddisk-scsi-file.xml
+@@ -18,7 +18,7 @@
+     </disk>
+     <controller type='scsi' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-harddisk-transient.xml b/tests/vmx2xmldata/vmx2xml-harddisk-transient.xml
+index 3786e2f..f61fb21 100644
+--- a/tests/vmx2xmldata/vmx2xml-harddisk-transient.xml
++++ b/tests/vmx2xmldata/vmx2xml-harddisk-transient.xml
+@@ -19,7 +19,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-minimal-64bit.xml b/tests/vmx2xmldata/vmx2xml-minimal-64bit.xml
+index 6c50a1d..42245d4 100644
+--- a/tests/vmx2xmldata/vmx2xml-minimal-64bit.xml
++++ b/tests/vmx2xmldata/vmx2xml-minimal-64bit.xml
+@@ -12,7 +12,7 @@
+   <on_crash>destroy</on_crash>
+   <devices>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-minimal.xml b/tests/vmx2xmldata/vmx2xml-minimal.xml
+index 38bcf43..122d59c 100644
+--- a/tests/vmx2xmldata/vmx2xml-minimal.xml
++++ b/tests/vmx2xmldata/vmx2xml-minimal.xml
+@@ -12,7 +12,7 @@
+   <on_crash>destroy</on_crash>
+   <devices>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-parallel-device.xml b/tests/vmx2xmldata/vmx2xml-parallel-device.xml
+index 8aa4591..3c69198 100644
+--- a/tests/vmx2xmldata/vmx2xml-parallel-device.xml
++++ b/tests/vmx2xmldata/vmx2xml-parallel-device.xml
+@@ -16,7 +16,7 @@
+       <target port='0'/>
+     </parallel>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-parallel-file.xml b/tests/vmx2xmldata/vmx2xml-parallel-file.xml
+index 6b0a965..d7ec0cf 100644
+--- a/tests/vmx2xmldata/vmx2xml-parallel-file.xml
++++ b/tests/vmx2xmldata/vmx2xml-parallel-file.xml
+@@ -16,7 +16,7 @@
+       <target port='0'/>
+     </parallel>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-scsi-driver.xml b/tests/vmx2xmldata/vmx2xml-scsi-driver.xml
+index 3ab346f..1a057df 100644
+--- a/tests/vmx2xmldata/vmx2xml-scsi-driver.xml
++++ b/tests/vmx2xmldata/vmx2xml-scsi-driver.xml
+@@ -36,7 +36,7 @@
+     <controller type='scsi' index='2' model='lsisas1068'/>
+     <controller type='scsi' index='3' model='vmpvscsi'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-scsi-writethrough.xml b/tests/vmx2xmldata/vmx2xml-scsi-writethrough.xml
+index fdd01ed..95accb1 100644
+--- a/tests/vmx2xmldata/vmx2xml-scsi-writethrough.xml
++++ b/tests/vmx2xmldata/vmx2xml-scsi-writethrough.xml
+@@ -19,7 +19,7 @@
+     </disk>
+     <controller type='scsi' index='0' model='buslogic'/>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-serial-device.xml b/tests/vmx2xmldata/vmx2xml-serial-device.xml
+index cc45c07..df25d66 100644
+--- a/tests/vmx2xmldata/vmx2xml-serial-device.xml
++++ b/tests/vmx2xmldata/vmx2xml-serial-device.xml
+@@ -24,7 +24,7 @@
+       <target type='serial' port='0'/>
+     </console>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-serial-file.xml b/tests/vmx2xmldata/vmx2xml-serial-file.xml
+index 810398d..84618c3 100644
+--- a/tests/vmx2xmldata/vmx2xml-serial-file.xml
++++ b/tests/vmx2xmldata/vmx2xml-serial-file.xml
+@@ -20,7 +20,7 @@
+       <target type='serial' port='0'/>
+     </console>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-serial-network-client.xml b/tests/vmx2xmldata/vmx2xml-serial-network-client.xml
+index b919080..2e09643 100644
+--- a/tests/vmx2xmldata/vmx2xml-serial-network-client.xml
++++ b/tests/vmx2xmldata/vmx2xml-serial-network-client.xml
+@@ -22,7 +22,7 @@
+       <target type='serial' port='0'/>
+     </console>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-serial-network-server.xml b/tests/vmx2xmldata/vmx2xml-serial-network-server.xml
+index 265036b..65950e8 100644
+--- a/tests/vmx2xmldata/vmx2xml-serial-network-server.xml
++++ b/tests/vmx2xmldata/vmx2xml-serial-network-server.xml
+@@ -22,7 +22,7 @@
+       <target type='serial' port='0'/>
+     </console>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-serial-pipe.xml b/tests/vmx2xmldata/vmx2xml-serial-pipe.xml
+index 029bc9d..bd425e6 100644
+--- a/tests/vmx2xmldata/vmx2xml-serial-pipe.xml
++++ b/tests/vmx2xmldata/vmx2xml-serial-pipe.xml
+@@ -20,7 +20,7 @@
+       <target type='serial' port='0'/>
+     </console>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-sharedfolder.xml b/tests/vmx2xmldata/vmx2xml-sharedfolder.xml
+index 52b75de..7fa3203 100644
+--- a/tests/vmx2xmldata/vmx2xml-sharedfolder.xml
++++ b/tests/vmx2xmldata/vmx2xml-sharedfolder.xml
+@@ -16,7 +16,7 @@
+       <target dir='shared'/>
+     </filesystem>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-smbios.xml b/tests/vmx2xmldata/vmx2xml-smbios.xml
+index cf43714..6773502 100644
+--- a/tests/vmx2xmldata/vmx2xml-smbios.xml
++++ b/tests/vmx2xmldata/vmx2xml-smbios.xml
+@@ -13,7 +13,7 @@
+   <on_crash>destroy</on_crash>
+   <devices>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-svga.xml b/tests/vmx2xmldata/vmx2xml-svga.xml
+index 5f6df89..da0f1a3 100644
+--- a/tests/vmx2xmldata/vmx2xml-svga.xml
++++ b/tests/vmx2xmldata/vmx2xml-svga.xml
+@@ -12,7 +12,7 @@
+   <on_crash>destroy</on_crash>
+   <devices>
+     <video>
+-      <model type='vmvga' vram='8192'/>
++      <model type='vmvga' vram='8192' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-1.xml b/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-1.xml
+index 2f7c14e..9ea6bd7 100644
+--- a/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-1.xml
++++ b/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-1.xml
+@@ -29,7 +29,7 @@
+       <model type='e1000'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>
+diff --git a/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-2.xml b/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-2.xml
+index 9865e34..ce8f802 100644
+--- a/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-2.xml
++++ b/tests/vmx2xmldata/vmx2xml-ws-in-the-wild-2.xml
+@@ -30,7 +30,7 @@
+       <model type='e1000'/>
+     </interface>
+     <video>
+-      <model type='vmvga' vram='4096'/>
++      <model type='vmvga' vram='4096' primary='yes'/>
+     </video>
+   </devices>
+ </domain>

@@ -5,3 +5,8 @@ etc/libvirt/virtlockd.conf
 etc/libvirt/virtlogd.conf
 etc/sasl2/*
 usr/share/polkit-1
+etc/dnsmasq.d-available/libvirt-daemon
+etc/apparmor.d/abstractions/*
+etc/apparmor.d/libvirt/TEMPLATE*
+etc/apparmor.d/usr.*
+etc/apparmor.d/local/*
