@@ -23,7 +23,7 @@ TasksMax=infinity
 NotifyAccess=all
 
 [Install]
-Alias=libvirtd.service
+Alias=libvirt-bin.service
 WantedBy=multi-user.target
 Also=virtlockd.socket
 Also=virtlogd.socket
