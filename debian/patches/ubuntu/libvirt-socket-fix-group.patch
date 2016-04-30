@@ -1,0 +1,16 @@
+Description: Change SocketGroup to libvirtd in libvirtd.socket.in
+ We configure libvirt to allow the libvirtd group members access to the
+ sockets. This needs to be reflected in the systemd socket file.
+Forwarded: no
+Author: Stefan Bader <stefan.bader@canonical.com>
+
+Index: libvirt/daemon/libvirtd.socket.in
+===================================================================
+--- libvirt.orig/daemon/libvirtd.socket.in
++++ libvirt/daemon/libvirtd.socket.in
+@@ -8,4 +8,4 @@ ListenStream=@runstatedir@/libvirt/libvi
+ ; up.  For further information, please see the libvirtd.conf file.
+ SocketMode=0777
+ SocketUser=root
+-SocketGroup=root
++SocketGroup=libvirt
