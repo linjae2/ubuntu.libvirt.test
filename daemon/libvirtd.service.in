@@ -17,15 +17,18 @@ Documentation=http://libvirt.org
 
 [Service]
 Type=notify
-EnvironmentFile=-/etc/default/libvirtd
+EnvironmentFile=-/etc/default/libvirt-bin
 ExecStart=@sbindir@/libvirtd $libvirtd_opts
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 Restart=on-failure
-# Override the maximum number of opened files
-#LimitNOFILE=2048
+LimitNOFILE=infinity
+LimitNPROC=infinity
+TasksMax=infinity
+NotifyAccess=all
 
 [Install]
+Alias=libvirt-bin.service
 WantedBy=multi-user.target
 Also=virtlockd.socket
 Also=virtlogd.socket

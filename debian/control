@@ -1,7 +1,8 @@
 Source: libvirt
 Section: libs
 Priority: optional
-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-minds.org>
 Testsuite: autopkgtest
 Build-Depends:
@@ -10,6 +11,7 @@ Build-Depends:
  dh-systemd (>= 1.18~),
  dh-apparmor [linux-any],
  libxml2-dev (>= 2.9.2+really2.9.1+dfsg1-0.2),
+ libcurl4-gnutls-dev,
  libncurses5-dev,
  libreadline-dev,
  zlib1g-dev,
@@ -20,6 +22,7 @@ Build-Depends:
  libxen-dev (>= 4.3) [i386 amd64 armhf arm64],
  lvm2 [linux-any],
  open-iscsi [linux-any],
+ libxml-libxml-perl,
  libparted0-dev (>= 2.2),
  parted (>= 2.2),
  libdevmapper-dev [linux-any],
@@ -34,27 +37,27 @@ Build-Depends:
  libnl-route-3-dev [linux-any],
  libyajl-dev,
  libpcap0.8-dev,
- libnuma-dev [amd64 i386 ia64 mips mipsel powerpc],
+ libnuma-dev [amd64 i386 ia64 mips mipsel powerpc ppc64el],
  radvd [linux-any],
  libnetcf-dev (>= 1:0.2.3-3~) [linux-any],
  libsanlock-dev [linux-any],
  libaudit-dev [linux-any],
- libselinux1-dev (>= 2.0.82) [linux-any],
+# libselinux1-dev (>= 2.0.82) [linux-any],
  libapparmor-dev [linux-any],
  libsystemd-dev [linux-any],
  nfs-common,
  systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc s390],
- python,
  xsltproc,
 # for --with-storage-sheepdog
- sheepdog [linux-any],
+# sheepdog [linux-any],
 # for --with-storage-rados
  librbd-dev [linux-any],
+ zfsutils-linux [amd64 arm64 ppc64el],
  librados-dev [linux-any],
 # for lxc fuse support
  libfuse-dev [linux-any],
 # for libssh2 connection URIs
- libssh2-1-dev,
+# libssh2-1-dev,
 # for qemu-bridge-helper
  qemu-system-common,
 # For "make check"
@@ -73,6 +76,22 @@ Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/libvirt.git/
 Homepage: http://libvirt.org
 Standards-Version: 3.9.7
 
+Package: libvirt-bin
+Architecture: any
+Depends:
+ ${misc:Depends},
+ libvirt-daemon-system (>= ${binary:Version}),
+ libvirt-clients (>= ${binary:Version}),
+Section: oldlibs
+Priority: extra
+Description: programs for the libvirt library
+ Libvirt is a C toolkit to interact with the virtualization capabilities
+ of recent versions of Linux (and other OSes). The library aims at providing
+ a long term stable C API for different virtualization mechanisms. It currently
+ supports QEMU, KVM, XEN, OpenVZ, LXC, and VirtualBox.
+ .
+ This is a transitional package. You can safely remove it.
+
 Package: libvirt-clients
 Architecture: any
 Depends:
@@ -80,8 +99,8 @@ Depends:
  ${shlibs:Depends},
  libvirt0 (= ${binary:Version}),
 Section: admin
-Replaces: libvirt-bin (<< 1.2.6-1~)
-Conflicts: libvirt-bin (<< 1.2.6-1~)
+Replaces: libvirt-bin (<< 1.3.3-2)
+Conflicts: libvirt-bin (<< 1.3.3-2)
 Suggests:
  libvirt-daemon,
 Description: Programs for the libvirt library
@@ -100,6 +119,8 @@ Depends:
  libvirt0 (= ${binary:Version}),
 Enhances: qemu, qemu-kvm, xen
 Section: admin
+Replaces: libvirt-bin (<< 1.3.3-2)
+Conflicts: libvirt-bin (<< 1.3.3-2)
 Recommends:
  qemu-kvm | qemu (>= 0.9.1),
  libxml2-utils,
@@ -141,8 +162,8 @@ Suggests: radvd, auditd, systemtap, systemd, apparmor,
  nfs-common,
 Breaks: avahi-daemon (<< 0.6.31-3~),
  systemd-sysv (<< 224-1~)
-Replaces: libvirt-bin (<< 1.2.7-4~)
-Conflicts: libvirt-bin (<< 1.2.6-1~)
+Replaces: libvirt-bin (<< 1.3.3-2)
+Conflicts: libvirt-bin (<< 1.3.3-2)
 Description: Libvirt daemon configuration files
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -154,6 +175,8 @@ Description: Libvirt daemon configuration files
 
 Package: libvirt0
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: lvm2 [linux-any]
 Breaks: selinux-policy-default (<< 2:2.20131214-1~), selinux-policy-mls (<< 2:2.20131214-1~)
@@ -179,6 +202,7 @@ Description: documentation for the libvirt library
 Package: libvirt-dev
 Architecture: any
 Section: libdevel
+Multi-Arch: same
 Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64 armhf arm64]
 Replaces: libvirt-bin (<< 1.2.0~)
 Recommends: pkg-config

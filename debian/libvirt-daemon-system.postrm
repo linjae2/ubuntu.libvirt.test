@@ -21,6 +21,9 @@ set -e
 
 case "$1" in
     purge)
+    	if getent group libvirtd >/dev/null; then
+    		delgroup libvirtd || true
+	fi
     	if getent group libvirt >/dev/null; then
     		delgroup libvirt || true
 	fi
@@ -32,6 +35,11 @@ case "$1" in
     	if getent group libvirt-qemu >/dev/null; then
     		delgroup libvirt-qemu || true
 	fi
+
+        for f in usr.sbin.libvirtd usr.lib.libvirt.virt-aa-helper ; do
+            rm -f /etc/apparmor.d/force-complain/$f >/dev/null 2>&1 || true
+            rm -f /etc/apparmor.d/disable/$f >/dev/null 2>&1 || true
+        done
 
 	# Clean up logs and cached capabilities
 	rm -rf /var/log/libvirt \
@@ -47,7 +55,16 @@ case "$1" in
 	    [ ! -d $dir ] || rmdir --ignore-fail-on-non-empty $dir
 	done
     ;;
-    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    remove)
+        if [ -L /etc/dnsmasq.d/libvirt-daemon ]; then
+            echo "Removing libvirt-daemon dnsmasq configuration"
+            rm -f /etc/dnsmasq.d/libvirt-daemon 2>/dev/null || true
+
+            # Try to restart a potential system wide dnsmasq
+            invoke-rc.d dnsmasq restart 2>/dev/null || true
+        fi
+    ;;
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;
 
     *)

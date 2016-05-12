@@ -33,9 +33,8 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_SANLOCK        = --with-sanlock
   WITH_INIT_SCRIPT    =	--with-init-script=systemd
   WITH_SYSTEMD        = --with-systemd-daemon
-  WITH_FIREWALLD      = --with-firewalld
   WITH_AUDIT          = --with-audit
-  WITH_SELINUX        = --with-selinux --with-secdriver-selinux --with-selinux-mount=/sys/fs/selinux
+  WITH_SELINUX        = --without-selinux
   WITH_APPARMOR       = --with-apparmor --with-secdriver-apparmor --with-apparmor-profiles
   ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 armel armhf i386 ia64 powerpc s390))
       WITH_DTRACE     = --with-dtrace
@@ -67,7 +66,6 @@ else
   WITH_NETCF          = --without-netcf
   WITH_INIT_SCRIPT    =	--with-init-script=none
   WITH_SYSTEMD        = --without-systemd-daemon
-  WITH_FIREWALLD      = --without-firewalld
   WITH_AUDIT          = --without-audit
   WITH_SELINUX        = --without-selinux
   WITH_APPARMOR       = --without-apparmor
@@ -85,15 +83,16 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	--disable-rpath          \
 	--with-qemu		 \
 	--with-qemu-user=libvirt-qemu  \
-	--with-qemu-group=libvirt-qemu \
+	--with-qemu-group=kvm \
 	$(WITH_OPENVZ)		 \
 	--with-avahi             \
 	--with-sasl              \
 	--with-yajl              \
-	--with-ssh2		 \
+	--without-ssh2	         \
 	--with-polkit		 \
 	$(WITH_UDEV)		 \
 	--with-storage-fs        \
+	$(WITH_ZFS)		 \
 	$(WITH_STORAGE_LVM)	 \
 	$(WITH_STORAGE_ISCSI)	 \
 	$(WITH_STORAGE_DISK)	 \
@@ -103,7 +102,7 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	$(WITH_NUMA)             \
 	$(WITH_SELINUX)          \
 	$(WITH_APPARMOR)         \
-	--without-esx		 \
+	--with-esx		 \
 	--without-phyp           \
 	$(WITH_CAPNG)		 \
 	--enable-debug		 \
@@ -117,17 +116,32 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	$(WITH_DTRACE)           \
 	$(WITH_AUDIT)            \
 	--without-hal            \
-	$(WITH_FIREWALLD)        \
+	--without-firewalld      \
 	--without-attr
 
 DEB_BUILDDIR := $(CURDIR)/debian/build
 LOGROTATE = $(basename $(basename $(notdir $(wildcard daemon/libvirtd*.logrotate.in))))
 EXAMPLES_DIR = $(CURDIR)/debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
 
+# If we are building on/for a newer release, then we will
+# (in override_dh_install-arch) keep more of the newer rules and therefore
+# require a newer apparmor.
+# We check versions in increasing order so we end up with the strictest
+# applicable requirement.
+APPARMOR_REQ = -V'dist:Conflicts='
+ifeq ($(shell dpkg --compare-versions "$(shell grep DISTRIB_RELEASE /etc/lsb-release | cut -d= -f2)" ge "14.04" && echo "yes"),yes)
+	APPARMOR_REQ = -V'dist:Conflicts=apparmor (<< 2.8.95~2430-0ubuntu4)'
+endif
+ifeq ($(shell dpkg --compare-versions "$(shell grep DISTRIB_RELEASE /etc/lsb-release | cut -d= -f2)" ge "14.10" && echo "yes"),yes)
+	APPARMOR_REQ = -V'dist:Conflicts=apparmor (<< 2.8.96~2652-0ubuntu1)'
+endif
+
+
 %:
 	dh $@ --builddirectory=$(DEB_BUILDDIR) --parallel --with autoreconf
 
 override_dh_auto_configure:
+	SHEEPDOGCLI="/usr/sbin/collie" \
 	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_ARGS)
 	mkdir -p debian/build/docs/internals
 
@@ -142,6 +156,58 @@ override_dh_auto_test:
 	fi
 
 override_dh_install-arch:
+	mkdir -p debian/tmp/etc/apparmor.d/abstractions \
+	         debian/tmp/etc/apparmor.d/libvirt \
+	         debian/tmp/etc/apparmor.d/local
+	cp -f debian/apparmor/libvirt-qemu \
+	      debian/tmp/etc/apparmor.d/abstractions
+	cp -f debian/apparmor/libvirt-lxc debian/tmp/etc/apparmor.d/abstractions
+	cp -f debian/apparmor/usr.lib.libvirt.virt-aa-helper \
+	      debian/tmp/etc/apparmor.d
+	cp -f debian/apparmor/usr.sbin.libvirtd debian/tmp/etc/apparmor.d
+	cp -f debian/apparmor/local-usr.sbin.libvirtd \
+	      debian/tmp/etc/apparmor.d/local/usr.sbin.libvirtd
+	cp -f debian/apparmor/TEMPLATE* debian/tmp/etc/apparmor.d/libvirt
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
+	# update apparmor rules based on target release
+	if dpkg --compare-versions "$(shell grep DISTRIB_RELEASE /etc/lsb-release | cut -d= -f2)" lt "13.10"; then \
+		sed -i "s/^\( *\)\(dbus.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/usr.sbin.libvirtd; \
+		sed -i "s/^\( *\)\(dbus.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-lxc; \
+		sed -i "s/^\( *\)\(dbus.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-qemu; \
+	fi
+	if dpkg --compare-versions "$(shell grep DISTRIB_RELEASE /etc/lsb-release | cut -d= -f2)" lt "14.04"; then \
+		sed -i "s/^\( *\)\(signal.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/usr.sbin.libvirtd; \
+		sed -i "s/^\( *\)\(signal.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-qemu; \
+		sed -i "s/^\( *\)\(signal.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-lxc; \
+		sed -i "s/^\( *\)\(ptrace.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/usr.sbin.libvirtd; \
+		sed -i "s/^\( *\)\(ptrace.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-qemu; \
+		sed -i "s/^\( *\)\(ptrace.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-lxc; \
+	fi
+	if dpkg --compare-versions "$(shell grep DISTRIB_RELEASE /etc/lsb-release | cut -d= -f2)" lt "14.10"; then \
+		sed -i "s/^\( *\)\(unix.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/usr.sbin.libvirtd; \
+		sed -i "s/^\( *\)\(unix.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-qemu; \
+		sed -i "s/^\( *\)\(unix.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-lxc; \
+		sed -i "s/^\( *\)\(network netlink,.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/usr.sbin.libvirtd; \
+		sed -i "s/^\( *\)\(network netlink,.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-qemu; \
+		sed -i "s/^\( *\)\(network netlink,.*,\)/\\1#\\2/g" debian/tmp/etc/apparmor.d/abstractions/libvirt-lxc; \
+	fi
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
+	# don't configure with --libdir, but move the files manually, because
+	# we don't want to change other places in /usr/lib/
+	mkdir -p debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)
+	mv debian/tmp/usr/lib/lib*a \
+	   debian/tmp/usr/lib/lib*.so* \
+	   debian/tmp/usr/lib/pkgconfig \
+	   debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)
+
 	dh_install
 
 	# Don't ship virt-admin yet
@@ -163,8 +229,8 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	dh_install -p libvirt-daemon-system usr/lib/systemd/system lib/systemd/
 	dh_install -p libvirt-daemon-system usr/lib/libvirt/virt-aa-helper
 	dh_install -p libvirt-daemon-system etc/apparmor.d
-	dh_apparmor -p libvirt-daemon-system --profile-name=usr.lib.libvirt.virt-aa-helper
-	dh_apparmor -p libvirt-daemon-system --profile-name=usr.sbin.libvirtd
+	#dh_apparmor -p libvirt-daemon-system --profile-name=usr.lib.libvirt.virt-aa-helper
+	#dh_apparmor -p libvirt-daemon-system --profile-name=usr.sbin.libvirtd
 	# Not all linux arches have systemtap yet
 	mkdir -p debian/tmp/usr/share/systemtap
 	dh_install -p libvirt-daemon-system usr/share/systemtap
@@ -173,6 +239,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	dh_install -p libvirt-daemon-system etc/libvirt/qemu/networks/
 	dh_install -p libvirt-daemon-system etc/libvirt/nwfilter/
 	dh_install -p libvirt-clients etc/libvirt/virt-login-shell.conf
+
 endif
 ifeq ($(XEN_ENABLED), 1)
 	dh_install -p libvirt-daemon-system etc/libvirt/libxl.conf
