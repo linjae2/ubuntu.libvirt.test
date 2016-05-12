@@ -253,9 +253,9 @@ endif
 	done
 
 	# Don't ship any la files
-	rm debian/tmp/usr/lib/libvirt/connection-driver/*.la
+	rm debian/libvirt-daemon/usr/lib/libvirt/connection-driver/*.la
 	# Don't ship api files in the daemon package
-	rm -r debian/tmp/usr/share/libvirt/api/
+	rm -r debian/libvirt-daemon/usr/share/libvirt/api/
 
 override_dh_installinit:
 	dh_systemd_enable
