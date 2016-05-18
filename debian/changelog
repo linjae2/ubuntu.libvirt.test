@@ -1,3 +1,9 @@
+libvirt (1.3.4-1ubuntu2) yakkety; urgency=medium
+
+  * Include installing virtlogd.socket. (LP: #1583009)
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Wed, 18 May 2016 13:56:08 -0500
+
 libvirt (1.3.4-1ubuntu1) yakkety; urgency=medium
 
   * Merge 1.3.4-1 from Debian unstable
