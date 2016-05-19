@@ -34,6 +34,7 @@ case "$1" in
                 else
                     touch /etc/libvirt/TMP_libvirt-bin-disabled
                 fi
+		rm -f /etc/systemd/system/libvirtd.service
             fi
 
             invoke-rc.d libvirt-bin stop
