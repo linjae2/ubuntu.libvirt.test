@@ -52,3 +52,5 @@ ubuntu/daemon-augeas-fix-expected.patch
 ubuntu/fix-xen-xml-in-tests.patch
 ubuntu/libvirtd-service-add-bin-alias.patch
 ubuntu/apibuild-skip-libvirt-common.h
+ubuntu/qemu-Add-virQEMUCapsSupportsGICVersion.patch
+ubuntu/qemu-Automatically-choose-usable-GIC-version.patch
