@@ -17,7 +17,7 @@ Documentation=http://libvirt.org
 
 [Service]
 Type=notify
-EnvironmentFile=-/etc/default/libvirt-bin
+EnvironmentFile=-/etc/default/libvirtd
 ExecStart=@sbindir@/libvirtd $libvirtd_opts
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
@@ -28,7 +28,7 @@ TasksMax=infinity
 NotifyAccess=all
 
 [Install]
-Alias=libvirt-bin.service
 WantedBy=multi-user.target
+Alias=libvirt-bin.service
 Also=virtlockd.socket
 Also=virtlogd.socket

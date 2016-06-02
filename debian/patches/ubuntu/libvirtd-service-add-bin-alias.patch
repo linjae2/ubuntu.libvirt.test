@@ -1,13 +1,11 @@
-Index: libvirt/daemon/libvirtd.service.in
+Index: libvirt-1.3.4/daemon/libvirtd.service.in
 ===================================================================
---- libvirt.orig/daemon/libvirtd.service.in
-+++ libvirt/daemon/libvirtd.service.in
-@@ -23,7 +23,7 @@ TasksMax=infinity
- NotifyAccess=all
+--- libvirt-1.3.4.orig/daemon/libvirtd.service.in	2016-06-02 15:27:29.103432662 +0200
++++ libvirt-1.3.4/daemon/libvirtd.service.in	2016-06-02 15:28:25.559431792 +0200
+@@ -29,5 +29,6 @@ NotifyAccess=all
  
  [Install]
--Alias=libvirtd.service
-+Alias=libvirt-bin.service
  WantedBy=multi-user.target
++Alias=libvirt-bin.service
  Also=virtlockd.socket
  Also=virtlogd.socket
