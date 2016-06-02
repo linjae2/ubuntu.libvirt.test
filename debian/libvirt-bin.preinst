@@ -50,6 +50,24 @@ case "$1" in
             else
                     rm -f /etc/init.d/libvirt-bin
             fi
+       else
+           # The following section is there to sanitize the state if
+           # migration from the old version was done during development
+           # and was left in a bad shape.
+           if [ -f /etc/default/libvirt-bin -a -f /etc/default/libvirtd ]; then
+               rm /etc/default/libvirt-bin
+           fi
+           src="/etc/systemd/system/libvirtd.service"
+           if [ -L "$src" ]; then
+               tgt="`readlink $src`"
+               if [ "$tgt" = "/lib/systemd/system/libvirt-bin.service" ]; then
+                   rm "$src"
+               fi
+           fi
+           src="/etc/systemd/system/multi-user.target.wants/libvirt-bin.service"
+           if [ -L "$src" ]; then
+               rm "$src"
+           fi
        fi
     ;;
 
