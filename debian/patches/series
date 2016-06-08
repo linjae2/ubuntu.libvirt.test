@@ -53,3 +53,6 @@ ubuntu/apibuild-skip-libvirt-common.h
 ubuntu/qemu-Add-virQEMUCapsSupportsGICVersion.patch
 ubuntu/qemu-Automatically-choose-usable-GIC-version.patch
 ubuntu/libvirtd-init-add-bin-alias.patch
+lp1588841-0001-libxl-switch-to-using-libxl_domain_create_restore-fr.patch
+lp1588841-0002-libxl-support-Xen-migration-stream-V2-in-save-restor.patch
+lp1588841-0003-libxl-support-migration-stream-V2-in-migration.patch

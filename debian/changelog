@@ -1,3 +1,13 @@
+libvirt (1.3.4-1ubuntu6) yakkety; urgency=low
+
+  * Fix libvirtd crashing on libxl domain restore (LP: #1588841).
+    Patches cherry-picked from upsream libvirt git tree.
+    - libxl: switch to using libxl_domain_create_restore from v4.4 API
+    - libxl: support Xen migration stream V2 in save/restore
+    - libxl: support migration stream V2 in migration
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Wed, 08 Jun 2016 14:17:23 +0200
+
 libvirt (1.3.4-1ubuntu5) yakkety; urgency=low
 
   * Update the correct apparmor profiles to allow AAVMF and qemu-efi
