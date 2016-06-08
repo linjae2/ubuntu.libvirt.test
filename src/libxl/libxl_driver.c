@@ -323,7 +323,7 @@ libxlAutostartDomain(virDomainObjPtr vm,
     }
 
     if (vm->autostart && !virDomainObjIsActive(vm) &&
-        libxlDomainStart(driver, vm, false, -1) < 0) {
+        libxlDomainStartNew(driver, vm, false) < 0) {
         err = virGetLastError();
         VIR_ERROR(_("Failed to autostart VM '%s': %s"),
                   vm->def->name,
@@ -1003,8 +1003,8 @@ libxlDomainCreateXML(virConnectPtr conn, const char *xml,
         goto cleanup;
     }
 
-    if (libxlDomainStart(driver, vm, (flags & VIR_DOMAIN_START_PAUSED) != 0,
-                     -1) < 0) {
+    if (libxlDomainStartNew(driver, vm,
+                         (flags & VIR_DOMAIN_START_PAUSED) != 0) < 0) {
         if (!vm->persistent) {
             virDomainObjListRemove(driver->domains, vm);
             vm = NULL;
@@ -1823,7 +1823,9 @@ libxlDomainRestoreFlags(virConnectPtr conn, const char *from,
         goto cleanup;
     }
 
-    ret = libxlDomainStart(driver, vm, (flags & VIR_DOMAIN_SAVE_PAUSED) != 0, fd);
+    ret = libxlDomainStartRestore(driver, vm,
+                                  (flags & VIR_DOMAIN_SAVE_PAUSED) != 0,
+                                  fd, hdr.version);
     if (ret < 0 && !vm->persistent)
         virDomainObjListRemove(driver->domains, vm);
 
@@ -2686,7 +2688,8 @@ libxlDomainCreateWithFlags(virDomainPtr dom,
         goto endjob;
     }
 
-    ret = libxlDomainStart(driver, vm, (flags & VIR_DOMAIN_START_PAUSED) != 0, -1);
+    ret = libxlDomainStartNew(driver, vm,
+                              (flags & VIR_DOMAIN_START_PAUSED) != 0);
     if (ret < 0)
         goto endjob;
     dom->id = vm->def->id;
@@ -5153,8 +5156,8 @@ static char *
 libxlDomainMigrateBegin3Params(virDomainPtr domain,
                                virTypedParameterPtr params,
                                int nparams,
-                               char **cookieout ATTRIBUTE_UNUSED,
-                               int *cookieoutlen ATTRIBUTE_UNUSED,
+                               char **cookieout,
+                               int *cookieoutlen,
                                unsigned int flags)
 {
     const char *xmlin = NULL;
@@ -5195,15 +5198,16 @@ libxlDomainMigrateBegin3Params(virDomainPtr domain,
         return NULL;
     }
 
-    return libxlDomainMigrationBegin(domain->conn, vm, xmlin);
+    return libxlDomainMigrationBegin(domain->conn, vm, xmlin,
+                                     cookieout, cookieoutlen);
 }
 
 static int
 libxlDomainMigratePrepare3Params(virConnectPtr dconn,
                                  virTypedParameterPtr params,
                                  int nparams,
-                                 const char *cookiein ATTRIBUTE_UNUSED,
-                                 int cookieinlen ATTRIBUTE_UNUSED,
+                                 const char *cookiein,
+                                 int cookieinlen,
                                  char **cookieout ATTRIBUTE_UNUSED,
                                  int *cookieoutlen ATTRIBUTE_UNUSED,
                                  char **uri_out,
@@ -5242,7 +5246,8 @@ libxlDomainMigratePrepare3Params(virConnectPtr dconn,
     if (virDomainMigratePrepare3ParamsEnsureACL(dconn, def) < 0)
         goto error;
 
-    if (libxlDomainMigrationPrepare(dconn, &def, uri_in, uri_out, flags) < 0)
+    if (libxlDomainMigrationPrepare(dconn, &def, uri_in, uri_out,
+                                    cookiein, cookieinlen, flags) < 0)
         goto error;
 
     return 0;
