@@ -903,33 +903,26 @@ void virNetServerClientSetDispatcher(virNetServerClientPtr client,
 }
 
 
-const char *virNetServerClientLocalAddrString(virNetServerClientPtr client)
+const char *virNetServerClientLocalAddrStringSASL(virNetServerClientPtr client)
 {
     if (!client->sock)
         return NULL;
-    return virNetSocketLocalAddrString(client->sock);
+    return virNetSocketLocalAddrStringSASL(client->sock);
 }
 
 
-const char *virNetServerClientRemoteAddrString(virNetServerClientPtr client)
+const char *virNetServerClientRemoteAddrStringSASL(virNetServerClientPtr client)
 {
     if (!client->sock)
         return NULL;
-    return virNetSocketRemoteAddrString(client->sock);
+    return virNetSocketRemoteAddrStringSASL(client->sock);
 }
 
-char *virNetServerClientLocalAddrFormatSASL(virNetServerClientPtr client)
+const char *virNetServerClientRemoteAddrStringURI(virNetServerClientPtr client)
 {
     if (!client->sock)
         return NULL;
-    return virNetSocketLocalAddrFormatSASL(client->sock);
-}
-
-char *virNetServerClientRemoteAddrFormatSASL(virNetServerClientPtr client)
-{
-    if (!client->sock)
-        return NULL;
-    return virNetSocketRemoteAddrFormatSASL(client->sock);
+    return virNetSocketRemoteAddrStringURI(client->sock);
 }
 
 void virNetServerClientDispose(void *obj)
@@ -1613,19 +1606,23 @@ virNetServerClientGetTransport(virNetServerClientPtr client)
 
 int
 virNetServerClientGetInfo(virNetServerClientPtr client,
-                          bool *readonly, const char **sock_addr,
+                          bool *readonly, char **sock_addr,
                           virIdentityPtr *identity)
 {
     int ret = -1;
+    const char *addr;
 
     virObjectLock(client);
     *readonly = client->readonly;
 
-    if (!(*sock_addr = virNetServerClientRemoteAddrString(client))) {
+    if (!(addr = virNetServerClientRemoteAddrStringURI(client))) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("No network socket associated with client"));
         goto cleanup;
     }
+
+    if (VIR_STRDUP(*sock_addr, addr) < 0)
+        goto cleanup;
 
     if (!client->identity) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",

@@ -1,7 +1,7 @@
 /*
  * uml_conf.c: UML driver configuration
  *
- * Copyright (C) 2006-2014 Red Hat, Inc.
+ * Copyright (C) 2006-2014, 2016 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -65,7 +65,7 @@ virCapsPtr umlCapsInit(void)
      * unexpected failures. We don't want to break the QEMU
      * driver in this scenario, so log errors & carry on
      */
-    if (nodeCapsInitNUMA(NULL, caps) < 0) {
+    if (nodeCapsInitNUMA(caps) < 0) {
         virCapabilitiesFreeNUMAInfo(caps);
         VIR_WARN("Failed to query host NUMA topology, disabling NUMA capabilities");
     }
@@ -173,7 +173,7 @@ umlBuildCommandLineNet(virConnectPtr conn,
         virBufferAddLit(&buf, "tuntap,");
         if (def->ifname)
             virBufferAdd(&buf, def->ifname, -1);
-        if (def->nips > 0) {
+        if (def->guestIP.nips > 0) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("IP address not supported for ethernet interface"));
             goto error;

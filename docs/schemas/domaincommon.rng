@@ -412,6 +412,8 @@
           <attribute name="name">
             <choice>
               <value>cmt</value>
+              <value>mbmt</value>
+              <value>mbml</value>
             </choice>
           </attribute>
           <attribute name="enabled">
@@ -1618,6 +1620,9 @@
       <optional>
         <ref name="driverIOThread"/>
       </optional>
+      <optional>
+        <ref name="detect_zeroes"/>
+      </optional>
       <empty/>
     </element>
   </define>
@@ -1700,6 +1705,15 @@
   <define name="driverIOThread">
     <attribute name='iothread'>
       <ref name="unsignedInt"/>
+    </attribute>
+  </define>
+  <define name="detect_zeroes">
+    <attribute name='detect_zeroes'>
+      <choice>
+        <value>off</value>
+        <value>on</value>
+        <value>unmap</value>
+      </choice>
     </attribute>
   </define>
   <define name="controller">
@@ -2128,9 +2142,6 @@
           <interleave>
             <optional>
               <element name="source">
-                <attribute name="dev">
-                  <ref name="deviceName"/>
-                </attribute>
                 <empty/>
               </element>
             </optional>
@@ -2409,27 +2420,7 @@
           <empty/>
         </element>
       </optional>
-      <zeroOrMore>
-        <element name="ip">
-          <attribute name="address">
-            <ref name="ipAddr"/>
-          </attribute>
-          <optional>
-            <attribute name="family">
-              <ref name="addr-family"/>
-            </attribute>
-          </optional>
-          <optional>
-            <attribute name="prefix">
-              <ref name="ipPrefix"/>
-            </attribute>
-          </optional>
-          <empty/>
-        </element>
-      </zeroOrMore>
-      <zeroOrMore>
-        <ref name="route"/>
-      </zeroOrMore>
+      <ref name="interface-ip-info"/>
       <optional>
         <element name="script">
           <attribute name="path">
@@ -2617,6 +2608,33 @@
         <ref name="vlan"/>
       </optional>
     </interleave>
+  </define>
+
+  <!--
+      All ip-related info for either the host or guest side of an interface
+  -->
+  <define name="interface-ip-info">
+    <zeroOrMore>
+      <element name="ip">
+        <attribute name="address">
+          <ref name="ipAddr"/>
+        </attribute>
+        <optional>
+          <attribute name="family">
+            <ref name="addr-family"/>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="prefix">
+            <ref name="ipPrefix"/>
+          </attribute>
+        </optional>
+        <empty/>
+      </element>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="route"/>
+    </zeroOrMore>
   </define>
   <!--
       An emulator description is just a path to the binary used for the task
@@ -2975,6 +2993,21 @@
                 <ref name="addrIPorName"/>
               </attribute>
             </optional>
+          </group>
+          <group>
+            <attribute name="type">
+              <value>socket</value>
+            </attribute>
+            <optional>
+              <attribute name="socket">
+                <ref name="absFilePath"/>
+              </attribute>
+            </optional>
+          </group>
+          <group>
+            <attribute name="type">
+              <value>none</value>
+            </attribute>
           </group>
         </choice>
       </element>
@@ -3981,27 +4014,7 @@
           <ref name="deviceName"/>
         </element>
       </element>
-      <zeroOrMore>
-        <element name="ip">
-          <attribute name="address">
-            <ref name="ipAddr"/>
-          </attribute>
-          <optional>
-            <attribute name="family">
-              <ref name="addr-family"/>
-            </attribute>
-          </optional>
-          <optional>
-            <attribute name="prefix">
-              <ref name="ipPrefix"/>
-            </attribute>
-          </optional>
-          <empty/>
-        </element>
-      </zeroOrMore>
-      <zeroOrMore>
-        <ref name="route"/>
-      </zeroOrMore>
+      <ref name="interface-ip-info"/>
     </interleave>
   </define>
 
