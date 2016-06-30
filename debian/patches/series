@@ -70,3 +70,5 @@ ubuntu/qemu-Fill-in-GIC-capabilities.patch
 ubuntu/qemu-Cache-GIC-capabilities.patch
 ubuntu/qemu-Add-virQEMUCapsSupportsGICVersion.patch
 ubuntu/qemu-Automatically-choose-usable-GIC-version.patch
+fix-vol-remove-vir-file-breakout.patch
+fix-vol-remove-only-setuid-for-virFileRemove-if-on-NFS.patch
