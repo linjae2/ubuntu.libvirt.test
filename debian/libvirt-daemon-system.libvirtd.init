@@ -134,6 +134,20 @@ force_stop() {
     return 0
 }
 
+wait_on_sockfile() {
+    sockfile=/var/run/libvirt/libvirt-sock
+    while [ ! -S $sockfile ] ; do
+        if ! running ; then
+            # stop/restart/force-stop event triggered before sockfile is created
+            exit 1
+        fi
+        echo "waiting for $sockfile."
+        sleep 0.5
+    done
+    echo "$sockfile ready."
+    return 0
+}
+
 case "$1" in
   start)
 	if check_start_libvirtd_option; then
@@ -152,6 +166,7 @@ case "$1" in
 		fi
 		start-stop-daemon --start --quiet --pidfile $PIDFILE \
 			--exec $DAEMON -- -d $libvirtd_opts
+		wait_on_sockfile
 		if running; then
 			log_end_msg 0
 		else

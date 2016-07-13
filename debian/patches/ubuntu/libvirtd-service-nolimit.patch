@@ -1,0 +1,16 @@
+Index: libvirt-1.3.4/daemon/libvirtd.service.in
+===================================================================
+--- libvirt-1.3.4.orig/daemon/libvirtd.service.in	2016-06-02 15:23:20.819436490 +0200
++++ libvirt-1.3.4/daemon/libvirtd.service.in	2016-06-02 15:23:20.815436490 +0200
+@@ -22,8 +22,9 @@ ExecStart=@sbindir@/libvirtd $libvirtd_o
+ ExecReload=/bin/kill -HUP $MAINPID
+ KillMode=process
+ Restart=on-failure
+-# Override the maximum number of opened files
+-#LimitNOFILE=2048
++LimitNOFILE=infinity
++LimitNPROC=infinity
++TasksMax=infinity
+ 
+ [Install]
+ WantedBy=multi-user.target

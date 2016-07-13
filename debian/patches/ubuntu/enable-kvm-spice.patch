@@ -1,0 +1,12 @@
+Index: libvirt/src/qemu/qemu_capabilities.c
+===================================================================
+--- libvirt.orig/src/qemu/qemu_capabilities.c	2016-08-15 14:51:21.018482827 +0200
++++ libvirt/src/qemu/qemu_capabilities.c	2016-08-15 14:51:21.014482827 +0200
+@@ -845,6 +845,7 @@ virQEMUCapsInitGuest(virCapsPtr caps,
+         const char *kvmbins[] = {
+             "/usr/libexec/qemu-kvm", /* RHEL */
+             "qemu-kvm", /* Fedora */
++            "kvm-spice", /* qemu-kvm-spice Ubuntu package */
+             "kvm", /* Debian/Ubuntu */
+             NULL,
+         };

@@ -1,0 +1,14 @@
+Index: libvirt/src/lxc/lxc_driver.c
+===================================================================
+--- libvirt.orig/src/lxc/lxc_driver.c	2016-08-15 14:51:48.374482095 +0200
++++ libvirt/src/lxc/lxc_driver.c	2016-08-15 14:51:48.370482095 +0200
+@@ -1595,6 +1595,9 @@ lxcSecurityInit(virLXCDriverConfigPtr cf
+     virSecurityManagerPtr mgr = virSecurityManagerNew(cfg->securityDriverName,
+                                                       LXC_DRIVER_NAME, flags);
+     if (!mgr)
++        mgr = virSecurityManagerNew(NULL, LXC_DRIVER_NAME, flags);
++
++    if (!mgr)
+         goto error;
+ 
+     return mgr;

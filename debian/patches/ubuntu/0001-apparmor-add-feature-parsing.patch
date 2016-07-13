@@ -1,0 +1,936 @@
+Subject: [PATCH 0001/0004] Add aa profile post-process support
+
+Index: libvirt/configure.ac
+===================================================================
+--- libvirt.orig/configure.ac	2016-08-16 11:33:49.885114319 +0200
++++ libvirt/configure.ac	2016-08-16 11:33:49.881114319 +0200
+@@ -1470,6 +1470,28 @@ if test "$with_apparmor" = "no"; then
+ fi
+ AM_CONDITIONAL([WITH_APPARMOR_PROFILES], [test "$with_apparmor_profiles" != "no"])
+ 
++AC_ARG_WITH([apparmor-profiles-version],
++  [AS_HELP_STRING([--with-apparmor-profiles-version],
++    [install apparmor profiles for apparmor version @<:@default=check@:>@])],
++  [],
++  [with_apparmor_profiles_version=check])
++if test "$with_apparmor_profiles" = "no"; then
++  with_apparmor_profiles_version="no"
++fi
++if test "$with_apparmor_profiles_version" = "check"; then
++  APPARMOR_VERSION=`pkg-config --modversion libapparmor|cut -d. -f1-2`
++elif test "$with_apparmor_profiles_version" != "no"; then
++  APPARMOR_VERSION=$withval
++fi
++if test "$with_apparmor_profiles_version" != "no"; then
++  APPARMOR_MAJOR_VERSION=`echo $APPARMOR_VERSION|cut -d. -f1`
++  APPARMOR_MINOR_VERSION=`echo $APPARMOR_VERSION|cut -d. -f2`
++  APPARMOR_VERSION_NUMBER=`expr $APPARMOR_MAJOR_VERSION \* 1000 + $APPARMOR_MINOR_VERSION`
++  AC_DEFINE_UNQUOTED([APPARMOR_VERSION_NUMBER],
++    $APPARMOR_VERSION_NUMBER,
++    [Version number of apparmor library (for profile features)])
++fi
++
+ dnl DTrace static probes
+ AC_ARG_WITH([dtrace],
+   [AS_HELP_STRING([--with-dtrace],
+Index: libvirt/examples/Makefile.am
+===================================================================
+--- libvirt.orig/examples/Makefile.am	2016-08-16 11:33:49.885114319 +0200
++++ libvirt/examples/Makefile.am	2016-08-16 11:35:13.009113038 +0200
+@@ -18,13 +18,12 @@
+ 
+ FILTERS = $(wildcard $(srcdir)/xml/nwfilter/*.xml)
+ 
++CLEANFILES =
++BUILT_SOURCES =
++
+ EXTRA_DIST = \
+ 	apparmor/TEMPLATE.qemu \
+ 	apparmor/TEMPLATE.lxc \
+-	apparmor/libvirt-qemu \
+-	apparmor/libvirt-lxc \
+-	apparmor/usr.lib.libvirt.virt-aa-helper \
+-	apparmor/usr.sbin.libvirtd \
+ 	lxcconvert/virt-lxc-convert \
+ 	polkit/libvirt-acl.rules \
+ 	systemtap/events.stp \
+@@ -68,6 +67,12 @@ admin_client_info_SOURCES = admin/client
+ admin_client_close_SOURCES = admin/client_close.c
+ 
+ if WITH_APPARMOR_PROFILES
++BUILT_SOURCES += \
++	apparmor/usr.lib.libvirt.virt-aa-helper \
++	apparmor/usr.sbin.libvirtd \
++	apparmor/libvirt-qemu \
++	apparmor/libvirt-lxc
++
+ apparmordir = $(sysconfdir)/apparmor.d/
+ apparmor_DATA = \
+ 	apparmor/usr.lib.libvirt.virt-aa-helper \
+@@ -85,6 +90,36 @@ templates_DATA = \
+ 	apparmor/TEMPLATE.qemu \
+ 	apparmor/TEMPLATE.lxc \
+ 	$(NULL)
++
++apparmor/stamp:
++	test -d apparmor || mkdir apparmor
++	touch apparmor/stamp
++
++apparmor/libvirt-lxc:   $(srcdir)/apparmor/libvirt-lxc.in \
++			$(srcdir)/apparmor/profile-preprocess \
++			../config.h apparmor/stamp
++	sh $(srcdir)/apparmor/profile-preprocess $< >$@
++
++apparmor/libvirt-qemu:	$(srcdir)/apparmor/libvirt-qemu.in \
++			$(srcdir)/apparmor/profile-preprocess \
++			../config.h apparmor/stamp
++	sh $(srcdir)/apparmor/profile-preprocess $< >$@
++
++apparmor/usr.lib.libvirt.virt-aa-helper: \
++			$(srcdir)/apparmor/usr.lib.libvirt.virt-aa-helper.in \
++			$(srcdir)/apparmor/profile-preprocess \
++			../config.h apparmor/stamp
++	sh $(srcdir)/apparmor/profile-preprocess $< >$@
++
++apparmor/usr.sbin.libvirtd: \
++			$(srcdir)/apparmor/usr.sbin.libvirtd.in \
++			$(srcdir)/apparmor/profile-preprocess \
++			../config.h apparmor/stamp
++	sh $(srcdir)/apparmor/profile-preprocess $< >$@
++
++CLEANFILES += apparmor/libvirt-lxc apparmor/libvirt-qemu
++CLEANFILES += apparmor/usr.lib.libvirt.virt-aa-helper
++CLEANFILES += apparmor/usr.sbin.libvirtd
+ endif WITH_APPARMOR_PROFILES
+ 
+ if WITH_NWFILTER
+Index: libvirt/examples/apparmor/profile-preprocess
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt/examples/apparmor/profile-preprocess	2016-08-16 11:33:49.881114319 +0200
+@@ -0,0 +1,26 @@
++#!/bin/sh
++
++PROFILES_VERSION=$(
++	awk '$1=="#define" && $2=="APPARMOR_VERSION_NUMBER"{
++		print $3
++	}' ../config.h)
++
++awk -vVERSION=$PROFILES_VERSION '
++$1 == "@@ifge" {
++	if (VERSION < $2)
++		skip=1
++	next
++}
++$1 == "@else" && skip == 1{
++	skip=0
++	next
++}
++$1 == "@@end"{
++	skip=0
++	next
++}
++!skip{
++	print
++}' $1
++
++exit 0
+Index: libvirt/examples/apparmor/libvirt-lxc
+===================================================================
+--- libvirt.orig/examples/apparmor/libvirt-lxc	2016-08-16 11:33:49.885114319 +0200
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
+@@ -1,116 +0,0 @@
+-# Last Modified: Fri Feb  7 13:01:36 2014
+-
+-  #include <abstractions/base>
+-
+-  umount,
+-
+-  # ignore DENIED message on / remount
+-  deny mount options=(ro, remount) -> /,
+-
+-  # allow tmpfs mounts everywhere
+-  mount fstype=tmpfs,
+-
+-  # allow mqueue mounts everywhere
+-  mount fstype=mqueue,
+-
+-  # allow fuse mounts everywhere
+-  mount fstype=fuse.*,
+-
+-  # deny writes in /proc/sys/fs but allow binfmt_misc to be mounted
+-  mount fstype=binfmt_misc -> /proc/sys/fs/binfmt_misc/,
+-  deny @{PROC}/sys/fs/** wklx,
+-
+-  # allow efivars to be mounted, writing to it will be blocked though
+-  mount fstype=efivarfs -> /sys/firmware/efi/efivars/,
+-
+-  # block some other dangerous paths
+-  deny @{PROC}/sysrq-trigger rwklx,
+-  deny @{PROC}/mem rwklx,
+-  deny @{PROC}/kmem rwklx,
+-
+-  # deny writes in /sys except for /sys/fs/cgroup, also allow
+-  # fusectl, securityfs and debugfs to be mounted there (read-only)
+-  mount fstype=fusectl -> /sys/fs/fuse/connections/,
+-  mount fstype=securityfs -> /sys/kernel/security/,
+-  mount fstype=debugfs -> /sys/kernel/debug/,
+-  mount fstype=proc -> /proc/,
+-  mount fstype=sysfs -> /sys/,
+-  deny /sys/firmware/efi/efivars/** rwklx,
+-  deny /sys/kernel/security/** rwklx,
+-
+-  # generated by: lxc-generate-aa-rules.py container-rules.base
+-  deny /proc/sys/[^kn]*{,/**} wklx,
+-  deny /proc/sys/k[^e]*{,/**} wklx,
+-  deny /proc/sys/ke[^r]*{,/**} wklx,
+-  deny /proc/sys/ker[^n]*{,/**} wklx,
+-  deny /proc/sys/kern[^e]*{,/**} wklx,
+-  deny /proc/sys/kerne[^l]*{,/**} wklx,
+-  deny /proc/sys/kernel/[^smhd]*{,/**} wklx,
+-  deny /proc/sys/kernel/d[^o]*{,/**} wklx,
+-  deny /proc/sys/kernel/do[^m]*{,/**} wklx,
+-  deny /proc/sys/kernel/dom[^a]*{,/**} wklx,
+-  deny /proc/sys/kernel/doma[^i]*{,/**} wklx,
+-  deny /proc/sys/kernel/domai[^n]*{,/**} wklx,
+-  deny /proc/sys/kernel/domain[^n]*{,/**} wklx,
+-  deny /proc/sys/kernel/domainn[^a]*{,/**} wklx,
+-  deny /proc/sys/kernel/domainna[^m]*{,/**} wklx,
+-  deny /proc/sys/kernel/domainnam[^e]*{,/**} wklx,
+-  deny /proc/sys/kernel/domainname?*{,/**} wklx,
+-  deny /proc/sys/kernel/h[^o]*{,/**} wklx,
+-  deny /proc/sys/kernel/ho[^s]*{,/**} wklx,
+-  deny /proc/sys/kernel/hos[^t]*{,/**} wklx,
+-  deny /proc/sys/kernel/host[^n]*{,/**} wklx,
+-  deny /proc/sys/kernel/hostn[^a]*{,/**} wklx,
+-  deny /proc/sys/kernel/hostna[^m]*{,/**} wklx,
+-  deny /proc/sys/kernel/hostnam[^e]*{,/**} wklx,
+-  deny /proc/sys/kernel/hostname?*{,/**} wklx,
+-  deny /proc/sys/kernel/m[^s]*{,/**} wklx,
+-  deny /proc/sys/kernel/ms[^g]*{,/**} wklx,
+-  deny /proc/sys/kernel/msg*/** wklx,
+-  deny /proc/sys/kernel/s[^he]*{,/**} wklx,
+-  deny /proc/sys/kernel/se[^m]*{,/**} wklx,
+-  deny /proc/sys/kernel/sem*/** wklx,
+-  deny /proc/sys/kernel/sh[^m]*{,/**} wklx,
+-  deny /proc/sys/kernel/shm*/** wklx,
+-  deny /proc/sys/kernel?*{,/**} wklx,
+-  deny /proc/sys/n[^e]*{,/**} wklx,
+-  deny /proc/sys/ne[^t]*{,/**} wklx,
+-  deny /proc/sys/net?*{,/**} wklx,
+-  deny /sys/[^fdc]*{,/**} wklx,
+-  deny /sys/c[^l]*{,/**} wklx,
+-  deny /sys/cl[^a]*{,/**} wklx,
+-  deny /sys/cla[^s]*{,/**} wklx,
+-  deny /sys/clas[^s]*{,/**} wklx,
+-  deny /sys/class/[^n]*{,/**} wklx,
+-  deny /sys/class/n[^e]*{,/**} wklx,
+-  deny /sys/class/ne[^t]*{,/**} wklx,
+-  deny /sys/class/net?*{,/**} wklx,
+-  deny /sys/class?*{,/**} wklx,
+-  deny /sys/d[^e]*{,/**} wklx,
+-  deny /sys/de[^v]*{,/**} wklx,
+-  deny /sys/dev[^i]*{,/**} wklx,
+-  deny /sys/devi[^c]*{,/**} wklx,
+-  deny /sys/devic[^e]*{,/**} wklx,
+-  deny /sys/device[^s]*{,/**} wklx,
+-  deny /sys/devices/[^v]*{,/**} wklx,
+-  deny /sys/devices/v[^i]*{,/**} wklx,
+-  deny /sys/devices/vi[^r]*{,/**} wklx,
+-  deny /sys/devices/vir[^t]*{,/**} wklx,
+-  deny /sys/devices/virt[^u]*{,/**} wklx,
+-  deny /sys/devices/virtu[^a]*{,/**} wklx,
+-  deny /sys/devices/virtua[^l]*{,/**} wklx,
+-  deny /sys/devices/virtual/[^n]*{,/**} wklx,
+-  deny /sys/devices/virtual/n[^e]*{,/**} wklx,
+-  deny /sys/devices/virtual/ne[^t]*{,/**} wklx,
+-  deny /sys/devices/virtual/net?*{,/**} wklx,
+-  deny /sys/devices/virtual?*{,/**} wklx,
+-  deny /sys/devices?*{,/**} wklx,
+-  deny /sys/f[^s]*{,/**} wklx,
+-  deny /sys/fs/[^c]*{,/**} wklx,
+-  deny /sys/fs/c[^g]*{,/**} wklx,
+-  deny /sys/fs/cg[^r]*{,/**} wklx,
+-  deny /sys/fs/cgr[^o]*{,/**} wklx,
+-  deny /sys/fs/cgro[^u]*{,/**} wklx,
+-  deny /sys/fs/cgrou[^p]*{,/**} wklx,
+-  deny /sys/fs/cgroup?*{,/**} wklx,
+-  deny /sys/fs?*{,/**} wklx,
+Index: libvirt/examples/apparmor/libvirt-lxc.in
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt/examples/apparmor/libvirt-lxc.in	2016-08-16 11:33:55.000000000 +0200
+@@ -0,0 +1,116 @@
++# Last Modified: Fri Feb  7 13:01:36 2014
++
++  #include <abstractions/base>
++
++  umount,
++
++  # ignore DENIED message on / remount
++  deny mount options=(ro, remount) -> /,
++
++  # allow tmpfs mounts everywhere
++  mount fstype=tmpfs,
++
++  # allow mqueue mounts everywhere
++  mount fstype=mqueue,
++
++  # allow fuse mounts everywhere
++  mount fstype=fuse.*,
++
++  # deny writes in /proc/sys/fs but allow binfmt_misc to be mounted
++  mount fstype=binfmt_misc -> /proc/sys/fs/binfmt_misc/,
++  deny @{PROC}/sys/fs/** wklx,
++
++  # allow efivars to be mounted, writing to it will be blocked though
++  mount fstype=efivarfs -> /sys/firmware/efi/efivars/,
++
++  # block some other dangerous paths
++  deny @{PROC}/sysrq-trigger rwklx,
++  deny @{PROC}/mem rwklx,
++  deny @{PROC}/kmem rwklx,
++
++  # deny writes in /sys except for /sys/fs/cgroup, also allow
++  # fusectl, securityfs and debugfs to be mounted there (read-only)
++  mount fstype=fusectl -> /sys/fs/fuse/connections/,
++  mount fstype=securityfs -> /sys/kernel/security/,
++  mount fstype=debugfs -> /sys/kernel/debug/,
++  mount fstype=proc -> /proc/,
++  mount fstype=sysfs -> /sys/,
++  deny /sys/firmware/efi/efivars/** rwklx,
++  deny /sys/kernel/security/** rwklx,
++
++  # generated by: lxc-generate-aa-rules.py container-rules.base
++  deny /proc/sys/[^kn]*{,/**} wklx,
++  deny /proc/sys/k[^e]*{,/**} wklx,
++  deny /proc/sys/ke[^r]*{,/**} wklx,
++  deny /proc/sys/ker[^n]*{,/**} wklx,
++  deny /proc/sys/kern[^e]*{,/**} wklx,
++  deny /proc/sys/kerne[^l]*{,/**} wklx,
++  deny /proc/sys/kernel/[^smhd]*{,/**} wklx,
++  deny /proc/sys/kernel/d[^o]*{,/**} wklx,
++  deny /proc/sys/kernel/do[^m]*{,/**} wklx,
++  deny /proc/sys/kernel/dom[^a]*{,/**} wklx,
++  deny /proc/sys/kernel/doma[^i]*{,/**} wklx,
++  deny /proc/sys/kernel/domai[^n]*{,/**} wklx,
++  deny /proc/sys/kernel/domain[^n]*{,/**} wklx,
++  deny /proc/sys/kernel/domainn[^a]*{,/**} wklx,
++  deny /proc/sys/kernel/domainna[^m]*{,/**} wklx,
++  deny /proc/sys/kernel/domainnam[^e]*{,/**} wklx,
++  deny /proc/sys/kernel/domainname?*{,/**} wklx,
++  deny /proc/sys/kernel/h[^o]*{,/**} wklx,
++  deny /proc/sys/kernel/ho[^s]*{,/**} wklx,
++  deny /proc/sys/kernel/hos[^t]*{,/**} wklx,
++  deny /proc/sys/kernel/host[^n]*{,/**} wklx,
++  deny /proc/sys/kernel/hostn[^a]*{,/**} wklx,
++  deny /proc/sys/kernel/hostna[^m]*{,/**} wklx,
++  deny /proc/sys/kernel/hostnam[^e]*{,/**} wklx,
++  deny /proc/sys/kernel/hostname?*{,/**} wklx,
++  deny /proc/sys/kernel/m[^s]*{,/**} wklx,
++  deny /proc/sys/kernel/ms[^g]*{,/**} wklx,
++  deny /proc/sys/kernel/msg*/** wklx,
++  deny /proc/sys/kernel/s[^he]*{,/**} wklx,
++  deny /proc/sys/kernel/se[^m]*{,/**} wklx,
++  deny /proc/sys/kernel/sem*/** wklx,
++  deny /proc/sys/kernel/sh[^m]*{,/**} wklx,
++  deny /proc/sys/kernel/shm*/** wklx,
++  deny /proc/sys/kernel?*{,/**} wklx,
++  deny /proc/sys/n[^e]*{,/**} wklx,
++  deny /proc/sys/ne[^t]*{,/**} wklx,
++  deny /proc/sys/net?*{,/**} wklx,
++  deny /sys/[^fdc]*{,/**} wklx,
++  deny /sys/c[^l]*{,/**} wklx,
++  deny /sys/cl[^a]*{,/**} wklx,
++  deny /sys/cla[^s]*{,/**} wklx,
++  deny /sys/clas[^s]*{,/**} wklx,
++  deny /sys/class/[^n]*{,/**} wklx,
++  deny /sys/class/n[^e]*{,/**} wklx,
++  deny /sys/class/ne[^t]*{,/**} wklx,
++  deny /sys/class/net?*{,/**} wklx,
++  deny /sys/class?*{,/**} wklx,
++  deny /sys/d[^e]*{,/**} wklx,
++  deny /sys/de[^v]*{,/**} wklx,
++  deny /sys/dev[^i]*{,/**} wklx,
++  deny /sys/devi[^c]*{,/**} wklx,
++  deny /sys/devic[^e]*{,/**} wklx,
++  deny /sys/device[^s]*{,/**} wklx,
++  deny /sys/devices/[^v]*{,/**} wklx,
++  deny /sys/devices/v[^i]*{,/**} wklx,
++  deny /sys/devices/vi[^r]*{,/**} wklx,
++  deny /sys/devices/vir[^t]*{,/**} wklx,
++  deny /sys/devices/virt[^u]*{,/**} wklx,
++  deny /sys/devices/virtu[^a]*{,/**} wklx,
++  deny /sys/devices/virtua[^l]*{,/**} wklx,
++  deny /sys/devices/virtual/[^n]*{,/**} wklx,
++  deny /sys/devices/virtual/n[^e]*{,/**} wklx,
++  deny /sys/devices/virtual/ne[^t]*{,/**} wklx,
++  deny /sys/devices/virtual/net?*{,/**} wklx,
++  deny /sys/devices/virtual?*{,/**} wklx,
++  deny /sys/devices?*{,/**} wklx,
++  deny /sys/f[^s]*{,/**} wklx,
++  deny /sys/fs/[^c]*{,/**} wklx,
++  deny /sys/fs/c[^g]*{,/**} wklx,
++  deny /sys/fs/cg[^r]*{,/**} wklx,
++  deny /sys/fs/cgr[^o]*{,/**} wklx,
++  deny /sys/fs/cgro[^u]*{,/**} wklx,
++  deny /sys/fs/cgrou[^p]*{,/**} wklx,
++  deny /sys/fs/cgroup?*{,/**} wklx,
++  deny /sys/fs?*{,/**} wklx,
+Index: libvirt/examples/apparmor/libvirt-qemu
+===================================================================
+--- libvirt.orig/examples/apparmor/libvirt-qemu	2016-08-16 11:33:49.885114319 +0200
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
+@@ -1,172 +0,0 @@
+-# Last Modified: Wed Sep 3 21:52:03 2014
+-
+-  #include <abstractions/base>
+-  #include <abstractions/consoles>
+-  #include <abstractions/nameservice>
+-
+-  # required for reading disk images
+-  capability dac_override,
+-  capability dac_read_search,
+-  capability chown,
+-
+-  # needed to drop privileges
+-  capability setgid,
+-  capability setuid,
+-
+-  network inet stream,
+-  network inet6 stream,
+-
+-  /dev/net/tun rw,
+-  /dev/kvm rw,
+-  /dev/ptmx rw,
+-  /dev/kqemu rw,
+-  @{PROC}/*/status r,
+-  @{PROC}/sys/kernel/cap_last_cap r,
+-
+-  # For hostdev access. The actual devices will be added dynamically
+-  /sys/bus/usb/devices/ r,
+-  /sys/devices/**/usb[0-9]*/** r,
+-
+-  # WARNING: this gives the guest direct access to host hardware and specific
+-  # portions of shared memory. This is required for sound using ALSA with kvm,
+-  # but may constitute a security risk. If your environment does not require
+-  # the use of sound in your VMs, feel free to comment out or prepend 'deny' to
+-  # the rules for files in /dev.
+-  /{dev,run}/shm r,
+-  /{dev,run}/shmpulse-shm* r,
+-  /{dev,run}/shmpulse-shm* rwk,
+-  /dev/snd/* rw,
+-  capability ipc_lock,
+-  # spice
+-  owner /{dev,run}/shm/spice.* rw,
+-  # 'kill' is not required for sound and is a security risk. Do not enable
+-  # unless you absolutely need it.
+-  deny capability kill,
+-
+-  # Uncomment the following if you need access to /dev/fb*
+-  #/dev/fb* rw,
+-
+-  /etc/pulse/client.conf r,
+-  @{HOME}/.pulse-cookie rwk,
+-  owner /root/.pulse-cookie rwk,
+-  owner /root/.pulse/ rw,
+-  owner /root/.pulse/* rw,
+-  /usr/share/alsa/** r,
+-  owner /tmp/pulse-*/ rw,
+-  owner /tmp/pulse-*/* rw,
+-  /var/lib/dbus/machine-id r,
+-
+-  # access to firmware's etc
+-  /usr/share/kvm/** r,
+-  /usr/share/qemu/** r,
+-  /usr/share/qemu-kvm/** r,
+-  /usr/share/bochs/** r,
+-  /usr/share/openbios/** r,
+-  /usr/share/openhackware/** r,
+-  /usr/share/proll/** r,
+-  /usr/share/vgabios/** r,
+-  /usr/share/seabios/** r,
+-  /usr/share/ovmf/** r,
+-  /usr/share/OVMF/** r,
+-  /usr/share/AAVMF/** r,
+-  /usr/share/qemu-efi/** r,
+-
+-  # access PKI infrastructure
+-  /etc/pki/libvirt-vnc/** r,
+-
+-  # the various binaries
+-  /usr/bin/kvm rmix,
+-  /usr/bin/qemu rmix,
+-  /usr/bin/qemu-kvm rmix,
+-  /usr/bin/qemu-system-aarch64 rmix,
+-  /usr/bin/qemu-system-alpha rmix,
+-  /usr/bin/qemu-system-arm rmix,
+-  /usr/bin/qemu-system-cris rmix,
+-  /usr/bin/qemu-system-i386 rmix,
+-  /usr/bin/qemu-system-lm32 rmix,
+-  /usr/bin/qemu-system-m68k rmix,
+-  /usr/bin/qemu-system-microblaze rmix,
+-  /usr/bin/qemu-system-microblazeel rmix,
+-  /usr/bin/qemu-system-mips rmix,
+-  /usr/bin/qemu-system-mips64 rmix,
+-  /usr/bin/qemu-system-mips64el rmix,
+-  /usr/bin/qemu-system-mipsel rmix,
+-  /usr/bin/qemu-system-moxie rmix,
+-  /usr/bin/qemu-system-or32 rmix,
+-  /usr/bin/qemu-system-ppc rmix,
+-  /usr/bin/qemu-system-ppc64 rmix,
+-  /usr/bin/qemu-system-ppcemb rmix,
+-  /usr/bin/qemu-system-s390x rmix,
+-  /usr/bin/qemu-system-sh4 rmix,
+-  /usr/bin/qemu-system-sh4eb rmix,
+-  /usr/bin/qemu-system-sparc rmix,
+-  /usr/bin/qemu-system-sparc64 rmix,
+-  /usr/bin/qemu-system-tricore rmix,
+-  /usr/bin/qemu-system-unicore32 rmix,
+-  /usr/bin/qemu-system-x86_64 rmix,
+-  /usr/bin/qemu-system-xtensa rmix,
+-  /usr/bin/qemu-system-xtensaeb rmix,
+-  /usr/bin/qemu-aarch64 rmix,
+-  /usr/bin/qemu-alpha rmix,
+-  /usr/bin/qemu-arm rmix,
+-  /usr/bin/qemu-armeb rmix,
+-  /usr/bin/qemu-cris rmix,
+-  /usr/bin/qemu-i386 rmix,
+-  /usr/bin/qemu-m68k rmix,
+-  /usr/bin/qemu-microblaze rmix,
+-  /usr/bin/qemu-microblazeel rmix,
+-  /usr/bin/qemu-mips rmix,
+-  /usr/bin/qemu-mips64 rmix,
+-  /usr/bin/qemu-mips64el rmix,
+-  /usr/bin/qemu-mipsel rmix,
+-  /usr/bin/qemu-mipsn32 rmix,
+-  /usr/bin/qemu-mipsn32el rmix,
+-  /usr/bin/qemu-nbd rmix,
+-  /usr/bin/qemu-or32 rmix,
+-  /usr/bin/qemu-ppc rmix,
+-  /usr/bin/qemu-ppc64 rmix,
+-  /usr/bin/qemu-ppc64abi32 rmix,
+-  /usr/bin/qemu-ppc64le rmix,
+-  /usr/bin/qemu-s390x rmix,
+-  /usr/bin/qemu-sh4 rmix,
+-  /usr/bin/qemu-sh4eb rmix,
+-  /usr/bin/qemu-sparc rmix,
+-  /usr/bin/qemu-sparc32plus rmix,
+-  /usr/bin/qemu-sparc64 rmix,
+-  /usr/bin/qemu-unicore32 rmix,
+-  /usr/bin/qemu-x86_64 rmix,
+-  /usr/{lib,lib64}/qemu/block-curl.so mr,
+-  /usr/{lib,lib64}/qemu/block-rbd.so mr,
+-
+-  # for save and resume
+-  /bin/dash rmix,
+-  /bin/dd rmix,
+-  /bin/cat rmix,
+-
+-  # for restore
+-  /bin/bash rmix,
+-
+-  # for usb access
+-  /dev/bus/usb/ r,
+-  /etc/udev/udev.conf r,
+-  /sys/bus/ r,
+-  /sys/class/ r,
+-
+-  /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
+-  # child profile for bridge helper process
+-  profile qemu_bridge_helper {
+-   #include <abstractions/base>
+-
+-   capability setuid,
+-   capability setgid,
+-   capability setpcap,
+-   capability net_admin,
+-
+-   network inet stream,
+-
+-   /dev/net/tun rw,
+-   /etc/qemu/** r,
+-   owner @{PROC}/*/status r,
+-
+-   /usr/{lib,libexec}/qemu-bridge-helper rmix,
+-  }
+Index: libvirt/examples/apparmor/libvirt-qemu.in
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt/examples/apparmor/libvirt-qemu.in	2016-08-16 11:33:55.000000000 +0200
+@@ -0,0 +1,172 @@
++# Last Modified: Wed Sep 3 21:52:03 2014
++
++  #include <abstractions/base>
++  #include <abstractions/consoles>
++  #include <abstractions/nameservice>
++
++  # required for reading disk images
++  capability dac_override,
++  capability dac_read_search,
++  capability chown,
++
++  # needed to drop privileges
++  capability setgid,
++  capability setuid,
++
++  network inet stream,
++  network inet6 stream,
++
++  /dev/net/tun rw,
++  /dev/kvm rw,
++  /dev/ptmx rw,
++  /dev/kqemu rw,
++  @{PROC}/*/status r,
++  @{PROC}/sys/kernel/cap_last_cap r,
++
++  # For hostdev access. The actual devices will be added dynamically
++  /sys/bus/usb/devices/ r,
++  /sys/devices/**/usb[0-9]*/** r,
++
++  # WARNING: this gives the guest direct access to host hardware and specific
++  # portions of shared memory. This is required for sound using ALSA with kvm,
++  # but may constitute a security risk. If your environment does not require
++  # the use of sound in your VMs, feel free to comment out or prepend 'deny' to
++  # the rules for files in /dev.
++  /{dev,run}/shm r,
++  /{dev,run}/shmpulse-shm* r,
++  /{dev,run}/shmpulse-shm* rwk,
++  /dev/snd/* rw,
++  capability ipc_lock,
++  # spice
++  owner /{dev,run}/shm/spice.* rw,
++  # 'kill' is not required for sound and is a security risk. Do not enable
++  # unless you absolutely need it.
++  deny capability kill,
++
++  # Uncomment the following if you need access to /dev/fb*
++  #/dev/fb* rw,
++
++  /etc/pulse/client.conf r,
++  @{HOME}/.pulse-cookie rwk,
++  owner /root/.pulse-cookie rwk,
++  owner /root/.pulse/ rw,
++  owner /root/.pulse/* rw,
++  /usr/share/alsa/** r,
++  owner /tmp/pulse-*/ rw,
++  owner /tmp/pulse-*/* rw,
++  /var/lib/dbus/machine-id r,
++
++  # access to firmware's etc
++  /usr/share/kvm/** r,
++  /usr/share/qemu/** r,
++  /usr/share/qemu-kvm/** r,
++  /usr/share/bochs/** r,
++  /usr/share/openbios/** r,
++  /usr/share/openhackware/** r,
++  /usr/share/proll/** r,
++  /usr/share/vgabios/** r,
++  /usr/share/seabios/** r,
++  /usr/share/ovmf/** r,
++  /usr/share/OVMF/** r,
++  /usr/share/AAVMF/** r,
++  /usr/share/qemu-efi/** r,
++
++  # access PKI infrastructure
++  /etc/pki/libvirt-vnc/** r,
++
++  # the various binaries
++  /usr/bin/kvm rmix,
++  /usr/bin/qemu rmix,
++  /usr/bin/qemu-kvm rmix,
++  /usr/bin/qemu-system-aarch64 rmix,
++  /usr/bin/qemu-system-alpha rmix,
++  /usr/bin/qemu-system-arm rmix,
++  /usr/bin/qemu-system-cris rmix,
++  /usr/bin/qemu-system-i386 rmix,
++  /usr/bin/qemu-system-lm32 rmix,
++  /usr/bin/qemu-system-m68k rmix,
++  /usr/bin/qemu-system-microblaze rmix,
++  /usr/bin/qemu-system-microblazeel rmix,
++  /usr/bin/qemu-system-mips rmix,
++  /usr/bin/qemu-system-mips64 rmix,
++  /usr/bin/qemu-system-mips64el rmix,
++  /usr/bin/qemu-system-mipsel rmix,
++  /usr/bin/qemu-system-moxie rmix,
++  /usr/bin/qemu-system-or32 rmix,
++  /usr/bin/qemu-system-ppc rmix,
++  /usr/bin/qemu-system-ppc64 rmix,
++  /usr/bin/qemu-system-ppcemb rmix,
++  /usr/bin/qemu-system-s390x rmix,
++  /usr/bin/qemu-system-sh4 rmix,
++  /usr/bin/qemu-system-sh4eb rmix,
++  /usr/bin/qemu-system-sparc rmix,
++  /usr/bin/qemu-system-sparc64 rmix,
++  /usr/bin/qemu-system-tricore rmix,
++  /usr/bin/qemu-system-unicore32 rmix,
++  /usr/bin/qemu-system-x86_64 rmix,
++  /usr/bin/qemu-system-xtensa rmix,
++  /usr/bin/qemu-system-xtensaeb rmix,
++  /usr/bin/qemu-aarch64 rmix,
++  /usr/bin/qemu-alpha rmix,
++  /usr/bin/qemu-arm rmix,
++  /usr/bin/qemu-armeb rmix,
++  /usr/bin/qemu-cris rmix,
++  /usr/bin/qemu-i386 rmix,
++  /usr/bin/qemu-m68k rmix,
++  /usr/bin/qemu-microblaze rmix,
++  /usr/bin/qemu-microblazeel rmix,
++  /usr/bin/qemu-mips rmix,
++  /usr/bin/qemu-mips64 rmix,
++  /usr/bin/qemu-mips64el rmix,
++  /usr/bin/qemu-mipsel rmix,
++  /usr/bin/qemu-mipsn32 rmix,
++  /usr/bin/qemu-mipsn32el rmix,
++  /usr/bin/qemu-nbd rmix,
++  /usr/bin/qemu-or32 rmix,
++  /usr/bin/qemu-ppc rmix,
++  /usr/bin/qemu-ppc64 rmix,
++  /usr/bin/qemu-ppc64abi32 rmix,
++  /usr/bin/qemu-ppc64le rmix,
++  /usr/bin/qemu-s390x rmix,
++  /usr/bin/qemu-sh4 rmix,
++  /usr/bin/qemu-sh4eb rmix,
++  /usr/bin/qemu-sparc rmix,
++  /usr/bin/qemu-sparc32plus rmix,
++  /usr/bin/qemu-sparc64 rmix,
++  /usr/bin/qemu-unicore32 rmix,
++  /usr/bin/qemu-x86_64 rmix,
++  /usr/{lib,lib64}/qemu/block-curl.so mr,
++  /usr/{lib,lib64}/qemu/block-rbd.so mr,
++
++  # for save and resume
++  /bin/dash rmix,
++  /bin/dd rmix,
++  /bin/cat rmix,
++
++  # for restore
++  /bin/bash rmix,
++
++  # for usb access
++  /dev/bus/usb/ r,
++  /etc/udev/udev.conf r,
++  /sys/bus/ r,
++  /sys/class/ r,
++
++  /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
++  # child profile for bridge helper process
++  profile qemu_bridge_helper {
++   #include <abstractions/base>
++
++   capability setuid,
++   capability setgid,
++   capability setpcap,
++   capability net_admin,
++
++   network inet stream,
++
++   /dev/net/tun rw,
++   /etc/qemu/** r,
++   owner @{PROC}/*/status r,
++
++   /usr/{lib,libexec}/qemu-bridge-helper rmix,
++  }
+Index: libvirt/examples/apparmor/usr.lib.libvirt.virt-aa-helper
+===================================================================
+--- libvirt.orig/examples/apparmor/usr.lib.libvirt.virt-aa-helper	2016-08-16 11:33:49.885114319 +0200
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
+@@ -1,58 +0,0 @@
+-# Last Modified: Mon Apr  5 15:10:27 2010
+-#include <tunables/global>
+-
+-profile virt-aa-helper /usr/{lib,lib64}/libvirt/virt-aa-helper {
+-  #include <abstractions/base>
+-
+-  # needed for searching directories
+-  capability dac_override,
+-  capability dac_read_search,
+-
+-  # needed for when disk is on a network filesystem
+-  network inet,
+-
+-  deny @{PROC}/[0-9]*/mounts r,
+-  @{PROC}/[0-9]*/net/psched r,
+-  owner @{PROC}/[0-9]*/status r,
+-  @{PROC}/filesystems r,
+-
+-  /etc/libnl-3/classid r,
+-
+-  # for hostdev
+-  /sys/devices/ r,
+-  /sys/devices/** r,
+-  deny /dev/sd* r,
+-  deny /dev/vd* r,
+-  deny /dev/dm-* r,
+-  deny /dev/mapper/ r,
+-  deny /dev/mapper/* r,
+-
+-  /usr/{lib,lib64}/libvirt/virt-aa-helper mr,
+-  /sbin/apparmor_parser Ux,
+-
+-  /etc/apparmor.d/libvirt/* r,
+-  /etc/apparmor.d/libvirt/libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]* rw,
+-
+-  # for backingstore -- allow access to non-hidden files in @{HOME} as well
+-  # as storage pools
+-  audit deny @{HOME}/.* mrwkl,
+-  audit deny @{HOME}/.*/ rw,
+-  audit deny @{HOME}/.*/** mrwkl,
+-  audit deny @{HOME}/bin/ rw,
+-  audit deny @{HOME}/bin/** mrwkl,
+-  @{HOME}/ r,
+-  @{HOME}/** r,
+-  /var/lib/libvirt/images/ r,
+-  /var/lib/libvirt/images/** r,
+-  /{media,mnt,opt,srv}/** r,
+-
+-  /**.img r,
+-  /**.qcow{,2} r,
+-  /**.qed r,
+-  /**.vmdk r,
+-  /**.[iI][sS][oO] r,
+-  /**/disk{,.*} r,
+-
+-  # Site-specific additions and overrides. See local/README for details.
+-  #include <local/usr.lib.libvirt.virt-aa-helper>
+-}
+Index: libvirt/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in	2016-08-16 11:33:55.000000000 +0200
+@@ -0,0 +1,58 @@
++# Last Modified: Mon Apr  5 15:10:27 2010
++#include <tunables/global>
++
++profile virt-aa-helper /usr/{lib,lib64}/libvirt/virt-aa-helper {
++  #include <abstractions/base>
++
++  # needed for searching directories
++  capability dac_override,
++  capability dac_read_search,
++
++  # needed for when disk is on a network filesystem
++  network inet,
++
++  deny @{PROC}/[0-9]*/mounts r,
++  @{PROC}/[0-9]*/net/psched r,
++  owner @{PROC}/[0-9]*/status r,
++  @{PROC}/filesystems r,
++
++  /etc/libnl-3/classid r,
++
++  # for hostdev
++  /sys/devices/ r,
++  /sys/devices/** r,
++  deny /dev/sd* r,
++  deny /dev/vd* r,
++  deny /dev/dm-* r,
++  deny /dev/mapper/ r,
++  deny /dev/mapper/* r,
++
++  /usr/{lib,lib64}/libvirt/virt-aa-helper mr,
++  /sbin/apparmor_parser Ux,
++
++  /etc/apparmor.d/libvirt/* r,
++  /etc/apparmor.d/libvirt/libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]* rw,
++
++  # for backingstore -- allow access to non-hidden files in @{HOME} as well
++  # as storage pools
++  audit deny @{HOME}/.* mrwkl,
++  audit deny @{HOME}/.*/ rw,
++  audit deny @{HOME}/.*/** mrwkl,
++  audit deny @{HOME}/bin/ rw,
++  audit deny @{HOME}/bin/** mrwkl,
++  @{HOME}/ r,
++  @{HOME}/** r,
++  /var/lib/libvirt/images/ r,
++  /var/lib/libvirt/images/** r,
++  /{media,mnt,opt,srv}/** r,
++
++  /**.img r,
++  /**.qcow{,2} r,
++  /**.qed r,
++  /**.vmdk r,
++  /**.[iI][sS][oO] r,
++  /**/disk{,.*} r,
++
++  # Site-specific additions and overrides. See local/README for details.
++  #include <local/usr.lib.libvirt.virt-aa-helper>
++}
+Index: libvirt/examples/apparmor/usr.sbin.libvirtd.in
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ libvirt/examples/apparmor/usr.sbin.libvirtd.in	2016-08-16 11:33:55.000000000 +0200
+@@ -0,0 +1,72 @@
++# Last Modified: Mon Apr  5 15:03:58 2010
++#include <tunables/global>
++@{LIBVIRT}="libvirt"
++
++/usr/sbin/libvirtd {
++  #include <abstractions/base>
++  #include <abstractions/dbus>
++
++  capability kill,
++  capability net_admin,
++  capability net_raw,
++  capability setgid,
++  capability sys_admin,
++  capability sys_module,
++  capability sys_ptrace,
++  capability sys_pacct,
++  capability sys_nice,
++  capability sys_chroot,
++  capability setuid,
++  capability dac_override,
++  capability dac_read_search,
++  capability fowner,
++  capability chown,
++  capability setpcap,
++  capability mknod,
++  capability fsetid,
++  capability audit_write,
++  capability ipc_lock,
++
++  # Needed for vfio
++  capability sys_resource,
++
++  network inet stream,
++  network inet dgram,
++  network inet6 stream,
++  network inet6 dgram,
++  network packet dgram,
++  network packet raw,
++
++  # Very lenient profile for libvirtd since we want to first focus on confining
++  # the guests. Guests will have a very restricted profile.
++  / r,
++  /** rwmkl,
++
++  /bin/* PUx,
++  /sbin/* PUx,
++  /usr/bin/* PUx,
++  /usr/sbin/virtlogd pix,
++  /usr/sbin/* PUx,
++  /lib/udev/scsi_id PUx,
++  /usr/{lib,lib64}/xen-common/bin/xen-toolstack PUx,
++  /usr/{lib,lib64}/xen/bin/* Ux,
++
++  # force the use of virt-aa-helper
++  audit deny /sbin/apparmor_parser rwxl,
++  audit deny /etc/apparmor.d/libvirt/** wxl,
++  audit deny /sys/kernel/security/apparmor/features rwxl,
++  audit deny /sys/kernel/security/apparmor/matching rwxl,
++  audit deny /sys/kernel/security/apparmor/.* rwxl,
++  /sys/kernel/security/apparmor/profiles r,
++  /usr/{lib,lib64}/libvirt/* PUxr,
++  /usr/{lib,lib64}/libvirt/libvirt_parthelper ix,
++  /usr/{lib,lib64}/libvirt/libvirt_iohelper ix,
++  /etc/libvirt/hooks/** rmix,
++  /etc/xen/scripts/** rmix,
++
++  # allow changing to our UUID-based named profiles
++  change_profile -> @{LIBVIRT}-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*,
++
++  # Site-specific additions and overrides. See local/README for details.
++  #include <local/usr.sbin.libvirtd>
++}
