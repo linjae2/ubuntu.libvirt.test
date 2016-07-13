@@ -1,0 +1,182 @@
+Index: libvirt/src/network/bridge_driver.c
+===================================================================
+--- libvirt.orig/src/network/bridge_driver.c	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/src/network/bridge_driver.c	2016-07-13 16:15:02.738984316 +0200
+@@ -944,7 +944,8 @@ networkDnsmasqConfContents(virNetworkObj
+                       "##    virsh net-edit %s\n"
+                       "## or other application using the libvirt API.\n"
+                       "##\n## dnsmasq conf file created by libvirt\n"
+-                      "strict-order\n",
++                      "strict-order\n"
++                      "user=libvirt-dnsmasq\n",
+                       network->def->name);
+ 
+     if (network->def->dns.forwarders) {
+Index: libvirt/tests/networkxml2confdata/dhcp6host-routed-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/dhcp6host-routed-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/dhcp6host-routed-network.conf	2016-07-13 16:15:02.738984316 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr1
+Index: libvirt/tests/networkxml2confdata/dhcp6-nat-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/dhcp6-nat-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/dhcp6-nat-network.conf	2016-07-13 16:15:02.738984316 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+Index: libvirt/tests/networkxml2confdata/dhcp6-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/dhcp6-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/dhcp6-network.conf	2016-07-13 16:15:02.738984316 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=mynet
+ expand-hosts
+ except-interface=lo
+Index: libvirt/tests/networkxml2confdata/isolated-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/isolated-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/isolated-network.conf	2016-07-13 16:15:02.750984316 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-interfaces
+ listen-address=192.168.152.1
+Index: libvirt/tests/networkxml2confdata/nat-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/nat-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/nat-network.conf	2016-07-13 16:15:02.762984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+Index: libvirt/tests/networkxml2confdata/nat-network-dns-forwarders.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/nat-network-dns-forwarders.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/nat-network-dns-forwarders.conf	2016-07-13 16:15:02.778984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ no-resolv
+ server=8.8.8.8
+ server=8.8.4.4
+Index: libvirt/tests/networkxml2confdata/nat-network-dns-forward-plain.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/nat-network-dns-forward-plain.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/nat-network-dns-forward-plain.conf	2016-07-13 16:15:02.786984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+Index: libvirt/tests/networkxml2confdata/nat-network-dns-hosts.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/nat-network-dns-hosts.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/nat-network-dns-hosts.conf	2016-07-13 16:15:02.790984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ domain-needed
+Index: libvirt/tests/networkxml2confdata/nat-network-dns-srv-record.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/nat-network-dns-srv-record.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/nat-network-dns-srv-record.conf	2016-07-13 16:15:02.790984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+Index: libvirt/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf	2016-07-13 16:15:02.794984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-interfaces
+ listen-address=192.168.122.1
+Index: libvirt/tests/networkxml2confdata/nat-network-dns-txt-record.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/nat-network-dns-txt-record.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/nat-network-dns-txt-record.conf	2016-07-13 16:15:02.794984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+Index: libvirt/tests/networkxml2confdata/netboot-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/netboot-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/netboot-network.conf	2016-07-13 16:15:02.794984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ except-interface=lo
+Index: libvirt/tests/networkxml2confdata/netboot-proxy-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/netboot-proxy-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/netboot-proxy-network.conf	2016-07-13 16:15:02.794984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ except-interface=lo
+Index: libvirt/tests/networkxml2confdata/routed-network.conf
+===================================================================
+--- libvirt.orig/tests/networkxml2confdata/routed-network.conf	2016-07-13 16:15:02.798984315 +0200
++++ libvirt/tests/networkxml2confdata/routed-network.conf	2016-07-13 16:15:02.794984315 +0200
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr1

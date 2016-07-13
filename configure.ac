@@ -884,6 +884,10 @@ if test "$with_libxl" = "yes"; then
     AC_CHECK_HEADERS([libxlutil.h])
     LIBXL_LIBS="$LIBXL_LIBS -lxlutil"
     AC_DEFINE_UNQUOTED([WITH_LIBXL], 1, [whether libxenlight driver is enabled])
+    if test "x$LIBXL_FIRMWARE_DIR" = "x"; then
+        LIBXL_VERS=`dpkg-query -Wf '${Version}' libxen-dev|cut -d. -f1-2`
+        LIBXL_FIRMWARE_DIR="/usr/lib/xen-$LIBXL_VERS/boot"
+    fi
     if test "x$LIBXL_FIRMWARE_DIR" != "x"; then
         AC_DEFINE_UNQUOTED([LIBXL_FIRMWARE_DIR], ["$LIBXL_FIRMWARE_DIR"], [directory containing Xen firmware blobs])
     fi
@@ -1465,6 +1469,28 @@ if test "$with_apparmor" = "no"; then
   with_apparmor_profiles="no"
 fi
 AM_CONDITIONAL([WITH_APPARMOR_PROFILES], [test "$with_apparmor_profiles" != "no"])
+
+AC_ARG_WITH([apparmor-profiles-version],
+  [AS_HELP_STRING([--with-apparmor-profiles-version],
+    [install apparmor profiles for apparmor version @<:@default=check@:>@])],
+  [],
+  [with_apparmor_profiles_version=check])
+if test "$with_apparmor_profiles" = "no"; then
+  with_apparmor_profiles_version="no"
+fi
+if test "$with_apparmor_profiles_version" = "check"; then
+  APPARMOR_VERSION=`pkg-config --modversion libapparmor|cut -d. -f1-2`
+elif test "$with_apparmor_profiles_version" != "no"; then
+  APPARMOR_VERSION=$withval
+fi
+if test "$with_apparmor_profiles_version" != "no"; then
+  APPARMOR_MAJOR_VERSION=`echo $APPARMOR_VERSION|cut -d. -f1`
+  APPARMOR_MINOR_VERSION=`echo $APPARMOR_VERSION|cut -d. -f2`
+  APPARMOR_VERSION_NUMBER=`expr $APPARMOR_MAJOR_VERSION \* 1000 + $APPARMOR_MINOR_VERSION`
+  AC_DEFINE_UNQUOTED([APPARMOR_VERSION_NUMBER],
+    $APPARMOR_VERSION_NUMBER,
+    [Version number of apparmor library (for profile features)])
+fi
 
 dnl DTrace static probes
 AC_ARG_WITH([dtrace],

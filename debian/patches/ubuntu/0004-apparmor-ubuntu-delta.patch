@@ -1,0 +1,24 @@
+Subject: [PATCH 0004/0004] Ubuntu only version hack
+
+Index: libvirt-1.3.4/examples/apparmor/usr.sbin.libvirtd.in
+===================================================================
+--- libvirt-1.3.4.orig/examples/apparmor/usr.sbin.libvirtd.in	2016-05-30 12:31:45.972661127 +0200
++++ libvirt-1.3.4/examples/apparmor/usr.sbin.libvirtd.in	2016-05-30 12:38:20.880655039 +0200
+@@ -36,7 +36,7 @@
+   network inet6 stream,
+   network inet6 dgram,
+   network packet dgram,
+-@@ifge 2009
++@@ifge 2010
+   network netlink,
+ @@end
+ 
+@@ -45,7 +45,7 @@
+   signal,
+   ptrace,
+ @@end
+-@@ifge 2009
++@@ifge 2010
+   unix,
+ @@end
+ 

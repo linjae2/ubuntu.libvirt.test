@@ -1,0 +1,29 @@
+Description: use 0711, not 0755, as the default perms for storage dirs
+ That is what we want for /var/lib/libvirt/images.
+Author: Serge Hallyn <serge.hallyn@ubuntu.com>
+Forwarded: no
+Index: libvirt/src/storage/storage_backend.h
+===================================================================
+--- libvirt.orig/src/storage/storage_backend.h	2016-07-13 16:15:13.006984158 +0200
++++ libvirt/src/storage/storage_backend.h	2016-07-13 16:15:13.002984158 +0200
+@@ -214,7 +214,7 @@ int virStorageBackendVolOpen(const char
+     ATTRIBUTE_RETURN_CHECK
+     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+ 
+-# define VIR_STORAGE_DEFAULT_POOL_PERM_MODE 0755
++# define VIR_STORAGE_DEFAULT_POOL_PERM_MODE 0711
+ # define VIR_STORAGE_DEFAULT_VOL_PERM_MODE  0600
+ 
+ int virStorageBackendUpdateVolInfo(virStorageVolDefPtr vol,
+Index: libvirt/tests/storagepoolxml2xmltest.c
+===================================================================
+--- libvirt.orig/tests/storagepoolxml2xmltest.c	2016-07-13 16:15:13.006984158 +0200
++++ libvirt/tests/storagepoolxml2xmltest.c	2016-07-13 16:15:13.002984158 +0200
+@@ -84,7 +84,6 @@ mymain(void)
+     DO_TEST("pool-iscsi");
+     DO_TEST("pool-iscsi-auth");
+     DO_TEST("pool-netfs");
+-    DO_TEST("pool-netfs-gluster");
+     DO_TEST("pool-netfs-cifs");
+     DO_TEST("pool-scsi");
+     DO_TEST("pool-scsi-type-scsi-host");

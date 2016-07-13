@@ -3,7 +3,7 @@
   <uuid>c7a5fdb2-cdaf-9455-926a-d65c16db1809</uuid>
   <os>
     <type>hvm</type>
-    <loader>/usr/lib/xen/boot/hvmloader</loader>
+    <loader>/usr/lib/xen-4.6/boot/hvmloader</loader>
     <boot dev='cdrom'/>
   </os>
   <currentMemory unit='KiB'>403456</currentMemory>

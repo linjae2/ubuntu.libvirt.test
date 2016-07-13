@@ -1,0 +1,489 @@
+Description: libxl: Fix test data for emulator and loader
+ For the loader part this is a bit of a brute force hack. The libxl
+ driver is build with LIBXL_FIRMWARE_DIR correctly set (which includes
+ a version part). But the test data seems static.
+ The emulator (at least for us) is always /usr/bin/qemu-system-i386.
+Forwarded: no
+Author: Stefan Bader <stefan.bader@canonical.com>
+
+Index: libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-direct-kernel-boot.cfg	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot.cfg	2016-07-13 17:08:48.098934588 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-direct-kernel-boot.xml	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot.xml	2016-07-13 17:08:48.098934588 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <kernel>/tmp/vmlinuz</kernel>
+     <initrd>/tmp/initrd</initrd>
+     <cmdline>ignore_loglvl</cmdline>
+@@ -22,7 +22,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-fullvirt-multiusb.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-multiusb.cfg	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-multiusb.cfg	2016-07-13 17:14:28.430929341 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-fullvirt-multiusb.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-multiusb.xml	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-multiusb.xml	2016-07-13 17:14:33.278929266 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-new-disk.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-new-disk.cfg	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-new-disk.cfg	2016-07-13 17:14:56.358928910 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-new-disk.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-new-disk.xml	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-new-disk.xml	2016-07-13 17:14:59.582928860 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-spice-features.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-spice-features.cfg	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-spice-features.cfg	2016-07-13 17:15:48.406928108 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ vif = [ "mac=00:16:3e:66:92:9c,bridge=xenbr1,script=vif-bridge,model=e1000" ]
+ parallel = "none"
+ serial = "none"
+Index: libvirt/tests/xlconfigdata/test-spice-features.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-spice-features.xml	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-spice-features.xml	2016-07-13 17:15:52.238928049 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-spice.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-spice.cfg	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-spice.cfg	2016-07-13 17:15:43.982928176 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ vif = [ "mac=00:16:3e:66:92:9c,bridge=xenbr1,script=vif-bridge,model=e1000" ]
+ parallel = "none"
+ serial = "none"
+Index: libvirt/tests/xlconfigdata/test-spice.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-spice.xml	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-spice.xml	2016-07-13 17:15:56.326927986 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-vif-rate.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-vif-rate.cfg	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-vif-rate.cfg	2016-07-13 17:16:10.458927768 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-vif-rate.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-vif-rate.xml	2016-07-13 17:08:48.102934588 +0200
++++ libvirt/tests/xlconfigdata/test-vif-rate.xml	2016-07-13 17:16:17.126927665 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-disk-positional-parms-full.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-disk-positional-parms-full.cfg	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-disk-positional-parms-full.cfg	2016-07-13 17:12:10.614931466 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-disk-positional-parms-full.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-disk-positional-parms-full.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-disk-positional-parms-full.xml	2016-07-13 17:18:42.938925417 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-disk-positional-parms-partial.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-disk-positional-parms-partial.cfg	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-disk-positional-parms-partial.cfg	2016-07-13 17:12:33.542931112 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-disk-positional-parms-partial.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-disk-positional-parms-partial.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-disk-positional-parms-partial.xml	2016-07-13 17:18:47.150925352 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-bogus-extra.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-bogus-extra.cfg	2016-07-13 10:39:42.371294528 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-bogus-extra.cfg	2016-07-13 17:12:54.630930787 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-bogus-extra.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-bogus-extra.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-bogus-extra.xml	2016-07-13 17:18:50.546925299 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <kernel>/tmp/vmlinuz</kernel>
+     <initrd>/tmp/initrd</initrd>
+     <cmdline>ignore_loglvl</cmdline>
+@@ -22,7 +22,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-extra.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-extra.cfg	2016-07-13 10:39:42.371294528 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-extra.cfg	2016-07-13 17:14:09.622929631 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-extra.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-extra.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-direct-kernel-boot-extra.xml	2016-07-13 17:18:53.690925251 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <kernel>/tmp/vmlinuz</kernel>
+     <initrd>/tmp/initrd</initrd>
+     <cmdline>ignore_loglvl</cmdline>
+@@ -22,7 +22,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-fullvirt-nohap.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-nohap.cfg	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-nohap.cfg	2016-07-13 17:14:37.338929203 +0200
+@@ -13,7 +13,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-fullvirt-nohap.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-nohap.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-nohap.xml	2016-07-13 17:18:57.518925192 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -20,7 +20,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-fullvirt-ovmf.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-ovmf.cfg	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-ovmf.cfg	2016-07-13 17:14:48.686929028 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-fullvirt-ovmf.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-fullvirt-ovmf.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-fullvirt-ovmf.xml	2016-07-13 17:14:51.894928979 +0200
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-rbd-multihost-noauth.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-rbd-multihost-noauth.cfg	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-rbd-multihost-noauth.cfg	2016-07-13 17:15:36.958928284 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-rbd-multihost-noauth.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-rbd-multihost-noauth.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-rbd-multihost-noauth.xml	2016-07-13 17:19:00.442925147 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>
+Index: libvirt/tests/xlconfigdata/test-vif-typename.cfg
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-vif-typename.cfg	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-vif-typename.cfg	2016-07-13 17:16:21.038927605 +0200
+@@ -12,7 +12,7 @@ localtime = 0
+ on_poweroff = "destroy"
+ on_reboot = "restart"
+ on_crash = "restart"
+-device_model = "/usr/lib/xen/bin/qemu-system-i386"
++device_model = "/usr/bin/qemu-system-i386"
+ sdl = 0
+ vnc = 1
+ vncunused = 1
+Index: libvirt/tests/xlconfigdata/test-vif-typename.xml
+===================================================================
+--- libvirt.orig/tests/xlconfigdata/test-vif-typename.xml	2016-07-13 10:40:06.883294150 +0200
++++ libvirt/tests/xlconfigdata/test-vif-typename.xml	2016-07-13 17:19:05.754925065 +0200
+@@ -6,7 +6,7 @@
+   <vcpu placement='static'>1</vcpu>
+   <os>
+     <type arch='x86_64' machine='xenfv'>hvm</type>
+-    <loader type='rom'>/usr/lib/xen/boot/hvmloader</loader>
++    <loader type='rom'>/usr/lib/xen-4.6/boot/hvmloader</loader>
+     <boot dev='cdrom'/>
+   </os>
+   <features>
+@@ -19,7 +19,7 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>restart</on_crash>
+   <devices>
+-    <emulator>/usr/lib/xen/bin/qemu-system-i386</emulator>
++    <emulator>/usr/bin/qemu-system-i386</emulator>
+     <disk type='block' device='disk'>
+       <driver name='phy' type='raw'/>
+       <source dev='/dev/HostVG/XenGuest2'/>

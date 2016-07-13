@@ -61,6 +61,15 @@ VAR_SUBSYS_LIBVIRT_GUESTS="$localstatedir"/lock/libvirt-guests
 
 RETVAL=0
 
+# Default URI is not correct in the Xen case as the non-accelerated
+# qemu driver also gets initialized.
+if [ -f "/proc/xen/capabilities" ]; then
+    if [ "$(cat /proc/xen/capabilities)" = "control_d" ]; then
+        LIBVIRT_DEFAULT_URI="xen:///"
+        export LIBVIRT_DEFAULT_URI
+    fi
+fi
+
 # retval COMMAND ARGUMENTS...
 # run command with arguments and convert non-zero return value to 1 and set
 # the global return variable
@@ -133,7 +142,7 @@ list_guests() {
         return 1
     fi
 
-    echo $list
+    echo "$list" | grep -v 00000000-0000-0000-0000-000000000000
 }
 
 # guest_name URI UUID
@@ -551,7 +560,7 @@ gueststatus() {
     for uri in $URIS; do
         set +f
         echo "* $uri URI:"
-        retval run_virsh "$uri" list || echo
+        retval run_virsh "$uri" list | grep -v "Domain-0" || echo
     done
     set +f
 }

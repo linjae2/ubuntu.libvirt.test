@@ -1,0 +1,54 @@
+Description: virt-aa-helper: Fix upstream implementation of "R"
+ The "R" permision is meant to be "r"ead with no explicit deny. But the
+ "R" is not a valid apparmor permission. So it has to be converted to "r".
+ However the perms argument of vah_add_path is "const char *" which means
+ the characters are not changable.
+ This causes problems with virt-aa-helper tests because we also have a
+ change that uses the new permission for readonly disks.
+Forwarded: No
+Author: Stefan Bader <stefan.bader@canonical.com>
+Last-Update: 2016-08-16
+
+Index: libvirt/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt.orig/src/security/virt-aa-helper.c	2016-08-15 16:24:36.870333132 +0200
++++ libvirt/src/security/virt-aa-helper.c	2016-08-16 09:34:23.861224804 +0200
+@@ -736,9 +736,10 @@ get_definition(vahControl * ctl, const c
+   * read with no explicit deny rule.
+   */
+ static int
+-vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursive)
++vah_add_path(virBufferPtr buf, const char *path, const char *inperms, bool recursive)
+ {
+     char *tmp = NULL;
++    char *perms = NULL;
+     int rc = -1;
+     bool readonly = true;
+     bool explicit_deny_rule = true;
+@@ -757,13 +758,18 @@ vah_add_path(virBufferPtr buf, const cha
+         return 0;
+     }
+ 
++    if (VIR_STRDUP_QUIET(perms, inperms) < 0)
++        return rc;
++
+     if (virFileExists(path)) {
+         if ((tmp = realpath(path, NULL)) == NULL) {
+             vah_error(NULL, 0, path);
+             vah_error(NULL, 0, _("could not find realpath for disk"));
++            VIR_FREE(perms);
+             return rc;
+         }
+     } else if (VIR_STRDUP_QUIET(tmp, path) < 0) {
++        VIR_FREE(perms);
+         return rc;
+     }
+ 
+@@ -802,6 +808,7 @@ vah_add_path(virBufferPtr buf, const cha
+ 
+  cleanup:
+     VIR_FREE(tmp);
++    VIR_FREE(perms);
+ 
+     return rc;
+ }
