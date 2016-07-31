@@ -118,7 +118,9 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	$(WITH_AUDIT)            \
 	--without-hal            \
 	$(WITH_FIREWALLD)        \
-	--without-attr
+	--without-attr           \
+        --with-nss-plugin        \
+        $(NULL)
 
 DEB_BUILDDIR := $(CURDIR)/debian/build
 LOGROTATE = $(basename $(basename $(notdir $(wildcard daemon/libvirtd*.logrotate.in))))
@@ -143,10 +145,6 @@ override_dh_auto_test:
 
 override_dh_install-arch:
 	dh_install
-
-	# Don't ship virt-admin yet
-	rm debian/tmp/usr/share/man/man1/virt-admin.*
-	rm debian/tmp/usr/bin/virt-admin
 
 	# Copy upstream files to debian/ so dh_* can find them
 	cp debian/tmp/usr/lib/libvirt/libvirt-guests.sh \
@@ -178,6 +176,7 @@ ifeq ($(XEN_ENABLED), 1)
 	dh_install -p libvirt-daemon-system etc/libvirt/libxl.conf
 	dh_install -p libvirt-daemon-system etc/libvirt/libxl-lockd.conf
 endif
+	dh_install -p libnss-libvirt usr/lib/libnss_libvirt.so.2 lib/$(DEB_HOST_MULTIARCH)/
 
 	for l in $(LOGROTATE); do \
 		cp $(CURDIR)/debian/build/daemon/$$l.logrotate \
@@ -189,6 +188,7 @@ endif
 	rm debian/libvirt-daemon/usr/lib/libvirt/connection-driver/*.la
 	# Don't ship api files in the daemon package
 	rm -r debian/libvirt-daemon/usr/share/libvirt/api/
+
 
 override_dh_installinit:
 	dh_systemd_enable
