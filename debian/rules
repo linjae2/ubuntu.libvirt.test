@@ -227,6 +227,10 @@ execute_after_dh_auto_install:
 	    mv $(DEB_DESTDIR)/usr/lib/sysctl.d/60-$${f}.conf \
 	       $(DEB_DESTDIR)/usr/lib/sysctl.d/$${f}.sysctl; \
 	done
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
 
 	# Copy the release notes where dh_installdocs can find them
 	cp NEWS.rst \
