@@ -178,6 +178,10 @@ override_dh_auto_install:
 	cp -f debian/libvirt-daemon.apport \
 	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
 	dh_auto_install
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
 
 	# Copy upstream files to debian/ so dh_* can find them
 	cp $(DEB_DESTDIR)/usr/lib/libvirt/libvirt-guests.sh \

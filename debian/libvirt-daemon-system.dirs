@@ -1,3 +1,4 @@
+etc/dnsmasq.d-available
 etc/libvirt/hooks
 usr/share/apport/package-hooks
 usr/share/polkit-1/rules.d/
