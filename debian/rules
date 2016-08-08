@@ -179,6 +179,10 @@ override_dh_install-arch:
 	mkdir -p debian/tmp/usr/share/apport/package-hooks
 	cp -f debian/libvirt-daemon.apport \
 	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
 
 	dh_install
 
