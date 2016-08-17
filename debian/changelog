@@ -1,3 +1,10 @@
+libvirt (2.1.0-1ubuntu3) yakkety; urgency=low
+
+  * Really fix the ADT regression and not only the changelog due
+    to somehow ending up on the wrong git branch.
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Wed, 17 Aug 2016 18:31:01 +0200
+
 libvirt (2.1.0-1ubuntu2) yakkety; urgency=low
 
   * Fix ADT build-test regression(s)
