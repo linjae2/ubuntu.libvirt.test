@@ -94,7 +94,7 @@ testXLInitCaps(void)
     if ((guest = virCapabilitiesAddGuest(caps, VIR_DOMAIN_OSTYPE_HVM,
                                          VIR_ARCH_X86_64,
                                          "/usr/lib/xen/bin/qemu-system-i386",
-                                         "/usr/lib/xen/boot/hvmloader",
+                                         "/usr/lib/xen-4.6/boot/hvmloader",
                                          nmachines, machines)) == NULL)
         goto cleanup;
     machines = NULL;
