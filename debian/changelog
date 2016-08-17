@@ -1,3 +1,9 @@
+libvirt (2.1.0-1ubuntu2) yakkety; urgency=low
+
+  * Fix ADT build-test regression(s)
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Wed, 17 Aug 2016 15:18:38 +0200
+
 libvirt (2.1.0-1ubuntu1) yakkety; urgency=low
 
   * Merged with Debian testing. Remaining changes:
