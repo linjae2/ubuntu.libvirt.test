@@ -1927,8 +1927,8 @@ AM_CONDITIONAL([WITH_STORAGE_GLUSTER], [test "$with_storage_gluster" = "yes"])
 
 if test "$with_storage_zfs" = "yes" ||
    test "$with_storage_zfs" = "check"; then
-  AC_PATH_PROG([ZFS], [zfs], [], [$PATH:/sbin:/usr/sbin])
-  AC_PATH_PROG([ZPOOL], [zpool], [], [$PATH:/sbin:/usr/sbin])
+  AC_PATH_PROG([ZFS], [zfs], [/sbin/zfs], [$PATH:/sbin:/usr/sbin])
+  AC_PATH_PROG([ZPOOL], [zpool], [/sbin/zpool], [$PATH:/sbin:/usr/sbin])
 
   if test "$with_storage_zfs" = "yes"; then
     if test -z "$ZFS" || test -z "$ZPOOL"; then
