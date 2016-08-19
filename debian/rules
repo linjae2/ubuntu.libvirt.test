@@ -24,6 +24,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_STORAGE_DISK   =	--with-storage-disk
   WITH_STORAGE_SHEEPDOG = --with-storage-sheepdog
   WITH_STORAGE_RBD    = --with-storage-rbd
+  WITH_STORAGE_ZFS    = --with-storage-zfs
   WITH_UDEV           = --with-udev
   WITH_CAPNG          = --with-capng
   WITH_MACVTAP        = --with-macvtap
@@ -53,6 +54,9 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
       WITH_LXC        = --with-lxc
   endif
 else
+  ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
+    WITH_STORAGE_ZFS  = --with-storage-zfs
+  endif
   WITH_STORAGE_LVM    = --without-storage-lvm
   WITH_STORAGE_ISCSI  = --without-storage-iscsi
   WITH_STORAGE_DISK   =	--without-storage-disk
@@ -99,6 +103,7 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	$(WITH_STORAGE_DISK)	 \
 	$(WITH_STORAGE_SHEEPDOG) \
 	$(WITH_STORAGE_RBD)      \
+	$(WITH_STORAGE_ZFS)      \
 	$(WITH_INIT_SCRIPT)      \
 	$(WITH_NUMA)             \
 	$(WITH_SELINUX)          \
@@ -121,6 +126,15 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	--without-attr           \
         --with-nss-plugin        \
         $(NULL)
+
+LIBVIRT_SYSTEM_SERVICES = \
+	libvirt-guests.service \
+	virtlogd.socket \
+	virtlogd.service \
+	virtlockd.socket \
+	virtlockd.service \
+	$(NULL)
+
 
 DEB_BUILDDIR := $(CURDIR)/debian/build
 LOGROTATE = $(basename $(basename $(notdir $(wildcard daemon/libvirtd*.logrotate.in))))
@@ -196,7 +210,7 @@ override_dh_installinit:
 	dh_installinit -p libvirt-daemon-system --name=libvirtd --restart-after-upgrade -- defaults 28 72
 	dh_installinit -p libvirt-daemon-system --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
 	dh_systemd_start -p libvirt-daemon-system --restart-after-upgrade libvirtd.service
-	dh_systemd_start -p libvirt-daemon-system --no-restart-on-upgrade libvirt-guests.service virtlockd.socket virtlockd.service
+	dh_systemd_start -p libvirt-daemon-system --no-restart-on-upgrade $(LIBVIRT_SYSTEM_SERVICES)
 
 override_dh_installdocs:
 	dh_installdocs
