@@ -36,7 +36,7 @@ Build-Depends:
  libnl-route-3-dev [linux-any],
  libyajl-dev,
  libpcap0.8-dev,
- libnuma-dev [amd64 i386 ia64 mips mipsel powerpc ppc64 ppc64el],
+ libnuma-dev [amd64 i386 ia64 mips mipsel powerpc ppc64 ppc64el s390x],
  radvd [linux-any],
  libnetcf-dev (>= 1:0.2.3-3~) [linux-any],
  libsanlock-dev [linux-any],
@@ -45,7 +45,7 @@ Build-Depends:
  libapparmor-dev [linux-any],
  libdbus-1-dev [linux-any],
  nfs-common,
- systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc s390],
+ systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc ppc64el s390 s390x],
 # python,
  xsltproc,
 # for --with-storage-sheepdog
@@ -53,7 +53,7 @@ Build-Depends:
 # for --with-storage-rados
  librbd-dev [linux-any],
  librados-dev [linux-any],
- zfsutils-linux [amd64 arm64 ppc64el],
+ zfsutils-linux [amd64 arm64 ppc64el s390x],
 # for lxc fuse support
  libfuse-dev [linux-any],
 # for libssh2 connection URIs
