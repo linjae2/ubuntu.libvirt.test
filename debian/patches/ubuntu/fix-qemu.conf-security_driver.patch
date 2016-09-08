@@ -1,0 +1,39 @@
+From 856965b36246b26002af409262846317477ea631 Mon Sep 17 00:00:00 2001
+From: Cole Robinson <crobinso@redhat.com>
+Date: Wed, 10 Aug 2016 10:32:03 -0400
+Subject: [PATCH] qemu: fix qemu.conf security_driver
+
+Since a9331394 (first release v2.1.0), specifying a manual
+security_driver setting in qemu.conf causes the daemon to fail to
+start, erroring with 'Duplicate security driver X'.
+
+The duplicate checking was incorrectly comparing every entry
+against itself, guaranteeing a false positive.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1365607
+
+BugLink: http://bugs.launchpad.net/bugs/1618592
+
+(cherry-picked from commit 856965b36246b26002af409262846317477ea631)
+Signed-off-by: Jon Grimm <jon.grimm@canonical.com>
+Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+---
+ src/qemu/qemu_conf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_conf.c b/src/qemu/qemu_conf.c
+index b51f36f..7b971f1 100644
+--- a/src/qemu/qemu_conf.c
++++ b/src/qemu/qemu_conf.c
+@@ -436,7 +436,7 @@ int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
+         goto cleanup;
+ 
+     for (i = 0; cfg->securityDriverNames && cfg->securityDriverNames[i] != NULL; i++) {
+-        for (j = i; cfg->securityDriverNames[j] != NULL; j++) {
++        for (j = i + 1; cfg->securityDriverNames[j] != NULL; j++) {
+             if (STREQ(cfg->securityDriverNames[i],
+                       cfg->securityDriverNames[j])) {
+                 virReportError(VIR_ERR_CONF_SYNTAX,
+-- 
+2.9.3
+
