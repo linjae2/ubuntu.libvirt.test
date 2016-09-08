@@ -1,3 +1,12 @@
+libvirt (2.1.0-1ubuntu5) yakkety; urgency=medium
+
+  [ Jon Grimm ]
+
+  * Fix libvirt start failure when security_driver set (LP: #1618592)
+    - qemu: fix qemu.conf security_driver
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Thu, 08 Sep 2016 14:11:47 +0200
+
 libvirt (2.1.0-1ubuntu4) yakkety; urgency=medium
 
   * Enable systemtap, zfs, numa on s390x.
