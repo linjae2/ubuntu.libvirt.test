@@ -1,3 +1,9 @@
+libvirt (2.1.0-1ubuntu6) yakkety; urgency=medium
+
+  * No-change rebuild for readline soname change.
+
+ -- Matthias Klose <doko@ubuntu.com>  Sat, 17 Sep 2016 12:05:33 +0000
+
 libvirt (2.1.0-1ubuntu5) yakkety; urgency=medium
 
   [ Jon Grimm ]
