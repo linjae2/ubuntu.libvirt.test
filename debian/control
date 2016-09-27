@@ -36,7 +36,7 @@ Build-Depends:
  libnl-route-3-dev [linux-any],
  libyajl-dev,
  libpcap0.8-dev,
- libnuma-dev [amd64 i386 ia64 mips mipsel powerpc ppc64 ppc64el s390x],
+ libnuma-dev [amd64 arm64 i386 ia64 mips mipsel powerpc ppc64 ppc64el s390x],
  radvd [linux-any],
  libnetcf-dev (>= 1:0.2.3-3~) [linux-any],
  libsanlock-dev [linux-any],
