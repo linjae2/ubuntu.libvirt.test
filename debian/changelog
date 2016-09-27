@@ -1,3 +1,9 @@
+libvirt (2.1.0-1ubuntu7) yakkety; urgency=medium
+
+  * Enable NUMA support in arm64 builds (LP: #1627926).
+
+ -- dann frazier <dannf@ubuntu.com>  Mon, 26 Sep 2016 23:36:24 -0600
+
 libvirt (2.1.0-1ubuntu6) yakkety; urgency=medium
 
   * No-change rebuild for readline soname change.
