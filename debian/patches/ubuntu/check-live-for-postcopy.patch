@@ -1,0 +1,30 @@
+Description: Check for --live flag for postcopy-after-precopy migration
+upstream commit 67af358d119bed1f50a81f0c826ccaf704a2a085 (tag: v2.2.0-rc1)
+Author: Kothapally Madhu Pavan <kmp@linux.vnet.ibm.com>
+Date:   Fri Aug 26 05:25:52 2016 -0400
+
+    Check for --live flag for postcopy-after-precopy migration
+
+    Unlike postcopy migration there is no --live flag check for
+    postcopy-after-precopy.
+
+    Signed-off-by: Kothapally Madhu Pavan <kmp@linux.vnet.ibm.com>
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1620906
+Last-Update: 2016-09-14
+--- a/tools/virsh-domain.c
++++ b/tools/virsh-domain.c
+@@ -10323,6 +10323,12 @@
+     }
+ 
+     if (vshCommandOptBool(cmd, "postcopy-after-precopy")) {
++        if (!live_flag) {
++            virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s",
++                          _("post-copy migration is not supported with "
++                            "non-live or paused migration"));
++            goto cleanup;
++        }
+         iterEvent = virConnectDomainEventRegisterAny(
+                             priv->conn, dom,
+                             VIR_DOMAIN_EVENT_ID_MIGRATION_ITERATION,

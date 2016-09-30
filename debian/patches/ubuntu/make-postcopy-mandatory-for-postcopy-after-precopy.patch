@@ -1,0 +1,44 @@
+Description: Check for --live flag for postcopy-after-precopy migration
+upstream commit 04597a7038482688fb2cc8b0b1869392f6f78016
+Author: Kothapally Madhu Pavan <kmp@linux.vnet.ibm.com>
+Date:   Fri Sep 2 07:52:13 2016 -0400
+
+    Make --postcopy flag mandatory with --postcopy-after-precopy
+
+    --postcopy-after-precopy is just an aditional flag for
+    postcopy migration.
+
+    Signed-off-by: Kothapally Madhu Pavan <kmp@linux.vnet.ibm.com>
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1620906
+Last-Update: 2016-09-14
+--- a/tools/virsh-domain.c
++++ b/tools/virsh-domain.c
+@@ -10323,10 +10323,10 @@
+     }
+ 
+     if (vshCommandOptBool(cmd, "postcopy-after-precopy")) {
+-        if (!live_flag) {
++        if (!vshCommandOptBool(cmd, "postcopy")) {
+             virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s",
+-                          _("post-copy migration is not supported with "
+-                            "non-live or paused migration"));
++                          _("--postcopy-after-precopy can only be used with "
++                            "--postcopy"));
+             goto cleanup;
+         }
+         iterEvent = virConnectDomainEventRegisterAny(
+--- a/tools/virsh.pod
++++ b/tools/virsh.pod
+@@ -1617,8 +1617,8 @@
+ actually start post-copy, i.e., migration is started in pre-copy mode.
+ Once migration is running, the user may switch to post-copy using the
+ B<migrate-postcopy> command sent from another virsh instance or use
+-I<--postcopy-after-precopy> to let libvirt automatically switch to
+-post-copy after the first pass of pre-copy is finished.
++I<--postcopy-after-precopy> along with I<--postcopy> to let libvirt
++automatically switch to post-copy after the first pass of pre-copy is finished.
+ 
+ I<--auto-converge> forces convergence during live migration. The initial
+ guest CPU throttling rate can be set with I<auto-converge-initial>. If the

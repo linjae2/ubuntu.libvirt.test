@@ -46,7 +46,8 @@ Build-Depends:
  libdbus-1-dev [linux-any],
  nfs-common,
  systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc ppc64el s390 s390x],
-# python,
+# for docs/apibuild.py
+ python,
  xsltproc,
 # for --with-storage-sheepdog
 # sheepdog [linux-any],
@@ -71,8 +72,10 @@ Build-Depends:
  iptables [linux-any],
  qemu-utils,
 Build-Conflicts: dpkg-dev (= 1.15.3)
-Vcs-Git: https://anonscm.debian.org/git/pkg-libvirt/libvirt.git
-Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/libvirt.git/
+XS-Debian-Vcs-Git: https://anonscm.debian.org/git/pkg-libvirt/libvirt.git
+XS-Debian-Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/libvirt.git/
+Vcs-Git: git://git.launchpad.net/~libvirt-maintainers/ubuntu/+source/libvirt
+Vcs-Browser: https://git.launchpad.net/~libvirt-maintainers/ubuntu/+source/libvirt
 Homepage: http://libvirt.org
 Standards-Version: 3.9.8
 
