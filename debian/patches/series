@@ -55,3 +55,5 @@ ubuntu/0003-apparmor-debian-ubuntu-delta.patch
 ubuntu/0004-apparmor-ubuntu-delta.patch
 ubuntu/virt-aa-helper-fix-R.patch
 ubuntu/fix-qemu.conf-security_driver.patch
+ubuntu/check-live-for-postcopy.patch
+ubuntu/make-postcopy-mandatory-for-postcopy-after-precopy.patch
