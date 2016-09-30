@@ -1,3 +1,15 @@
+libvirt (1.3.1-1ubuntu10.4) xenial; urgency=medium
+
+  [ Dann Frazier ]
+
+  * Enable NUMA for arm64 (LP: #1627926).
+
+  [ Stefan Bader ]
+
+  * Update Vcs lines to point to launchpad (LP: #1629210).
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Fri, 30 Sep 2016 12:27:13 +0200
+
 libvirt (1.3.1-1ubuntu10.3) xenial; urgency=medium
 
   [ Stefan Bader ]
