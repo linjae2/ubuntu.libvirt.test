@@ -1,3 +1,9 @@
+libvirt (2.1.0-1ubuntu9) yakkety; urgency=medium
+
+  * Fix libvirt-guest.sh to handle multiple guests (LP: #1591695).
+
+ -- Stefan Bader <stefan.bader@canonical.com>  Thu, 06 Oct 2016 12:14:05 +0200
+
 libvirt (2.1.0-1ubuntu8) yakkety; urgency=medium
 
   [ Christian Ehrhardt ]

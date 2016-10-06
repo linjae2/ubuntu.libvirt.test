@@ -2,8 +2,9 @@ Description: Exclude Xen dom0 from guest list
  With newer versions of libvirt Domain-0 is again visible in the list of
  running guests but it should not be considered as a guest for shutdown
  or suspend.
-Forwarded: no
+Forwarded: https://www.redhat.com/archives/libvir-list/2016-October/msg00293.html
 Author: Stefan Bader <stefan.bader@canonical.com>
+Last-Update: 2016-10-07
 
 Index: libvirt-1.3.0/tools/libvirt-guests.sh.in
 ===================================================================
