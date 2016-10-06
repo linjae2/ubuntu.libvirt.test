@@ -15404,8 +15404,8 @@ virDomainDefParseXML(xmlDocPtr xml,
             node = ctxt->node;
             ctxt->node = nodes[i];
             if ((tmp = virXPathString("string(./@version)", ctxt))) {
-                if (virStrToLong_uip(tmp, NULL, 10, &def->gic_version) < 0 ||
-                    def->gic_version == 0) {
+                if ((def->gic_version = virGICVersionTypeFromString(tmp)) < 0 ||
+                    def->gic_version == VIR_GIC_VERSION_NONE) {
                     virReportError(VIR_ERR_XML_ERROR,
                                    _("malformed gic version: %s"), tmp);
                     goto error;
@@ -17525,8 +17525,9 @@ virDomainDefFeaturesCheckABIStability(virDomainDefPtr src,
     /* GIC version */
     if (src->gic_version != dst->gic_version) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                       _("Source GIC version '%u' does not match destination '%u'"),
-                       src->gic_version, dst->gic_version);
+                       _("Source GIC version '%s' does not match destination '%s'"),
+                       virGICVersionTypeToString(src->gic_version),
+                       virGICVersionTypeToString(dst->gic_version));
         return false;
     }
 
@@ -22198,9 +22199,9 @@ virDomainDefFormatInternal(virDomainDefPtr def,
             case VIR_DOMAIN_FEATURE_GIC:
                 if (def->features[i] == VIR_TRISTATE_SWITCH_ON) {
                     virBufferAddLit(buf, "<gic");
-                    if (def->gic_version)
-                        virBufferAsprintf(buf, " version='%u'",
-                                          def->gic_version);
+                    if (def->gic_version != VIR_GIC_VERSION_NONE)
+                        virBufferAsprintf(buf, " version='%s'",
+                                          virGICVersionTypeToString(def->gic_version));
                     virBufferAddLit(buf, "/>\n");
                 }
                 break;
