@@ -73,3 +73,4 @@ ubuntu/qemu-Automatically-choose-usable-GIC-version.patch
 fix-vol-remove-vir-file-breakout.patch
 fix-vol-remove-only-setuid-for-virFileRemove-if-on-NFS.patch
 ubuntu/libvirt-bin-service-libvirtd-alias.patch
+libvirt-guests-filter-newline-from-list.patch
