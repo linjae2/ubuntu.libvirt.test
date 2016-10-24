@@ -58,3 +58,6 @@ ubuntu/fix-qemu.conf-security_driver.patch
 ubuntu/check-live-for-postcopy.patch
 ubuntu/make-postcopy-mandatory-for-postcopy-after-precopy.patch
 ubuntu/libvirt-guests-filter-newline-from-list.patch
+ubuntu/apparmor-fix-name-resolution.patch
+ubuntu/apparmor-fix-debug-threads.patch
+ubuntu/apparmor-fix-other-seclabels.patch
