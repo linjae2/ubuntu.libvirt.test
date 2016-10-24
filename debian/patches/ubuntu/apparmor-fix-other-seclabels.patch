@@ -1,0 +1,76 @@
+Description: fix parsing security labels from virt-aa-helper
+ When parsing labels virt-aa-helper does no more pass
+ VIR_DOMAIN_DEF_PARSE_INACTIVE due to dfbc9a83 that tried to mitigate the
+ changes of a89f05ba. For those it had to switch from
+ VIR_DOMAIN_DEF_PARSE_INACTIVE to active since we need the domain id
+ (ctl->def->id) as it is part of the socket path now which is needed for the
+ aa profile.
+
+ But that turned out to break non apparmor seclabels as well as apparmor
+ seclabels in xmls without labels.
+ In those cases due to VIR_DOMAIN_DEF_PARSE_INACTIVE now not set anymore
+ virSecurityLabelDefParseXML insists on finding labels. Cases:
+ - non-apparmor seclabel - virt-aa-helper breaks
+ - apparmor seclabel without labels on a defined domain - virt-aa-helper breaks
+ This was not spotted due to labels getting dynamically created on definition.
+ So "define, start, stop" works. But "define, edit (add label), start" does not.
+
+ Now turning back on VIR_DOMAIN_DEF_PARSE_INACTIVE would cause the old bug, so
+ we have to differ those more fine grained. This is done by the new flag
+ VIR_DOMAIN_DEF_PARSE_SKIP_ACTIVE_LABEL which is like
+ VIR_DOMAIN_DEF_PARSE_INACTIVE but only for the security labels.
+ So far only set by virt-aa-helper.
+
+ Testcase with virt-aa-helper on xml file:
+  virt-aa-helper -d -r -p 0 -u libvirt-<uuid> < your-guest.xml
+    virt-aa-helper: error: could not parse XML
+    virt-aa-helper: error: could not get VM definition
+ (That should have printed a valid apparmor profile)
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Forwarded: yes
+
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -708,6 +708,7 @@
+ 
+     ctl->def = virDomainDefParseString(xmlStr,
+                                        ctl->caps, ctl->xmlopt,
++                                       VIR_DOMAIN_DEF_PARSE_SKIP_ACTIVE_LABEL |
+                                        VIR_DOMAIN_DEF_PARSE_SKIP_VALIDATE);
+ 
+     if (ctl->def == NULL) {
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -6464,7 +6464,8 @@
+      * if the 'live' VM XML is requested
+      */
+     if (seclabel->type == VIR_DOMAIN_SECLABEL_STATIC ||
+-        (!(flags & VIR_DOMAIN_DEF_PARSE_INACTIVE) &&
++        (!(flags & (VIR_DOMAIN_DEF_PARSE_SKIP_ACTIVE_LABEL |
++                    VIR_DOMAIN_DEF_PARSE_INACTIVE)) &&
+          seclabel->type != VIR_DOMAIN_SECLABEL_NONE)) {
+         p = virXPathStringLimit("string(./label[1])",
+                                 VIR_SECURITY_LABEL_BUFLEN-1, ctxt);
+@@ -6480,7 +6481,8 @@
+ 
+     /* Only parse imagelabel, if requested live XML with relabeling */
+     if (seclabel->relabel &&
+-        (!(flags & VIR_DOMAIN_DEF_PARSE_INACTIVE) &&
++        (!(flags & (VIR_DOMAIN_DEF_PARSE_SKIP_ACTIVE_LABEL |
++                    VIR_DOMAIN_DEF_PARSE_INACTIVE)) &&
+          seclabel->type != VIR_DOMAIN_SECLABEL_NONE)) {
+         p = virXPathStringLimit("string(./imagelabel[1])",
+                                 VIR_SECURITY_LABEL_BUFLEN-1, ctxt);
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -2614,6 +2614,9 @@
+     VIR_DOMAIN_DEF_PARSE_ABI_UPDATE = 1 << 9,
+     /* skip definition validation checks meant to be executed on define time only */
+     VIR_DOMAIN_DEF_PARSE_SKIP_VALIDATE = 1 << 10,
++    /* in regard to security labels, skip parts of the XML that would only be
++     * present in an active libvirt XML. */
++    VIR_DOMAIN_DEF_PARSE_SKIP_ACTIVE_LABEL        = 1 << 11,
+ } virDomainDefParseFlags;
+ 
+ typedef enum {
