@@ -1,3 +1,9 @@
+libvirt (2.1.0-1ubuntu11) zesty; urgency=medium
+
+  * Fix FTBFS on zesty due to issues with concurrent make check (LP: #1641615)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 15 Nov 2016 14:45:52 +0100
+
 libvirt (2.1.0-1ubuntu10) zesty; urgency=medium
 
   [Simon Déziel]
