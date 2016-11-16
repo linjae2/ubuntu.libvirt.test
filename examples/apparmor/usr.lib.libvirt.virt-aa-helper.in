@@ -68,4 +68,10 @@
   /**.vmdk r,
   /**.[iI][sS][oO] r,
   /**/disk{,.*} r,
+
+  # Avoid name resolution issues (LP: #1546674)
+  /etc/gai.conf r,
+  /etc/hosts r,
+  /etc/host.conf r,
+  /etc/nsswitch.conf r,
 }
