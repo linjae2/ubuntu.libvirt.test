@@ -1,3 +1,12 @@
+libvirt (2.1.0-1ubuntu12) zesty; urgency=medium
+
+  * d/p/ubuntu/fix-ftbfs-for-gnutls-3-5-6.patch fix FTBFS due to changes in
+    gnutls that affected the ordering on certificate DN entries (LP: #1641615)
+  * Revert "Fix FTBFS on zesty due to issues with concurrent make check" as it
+    was not the right solution.
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 16 Nov 2016 14:52:17 +0100
+
 libvirt (2.1.0-1ubuntu11) zesty; urgency=medium
 
   * Fix FTBFS on zesty due to issues with concurrent make check (LP: #1641615)

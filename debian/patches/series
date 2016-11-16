@@ -61,3 +61,4 @@ ubuntu/libvirt-guests-filter-newline-from-list.patch
 ubuntu/apparmor-fix-name-resolution.patch
 ubuntu/apparmor-fix-debug-threads.patch
 ubuntu/apparmor-fix-other-seclabels.patch
+ubuntu/fix-ftbfs-for-gnutls-3-5-6.patch

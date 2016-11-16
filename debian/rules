@@ -160,7 +160,7 @@ override_dh_auto_test:
 	export LD_PRELOAD="";     \
 	export VIR_TEST_DEBUG=1;  \
 	[ -n "$(MAKE_CHECK)" ] || exit 0; \
-	if ! dh_auto_test --no-parallel -O--builddirectory=$(DEB_BUILDDIR); then \
+	if ! dh_auto_test -O--builddirectory=$(DEB_BUILDDIR); then \
 	    cat ./debian/build/gnulib/tests/test-suite.log \
 	        ./debian/build/tests/test-suite.log; \
 	    exit 1; \
