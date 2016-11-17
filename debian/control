@@ -15,7 +15,7 @@ Build-Depends:
  libreadline-dev,
  zlib1g-dev,
  libgcrypt20-dev,
- libgnutls28-dev,
+ libgnutls28-dev (>= 3.5.6-4ubuntu2),
  libavahi-client-dev,
  libsasl2-dev,
  libxen-dev (>= 4.3) [i386 amd64 armhf arm64],
