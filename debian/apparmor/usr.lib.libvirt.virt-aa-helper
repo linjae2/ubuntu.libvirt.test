@@ -4,6 +4,8 @@
 /usr/lib/libvirt/virt-aa-helper {
   #include <abstractions/base>
   #include <abstractions/user-tmp>
+  # Avoid name resolution issues (LP: #1546674)
+  #include <abstractions/nameservice>
 
   # needed for searching directories
   capability dac_override,
