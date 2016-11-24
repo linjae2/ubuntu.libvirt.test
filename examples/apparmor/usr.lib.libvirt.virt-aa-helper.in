@@ -4,6 +4,9 @@
 /usr/lib/libvirt/virt-aa-helper {
   #include <abstractions/base>
   #include <abstractions/user-tmp>
+  # Avoid name resolution issues (LP: #1546674)
+  #include <abstractions/nameservice>
+
   # Site-specific additions and overrides. See local/README for details.
   #include <local/usr.lib.libvirt.virt-aa-helper>
 
