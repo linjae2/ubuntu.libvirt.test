@@ -6464,8 +6464,7 @@ virSecurityLabelDefParseXML(xmlXPathContextPtr ctxt,
      * if the 'live' VM XML is requested
      */
     if (seclabel->type == VIR_DOMAIN_SECLABEL_STATIC ||
-        (!(flags & (VIR_DOMAIN_DEF_PARSE_SKIP_ACTIVE_LABEL |
-                    VIR_DOMAIN_DEF_PARSE_INACTIVE)) &&
+        (!(flags & VIR_DOMAIN_DEF_PARSE_INACTIVE) &&
          seclabel->type != VIR_DOMAIN_SECLABEL_NONE)) {
         p = virXPathStringLimit("string(./label[1])",
                                 VIR_SECURITY_LABEL_BUFLEN-1, ctxt);
@@ -6481,8 +6480,7 @@ virSecurityLabelDefParseXML(xmlXPathContextPtr ctxt,
 
     /* Only parse imagelabel, if requested live XML with relabeling */
     if (seclabel->relabel &&
-        (!(flags & (VIR_DOMAIN_DEF_PARSE_SKIP_ACTIVE_LABEL |
-                    VIR_DOMAIN_DEF_PARSE_INACTIVE)) &&
+        (!(flags & VIR_DOMAIN_DEF_PARSE_INACTIVE) &&
          seclabel->type != VIR_DOMAIN_SECLABEL_NONE)) {
         p = virXPathStringLimit("string(./imagelabel[1])",
                                 VIR_SECURITY_LABEL_BUFLEN-1, ctxt);
@@ -15853,8 +15851,10 @@ virDomainDefParseXML(xmlDocPtr xml,
 
     /* analysis of security label, done early even though we format it
      * late, so devices can refer to this for defaults */
-    if (virSecurityLabelDefsParseXML(def, ctxt, caps, flags) == -1)
-        goto error;
+    if (!(flags & VIR_DOMAIN_DEF_PARSE_SKIP_SECLABEL)) {
+        if (virSecurityLabelDefsParseXML(def, ctxt, caps, flags) == -1)
+            goto error;
+    }
 
     /* Extract domain memory */
     if (virDomainParseMemory("./memory[1]", NULL, ctxt,

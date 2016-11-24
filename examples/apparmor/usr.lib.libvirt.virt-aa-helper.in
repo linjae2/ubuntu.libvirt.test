@@ -4,6 +4,9 @@
 /usr/lib/libvirt/virt-aa-helper {
   #include <abstractions/base>
   #include <abstractions/user-tmp>
+  # Avoid name resolution issues (LP: #1546674)
+  #include <abstractions/nameservice>
+
   # Site-specific additions and overrides. See local/README for details.
   #include <local/usr.lib.libvirt.virt-aa-helper>
 
@@ -26,7 +29,12 @@
   /sys/bus/usb/devices/ r,
   /sys/bus/usb/devices/** r,
   deny /dev/sd* r,
+  deny /dev/vd* r,
   deny /dev/dm-* r,
+  deny /dev/drbd[0-9]* r,
+  deny /dev/dasd* r,
+  deny /dev/nvme* r,
+  deny /dev/zd[0-9]* r,
   deny /dev/mapper/ r,
   deny /dev/mapper/* r,
 
@@ -68,10 +76,4 @@
   /**.vmdk r,
   /**.[iI][sS][oO] r,
   /**/disk{,.*} r,
-
-  # Avoid name resolution issues (LP: #1546674)
-  /etc/gai.conf r,
-  /etc/hosts r,
-  /etc/host.conf r,
-  /etc/nsswitch.conf r,
 }
