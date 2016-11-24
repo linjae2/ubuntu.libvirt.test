@@ -2,19 +2,18 @@ Description: avoid apparmor host name resolution issues
  In certain cases libvirt checks for host name resolution but is denied by
  apparmor as of today. This error is non-fatal, but was reported to cause quite
  some long deleays.
-Author: Simon Déziel <simon.deziel@gmail.com>
-Forwarded: yes
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Forwarded: not yet (major rework to sync apparmor changes planned)
 
 --- a/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in
 +++ b/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in
-@@ -68,4 +68,10 @@
-   /**.vmdk r,
-   /**.[iI][sS][oO] r,
-   /**/disk{,.*} r,
-+
+@@ -4,6 +4,9 @@
+ /usr/lib/libvirt/virt-aa-helper {
+   #include <abstractions/base>
+   #include <abstractions/user-tmp>
 +  # Avoid name resolution issues (LP: #1546674)
-+  /etc/gai.conf r,
-+  /etc/hosts r,
-+  /etc/host.conf r,
-+  /etc/nsswitch.conf r,
- }
++  #include <abstractions/nameservice>
++
+   # Site-specific additions and overrides. See local/README for details.
+   #include <local/usr.lib.libvirt.virt-aa-helper>
+ 

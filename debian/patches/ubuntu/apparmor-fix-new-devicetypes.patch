@@ -1,0 +1,21 @@
+Description: add new block device types to virt-aa-helpers profile
+ This silences some denials that happen without effect, it extends a delta
+ already in Debian and Ubuntu for quite some time by new device types.
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Forwarded: not yet (major rework to sync apparmor changes planned)
+
+--- a/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in
++++ b/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in
+@@ -29,7 +29,12 @@
+   /sys/bus/usb/devices/ r,
+   /sys/bus/usb/devices/** r,
+   deny /dev/sd* r,
++  deny /dev/vd* r,
+   deny /dev/dm-* r,
++  deny /dev/drbd[0-9]* r,
++  deny /dev/dasd* r,
++  deny /dev/nvme* r,
++  deny /dev/zd[0-9]* r,
+   deny /dev/mapper/ r,
+   deny /dev/mapper/* r,
+ 

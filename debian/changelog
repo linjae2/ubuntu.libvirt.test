@@ -1,3 +1,14 @@
+libvirt (2.1.0-1ubuntu14) zesty; urgency=medium
+
+  * d/p/u/apparmor-fix-name-resolution.patch rework the fix to base
+    on the apparmor nameservice abstraction to be future proof (LP: #1546674).
+  * d/p/ubuntu/apparmor-fix-new-devicetypes.patch add new block device types to
+    virt-aa-helpers profile (LP: #1641618)
+  * d/p/u/apparmor-fix-other-seclabels.patch refresh to the now upstream
+    accepted solution (LP: #1633207).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 24 Nov 2016 08:06:38 +0100
+
 libvirt (2.1.0-1ubuntu13) zesty; urgency=medium
 
   * drop d/p/ubuntu/fix-ftbfs-for-gnutls-3-5-6.patch as the offending change
