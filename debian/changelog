@@ -1,3 +1,10 @@
+libvirt (2.1.0-1ubuntu9.1) yakkety; urgency=medium
+
+  * d/p/u/apparmor-fix-other-seclabels.patch fixes an issue parsing non
+    apparmor security labels (LP: #1633207).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 01 Dec 2016 09:44:12 +0100
+
 libvirt (2.1.0-1ubuntu9) yakkety; urgency=medium
 
   * Fix libvirt-guest.sh to handle multiple guests (LP: #1591695).
