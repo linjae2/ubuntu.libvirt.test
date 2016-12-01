@@ -1,0 +1,71 @@
+Description: virt-aa-helper: fix parsing security labels
+
+... by introducing VIR_DOMAIN_DEF_PARSE_SKIP_SECLABEL
+
+When virt-aa-helper parses xml content it can fail on security labels.
+
+It fails by requiring to parse active domain content on seclabels that
+are not yet filled in.
+
+Testcase with virt-aa-helper on a minimal xml:
+ $ cat << EOF > /tmp/test.xml
+<domain type='kvm'>
+    <name>test-seclabel</name>
+    <uuid>12345678-9abc-def1-2345-6789abcdef00</uuid>
+    <memory unit='KiB'>1</memory>
+    <os><type arch='x86_64'>hvm</type></os>
+    <seclabel type='dynamic' model='apparmor' relabel='yes'/>
+    <seclabel type='dynamic' model='dac' relabel='yes'/>
+</domain>
+EOF
+ $ /usr/lib/libvirt/virt-aa-helper -d -r -p 0 \
+   -u libvirt-12345678-9abc-def1-2345-6789abcdef00 < /tmp/test.xml
+
+Current Result:
+ virt-aa-helper: error: could not parse XML
+ virt-aa-helper: error: could not get VM definition
+Expected Result is a valid apparmor profile
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Signed-off-by: Guido Günther <agx@sigxcpu.org>
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Forwarded: yes, accepted as dffdac06
+Last-Update: 2016-12-01
+
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -15851,8 +15851,10 @@
+ 
+     /* analysis of security label, done early even though we format it
+      * late, so devices can refer to this for defaults */
+-    if (virSecurityLabelDefsParseXML(def, ctxt, caps, flags) == -1)
+-        goto error;
++    if (!(flags & VIR_DOMAIN_DEF_PARSE_SKIP_SECLABEL)) {
++        if (virSecurityLabelDefsParseXML(def, ctxt, caps, flags) == -1)
++            goto error;
++    }
+ 
+     /* Extract domain memory */
+     if (virDomainParseMemory("./memory[1]", NULL, ctxt,
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -2614,6 +2614,8 @@
+     VIR_DOMAIN_DEF_PARSE_ABI_UPDATE = 1 << 9,
+     /* skip definition validation checks meant to be executed on define time only */
+     VIR_DOMAIN_DEF_PARSE_SKIP_VALIDATE = 1 << 10,
++    /* skip parsing of security labels */
++    VIR_DOMAIN_DEF_PARSE_SKIP_SECLABEL        = 1 << 11,
+ } virDomainDefParseFlags;
+ 
+ typedef enum {
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -708,6 +708,7 @@
+ 
+     ctl->def = virDomainDefParseString(xmlStr,
+                                        ctl->caps, ctl->xmlopt,
++                                       VIR_DOMAIN_DEF_PARSE_SKIP_SECLABEL |
+                                        VIR_DOMAIN_DEF_PARSE_SKIP_VALIDATE);
+ 
+     if (ctl->def == NULL) {
