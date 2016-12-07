@@ -1,3 +1,21 @@
+libvirt (2.5.0-1) experimental; urgency=medium
+
+  * [691e163] New upstream version 2.5.0
+  * [49e8842] Bump symbol versions
+  * [babd7e4] Rediff patches. Dropped:
+      Unbreak-rebuilding-docs-with-release-tarballs.patch: applied upstream
+      configure-Prefer-usr-bin-over-bin-for-numad.patch: fixed upstream
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 07 Dec 2016 17:41:37 +0100
+
+libvirt (2.4.0-3) unstable; urgency=medium
+
+  * [9eda310] Depend on lsb-base
+  * [c76b178] Make test failure fail the tests again on amd64.
+    Thanks to Christian Ehrhardt for spotting this (Closes: #844511)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 07 Dec 2016 16:22:18 +0100
+
 libvirt (2.4.0-2) unstable; urgency=medium
 
   * [f964983] Unbreak rebuilding docs with release tarballs (Closes: #842452)
