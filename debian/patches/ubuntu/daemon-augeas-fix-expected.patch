@@ -4,6 +4,10 @@ Description: Fix the expected augeas output for 'make check'
 Author: Serge Hallyn <serge.hallyn@ubuntu.com>
 Forwarded: no
 
+This is only needed in combination with
+ d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch and makes the tests
+match the slightly different default configuration.
+
 Index: libvirt/daemon/test_libvirtd.aug.in
 ===================================================================
 --- libvirt.orig/daemon/test_libvirtd.aug.in

@@ -43,7 +43,6 @@
 #include <linux/unistd.h>
 
 /* For MS_MOVE */
-#include <stdint.h>
 #include <linux/fs.h>
 
 #if WITH_CAPNG
