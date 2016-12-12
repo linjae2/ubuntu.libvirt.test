@@ -15,15 +15,3 @@ Index: libvirt/src/storage/storage_backend.h
  # define VIR_STORAGE_DEFAULT_VOL_PERM_MODE  0600
  
  int virStorageBackendUpdateVolInfo(virStorageVolDefPtr vol,
-Index: libvirt/tests/storagepoolxml2xmltest.c
-===================================================================
---- libvirt.orig/tests/storagepoolxml2xmltest.c	2016-07-13 16:15:13.006984158 +0200
-+++ libvirt/tests/storagepoolxml2xmltest.c	2016-07-13 16:15:13.002984158 +0200
-@@ -84,7 +84,6 @@ mymain(void)
-     DO_TEST("pool-iscsi");
-     DO_TEST("pool-iscsi-auth");
-     DO_TEST("pool-netfs");
--    DO_TEST("pool-netfs-gluster");
-     DO_TEST("pool-netfs-cifs");
-     DO_TEST("pool-scsi");
-     DO_TEST("pool-scsi-type-scsi-host");

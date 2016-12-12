@@ -1,3 +1,13 @@
+Title: Disable networking Test
+DEP: 3
+Date: 2015-02-03
+Drivers: Chuck Short <zulcss@ubuntu.com>
+Abstract:
+ This was added on the merge of 1.2.12-0ubuntu1 to avoid a test issue.
+
+ This issue comes from our change to use libvirt-dnsmasq as the dnsmasq delta
+ and should instead be fixed properly by modifying the expected data
+ accordingly.
 Index: ubuntu-libvirt/tests/networkxml2conftest.c
 ===================================================================
 --- ubuntu-libvirt.orig/tests/networkxml2conftest.c

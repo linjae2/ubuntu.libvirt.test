@@ -1,3 +1,16 @@
+Title: Run DNSMASQ as libvirt-dnsmasq user
+DEP: 3
+Date: 2012-03-02
+Drivers: Serge Hallyn
+URL: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/938255
+Abstract:
+ Generally it's bad form from a security perspective to run daemons as user
+ nobody because a vulnerability in one daemon will possibly allow it, when
+ compromised, to interfere with another daemon that is also running as nobody.
+ The preferred solution is to run it as a service-specific system user. In this
+ case, because there may be multiple dnsmasq daemons running, a separate
+ libvirt-dnsmasq user (the dnsmasq package itself runs the dnsmasq daemon under
+ a system user called unsurprisingly 'dnsmasq').
 Index: libvirt/src/network/bridge_driver.c
 ===================================================================
 --- libvirt.orig/src/network/bridge_driver.c	2016-07-13 16:15:02.798984315 +0200
