@@ -736,9 +736,10 @@ get_definition(vahControl * ctl, const char *xmlStr)
   * read with no explicit deny rule.
   */
 static int
-vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursive)
+vah_add_path(virBufferPtr buf, const char *path, const char *inperms, bool recursive)
 {
     char *tmp = NULL;
+    char *perms = NULL;
     int rc = -1;
     bool readonly = true;
     bool explicit_deny_rule = true;
@@ -757,13 +758,18 @@ vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursi
         return 0;
     }
 
+    if (VIR_STRDUP_QUIET(perms, inperms) < 0)
+        return rc;
+
     if (virFileExists(path)) {
         if ((tmp = realpath(path, NULL)) == NULL) {
             vah_error(NULL, 0, path);
             vah_error(NULL, 0, _("could not find realpath for disk"));
+            VIR_FREE(perms);
             return rc;
         }
     } else if (VIR_STRDUP_QUIET(tmp, path) < 0) {
+        VIR_FREE(perms);
         return rc;
     }
 
@@ -802,6 +808,7 @@ vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursi
 
  cleanup:
     VIR_FREE(tmp);
+    VIR_FREE(perms);
 
     return rc;
 }
