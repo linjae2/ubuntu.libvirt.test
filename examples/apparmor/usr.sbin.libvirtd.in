@@ -15,7 +15,6 @@
   capability sys_admin,
   capability sys_module,
   capability sys_ptrace,
-  capability sys_pacct,
   capability sys_nice,
   capability sys_chroot,
   capability setuid,
@@ -37,7 +36,6 @@
   network inet6 stream,
   network inet6 dgram,
   network packet dgram,
-  network packet raw,
 @@ifge 2009
   network netlink,
 @@end
@@ -62,9 +60,9 @@
   /usr/sbin/virtlogd pix,
   /usr/sbin/* PUx,
   /lib/udev/scsi_id PUx,
-  /usr/{lib,lib64}/xen-common/bin/xen-toolstack PUx,
-  /usr/{lib,lib64}/xen-*/bin/pygrub PUx,
-  /usr/{lib,lib64}/xen-*/bin/libxl-save-helper PUx,
+  /usr/lib/xen-common/bin/xen-toolstack PUx,
+  /usr/lib/xen-*/bin/pygrub PUx,
+  /usr/lib/xen-*/bin/libxl-save-helper PUx,
 
   # Required by nwfilter_ebiptables_driver.c:ebiptablesWriteToTempFile() to
   # write and run an ebtables script.
@@ -77,7 +75,7 @@
   audit deny /sys/kernel/security/apparmor/matching rwxl,
   audit deny /sys/kernel/security/apparmor/.* rwxl,
   /sys/kernel/security/apparmor/profiles r,
-  /usr/{lib,lib64}/libvirt/* PUxr,
+  /usr/lib/libvirt/* PUxr,
   /etc/libvirt/hooks/** rmix,
   /etc/xen/scripts/** rmix,
 
