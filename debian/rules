@@ -41,7 +41,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
     WITH_POLKIT          = --with-polkit
     WITH_SANLOCK         = --with-sanlock
     WITH_INIT_SCRIPT     = --with-init-script=systemd
-    WITH_FIREWALLD       = --with-firewalld
+    WITH_FIREWALLD       = --without-firewalld
     WITH_ATTR            = --with-attr
     WITH_AUDIT           = --with-audit
     WITH_SELINUX         = --with-selinux --with-secdriver-selinux --with-selinux-mount=/sys/fs/selinux
