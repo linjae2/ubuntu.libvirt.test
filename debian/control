@@ -58,7 +58,7 @@ Build-Depends:
 # for lxc fuse support
  libfuse-dev [linux-any],
 # for libssh2 connection URIs
- libssh2-1-dev,
+# libssh2-1-dev,
 # for qemu-bridge-helper
  qemu-system-common,
 # For "make check"
