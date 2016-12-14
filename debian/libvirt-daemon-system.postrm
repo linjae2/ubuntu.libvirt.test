@@ -62,7 +62,11 @@ case "$1" in
                    /var/cache/libvirt/qemu; do
             [ ! -d $dir ] || rmdir --ignore-fail-on-non-empty $dir
         done
+
+        # Remove the link set up by postinst
+        rm -f /etc/libvirt/qemu/networks/autostart/default.xml
         ;;
+
     remove)
         if [ -L /etc/dnsmasq.d/libvirt-daemon ]; then
             echo "Removing libvirt-daemon dnsmasq configuration"
