@@ -98,7 +98,7 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	--disable-rpath          \
 	--with-qemu		 \
 	--with-qemu-user=libvirt-qemu  \
-	--with-qemu-group=libvirt-qemu \
+	--with-qemu-group=kvm \
 	$(WITH_OPENVZ)		 \
 	--with-sasl              \
 	--with-yajl              \
