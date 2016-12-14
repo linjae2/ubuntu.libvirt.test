@@ -14,7 +14,6 @@ Allow-access-to-libnl-3-config-files.patch
 debian/apparmor_profiles_local_include.patch
 virt-aa-helper-apparmor-allow-usr-share-OVMF-too.patch
 
-ubuntu/9002-default_uri_virsh_to_system.patch
 ubuntu/Allow-libvirt-group-to-access-the-socket.patch
 ubuntu/enable-kvm-spice.patch
 ubuntu/dnsmasq-as-priv-user
@@ -40,6 +39,7 @@ ubuntu/virt-aa-helper-apparmor-allow-usr-share-AAVMF-too.patch
 ubuntu/libvirtd-service-set-notifyaccess.patch
 ubuntu/daemon-augeas-fix-expected.patch
 ubuntu/libvirtd-service-add-bin-alias.patch
+ubuntu/apibuild-skip-libvirt-common.h
 ubuntu/libvirtd-init-add-bin-alias.patch
 ubuntu/libxl-fix-test-data.patch
 ubuntu/fix-xen-xml-in-tests.patch
