@@ -96,7 +96,7 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     $(WITH_OPENVZ) \
     -Dsasl=enabled \
     -Dyajl=enabled \
-    -Dlibssh2=enabled \
+    -Dlibssh2=disabled \
     $(WITH_POLKIT) \
     $(WITH_SANLOCK) \
     $(WITH_UDEV) \
