@@ -1,3 +1,13 @@
+libvirt (2.1.0-1ubuntu16) zesty; urgency=medium
+
+  * Ensure d/p/ubuntu/9002-default_uri_virsh_to_system.patch is
+    dropped as intended.
+  * Re-Add d/p/ubuntu/apibuild-skip-libvirt-common.h for an issue that
+    transiently occurs on LP builds (real trigger not yet identified, so it
+    can't be upstreamed).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 14 Dec 2016 09:30:58 +0100
+
 libvirt (2.1.0-1ubuntu15) zesty; urgency=medium
 
   * Cleanup Ubuntu Delta prior to next libvirt merge
