@@ -89,6 +89,69 @@ add_users_groups()
     fi
 }
 
+includes_addr() {
+    addr=${1}
+    mask=${2}
+    viraddr=${3}
+    for n in $(seq 1 4); do
+        curaddrcomponent=$(echo "${addr}" | awk -F. '{ print $'"${n}"' }')
+        tgtaddrcomponent=$(echo "${viraddr}" | awk -F. '{ print $'"${n}"' }')
+        cmp=$((mask/8))
+        if [ "${cmp}" -ge "${n}" ]; then
+            if [ "${curaddrcomponent}" -ne "${tgtaddrcomponent}" ]; then
+                echo "false"
+                return
+            fi
+        elif [ "$((cmp+1))" -ge "${n}" ]; then
+            # do we bother comparing partial (i.e. /25)?
+            :
+        else
+            break
+        fi
+    done
+    echo "true"
+    return
+}
+
+set_autostart()
+{
+    echo "Enabling libvirt default network"
+    if [ ! -e /etc/libvirt/qemu/networks/autostart/default.xml ]; then
+        ln -s /etc/libvirt/qemu/networks/default.xml \
+              /etc/libvirt/qemu/networks/autostart/
+    fi
+}
+
+# on first install, don't set default network to autostart if we already
+# have a conflicting network. Good for instance for nested libvirt.
+maybe_set_autostart()
+{
+    # 122 is the common default, but iterate a few more options
+    for thirdoctet in $(seq 122 128); do
+        tryip="192.168.${thirdoctet}.1"
+        found=0
+        for pair in $(ip addr show | grep "inet\>" |awk '{ print $2 }'); do
+            a=$(echo "$pair" | awk -F/ '{ print $1}')
+            m=$(echo "$pair" | awk -F/ '{ print $2}')
+            res=$(includes_addr "${a}" "${m}" "${tryip}")
+            if [ "${res}" = "true" ]; then
+                found=1
+            fi
+        done
+        if [ $found -ne 1 ]; then
+            # found a free subnet
+            if [ "${thirdoctet}" -ne "122" ]; then
+                echo "Default libvirt network on 192.168.122.1/24 already taken"
+                echo "Changing to free 192.168.${thirdoctet}.1/24"
+                sed -i 's/192.168.122/192.168.'"${thirdoctet}"'/g' /etc/libvirt/qemu/networks/default.xml
+            fi
+            set_autostart
+            return
+        fi
+    done
+    echo "Not enabling default network as no free network was found"
+}
+
 
 add_statoverrides()
 {
@@ -156,6 +219,12 @@ case "$1" in
 
         # Force refresh of capabilties (#731815)
         rm -f /var/cache/libvirt/qemu/capabilities/*.xml
+
+        # On an initial package install, create the default network autostart
+        # symlink if on a system that it will work on.
+        if [ -z $2 ]; then
+            maybe_set_autostart
+        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
