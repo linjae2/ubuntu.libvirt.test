@@ -29,7 +29,12 @@
   /sys/bus/usb/devices/ r,
   /sys/bus/usb/devices/** r,
   deny /dev/sd* r,
+  deny /dev/vd* r,
   deny /dev/dm-* r,
+  deny /dev/drbd[0-9]* r,
+  deny /dev/dasd* r,
+  deny /dev/nvme* r,
+  deny /dev/zd[0-9]* r,
   deny /dev/mapper/ r,
   deny /dev/mapper/* r,
 
