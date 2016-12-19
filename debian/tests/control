@@ -8,6 +8,7 @@ Depends:
  libvirt-clients,
  libvirt-daemon,
  libxml2-utils,
+ linux-image-amd64 [amd64] | linux-generic [amd64],
  qemu-kvm,
  qemu-system,
 Restrictions: allow-stderr, isolation-container, skippable, skip-not-installable
