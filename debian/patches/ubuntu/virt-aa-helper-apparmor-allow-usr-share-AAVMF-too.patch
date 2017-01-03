@@ -1,0 +1,31 @@
+Description: virt-aa-helper: Allow access to aarch64 UEFI images.
+Author: William Grant <wgrant@ubuntu.com>
+
+Index: libvirt/examples/apparmor/libvirt-qemu
+===================================================================
+--- libvirt.orig/examples/apparmor/libvirt-qemu	2016-07-13 16:43:53.390957633 +0200
++++ libvirt/examples/apparmor/libvirt-qemu	2016-07-13 16:43:53.274957635 +0200
+@@ -68,6 +68,8 @@
+   /usr/share/seabios/** r,
+   /usr/share/ovmf/** r,
+   /usr/share/OVMF/** r,
++  /usr/share/AAVMF/** r,
++  /usr/share/qemu-efi/** r,
+ 
+   # access PKI infrastructure
+   /etc/pki/libvirt-vnc/** r,
+Index: libvirt/src/security/virt-aa-helper.c
+===================================================================
+--- libvirt.orig/src/security/virt-aa-helper.c	2016-07-13 16:43:53.390957633 +0200
++++ libvirt/src/security/virt-aa-helper.c	2016-07-13 16:43:53.274957635 +0200
+@@ -513,7 +513,9 @@ valid_path(const char *path, const bool
+         "/initrd",
+         "/initrd.img",
+         "/usr/share/OVMF/",              /* for OVMF images */
+-        "/usr/share/ovmf/"               /* for OVMF images */
++        "/usr/share/ovmf/",              /* for OVMF images */
++        "/usr/share/AAVMF/",             /* for AAVMF images */
++        "/usr/share/qemu-efi/"           /* for AAVMF images */
+     };
+     /* override the above with these */
+     const char * const override[] = {

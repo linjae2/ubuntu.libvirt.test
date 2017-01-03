@@ -1,0 +1,14 @@
+--- a/daemon/libvirtd.service.in
++++ b/daemon/libvirtd.service.in
+@@ -23,8 +23,9 @@
+ ExecReload=/bin/kill -HUP $MAINPID
+ KillMode=process
+ Restart=on-failure
+-# Override the maximum number of opened files
+-#LimitNOFILE=2048
++LimitNOFILE=infinity
++LimitNPROC=infinity
++TasksMax=infinity
+ 
+ [Install]
+ WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+Description: Adapt config file location for Debian
+ Change /etc/sysconfig into /etc/default for virtlogd.conf as other
+ patches did for the other daemons (should be forwarded to Debian).
+Forwarded: no
+Author: Stefan Bader <stefan.bader@canonical.com>
+
+--- a/src/logging/virtlogd.service.in
++++ b/src/logging/virtlogd.service.in
+@@ -6,7 +6,7 @@
+ Documentation=http://libvirt.org
+ 
+ [Service]
+-EnvironmentFile=-/etc/sysconfig/virtlogd
++EnvironmentFile=-/etc/default/virtlogd
+ ExecStart=@sbindir@/virtlogd $VIRTLOGD_ARGS
+ ExecReload=/bin/kill -USR1 $MAINPID
+ # Loosing the logs is a really bad thing that will

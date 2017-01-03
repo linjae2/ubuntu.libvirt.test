@@ -1,0 +1,31 @@
+Description: [PATCH 0006/0006] Ubuntu only version hack
+ In d/rules we set Trusty to be 2.9 (it really is 2.8++), because it has almost
+ all apparmor 2.9 features - so handling it as 2.9 is the closest to reality.
+ Unfortunately almost means "not all", so we have to add an exception for those
+ few features. These we move to a 2.10 check in this patch.
+ This can be dropped (together with the Trusty version set) once people stop
+ backporting to Trusty - >=Xenial features are more or less stable between
+ Ubuntu and Debian versions.
+Author: Stefan Bader <stefan.bader@canonical.com>
+Forwarded: no
+
+--- a/examples/apparmor/usr.sbin.libvirtd.in
++++ b/examples/apparmor/usr.sbin.libvirtd.in
+@@ -34,7 +34,7 @@
+   network inet6 stream,
+   network inet6 dgram,
+   network packet dgram,
+-@@ifge 2009
++@@ifge 2010
+   network netlink,
+ @@end
+ 
+@@ -43,7 +43,7 @@
+   signal,
+   ptrace,
+ @@end
+-@@ifge 2009
++@@ifge 2010
+   unix,
+ @@end
+ 
