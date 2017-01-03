@@ -513,7 +513,9 @@ valid_path(const char *path, const bool readonly)
         "/initrd",
         "/initrd.img",
         "/usr/share/OVMF/",              /* for OVMF images */
-        "/usr/share/ovmf/"               /* for OVMF images */
+        "/usr/share/ovmf/",              /* for OVMF images */
+        "/usr/share/AAVMF/",             /* for AAVMF images */
+        "/usr/share/qemu-efi/"           /* for AAVMF images */
     };
     /* override the above with these */
     const char * const override[] = {
@@ -889,11 +891,11 @@ add_file_path(virDomainDiskDefPtr disk,
 
     if (depth == 0) {
         if (disk->src->readonly)
-            ret = vah_add_file(buf, path, "r");
+            ret = vah_add_file(buf, path, "R");
         else
             ret = vah_add_file(buf, path, "rw");
     } else {
-        ret = vah_add_file(buf, path, "r");
+        ret = vah_add_file(buf, path, "R");
     }
 
     if (ret != 0)
@@ -988,6 +990,10 @@ get_files(vahControl * ctl)
                                      "rw",
                                      ctl->def->parallels[i]->source->type) != 0)
                 goto cleanup;
+
+    virBufferAsprintf(&buf, "  # for qemu guest agent channel\n");
+    virBufferAsprintf(&buf, "  owner \"/var/lib/libvirt/qemu/channel/target/domain-%s/**\" rw,\n",
+                      ctl->def->name);
 
     for (i = 0; i < ctl->def->nchannels; i++)
         if (ctl->def->channels[i] &&
@@ -1106,7 +1112,7 @@ get_files(vahControl * ctl)
             /* We don't need to add deny rw rules for readonly mounts,
              * this can only lead to troubles when mounting / readonly.
              */
-            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rw", true) != 0)
+            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rwl", true) != 0)
                 goto cleanup;
         }
     }

@@ -1,0 +1,9 @@
+--- a/daemon/libvirtd.service.in
++++ b/daemon/libvirtd.service.in
+@@ -30,5 +30,6 @@
+ 
+ [Install]
+ WantedBy=multi-user.target
++Alias=libvirt-bin.service
+ Also=virtlockd.socket
+ Also=virtlogd.socket

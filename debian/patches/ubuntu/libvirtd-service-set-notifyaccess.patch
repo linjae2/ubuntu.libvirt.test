@@ -1,0 +1,15 @@
+Description: set NotifyAccess=all
+Author: Serge Hallyn <serge.hallyn@ubuntu.com>
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1574566
+Forwarded: yes
+
+--- a/daemon/libvirtd.service.in
++++ b/daemon/libvirtd.service.in
+@@ -26,6 +26,7 @@
+ LimitNOFILE=infinity
+ LimitNPROC=infinity
+ TasksMax=infinity
++NotifyAccess=all
+ 
+ [Install]
+ WantedBy=multi-user.target

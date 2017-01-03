@@ -1,0 +1,18 @@
+Description: avoid apparmor host name resolution issues
+ In certain cases libvirt checks for host name resolution but is denied by
+ apparmor as of today. This error is non-fatal, but was reported to cause quite
+ some long deleays.
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Forwarded: not yet (major rework to sync apparmor changes planned)
+
+--- a/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in
++++ b/examples/apparmor/usr.lib.libvirt.virt-aa-helper.in
+@@ -4,6 +4,8 @@
+ profile virt-aa-helper /usr/{lib,lib64}/libvirt/virt-aa-helper {
+   #include <abstractions/base>
+   #include <abstractions/user-tmp>
++  # Avoid name resolution issues (LP: #1546674)
++  #include <abstractions/nameservice>
+ 
+   # needed for searching directories
+   capability dac_override,

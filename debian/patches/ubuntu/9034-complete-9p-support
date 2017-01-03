@@ -1,0 +1,16 @@
+Description: virt-aa-helper: add l to 9p file options
+Author: Serge Hallyn <serge.hallyn@ubuntu.com>
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1378434
+Forwarded: no
+
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -1106,7 +1106,7 @@
+             /* We don't need to add deny rw rules for readonly mounts,
+              * this can only lead to troubles when mounting / readonly.
+              */
+-            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rw", true) != 0)
++            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rwl", true) != 0)
+                 goto cleanup;
+         }
+     }

@@ -1,0 +1,47 @@
+Description: [PATCH 0003/0006] Local apparmor overrides
+ Local overrides is a feature Ubuntus libvirt provided for a while.
+ This allows the user to have a non-conffile that he can use to extend the
+ package delivered rules with extra content matching his special case.
+Author: Stefan Bader <stefan.bader@canonical.com>
+Forwarded: no
+
+--- a/examples/Makefile.am
++++ b/examples/Makefile.am
+@@ -24,6 +24,8 @@
+ EXTRA_DIST = \
+ 	apparmor/TEMPLATE.qemu \
+ 	apparmor/TEMPLATE.lxc \
++	apparmor/local-usr.sbin.libvirtd \
++	apparmor/local-usr.lib.libvirt.virt-aa-helper \
+ 	lxcconvert/virt-lxc-convert \
+ 	polkit/libvirt-acl.rules \
+ 	$(wildcard $(srcdir)/systemtap/*.stp) \
+@@ -78,6 +80,18 @@
+ 	apparmor/usr.sbin.libvirtd \
+ 	$(NULL)
+ 
++localdir = $(apparmordir)/local
++local_DATA = \
++	apparmor/local-usr.sbin.libvirtd \
++	apparmor/local-usr.lib.libvirt.virt-aa-helper \
++	$(NULL)
++
++install-data-hook:
++	mv $(DESTDIR)$(localdir)/local-usr.sbin.libvirtd \
++	   $(DESTDIR)$(localdir)/usr.sbin.libvirtd
++	mv $(DESTDIR)$(localdir)/local-usr.lib.libvirt.virt-aa-helper \
++	   $(DESTDIR)$(localdir)/usr.lib.libvirt.virt-aa-helper
++
+ abstractionsdir = $(apparmordir)/abstractions
+ abstractions_DATA = \
+ 	apparmor/libvirt-qemu \
+--- /dev/null
++++ b/examples/apparmor/local-usr.sbin.libvirtd
+@@ -0,0 +1,2 @@
++# Site-specific additions and overrides for usr.sbin.libvirtd.
++# For more details, please see /etc/apparmor.d/local/README.
+--- /dev/null
++++ b/examples/apparmor/local-usr.lib.libvirt.virt-aa-helper
+@@ -0,0 +1,2 @@
++# Site-specific additions and overrides for usr.lib.libvirt.virt-aa-helper.
++# For more details, please see /etc/apparmor.d/local/README.

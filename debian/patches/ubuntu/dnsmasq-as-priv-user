@@ -1,0 +1,165 @@
+Title: Run DNSMASQ as libvirt-dnsmasq user
+DEP: 3
+Date: 2012-03-02
+Drivers: Serge Hallyn
+URL: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/938255
+Abstract:
+ Generally it's bad form from a security perspective to run daemons as user
+ nobody because a vulnerability in one daemon will possibly allow it, when
+ compromised, to interfere with another daemon that is also running as nobody.
+ The preferred solution is to run it as a service-specific system user. In this
+ case, because there may be multiple dnsmasq daemons running, a separate
+ libvirt-dnsmasq user (the dnsmasq package itself runs the dnsmasq daemon under
+ a system user called unsurprisingly 'dnsmasq').
+--- a/src/network/bridge_driver.c
++++ b/src/network/bridge_driver.c
+@@ -946,7 +946,8 @@
+                       "##    virsh net-edit %s\n"
+                       "## or other application using the libvirt API.\n"
+                       "##\n## dnsmasq conf file created by libvirt\n"
+-                      "strict-order\n",
++                      "strict-order\n"
++                      "user=libvirt-dnsmasq\n",
+                       network->def->name);
+ 
+     /* if dns is disabled, set its listening port to 0, which
+--- a/tests/networkxml2confdata/dhcp6host-routed-network.conf
++++ b/tests/networkxml2confdata/dhcp6host-routed-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr1
+--- a/tests/networkxml2confdata/dhcp6-nat-network.conf
++++ b/tests/networkxml2confdata/dhcp6-nat-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/dhcp6-network.conf
++++ b/tests/networkxml2confdata/dhcp6-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=mynet
+ expand-hosts
+ except-interface=lo
+--- a/tests/networkxml2confdata/isolated-network.conf
++++ b/tests/networkxml2confdata/isolated-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-interfaces
+ listen-address=192.168.152.1
+--- a/tests/networkxml2confdata/nat-network.conf
++++ b/tests/networkxml2confdata/nat-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/nat-network-dns-forwarders.conf
++++ b/tests/networkxml2confdata/nat-network-dns-forwarders.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ no-resolv
+ server=8.8.8.8
+ server=8.8.4.4
+--- a/tests/networkxml2confdata/nat-network-dns-forward-plain.conf
++++ b/tests/networkxml2confdata/nat-network-dns-forward-plain.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/nat-network-dns-hosts.conf
++++ b/tests/networkxml2confdata/nat-network-dns-hosts.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ domain-needed
+--- a/tests/networkxml2confdata/nat-network-dns-srv-record.conf
++++ b/tests/networkxml2confdata/nat-network-dns-srv-record.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf
++++ b/tests/networkxml2confdata/nat-network-dns-srv-record-minimal.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-interfaces
+ listen-address=192.168.122.1
+--- a/tests/networkxml2confdata/nat-network-dns-txt-record.conf
++++ b/tests/networkxml2confdata/nat-network-dns-txt-record.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/netboot-network.conf
++++ b/tests/networkxml2confdata/netboot-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ except-interface=lo
+--- a/tests/networkxml2confdata/netboot-proxy-network.conf
++++ b/tests/networkxml2confdata/netboot-proxy-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ domain=example.com
+ expand-hosts
+ except-interface=lo
+--- a/tests/networkxml2confdata/routed-network.conf
++++ b/tests/networkxml2confdata/routed-network.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr1
