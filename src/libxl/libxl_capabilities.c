@@ -720,32 +720,12 @@ libxlMakeDomainCapabilities(virDomainCapsPtr domCaps,
 #define LIBXL_QEMU_DM_STR  "Options specific to the Xen version:"
 
 int
-libxlDomainGetEmulatorType(const virDomainDef *def)
+libxlDomainGetEmulatorType(const virDomainDef *def ATTRIBUTE_UNUSED)
 {
-    int ret = LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN;
-    virCommandPtr cmd = NULL;
-    char *output = NULL;
-
-    if (def->os.type == VIR_DOMAIN_OSTYPE_HVM) {
-        if (def->emulator) {
-            if (!virFileExists(def->emulator))
-                goto cleanup;
-
-            cmd = virCommandNew(def->emulator);
-
-            virCommandAddArgList(cmd, "-help", NULL);
-            virCommandSetOutputBuffer(cmd, &output);
-
-            if (virCommandRun(cmd, NULL) < 0)
-                goto cleanup;
-
-            if (strstr(output, LIBXL_QEMU_DM_STR))
-                ret = LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN_TRADITIONAL;
-        }
-    }
-
- cleanup:
-    VIR_FREE(output);
-    virCommandFree(cmd);
-    return ret;
+    /*
+     * We do not ship any qemu-dm anymore, so there is no use in the
+     * callout and it also breaks the test (at least since 1.3.1).
+     * So just return with the new device-model.
+     */
+    return LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN;
 }
