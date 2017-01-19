@@ -1,5 +1,5 @@
 /* Test of pty.h and openpty function.
-   Copyright (C) 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2009-2017 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 SIGNATURE_CHECK (openpty, int, (int *, int *, char *, struct termios const *,
                                 struct winsize const *));
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <termios.h>
@@ -43,8 +44,12 @@ main ()
       int res = openpty (&master, &slave, NULL, NULL, NULL);
       if (res != 0)
         {
-          fprintf (stderr, "openpty returned %d\n", res);
-          return 1;
+          if (errno != ENOENT) {
+            fprintf (stderr, "openpty returned %d: %s\n", res, strerror(errno));
+            return 1;
+          } else {
+            return 77;
+          }
         }
     }
 

@@ -1,5 +1,5 @@
 /* Test of posix_openpt function.
-   Copyright (C) 2011-2016 Free Software Foundation, Inc.
+   Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ main (void)
 
   /* Open the master of a pseudo-terminal pair.  */
   master = posix_openpt (O_RDWR | O_NOCTTY);
-  if (master < 0 && errno == ENOSYS)
+  if (master < 0 && (errno == ENOSYS || errno == EACCES))
     {
       fputs ("skipping: platform lacks pty support\n", stderr);
       return 77;
