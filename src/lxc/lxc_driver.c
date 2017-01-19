@@ -61,7 +61,6 @@
 #include "virhostcpu.h"
 #include "virhostmem.h"
 #include "viruuid.h"
-#include "virstats.h"
 #include "virhook.h"
 #include "virfile.h"
 #include "virpidfile.h"
@@ -1576,7 +1575,7 @@ static int lxcCheckNetNsSupport(void)
     if (virRun(argv, &ip_rc) < 0 || ip_rc == 255)
         return 0;
 
-    if (lxcContainerAvailable(LXC_CONTAINER_FEATURE_NET) < 0)
+    if (virProcessNamespaceAvailable(VIR_PROCESS_NAMESPACE_NET) < 0)
         return 0;
 
     return 1;
@@ -1634,7 +1633,10 @@ static int lxcStateInitialize(bool privileged,
     }
 
     /* Check that this is a container enabled kernel */
-    if (lxcContainerAvailable(0) < 0) {
+    if (virProcessNamespaceAvailable(VIR_PROCESS_NAMESPACE_MNT |
+                                     VIR_PROCESS_NAMESPACE_PID |
+                                     VIR_PROCESS_NAMESPACE_UTS |
+                                     VIR_PROCESS_NAMESPACE_IPC) < 0) {
         VIR_INFO("LXC support not available in this kernel, disabling driver");
         return 0;
     }
@@ -2896,7 +2898,7 @@ lxcDomainInterfaceStats(virDomainPtr dom,
     }
 
     if (ret == 0)
-        ret = virNetInterfaceStats(path, stats);
+        ret = virNetDevTapInterfaceStats(path, stats);
     else
         virReportError(VIR_ERR_INVALID_ARG,
                        _("Invalid path, '%s' is not a known interface"), path);
@@ -5379,6 +5381,12 @@ lxcDomainSetMetadata(virDomainPtr dom,
     ret = virDomainObjSetMetadata(vm, type, metadata, key, uri, caps,
                                   driver->xmlopt, cfg->stateDir,
                                   cfg->configDir, flags);
+
+    if (ret == 0) {
+        virObjectEventPtr ev = NULL;
+        ev = virDomainEventMetadataChangeNewFromObj(vm, type, uri);
+        virObjectEventStateQueue(driver->domainEventState, ev);
+    }
 
     virLXCDomainObjEndJob(driver, vm);
 
