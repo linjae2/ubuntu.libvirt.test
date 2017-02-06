@@ -8904,7 +8904,7 @@ qemuBuildInterfaceCommandLine(virCommandPtr cmd,
          * macvtap device
          */
         if (virQEMUDriverIsPrivileged(driver) && nicindexes && nnicindexes &&
-            net->ifname) {
+            net->ifname && !net->script) {
             if (virNetDevGetIndex(net->ifname, &nicindex) < 0 ||
                 VIR_APPEND_ELEMENT(*nicindexes, *nnicindexes, nicindex) < 0)
                 goto cleanup;

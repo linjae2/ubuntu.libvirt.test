@@ -1,0 +1,23 @@
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon Apr 25 10:38:01 2016 +0200
+Subject: virsh: host: Use bitmap size in bytes rather than bit count
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+      virsh: host: Use bitmap size in bytes rather than bit count
+
+      Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1329819
+
+Origin: https://libvirt.org/git/?p=libvirt.git;a=commit;h=3a703b8120d9f996840bd315b6f74c45a7e98aad
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1659769
+Last-Updated: 2017-02-05
+--- a/tools/virsh-host.c
++++ b/tools/virsh-host.c
+@@ -699,7 +699,7 @@
+ 
+     vshPrint(ctl, "%-15s ", _("CPU map:"));
+     if (pretty) {
+-        char *str = virBitmapDataToString(cpumap, cpunum);
++        char *str = virBitmapDataToString(cpumap, VIR_CPU_MAPLEN(cpunum));
+ 
+         if (!str)
+             goto cleanup;

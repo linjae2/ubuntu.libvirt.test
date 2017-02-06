@@ -74,3 +74,5 @@ fix-vol-remove-vir-file-breakout.patch
 fix-vol-remove-only-setuid-for-virFileRemove-if-on-NFS.patch
 ubuntu/libvirt-bin-service-libvirtd-alias.patch
 libvirt-guests-filter-newline-from-list.patch
+ubuntu/cmdNodeCpuMap-use-bitmap-size-in-bytes.patch
+ubuntu/fix-net-ethernet-script-fail-device-index.patch
