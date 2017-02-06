@@ -1,0 +1,35 @@
+From: Matthias Ferdinand <mf+ubuntu1@14v.de>
+Subject: vm startup broken when interface definition has script tag
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+If a script tag is set libvirt is expecting an index for each device.
+Yet in the case of the script tag being set, there won't be an index as
+it is created externally.
+
+An error looks like:
+  error: Failed to start domain <guestname>
+  error: Unable to get index for interface <devicename>: No such device
+
+Upstream that is solved by the more complex change 9c17d665fdc5f "autocreate
+tap device for ethernet network type" that we don't want to fully backport.
+This changes the timing and ownership of the script call from qemu to libvirt.
+
+Yet we want to be able to get back working (as in Trusty), so to fix skip
+ifindex check if interface setup script is given. If an <interface ...>
+definition uses an external script, the interface possibly does not exist
+before qemu starts (set up by qemu or by the script). Skip the advance check
+for an ifindex.
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1620407
+Last-Updated: 2017-02-05
+--- libvirt-1.3.1.orig/src/qemu/qemu_command.c
++++ libvirt-1.3.1/src/qemu/qemu_command.c
+@@ -8904,7 +8904,7 @@ qemuBuildInterfaceCommandLine(virCommand
+          * macvtap device
+          */
+         if (virQEMUDriverIsPrivileged(driver) && nicindexes && nnicindexes &&
+-            net->ifname) {
++            net->ifname && !net->script) {
+             if (virNetDevGetIndex(net->ifname, &nicindex) < 0 ||
+                 VIR_APPEND_ELEMENT(*nicindexes, *nnicindexes, nicindex) < 0)
+                 goto cleanup;
