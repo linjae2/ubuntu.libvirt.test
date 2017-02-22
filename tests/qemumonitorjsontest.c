@@ -1661,7 +1661,7 @@ testQemuMonitorJSONqemuMonitorJSONGetMigrationStatus(const void *data)
 {
     virDomainXMLOptionPtr xmlopt = (virDomainXMLOptionPtr)data;
     qemuMonitorTestPtr test = qemuMonitorTestNewSimple(true, xmlopt);
-    int ret = -1;
+    int ret = -1, setting_up;
     qemuMonitorMigrationStatus status, expectedStatus;
 
     if (!test)
@@ -1690,7 +1690,7 @@ testQemuMonitorJSONqemuMonitorJSONGetMigrationStatus(const void *data)
                                "}") < 0)
         goto cleanup;
 
-    if (qemuMonitorJSONGetMigrationStatus(qemuMonitorTestGetMonitor(test), &status) < 0)
+    if (qemuMonitorJSONGetMigrationStatus(qemuMonitorTestGetMonitor(test), &status, &setting_up) < 0)
         goto cleanup;
 
     if (memcmp(&status, &expectedStatus, sizeof(status)) != 0) {
