@@ -1903,6 +1903,8 @@ int virPCIDeviceFileIterate(virPCIDevicePtr dev,
          */
         if (STREQ(ent->d_name, "config") ||
             STRPREFIX(ent->d_name, "resource") ||
+            STREQ(ent->d_name, "vendor") ||
+            STREQ(ent->d_name, "device") ||
             STREQ(ent->d_name, "rom") ||
             STREQ(ent->d_name, "reset")) {
             if (virAsprintf(&file, "%s/%s", pcidir, ent->d_name) < 0)
