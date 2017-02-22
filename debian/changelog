@@ -1,3 +1,13 @@
+libvirt (1.2.2-0ubuntu13.1.20) trusty; urgency=medium
+
+  [ Rafael David Tinoco ]
+  * d/p/reject-blockcommit-of-active-layer.patch:
+    Block commit code isn't ready for QEMU 2.0 and has to be blocked.
+    This avoids virsh to hang forever on blackcommit jobs.
+    (LP: #1317491)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 22 Feb 2017 09:44:02 +0100
+
 libvirt (1.2.2-0ubuntu13.1.17) trusty; urgency=medium
 
   * d/p/fix-util-don-t-fail-if-no-portdata-is-found.patch: 

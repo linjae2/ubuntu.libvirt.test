@@ -1,0 +1,47 @@
+Description: qemu: reject rather than hang on blockcommit of active layer
+
+qemu 2.0 added the ability to commit the active layer, but slightly
+differently than what libvirt had been anticipating in its
+implementation of the virDomainBlockCommit call.  As a result, if
+you attempt to do a 'virsh blockcommit $dom vda', qemu gets into a
+state where it is waiting on libvirt to end the job, while libvirt
+is waiting on qemu to end the job, and the guest is effectively
+hung with regards to further commands for that block device.
+
+I have patches coming down the pipeline that will add full support
+for blockcommit of the active layer when coupled with qemu 2.0 or
+later; but they depend on Peter's improvements to block job handling
+and form enough of a new feature that they are not ready for
+inclusion in the 1.2.5 release.  So for now, just reject the
+attempt, rather than letting the user get stuck.  This is no worse
+than the behavior of qemu 1.7 rejecting the job.
+
+* src/qemu/qemu_driver.c (qemuDomainBlockCommit): Reject active
+commit.
+
+Signed-off-by: Eric Blake <eblake@redhat.com>
+
+Origin: upstream, commit: e6bcbcd32c70ae394e7b6a530012fe8b07a59b5d
+Bug-Ubuntu: https://launchpad.net/bugs/1317491
+Reviewed-By: Rafael David Tinoco <rafael.tinoco@canonical.com>
+Last-Update: 2017-02-22
+
+--- libvirt-1.2.2.orig/src/qemu/qemu_driver.c
++++ libvirt-1.2.2/src/qemu/qemu_driver.c
+@@ -15341,6 +15341,16 @@ qemuDomainBlockCommit(virDomainPtr dom,
+                        top, path);
+         goto endjob;
+     }
++
++    /* FIXME: qemu 2.0 supports active commit, but as a two-stage
++    * process; qemu 2.1 is further improving active commit. We need
++    * to start supporting it in libvirt. */
++    if (top_meta == disk->backingChain) {
++        virReportError(VIR_ERR_OPERATION_UNSUPPORTED, "%s",
++                       _("committing the active layer not supported yet"));
++        goto endjob;
++    }
++
+     if (!top_meta || !top_meta->backingStore) {
+         virReportError(VIR_ERR_INVALID_ARG,
+                        _("top '%s' in chain for '%s' has no backing file"),
