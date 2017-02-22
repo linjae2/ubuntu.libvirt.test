@@ -312,12 +312,23 @@ static int
 xenUnifiedXendProbe(void)
 {
     virCommandPtr cmd;
+    char *output;
     int status;
     int ret = 0;
 
-    cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
-    if (virCommandRun(cmd, &status) == 0 && status == 0)
-        ret = 1;
+    cmd = virCommandNewArgList("/usr/lib/xen-common/bin/xen-toolstack", NULL);
+    virCommandSetOutputBuffer(cmd, &output);
+    if (virCommandRun(cmd, &status) == 0 && status == 0) {
+        int i, j;
+
+        for (i = 0, j = 0; output[i] != '\0'; i++)
+            if (output[i] == '/')
+                j = i + 1;
+
+        if (output[j] == 'x' && output[j+1] == 'm')
+            ret = 1;
+    }
+    VIR_FREE(output);
     virCommandFree(cmd);
 
     return ret;
