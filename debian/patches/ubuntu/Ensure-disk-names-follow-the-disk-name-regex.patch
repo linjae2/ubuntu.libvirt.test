@@ -1,0 +1,48 @@
+Description: Ensure disk names follow the disk name regex
+
+commit 5729746543cf4df5c7b1adea877b4fe45bf67e51
+Author: Nitesh Konkar <niteshkonkar.libvirt@gmail.com>
+Date:   Wed Feb 15 16:44:58 2017 +0530
+
+    Ensure disk names follow the disk name regex
+
+    Currently disk names do not follow the
+    (regex) /^[fhv]d[a-z]+[0-9]*$/ completely
+    and hence one can assign disk names like
+    vd2 etc. This patch ensures that the
+    disk names follow the regex mentioned.
+    This patch also adds a testcase.
+
+    Signed-off-by: Nitesh Konkar <nitkon12@linux.vnet.ibm.com>
+
+Original-Author: Nitesh Konkar <niteshkonkar.libvirt@gmail.com>
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1665410
+Forwarded: yes (from upstream 57297465)
+diff --git a/src/util/virutil.c b/src/util/virutil.c
+index 91178d1..2796671 100644
+--- a/src/util/virutil.c
++++ b/src/util/virutil.c
+@@ -563,7 +563,7 @@ int virDiskNameParse(const char *name, int *disk, int *partition)
+         }
+     }
+ 
+-    if (!ptr)
++    if (!ptr || !c_islower(*ptr))
+         return -1;
+ 
+     for (i = 0; *ptr; i++) {
+diff --git a/tests/utiltest.c b/tests/utiltest.c
+index 9b7a4a3..bd55d44 100644
+--- a/tests/utiltest.c
++++ b/tests/utiltest.c
+@@ -37,7 +37,8 @@ static struct testDiskName diskNamesPart[] = {
+ };
+ 
+ static const char* diskNamesInvalid[] = {
+-    "sda00", "sda01", "sdb-1"
++    "sda00", "sda01", "sdb-1",
++    "vd2"
+ };
+ 
+ static int
