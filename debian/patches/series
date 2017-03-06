@@ -57,3 +57,5 @@ ubuntu/0006-apparmor-ubuntu-delta.patch
 ubuntu/apparmor-fix-name-resolution.patch
 ubuntu/apparmor-fix-debug-threads.patch
 ubuntu/apparmor-fix-new-devicetypes.patch
+ubuntu/0007-apparmor-fix-for-new-virt-manager.patch
+ubuntu/Ensure-disk-names-follow-the-disk-name-regex.patch

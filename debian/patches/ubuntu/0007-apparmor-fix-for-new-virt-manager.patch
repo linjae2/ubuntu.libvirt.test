@@ -1,0 +1,22 @@
+Description: Add Apparmor permissions so virt-manager 1.4.0 viewing works
+ Let's virt-manager connect with openGraphicsFD 
+ .
+ libvirt (2.5.0-3ubuntu3) zesty; urgency=medium
+ .
+   * Add Apparmor permissions so virt-manager 1.4.0 viewing works (LP: 1668681)
+Author: Bryan Quigley <bryan.quigley@canonical.com>
+
+---
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1668681
+Last-Update: 2017-02-28
+
+--- libvirt-2.5.0.orig/examples/apparmor/libvirt-qemu.in
++++ libvirt-2.5.0/examples/apparmor/libvirt-qemu.in
+@@ -208,3 +208,6 @@
+   # allow serial console backed by pts chardev (LP: #1342083)
+   /usr/lib/pt_chown ix,
+   owner @{PROC}/0-9*/fd/ r,
++
++  # allow connect with openGraphicsFD to work
++  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
