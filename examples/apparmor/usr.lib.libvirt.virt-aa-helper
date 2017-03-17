@@ -16,6 +16,8 @@
   owner @{PROC}/[0-9]*/status r,
   @{PROC}/filesystems r,
 
+  /etc/libnl-3/classid r,
+
   # for hostdev
   /sys/devices/ r,
   /sys/devices/** r,
