@@ -392,6 +392,7 @@ typedef enum {
 
     /* 245 */
     QEMU_CAPS_QUERY_CPU_MODEL_EXPANSION, /* qmp query-cpu-model-expansion */
+    QEMU_CAPS_QUERY_CPU_DEFINITIONS, /* qmp query-cpu-definitions */
 
     QEMU_CAPS_LAST /* this must always be the last item */
 } virQEMUCapsFlags;
