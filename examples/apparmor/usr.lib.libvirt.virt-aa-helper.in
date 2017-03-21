@@ -1,7 +1,7 @@
 # Last Modified: Mon, 23 May 2016 15:00:13 +0200
 #include <tunables/global>
 
-/usr/{lib,lib64}/libvirt/virt-aa-helper {
+/usr/lib/libvirt/virt-aa-helper {
   #include <abstractions/base>
   #include <abstractions/user-tmp>
   # Site-specific additions and overrides. See local/README for details.
@@ -20,8 +20,6 @@
   owner @{PROC}/[0-9]*/status r,
   @{PROC}/filesystems r,
 
-  /etc/libnl-3/classid r,
-
   # for hostdev
   /sys/devices/ r,
   /sys/devices/** r,
@@ -32,7 +30,7 @@
   deny /dev/mapper/ r,
   deny /dev/mapper/* r,
 
-  /usr/{lib,lib64}/libvirt/virt-aa-helper mr,
+  /usr/lib/libvirt/virt-aa-helper mr,
   /sbin/apparmor_parser Ux,
 
   # for openvswitch
