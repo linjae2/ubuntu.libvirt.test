@@ -60,3 +60,4 @@ ubuntu/apparmor-fix-new-devicetypes.patch
 ubuntu/0007-apparmor-fix-for-new-virt-manager.patch
 ubuntu/Ensure-disk-names-follow-the-disk-name-regex.patch
 ubuntu/qemu-Allow-empty-script-path-to-interface.patch
+ubuntu/virsh-maxvcpu-fall-back-to-old-command.patch

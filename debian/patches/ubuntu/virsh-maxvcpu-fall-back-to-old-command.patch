@@ -1,0 +1,36 @@
+Description: Always fall back to the old command if domain caps fail
+
+From commit bd4ae4f5e881276b05e48fbd55a29c57cf1a25ff
+Author: Peter Krempa <pkrempa@redhat.com>
+Date:   Thu Dec 8 09:36:43 2016 +0100
+
+    virsh: maxvcpus: Always fall back to the old command if domain caps fail
+
+    1ec22be5 added code that detects the maximum cpu count according to
+    domain capabilities. The code fell back to the old command only if the
+    API was not supported. If the API fails for other reasons the command
+    would fail. There's no point in not trying the old API in such case.
+
+    https://bugzilla.redhat.com/show_bug.cgi?id=1402690
+
+Note: can be dropped >=3.0
+
+Original-Author: Peter Krempa <pkrempa@redhat.com>
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1674298
+Forwarded: yes (backport from upstream bd4ae4f5)
+Last-Update: 2017-03-21
+diff --git a/tools/virsh-host.c b/tools/virsh-host.c
+index 2fd3686..24ebde2 100644
+--- a/tools/virsh-host.c
++++ b/tools/virsh-host.c
+@@ -623,9 +623,6 @@ cmdMaxvcpus(vshControl *ctl, const vshCmd *cmd)
+ 
+         ignore_value(virXPathInt("string(./vcpu[1]/@max)", ctxt, &vcpus));
+     } else {
+-        if (last_error && last_error->code != VIR_ERR_NO_SUPPORT)
+-            goto cleanup;
+-
+        vshResetLibvirtError();
+     }
+ 
