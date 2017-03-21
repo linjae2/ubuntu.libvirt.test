@@ -1,3 +1,10 @@
+libvirt (2.5.0-3ubuntu5) zesty; urgency=medium
+
+  * d/p/ubuntu/virsh-maxvcpu-fall-back-to-old-command.patch: virsh: maxvcpus:
+    Always fall back to the old command if domain caps fail (LP: #1674298)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 21 Mar 2017 08:02:37 +0100
+
 libvirt (2.5.0-3ubuntu4) zesty; urgency=medium
 
   * d/p/ubuntu/qemu-Allow-empty-script-path-to-interface.patch: in the past
