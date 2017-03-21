@@ -1,3 +1,19 @@
+libvirt (2.1.0-1ubuntu9.3) yakkety; urgency=medium
+
+  * d/p/ubuntu/qemu-Allow-empty-script-path-to-interface.patch: in the past
+    <script path=''/> meant a no-op, but libvirt now fails - fix to match
+    the old behavior (LP: #1665698).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 21 Mar 2017 09:16:57 +0100
+
+libvirt (2.1.0-1ubuntu9.2) yakkety; urgency=medium
+
+  * d/p/ubuntu/fix-command-generation-for-rbd.patch: fix the generation
+    of the command used to add disks when secrets are provided like when
+    using rbd (LP: #1672367).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 14 Mar 2017 14:12:51 +0100
+
 libvirt (2.1.0-1ubuntu9.1) yakkety; urgency=medium
 
   * d/p/u/apparmor-fix-other-seclabels.patch fixes an issue parsing non

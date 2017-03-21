@@ -59,3 +59,5 @@ ubuntu/check-live-for-postcopy.patch
 ubuntu/make-postcopy-mandatory-for-postcopy-after-precopy.patch
 ubuntu/libvirt-guests-filter-newline-from-list.patch
 ubuntu/apparmor-fix-other-seclabels.patch
+ubuntu/fix-command-generation-for-rbd.patch
+ubuntu/qemu-Allow-empty-script-path-to-interface.patch
