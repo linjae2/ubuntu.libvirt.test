@@ -218,3 +218,6 @@
 
   # for vfio (LP: 1678322)
   /dev/vfio/vfio rw,
+
+  # to report on shutdown who send the kill signal (LP: #1680384)
+  /proc/*/cmdline r,
