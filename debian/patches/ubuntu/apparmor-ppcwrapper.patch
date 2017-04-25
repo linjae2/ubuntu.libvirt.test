@@ -1,0 +1,27 @@
+Description: apparmor entry for ppc64el
+
+The kvm wrapper on powerpc needs to call further tools.
+
+Note: to be upstreamed with all the other apparmor changes as soon as we get
+to upstream the base work on these.
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1680384
+Forwarded: no
+Last-Update: 2017-04-19
+--- a/examples/apparmor/libvirt-qemu.in
++++ b/examples/apparmor/libvirt-qemu.in
+@@ -172,8 +172,12 @@
+   /sys/bus/ r,
+   /sys/class/ r,
+ 
+-  # kvm.powerpc executes this
++  # kvm.powerpc executes/accesses this
+   /bin/uname rmix,
++  /usr/sbin/ppc64_cpu rmix,
++  /bin/grep rmix,
++  /sys/devices/system/cpu/subcores_per_core r,
++  /sys/devices/system/cpu/cpu*/online r
+ 
+   # for rbd
+   /etc/ceph/ceph.conf r,
