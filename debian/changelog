@@ -1,3 +1,15 @@
+libvirt (2.5.0-3ubuntu6) artful; urgency=medium
+
+  * Add missing apparmor profile entries (LP: #1680384)
+    - debian/patches/ubuntu/apparmor-vfio.patch: apparmor: add /dev/vfio
+      for vf (hot) attach
+    - debian/patches/ubuntu/apparmor-ppcwrapper.patch: apparmor: allow
+      extra tools executed by kvm.powerpc
+    - debian/patches/ubuntu/apparmor-shutdown.patch: apparmor: allow to
+      parse cmdline of the pid that send the shutdown signal
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 25 Apr 2017 14:10:06 +0200
+
 libvirt (2.5.0-3ubuntu5) zesty; urgency=medium
 
   * d/p/ubuntu/virsh-maxvcpu-fall-back-to-old-command.patch: virsh: maxvcpus:
