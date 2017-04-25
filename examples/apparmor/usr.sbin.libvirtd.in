@@ -36,9 +36,21 @@
   network inet6 dgram,
   network packet dgram,
   network packet raw,
+@@ifge 2009
+  network netlink,
+@@end
 
-  # Very lenient profile for libvirtd since we want to first focus on confining
-  # the guests. Guests will have a very restricted profile.
+@@ifge 2009
+  dbus bus=system,
+  signal,
+  ptrace,
+@@end
+@@ifge 2009
+  unix,
+@@end
+
+  # For now, use a very lenient profile since we want to first focus on
+  # confining the guests
   / r,
   /** rwmkl,
 
@@ -49,7 +61,12 @@
   /usr/sbin/* PUx,
   /{usr/,}lib/udev/scsi_id PUx,
   /usr/{lib,lib64}/xen-common/bin/xen-toolstack PUx,
-  /usr/{lib,lib64}/xen/bin/* Ux,
+  /usr/{lib,lib64}/xen-*/bin/pygrub PUx,
+  /usr/{lib,lib64}/xen-*/bin/libxl-save-helper PUx,
+
+  # Required by nwfilter_ebiptables_driver.c:ebiptablesWriteToTempFile() to
+  # write and run an ebtables script.
+  /var/lib/libvirt/virtd* ixr,
 
   # force the use of virt-aa-helper
   audit deny /{usr/,}sbin/apparmor_parser rwxl,
@@ -76,6 +93,10 @@
    capability setgid,
    capability setpcap,
    capability net_admin,
+
+   # for 9p
+   capability fsetid,
+   capability fowner,
 
    network inet stream,
 
