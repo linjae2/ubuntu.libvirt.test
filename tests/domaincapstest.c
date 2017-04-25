@@ -248,7 +248,7 @@ fillXenCaps(virDomainCapsPtr domCaps)
 
     if (VIR_ALLOC(firmwares[0]) < 0 || VIR_ALLOC(firmwares[1]) < 0)
         goto cleanup;
-    if (VIR_STRDUP(firmwares[0]->name, "/usr/lib/xen/boot/hvmloader") < 0 ||
+    if (VIR_STRDUP(firmwares[0]->name, "/usr/lib/xen-4.6/boot/hvmloader") < 0 ||
         VIR_STRDUP(firmwares[1]->name, "/usr/lib/xen/boot/ovmf.bin") < 0)
         goto cleanup;
 

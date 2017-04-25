@@ -6,7 +6,7 @@
   <vcpu max='128'/>
   <os supported='yes'>
     <loader supported='yes'>
-      <value>/usr/lib/xen/boot/hvmloader</value>
+      <value>/usr/lib/xen-4.6/boot/hvmloader</value>
       <value>/usr/lib/xen/boot/ovmf.bin</value>
       <enum name='type'>
         <value>rom</value>
