@@ -3,7 +3,7 @@
   <uuid>cc2315e7d26a307a438c6d188ec4c09c</uuid>
   <os>
     <type>hvm</type>
-    <loader>/usr/lib/xen/boot/hvmloader</loader>
+    <loader>/usr/lib/xen-4.6/boot/hvmloader</loader>
     <boot dev='hd'/>
   </os>
   <memory unit='KiB'>391168</memory>
