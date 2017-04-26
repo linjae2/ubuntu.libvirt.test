@@ -22,6 +22,7 @@ LimitNPROC=infinity
 TasksMax=infinity
 
 [Install]
+Alias=libvirtd.service
 WantedBy=multi-user.target
 Also=virtlockd.socket
 Also=virtlogd.socket
