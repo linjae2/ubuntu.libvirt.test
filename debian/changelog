@@ -1,3 +1,13 @@
+libvirt (2.1.0-1ubuntu9.5) yakkety; urgency=medium
+
+  * Add missing apparmor profile entries (LP: #1680384)
+    - debian/patches/ubuntu/apparmor-vfio.patch: apparmor: add /dev/vfio
+      for vf (hot) attach
+    - debian/patches/ubuntu/apparmor-shutdown.patch: apparmor: allow to
+      parse cmdline of the pid that send the shutdown signal
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 26 Apr 2017 13:46:42 +0200
+
 libvirt (2.1.0-1ubuntu9.4) yakkety; urgency=medium
 
   * no change rebuild to properly pick up all the changes since the last
