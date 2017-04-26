@@ -152,6 +152,9 @@
   /sys/bus/ r,
   /sys/class/ r,
 
+  # for vfio (LP: 1678322)
+  /dev/vfio/vfio rw,
+
   /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
   # child profile for bridge helper process
   profile qemu_bridge_helper {
