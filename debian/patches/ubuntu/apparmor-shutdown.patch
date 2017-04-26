@@ -1,0 +1,23 @@
+Description: apparmor entry for shutdown signal parsing
+
+Qemu wants to report who shut it down, allow read access to cmdline info.
+
+Note: to be upstreamed with all the other apparmor changes as soon as we get
+to upstream the base work on these.
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1680384
+Forwarded: no
+Last-Update: 2017-04-19
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
+@@ -155,6 +155,9 @@
+   # for vfio (LP: 1678322)
+   /dev/vfio/vfio rw,
+ 
++  # to report on shutdown who send the kill signal (LP: #1680384)
++  /proc/*/cmdline r,
++
+   /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
+   # child profile for bridge helper process
+   profile qemu_bridge_helper {
