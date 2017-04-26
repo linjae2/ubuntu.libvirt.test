@@ -61,3 +61,5 @@ ubuntu/libvirt-guests-filter-newline-from-list.patch
 ubuntu/apparmor-fix-other-seclabels.patch
 ubuntu/fix-command-generation-for-rbd.patch
 ubuntu/qemu-Allow-empty-script-path-to-interface.patch
+ubuntu/apparmor-vfio.patch
+ubuntu/apparmor-shutdown.patch

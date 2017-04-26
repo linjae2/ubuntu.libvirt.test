@@ -1,0 +1,23 @@
+Description: apparmor entries for vfio hotplug
+
+vfio devices are generated on the fly, but the generic base is missing.
+
+Note: to be upstreamed with all the other apparmor changes as soon as we get
+to upstream the base work on these.
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1680384
+Forwarded: no
+Last-Update: 2017-04-18
+--- a/examples/apparmor/libvirt-qemu.in
++++ b/examples/apparmor/libvirt-qemu.in
+@@ -203,6 +203,9 @@
+   /usr/lib/pt_chown ix,
+   owner @{PROC}/0-9*/fd/ r,
+ 
++  # for vfio (LP: 1678322)
++  /dev/vfio/vfio rw,
++
+   /usr/{lib,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
+   # child profile for bridge helper process
+   profile qemu_bridge_helper {
