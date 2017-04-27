@@ -177,7 +177,7 @@
   /usr/sbin/ppc64_cpu rmix,
   /bin/grep rmix,
   /sys/devices/system/cpu/subcores_per_core r,
-  /sys/devices/system/cpu/cpu*/online r
+  /sys/devices/system/cpu/cpu*/online r,
 
   # for rbd
   /etc/ceph/ceph.conf r,

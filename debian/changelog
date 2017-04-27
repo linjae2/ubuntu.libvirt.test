@@ -1,3 +1,10 @@
+libvirt (2.5.0-3ubuntu7) artful; urgency=medium
+
+  * debian/patches/ubuntu/apparmor-ppcwrapper.patch: update to add missing
+    colon (LP: #1686621).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 27 Apr 2017 13:16:05 +0200
+
 libvirt (2.5.0-3ubuntu6) artful; urgency=medium
 
   * Add missing apparmor profile entries (LP: #1680384)
