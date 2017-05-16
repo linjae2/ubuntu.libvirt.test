@@ -76,5 +76,3 @@ ubuntu/libvirt-bin-service-libvirtd-alias.patch
 libvirt-guests-filter-newline-from-list.patch
 ubuntu/cmdNodeCpuMap-use-bitmap-size-in-bytes.patch
 ubuntu/fix-net-ethernet-script-fail-device-index.patch
-ubuntu/apparmor-vfio.patch
-ubuntu/apparmor-shutdown.patch
