@@ -64,3 +64,4 @@ ubuntu/virsh-maxvcpu-fall-back-to-old-command.patch
 ubuntu/apparmor-vfio.patch
 ubuntu/apparmor-ppcwrapper.patch
 ubuntu/apparmor-shutdown.patch
+ubuntu/qemu_process-spice-don-t-release-used-port.patch

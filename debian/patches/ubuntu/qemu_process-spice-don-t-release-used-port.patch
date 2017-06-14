@@ -1,0 +1,37 @@
+Description: qemu_process: spice: don't release used port
+
+From c23b7b81db58c61b0adc98095dca7bfbad74fa79 Mon Sep 17 00:00:00 2001
+From: Pavel Hrdina <phrdina@redhat.com>
+Date: Fri, 24 Feb 2017 02:28:40 +0100
+Subject: [PATCH] qemu_process: spice: don't release used port
+
+The port is stored in graphics configuration and it will
+also get released in qemuProcessStop in case of error.
+
+Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1397440
+
+Signed-off-by: Pavel Hrdina <phrdina@redhat.com>
+---
+ src/qemu/qemu_process.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+Can be dropped >= Libvirt 3.1
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Pavel Hrdina <phrdina@redhat.com>
+Origin: https://libvirt.org/git/?p=libvirt.git;a=commit;h=c23b7b81db58c61b0adc98095dca7bfbad74fa79
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1697729
+Patch-Name: ubuntu/qemu_process-spice-don-t-release-used-port.patch
+Last-Update: 2017-06-14
+
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -3658,7 +3658,6 @@
+     ret = 0;
+ 
+  cleanup:
+-    virPortAllocatorRelease(driver->remotePorts, port);
+     virObjectUnref(cfg);
+     return ret;
+ }
