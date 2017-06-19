@@ -29,6 +29,8 @@
   @{PROC}/sys/kernel/cap_last_cap r,
   owner @{PROC}/*/auxv r,
   @{PROC}/sys/vm/overcommit_memory r,
+  # debug-threads feature now being default (LP: 1615550)
+  owner @{PROC}/@{pid}/task/[0-9]*/comm rw,
 
   /sys/devices/system/node/ r,
   /sys/devices/system/node/node[0-9]*/meminfo r,
