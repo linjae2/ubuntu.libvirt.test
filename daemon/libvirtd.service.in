@@ -26,6 +26,7 @@ Restart=on-failure
 LimitNOFILE=infinity
 LimitNPROC=infinity
 TasksMax=infinity
+NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target
