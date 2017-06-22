@@ -18,13 +18,12 @@
 
 FILTERS = $(wildcard $(srcdir)/xml/nwfilter/*.xml)
 
+CLEANFILES =
+BUILT_SOURCES =
+
 EXTRA_DIST = \
 	apparmor/TEMPLATE.qemu \
 	apparmor/TEMPLATE.lxc \
-	apparmor/libvirt-qemu \
-	apparmor/libvirt-lxc \
-	apparmor/usr.lib.libvirt.virt-aa-helper \
-	apparmor/usr.sbin.libvirtd \
 	lxcconvert/virt-lxc-convert \
 	polkit/libvirt-acl.rules \
 	$(wildcard $(srcdir)/systemtap/*.stp) \
@@ -67,6 +66,12 @@ admin_client_info_SOURCES = admin/client_info.c
 admin_client_close_SOURCES = admin/client_close.c
 
 if WITH_APPARMOR_PROFILES
+BUILT_SOURCES += \
+	apparmor/usr.lib.libvirt.virt-aa-helper \
+	apparmor/usr.sbin.libvirtd \
+	apparmor/libvirt-qemu \
+	apparmor/libvirt-lxc
+
 apparmordir = $(sysconfdir)/apparmor.d/
 apparmor_DATA = \
 	apparmor/usr.lib.libvirt.virt-aa-helper \
@@ -84,6 +89,36 @@ templates_DATA = \
 	apparmor/TEMPLATE.qemu \
 	apparmor/TEMPLATE.lxc \
 	$(NULL)
+
+apparmor/stamp:
+	test -d apparmor || mkdir apparmor
+	touch apparmor/stamp
+
+apparmor/libvirt-lxc:   $(srcdir)/apparmor/libvirt-lxc.in \
+			$(srcdir)/apparmor/profile-preprocess \
+			../config.h apparmor/stamp
+	sh $(srcdir)/apparmor/profile-preprocess $< >$@
+
+apparmor/libvirt-qemu:	$(srcdir)/apparmor/libvirt-qemu.in \
+			$(srcdir)/apparmor/profile-preprocess \
+			../config.h apparmor/stamp
+	sh $(srcdir)/apparmor/profile-preprocess $< >$@
+
+apparmor/usr.lib.libvirt.virt-aa-helper: \
+			$(srcdir)/apparmor/usr.lib.libvirt.virt-aa-helper.in \
+			$(srcdir)/apparmor/profile-preprocess \
+			../config.h apparmor/stamp
+	sh $(srcdir)/apparmor/profile-preprocess $< >$@
+
+apparmor/usr.sbin.libvirtd: \
+			$(srcdir)/apparmor/usr.sbin.libvirtd.in \
+			$(srcdir)/apparmor/profile-preprocess \
+			../config.h apparmor/stamp
+	sh $(srcdir)/apparmor/profile-preprocess $< >$@
+
+CLEANFILES += apparmor/libvirt-lxc apparmor/libvirt-qemu
+CLEANFILES += apparmor/usr.lib.libvirt.virt-aa-helper
+CLEANFILES += apparmor/usr.sbin.libvirtd
 endif WITH_APPARMOR_PROFILES
 
 if WITH_NWFILTER
