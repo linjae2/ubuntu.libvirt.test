@@ -62,6 +62,9 @@
   /var/lib/nova/images/** r,
   /var/lib/nova/instances/_base/** r,
   /var/lib/nova/instances/snapshots/** r,
+  # nova base/snapshot files in snapped nova (LP: #1644507)
+  /var/snap/nova-hypervisor/common/instances/_base/** r,
+  /var/snap/nova-hypervisor/common/instances/snapshots/** r,
   /var/lib/eucalyptus/instances/**/disk* r,
   /var/lib/eucalyptus/instances/**/loader* r,
   /var/lib/uvtool/libvirt/images/** r,
