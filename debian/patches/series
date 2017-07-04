@@ -16,3 +16,5 @@ ubuntu/set-default-machine-to-ubuntu.patch
 ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu/parallel-shutdown.patch
 ubuntu/dnsmasq-as-priv-user
+
+# Ubuntu Apparmor Changes
