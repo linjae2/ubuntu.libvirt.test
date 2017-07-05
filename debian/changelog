@@ -1,3 +1,11 @@
+libvirt (2.5.0-3ubuntu11) artful; urgency=medium
+
+  * d/p/ubuntu/0004-apparmor-apply-ubuntu-delta.patch: Adjust to also allow
+    access to snapshots in nova-hypervisor snap's $SNAP_COMMON directory
+    (LP: #1644507).
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Wed, 05 Jul 2017 13:55:19 -0400
+
 libvirt (2.5.0-3ubuntu10) artful; urgency=medium
 
   * d/p/ubuntu/0004-apparmor-apply-ubuntu-delta.patch: Allow access to base
