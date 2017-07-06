@@ -1,0 +1,27 @@
+Description: libxl: fix cdrom default driver name
+
+In libvirt 3.5 libxl does fill non existant driver elements with typr='raw',
+but lacks the name='qemu' that it had in the past.
+Without that the xml fails to validate, therefore old XML files can't be
+edited/defined anymore.
+
+A preliminary fix was developed and verified to work for now, but is in
+discussion upstream to get an accepted solution for it.
+
+Forwarded: yes (https://www.redhat.com/archives/libvir-list/2017-July/msg00419.html)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Last-Update: 2017-07-12
+--- a/src/libxl/libxl_domain.c
++++ b/src/libxl/libxl_domain.c
+@@ -367,8 +367,9 @@
+         int actual_type = virStorageSourceGetActualType(disk->src);
+         int format = virDomainDiskGetFormat(disk);
+ 
+-        /* for network-based disks, set 'qemu' as the default driver */
+-        if (actual_type == VIR_STORAGE_TYPE_NETWORK) {
++        /* for network-based disk and cdrom, set 'qemu' as the default driver */
++        if (actual_type == VIR_STORAGE_TYPE_NETWORK ||
++            disk->device == VIR_DOMAIN_DISK_DEVICE_CDROM) {
+             if (!virDomainDiskGetDriver(disk) &&
+                 virDomainDiskSetDriver(disk, "qemu") < 0)
+                 return -1;

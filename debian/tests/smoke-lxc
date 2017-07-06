@@ -4,6 +4,9 @@ set -e
 
 export LIBVIRT_DEFAULT_URI='lxc:///'
 
+# workaround to debbug #848317/867379 which triggers more likely on ubuntu
+systemctl restart libvirtd
+
 XML=debian/tests/smoke-lxc.xml
 DOMAIN=sl
 
