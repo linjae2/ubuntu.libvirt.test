@@ -184,6 +184,9 @@ override_dh_auto_install:
 	mkdir -p debian/tmp/etc/dnsmasq.d-available
 	cp debian/libvirt-daemon.dnsmasq \
 	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
 
 	# Copy upstream files to debian/ so dh_* can find them
 	cp $(DEB_DESTDIR)/usr/lib/libvirt/libvirt-guests.sh \
