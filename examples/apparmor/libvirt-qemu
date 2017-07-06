@@ -17,6 +17,7 @@
   network inet6 stream,
 
   /dev/net/tun rw,
+  /dev/tap* rw,
   /dev/kvm rw,
   /dev/ptmx rw,
   /dev/kqemu rw,
