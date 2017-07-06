@@ -36,6 +36,17 @@
   network inet6 dgram,
   network packet dgram,
   network packet raw,
+  # apparmor >= 2.9
+  network netlink,
+
+  # Grant bare signal and ptrace. Grant dbus on the system bus
+  # (LP: #1298611). Requires apparmor >= 2.9.
+  dbus bus=system,
+  signal,
+  ptrace,
+  # Allow abstract socket mediation (LP: #1362199). Requires apparmor
+  # >= 2.9.
+  unix,
 
   # Very lenient profile for libvirtd since we want to first focus on confining
   # the guests. Guests will have a very restricted profile.
@@ -51,6 +62,11 @@
   /usr/{lib,lib64}/xen-common/bin/xen-toolstack PUx,
   /usr/{lib,lib64}/xen/bin/* Ux,
   /usr/lib/xen-*/bin/libxl-save-helper PUx,
+  /usr/lib/xen-*/bin/pygrub PUx,
+
+  # Required by nwfilter_ebiptables_driver.c:ebiptablesWriteToTempFile() to
+  # write and run an ebtables script.
+  /var/lib/libvirt/virtd* ixr,
 
   # force the use of virt-aa-helper
   audit deny /{usr/,}sbin/apparmor_parser rwxl,

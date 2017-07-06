@@ -891,11 +891,11 @@ add_file_path(virDomainDiskDefPtr disk,
 
     if (depth == 0) {
         if (disk->src->readonly)
-            ret = vah_add_file(buf, path, "r");
+            ret = vah_add_file(buf, path, "R");
         else
             ret = vah_add_file(buf, path, "rw");
     } else {
-        ret = vah_add_file(buf, path, "r");
+        ret = vah_add_file(buf, path, "R");
     }
 
     if (ret != 0)
@@ -1108,7 +1108,7 @@ get_files(vahControl * ctl)
             /* We don't need to add deny rw rules for readonly mounts,
              * this can only lead to troubles when mounting / readonly.
              */
-            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rw", true) != 0)
+            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rwl", true) != 0)
                 goto cleanup;
         }
     }

@@ -13,10 +13,19 @@
   capability setgid,
   capability setuid,
 
+  # for 9p
+  capability fsetid,
+  capability fowner,
+
+  # this is needed with libcap-ng support, however it breaks a lot of things
+  # atm, so just silence the denial until libcap-ng works right. LP: #522845
+  deny capability setpcap,
+
   network inet stream,
   network inet6 stream,
 
   /dev/net/tun rw,
+  /dev/tap* rw,
   /dev/kvm rw,
   /dev/ptmx rw,
   /dev/kqemu rw,
@@ -25,6 +34,14 @@
   # only modify its comm value or those in its thread group.
   owner @{PROC}/@{pid}/task/@{tid}/comm rw,
   @{PROC}/sys/kernel/cap_last_cap r,
+  owner @{PROC}/*/auxv r,
+  @{PROC}/sys/vm/overcommit_memory r,
+
+  /sys/devices/system/node/ r,
+  /sys/devices/system/node/node[0-9]*/meminfo r,
+  /sys/devices/system/cpu/ r,
+
+  /sys/module/vhost/parameters/max_mem_regions r,
 
   # For hostdev access. The actual devices will be added dynamically
   /sys/bus/usb/devices/ r,
@@ -62,13 +79,13 @@
   # access to firmware's etc
   /usr/share/kvm/** r,
   /usr/share/qemu/** r,
-  /usr/share/qemu-kvm/** r,
   /usr/share/bochs/** r,
   /usr/share/openbios/** r,
   /usr/share/openhackware/** r,
   /usr/share/proll/** r,
   /usr/share/vgabios/** r,
   /usr/share/seabios/** r,
+  /usr/share/misc/sgabios.bin r,
   /usr/share/ovmf/** r,
   /usr/share/OVMF/** r,
   /usr/share/AAVMF/** r,
@@ -81,7 +98,6 @@
   # the various binaries
   /usr/bin/kvm rmix,
   /usr/bin/qemu rmix,
-  /usr/bin/qemu-kvm rmix,
   /usr/bin/qemu-system-aarch64 rmix,
   /usr/bin/qemu-system-alpha rmix,
   /usr/bin/qemu-system-arm rmix,
@@ -125,7 +141,6 @@
   /usr/bin/qemu-mipsel rmix,
   /usr/bin/qemu-mipsn32 rmix,
   /usr/bin/qemu-mipsn32el rmix,
-  /usr/bin/qemu-nbd rmix,
   /usr/bin/qemu-or32 rmix,
   /usr/bin/qemu-ppc rmix,
   /usr/bin/qemu-ppc64 rmix,
@@ -148,6 +163,10 @@
   /etc/pki/libvirt/ r,
   /etc/pki/libvirt/** r,
 
+  # for use by libvirt-spice (LP: #1690140)
+  /etc/pki/libvirt-spice/ r,
+  /etc/pki/libvirt-spice/** r,
+
   # for save and resume
   /{usr/,}bin/dash rmix,
   /{usr/,}bin/dd rmix,
@@ -162,6 +181,25 @@
   /sys/bus/ r,
   /sys/class/ r,
 
+  # kvm.powerpc executes/accesses this
+  /bin/uname rmix,
+  /usr/sbin/ppc64_cpu rmix,
+  /bin/grep rmix,
+  /sys/devices/system/cpu/subcores_per_core r,
+  /sys/devices/system/cpu/cpu*/online r,
+
+  # Allow guests to receive signals from and be traced by
+  # libvirtd (LP: #1298611). Requires apparmor >= 2.9.
+  signal (receive) peer=/usr/sbin/libvirtd,
+  ptrace (tracedby) peer=/usr/sbin/libvirtd,
+
+  # for access to hugepages (LP: #1250216 and LP: #1524737)
+  owner "/run/hugepages/kvm/libvirt/qemu/**" rw,
+  owner "/dev/hugepages/libvirt/qemu/**" rw,
+
+  # for qemu-block-extra (LP: #1554761)
+  /usr/lib/@{multiarch}/qemu/*.so rm,
+
   # for rbd
   /etc/ceph/ceph.conf r,
 
@@ -169,3 +207,22 @@
   @{PROC}/device-tree/ r,
   @{PROC}/device-tree/** r,
   /sys/firmware/devicetree/** r,
+
+  # silence refusals to open lttng files (see LP: #1432644)
+  deny /dev/shm/lttng-ust-wait-* r,
+  deny /run/shm/lttng-ust-wait-* r,
+
+  # allow connect with openGraphicsFD to work
+  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
+
+  # for vfio (LP: #1678322)
+  /dev/vfio/vfio rw,
+
+  # to report on shutdown who send the kill signal (LP: #1680384)
+  /proc/*/cmdline r,
+
+  # allow access to charm-specific ceph config and silence spurious
+  # denials (LP: #1403648).
+  /var/lib/charm/*/ceph.conf r,
+  deny /tmp/{,**} r,
+  deny /var/tmp/{,**} r,
