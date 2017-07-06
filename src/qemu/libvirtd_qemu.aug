@@ -54,6 +54,10 @@ module Libvirtd_qemu =
                  | bool_entry "chardev_tls_x509_verify"
                  | str_entry "chardev_tls_x509_secret_uuid"
 
+   let migrate_entry = str_entry "migrate_tls_x509_cert_dir"
+                 | bool_entry "migrate_tls_x509_verify"
+                 | str_entry "migrate_tls_x509_secret_uuid"
+
    let nogfx_entry = bool_entry "nographics_allow_host_audio"
 
    let remote_display_entry = int_entry "remote_display_port_min"
@@ -109,11 +113,14 @@ module Libvirtd_qemu =
 
    let gluster_debug_level_entry = int_entry "gluster_debug_level"
 
+   let memory_entry = str_entry "memory_backing_dir"
+
    (* Each entry in the config is one of the following ... *)
    let entry = default_tls_entry
              | vnc_entry
              | spice_entry
              | chardev_entry
+             | migrate_entry
              | nogfx_entry
              | remote_display_entry
              | security_entry
@@ -125,6 +132,7 @@ module Libvirtd_qemu =
              | log_entry
              | nvram_entry
              | gluster_debug_level_entry
+             | memory_entry
 
    let comment = [ label "#comment" . del /#[ \t]*/ "# " .  store /([^ \t\n][^\n]*)?/ . del /\n/ "\n" ]
    let empty = [ label "#empty" . eol ]

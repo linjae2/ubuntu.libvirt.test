@@ -217,6 +217,7 @@ testUSBList(const void *opaque ATTRIBUTE_UNUSED)
     }
 
     virUSBDeviceListDel(list, dev);
+    virUSBDeviceFree(dev);
     dev = NULL;
 
     if (testCheckNdevs("After deleting one",
@@ -290,4 +291,4 @@ mymain(void)
     return EXIT_SUCCESS;
 }
 
-VIRT_TEST_MAIN_PRELOAD(mymain, abs_builddir "/.libs/virusbmock.so")
+VIR_TEST_MAIN_PRELOAD(mymain, abs_builddir "/.libs/virusbmock.so")

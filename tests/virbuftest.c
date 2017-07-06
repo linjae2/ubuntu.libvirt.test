@@ -376,6 +376,92 @@ testBufEscapeStr(const void *opaque ATTRIBUTE_UNUSED)
 
 
 static int
+testBufEscapeN(const void *opaque)
+{
+    const struct testBufAddStrData *data = opaque;
+    virBuffer buf = VIR_BUFFER_INITIALIZER;
+    char *actual;
+    int ret = -1;
+
+    virBufferEscapeN(&buf, "%s", data->data, '\\', "=", ',', ",", NULL);
+
+    if (!(actual = virBufferContentAndReset(&buf))) {
+        VIR_TEST_DEBUG("testBufEscapeN: buf is empty");
+        goto cleanup;
+    }
+
+    if (STRNEQ_NULLABLE(actual, data->expect)) {
+        VIR_TEST_DEBUG("testBufEscapeN: Strings don't match:\n");
+        virTestDifference(stderr, data->expect, actual);
+        goto cleanup;
+    }
+
+    ret = 0;
+
+ cleanup:
+    VIR_FREE(actual);
+    return ret;
+}
+
+
+static int
+testBufEscapeRegex(const void *opaque)
+{
+    const struct testBufAddStrData *data = opaque;
+    virBuffer buf = VIR_BUFFER_INITIALIZER;
+    char *actual;
+    int ret = -1;
+
+    virBufferEscapeRegex(&buf, "%s", data->data);
+
+    if (!(actual = virBufferContentAndReset(&buf))) {
+        VIR_TEST_DEBUG("testBufEscapeN: buf is empty");
+        goto cleanup;
+    }
+
+    if (STRNEQ_NULLABLE(actual, data->expect)) {
+        VIR_TEST_DEBUG("testBufEscapeN: Strings don't match:\n");
+        virTestDifference(stderr, data->expect, actual);
+        goto cleanup;
+    }
+
+    ret = 0;
+
+ cleanup:
+    VIR_FREE(actual);
+    return ret;
+}
+
+
+static int
+testBufSetIndent(const void *opaque ATTRIBUTE_UNUSED)
+{
+    virBuffer buf = VIR_BUFFER_INITIALIZER;
+    char *actual;
+    int ret = -1;
+
+    virBufferSetIndent(&buf, 11);
+    virBufferAddLit(&buf, "test\n");
+    virBufferSetIndent(&buf, 2);
+    virBufferAddLit(&buf, "test2\n");
+
+    if (!(actual = virBufferContentAndReset(&buf)))
+        goto cleanup;
+
+    if (STRNEQ(actual, "           test\n  test2\n")) {
+        VIR_TEST_DEBUG("testBufSetIndent: expected indent not set\n");
+        goto cleanup;
+    }
+
+    ret = 0;
+
+ cleanup:
+    VIR_FREE(actual);
+    return ret;
+}
+
+
+static int
 mymain(void)
 {
     int ret = 0;
@@ -393,6 +479,7 @@ mymain(void)
     DO_TEST("Auto-indentation", testBufAutoIndent, 0);
     DO_TEST("Trim", testBufTrim, 0);
     DO_TEST("AddBuffer", testBufAddBuffer, 0);
+    DO_TEST("set indent", testBufSetIndent, 0);
 
 #define DO_TEST_ADD_STR(DATA, EXPECT)                                  \
     do {                                                               \
@@ -422,7 +509,30 @@ mymain(void)
     DO_TEST_ESCAPE("\x01\x01\x02\x03\x05\x08",
                    "<c>\n  <el></el>\n</c>");
 
+#define DO_TEST_ESCAPEN(data, expect)                                   \
+    do {                                                                \
+        struct testBufAddStrData info = { data, expect };               \
+        if (virTestRun("Buf: EscapeN", testBufEscapeN, &info) < 0)      \
+            ret = -1;                                                   \
+    } while (0)
+
+    DO_TEST_ESCAPEN("noescape", "noescape");
+    DO_TEST_ESCAPEN("comma,escape", "comma,,escape");
+    DO_TEST_ESCAPEN("equal=escape", "equal\\=escape");
+    DO_TEST_ESCAPEN("comma,equal=escape", "comma,,equal\\=escape");
+
+#define DO_TEST_ESCAPE_REGEX(data, expect)                                  \
+    do {                                                                    \
+        struct testBufAddStrData info = { data, expect };                   \
+        if (virTestRun("Buf: EscapeRegex", testBufEscapeRegex, &info) < 0)  \
+            ret = -1;                                                       \
+    } while (0)
+
+    DO_TEST_ESCAPE_REGEX("noescape", "noescape");
+    DO_TEST_ESCAPE_REGEX("^$.|?*+()[]{}\\",
+                         "\\^\\$\\.\\|\\?\\*\\+\\(\\)\\[\\]\\{\\}\\\\");
+
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN(mymain)
+VIR_TEST_MAIN(mymain)

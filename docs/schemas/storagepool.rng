@@ -24,6 +24,7 @@
         <ref name='poolsheepdog'/>
         <ref name='poolgluster'/>
         <ref name='poolzfs'/>
+        <ref name='poolvstorage'/>
       </choice>
     </element>
   </define>
@@ -69,7 +70,7 @@
       <value>logical</value>
     </attribute>
     <interleave>
-      <ref name='commonmetadata'/>
+      <ref name='commonMetadataNameOptional'/>
       <ref name='sizing'/>
       <ref name='sourcelogical'/>
       <ref name='targetlogical'/>
@@ -131,7 +132,7 @@
       <value>rbd</value>
     </attribute>
     <interleave>
-      <ref name='commonmetadata'/>
+      <ref name='commonMetadataNameOptional'/>
       <ref name='sizing'/>
       <ref name='sourcerbd'/>
     </interleave>
@@ -142,7 +143,7 @@
       <value>sheepdog</value>
     </attribute>
     <interleave>
-      <ref name='commonmetadata'/>
+      <ref name='commonMetadataNameOptional'/>
       <ref name='sizing'/>
       <ref name='sourcesheepdog'/>
     </interleave>
@@ -153,7 +154,7 @@
       <value>gluster</value>
     </attribute>
     <interleave>
-      <ref name='commonmetadata'/>
+      <ref name='commonMetadataNameOptional'/>
       <ref name='sizing'/>
       <ref name='sourcegluster'/>
     </interleave>
@@ -164,12 +165,24 @@
       <value>zfs</value>
     </attribute>
     <interleave>
-      <ref name='commonmetadata'/>
+      <ref name='commonMetadataNameOptional'/>
       <ref name='sizing'/>
       <ref name='sourcezfs'/>
       <optional>
         <ref name='target'/>
       </optional>
+    </interleave>
+  </define>
+
+  <define name='poolvstorage'>
+    <attribute name='type'>
+      <value>vstorage</value>
+    </attribute>
+    <interleave>
+      <ref name='commonMetadataNameOptional'/>
+      <ref name='sizing'/>
+      <ref name='sourcevstorage'/>
+      <ref name='target'/>
     </interleave>
   </define>
 
@@ -187,6 +200,21 @@
           <attribute name='name'>
             <text/>
           </attribute>
+        </element>
+      </optional>
+    </interleave>
+  </define>
+
+  <define name='commonMetadataNameOptional'>
+    <interleave>
+      <optional>
+        <element name='name'>
+          <ref name='genericName'/>
+        </element>
+      </optional>
+      <optional>
+        <element name='uuid'>
+          <ref name='UUID'/>
         </element>
       </optional>
     </interleave>
@@ -369,6 +397,14 @@
         <optional>
           <ref name='sourceinfodev'/>
         </optional>
+      </interleave>
+    </element>
+  </define>
+
+  <define name='sourcevstorage'>
+    <element name='source'>
+      <interleave>
+        <ref name='sourceinfoname'/>
       </interleave>
     </element>
   </define>

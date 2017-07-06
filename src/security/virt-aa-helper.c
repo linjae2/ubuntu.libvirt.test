@@ -513,7 +513,9 @@ valid_path(const char *path, const bool readonly)
         "/initrd",
         "/initrd.img",
         "/usr/share/OVMF/",              /* for OVMF images */
-        "/usr/share/ovmf/"               /* for OVMF images */
+        "/usr/share/ovmf/",              /* for OVMF images */
+        "/usr/share/AAVMF/",             /* for AAVMF images */
+        "/usr/share/qemu-efi/"           /* for AAVMF images */
     };
     /* override the above with these */
     const char * const override[] = {
@@ -668,7 +670,7 @@ get_definition(vahControl * ctl, const char *xmlStr)
         goto exit;
     }
 
-    if (!(ctl->xmlopt = virDomainXMLOptionNew(NULL, NULL, NULL))) {
+    if (!(ctl->xmlopt = virDomainXMLOptionNew(NULL, NULL, NULL, NULL, NULL))) {
         vah_error(ctl, 0, _("Failed to create XML config object"));
         goto exit;
     }

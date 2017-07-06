@@ -91,6 +91,7 @@ mymain(void)
     DO_TEST_DIFFERENT("graphics-vnc-socket-attr-listen-socket");
     DO_TEST_FULL("graphics-vnc-socket-attr-listen-socket-mismatch", 0, false,
         TEST_COMPARE_DOM_XML2XML_RESULT_FAIL_PARSE);
+    DO_TEST("graphics-vnc-autoport-no");
 
     DO_TEST_FULL("name-slash-fail", 0, false,
         TEST_COMPARE_DOM_XML2XML_RESULT_FAIL_PARSE);
@@ -98,6 +99,11 @@ mymain(void)
     DO_TEST("perf");
 
     DO_TEST("vcpus-individual");
+    DO_TEST("disk-network-http");
+
+    DO_TEST("cpu-cache-emulate");
+    DO_TEST("cpu-cache-passthrough");
+    DO_TEST("cpu-cache-disable");
 
     virObjectUnref(caps);
     virObjectUnref(xmlopt);
@@ -105,4 +111,4 @@ mymain(void)
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN(mymain)
+VIR_TEST_MAIN(mymain)

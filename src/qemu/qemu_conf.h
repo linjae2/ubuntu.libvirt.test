@@ -137,6 +137,10 @@ struct _virQEMUDriverConfig {
     bool chardevTLSx509verify;
     char *chardevTLSx509secretUUID;
 
+    char *migrateTLSx509certdir;
+    bool migrateTLSx509verify;
+    char *migrateTLSx509secretUUID;
+
     unsigned int remotePortMin;
     unsigned int remotePortMax;
 
@@ -195,6 +199,8 @@ struct _virQEMUDriverConfig {
     virFirmwarePtr *firmwares;
     size_t nfirmwares;
     unsigned int glusterDebugLevel;
+
+    char *memoryBackingDir;
 };
 
 /* Main driver state */
@@ -292,7 +298,8 @@ void qemuDomainCmdlineDefFree(qemuDomainCmdlineDefPtr def);
 virQEMUDriverConfigPtr virQEMUDriverConfigNew(bool privileged);
 
 int virQEMUDriverConfigLoadFile(virQEMUDriverConfigPtr cfg,
-                                const char *filename);
+                                const char *filename,
+                                bool privileged);
 
 virQEMUDriverConfigPtr virQEMUDriverGetConfig(virQEMUDriverPtr driver);
 bool virQEMUDriverIsPrivileged(virQEMUDriverPtr driver);
