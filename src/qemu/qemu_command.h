@@ -57,7 +57,8 @@ virCommandPtr qemuBuildCommandLine(virQEMUDriverPtr driver,
                                    virBitmapPtr nodeset,
                                    size_t *nnicindexes,
                                    int **nicindexes,
-                                   const char *domainLibDir)
+                                   const char *domainLibDir,
+                                   bool chardevStdioLogd)
     ATTRIBUTE_NONNULL(15);
 
 
@@ -123,16 +124,13 @@ char *qemuBuildControllerDevStr(const virDomainDef *domainDef,
                                 virQEMUCapsPtr qemuCaps,
                                 int *nusbcontroller);
 
-int qemuBuildMemoryBackendStr(unsigned long long size,
-                              unsigned long long pagesize,
-                              int guestNode,
-                              virBitmapPtr userNodeset,
-                              virBitmapPtr autoNodeset,
-                              virDomainDefPtr def,
-                              virQEMUCapsPtr qemuCaps,
-                              virQEMUDriverConfigPtr cfg,
+int qemuBuildMemoryBackendStr(virJSONValuePtr *backendProps,
                               const char **backendType,
-                              virJSONValuePtr *backendProps,
+                              virQEMUDriverConfigPtr cfg,
+                              virQEMUCapsPtr qemuCaps,
+                              virDomainDefPtr def,
+                              virDomainMemoryDefPtr mem,
+                              virBitmapPtr autoNodeset,
                               bool force);
 
 char *qemuBuildMemoryDeviceStr(virDomainMemoryDefPtr mem);
@@ -169,6 +167,11 @@ qemuBuildSCSIVHostHostdevDevStr(const virDomainDef *def,
                                 virDomainHostdevDefPtr dev,
                                 virQEMUCapsPtr qemuCaps,
                                 char *vhostfdName);
+
+char *
+qemuBuildHostdevMediatedDevStr(const virDomainDef *def,
+                               virDomainHostdevDefPtr dev,
+                               virQEMUCapsPtr qemuCaps);
 
 char *qemuBuildRedirdevDevStr(const virDomainDef *def,
                               virDomainRedirdevDefPtr dev,

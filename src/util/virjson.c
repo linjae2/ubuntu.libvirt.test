@@ -376,6 +376,14 @@ virJSONValueFree(virJSONValuePtr value)
 }
 
 
+void
+virJSONValueHashFree(void *opaque,
+                     const void *name ATTRIBUTE_UNUSED)
+{
+    virJSONValueFree(opaque);
+}
+
+
 virJSONValuePtr
 virJSONValueNewString(const char *data)
 {
@@ -1918,3 +1926,32 @@ virJSONValueToString(virJSONValuePtr object ATTRIBUTE_UNUSED,
     return NULL;
 }
 #endif
+
+
+/**
+ * virJSONStringReformat:
+ * @jsonstr: string to reformat
+ * @pretty: use the pretty formatter
+ *
+ * Reformats a JSON string by passing it to the parser and then to the
+ * formatter. If @pretty is true the JSON is formatted for human eye
+ * compatibility.
+ *
+ * Returns the reformatted JSON string on success; NULL and a libvirt error on
+ * failure.
+ */
+char *
+virJSONStringReformat(const char *jsonstr,
+                      bool pretty)
+{
+    virJSONValuePtr json;
+    char *ret;
+
+    if (!(json = virJSONValueFromString(jsonstr)))
+        return NULL;
+
+    ret = virJSONValueToString(json, pretty);
+
+    virJSONValueFree(json);
+    return ret;
+}

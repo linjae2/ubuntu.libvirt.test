@@ -27,7 +27,7 @@
 # include <sys/stat.h>
 
 # include "domain_conf.h"
-# include "storage_conf.h"
+# include "virstorageobj.h"
 # include "virstoragefile.h"
 
 int virStorageFileInit(virStorageSourcePtr src);
@@ -54,6 +54,9 @@ int virStorageFileGetMetadata(virStorageSourcePtr src,
                               bool report_broken)
     ATTRIBUTE_NONNULL(1);
 
+char *virStorageFileGetBackingStoreStr(virStorageSourcePtr src)
+    ATTRIBUTE_NONNULL(1);
+
 int virStorageTranslateDiskSourcePool(virConnectPtr conn,
                                       virDomainDiskDefPtr def);
 
@@ -70,5 +73,6 @@ char *virStoragePoolObjBuildTempFilePath(virStoragePoolObjPtr pool,
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_RETURN_CHECK;
 
 int storageRegister(void);
+int storageRegisterAll(void);
 
 #endif /* __VIR_STORAGE_DRIVER_H__ */

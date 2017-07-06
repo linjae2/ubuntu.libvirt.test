@@ -683,7 +683,8 @@ struct _virNWFilter {
 virConnectPtr virGetConnect(void);
 virDomainPtr virGetDomain(virConnectPtr conn,
                           const char *name,
-                          const unsigned char *uuid);
+                          const unsigned char *uuid,
+                          int id);
 virNetworkPtr virGetNetwork(virConnectPtr conn,
                             const char *name,
                             const unsigned char *uuid);
@@ -696,11 +697,11 @@ virStoragePoolPtr virGetStoragePool(virConnectPtr conn,
                                     void *privateData,
                                     virFreeCallback freeFunc);
 virStorageVolPtr virGetStorageVol(virConnectPtr conn,
-                                     const char *pool,
-                                    const char *name,
-                                    const char *key,
-                                    void *privateData,
-                                    virFreeCallback freeFunc);
+                                  const char *pool,
+                                  const char *name,
+                                  const char *key,
+                                  void *privateData,
+                                  virFreeCallback freeFunc);
 virNodeDevicePtr virGetNodeDevice(virConnectPtr conn,
                                   const char *name);
 virSecretPtr virGetSecret(virConnectPtr conn,

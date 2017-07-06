@@ -51,6 +51,8 @@ int virSetUIDGIDWithCaps(uid_t uid, gid_t gid, gid_t *groups, int ngroups,
                          unsigned long long capBits,
                          bool clearExistingCaps);
 
+void virWaitForDevices(void);
+
 int virScaleInteger(unsigned long long *value, const char *suffix,
                     unsigned long long scale, unsigned long long limit)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
@@ -60,9 +62,6 @@ int virHexToBin(unsigned char c);
 int virParseNumber(const char **str);
 int virParseVersionString(const char *str, unsigned long *version,
                           bool allowMissing);
-
-int virDoubleToStr(char **strp, double number)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
 
 char *virFormatIntDecimal(char *buf, size_t buflen, int val)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
@@ -140,8 +139,8 @@ char *virGetUserConfigDirectory(void);
 char *virGetUserCacheDirectory(void);
 char *virGetUserRuntimeDirectory(void);
 char *virGetUserShell(uid_t uid);
-char *virGetUserName(uid_t uid);
-char *virGetGroupName(gid_t gid);
+char *virGetUserName(uid_t uid) ATTRIBUTE_NOINLINE;
+char *virGetGroupName(gid_t gid) ATTRIBUTE_NOINLINE;
 int virGetGroupList(uid_t uid, gid_t group, gid_t **groups)
     ATTRIBUTE_NONNULL(3);
 int virGetUserID(const char *name,
@@ -164,53 +163,6 @@ int virGetDeviceUnprivSGIO(const char *path,
                            int *unpriv_sgio);
 char *virGetUnprivSGIOSysfsPath(const char *path,
                                 const char *sysfs_dir);
-int virReadSCSIUniqueId(const char *sysfs_prefix,
-                        int host,
-                        int *result)
-    ATTRIBUTE_NONNULL(3);
-char *
-virFindSCSIHostByPCI(const char *sysfs_prefix,
-                     const char *parentaddr,
-                     unsigned int unique_id);
-int
-virGetSCSIHostNumber(const char *adapter_name,
-                     unsigned int *result)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-char *
-virGetSCSIHostNameByParentaddr(unsigned int domain,
-                               unsigned int bus,
-                               unsigned int slot,
-                               unsigned int function,
-                               unsigned int unique_id);
-char *virReadFCHost(const char *sysfs_prefix,
-                    int host,
-                    const char *entry)
-    ATTRIBUTE_NONNULL(3);
-
-bool virIsCapableFCHost(const char *sysfs_prefix, int host);
-bool virIsCapableVport(const char *sysfs_prefix, int host);
-
-enum {
-    VPORT_CREATE,
-    VPORT_DELETE,
-};
-
-int virManageVport(const int parent_host,
-                   const char *wwpn,
-                   const char *wwnn,
-                   int operation)
-    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
-
-char *virGetFCHostNameByWWN(const char *sysfs_prefix,
-                            const char *wwnn,
-                            const char *wwpn)
-    ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
-
-char *virGetFCHostNameByFabricWWN(const char *sysfs_prefix,
-                                  const char *fabric_wwn)
-    ATTRIBUTE_NONNULL(2);
-
-char *virFindFCHostCapableVport(const char *sysfs_prefix);
 
 int virParseOwnershipIds(const char *label, uid_t *uidPtr, gid_t *gidPtr);
 
@@ -249,12 +201,12 @@ verify((int)VIR_TRISTATE_BOOL_ABSENT == (int)VIR_TRISTATE_SWITCH_ABSENT);
 
 unsigned int virGetListenFDs(void);
 
-long virGetSystemPageSize(void);
-long virGetSystemPageSizeKB(void);
+long virGetSystemPageSize(void) ATTRIBUTE_NOINLINE;
+long virGetSystemPageSizeKB(void) ATTRIBUTE_NOINLINE;
 
 unsigned long long virMemoryLimitTruncate(unsigned long long value);
 bool virMemoryLimitIsSet(unsigned long long value);
-unsigned long long virMemoryMaxValue(bool ulong);
+unsigned long long virMemoryMaxValue(bool ulong) ATTRIBUTE_NOINLINE;
 
 /**
  * VIR_ASSIGN_IS_OVERFLOW:

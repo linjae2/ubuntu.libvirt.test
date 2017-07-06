@@ -74,9 +74,9 @@ static ssize_t testRead(char *buf, size_t len, void *opaque)
  * This is replicating the checks that are done for an
  * active TLS session after handshake completes. To
  * simulate that we create our TLS contexts, skipping
- * sanity checks. When then get a socketpair, and
+ * sanity checks. We then get a socketpair, and
  * initiate a TLS session across them. Finally do
- * do actual cert validation tests
+ * actual cert validation tests
  */
 static int testTLSSessionInit(const void *opaque)
 {
@@ -487,7 +487,7 @@ mymain(void)
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN_PRELOAD(mymain, abs_builddir "/.libs/virrandommock.so")
+VIR_TEST_MAIN_PRELOAD(mymain, abs_builddir "/.libs/virrandommock.so")
 
 #else
 

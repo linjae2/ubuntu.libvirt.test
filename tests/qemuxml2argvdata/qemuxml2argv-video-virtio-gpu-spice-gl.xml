@@ -13,7 +13,7 @@
   <on_reboot>restart</on_reboot>
   <on_crash>destroy</on_crash>
   <devices>
-    <emulator>/usr/bin/qemu</emulator>
+    <emulator>/usr/bin/qemu-system-i686</emulator>
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2' cache='none'/>
       <source file='/var/lib/libvirt/images/QEMUGuest1'/>
@@ -26,7 +26,7 @@
     <input type='mouse' bus='ps2'/>
     <input type='keyboard' bus='ps2'/>
     <graphics type='spice' autoport='no'>
-      <gl enable='yes'/>
+      <gl enable='yes' rendernode='/dev/dri/foo'/>
     </graphics>
     <video>
       <model type='virtio' heads='1'>

@@ -3,7 +3,7 @@
 #include "internal.h"
 #include "testutils.h"
 #include "datatypes.h"
-#include "storage/storage_backend.h"
+#include "storage/storage_util.h"
 #include "testutilsqemu.h"
 #include "virstring.h"
 
@@ -272,7 +272,14 @@ mymain(void)
                  "pool-dir", "vol-qcow2-nocapacity-backing", NULL, NULL,
                  "qcow2-nocapacity", 0, FMT_OPTIONS);
 
+    DO_TEST("pool-dir", "vol-file-iso",
+            NULL, NULL,
+            "iso", 0, FMT_OPTIONS);
+    DO_TEST("pool-dir", "vol-file",
+            "pool-dir", "vol-file-iso",
+            "iso-input", 0, FMT_OPTIONS);
+
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN(mymain)
+VIR_TEST_MAIN(mymain)

@@ -22,7 +22,7 @@
 #include "testutils.h"
 #include "testutilsqemu.h"
 #include "qemumonitortestutils.h"
-#define __QEMU_CAPSRIV_H_ALLOW__
+#define __QEMU_CAPSPRIV_H_ALLOW__
 #include "qemu/qemu_capspriv.h"
 
 #define VIR_FROM_THIS VIR_FROM_NONE
@@ -169,6 +169,7 @@ mymain(void)
     DO_TEST("x86_64", "caps_2.6.0");
     DO_TEST("x86_64", "caps_2.7.0");
     DO_TEST("x86_64", "caps_2.8.0");
+    DO_TEST("x86_64", "caps_2.9.0");
     DO_TEST("aarch64", "caps_2.6.0-gicv2");
     DO_TEST("aarch64", "caps_2.6.0-gicv3");
     DO_TEST("ppc64le", "caps_2.6.0");
@@ -185,4 +186,4 @@ mymain(void)
     return (ret == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN(mymain)
+VIR_TEST_MAIN(mymain)
