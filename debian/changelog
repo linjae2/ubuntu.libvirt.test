@@ -1,3 +1,11 @@
+libvirt (3.5.0-1ubuntu2) artful; urgency=medium
+
+  * d/p/u/aa-helper-Properly-link-with-storage-driver.patch (LP: #1704782)
+    Fix to be able to follow BackinStorage chains when creating per
+    guest apparmor rules.
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 18 Jul 2017 16:34:57 +0200
+
 libvirt (3.5.0-1ubuntu1) artful; urgency=medium
 
   * Merged with Debian unstable (3.5)

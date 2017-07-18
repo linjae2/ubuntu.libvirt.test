@@ -1,0 +1,62 @@
+Description: security: apparmor: Properly link with storage driver in helper program
+
+  The refactor to split up storage driver into modules broke the apparmor
+  helper program, since that did not initialize the storage driver
+  properly and thus detection of the backing chain could not work.
+
+  Register the storage driver backends explicitly. Unfortunately it's now
+  necessary to link with the full storage driver to satisfy dependencies
+  of the loadable modules.
+  ---
+   src/Makefile.am               | 2 +-
+   src/security/virt-aa-helper.c | 8 ++++++++
+   2 files changed, 9 insertions(+), 1 deletion(-)
+
+Forwarded: no (from upstream)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Peter Krempa <pkrempa@redhat.com>
+Origin: https://www.redhat.com/archives/libvir-list/2017-July/msg00649.html
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1704782
+Last-Update: 2017-07-18
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -3280,7 +3280,7 @@
+ 		libvirt.la					\
+ 		libvirt_conf.la					\
+ 		libvirt_util.la					\
+-		libvirt_driver_storage_impl.la			\
++		libvirt_driver_storage.la			\
+ 		../gnulib/lib/libgnu.la
+ if WITH_DTRACE_PROBES
+ virt_aa_helper_LDADD += libvirt_probes.lo
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -56,6 +56,7 @@
+ #include "virgettext.h"
+ 
+ #include "storage/storage_driver.h"
++#include "storage/storage_backend.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_SECURITY
+ 
+@@ -926,6 +927,11 @@
+         goto cleanup;
+     }
+ 
++    if (virStorageBackendDriversRegister(false) < 0) {
++        vah_error(ctl, 0, _("failed to register storage driver backend"));
++        goto cleanup;
++    }
++
+     for (i = 0; i < ctl->def->ndisks; i++) {
+         virDomainDiskDefPtr disk = ctl->def->disks[i];
+ 
+@@ -1283,6 +1289,8 @@
+         exit(EXIT_FAILURE);
+     }
+ 
++    virFileActivateDirOverride(argv[0]);
++
+     /* Initialize the log system */
+     virLogSetFromEnv();
+ 
