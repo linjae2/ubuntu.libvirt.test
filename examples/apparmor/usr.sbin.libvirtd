@@ -39,6 +39,15 @@
   # apparmor >= 2.9
   network netlink,
 
+  # Grant bare signal and ptrace. Grant dbus on the system bus
+  # (LP: #1298611). Requires apparmor >= 2.9.
+  dbus bus=system,
+  signal,
+  ptrace,
+  # Allow abstract socket mediation (LP: #1362199). Requires apparmor
+  # >= 2.9.
+  unix,
+
   # Very lenient profile for libvirtd since we want to first focus on confining
   # the guests. Guests will have a very restricted profile.
   / r,
