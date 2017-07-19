@@ -1,23 +1,31 @@
-Description: security: apparmor: Properly link with storage driver in helper program
+From 5e515b542d7f0940396c74bf8f6cb337d5d0dcc5 Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Tue, 18 Jul 2017 09:43:41 +0200
+Subject: [PATCH] security: apparmor: Properly link with storage driver in
+ helper program
 
-  The refactor to split up storage driver into modules broke the apparmor
-  helper program, since that did not initialize the storage driver
-  properly and thus detection of the backing chain could not work.
+The refactor to split up storage driver into modules broke the apparmor
+helper program, since that did not initialize the storage driver
+properly and thus detection of the backing chain could not work.
 
-  Register the storage driver backends explicitly. Unfortunately it's now
-  necessary to link with the full storage driver to satisfy dependencies
-  of the loadable modules.
-  ---
-   src/Makefile.am               | 2 +-
-   src/security/virt-aa-helper.c | 8 ++++++++
-   2 files changed, 9 insertions(+), 1 deletion(-)
+Register the storage driver backends explicitly. Unfortunately it's now
+necessary to link with the full storage driver to satisfy dependencies
+of the loadable modules.
 
-Forwarded: no (from upstream)
+Reviewed-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reported-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Tested-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+---
+Forwarded: no (backport)
 Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Original-Author: Peter Krempa <pkrempa@redhat.com>
-Origin: https://www.redhat.com/archives/libvir-list/2017-July/msg00649.html
+Origin: https://libvirt.org/git/?p=libvirt.git;h=5e515b54
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1704782
-Last-Update: 2017-07-18
+Last-Update: 2017-07-19
+---
+ src/Makefile.am               | 2 +-
+ src/security/virt-aa-helper.c | 8 ++++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
 @@ -3280,7 +3280,7 @@

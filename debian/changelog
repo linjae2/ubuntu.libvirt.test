@@ -1,3 +1,13 @@
+libvirt (3.5.0-1ubuntu3) artful; urgency=medium
+
+  * Refresh changes to match they way they were accepted upstream
+    - d/p/u/aa-helper-Properly-link-with-storage-driver.patch add commit
+      reference now that it is in git.
+    - d/p/u/fix-libxl-default-driver-name.patch: instead of addin the
+      name this is now fixed by relaxing the schema.
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 19 Jul 2017 12:48:39 +0200
+
 libvirt (3.5.0-1ubuntu2) artful; urgency=medium
 
   * d/p/u/aa-helper-Properly-link-with-storage-driver.patch (LP: #1704782)
