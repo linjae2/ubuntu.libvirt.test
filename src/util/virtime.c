@@ -34,13 +34,17 @@
 #include <config.h>
 
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/time.h>
 
 #include "virtime.h"
 #include "viralloc.h"
 #include "virerror.h"
+#include "virlog.h"
 
 #define VIR_FROM_THIS VIR_FROM_NONE
+
+VIR_LOG_INIT("util.time");
 
 /* We prefer clock_gettime if available because that is officially
  * async signal safe according to POSIX. Many platforms lack it
@@ -362,4 +366,91 @@ virTimeLocalOffsetFromUTC(long *offset)
 
     *offset = current - utc;
     return 0;
+}
+
+/**
+ * virTimeBackOffStart:
+ * @var: Timeout variable (with type virTimeBackOffVar).
+ * @first: Initial time to wait (milliseconds).
+ * @timeout: Timeout (milliseconds).
+ *
+ * Initialize the timeout variable @var and start the timer running.
+ *
+ * Returns 0 on success, -1 on error and raises a libvirt error.
+ */
+int
+virTimeBackOffStart(virTimeBackOffVar *var,
+                    unsigned long long first, unsigned long long timeout)
+{
+    if (virTimeMillisNow(&var->start_t) < 0)
+        return -1;
+
+    var->next = first;
+    var->limit_t = var->start_t + timeout;
+    return 0;
+}
+
+
+#define VIR_TIME_BACKOFF_CAP 1000
+
+/**
+ * virTimeBackOffWait
+ * @var: Timeout variable (with type virTimeBackOffVar *).
+ *
+ * You must initialize @var first by calling the following function,
+ * which also starts the timer:
+ *
+ * if (virTimeBackOffStart(&var, first, timeout) < 0) {
+ *   // handle errors
+ * }
+ *
+ * Then you use a while loop:
+ *
+ * while (virTimeBackOffWait(&var)) {
+ *   //...
+ * }
+ *
+ * The while loop that runs the body of the code repeatedly, with an
+ * exponential backoff.  It first waits for first milliseconds, then
+ * runs the body, then waits for 2*first ms, then runs the body again.
+ * Then 4*first ms, and so on, up until wait time would reach
+ * VIR_TIME_BACK_OFF_CAP (whole second). Then it switches to constant
+ * waiting time of VIR_TIME_BACK_OFF_CAP.
+ *
+ * When timeout milliseconds is reached, the while loop ends.
+ *
+ * The body should use "break" or "goto" when whatever condition it is
+ * testing for succeeds (or there is an unrecoverable error).
+ */
+bool
+virTimeBackOffWait(virTimeBackOffVar *var)
+{
+    unsigned long long t, next;
+
+    ignore_value(virTimeMillisNowRaw(&t));
+
+    VIR_DEBUG("t=%llu, limit=%llu", t, var->limit_t);
+
+    if (t > var->limit_t)
+        return 0;               /* ends the while loop */
+
+    /* Compute next wait time. Cap at VIR_TIME_BACKOFF_CAP
+     * to avoid long useless sleeps. */
+    next = var->next;
+    if (var->next < VIR_TIME_BACKOFF_CAP)
+        var->next *= 2;
+    else if (var->next > VIR_TIME_BACKOFF_CAP)
+        var->next = VIR_TIME_BACKOFF_CAP;
+
+    /* If sleeping would take us beyond the limit, then shorten the
+     * sleep.  This is so we always run the body just before the final
+     * timeout.
+     */
+    if (t + next > var->limit_t)
+        next = var->limit_t - t;
+
+    VIR_DEBUG("sleeping for %llu ms", next);
+
+    usleep(next * 1000);
+    return 1;
 }
