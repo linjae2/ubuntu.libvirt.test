@@ -176,6 +176,9 @@
   /sys/bus/ r,
   /sys/class/ r,
 
+  # for qemu-block-extra (LP: #1554761)
+  /usr/lib/@{multiarch}/qemu/*.so rm,
+
   # for rbd
   /etc/ceph/ceph.conf r,
 
