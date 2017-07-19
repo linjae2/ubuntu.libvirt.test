@@ -1,27 +1,58 @@
-Description: libxl: fix cdrom default driver name
+From b494e09d058f09b48d0fd8855edd557101294671 Mon Sep 17 00:00:00 2001
+From: Jim Fehlig <jfehlig@suse.com>
+Date: Tue, 18 Jul 2017 10:20:35 -0600
+Subject: [PATCH] docs: schema: make disk driver name attribute optional
 
-In libvirt 3.5 libxl does fill non existant driver elements with typr='raw',
-but lacks the name='qemu' that it had in the past.
-Without that the xml fails to validate, therefore old XML files can't be
-edited/defined anymore.
+/domain/devices/disk/driver/@name is not a required or mandatory
+attribute according to formatdomain, and indeed it was agreed on
+IRC that the attribute is "optional for input, recommended (but
+not required) for output". Currently the schema requires the
+attribute, causing virt-xml-validate to fail on disk config where
+the driver name is not explicitly specified. E.g.
 
-A preliminary fix was developed and verified to work for now, but is in
-discussion upstream to get an accepted solution for it.
+# cat test.xml | grep -A 5 cdrom
+    <disk type='file' device='cdrom'>
+      <driver type='raw'/>
+      <target dev='hdb' bus='ide'/>
+      <readonly/>
+      <address type='drive' controller='0' bus='0' target='0' unit='1'/>
+    </disk>
 
-Forwarded: yes (https://www.redhat.com/archives/libvir-list/2017-July/msg00419.html)
+# virt-xml-validate test.xml
+Relax-NG validity error : Extra element devices in interleave
+test.xml:21: element devices: Relax-NG validity error : Element domain failed to validate content
+test.xml fails to validate
+
+Relaxing the name attribute to be optional fixes the validation
+
+# virt-xml-validate test.xml
+test.xml validates
+---
+Forwarded: no (backport)
 Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
-Last-Update: 2017-07-12
---- a/src/libxl/libxl_domain.c
-+++ b/src/libxl/libxl_domain.c
-@@ -367,8 +367,9 @@
-         int actual_type = virStorageSourceGetActualType(disk->src);
-         int format = virDomainDiskGetFormat(disk);
- 
--        /* for network-based disks, set 'qemu' as the default driver */
--        if (actual_type == VIR_STORAGE_TYPE_NETWORK) {
-+        /* for network-based disk and cdrom, set 'qemu' as the default driver */
-+        if (actual_type == VIR_STORAGE_TYPE_NETWORK ||
-+            disk->device == VIR_DOMAIN_DISK_DEVICE_CDROM) {
-             if (!virDomainDiskGetDriver(disk) &&
-                 virDomainDiskSetDriver(disk, "qemu") < 0)
-                 return -1;
+Original-Author: Jim Fehlig <jfehlig@suse.com>
+Origin: https://libvirt.org/git/?p=libvirt.git;h=b494e09d
+Last-Update: 2017-07-19
+---
+ docs/schemas/domaincommon.rng | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/docs/schemas/domaincommon.rng b/docs/schemas/domaincommon.rng
+index fc1a40f..a49ce93 100644
+--- a/docs/schemas/domaincommon.rng
++++ b/docs/schemas/domaincommon.rng
+@@ -1804,9 +1804,11 @@
+     </element>
+   </define>
+   <define name="driverFormat">
+-    <attribute name="name">
+-      <ref name="genericName"/>
+-    </attribute>
++    <optional>
++      <attribute name="name">
++        <ref name="genericName"/>
++      </attribute>
++    </optional>
+     <optional>
+       <attribute name='type'>
+         <choice>
