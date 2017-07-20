@@ -1,3 +1,12 @@
+libvirt (2.5.0-3ubuntu5.4) zesty; urgency=medium
+
+  * d/p/ubuntu/bug-1705132-* qemu: Adaptive timeout for connecting to
+    monitor (LP: #1705132)
+    - includes backports that make backing off on timeouts exponentially
+      but cap the exponential increase on 1s.
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 20 Jul 2017 13:06:02 +0200
+
 libvirt (2.5.0-3ubuntu5.3) zesty; urgency=medium
 
   * d/p/ubuntu/0004-apparmor-apply-ubuntu-delta.patch: Allow access to base

@@ -1,0 +1,78 @@
+From 67dcb797ed7f1fbb048aa47006576f424923933b Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Mon, 13 Mar 2017 11:05:08 +0100
+Subject: [PATCH] virTimeBackOffWait: Avoid long periods of sleep
+
+While connecting to qemu monitor, the first thing we do is wait
+for it to show up. However, we are doing it with some timeout to
+avoid indefinite waits (e.g. when qemu doesn't create the monitor
+socket at all). After beaa447a29 we are using exponential back
+off timeout meaning, after the first connection attempt we wait
+1ms, then 2ms, then 4 and so on.  This allows us to bring down
+wait time for small domains where qemu initializes quickly.
+However, on the other end of this scale are some domains with
+huge amounts of guest memory. Now imagine that we've gotten up to
+wait time of 15 seconds. The next one is going to be 30 seconds,
+and the one after that whole minute. Well, okay - with current
+code we are not going to wait longer than 30 seconds in total,
+but this is going to change in the next commit.
+
+The exponential back off is usable only for first few iterations.
+Then it needs to be caped (one second was chosen as the limit)
+and switch to constant wait time.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Michal Privoznik <mprivozn@redhat.com>
+Origin: https://libvirt.org/git/?p=libvirt.git;a=patch;h=67dcb797ed7f1fbb048aa47006576f424923933b
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1705132
+Last-Update: 2017-07-19
+---
+ src/util/virtime.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/src/util/virtime.c b/src/util/virtime.c
+index aac9691..640eb5a 100644
+--- a/src/util/virtime.c
++++ b/src/util/virtime.c
+@@ -390,6 +390,9 @@ virTimeBackOffStart(virTimeBackOffVar *var,
+     return 0;
+ }
+ 
++
++#define VIR_TIME_BACKOFF_CAP 1000
++
+ /**
+  * virTimeBackOffWait
+  * @var: Timeout variable (with type virTimeBackOffVar *).
+@@ -410,7 +413,9 @@ virTimeBackOffStart(virTimeBackOffVar *var,
+  * The while loop that runs the body of the code repeatedly, with an
+  * exponential backoff.  It first waits for first milliseconds, then
+  * runs the body, then waits for 2*first ms, then runs the body again.
+- * Then 4*first ms, and so on.
++ * Then 4*first ms, and so on, up until wait time would reach
++ * VIR_TIME_BACK_OFF_CAP (whole second). Then it switches to constant
++ * waiting time of VIR_TIME_BACK_OFF_CAP.
+  *
+  * When timeout milliseconds is reached, the while loop ends.
+  *
+@@ -429,8 +434,13 @@ virTimeBackOffWait(virTimeBackOffVar *var)
+     if (t > var->limit_t)
+         return 0;               /* ends the while loop */
+ 
++    /* Compute next wait time. Cap at VIR_TIME_BACKOFF_CAP
++     * to avoid long useless sleeps. */
+     next = var->next;
+-    var->next *= 2;
++    if (var->next < VIR_TIME_BACKOFF_CAP)
++        var->next *= 2;
++    else if (var->next > VIR_TIME_BACKOFF_CAP)
++        var->next = VIR_TIME_BACKOFF_CAP;
+ 
+     /* If sleeping would take us beyond the limit, then shorten the
+      * sleep.  This is so we always run the body just before the final
+-- 
+2.7.4
+

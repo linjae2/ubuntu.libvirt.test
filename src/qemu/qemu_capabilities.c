@@ -4361,7 +4361,7 @@ virQEMUCapsInitQMPCommandRun(virQEMUCapsInitQMPCommandPtr cmd,
     cmd->vm->pid = cmd->pid;
 
     if (!(cmd->mon = qemuMonitorOpen(cmd->vm, &cmd->config, true,
-                                     &callbacks, NULL)))
+                                     0, &callbacks, NULL)))
         goto ignore;
 
     virObjectLock(cmd->mon);
