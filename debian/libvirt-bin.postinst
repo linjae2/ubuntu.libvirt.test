@@ -196,7 +196,7 @@ case "$1" in
     for p in usr.sbin.libvirtd usr.lib.libvirt.virt-aa-helper ; do
         profile="/etc/apparmor.d/$p"
         if [ -f "$profile" ] && aa-status --enabled 2>/dev/null; then
-            apparmor_parser -r "$profile" || true
+            apparmor_parser -r -T -W "$profile" || true
         fi
     done
 

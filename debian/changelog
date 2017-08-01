@@ -1,3 +1,11 @@
+libvirt (1.2.2-0ubuntu13.1.21) trusty; urgency=medium
+
+  * d/libvirt-bin.postinst: call apparmor_parser with options to
+    ignore the apparmor cache and rebuild it, otherwise old apparmor
+    rules are used and this might break upgrades (LP: #1707400)
+
+ -- Andreas Hasenack <andreas@canonical.com>  Tue, 01 Aug 2017 11:58:38 -0300
+
 libvirt (1.2.2-0ubuntu13.1.20) trusty; urgency=medium
 
   [ Rafael David Tinoco ]
