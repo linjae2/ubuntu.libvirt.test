@@ -8817,7 +8817,7 @@ cmdMigrate(vshControl *ctl, const vshCmd *cmd)
     bool functionReturn = false;
     int timeout = 0;
     bool live_flag = false;
-    vshCtrlData data;
+    vshCtrlData data = { .dconn = NULL };
 
     if (!(dom = vshCommandOptDomain(ctl, cmd, NULL)))
         return false;
