@@ -2140,10 +2140,10 @@ xenHypervisorBuildCapabilities(virConnectPtr conn, virArch hostarch,
                                              guest_archs[i].hvm ? "hvm" : "xen",
                                              guest_archs[i].arch,
                                              (hostarch == VIR_ARCH_X86_64 ?
-                                              "/usr/lib64/xen/bin/qemu-dm" :
-                                              "/usr/lib/xen/bin/qemu-dm"),
+                                              "qemu-dm" :
+                                              "qemu-dm"),
                                              (guest_archs[i].hvm ?
-                                              "/usr/lib/xen-default/boot/hvmloader" :
+                                              "hvmloader" :
                                               NULL),
                                              1,
                                              machines)) == NULL) {
