@@ -27,6 +27,7 @@ Build-Depends:
  libpciaccess-dev,
  kmod [linux-any],
  policykit-1 (>= 0.105-4~),
+ libcurl4-gnutls-dev,
  libpolkit-gobject-1-dev,
  libcap-ng-dev [linux-any],
  libnl-3-dev [linux-any],
@@ -73,7 +74,7 @@ Build-Conflicts: dpkg-dev (= 1.15.3)
 Vcs-Git: https://anonscm.debian.org/git/pkg-libvirt/libvirt.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/libvirt.git/
 Homepage: http://libvirt.org
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 
 Package: libvirt-clients
 Architecture: any
@@ -115,7 +116,7 @@ Description: Virtualization daemon
  a long term stable C API for different virtualization mechanisms. It currently
  supports QEMU, KVM, XEN, OpenVZ, LXC, and VirtualBox.
  .
- This package contains the deaemon libvirtd to manage the hypvervisors.
+ This package contains the daemon libvirtd to manage the hypvervisors.
 
 Package: libvirt-daemon-system
 Architecture: any
