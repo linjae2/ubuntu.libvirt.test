@@ -34,3 +34,4 @@ ubuntu-aa/0021-apparmor-virt-aa-helper-Add-openvswitch-support.patch
 ubuntu-aa/0029-appmor-libvirt-qemu-Add-9p-support.patch
 ubuntu-aa/0030-virt-aa-helper-Complete-9p-support.patch
 ubuntu-aa/0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch
+ubuntu-aa/0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch
