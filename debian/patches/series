@@ -19,3 +19,4 @@ ubuntu/dnsmasq-as-priv-user
 # Ubuntu Apparmor Changes
 ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
 ubuntu-aa/0029-appmor-libvirt-qemu-Add-9p-support.patch
+ubuntu-aa/0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch
