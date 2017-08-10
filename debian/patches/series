@@ -33,3 +33,4 @@ ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
 ubuntu-aa/0021-apparmor-virt-aa-helper-Add-openvswitch-support.patch
 ubuntu-aa/0029-appmor-libvirt-qemu-Add-9p-support.patch
 ubuntu-aa/0030-virt-aa-helper-Complete-9p-support.patch
+ubuntu-aa/0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch
