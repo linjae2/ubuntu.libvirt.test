@@ -31,3 +31,4 @@ ubuntu-aa/0007-apparmor-libvirt-qemu-Allow-owner-read-access-to-PRO.patch
 ubuntu-aa/0017-apparmor-virt-aa-helper-Allow-access-to-tmp-director.patch
 ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
 ubuntu-aa/0021-apparmor-virt-aa-helper-Add-openvswitch-support.patch
+ubuntu-aa/0029-appmor-libvirt-qemu-Add-9p-support.patch
