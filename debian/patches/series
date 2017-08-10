@@ -18,3 +18,6 @@ Include-etc-pki-qemu-in-apparmor.patch
 virt-aa-helper-Fix-AppArmor-profile.patch
 virt-aa-helper-Actually-fix-AppArmor-profile.patch
 apparmor-Allow-run-pygrub.patch
+
+ubuntu/Allow-libvirt-group-to-access-the-socket.patch
+ubuntu/daemon-augeas-fix-expected.patch
