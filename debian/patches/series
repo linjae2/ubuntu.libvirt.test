@@ -27,3 +27,4 @@ ubuntu/dnsmasq-as-priv-user
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0003-apparmor-libvirt-qemu-Allow-read-access-to-overcommi.patch
+ubuntu-aa/0007-apparmor-libvirt-qemu-Allow-owner-read-access-to-PRO.patch
