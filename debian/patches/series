@@ -14,3 +14,6 @@ debian/Debianize-virtlogd.patch
 debian/apparmor_profiles_local_include.patch
 debian/Set-defaults-for-zfs-tools.patch
 debian/Prefer-sbin-over-usr-sbin.patch
+
+ubuntu/Allow-libvirt-group-to-access-the-socket.patch
+ubuntu/daemon-augeas-fix-expected.patch
