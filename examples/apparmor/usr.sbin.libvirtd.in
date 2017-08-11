@@ -34,7 +34,7 @@
   network inet6 stream,
   network inet6 dgram,
   network packet dgram,
-@@ifge 2009
+@@ifge 2010
   network netlink,
 @@end
 
@@ -43,7 +43,7 @@
   signal,
   ptrace,
 @@end
-@@ifge 2009
+@@ifge 2010
   unix,
 @@end
 
