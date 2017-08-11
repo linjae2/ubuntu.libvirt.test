@@ -208,3 +208,6 @@
   # allow serial console backed by pts chardev (LP: #1342083)
   /usr/lib/pt_chown ix,
   owner @{PROC}/0-9*/fd/ r,
+
+  # allow connect with openGraphicsFD to work
+  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
