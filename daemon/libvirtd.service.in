@@ -30,5 +30,6 @@ NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target
+Alias=libvirt-bin.service
 Also=virtlockd.socket
 Also=virtlogd.socket
