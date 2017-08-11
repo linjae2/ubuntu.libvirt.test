@@ -6,7 +6,7 @@
     <kernel>/var/lib/xen/vmlinuz.2Dn2YT</kernel>
     <initrd>/var/lib/xen/initrd.img.0u-Vhq</initrd>
     <cmdline> method=http://download.fedora.devel.redhat.com/pub/fedora/linux/core/test/5.91/x86_64/os&amp;version="devel"  </cmdline>
-    <loader>/usr/lib/xen/boot/hvmloader</loader>
+    <loader>/usr/lib/xen-4.6/boot/hvmloader</loader>
   </os>
   <memory unit='KiB'>430080</memory>
   <vcpu>2</vcpu>

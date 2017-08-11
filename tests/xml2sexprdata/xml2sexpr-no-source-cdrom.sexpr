@@ -1,7 +1,7 @@
 (vm (name 'test')(memory 350)(maxmem 382)(vcpus 1)\
 (uuid 'cc2315e7-d26a-307a-438c-6d188ec4c09c')(on_poweroff 'destroy')\
 (on_reboot 'destroy')(on_crash 'destroy')\
-(image (hvm (kernel '/usr/lib/xen/boot/hvmloader')(vcpus 1)(boot c)(acpi 1)\
+(image (hvm (kernel '/usr/lib/xen-4.6/boot/hvmloader')(vcpus 1)(boot c)(acpi 1)\
 (apic 1)(pae 1)(usb 1)(parallel none)(serial none)\
 (device_model '/usr/lib/xen/bin/qemu-dm')(vnc 1)(vncunused 0)(vncdisplay 6)\
 (rtc_timeoffset 0)(localtime 0)))(localtime 0)\
