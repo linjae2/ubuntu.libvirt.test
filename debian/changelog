@@ -1,3 +1,11 @@
+libvirt (2.5.0-3ubuntu5.5) zesty; urgency=medium
+
+  * d/p/bug-1708305-qemu-Fix-memory-locking-limit-calculation.patch:
+    Remove memlock limit when using <memoryBacking><locked/>.
+    (LP: #1708305).
+
+ -- Jorge Niedbalski <jorge.niedbalski@canonical.com>  Fri, 11 Aug 2017 00:34:01 -0400
+
 libvirt (2.5.0-3ubuntu5.4) zesty; urgency=medium
 
   * d/p/ubuntu/bug-1705132-* qemu: Adaptive timeout for connecting to
