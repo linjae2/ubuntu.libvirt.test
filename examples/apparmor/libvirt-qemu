@@ -176,6 +176,11 @@
   /sys/bus/ r,
   /sys/class/ r,
 
+  # Allow guests to receive signals from and be traced by
+  # libvirtd (LP: #1298611). Requires apparmor >= 2.9.
+  signal (receive) peer=/usr/sbin/libvirtd,
+  ptrace (tracedby) peer=/usr/sbin/libvirtd,
+
   # for access to hugepages (LP: #1250216 and LP: #1524737)
   owner "/run/hugepages/kvm/libvirt/qemu/**" rw,
   owner "/dev/hugepages/libvirt/qemu/**" rw,
