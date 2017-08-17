@@ -75,7 +75,6 @@
   # access to firmware's etc
   /usr/share/kvm/** r,
   /usr/share/qemu/** r,
-  /usr/share/qemu-kvm/** r,
   /usr/share/bochs/** r,
   /usr/share/openbios/** r,
   /usr/share/openhackware/** r,
@@ -95,7 +94,6 @@
   # the various binaries
   /usr/bin/kvm rmix,
   /usr/bin/qemu rmix,
-  /usr/bin/qemu-kvm rmix,
   /usr/bin/qemu-system-aarch64 rmix,
   /usr/bin/qemu-system-alpha rmix,
   /usr/bin/qemu-system-arm rmix,
