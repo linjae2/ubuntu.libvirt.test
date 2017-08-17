@@ -1,3 +1,11 @@
+libvirt (3.6.0-1ubuntu2) artful; urgency=medium
+
+  * d/p/ubuntu-aa/0036-virt-aa-helper-locking-loader-nvram-for-qemu-2.10.patch:
+    for compatibility with the behavior of qemu 2.10 this adds locking
+    permission to rules generated for loader/nvram (LP: #1710960)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 17 Aug 2017 10:00:19 +0200
+
 libvirt (3.6.0-1ubuntu1) artful; urgency=medium
 
   * Merged with Debian unstable (3.6)
