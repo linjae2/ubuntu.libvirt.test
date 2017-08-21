@@ -892,11 +892,11 @@ add_file_path(virDomainDiskDefPtr disk,
 
     if (depth == 0) {
         if (disk->src->readonly)
-            ret = vah_add_file(buf, path, "R");
+            ret = vah_add_file(buf, path, "Rk");
         else
-            ret = vah_add_file(buf, path, "rw");
+            ret = vah_add_file(buf, path, "rwk");
     } else {
-        ret = vah_add_file(buf, path, "R");
+        ret = vah_add_file(buf, path, "Rk");
     }
 
     if (ret != 0)
