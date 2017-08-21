@@ -196,3 +196,6 @@
   # silence refusals to open lttng files (see LP: #1432644)
   deny /dev/shm/lttng-ust-wait-* r,
   deny /run/shm/lttng-ust-wait-* r,
+
+  # allow connect with openGraphicsFD to work
+  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
