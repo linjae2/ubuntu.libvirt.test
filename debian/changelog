@@ -1,3 +1,9 @@
+libvirt (3.6.0-1ubuntu3) artful; urgency=medium
+
+  * No change rebuild for Qemu 2.10 and Xen 4.9
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 21 Aug 2017 10:34:13 +0200
+
 libvirt (3.6.0-1ubuntu2) artful; urgency=medium
 
   * d/p/ubuntu-aa/0036-virt-aa-helper-locking-loader-nvram-for-qemu-2.10.patch:
