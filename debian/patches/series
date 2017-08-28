@@ -51,3 +51,4 @@ CVE-2015-0236.patch
 CVE-2015-5313.patch
 fix-util-don-t-fail-if-no-portdata-is-found.patch
 reject-blockcommit-of-active-layer.patch
+virt-aa-helper-add-trusty-guest-agent-rule.patch

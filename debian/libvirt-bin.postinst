@@ -223,6 +223,13 @@ case "$1" in
 	set_autostart
     fi
 
+    # bug 1393842: libvirt doesn't create the directories for channels as needed
+    # But if a user already had created the dirs keep them as is
+    if [ ! -d /var/lib/libvirt/qemu/channel ]; then
+        mkdir -p /var/lib/libvirt/qemu/channel/target
+        chown -R libvirt-qemu:kvm /var/lib/libvirt/qemu/channel
+    fi
+
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
