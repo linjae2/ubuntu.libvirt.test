@@ -25,14 +25,21 @@ pre-start script
 end script
 
 post-start script
-	sockfile=/var/run/libvirt/libvirt-sock
-	sockfile_check_retries=5
-	while [ ! -S $sockfile ] ; do
-			sleep 2;
-			if ! sockfile_check_retries=`expr $sockfile_check_retries - 1`; then
-					echo "Giving up waiting for $sockfile."
-					stop; exit 1
-			fi
+	unix_sock_dir="/var/run/libvirt"
+	eval "$(grep '^unix_sock_dir' /etc/libvirt/libvirtd.conf | tr -d ' ')"
+	sockfile=${unix_sock_dir}/libvirt-sock
+	count=0
+	while [ ! -S ${sockfile} ] ; do
+		# report to wait after 4 seconds (uncommon) and then every 60 seconds
+		if [ "$((count % 60))" = "3" ]; then
+			echo "waiting for ${sockfile}"
+		fi
+		if initctl status libvirt-bin | grep -qE "(stop|respawn)/"; then
+			echo "service requested to stop, exit post start socket check"
+			exit 1
+		fi
+		count=$((count+1))
+		sleep 1
 	done
 	echo "$sockfile ready."
 end script

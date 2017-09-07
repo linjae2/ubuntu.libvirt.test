@@ -88,16 +88,24 @@ force_stop() {
 }
 
 wait_on_sockfile() {
-	sockfile=/var/run/libvirt/libvirt-sock
-	sockfile_check_retries=5
-	while [ ! -S $sockfile ] ; do
-			sleep 2;
-			if ! sockfile_check_retries=`expr $sockfile_check_retries - 1`; then
-					echo "Giving up waiting for $sockfile."
-					exit 1
-			fi
-	done
-	echo "$sockfile ready."
+    unix_sock_dir="/var/run/libvirt"
+    eval "$(grep '^unix_sock_dir' /etc/libvirt/libvirtd.conf | tr -d ' ')"
+    sockfile=${unix_sock_dir}/libvirt-sock
+    count=0
+    while [ ! -S $sockfile ] ; do
+        # report to wait after 4 seconds (uncommon) and then every 60 seconds
+        if [ "$((count % 60))" = "3" ]; then
+            echo "waiting for ${sockfile}."
+        fi
+        if ! running ; then
+            # stop/restart/force-stop event triggered before sockfile is created
+            echo "service requested to stop, exit wait_on_sockfile"
+            exit 1
+        fi
+        count=$((count+1))
+        sleep 1
+    done
+    echo "$sockfile ready."
     return 0
 }
 
