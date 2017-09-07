@@ -1,3 +1,16 @@
+libvirt (1.2.2-0ubuntu13.1.23) trusty; urgency=medium
+
+  * d/libvirt-bin.init, d/libvirt-bin.upstart: fix waiting for the libvirt
+    socket (LP: #1571209)
+    - avoid timing out on slow systems (only stop when service is stopped)
+    - fix whitespace damage formerly added to d/libvirt-bin.init
+    - no more long sleep without announcing to log
+    - check socket and service status more often for lower latency on changes
+    - fix check if unix_sock_dir path is set in /etc/libvirt/libvirtd.conf
+    - fix the upstart service name that is checked
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 07 Sep 2017 14:22:45 +0200
+
 libvirt (1.2.2-0ubuntu13.1.22) trusty; urgency=medium
 
   * fix guest channel support (LP: #1393842).
