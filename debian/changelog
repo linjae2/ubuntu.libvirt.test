@@ -1,3 +1,21 @@
+libvirt (3.7.0-2) unstable; urgency=medium
+
+  * Update copyright file
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 14 Sep 2017 12:16:47 +0200
+
+libvirt (3.7.0-1) unstable; urgency=medium
+
+  * New upstream version 3.7.0 (Closes: #874323)
+  * Rediff patches
+  * Bump symbol versions
+  * Also pass $TERM to ssh so pinentry works
+    Thanks to Guilhem Moulin (Closes: #843863)
+  * Enable Gluster support (Closes: #755545)
+  * Enable wireshark dissector (Closes: #862989)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 08 Sep 2017 14:52:38 +0200
+
 libvirt (3.6.0-1) unstable; urgency=medium
 
   * [ece8d56] New upstream version 3.6.0 (Closes: #870626)

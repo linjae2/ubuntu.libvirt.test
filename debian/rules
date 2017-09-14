@@ -26,6 +26,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_STORAGE_SHEEPDOG = --with-storage-sheepdog
   WITH_STORAGE_RBD    = --with-storage-rbd
   WITH_STORAGE_ZFS    = --with-storage-zfs
+  WITH_STORAGE_GLUSTER = --with-storage-gluster
   WITH_UDEV           = --with-udev
   WITH_CAPNG          = --with-capng
   WITH_MACVTAP        = --with-macvtap
@@ -107,6 +108,7 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	$(WITH_STORAGE_DISK)	 \
 	$(WITH_STORAGE_SHEEPDOG) \
 	$(WITH_STORAGE_RBD)      \
+	$(WITH_STORAGE_GLUSTER)  \
 	$(WITH_STORAGE_ZFS)      \
 	$(WITH_INIT_SCRIPT)      \
 	$(WITH_NUMA)             \
@@ -129,6 +131,7 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	$(WITH_FIREWALLD)        \
 	--without-attr           \
 	$(WITH_NSS_PLUGIN)       \
+        --with-wireshark-dissector \
         $(NULL)
 
 LIBVIRT_SYSTEM_SERVICES = \
@@ -207,6 +210,7 @@ endif
 	# Don't ship any la files
 	rm debian/libvirt-daemon/usr/lib/libvirt/connection-driver/*.la
 	rm debian/libvirt-daemon/usr/lib/libvirt/storage-backend/*.la
+	rm debian/libvirt-wireshark/usr/lib/*/wireshark/plugins/*/*.la
 	# Don't ship api files in the daemon package
 	rm -r debian/libvirt-daemon/usr/share/libvirt/api/
 

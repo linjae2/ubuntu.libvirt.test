@@ -850,6 +850,7 @@ int virNetSocketNewConnectSSH(const char *nodename,
     virCommandAddEnvPassBlockSUID(cmd, "SSH_AUTH_SOCK", NULL);
     virCommandAddEnvPassBlockSUID(cmd, "SSH_ASKPASS", NULL);
     virCommandAddEnvPassBlockSUID(cmd, "GPG_TTY", NULL);
+    virCommandAddEnvPassBlockSUID(cmd, "TERM", NULL);
     virCommandAddEnvPassBlockSUID(cmd, "DISPLAY", NULL);
     virCommandAddEnvPassBlockSUID(cmd, "XAUTHORITY", NULL);
     virCommandClearCaps(cmd);
@@ -869,7 +870,7 @@ int virNetSocketNewConnectSSH(const char *nodename,
     if (!netcat)
         netcat = "nc";
 
-    virCommandAddArgList(cmd, nodename, "sh", "-c", NULL);
+    virCommandAddArgList(cmd, "--", nodename, "sh", "-c", NULL);
 
     virBufferEscapeShell(&buf, netcat);
     if (virBufferCheckError(&buf) < 0) {
