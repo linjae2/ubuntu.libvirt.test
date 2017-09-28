@@ -68,3 +68,4 @@ ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/0035-virt-aa-helper-locking-disk-files-for-qemu-2.10.patch
 ubuntu-aa/0036-virt-aa-helper-locking-loader-nvram-for-qemu-2.10.patch
 avoid-double-locking.patch
+ubuntu/gnulib-getopt-posix-Fix-build-failure-when-using-ac_cv_head.patch

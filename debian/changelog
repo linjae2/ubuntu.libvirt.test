@@ -1,3 +1,10 @@
+libvirt (3.6.0-1ubuntu5) artful; urgency=medium
+
+  * d/p/u/gnulib-getopt-posix-Fix-build-failure-when-using-ac_cv_head.patch:
+    fix FTBFS with glibc 2.26 (LP: #1718668)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 28 Sep 2017 08:18:10 -0400
+
 libvirt (3.6.0-1ubuntu4) artful; urgency=medium
 
   * d/p/avoid-double-locking.patch: fix a deadlock that could occur when
