@@ -1,3 +1,14 @@
+libvirt (3.6.0-1ubuntu6) artful; urgency=medium
+
+  * d/p/ubuntu-aa/0037-virt-aa-helper...: grant locking permission on append
+    files (LP: #1726804)
+  * d/p/ubuntu-aa/0038-virt-aa-helper-fix-paths-for-usb-hostdevs.patch:
+    fix path generation for USB host devices (LP: #1552241)
+  * d/p/ubuntu-aa/0039-virt-aa-helper-fix-libusb-access-to-udev-usb-data.patch:
+    generate valid rules on usb passthrough (LP: #1686324)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 24 Oct 2017 14:30:34 +0200
+
 libvirt (3.6.0-1ubuntu5) artful; urgency=medium
 
   * d/p/u/gnulib-getopt-posix-Fix-build-failure-when-using-ac_cv_head.patch:

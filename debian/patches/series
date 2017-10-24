@@ -69,3 +69,6 @@ ubuntu-aa/0035-virt-aa-helper-locking-disk-files-for-qemu-2.10.patch
 ubuntu-aa/0036-virt-aa-helper-locking-loader-nvram-for-qemu-2.10.patch
 avoid-double-locking.patch
 ubuntu/gnulib-getopt-posix-Fix-build-failure-when-using-ac_cv_head.patch
+ubuntu-aa/0037-virt-aa-helper-grant-locking-permission-on-append-files.patch
+ubuntu-aa/0038-virt-aa-helper-fix-paths-for-usb-hostdevs.patch
+ubuntu-aa/0039-virt-aa-helper-fix-libusb-access-to-udev-usb-data.patch
