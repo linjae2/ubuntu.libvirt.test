@@ -55,6 +55,7 @@
 #include "virrandom.h"
 #include "virstring.h"
 #include "virgettext.h"
+#include "virhostdev.h"
 
 #include "storage/storage_source.h"
 
@@ -1068,6 +1069,9 @@ get_files(vahControl * ctl)
                 if (usb == NULL)
                     continue;
 
+                if (virHostdevFindUSBDevice(dev, true, &usb) < 0)
+                    continue;
+
                 rc = virUSBDeviceFileIterate(usb, file_iterate_hostdev_cb, &buf);
                 virUSBDeviceFree(usb);
                 if (rc != 0)
@@ -1152,7 +1156,7 @@ get_files(vahControl * ctl)
     }
 
     if (ctl->newfile)
-        if (vah_add_file(&buf, ctl->newfile, "rw") != 0)
+        if (vah_add_file(&buf, ctl->newfile, "rwk") != 0)
             goto cleanup;
 
     if (virBufferError(&buf)) {
@@ -1336,7 +1340,7 @@ main(int argc, char **argv)
             vah_error(ctl, 1, _("profile exists"));
 
         if (ctl->append && ctl->newfile) {
-            if (vah_add_file(&buf, ctl->newfile, "rw") != 0)
+            if (vah_add_file(&buf, ctl->newfile, "rwk") != 0)
                 goto cleanup;
         } else {
             if (ctl->def->virtType == VIR_DOMAIN_VIRT_QEMU ||
