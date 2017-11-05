@@ -1,3 +1,9 @@
+libvirt (3.9.0-1) unstable; urgency=medium
+
+  * [eef697c] New upstream version 3.9.0
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 05 Nov 2017 14:49:43 +0100
+
 libvirt (3.9.0~rc1-1) experimental; urgency=medium
 
   * Upload to experimental
