@@ -211,3 +211,6 @@
 
   # allow connect with openGraphicsFD to work
   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
+
+  # for vfio (LP: 1678322)
+  /dev/vfio/vfio rw,
