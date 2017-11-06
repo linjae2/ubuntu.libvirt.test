@@ -24,6 +24,8 @@ BUILT_SOURCES =
 EXTRA_DIST = \
 	apparmor/TEMPLATE.qemu \
 	apparmor/TEMPLATE.lxc \
+	apparmor/local-usr.sbin.libvirtd \
+	apparmor/local-usr.lib.libvirt.virt-aa-helper \
 	lxcconvert/virt-lxc-convert \
 	polkit/libvirt-acl.rules \
 	$(wildcard $(srcdir)/systemtap/*.stp) \
@@ -77,6 +79,18 @@ apparmor_DATA = \
 	apparmor/usr.lib.libvirt.virt-aa-helper \
 	apparmor/usr.sbin.libvirtd \
 	$(NULL)
+
+localdir = $(apparmordir)/local
+local_DATA = \
+	apparmor/local-usr.sbin.libvirtd \
+	apparmor/local-usr.lib.libvirt.virt-aa-helper \
+	$(NULL)
+
+install-data-hook:
+	mv $(DESTDIR)$(localdir)/local-usr.sbin.libvirtd \
+	   $(DESTDIR)$(localdir)/usr.sbin.libvirtd
+	mv $(DESTDIR)$(localdir)/local-usr.lib.libvirt.virt-aa-helper \
+	   $(DESTDIR)$(localdir)/usr.lib.libvirt.virt-aa-helper
 
 abstractionsdir = $(apparmordir)/abstractions
 abstractions_DATA = \
