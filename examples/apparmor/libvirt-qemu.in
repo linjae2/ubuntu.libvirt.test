@@ -13,15 +13,28 @@
   capability setgid,
   capability setuid,
 
+  # this is needed with libcap-ng support, however it breaks a lot of things
+  # atm, so just silence the denial until libcap-ng works right. LP: #522845
+  deny capability setpcap,
+
   network inet stream,
   network inet6 stream,
 
   /dev/net/tun rw,
+  /dev/tap* rw,
   /dev/kvm rw,
   /dev/ptmx rw,
   /dev/kqemu rw,
   @{PROC}/*/status r,
   @{PROC}/sys/kernel/cap_last_cap r,
+  owner @{PROC}/*/auxv r,
+  @{PROC}/sys/vm/overcommit_memory r,
+
+  /sys/devices/system/node/ r,
+  /sys/devices/system/node/node[0-9]*/meminfo r,
+  /sys/devices/system/cpu/ r,
+
+  /sys/module/vhost/parameters/max_mem_regions r,
 
   # For hostdev access. The actual devices will be added dynamically
   /sys/bus/usb/devices/ r,
@@ -38,6 +51,9 @@
   /dev/snd/* rw,
   capability ipc_lock,
   # spice
+  /usr/bin/qemu-system-i386-spice rmix,
+  /usr/bin/qemu-system-x86_64-spice rmix,
+  /{dev,run}/shm/ r,
   owner /{dev,run}/shm/spice.* rw,
   # 'kill' is not required for sound and is a security risk. Do not enable
   # unless you absolutely need it.
@@ -66,10 +82,12 @@
   /usr/share/proll/** r,
   /usr/share/vgabios/** r,
   /usr/share/seabios/** r,
+  /usr/share/misc/sgabios.bin r,
   /usr/share/ovmf/** r,
   /usr/share/OVMF/** r,
   /usr/share/AAVMF/** r,
   /usr/share/qemu-efi/** r,
+  /usr/share/slof/** r,
 
   # access PKI infrastructure
   /etc/pki/libvirt-vnc/** r,
@@ -95,6 +113,7 @@
   /usr/bin/qemu-system-or32 rmix,
   /usr/bin/qemu-system-ppc rmix,
   /usr/bin/qemu-system-ppc64 rmix,
+  /usr/bin/qemu-system-ppc64le rmix,
   /usr/bin/qemu-system-ppcemb rmix,
   /usr/bin/qemu-system-s390x rmix,
   /usr/bin/qemu-system-sh4 rmix,
@@ -104,6 +123,7 @@
   /usr/bin/qemu-system-tricore rmix,
   /usr/bin/qemu-system-unicore32 rmix,
   /usr/bin/qemu-system-x86_64 rmix,
+  /usr/bin/qemu-system-x86_64-spice rmix,
   /usr/bin/qemu-system-xtensa rmix,
   /usr/bin/qemu-system-xtensaeb rmix,
   /usr/bin/qemu-aarch64 rmix,
@@ -142,6 +162,10 @@
   /{usr/,}bin/dash rmix,
   /{usr/,}bin/dd rmix,
   /{usr/,}bin/cat rmix,
+  /etc/pki/CA/ r,
+  /etc/pki/CA/* r,
+  /etc/pki/libvirt/ r,
+  /etc/pki/libvirt/** r,
 
   # for restore
   /{usr/,}bin/bash rmix,
@@ -151,3 +175,40 @@
   /etc/udev/udev.conf r,
   /sys/bus/ r,
   /sys/class/ r,
+
+  # kvm.powerpc executes this
+  /bin/uname rmix,
+
+  # for rbd
+  /etc/ceph/ceph.conf r,
+
+  # for qemu-block-extra
+  /usr/lib/@{multiarch}/qemu/*.so rm,
+
+  # for access to hugepages
+  owner "/run/hugepages/kvm/libvirt/qemu/**" rw,
+  owner "/dev/hugepages/libvirt/qemu/**" rw,
+
+@@ifge 2009
+  signal (receive) peer=/usr/sbin/libvirtd,
+  ptrace (tracedby) peer=/usr/sbin/libvirtd,
+@@end
+
+  # for ppc device-tree access
+  @{PROC}/device-tree/ r,
+  @{PROC}/device-tree/** r,
+  /sys/firmware/devicetree/** r,
+
+  # allow access to charm-specific ceph config (see lp#1403648)
+  /var/lib/charm/*/ceph.conf r,
+  # silence spurious denials (see lp#1403648)
+  deny /tmp/{,**} r,
+  deny /var/tmp/{,**} r,
+
+  # silence refusals to open lttng files (see lp#1432644)
+  deny /dev/shm/lttng-ust-wait-* r,
+  deny /run/shm/lttng-ust-wait-* r,
+
+  # allow serial console backed by pts chardev (LP: #1342083)
+  /usr/lib/pt_chown ix,
+  owner @{PROC}/0-9*/fd/ r,
