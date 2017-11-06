@@ -1,0 +1,26 @@
+#!/bin/sh
+
+PROFILES_VERSION=$(
+	awk '$1=="#define" && $2=="APPARMOR_VERSION_NUMBER"{
+		print $3
+	}' ../config.h)
+
+awk -vVERSION=$PROFILES_VERSION '
+$1 == "@@ifge" {
+	if (VERSION < $2)
+		skip=1
+	next
+}
+$1 == "@else" && skip == 1{
+	skip=0
+	next
+}
+$1 == "@@end"{
+	skip=0
+	next
+}
+!skip{
+	print
+}' $1
+
+exit 0
