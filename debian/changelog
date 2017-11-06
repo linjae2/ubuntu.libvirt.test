@@ -1,3 +1,11 @@
+libvirt (2.5.0-3ubuntu5.6) zesty; urgency=medium
+
+  * d/p/storage-Don-t-pass-iso-format-to-qemu-img.patch: fix issues in virt
+    clone and other users of storage_utils functions by not passing
+    iso to qemu-img (LP: #1729858).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 06 Nov 2017 16:31:48 +0100
+
 libvirt (2.5.0-3ubuntu5.5) zesty; urgency=medium
 
   * d/p/bug-1708305-qemu-Fix-memory-locking-limit-calculation.patch:
