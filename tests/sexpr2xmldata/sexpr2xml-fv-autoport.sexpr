@@ -21,7 +21,7 @@
     (online_vcpus 1)
     (image
         (hvm
-            (kernel /usr/lib/xen/boot/hvmloader)
+            (kernel /usr/lib/xen-4.6/boot/hvmloader)
             (boot d)
             (device_model /usr/lib/xen/bin/qemu-dm)
             (keymap en-us)
