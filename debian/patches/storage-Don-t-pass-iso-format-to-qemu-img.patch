@@ -1,0 +1,49 @@
+From 0e5db76262729e4c199e62c6cb00c90391073b4e Mon Sep 17 00:00:00 2001
+From: Cole Robinson <crobinso@redhat.com>
+Date: Mon, 6 Mar 2017 16:50:53 -0500
+Subject: [PATCH] storage: Don't pass 'iso' format to qemu-img
+
+$ virsh vol-clone /tmp/test.iso new.iso
+error: Failed to clone vol from test.iso
+error: internal error: Child process (/bin/qemu-img convert -f iso -O iso /tmp/test.iso /tmp/new.iso) unexpected exit status 1: qemu-img: Could not open '/tmp/test.iso': Unknown driver 'iso'
+
+Map iso->raw before sending the format value to qemu-img
+
+https://bugzilla.redhat.com/show_bug.cgi?id=972784
+https://bugzilla.redhat.com/show_bug.cgi?id=1419395
+
+Backport:
+ - update to apply to src/storage/storage_backend
+   thanks Juerg Haefliger <juerg.haefliger@canonical.com>
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Cole Robinson <crobinso@redhat.com>
+Origin: https://libvirt.org/git/?p=libvirt.git;a=commit;h=0e5db76262729e4c199e62c6cb00c90391073b4e
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1729858
+Last-Update: 2017-11-06
+---
+ src/storage/storage_backend.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/src/storage/storage_backend.c
++++ b/src/storage/storage_backend.c
+@@ -947,6 +947,9 @@ virStorageBackendCreateQemuImgCmdFromVol
+     if (vol->type == VIR_STORAGE_VOL_BLOCK)
+         info.format = VIR_STORAGE_FILE_RAW;
+ 
++    if (info.format == VIR_STORAGE_FILE_ISO)
++        info.format = VIR_STORAGE_FILE_RAW;
++
+     if (!(type = virStorageFileFormatTypeToString(info.format))) {
+         virReportError(VIR_ERR_INTERNAL_ERROR,
+                        _("unknown storage vol type %d"),
+@@ -980,6 +983,8 @@ virStorageBackendCreateQemuImgCmdFromVol
+         info.inputFormat = inputvol->target.format;
+         if (inputvol->type == VIR_STORAGE_VOL_BLOCK)
+             info.inputFormat = VIR_STORAGE_FILE_RAW;
++        if (info.inputFormat == VIR_STORAGE_FILE_ISO)
++            info.inputFormat = VIR_STORAGE_FILE_RAW;
+         if (!(inputType = virStorageFileFormatTypeToString(info.inputFormat))) {
+             virReportError(VIR_ERR_INTERNAL_ERROR,
+                            _("unknown storage vol type %d"),
