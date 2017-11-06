@@ -68,3 +68,4 @@ ubuntu/qemu_process-spice-don-t-release-used-port.patch
 ubuntu/bug-1705132-virTimeBackOffWait-Avoid-long-periods-of-sleep.patch
 ubuntu/bug-1705132-qemu-Adaptive-timeout-for-connecting-to-monitor.patch
 ubuntu/bug-1708305-qemu-Fix-memory-locking-limit-calculation.patch
+storage-Don-t-pass-iso-format-to-qemu-img.patch
