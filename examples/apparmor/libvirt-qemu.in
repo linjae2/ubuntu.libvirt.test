@@ -75,7 +75,6 @@
   # access to firmware's etc
   /usr/share/kvm/** r,
   /usr/share/qemu/** r,
-  /usr/share/qemu-kvm/** r,
   /usr/share/bochs/** r,
   /usr/share/openbios/** r,
   /usr/share/openhackware/** r,
@@ -84,9 +83,6 @@
   /usr/share/seabios/** r,
   /usr/share/misc/sgabios.bin r,
   /usr/share/ovmf/** r,
-  /usr/share/OVMF/** r,
-  /usr/share/AAVMF/** r,
-  /usr/share/qemu-efi/** r,
   /usr/share/slof/** r,
 
   # access PKI infrastructure
@@ -95,7 +91,6 @@
   # the various binaries
   /usr/bin/kvm rmix,
   /usr/bin/qemu rmix,
-  /usr/bin/qemu-kvm rmix,
   /usr/bin/qemu-system-aarch64 rmix,
   /usr/bin/qemu-system-alpha rmix,
   /usr/bin/qemu-system-arm rmix,
@@ -141,7 +136,6 @@
   /usr/bin/qemu-mipsel rmix,
   /usr/bin/qemu-mipsn32 rmix,
   /usr/bin/qemu-mipsn32el rmix,
-  /usr/bin/qemu-nbd rmix,
   /usr/bin/qemu-or32 rmix,
   /usr/bin/qemu-ppc rmix,
   /usr/bin/qemu-ppc64 rmix,
