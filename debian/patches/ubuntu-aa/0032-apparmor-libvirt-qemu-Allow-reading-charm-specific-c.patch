@@ -1,0 +1,34 @@
+From b1d54d7e56da3961f9db8705f7a5eaecd6f9222c Mon Sep 17 00:00:00 2001
+From: Stefan Bader <stefan.bader@canonical.com>
+Date: Tue, 23 May 2017 17:21:08 +0200
+Subject: [PATCH 32/33] apparmor, libvirt-qemu: Allow reading charm-specific
+ ceph config
+
+Allows reading ceph configuration files from (juju) charm
+specific location and silence denial messages which were
+occuring related to that.
+
+Bug-Ubuntu: http://bugs.launchpad.net/bugs/1403648
+
+Forwarded: no (part of continuous upstreaming effort)
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+---
+ examples/apparmor/libvirt-qemu | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
+@@ -196,6 +196,12 @@
+   # unconfined also required if guests run without security module
+   unix (send, receive) type=stream addr=none peer=(label=unconfined),
+ 
++  # allow access to charm-specific ceph config and silence spurious
++  # denials (LP: #1403648).
++  /var/lib/charm/*/ceph.conf r,
++  deny /tmp/{,**} r,
++  deny /var/tmp/{,**} r,
++
+   # for gathering information about available host resources
+   /sys/devices/system/cpu/ r,
+   /sys/devices/system/node/ r,
