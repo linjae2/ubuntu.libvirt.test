@@ -185,6 +185,13 @@
   @{PROC}/device-tree/** r,
   /sys/firmware/devicetree/** r,
 
+  # allow connect with openGraphicsFD to work
+  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
+  # Since libvirt 4.0 we also need the reverse direction (LP: #1741617)
+  unix (send, receive) type=stream addr=none peer=(label=libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*),
+  # unconfined also required if guests run without security module
+  unix (send, receive) type=stream addr=none peer=(label=unconfined),
+
   # for gathering information about available host resources
   /sys/devices/system/cpu/ r,
   /sys/devices/system/node/ r,
