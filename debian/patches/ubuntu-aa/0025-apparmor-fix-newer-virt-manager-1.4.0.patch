@@ -1,0 +1,33 @@
+From 357f87f2c3ff3be4f0045eb9bf06db3eb61e2e77 Mon Sep 17 00:00:00 2001
+From: Stefan Bader <stefan.bader@canonical.com>
+Date: Tue, 23 May 2017 17:19:33 +0200
+Subject: [PATCH 25/33] apparmor: fix newer virt-manager 1.4.0
+
+Let's virt-manager connect with openGraphicsFD.
+
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1668681
+
+Forwarded: yes (https://www.redhat.com/archives/libvir-list/2017-February/msg01598.html)
+Author: Bryan Quigley <bryan.quigley@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+---
+ examples/apparmor/libvirt-qemu | 3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
+@@ -185,6 +185,13 @@
+   @{PROC}/device-tree/** r,
+   /sys/firmware/devicetree/** r,
+ 
++  # allow connect with openGraphicsFD to work
++  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
++  # Since libvirt 4.0 we also need the reverse direction (LP: #1741617)
++  unix (send, receive) type=stream addr=none peer=(label=libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*),
++  # unconfined also required if guests run without security module
++  unix (send, receive) type=stream addr=none peer=(label=unconfined),
++
+   # for gathering information about available host resources
+   /sys/devices/system/cpu/ r,
+   /sys/devices/system/node/ r,

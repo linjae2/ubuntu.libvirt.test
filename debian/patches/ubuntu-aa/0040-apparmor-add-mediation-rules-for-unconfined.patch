@@ -1,0 +1,45 @@
+From a52a864833247beb9a901fe0de74d0468a75cb1c Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Fri, 15 Dec 2017 08:29:14 +0100
+Subject: [PATCH] apparmor: add mediation rules for unconfined guests
+
+If a guest runs unconfined <seclabel type='none'>, but libvirtd is
+confined then the peer for signal can only be detected as
+'unconfined'. That triggers issues like:
+   apparmor="DENIED" operation="signal"
+   profile="/usr/sbin/libvirtd" pid=22395 comm="libvirtd"
+   requested_mask="send" denied_mask="send" signal=term peer="unconfined"
+
+To fix this add unconfined as an allowed peer for those operations.
+
+I discussed with the apparmor folks, right now there is no better
+separation to be made in this case. But there might be further down the
+road with "policy namespaces with scope and view control + stacking"
+
+This is more a use-case addition than a fix to the following two changes:
+- 3b1d19e6 AppArmor: add rules needed with additional mediation features
+- b482925c apparmor: support ptrace checks
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Forwarded: yes (https://www.redhat.com/archives/libvir-list/2017-December/msg00546.html)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: None, part of the 3.10 merge
+Last-Update: 2018-01-23
+
+---
+ examples/apparmor/usr.sbin.libvirtd | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/examples/apparmor/usr.sbin.libvirtd
++++ b/examples/apparmor/usr.sbin.libvirtd
+@@ -65,6 +65,9 @@
+   signal (read, send) peer=libvirt-*,
+   signal (send) set=("kill", "term") peer=unconfined,
+ 
++  # required if guests run unconfined seclabel type='none' but libvirtd is confined
++  signal (read, send) peer=unconfined,
++
+   # Very lenient profile for libvirtd since we want to first focus on confining
+   # the guests. Guests will have a very restricted profile.
+   / r,

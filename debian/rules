@@ -37,17 +37,17 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_SANLOCK        = --with-sanlock
   WITH_INIT_SCRIPT    =	--with-init-script=systemd
   WITH_SYSTEMD        = --with-systemd-daemon
-  WITH_FIREWALLD      = --with-firewalld
+  WITH_FIREWALLD      = --without-firewalld
   WITH_AUDIT          = --with-audit
-  WITH_SELINUX        = --with-selinux --with-secdriver-selinux --with-selinux-mount=/sys/fs/selinux
+  WITH_SELINUX        = --without-selinux
   WITH_APPARMOR       = --with-apparmor --with-secdriver-apparmor --with-apparmor-profiles
   WITH_NSS_PLUGIN     = --with-nss-plugin
-  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 armel armhf i386 ia64 powerpc s390))
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 armel armhf i386 ia64 powerpc ppc64el s390 s390x))
       WITH_DTRACE     = --with-dtrace
   else
       WITH_DTRACE     = --without-dtrace
   endif
-  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 arm64 i386 ia64 mips mipsel powerpc ppc64el))
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 arm64 i386 ia64 mips mipsel powerpc ppc64el s390x))
       WITH_NUMA       = --with-numactl --with-numad
   else
       WITH_NUMA       = --without-numactl --without-numad
@@ -94,12 +94,12 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	--disable-rpath          \
 	--with-qemu		 \
 	--with-qemu-user=libvirt-qemu  \
-	--with-qemu-group=libvirt-qemu \
+	--with-qemu-group=kvm \
 	$(WITH_OPENVZ)		 \
 	--with-avahi             \
 	--with-sasl              \
 	--with-yajl              \
-	--with-ssh2		 \
+	--without-ssh2		 \
 	--with-polkit		 \
 	$(WITH_UDEV)		 \
 	--with-storage-fs        \
@@ -166,6 +166,25 @@ override_dh_auto_test:
 	fi
 
 override_dh_install-arch:
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
+	# Multiarch:
+	# don't configure with --libdir, but move the files manually, because
+	# we don't want to change other places in /usr/lib/
+	mkdir -p debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)
+	mv debian/tmp/usr/lib/lib*a \
+	   debian/tmp/usr/lib/lib*.so* \
+	   debian/tmp/usr/lib/pkgconfig \
+	   debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)
+
 	dh_install
 
 	# Copy upstream files to debian/ so dh_* can find them
@@ -195,7 +214,9 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	dh_install -p libvirt-daemon-system etc/libvirt/qemu/networks/
 	dh_install -p libvirt-daemon-system etc/libvirt/nwfilter/
 	dh_install -p libvirt-clients etc/libvirt/virt-login-shell.conf
-	dh_install -p libnss-libvirt usr/lib/libnss_libvirt.so.2 lib/$(DEB_HOST_MULTIARCH)/
+	dh_install -p libnss-libvirt \
+                      usr/lib/$(DEB_HOST_MULTIARCH)/libnss_libvirt.so.2 \
+                      lib/$(DEB_HOST_MULTIARCH)/
 endif
 ifeq ($(XEN_ENABLED), 1)
 	dh_install -p libvirt-daemon-system etc/libvirt/libxl.conf
@@ -220,6 +241,7 @@ endif
 override_dh_installinit:
 	dh_systemd_enable
 	dh_installinit -p libvirt-daemon-system --name=virtlogd --no-restart-on-upgrade
+	dh_installinit -p libvirt-daemon-system --name=virtlockd --no-restart-on-upgrade
 	dh_installinit -p libvirt-daemon-system --name=libvirtd --restart-after-upgrade -- defaults 28 72
 	dh_installinit -p libvirt-daemon-system --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
 	dh_systemd_start -p libvirt-daemon-system --restart-after-upgrade libvirtd.service
