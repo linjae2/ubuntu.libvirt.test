@@ -65,6 +65,9 @@
   signal (read, send) peer=libvirt-*,
   signal (send) set=("kill", "term") peer=unconfined,
 
+  # required if guests run unconfined seclabel type='none' but libvirtd is confined
+  signal (read, send) peer=unconfined,
+
   # Very lenient profile for libvirtd since we want to first focus on confining
   # the guests. Guests will have a very restricted profile.
   / r,
