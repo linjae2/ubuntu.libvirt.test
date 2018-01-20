@@ -1,3 +1,12 @@
+libvirt (4.0.0-1) unstable; urgency=medium
+
+  * [5936904] New upstream version 4.0.0
+  * [bcb7ca3] Drop patches applied upstream.
+      Allow-libvirt-to-kill-unconfined-domains.patch
+      Drop qemu-avoid-denial-of-service-reading-from-QEMU-monitor-CV.patch
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 20 Jan 2018 16:31:11 +0100
+
 libvirt (4.0.0~rc2-1) experimental; urgency=medium
 
   * [8dd2f5b] Don't manage /etc/apparmor.d/local as conf files
