@@ -111,9 +111,9 @@ Recommends:
  libvirt-daemon-driver-lxc,
  libvirt-daemon-driver-vbox,
  libvirt-daemon-driver-xen,
+ libvirt-daemon-driver-storage-rbd,
 Suggests:
  libvirt-daemon-driver-storage-gluster,
- libvirt-daemon-driver-storage-rbd,
  libvirt-daemon-driver-storage-zfs,
  libvirt-daemon-system,
  numad,
