@@ -36,6 +36,8 @@ virQEMUCapsNewForBinaryInternal(virArch hostArch,
                                 const char *libDir,
                                 uid_t runUid,
                                 gid_t runGid,
+                                unsigned int microcodeVersion,
+                                const char *kernelVersion,
                                 bool qmpOnly);
 
 int virQEMUCapsLoadCache(virArch hostArch,
@@ -101,4 +103,8 @@ virQEMUCapsParseHelpStr(const char *qemu,
 int
 virQEMUCapsParseDeviceStr(virQEMUCapsPtr qemuCaps,
                           const char *str);
+
+void
+virQEMUCapsSetMicrocodeVersion(virQEMUCapsPtr qemuCaps,
+                               unsigned int microcodeVersion);
 #endif

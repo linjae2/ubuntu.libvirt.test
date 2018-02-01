@@ -629,6 +629,8 @@ qemuStateInitialize(bool privileged,
     gid_t run_gid = -1;
     char *hugepagePath = NULL;
     size_t i;
+    virCPUDefPtr hostCPU = NULL;
+    unsigned int microcodeVersion = 0;
 
     if (VIR_ALLOC(qemu_driver) < 0)
         return -1;
@@ -848,10 +850,15 @@ qemuStateInitialize(bool privileged,
         run_gid = cfg->group;
     }
 
+    if ((hostCPU = virCPUProbeHost(virArchFromHost())))
+        microcodeVersion = hostCPU->microcodeVersion;
+    virCPUDefFree(hostCPU);
+
     qemu_driver->qemuCapsCache = virQEMUCapsCacheNew(cfg->libDir,
                                                      cfg->cacheDir,
                                                      run_uid,
-                                                     run_gid);
+                                                     run_gid,
+                                                     microcodeVersion);
     if (!qemu_driver->qemuCapsCache)
         goto error;
 

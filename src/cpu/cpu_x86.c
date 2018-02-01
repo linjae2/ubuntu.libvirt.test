@@ -33,6 +33,7 @@
 #include "virbuffer.h"
 #include "virendian.h"
 #include "virstring.h"
+#include "virhostcpu.h"
 
 #define VIR_FROM_THIS VIR_FROM_CPU
 
@@ -153,8 +154,10 @@ struct _virCPUx86Map {
 };
 
 static virCPUx86MapPtr cpuMap;
-int virCPUx86MapOnceInit(void);
-VIR_ONCE_GLOBAL_INIT(virCPUx86Map);
+static unsigned int microcodeVersion;
+
+int virCPUx86DriverOnceInit(void);
+VIR_ONCE_GLOBAL_INIT(virCPUx86Driver);
 
 
 typedef enum {
@@ -1386,10 +1389,12 @@ virCPUx86LoadMap(void)
 
 
 int
-virCPUx86MapOnceInit(void)
+virCPUx86DriverOnceInit(void)
 {
     if (!(cpuMap = virCPUx86LoadMap()))
         return -1;
+
+    microcodeVersion = virHostCPUGetMicrocodeVersion();
 
     return 0;
 }
@@ -1398,7 +1403,7 @@ virCPUx86MapOnceInit(void)
 static virCPUx86MapPtr
 virCPUx86GetMap(void)
 {
-    if (virCPUx86MapInitialize() < 0)
+    if (virCPUx86DriverInitialize() < 0)
         return NULL;
 
     return cpuMap;
@@ -2408,6 +2413,9 @@ virCPUx86GetHost(virCPUDefPtr cpu,
     virCPUDataPtr cpuData = NULL;
     int ret = -1;
 
+    if (virCPUx86DriverInitialize() < 0)
+        goto cleanup;
+
     if (!(cpuData = virCPUDataNew(archs[0])))
         goto cleanup;
 
@@ -2416,6 +2424,7 @@ virCPUx86GetHost(virCPUDefPtr cpu,
         goto cleanup;
 
     ret = x86DecodeCPUData(cpu, cpuData, models, nmodels, NULL);
+    cpu->microcodeVersion = microcodeVersion;
 
  cleanup:
     virCPUx86DataFree(cpuData);
