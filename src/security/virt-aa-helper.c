@@ -973,6 +973,10 @@ get_files(vahControl * ctl)
                                      ctl->def->parallels[i]->source.type) != 0)
                 goto cleanup;
 
+    virBufferAsprintf(&buf, "  # for qemu guest agent channel\n");
+    virBufferAsprintf(&buf, "  owner \"/var/lib/libvirt/qemu/channel/target/%s.**\" rw,\n",
+                      ctl->def->name);
+
     for (i = 0; i < ctl->def->nchannels; i++)
         if (ctl->def->channels[i] &&
             (ctl->def->channels[i]->source.type == VIR_DOMAIN_CHR_TYPE_PTY ||
