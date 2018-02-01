@@ -76,7 +76,11 @@ Recommends:
  parted,
  pm-utils
 Suggests: policykit-1 (>= 0.105-3ubuntu3), apparmor, qemu-kvm | qemu (>= 0.9.1), radvd
-Breaks: xen-utils-4.1, xen-utils-4.3
+Breaks:
+ xen-utils-4.1,
+ xen-utils-4.3,
+ qemu-kvm (<< 2.0.0+dfsg-2ubuntu1.38~),
+ qemu (<< 2.0.0+dfsg-2ubuntu1.38~)
 Conflicts: apparmor (<< 2.8.95~2430-0ubuntu4)
 Description: programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
