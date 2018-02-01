@@ -52,3 +52,8 @@ CVE-2015-5313.patch
 fix-util-don-t-fail-if-no-portdata-is-found.patch
 reject-blockcommit-of-active-layer.patch
 virt-aa-helper-add-trusty-guest-agent-rule.patch
+CVE-2017-5715-ibrs-1.patch
+CVE-2017-5715-ibrs-2.patch
+CVE-2017-5715-ibrs-3.patch
+CVE-2017-5715-ibrs-4.patch
+CVE-2017-5715-ibrs-7.patch
