@@ -81,3 +81,12 @@ ubuntu/bug-1705132-virTimeBackOffWait-Avoid-long-periods-of-sleep.patch
 ubuntu/bug-1705132-qemu-Adaptive-timeout-for-connecting-to-monitor.patch
 ubuntu/bug-1708305-qemu-Fix-memory-locking-limit-calculation.patch
 storage-Don-t-pass-iso-format-to-qemu-img.patch
+CVE-2017-5715-ibrs-1.patch
+CVE-2017-5715-ibrs-2.patch
+CVE-2017-5715-ibrs-3.patch
+CVE-2017-5715-ibrs-4.patch
+CVE-2017-5715-ibrs-5.patch
+CVE-2017-5715-ibrs-6.patch
+CVE-2017-5715-ibrs-7.patch
+CVE-2017-5715-ibrs-8.patch
+CVE-2017-5715-ibrs-9.patch
