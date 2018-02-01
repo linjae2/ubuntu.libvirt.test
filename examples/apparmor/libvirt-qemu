@@ -213,3 +213,9 @@
 
   # to report on shutdown who send the kill signal (LP: #1680384)
   /proc/*/cmdline r,
+
+  # allow access to charm-specific ceph config and silence spurious
+  # denials (LP: #1403648).
+  /var/lib/charm/*/ceph.conf r,
+  deny /tmp/{,**} r,
+  deny /var/tmp/{,**} r,
