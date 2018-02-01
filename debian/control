@@ -99,6 +99,8 @@ Breaks:
  xen-utils-4.1 (>= 4.1.2-2ubuntu2),
  xen-utils-4.4 (>= 4.4.0-0ubuntu5),
  xen-utils-4.5 (>= 4.5.0-1ubuntu4),
+ qemu-kvm (<< 1:2.5+dfsg-5ubuntu10.20~),
+ qemu (<< 1:2.5+dfsg-5ubuntu10.20~)
 Conflicts: ${dist:Conflicts}
 Description: programs for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities

@@ -1,3 +1,13 @@
+libvirt (1.3.1-1ubuntu10.17) xenial-security; urgency=medium
+
+  * SECURITY UPDATE: Add support for Spectre mitigations
+    - debian/patches/CVE-2017-5715-ibrs*.patch: add CPU features for
+      indirect branch prediction protection and add new *-IBRS CPU models.
+    - debian/control: add Breaks to get updated qemu with new CPU models.
+    - CVE-2017-5715
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Thu, 01 Feb 2018 15:01:16 -0500
+
 libvirt (1.3.1-1ubuntu10.15) xenial; urgency=medium
 
   * d/p/storage-Don-t-pass-iso-format-to-qemu-img.patch: fix issues in virt
