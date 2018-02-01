@@ -131,6 +131,7 @@ Recommends:
 Suggests:
  libvirt-daemon-system,
  numad,
+Breaks: qemu-kvm (<< 1:2.10+dfsg-0ubuntu3.4~), qemu (<< 1:2.10+dfsg-0ubuntu3.4~)
 Description: Virtualization daemon
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing

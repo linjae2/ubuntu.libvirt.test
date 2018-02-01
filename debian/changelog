@@ -1,3 +1,16 @@
+libvirt (3.6.0-1ubuntu6.2) artful-security; urgency=medium
+
+  * SECURITY UPDATE: Add support for Spectre mitigations
+    - debian/patches/CVE-2017-5715-microcode*.patch: include x86 microcode
+      version in virsh capabilities and force update if the microcode
+      does not match.
+    - debian/patches/CVE-2017-5715-ibrs*.patch: add CPU features for
+      indirect branch prediction protection and add new *-IBRS CPU models.
+    - debian/control: add Breaks to get updated qemu with new CPU models.
+    - CVE-2017-5715
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Thu, 01 Feb 2018 15:00:14 -0500
+
 libvirt (3.6.0-1ubuntu6) artful; urgency=medium
 
   * d/p/ubuntu-aa/0037-virt-aa-helper...: grant locking permission on append
