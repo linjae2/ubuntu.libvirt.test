@@ -1,0 +1,59 @@
+From 792c6d8a68a353c814b4f86436e723f6ba961a98 Mon Sep 17 00:00:00 2001
+From: Shivaprasad G Bhat <sbhat@linux.vnet.ibm.com>
+Date: Tue, 6 Feb 2018 08:08:14 -0500
+Subject: [PATCH] virt-aa-helper: Set the supported features
+
+The virt-aa-helper fails to parse the xmls with the memory/cpu
+hotplug features or user assigned aliases. Set the features in
+xmlopt->config for the parsing to succeed.
+
+Signed-off-by: Shivaprasad G Bhat <sbhat@linux.vnet.ibm.com>
+Tested-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Shivaprasad G Bhat <sbhat@linux.vnet.ibm.com>
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=792c6d8a68a353c814b4f86436e723f6ba961a98
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1746431
+Last-Update: 2018-02-05
+---
+ src/conf/domain_conf.h        | 2 ++
+ src/security/virt-aa-helper.c | 8 +++++++-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -2519,6 +2519,8 @@ typedef bool (*virDomainObjListACLFilter
+                                           virDomainDefPtr def);
+ 
+ 
++/* NB: Any new flag to this list be considered to be set in
++ * virt-aa-helper code if the flag prevents parsing. */
+ typedef enum {
+     VIR_DOMAIN_DEF_FEATURE_WIDE_SCSI = (1 << 0),
+     VIR_DOMAIN_DEF_FEATURE_MEMORY_HOTPLUG = (1 << 1),
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -654,6 +654,11 @@ caps_mockup(vahControl * ctl, const char
+     return rc;
+ }
+ 
++virDomainDefParserConfig virAAHelperDomainDefParserConfig = {
++    .features = VIR_DOMAIN_DEF_FEATURE_MEMORY_HOTPLUG |
++                VIR_DOMAIN_DEF_FEATURE_OFFLINE_VCPUPIN |
++                VIR_DOMAIN_DEF_FEATURE_INDIVIDUAL_VCPUS,
++};
+ 
+ static int
+ get_definition(vahControl * ctl, const char *xmlStr)
+@@ -673,7 +678,8 @@ get_definition(vahControl * ctl, const c
+         goto exit;
+     }
+ 
+-    if (!(ctl->xmlopt = virDomainXMLOptionNew(NULL, NULL, NULL, NULL, NULL))) {
++    if (!(ctl->xmlopt = virDomainXMLOptionNew(&virAAHelperDomainDefParserConfig,
++                                              NULL, NULL, NULL, NULL))) {
+         vah_error(ctl, 0, _("Failed to create XML config object"));
+         goto exit;
+     }

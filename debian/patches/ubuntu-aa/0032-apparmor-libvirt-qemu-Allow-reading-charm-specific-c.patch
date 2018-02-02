@@ -19,9 +19,9 @@ Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
 --- a/examples/apparmor/libvirt-qemu
 +++ b/examples/apparmor/libvirt-qemu
-@@ -196,6 +196,12 @@
-   # unconfined also required if guests run without security module
-   unix (send, receive) type=stream addr=none peer=(label=unconfined),
+@@ -192,6 +192,12 @@
+   # allow connect with openGraphicsFD to work
+   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
  
 +  # allow access to charm-specific ceph config and silence spurious
 +  # denials (LP: #1403648).

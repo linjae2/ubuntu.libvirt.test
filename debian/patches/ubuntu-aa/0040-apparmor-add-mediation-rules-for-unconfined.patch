@@ -33,9 +33,9 @@ Last-Update: 2018-01-23
 
 --- a/examples/apparmor/usr.sbin.libvirtd
 +++ b/examples/apparmor/usr.sbin.libvirtd
-@@ -65,6 +65,9 @@
-   signal (read, send) peer=libvirt-*,
-   signal (send) set=("kill", "term") peer=unconfined,
+@@ -70,6 +70,9 @@
+   # unconfined also required if guests run without security module
+   unix (send, receive) type=stream addr=none peer=(label=unconfined),
  
 +  # required if guests run unconfined seclabel type='none' but libvirtd is confined
 +  signal (read, send) peer=unconfined,
