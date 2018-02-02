@@ -6,9 +6,11 @@ Subject: [PATCH 25/33] apparmor: fix newer virt-manager 1.4.0
 Let's virt-manager connect with openGraphicsFD.
 
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1668681
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1747442
 
 Forwarded: yes (https://www.redhat.com/archives/libvir-list/2017-February/msg01598.html)
 Author: Bryan Quigley <bryan.quigley@canonical.com>
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 ---
@@ -17,17 +19,27 @@ Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
 --- a/examples/apparmor/libvirt-qemu
 +++ b/examples/apparmor/libvirt-qemu
-@@ -185,6 +185,13 @@
+@@ -185,6 +185,9 @@
    @{PROC}/device-tree/** r,
    /sys/firmware/devicetree/** r,
  
 +  # allow connect with openGraphicsFD to work
 +  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
++
+   # for gathering information about available host resources
+   /sys/devices/system/cpu/ r,
+   /sys/devices/system/node/ r,
+--- a/examples/apparmor/usr.sbin.libvirtd
++++ b/examples/apparmor/usr.sbin.libvirtd
+@@ -65,6 +65,11 @@
+   signal (read, send) peer=libvirt-*,
+   signal (send) set=("kill", "term") peer=unconfined,
+ 
 +  # Since libvirt 4.0 we also need the reverse direction (LP: #1741617)
 +  unix (send, receive) type=stream addr=none peer=(label=libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*),
 +  # unconfined also required if guests run without security module
 +  unix (send, receive) type=stream addr=none peer=(label=unconfined),
 +
-   # for gathering information about available host resources
-   /sys/devices/system/cpu/ r,
-   /sys/devices/system/node/ r,
+   # Very lenient profile for libvirtd since we want to first focus on confining
+   # the guests. Guests will have a very restricted profile.
+   / r,

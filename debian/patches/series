@@ -30,6 +30,7 @@ ubuntu/parallel-shutdown.patch
 ubuntu/apibuild-skip-libvirt-common.h
 ubuntu/libvirtd-service-add-bin-alias.patch
 ubuntu/libvirtd-init-add-bin-alias.patch
+ubuntu/virt-aa-helper-Set-the-supported-features.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0001-apparmor-Allow-pygrub-to-run-on-Debian-Ubuntu.patch
