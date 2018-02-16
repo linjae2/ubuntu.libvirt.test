@@ -1419,7 +1419,8 @@ cleanup:
 #define MIGRATION_DISK_TOTAL_PREFIX "total disk: "
 
 int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
-                                      qemuMonitorMigrationStatusPtr status)
+                                      qemuMonitorMigrationStatusPtr status,
+                                      int *setting_up)
 {
     char *reply;
     char *tmp;
@@ -1440,6 +1441,12 @@ int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
             goto cleanup;
         }
         *end = '\0';
+
+        if (strncmp(tmp, "setup", 5) == 0) {
+            status->status = QEMU_MONITOR_MIGRATION_STATUS_ACTIVE;
+            *setting_up = 1;
+            goto done;
+        }
 
         status->status = qemuMonitorMigrationStatusTypeFromString(tmp);
         if (status->status < 0) {
