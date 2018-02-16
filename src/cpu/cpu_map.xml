@@ -498,6 +498,11 @@
       <feature name='aes'/>
     </model>
 
+    <model name='Westmere-IBRS'>
+      <model name='Westmere'/>
+      <feature name='spec-ctrl'/>
+    </model>
+
     <model name='SandyBridge'>
       <model name='Westmere'/>
       <feature name='pclmuldq'/>
