@@ -1,3 +1,16 @@
+libvirt (1.2.2-0ubuntu13.1.26) trusty-security; urgency=medium
+
+  * SECURITY UPDATE: resource exhaustion resulting in DoS
+    - debian/patches/CVE-2018-5748.patch: avoid DoS reading from
+      QEMU monitor in src/qemu/qemu_monitor.c.
+    - CVE-2018-5748
+  * SECURITY UPDATE: Bypass authentication
+    - debian/patches/CVE-2016-5008.patch: let empty default VNC
+      password work as documented in src/qemu/qemu_hotplug.c.
+    - CVE-2016-5008
+
+ -- Leonidas S. Barbosa <leo.barbosa@canonical.com>  Fri, 16 Feb 2018 07:51:15 -0500
+
 libvirt (1.2.2-0ubuntu13.1.25) trusty-security; urgency=medium
 
   * SECURITY UPDATE: Add support for Spectre mitigations
