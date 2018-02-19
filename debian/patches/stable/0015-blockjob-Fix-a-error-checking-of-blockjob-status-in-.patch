@@ -1,0 +1,36 @@
+From e1b6829a149c117103dc1c6ff8aa81e5ec521eb5 Mon Sep 17 00:00:00 2001
+From: Jie Wang <wangjie88@huawei.com>
+Date: Fri, 19 Jan 2018 22:03:05 +0800
+Subject: [PATCH 15/23] blockjob: Fix a error checking of blockjob status in
+ some case
+
+Commit id 'bc444666f' added a check if the returned data
+buffer had an error, but failed to adjust the event from
+VIR_DOMAIN_BLOCK_JOB_COMPLETED to VIR_DOMAIN_BLOCK_JOB_FAILED
+in order to propagate an error such as "File descriptor in bad
+state" that may be returned from QEMU when both @offset and
+@len are set to 0 such as is the case when performing an async
+block job read on a read only filesystem.
+
+Signed-off-by: Jie Wang <wangjie88@huawei.com>
+Reviewed-by: John Ferlan <jferlan@redhat.com>
+---
+ src/qemu/qemu_monitor_json.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_monitor_json.c b/src/qemu/qemu_monitor_json.c
+index 5ddd855..442b218 100644
+--- a/src/qemu/qemu_monitor_json.c
++++ b/src/qemu/qemu_monitor_json.c
+@@ -889,7 +889,7 @@ qemuMonitorJSONHandleBlockJobImpl(qemuMonitorPtr mon,
+     case VIR_DOMAIN_BLOCK_JOB_COMPLETED:
+         error = virJSONValueObjectGetString(data, "error");
+         /* Make sure the whole device has been processed */
+-        if (offset != len)
++        if (offset != len || error)
+             event = VIR_DOMAIN_BLOCK_JOB_FAILED;
+         break;
+     case VIR_DOMAIN_BLOCK_JOB_CANCELED:
+-- 
+2.7.4
+

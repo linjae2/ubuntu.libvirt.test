@@ -43,6 +43,10 @@ int qemuProcessBuildDestroyMemoryPaths(virQEMUDriverPtr driver,
                                        virDomainMemoryDefPtr mem,
                                        bool build);
 
+int qemuProcessDestroyMemoryBackingPath(virQEMUDriverPtr driver,
+                                        virDomainObjPtr vm,
+                                        virDomainMemoryDefPtr mem);
+
 void qemuProcessAutostartAll(virQEMUDriverPtr driver);
 void qemuProcessReconnectAll(virConnectPtr conn, virQEMUDriverPtr driver);
 
@@ -128,6 +132,10 @@ int qemuProcessFinishStartup(virConnectPtr conn,
                              qemuDomainAsyncJob asyncJob,
                              bool startCPUs,
                              virDomainPausedReason pausedReason);
+
+int qemuProcessRefreshState(virQEMUDriverPtr driver,
+                            virDomainObjPtr vm,
+                            qemuDomainAsyncJob asyncJob);
 
 typedef enum {
     VIR_QEMU_PROCESS_STOP_MIGRATED      = 1 << 0,

@@ -1,0 +1,207 @@
+From 2e80b1550936d417558346ad10f56be110505102 Mon Sep 17 00:00:00 2001
+From: Laine Stump <laine@laine.org>
+Date: Fri, 15 Dec 2017 11:42:35 -0500
+Subject: [PATCH 03/23] qemu: assign correct type of PCI address for vhost-scsi
+ when using pcie-root
+
+Commit 10c73bf1 fixed a bug that I had introduced back in commit
+70249927 - if a vhost-scsi device had no manually assigned PCI
+address, one wouldn't be assigned automatically. There was a slight
+problem with the logic of the fix though - in the case of domains with
+pcie-root (e.g. those with a q35 machinetype),
+qemuDomainDeviceCalculatePCIConnectFlags() will attempt to determine
+if the host-side PCI device is Express or legacy by examining sysfs
+based on the host-side PCI address stored in
+hostdev->source.subsys.u.pci.addr, but that part of the union is only
+valid for PCI hostdevs, *not* for SCSI hostdevs. So we end up trying
+to read sysfs for some probably-non-existent device, which fails, and
+the function virPCIDeviceIsPCIExpress() returns failure (-1).
+
+By coincidence, the return value is being examined as a boolean, and
+since -1 is true, we still end up assigning the vhost-scsi device to
+an Express slot, but that is just by chance (and could fail in the
+case that the gibberish in the "hostside PCI address" was the address
+of a real device that happened to be legacy PCI).
+
+Since (according to Paolo Bonzini) vhost-scsi devices appear just like
+virtio-scsi devices in the guest, they should follow the same rules as
+virtio devices when deciding whether they should be placed in an
+Express or a legacy slot. That's accomplished in this patch by
+returning early with virtioFlags, rather than erroneously using
+hostdev->source.subsys.u.pci.addr. It also adds a test case for PCIe
+to assure it doesn't get broken in the future.
+---
+ src/qemu/qemu_domain_address.c                     |  7 ++++
+ .../hostdev-scsi-vhost-scsi-pcie.args              | 25 ++++++++++++++
+ .../hostdev-scsi-vhost-scsi-pcie.xml               | 23 +++++++++++++
+ tests/qemuxml2argvtest.c                           |  7 ++++
+ .../hostdev-scsi-vhost-scsi-pcie.xml               | 40 ++++++++++++++++++++++
+ tests/qemuxml2xmltest.c                            |  7 ++++
+ 6 files changed, 109 insertions(+)
+ create mode 100644 tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.args
+ create mode 100644 tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.xml
+ create mode 100644 tests/qemuxml2xmloutdata/hostdev-scsi-vhost-scsi-pcie.xml
+
+diff --git a/src/qemu/qemu_domain_address.c b/src/qemu/qemu_domain_address.c
+index 6e7561d..600de85 100644
+--- a/src/qemu/qemu_domain_address.c
++++ b/src/qemu/qemu_domain_address.c
+@@ -656,6 +656,13 @@ qemuDomainDeviceCalculatePCIConnectFlags(virDomainDeviceDefPtr dev,
+         if (hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV)
+             return pcieFlags;
+ 
++        /* according to pbonzini, from the guest PoV vhost-scsi devices
++         * are the same as virtio-scsi, so they should use virtioFlags
++         * (same as virtio-scsi) to determine Express vs. legacy placement
++         */
++        if (hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI_HOST)
++            return virtioFlags;
++
+         if (!(pciDev = virPCIDeviceNew(hostAddr->domain,
+                                        hostAddr->bus,
+                                        hostAddr->slot,
+diff --git a/tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.args b/tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.args
+new file mode 100644
+index 0000000..296716f
+--- /dev/null
++++ b/tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.args
+@@ -0,0 +1,25 @@
++LC_ALL=C \
++PATH=/bin \
++HOME=/home/test \
++USER=test \
++LOGNAME=test \
++QEMU_AUDIO_DRV=none \
++/usr/bin/qemu-system-x86_64 \
++-name QEMUGuest2 \
++-S \
++-M pc-q35-2.7 \
++-m 214 \
++-smp 1,sockets=1,cores=1,threads=1 \
++-uuid c7a5fdbd-edaf-9466-926a-d65c16db1809 \
++-nographic \
++-nodefaults \
++-chardev socket,id=charmonitor,path=/tmp/lib/domain--1-QEMUGuest2/monitor.sock,\
++server,nowait \
++-mon chardev=charmonitor,id=monitor,mode=readline \
++-no-acpi \
++-boot c \
++-device pcie-root-port,port=0x10,chassis=1,id=pci.1,bus=pcie.0,\
++multifunction=on,addr=0x2 \
++-device pcie-root-port,port=0x11,chassis=2,id=pci.2,bus=pcie.0,addr=0x2.0x1 \
++-device vhost-scsi-pci,wwpn=naa.5123456789abcde0,vhostfd=3,id=hostdev0,\
++bus=pci.1,addr=0x0
+diff --git a/tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.xml b/tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.xml
+new file mode 100644
+index 0000000..c4e8c33
+--- /dev/null
++++ b/tests/qemuxml2argvdata/hostdev-scsi-vhost-scsi-pcie.xml
+@@ -0,0 +1,23 @@
++<domain type='kvm'>
++  <name>QEMUGuest2</name>
++  <uuid>c7a5fdbd-edaf-9466-926a-d65c16db1809</uuid>
++  <memory unit='KiB'>219100</memory>
++  <currentMemory unit='KiB'>219100</currentMemory>
++  <vcpu placement='static'>1</vcpu>
++  <os>
++    <type arch='x86_64' machine='pc-q35-2.7'>hvm</type>
++    <boot dev='hd'/>
++  </os>
++  <clock offset='utc'/>
++  <on_poweroff>destroy</on_poweroff>
++  <on_reboot>restart</on_reboot>
++  <on_crash>destroy</on_crash>
++  <devices>
++    <emulator>/usr/bin/qemu-system-x86_64</emulator>
++    <controller type='usb' index='0' model='none'/>
++    <hostdev mode='subsystem' type='scsi_host' managed='no'>
++      <source protocol='vhost' wwpn='naa.5123456789abcde0'/>
++    </hostdev>
++    <memballoon model='none'/>
++  </devices>
++</domain>
+diff --git a/tests/qemuxml2argvtest.c b/tests/qemuxml2argvtest.c
+index be32d89..c873990 100644
+--- a/tests/qemuxml2argvtest.c
++++ b/tests/qemuxml2argvtest.c
+@@ -2473,6 +2473,13 @@ mymain(void)
+     DO_TEST("hostdev-scsi-vhost-scsi-pci",
+             QEMU_CAPS_VIRTIO_SCSI, QEMU_CAPS_DEVICE_VHOST_SCSI,
+             QEMU_CAPS_DEVICE_SCSI_GENERIC);
++    DO_TEST("hostdev-scsi-vhost-scsi-pcie",
++            QEMU_CAPS_KVM,
++            QEMU_CAPS_VIRTIO_SCSI, QEMU_CAPS_DEVICE_VHOST_SCSI,
++            QEMU_CAPS_DEVICE_SCSI_GENERIC,
++            QEMU_CAPS_PCI_MULTIFUNCTION,
++            QEMU_CAPS_DEVICE_PCIE_ROOT_PORT,
++            QEMU_CAPS_VIRTIO_PCI_DISABLE_LEGACY);
+ 
+     DO_TEST("mlock-on", QEMU_CAPS_REALTIME_MLOCK);
+     DO_TEST_FAILURE("mlock-on", NONE);
+diff --git a/tests/qemuxml2xmloutdata/hostdev-scsi-vhost-scsi-pcie.xml b/tests/qemuxml2xmloutdata/hostdev-scsi-vhost-scsi-pcie.xml
+new file mode 100644
+index 0000000..ef48d81
+--- /dev/null
++++ b/tests/qemuxml2xmloutdata/hostdev-scsi-vhost-scsi-pcie.xml
+@@ -0,0 +1,40 @@
++<domain type='kvm'>
++  <name>QEMUGuest2</name>
++  <uuid>c7a5fdbd-edaf-9466-926a-d65c16db1809</uuid>
++  <memory unit='KiB'>219100</memory>
++  <currentMemory unit='KiB'>219100</currentMemory>
++  <vcpu placement='static'>1</vcpu>
++  <os>
++    <type arch='x86_64' machine='pc-q35-2.7'>hvm</type>
++    <boot dev='hd'/>
++  </os>
++  <clock offset='utc'/>
++  <on_poweroff>destroy</on_poweroff>
++  <on_reboot>restart</on_reboot>
++  <on_crash>destroy</on_crash>
++  <devices>
++    <emulator>/usr/bin/qemu-system-x86_64</emulator>
++    <controller type='usb' index='0' model='none'/>
++    <controller type='sata' index='0'>
++      <address type='pci' domain='0x0000' bus='0x00' slot='0x1f' function='0x2'/>
++    </controller>
++    <controller type='pci' index='0' model='pcie-root'/>
++    <controller type='pci' index='1' model='pcie-root-port'>
++      <model name='pcie-root-port'/>
++      <target chassis='1' port='0x10'/>
++      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0' multifunction='on'/>
++    </controller>
++    <controller type='pci' index='2' model='pcie-root-port'>
++      <model name='pcie-root-port'/>
++      <target chassis='2' port='0x11'/>
++      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x1'/>
++    </controller>
++    <input type='mouse' bus='ps2'/>
++    <input type='keyboard' bus='ps2'/>
++    <hostdev mode='subsystem' type='scsi_host' managed='no'>
++      <source protocol='vhost' wwpn='naa.5123456789abcde0'/>
++      <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
++    </hostdev>
++    <memballoon model='none'/>
++  </devices>
++</domain>
+diff --git a/tests/qemuxml2xmltest.c b/tests/qemuxml2xmltest.c
+index 2be8eb2..78519f5 100644
+--- a/tests/qemuxml2xmltest.c
++++ b/tests/qemuxml2xmltest.c
+@@ -1109,6 +1109,13 @@ mymain(void)
+     DO_TEST("hostdev-scsi-vhost-scsi-pci",
+             QEMU_CAPS_VIRTIO_SCSI, QEMU_CAPS_DEVICE_VHOST_SCSI,
+             QEMU_CAPS_DEVICE_SCSI_GENERIC);
++    DO_TEST("hostdev-scsi-vhost-scsi-pcie",
++            QEMU_CAPS_KVM,
++            QEMU_CAPS_VIRTIO_SCSI, QEMU_CAPS_DEVICE_VHOST_SCSI,
++            QEMU_CAPS_DEVICE_SCSI_GENERIC,
++            QEMU_CAPS_PCI_MULTIFUNCTION,
++            QEMU_CAPS_DEVICE_PCIE_ROOT_PORT,
++            QEMU_CAPS_VIRTIO_PCI_DISABLE_LEGACY);
+     DO_TEST("hostdev-scsi-lsi",
+             QEMU_CAPS_VIRTIO_SCSI, QEMU_CAPS_SCSI_LSI,
+             QEMU_CAPS_DEVICE_SCSI_GENERIC);
+-- 
+2.7.4
+

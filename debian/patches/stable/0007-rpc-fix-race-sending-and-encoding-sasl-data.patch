@@ -1,0 +1,80 @@
+From ff1a560e3ce27610651fc5b36b2bc245091cdc73 Mon Sep 17 00:00:00 2001
+From: "Daniel P. Berrange" <berrange@redhat.com>
+Date: Mon, 18 Dec 2017 17:41:12 +0000
+Subject: [PATCH 07/23] rpc: fix race sending and encoding sasl data
+
+The virNetSocketWriteSASL method has to encode the buffer it is given and then
+write it to the underlying socket. This write is not guaranteed to send the
+full amount of data that was encoded by SASL. We cache the SASL encoded data so
+that on the next invocation of virNetSocketWriteSASL we carry on sending it.
+
+The subtle problem is that the 'len' value passed into virNetSocketWriteSASL on
+the 2nd call may be larger than the original value. So when we've completed
+sending the SASL encoded data we previously cached, we must return the original
+length we encoded, not the new length.
+
+This flaw means we could potentially have been discarded queued data without
+sending it. This would have exhibited itself as a libvirt client never receiving
+the reply to a method it invokes, async events silently going missing, or worse
+stream data silently getting dropped.
+
+For this to be a problem libvirtd would have to be queued data to send to the
+client, while at the same time the TCP socket send buffer is full (due to a very
+slow client). This is quite unlikely so if this bug was ever triggered by a real
+world user it would be almost impossible to reproduce or diagnose, if indeed it
+was ever noticed at all.
+
+Reviewed-by: John Ferlan <jferlan@redhat.com>
+Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+---
+ src/rpc/virnetsocket.c | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/src/rpc/virnetsocket.c b/src/rpc/virnetsocket.c
+index 23089af..2d41a71 100644
+--- a/src/rpc/virnetsocket.c
++++ b/src/rpc/virnetsocket.c
+@@ -107,6 +107,7 @@ struct _virNetSocket {
+ 
+     const char *saslEncoded;
+     size_t saslEncodedLength;
++    size_t saslEncodedRawLength;
+     size_t saslEncodedOffset;
+ #endif
+ #if WITH_SSH2
+@@ -1927,6 +1928,7 @@ static ssize_t virNetSocketWriteSASL(virNetSocketPtr sock, const char *buf, size
+                                     &sock->saslEncodedLength) < 0)
+             return -1;
+ 
++        sock->saslEncodedRawLength = tosend;
+         sock->saslEncodedOffset = 0;
+     }
+ 
+@@ -1943,11 +1945,20 @@ static ssize_t virNetSocketWriteSASL(virNetSocketPtr sock, const char *buf, size
+ 
+     /* Sent all encoded, so update raw buffer to indicate completion */
+     if (sock->saslEncodedOffset == sock->saslEncodedLength) {
++        ssize_t done = sock->saslEncodedRawLength;
+         sock->saslEncoded = NULL;
+-        sock->saslEncodedOffset = sock->saslEncodedLength = 0;
+-
+-        /* Mark as complete, so caller detects completion */
+-        return tosend;
++        sock->saslEncodedOffset = sock->saslEncodedLength = sock->saslEncodedRawLength = 0;
++
++        /* Mark as complete, so caller detects completion.
++         *
++         * Note that 'done' is possibly less than our current
++         * 'tosend' value, since if virNetSocketWriteWire
++         * only partially sent the data, we might have been
++         * called a 2nd time to write remaining cached
++         * encoded data. This means that the caller might
++         * also have further raw data pending that's included
++         * in 'tosend' */
++        return done;
+     } else {
+         /* Still have stuff pending in saslEncoded buffer.
+          * Pretend to caller that we didn't send any yet.
+-- 
+2.7.4
+

@@ -1,0 +1,90 @@
+From f81a726371cdcd31650804ce69ecbe1f66352f2e Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon, 12 Feb 2018 15:44:11 +0100
+Subject: [PATCH 22/23] storage: Fix formatting and parsing of qemu type
+ 'UnixSocketAddress'
+
+The documentation for the JSON/qapi type 'UnixSocketAddress' states that
+the unix socket path field is named 'path'. Unfortunately qemu uses
+'socket' in case of the gluster driver (despite documented otherwise).
+
+Add logic which will format the correct fields while keeping support of
+the old spelling.
+
+Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1544325
+
+Signed-off-by: Peter Krempa <pkrempa@redhat.com>
+---
+ src/qemu/qemu_block.c     | 16 ++++++++++------
+ src/util/virstoragefile.c |  8 +++++++-
+ 2 files changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/src/qemu/qemu_block.c b/src/qemu/qemu_block.c
+index 585f025..6f81e9d 100644
+--- a/src/qemu/qemu_block.c
++++ b/src/qemu/qemu_block.c
+@@ -467,15 +467,13 @@ qemuBlockStorageSourceGetURI(virStorageSourcePtr src)
+ /**
+  * qemuBlockStorageSourceBuildJSONSocketAddress
+  * @host: the virStorageNetHostDefPtr definition to build
+- * @legacy: use 'tcp' instead of 'inet' for compatibility reasons
++ * @legacy: use old field names/values
+  *
+  * Formats @hosts into a json object conforming to the 'SocketAddress' type
+  * in qemu.
+  *
+- * This function can be used when only 1 src->nhosts is expected in order
+- * to build a command without the array indices after "server.". That is
+- * to see "server.type", "server.host", and "server.port" instead of
+- * "server.#.type", "server.#.host", and "server.#.port".
++ * For compatibility with old approach used in the gluster driver of old qemus
++ * use the old spelling for TCP transport and, the path field of the unix socket.
+  *
+  * Returns a virJSONValuePtr for a single server.
+  */
+@@ -486,6 +484,7 @@ qemuBlockStorageSourceBuildJSONSocketAddress(virStorageNetHostDefPtr host,
+     virJSONValuePtr server = NULL;
+     virJSONValuePtr ret = NULL;
+     const char *transport;
++    const char *field;
+     char *port = NULL;
+ 
+     switch ((virStorageNetHostTransport) host->transport) {
+@@ -507,9 +506,14 @@ qemuBlockStorageSourceBuildJSONSocketAddress(virStorageNetHostDefPtr host,
+         break;
+ 
+     case VIR_STORAGE_NET_HOST_TRANS_UNIX:
++        if (legacy)
++            field = "s:socket";
++        else
++            field = "s:path";
++
+         if (virJSONValueObjectCreate(&server,
+                                      "s:type", "unix",
+-                                     "s:socket", host->socket,
++                                     field, host->socket,
+                                      NULL) < 0)
+             goto cleanup;
+         break;
+diff --git a/src/util/virstoragefile.c b/src/util/virstoragefile.c
+index 5f661c9..ad6c543 100644
+--- a/src/util/virstoragefile.c
++++ b/src/util/virstoragefile.c
+@@ -2893,7 +2893,13 @@ virStorageSourceParseBackingJSONSocketAddress(virStorageNetHostDefPtr host,
+     } else if (STREQ(type, "unix")) {
+         host->transport = VIR_STORAGE_NET_HOST_TRANS_UNIX;
+ 
+-        if (!(socket = virJSONValueObjectGetString(json, "socket"))) {
++        socket = virJSONValueObjectGetString(json, "path");
++
++        /* check for old spelling for gluster protocol */
++        if (!socket)
++            socket = virJSONValueObjectGetString(json, "socket");
++
++        if (!socket) {
+             virReportError(VIR_ERR_INVALID_ARG, "%s",
+                            _("missing socket path for udp backing server in "
+                              "JSON backing volume definition"));
+-- 
+2.7.4
+

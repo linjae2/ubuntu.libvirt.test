@@ -1,0 +1,45 @@
+From 9788dd3b965f4ddae0b472b51d00d747deeaa6d4 Mon Sep 17 00:00:00 2001
+From: Laine Stump <laine@laine.org>
+Date: Wed, 17 Jan 2018 16:47:06 -0500
+Subject: [PATCH 05/23] qemu: auto-add generic xhci rather than NEC xhci to Q35
+ domains
+
+We recently added a generic XHCI USB3 controller to QEMU, and libvirt
+supports adding that controller rather than the NEC XHCI USB3
+controller, but when auto-adding a USB controller to Q35 domains we
+were still adding the vendor-specific NEC controller. This patch
+changes to add the generic controller instead, if it's available in
+the QEMU binary that will be used.
+
+Signed-off-by: Laine Stump <laine@laine.org>
+Reviewed-by: Pavel Hrdina <phrdina@redhat.com>
+---
+ src/qemu/qemu_domain.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/src/qemu/qemu_domain.c b/src/qemu/qemu_domain.c
+index 441bf59..3e973f6 100644
+--- a/src/qemu/qemu_domain.c
++++ b/src/qemu/qemu_domain.c
+@@ -2660,12 +2660,13 @@ qemuDomainDefAddDefaultDevices(virDomainDefPtr def,
+             addPCIeRoot = true;
+             addImplicitSATA = true;
+ 
+-            /* Prefer adding USB3 controller if supported
+-             * (nec-usb-xhci). Failing that, add a USB2 controller set
+-             * if the ich9-usb-ehci1 device is supported. Otherwise
+-             * don't add anything.
++            /* Prefer adding a USB3 controller if supported, fall back
++             * to USB2 if there is no USB3 available, and if that's
++             * unavailable don't add anything.
+              */
+-            if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_NEC_USB_XHCI))
++            if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_QEMU_XHCI))
++                usbModel = VIR_DOMAIN_CONTROLLER_MODEL_USB_QEMU_XHCI;
++            else if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_NEC_USB_XHCI))
+                 usbModel = VIR_DOMAIN_CONTROLLER_MODEL_USB_NEC_XHCI;
+             else if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_ICH9_USB_EHCI1))
+                 usbModel = VIR_DOMAIN_CONTROLLER_MODEL_USB_ICH9_EHCI1;
+-- 
+2.7.4
+

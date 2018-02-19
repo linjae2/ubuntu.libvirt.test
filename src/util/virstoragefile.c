@@ -2893,7 +2893,13 @@ virStorageSourceParseBackingJSONSocketAddress(virStorageNetHostDefPtr host,
     } else if (STREQ(type, "unix")) {
         host->transport = VIR_STORAGE_NET_HOST_TRANS_UNIX;
 
-        if (!(socket = virJSONValueObjectGetString(json, "socket"))) {
+        socket = virJSONValueObjectGetString(json, "path");
+
+        /* check for old spelling for gluster protocol */
+        if (!socket)
+            socket = virJSONValueObjectGetString(json, "socket");
+
+        if (!socket) {
             virReportError(VIR_ERR_INVALID_ARG, "%s",
                            _("missing socket path for udp backing server in "
                              "JSON backing volume definition"));
@@ -2976,10 +2982,9 @@ virStorageSourceParseBackingJSONiSCSI(virStorageSourcePtr src,
     const char *transport = virJSONValueObjectGetString(json, "transport");
     const char *portal = virJSONValueObjectGetString(json, "portal");
     const char *target = virJSONValueObjectGetString(json, "target");
+    const char *lun = virJSONValueObjectGetStringOrNumber(json, "lun");
     const char *uri;
     char *port;
-    unsigned int lun = 0;
-    char *fulltarget = NULL;
     int ret = -1;
 
     /* legacy URI based syntax passed via 'filename' option */
@@ -2989,6 +2994,9 @@ virStorageSourceParseBackingJSONiSCSI(virStorageSourcePtr src,
 
     src->type = VIR_STORAGE_TYPE_NETWORK;
     src->protocol = VIR_STORAGE_NET_PROTOCOL_ISCSI;
+
+    if (!lun)
+        lun = "0";
 
     if (VIR_ALLOC(src->hosts) < 0)
         goto cleanup;
@@ -3026,17 +3034,12 @@ virStorageSourceParseBackingJSONiSCSI(virStorageSourcePtr src,
         *port = '\0';
     }
 
-    ignore_value(virJSONValueObjectGetNumberUint(json, "lun", &lun));
-
-    if (virAsprintf(&fulltarget, "%s/%u", target, lun) < 0)
+    if (virAsprintf(&src->path, "%s/%s", target, lun) < 0)
         goto cleanup;
-
-    VIR_STEAL_PTR(src->path, fulltarget);
 
     ret = 0;
 
  cleanup:
-    VIR_FREE(fulltarget);
     return ret;
 }
 
@@ -3402,6 +3405,14 @@ virStorageSourceNewFromBackingAbsolute(const char *path)
             goto error;
 
         virStorageSourceNetworkAssignDefaultPorts(ret);
+
+        /* Some of the legacy parsers parse authentication data since they are
+         * also used in other places. For backing store detection the
+         * authentication data would be invalid anyways, so we clear it */
+        if (ret->auth) {
+            virStorageAuthDefFree(ret->auth);
+            ret->auth = NULL;
+        }
     }
 
     return ret;

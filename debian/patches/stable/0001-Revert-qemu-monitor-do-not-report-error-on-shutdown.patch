@@ -1,0 +1,65 @@
+From c38e1398d6b92e54be53e22a11df362b8458c0a6 Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Fri, 19 Jan 2018 13:53:57 +0100
+Subject: [PATCH 01/23] Revert "qemu: monitor: do not report error on shutdown"
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1536461
+
+This reverts commit aeda1b8c56dc58b0a413acc61bbea938b40499e1.
+
+Problem is that we need mon->lastError to be set because it's
+used all over the place. Also, there's nothing wrong with
+reporting error if one occurred. I mean, if there's a thread
+executing an API and which currently is talking on monitor it
+definitely wants the error reported.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+---
+ src/qemu/qemu_monitor.c | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/src/qemu/qemu_monitor.c b/src/qemu/qemu_monitor.c
+index 85c7d68..fc146bd 100644
+--- a/src/qemu/qemu_monitor.c
++++ b/src/qemu/qemu_monitor.c
+@@ -78,7 +78,6 @@ struct _qemuMonitor {
+      * < 0: an error occurred during the registration of @fd */
+     int watch;
+     int hasSendFD;
+-    int willhangup;
+ 
+     virDomainObjPtr vm;
+ 
+@@ -716,10 +715,8 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque)
+         if (events & VIR_EVENT_HANDLE_HANGUP) {
+             hangup = true;
+             if (!error) {
+-                if (!mon->willhangup) {
+-                    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                                   _("End of file from qemu monitor"));
+-                }
++                virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
++                               _("End of file from qemu monitor"));
+                 eof = true;
+                 events &= ~VIR_EVENT_HANDLE_HANGUP;
+             }
+@@ -758,7 +755,7 @@ qemuMonitorIO(int watch, int fd, int events, void *opaque)
+         if (mon->lastError.code != VIR_ERR_OK) {
+             /* Already have an error, so clear any new error */
+             virResetLastError();
+-        } else if (!mon->willhangup) {
++        } else {
+             virErrorPtr err = virGetLastError();
+             if (!err)
+                 virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+@@ -1352,7 +1349,6 @@ qemuMonitorEmitShutdown(qemuMonitorPtr mon, virTristateBool guest)
+ {
+     int ret = -1;
+     VIR_DEBUG("mon=%p guest=%u", mon, guest);
+-    mon->willhangup = 1;
+ 
+     QEMU_MONITOR_CALLBACK(mon, ret, domainShutdown, mon->vm, guest);
+     return ret;
+-- 
+2.7.4
+

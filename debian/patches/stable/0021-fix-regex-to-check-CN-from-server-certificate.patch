@@ -1,0 +1,34 @@
+From 57dccbf400c77da0d4c1293428709b47214f1d35 Mon Sep 17 00:00:00 2001
+From: "Tiago M. Vieira" <tmv@redhat.com>
+Date: Fri, 26 Jan 2018 14:33:02 -0500
+Subject: [PATCH 21/23] fix regex to check CN from server certificate
+
+Currently when the script validates the PKI files and
+the certificate 'Subject:' field contains RDNs after
+the Common Name (CN), these values are also included,
+creating a false result that the CN is not correct.
+
+A small change to the sed regex fixes this issue, by
+extracting only the value for CN and nothing else. The
+regex is replaced with the exact same regex used to
+extract the CN value from the client certificate.
+---
+ tools/virt-pki-validate.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/virt-pki-validate.in b/tools/virt-pki-validate.in
+index 206637a..b04680d 100755
+--- a/tools/virt-pki-validate.in
++++ b/tools/virt-pki-validate.in
+@@ -255,7 +255,7 @@ then
+             echo CA organization: $ORG
+             echo Server organization: $S_ORG
+         fi
+-        S_HOST=`"$CERTOOL" -i --infile "$LIBVIRT/servercert.pem" | grep Subject: | sed 's+.*CN=\([a-zA-Z\. _-]*\)+\1+'`
++        S_HOST=`"$CERTOOL" -i --infile "$LIBVIRT/servercert.pem" | grep Subject: | sed 's+.*CN=\(.[a-zA-Z \._-]*\).*+\1+'`
+         if test "$S_HOST" != "`hostname -s`" && test "$S_HOST" != "`hostname`"
+         then
+             echo The server certificate does not seem to match the host name
+-- 
+2.7.4
+

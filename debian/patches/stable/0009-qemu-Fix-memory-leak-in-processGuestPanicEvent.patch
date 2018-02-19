@@ -1,0 +1,28 @@
+From 2d4c0921a49de6dfaa151c7fd7df8cd5f16ae687 Mon Sep 17 00:00:00 2001
+From: John Ferlan <jferlan@redhat.com>
+Date: Fri, 26 Jan 2018 15:32:27 -0500
+Subject: [PATCH 09/23] qemu: Fix memory leak in processGuestPanicEvent
+
+After processing the processEvent->data for a qemuProcessEventHandler
+callout, it's expected that the called processEvent->eventType helper
+will perform the proper free on the data field. In this case it's
+a qemuMonitorEventPanicInfoPtr.
+---
+ src/qemu/qemu_driver.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index a203c92..5eaf97a 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -4309,6 +4309,7 @@ processGuestPanicEvent(virQEMUDriverPtr driver,
+         qemuDomainRemoveInactiveJob(driver, vm);
+ 
+  cleanup:
++    qemuMonitorEventPanicInfoFree(info);
+     virObjectUnref(cfg);
+ }
+ 
+-- 
+2.7.4
+

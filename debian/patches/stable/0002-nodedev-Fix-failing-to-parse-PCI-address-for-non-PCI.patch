@@ -1,0 +1,102 @@
+From 3806bff0ec40c0b774c9b8d339e407de0a470e19 Mon Sep 17 00:00:00 2001
+From: Jim Fehlig <jfehlig@suse.com>
+Date: Fri, 5 Jan 2018 17:10:47 -0700
+Subject: [PATCH 02/23] nodedev: Fix failing to parse PCI address for non-PCI
+ network devices
+
+Commit 8708ca01c added virNetDevSwitchdevFeature() to check if a network
+device has Switchdev capabilities. virNetDevSwitchdevFeature() attempts
+to retrieve the PCI device associated with the network device, ignoring
+non-PCI devices. It does so via the following call chain
+
+  virNetDevSwitchdevFeature()->virNetDevGetPCIDevice()->
+  virPCIGetDeviceAddressFromSysfsLink()
+
+For non-PCI network devices (qeth, Xen vif, etc),
+virPCIGetDeviceAddressFromSysfsLink() will report an error when
+virPCIDeviceAddressParse() fails. virPCIDeviceAddressParse() also
+logs an error. After commit 8708ca01c there are now two errors reported
+for each non-PCI network device even though the errors are harmless.
+
+To avoid the errors, introduce virNetDevIsPCIDevice() and use it in
+virNetDevGetPCIDevice() before attempting to retrieve the associated
+PCI device. virNetDevIsPCIDevice() uses the 'subsystem' property of the
+device to determine if it is PCI. See the sysfs rules in kernel
+documentation for more details
+
+https://www.kernel.org/doc/html/latest/admin-guide/sysfs-rules.html
+---
+ src/util/virnetdev.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
+
+diff --git a/src/util/virnetdev.c b/src/util/virnetdev.c
+index eb2d119..b250af9 100644
+--- a/src/util/virnetdev.c
++++ b/src/util/virnetdev.c
+@@ -22,6 +22,7 @@
+ 
+ #include <config.h>
+ 
++#include "dirname.h"
+ #include "virnetdev.h"
+ #include "virnetlink.h"
+ #include "virmacaddr.h"
+@@ -1147,6 +1148,45 @@ virNetDevSysfsDeviceFile(char **pf_sysfs_device_link, const char *ifname,
+     return 0;
+ }
+ 
++/**
++ * Determine if the device path specified in devpath is a PCI Device
++ * by resolving the 'subsystem'-link in devpath and looking for
++ * 'pci' in the last component. For more information see the rules
++ * for accessing sysfs in the kernel docs
++ *
++ * https://www.kernel.org/doc/html/latest/admin-guide/sysfs-rules.html
++ *
++ * Returns true if devpath's susbsystem is pci, false otherwise.
++ */
++static bool
++virNetDevIsPCIDevice(const char *devpath)
++{
++    char *subsys_link = NULL;
++    char *abs_path = NULL;
++    char *subsys = NULL;
++    bool ret = false;
++
++    if (virAsprintf(&subsys_link, "%s/subsystem", devpath) < 0)
++        return false;
++
++    if (!virFileExists(subsys_link))
++        goto cleanup;
++
++    if (virFileResolveLink(subsys_link, &abs_path) < 0) {
++        virReportError(VIR_ERR_INTERNAL_ERROR,
++                       _("Unable to resolve device subsystem symlink %s"),
++                       subsys_link);
++        goto cleanup;
++    }
++
++    subsys = last_component(abs_path);
++    ret = STRPREFIX(subsys, "pci");
++
++ cleanup:
++    VIR_FREE(subsys_link);
++    VIR_FREE(abs_path);
++    return ret;
++}
+ 
+ static virPCIDevicePtr
+ virNetDevGetPCIDevice(const char *devName)
+@@ -1158,6 +1198,9 @@ virNetDevGetPCIDevice(const char *devName)
+     if (virNetDevSysfsFile(&vfSysfsDevicePath, devName, "device") < 0)
+         goto cleanup;
+ 
++    if (!virNetDevIsPCIDevice(vfSysfsDevicePath))
++        goto cleanup;
++
+     vfPCIAddr = virPCIGetDeviceAddressFromSysfsLink(vfSysfsDevicePath);
+     if (!vfPCIAddr)
+         goto cleanup;
+-- 
+2.7.4
+

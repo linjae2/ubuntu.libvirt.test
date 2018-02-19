@@ -1,0 +1,29 @@
+From c2cf311f4b7ed9e4d2b1cc92abd534f8568ea364 Mon Sep 17 00:00:00 2001
+From: Andrea Bolognani <abologna@redhat.com>
+Date: Tue, 30 Jan 2018 15:11:10 +0100
+Subject: [PATCH 11/23] conf: Use correct attribute name in error message
+
+The <capabilities> feature has an attribute named 'policy', but the
+error message mentioned the non-existing 'state' attribute instead.
+
+Signed-off-by: Andrea Bolognani <abologna@redhat.com>
+---
+ src/conf/domain_conf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 58f5d28..e12c0c1 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -18898,7 +18898,7 @@ virDomainDefParseXML(xmlDocPtr xml,
+             if ((tmp = virXMLPropString(nodes[i], "policy"))) {
+                 if ((def->features[val] = virDomainCapabilitiesPolicyTypeFromString(tmp)) == -1) {
+                     virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+-                                   _("unknown state attribute '%s' of feature '%s'"),
++                                   _("unknown policy attribute '%s' of feature '%s'"),
+                                    tmp, virDomainFeatureTypeToString(val));
+                     goto error;
+                 }
+-- 
+2.7.4
+
