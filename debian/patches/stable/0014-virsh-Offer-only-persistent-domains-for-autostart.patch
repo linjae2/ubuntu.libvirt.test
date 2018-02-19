@@ -1,0 +1,29 @@
+From 4d15b13257f4794e86a3d1da7f347a0e5921cc20 Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Thu, 25 Jan 2018 14:50:32 +0100
+Subject: [PATCH 14/23] virsh: Offer only persistent domains for autostart
+
+The 'autostart' command accepts only persistent domains. Make the
+completer return only those.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+---
+ tools/virsh-domain.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/virsh-domain.c b/tools/virsh-domain.c
+index 0f329d6..5a0e0c1 100644
+--- a/tools/virsh-domain.c
++++ b/tools/virsh-domain.c
+@@ -1037,7 +1037,7 @@ static const vshCmdInfo info_autostart[] = {
+ };
+ 
+ static const vshCmdOptDef opts_autostart[] = {
+-    VIRSH_COMMON_OPT_DOMAIN_FULL(0),
++    VIRSH_COMMON_OPT_DOMAIN_FULL(VIR_CONNECT_LIST_DOMAINS_PERSISTENT),
+     {.name = "disable",
+      .type = VSH_OT_BOOL,
+      .help = N_("disable autostarting")
+-- 
+2.7.4
+

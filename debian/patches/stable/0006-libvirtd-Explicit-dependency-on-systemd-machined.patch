@@ -1,0 +1,47 @@
+From f28cbbae37a0b13958edb71bb1faf7910f7d8064 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Michal=20Koutn=C3=BD?= <mkoutny@suse.com>
+Date: Wed, 10 Jan 2018 23:06:41 +0100
+Subject: [PATCH 06/23] libvirtd: Explicit dependency on systemd-machined
+
+The libvirtd daemon uses systemd-machined D-Bus API when manipulating
+domains. The systemd-machined is D-Bus activated on demand.
+
+However, during system shutdown systemd-machined is stopped concurrently
+with libvirtd and virsh users also doing their final cleanup may
+transitively fail due to unavailability of systemd-machined. Example
+error message
+
+> libvirtd[1390]: 2017-12-20 18:55:56.182+0000: 32700: error : virSystemdTerminateMachine:503 : Refusing activation, D-Bus is shutting down.
+
+To circumvent this we need to explicitly specify both ordering and
+requirement dependency (to avoid late D-Bus activation) on
+systemd-machined. See [1] for the dependency debate.
+
+[1] https://lists.freedesktop.org/archives/systemd-devel/2018-January/040095.html
+---
+ daemon/libvirtd.service.in | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/daemon/libvirtd.service.in b/daemon/libvirtd.service.in
+index c189f5e..769702e 100644
+--- a/daemon/libvirtd.service.in
++++ b/daemon/libvirtd.service.in
+@@ -7,6 +7,7 @@
+ Description=Virtualization daemon
+ Requires=virtlogd.socket
+ Requires=virtlockd.socket
++Wants=systemd-machined.service
+ Before=libvirt-guests.service
+ After=network.target
+ After=dbus.service
+@@ -14,6 +15,7 @@ After=iscsid.service
+ After=apparmor.service
+ After=local-fs.target
+ After=remote-fs.target
++After=systemd-machined.service
+ Documentation=man:libvirtd(8)
+ Documentation=https://libvirt.org
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,97 @@
+From 1641e222deefc97cad0b40efed909e94939b6e14 Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Wed, 14 Feb 2018 14:12:23 +0100
+Subject: [PATCH 23/23] util: storage: Remove detected authentication data for
+ backing chains
+
+We can't really detect all the authentication data in a sane manner for
+disk backing chains. Since the old RBD parser parses it in some cases as
+the argv->XML convertor requires it, we can't just drop it.
+
+Instead clear any detected authentication data in the code paths related
+to disk backing chain lookup and fix the tests to cope with the change.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1544659
+
+Signed-off-by: Peter Krempa <pkrempa@redhat.com>
+---
+ src/util/virstoragefile.c |  8 ++++++++
+ tests/virstoragetest.c    | 15 +++------------
+ 2 files changed, 11 insertions(+), 12 deletions(-)
+
+diff --git a/src/util/virstoragefile.c b/src/util/virstoragefile.c
+index ad6c543..085405b 100644
+--- a/src/util/virstoragefile.c
++++ b/src/util/virstoragefile.c
+@@ -3405,6 +3405,14 @@ virStorageSourceNewFromBackingAbsolute(const char *path)
+             goto error;
+ 
+         virStorageSourceNetworkAssignDefaultPorts(ret);
++
++        /* Some of the legacy parsers parse authentication data since they are
++         * also used in other places. For backing store detection the
++         * authentication data would be invalid anyways, so we clear it */
++        if (ret->auth) {
++            virStorageAuthDefFree(ret->auth);
++            ret->auth = NULL;
++        }
+     }
+ 
+     return ret;
+diff --git a/tests/virstoragetest.c b/tests/virstoragetest.c
+index 1dc7608..97b0e70 100644
+--- a/tests/virstoragetest.c
++++ b/tests/virstoragetest.c
+@@ -309,8 +309,7 @@ static const char testStorageChainFormat[] =
+     "type:%d\n"
+     "format:%d\n"
+     "protocol:%s\n"
+-    "hostname:%s\n"
+-    "secret:%s\n";
++    "hostname:%s\n";
+ 
+ static int
+ testStorageChain(const void *args)
+@@ -375,8 +374,7 @@ testStorageChain(const void *args)
+                         data->files[i]->type,
+                         data->files[i]->format,
+                         virStorageNetProtocolTypeToString(data->files[i]->protocol),
+-                        NULLSTR(data->files[i]->hostname),
+-                        NULLSTR(data->files[i]->secret)) < 0 ||
++                        NULLSTR(data->files[i]->hostname)) < 0 ||
+             virAsprintf(&actual,
+                         testStorageChainFormat, i,
+                         NULLSTR(elt->path),
+@@ -387,8 +385,7 @@ testStorageChain(const void *args)
+                         elt->type,
+                         elt->format,
+                         virStorageNetProtocolTypeToString(elt->protocol),
+-                        NULLSTR(elt->nhosts ? elt->hosts[0].name : NULL),
+-                        NULLSTR(elt->auth ? elt->auth->username : NULL)) < 0) {
++                        NULLSTR(elt->nhosts ? elt->hosts[0].name : NULL)) < 0) {
+             VIR_FREE(expect);
+             VIR_FREE(actual);
+             goto cleanup;
+@@ -1362,9 +1359,6 @@ mymain(void)
+     TEST_BACKING_PARSE("rbd:testshare:id=asdf:mon_host=example.com",
+                        "<source protocol='rbd' name='testshare'>\n"
+                        "  <host name='example.com'/>\n"
+-                       "  <auth username='asdf'>\n"
+-                       "    <secret type='ceph'/>\n"
+-                       "  </auth>\n"
+                        "</source>\n");
+     TEST_BACKING_PARSE("nbd:example.org:6000:exportname=blah",
+                        "<source protocol='nbd' name='blah'>\n"
+@@ -1530,9 +1524,6 @@ mymain(void)
+                             "}",
+                        "<source protocol='rbd' name='testshare'>\n"
+                        "  <host name='example.com'/>\n"
+-                       "  <auth username='asdf'>\n"
+-                       "    <secret type='ceph'/>\n"
+-                       "  </auth>\n"
+                        "</source>\n");
+     TEST_BACKING_PARSE("json:{\"file\":{\"driver\":\"rbd\","
+                                        "\"image\":\"test\","
+-- 
+2.7.4
+

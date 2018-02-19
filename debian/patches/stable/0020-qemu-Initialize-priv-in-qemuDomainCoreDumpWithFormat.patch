@@ -1,0 +1,26 @@
+From 6a3ff2310fe940535832daade4a9f4e33b4d6999 Mon Sep 17 00:00:00 2001
+From: John Ferlan <jferlan@redhat.com>
+Date: Tue, 6 Feb 2018 09:08:13 -0500
+Subject: [PATCH 20/23] qemu: Initialize @priv in qemuDomainCoreDumpWithFormat
+
+Fix for a CI build failure
+---
+ src/qemu/qemu_driver.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 5eaf97a..2c0e894 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -3911,7 +3911,7 @@ qemuDomainCoreDumpWithFormat(virDomainPtr dom,
+ {
+     virQEMUDriverPtr driver = dom->conn->privateData;
+     virDomainObjPtr vm;
+-    qemuDomainObjPrivatePtr priv;
++    qemuDomainObjPrivatePtr priv = NULL;
+     bool resume = false, paused = false;
+     int ret = -1;
+     virObjectEventPtr event = NULL;
+-- 
+2.7.4
+
