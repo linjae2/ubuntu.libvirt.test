@@ -1,3 +1,10 @@
+libvirt (4.0.0-1ubuntu4) bionic; urgency=medium
+
+  * d/p/ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch:
+    avoid hanging on shutdown (LP: #1688508)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 23 Feb 2018 16:43:19 +0100
+
 libvirt (4.0.0-1ubuntu3) bionic; urgency=medium
 
   [ Christian Ehrhardt ]

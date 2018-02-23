@@ -75,3 +75,4 @@ stable/0020-qemu-Initialize-priv-in-qemuDomainCoreDumpWithFormat.patch
 stable/0021-fix-regex-to-check-CN-from-server-certificate.patch
 stable/0022-storage-Fix-formatting-and-parsing-of-qemu-type-Unix.patch
 stable/0023-util-storage-Remove-detected-authentication-data-for.patch
+ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch
