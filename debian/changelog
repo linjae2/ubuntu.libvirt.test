@@ -1,3 +1,10 @@
+libvirt (3.6.0-1ubuntu6.4) artful; urgency=medium
+
+  * d/p/ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch:
+    avoid hanging on shutdown (LP: #1688508)
+
+ -- Dariusz Gadomski <dariusz.gadomski@canonical.com>  Mon, 26 Feb 2018 14:30:44 +0100
+
 libvirt (3.6.0-1ubuntu6.3) artful-security; urgency=medium
 
   [ Leonidas S. Barbosa ]
