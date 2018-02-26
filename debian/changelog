@@ -1,3 +1,10 @@
+libvirt (1.3.1-1ubuntu10.20) xenial; urgency=medium
+
+  * d/p/ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch:
+    avoid hanging on shutdown (LP: #1688508)
+
+ -- Dariusz Gadomski <dariusz.gadomski@canonical.com>  Mon, 26 Feb 2018 14:37:40 +0100
+
 libvirt (1.3.1-1ubuntu10.19) xenial-security; urgency=medium
 
   [ Leonidas S. Barbosa ]
