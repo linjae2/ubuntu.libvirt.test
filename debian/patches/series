@@ -94,3 +94,4 @@ CVE-2017-1000256.patch
 CVE-2018-6764-1.patch
 CVE-2018-6764-2.patch
 CVE-2018-6764-3.patch
+ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch
