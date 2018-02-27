@@ -1,0 +1,53 @@
+From 873b276d6fcda49464e49be7ed55fdcace4244d2 Mon Sep 17 00:00:00 2001
+From: Julio Faracco <jcfaracco@gmail.com>
+Date: Tue, 27 Feb 2018 22:17:54 -0300
+Subject: [PATCH 31/31] virsh: fixing segfault by pool autocompleter function.
+
+The commands which requires a pool to perform any action for a volume is
+throwing a segfault when you pass the volume name before a pool name or
+without the argument '--pool'.
+
+An example that works:
+virsh # vol-list loops-pool
+ Name                 Path
+-------------------------------------------------------------------
+ loop0                /mnt/loop0
+
+virsh # vol-info --pool loops-pool lo<TAB>
+
+An example that does not work:
+virsh # vol-list loops-pool
+ Name                 Path
+-------------------------------------------------------------------
+ loop0                /mnt/loop0
+
+virsh # vol-info lo<TAB>
+Segmentation Fault
+
+The example 'vol-info' can be executed as 'vol-info loop0 --pool
+loops-pool'. So, this commit fixes this problem when the arguments are
+inverted and avoids the segfault.
+
+Signed-off-by: Julio Faracco <jcfaracco@gmail.com>
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+---
+ tools/virsh-pool.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/tools/virsh-pool.c b/tools/virsh-pool.c
+index 094874b..20d4a1d 100644
+--- a/tools/virsh-pool.c
++++ b/tools/virsh-pool.c
+@@ -143,6 +143,9 @@ virshCommandOptPoolBy(vshControl *ctl, const vshCmd *cmd, const char *optname,
+     if (vshCommandOptStringReq(ctl, cmd, optname, &n) < 0)
+         return NULL;
+ 
++    if (cmd->skipChecks && !n)
++        return NULL;
++
+     vshDebug(ctl, VSH_ERR_INFO, "%s: found option <%s>: %s\n",
+              cmd->def->name, optname, n);
+ 
+-- 
+2.7.4
+

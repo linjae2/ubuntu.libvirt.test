@@ -1,0 +1,121 @@
+From b932ed69f6664f42e211bdde84c8ab04e1f19033 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Thu, 1 Mar 2018 14:58:39 +0100
+Subject: [PATCH] virt-aa-helper: resolve yet to be created paths
+
+In certain cases a xml contains paths that do not yet exist, but
+are valid as qemu will create them later on - for example
+vhostuser mode=server sockets.
+
+In any such cases so far the check to virFileExists failed and due to
+that the paths stayed non-resolved in regard to symlinks.
+
+But for apparmor those non-resolved rules are non functional as they
+are evaluated after resolving any symlinks.
+
+Therefore for non-existent files and partially non-existent paths
+resolve as much as possible to get valid rules.
+
+Example:
+   <interface type='vhostuser'>
+       <model type='virtio'/>
+       <source type='unix' path='/var/run/symlinknet' mode='server'/>
+   </interface>
+
+Got rendered as:
+  "/var/run/symlinknet" rw,
+
+But correct with "/var/run" being a symlink to "/run" is:
+  "/run/symlinknet" rw,
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Acked-by: Michal Privoznik <mprivozn@redhat.com>
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=b932ed69f6664f42e211bdde84c8ab04e1f19033
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1752361
+Last-Update: 2018-03-09
+---
+ src/security/virt-aa-helper.c | 43 ++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 36 insertions(+), 7 deletions(-)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index ff0068c..992bd44 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -41,6 +41,7 @@
+ #include "viralloc.h"
+ #include "vircommand.h"
+ #include "virlog.h"
++#include "dirname.h"
+ #include "driver.h"
+ 
+ #include "security_driver.h"
+@@ -752,6 +753,9 @@ vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursi
+     bool explicit_deny_rule = true;
+     char *sub = NULL;
+     char *perms_new = NULL;
++    char *pathdir = NULL;
++    char *pathtmp = NULL;
++    char *pathreal = NULL;
+ 
+     if (path == NULL)
+         return rc;
+@@ -766,14 +770,36 @@ vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursi
+         return 0;
+     }
+ 
+-    if (virFileExists(path)) {
+-        if ((tmp = realpath(path, NULL)) == NULL) {
+-            vah_error(NULL, 0, path);
+-            vah_error(NULL, 0, _("could not find realpath for disk"));
+-            return rc;
++    /* files might be created by qemu later on and not exist right now.
++     * But realpath needs a valid path to work on, therefore:
++     * 1. walk the path to find longest valid path
++     * 2. get the realpath of that valid path
++     * 3. re-combine the realpath with the remaining suffix
++     * Note: A totally non existent path is used as-is
++     */
++     if ((pathdir = mdir_name(path)) == NULL)
++         goto cleanup;
++     while (!virFileExists(pathdir)) {
++         if ((pathtmp = mdir_name(pathdir)) == NULL)
++             goto cleanup;
++         VIR_FREE(pathdir);
++         VIR_STEAL_PTR(pathdir, pathtmp);
++     }
++
++    if (strlen(pathdir) == 1) {
++        /* nothing of the path does exist yet */
++        if (VIR_STRDUP_QUIET(tmp, path) < 0)
++            goto cleanup;
++    } else {
++        if (VIR_STRDUP_QUIET(pathtmp, path+strlen(pathdir)) < 0)
++            goto cleanup;
++        if ((pathreal = realpath(pathdir, NULL)) == NULL) {
++            vah_error(NULL, 0, pathdir);
++            vah_error(NULL, 0, _("could not find realpath"));
++            goto cleanup;
+         }
+-    } else if (VIR_STRDUP_QUIET(tmp, path) < 0) {
+-        return rc;
++        if (virAsprintfQuiet(&tmp, "%s%s", pathreal, pathtmp) < 0)
++            goto cleanup;
+     }
+ 
+     if (VIR_STRDUP_QUIET(perms_new, perms) < 0)
+@@ -814,6 +840,9 @@ vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursi
+     }
+ 
+  cleanup:
++    VIR_FREE(pathdir);
++    VIR_FREE(pathtmp);
++    VIR_FREE(pathreal);
+     VIR_FREE(perms_new);
+     VIR_FREE(tmp);
+ 
+-- 
+2.7.4
+

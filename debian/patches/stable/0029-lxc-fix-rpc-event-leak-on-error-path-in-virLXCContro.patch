@@ -1,0 +1,32 @@
+From becd584bd8a03470df090304ab4a085b0891d264 Mon Sep 17 00:00:00 2001
+From: Nikolay Shirokovskiy <nshirokovskiy@virtuozzo.com>
+Date: Mon, 26 Feb 2018 14:13:50 +0300
+Subject: [PATCH 29/31] lxc: fix rpc event leak on error path in
+ virLXCControllerEventSend
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+Signed-off-by: Nikolay Shirokovskiy <nshirokovskiy@virtuozzo.com>
+---
+ src/lxc/lxc_controller.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/lxc/lxc_controller.c b/src/lxc/lxc_controller.c
+index c5e67df..45f1407 100644
+--- a/src/lxc/lxc_controller.c
++++ b/src/lxc/lxc_controller.c
+@@ -2247,7 +2247,8 @@ virLXCControllerEventSend(virLXCControllerPtr ctrl,
+         goto error;
+ 
+     VIR_DEBUG("Queue event %d %zu", procnr, msg->bufferLength);
+-    virNetServerClientSendMessage(ctrl->client, msg);
++    if (virNetServerClientSendMessage(ctrl->client, msg) < 0)
++        goto error;
+ 
+     xdr_free(proc, data);
+     return;
+-- 
+2.7.4
+

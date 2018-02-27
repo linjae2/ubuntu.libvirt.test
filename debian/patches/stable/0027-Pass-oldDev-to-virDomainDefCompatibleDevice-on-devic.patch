@@ -1,0 +1,257 @@
+From 9342109fd068d31e9be50ed2bca6204c25ac3de0 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Thu, 22 Feb 2018 13:30:27 +0100
+Subject: [PATCH 26/31] Pass oldDev to virDomainDefCompatibleDevice on device
+ update
+
+When calling virDomainDefCompatibleDevice to check a new device during
+device update, we need to pass the original device which is going to be
+updated in addition to the new device. Otherwise, the function can
+report false conflicts.
+
+The new argument is currently ignored by virDomainDefCompatibleDevice,
+but this will change in the following patch.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1546971
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+---
+ src/conf/domain_conf.c |  3 ++-
+ src/conf/domain_conf.h |  3 ++-
+ src/lxc/lxc_driver.c   | 15 +++++++++------
+ src/qemu/qemu_driver.c | 51 ++++++++++++++++++++++++++++++++++++++++----------
+ 4 files changed, 54 insertions(+), 18 deletions(-)
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 8c5a906..9fae1e3 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -26919,7 +26919,8 @@ virDomainDeviceInfoCheckBootIndex(virDomainDefPtr def ATTRIBUTE_UNUSED,
+ 
+ int
+ virDomainDefCompatibleDevice(virDomainDefPtr def,
+-                             virDomainDeviceDefPtr dev)
++                             virDomainDeviceDefPtr dev,
++                             virDomainDeviceDefPtr oldDev ATTRIBUTE_UNUSED)
+ {
+     virDomainDeviceInfoPtr info = virDomainDeviceGetInfo(dev);
+ 
+diff --git a/src/conf/domain_conf.h b/src/conf/domain_conf.h
+index 538f68d..239a3b3 100644
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -2997,7 +2997,8 @@ typedef enum {
+ } virDomainDeviceAction;
+ 
+ int virDomainDefCompatibleDevice(virDomainDefPtr def,
+-                                 virDomainDeviceDefPtr dev);
++                                 virDomainDeviceDefPtr dev,
++                                 virDomainDeviceDefPtr oldDev);
+ 
+ void virDomainRNGDefFree(virDomainRNGDefPtr def);
+ 
+diff --git a/src/lxc/lxc_driver.c b/src/lxc/lxc_driver.c
+index b344710..0bd3679 100644
+--- a/src/lxc/lxc_driver.c
++++ b/src/lxc/lxc_driver.c
+@@ -3579,6 +3579,7 @@ lxcDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
+ {
+     int ret = -1;
+     virDomainNetDefPtr net;
++    virDomainDeviceDef oldDev = { .type = dev->type };
+     int idx;
+ 
+     switch (dev->type) {
+@@ -3587,8 +3588,11 @@ lxcDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
+         if ((idx = virDomainNetFindIdx(vmdef, net)) < 0)
+             goto cleanup;
+ 
+-        virDomainNetDefFree(vmdef->nets[idx]);
++        oldDev.data.net = vmdef->nets[idx];
++        if (virDomainDefCompatibleDevice(vmdef, dev, &oldDev) < 0)
++            return -1;
+ 
++        virDomainNetDefFree(vmdef->nets[idx]);
+         vmdef->nets[idx] = net;
+         dev->data.net = NULL;
+         ret = 0;
+@@ -4791,7 +4795,7 @@ static int lxcDomainAttachDeviceFlags(virDomainPtr dom,
+         if (!vmdef)
+             goto endjob;
+ 
+-        if (virDomainDefCompatibleDevice(vmdef, dev) < 0)
++        if (virDomainDefCompatibleDevice(vmdef, dev, NULL) < 0)
+             goto endjob;
+ 
+         if ((ret = lxcDomainAttachDeviceConfig(vmdef, dev)) < 0)
+@@ -4799,7 +4803,7 @@ static int lxcDomainAttachDeviceFlags(virDomainPtr dom,
+     }
+ 
+     if (flags & VIR_DOMAIN_AFFECT_LIVE) {
+-        if (virDomainDefCompatibleDevice(vm->def, dev_copy) < 0)
++        if (virDomainDefCompatibleDevice(vm->def, dev_copy, NULL) < 0)
+             goto endjob;
+ 
+         if ((ret = lxcDomainAttachDeviceLive(dom->conn, driver, vm, dev_copy)) < 0)
+@@ -4902,9 +4906,8 @@ static int lxcDomainUpdateDeviceFlags(virDomainPtr dom,
+         if (!vmdef)
+             goto endjob;
+ 
+-        if (virDomainDefCompatibleDevice(vmdef, dev) < 0)
+-            goto endjob;
+-
++        /* virDomainDefCompatibleDevice call is delayed until we know the
++         * device we're going to update. */
+         if ((ret = lxcDomainUpdateDeviceConfig(vmdef, dev)) < 0)
+             goto endjob;
+     }
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 599980e..21b3220 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -7838,6 +7838,7 @@ qemuDomainChangeDiskLive(virConnectPtr conn,
+ {
+     virDomainDiskDefPtr disk = dev->data.disk;
+     virDomainDiskDefPtr orig_disk = NULL;
++    virDomainDeviceDef oldDev = { .type = dev->type };
+     int ret = -1;
+ 
+     if (virStorageTranslateDiskSourcePool(conn, disk) < 0)
+@@ -7855,6 +7856,10 @@ qemuDomainChangeDiskLive(virConnectPtr conn,
+         goto cleanup;
+     }
+ 
++    oldDev.data.disk = orig_disk;
++    if (virDomainDefCompatibleDevice(vm->def, dev, &oldDev) < 0)
++        goto cleanup;
++
+     if (!qemuDomainDiskChangeSupported(disk, orig_disk))
+         goto cleanup;
+ 
+@@ -7898,19 +7903,36 @@ qemuDomainUpdateDeviceLive(virConnectPtr conn,
+                            bool force)
+ {
+     virQEMUDriverPtr driver = dom->conn->privateData;
++    virDomainDeviceDef oldDev = { .type = dev->type };
+     int ret = -1;
++    int idx;
+ 
+     switch ((virDomainDeviceType) dev->type) {
+     case VIR_DOMAIN_DEVICE_DISK:
+         qemuDomainObjCheckDiskTaint(driver, vm, dev->data.disk, NULL);
+         ret = qemuDomainChangeDiskLive(conn, vm, dev, driver, force);
+         break;
++
+     case VIR_DOMAIN_DEVICE_GRAPHICS:
++        if ((idx = qemuDomainFindGraphicsIndex(vm->def, dev->data.graphics) >= 0)) {
++            oldDev.data.graphics = vm->def->graphics[idx];
++            if (virDomainDefCompatibleDevice(vm->def, dev, &oldDev) < 0)
++                return -1;
++        }
++
+         ret = qemuDomainChangeGraphics(driver, vm, dev->data.graphics);
+         break;
++
+     case VIR_DOMAIN_DEVICE_NET:
++        if ((idx = virDomainNetFindIdx(vm->def, dev->data.net)) >= 0) {
++            oldDev.data.net = vm->def->nets[idx];
++            if (virDomainDefCompatibleDevice(vm->def, dev, &oldDev) < 0)
++                return -1;
++        }
++
+         ret = qemuDomainChangeNet(driver, vm, dev);
+         break;
++
+     case VIR_DOMAIN_DEVICE_FS:
+     case VIR_DOMAIN_DEVICE_INPUT:
+     case VIR_DOMAIN_DEVICE_SOUND:
+@@ -8325,6 +8347,7 @@ qemuDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
+     virDomainDiskDefPtr newDisk;
+     virDomainGraphicsDefPtr newGraphics;
+     virDomainNetDefPtr net;
++    virDomainDeviceDef oldDev = { .type = dev->type };
+     int pos;
+ 
+     switch ((virDomainDeviceType) dev->type) {
+@@ -8336,6 +8359,10 @@ qemuDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
+             return -1;
+         }
+ 
++        oldDev.data.disk = vmdef->disks[pos];
++        if (virDomainDefCompatibleDevice(vmdef, dev, &oldDev) < 0)
++            return -1;
++
+         virDomainDiskDefFree(vmdef->disks[pos]);
+         vmdef->disks[pos] = newDisk;
+         dev->data.disk = NULL;
+@@ -8351,8 +8378,11 @@ qemuDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
+             return -1;
+         }
+ 
+-        virDomainGraphicsDefFree(vmdef->graphics[pos]);
++        oldDev.data.graphics = vmdef->graphics[pos];
++        if (virDomainDefCompatibleDevice(vmdef, dev, &oldDev) < 0)
++            return -1;
+ 
++        virDomainGraphicsDefFree(vmdef->graphics[pos]);
+         vmdef->graphics[pos] = newGraphics;
+         dev->data.graphics = NULL;
+         break;
+@@ -8362,8 +8392,11 @@ qemuDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
+         if ((pos = virDomainNetFindIdx(vmdef, net)) < 0)
+             return -1;
+ 
+-        virDomainNetDefFree(vmdef->nets[pos]);
++        oldDev.data.net = vmdef->nets[pos];
++        if (virDomainDefCompatibleDevice(vmdef, dev, &oldDev) < 0)
++            return -1;
+ 
++        virDomainNetDefFree(vmdef->nets[pos]);
+         vmdef->nets[pos] = net;
+         dev->data.net = NULL;
+         break;
+@@ -8451,7 +8484,7 @@ qemuDomainAttachDeviceLiveAndConfig(virConnectPtr conn,
+         if (!vmdef)
+             goto cleanup;
+ 
+-        if (virDomainDefCompatibleDevice(vmdef, dev) < 0)
++        if (virDomainDefCompatibleDevice(vmdef, dev, NULL) < 0)
+             goto cleanup;
+         if ((ret = qemuDomainAttachDeviceConfig(vmdef, dev, conn, caps,
+                                                 parse_flags,
+@@ -8460,7 +8493,7 @@ qemuDomainAttachDeviceLiveAndConfig(virConnectPtr conn,
+     }
+ 
+     if (flags & VIR_DOMAIN_AFFECT_LIVE) {
+-        if (virDomainDefCompatibleDevice(vm->def, dev_copy) < 0)
++        if (virDomainDefCompatibleDevice(vm->def, dev_copy, NULL) < 0)
+             goto cleanup;
+ 
+         if ((ret = qemuDomainAttachDeviceLive(vm, dev_copy, conn, driver)) < 0)
+@@ -8600,9 +8633,8 @@ static int qemuDomainUpdateDeviceFlags(virDomainPtr dom,
+         if (!vmdef)
+             goto endjob;
+ 
+-        if (virDomainDefCompatibleDevice(vmdef, dev) < 0)
+-            goto endjob;
+-
++        /* virDomainDefCompatibleDevice call is delayed until we know the
++         * device we're going to update. */
+         if ((ret = qemuDomainUpdateDeviceConfig(vmdef, dev, caps,
+                                                 parse_flags,
+                                                 driver->xmlopt)) < 0)
+@@ -8610,9 +8642,8 @@ static int qemuDomainUpdateDeviceFlags(virDomainPtr dom,
+     }
+ 
+     if (flags & VIR_DOMAIN_AFFECT_LIVE) {
+-        if (virDomainDefCompatibleDevice(vm->def, dev_copy) < 0)
+-            goto endjob;
+-
++        /* virDomainDefCompatibleDevice call is delayed until we know the
++         * device we're going to update. */
+         if ((ret = qemuDomainUpdateDeviceLive(dom->conn, vm, dev_copy, dom, force)) < 0)
+             goto endjob;
+         /*
+-- 
+2.7.4
+

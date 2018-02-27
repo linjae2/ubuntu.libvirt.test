@@ -1,0 +1,43 @@
+From dadfba923ab020323885b2343e833d52770c3ca8 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Wed, 7 Mar 2018 11:02:23 +0100
+Subject: [PATCH] apparmor: add ro rule for sasl GSSAPI plugin on
+ /etc/gss/mech.d/
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+If a system has sasl GSSAPI plugin available qemu with sasl support will
+try to read /etc/gss/mech.d/.
+
+It is required to allow that to let the modules fully work and it should
+be safe to do so as it only registers/configures plugins but has no secrets.
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=dadfba923ab020323885b2343e833d52770c3ca8
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1696471
+Last-Update: 2018-03-09
+
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+---
+ examples/apparmor/libvirt-qemu | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/examples/apparmor/libvirt-qemu b/examples/apparmor/libvirt-qemu
+index 950b042..2c47652 100644
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
+@@ -192,3 +192,7 @@
+   # silence refusals to open lttng files (see LP: #1432644)
+   deny /dev/shm/lttng-ust-wait-* r,
+   deny /run/shm/lttng-ust-wait-* r,
++
++  # required for sasl GSSAPI plugin
++  /etc/gss/mech.d/ r,
++  /etc/gss/mech.d/* r,
+-- 
+2.7.4
+

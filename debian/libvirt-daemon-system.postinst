@@ -81,6 +81,28 @@ add_users_groups()
         addgroup --quiet --system $PARAMETER_GID libvirt-qemu
         adduser --quiet libvirt-qemu libvirt-qemu
     fi
+
+    if ! getent group libvirt-dnsmasq >/dev/null; then
+        addgroup --quiet --system libvirt-dnsmasq
+    fi
+    if ! getent passwd libvirt-dnsmasq >/dev/null; then
+        adduser --quiet \
+                --system \
+                --ingroup libvirt-dnsmasq \
+                --disabled-login \
+                --disabled-password \
+                --home /var/lib/libvirt/dnsmasq \
+                --no-create-home \
+                --gecos "Libvirt Dnsmasq" \
+                libvirt-dnsmasq
+    fi
+    # For upgrades that still have the insecure libvirt group (too much privileges)
+    if [ -n "$2" ] && dpkg --compare-versions -- "$2" le-nl "4.0.0-1ubuntu5~"; then
+        if [ "$(id -r -g -n libvirt-dnsmasq)" == "libvirt" ]; then
+            echo "assigning libvirt-dnsmasq a less privileged group (libvirt->libvirt-dnsmasq)"
+            usermod libvirt-dnsmasq -g libvirt-dnsmasq
+        fi
+    fi
 }
 
 includes_addr() {

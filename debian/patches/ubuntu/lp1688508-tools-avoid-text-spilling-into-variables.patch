@@ -15,7 +15,7 @@ Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
 
 Forwarded: no (backport)
 Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
-Origin: upstream, <todo-URL-to-git>
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=ff02d1af4041ea4cf6bea68aac66d93a970e92f1
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1688508
 Last-Update: 2018-02-23
 ---

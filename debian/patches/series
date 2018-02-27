@@ -34,6 +34,8 @@ ubuntu/virt-aa-helper-Set-the-supported-features.patch
 ubuntu/CVE-2018-6764-1.patch
 ubuntu/CVE-2018-6764-2.patch
 ubuntu/CVE-2018-6764-3.patch
+ubuntu/dnsmasq-as-priv-user
+ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0001-apparmor-Allow-pygrub-to-run-on-Debian-Ubuntu.patch
@@ -52,6 +54,8 @@ ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/0040-apparmor-add-mediation-rules-for-unconfined.patch
 
 # backport non feature fixes to stabilize
+ubuntu-aa/0041-apparmor-add-ro-rule-for-sasl-GSSAPI-plugin-on-etc-g.patch
+ubuntu-aa/0042-virt-aa-helper-resolve-yet-to-be-created-paths.patch
 stable/0001-Revert-qemu-monitor-do-not-report-error-on-shutdown.patch
 stable/0002-nodedev-Fix-failing-to-parse-PCI-address-for-non-PCI.patch
 stable/0003-qemu-assign-correct-type-of-PCI-address-for-vhost-sc.patch
@@ -75,4 +79,12 @@ stable/0020-qemu-Initialize-priv-in-qemuDomainCoreDumpWithFormat.patch
 stable/0021-fix-regex-to-check-CN-from-server-certificate.patch
 stable/0022-storage-Fix-formatting-and-parsing-of-qemu-type-Unix.patch
 stable/0023-util-storage-Remove-detected-authentication-data-for.patch
-ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch
+stable/0024-qemu-blockcopy-Add-check-for-bandwidth.patch
+stable/0025-conf-move-generated-member-from-virMacAddr-to-virDom.patch
+stable/0026-lxc-Drop-useless-check-in-live-device-update.patch
+stable/0027-Pass-oldDev-to-virDomainDefCompatibleDevice-on-devic.patch
+stable/0028-qemu-Fix-updating-device-with-boot-order.patch
+stable/0030-daemon-fix-rpc-event-leak-on-error-path-in-remoteDis.patch
+stable/0029-lxc-fix-rpc-event-leak-on-error-path-in-virLXCContro.patch
+stable/0031-qemu-fix-memory-leak-of-vporttype-during-migration.patch
+stable/0032-virsh-fixing-segfault-by-pool-autocompleter-function.patch

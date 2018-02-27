@@ -1,0 +1,39 @@
+From 1d553dbc80bc6b285af1138bea3ff3b057a5a92f Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon, 19 Feb 2018 09:21:29 +0100
+Subject: [PATCH 24/31] qemu: blockcopy: Add check for bandwidth
+
+QEMU code does not work well with too big numbers on the JSON monitor so
+our monitor code supports sending only numbers up to LLONG_MAX. Avoid a
+weird error message by limiting the size of the 'bandwidth' parameter
+for block copy.
+
+Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1532542
+
+Signed-off-by: Peter Krempa <pkrempa@redhat.com>
+---
+ src/qemu/qemu_driver.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 2c0e894..599980e 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -17098,6 +17098,14 @@ qemuDomainBlockCopyCommon(virDomainObjPtr vm,
+         goto cleanup;
+     }
+ 
++    if (bandwidth > LLONG_MAX) {
++        virReportError(VIR_ERR_INVALID_ARG,
++                       _("bandwidth must be less than "
++                         "'%llu' bytes/s (%llu MiB/s)"),
++                       LLONG_MAX, LLONG_MAX >> 20);
++        goto cleanup;
++    }
++
+     if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
+         goto cleanup;
+ 
+-- 
+2.7.4
+
