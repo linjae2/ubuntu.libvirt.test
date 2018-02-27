@@ -1,0 +1,30 @@
+From e3497f3fc895c427ce35188f3ddb2bb47a853be9 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Thu, 22 Feb 2018 13:22:39 +0100
+Subject: [PATCH] lxc: Drop useless check in live device update
+
+Checking the new device definition makes little sense when lxc driver
+does not support live device update at all.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+---
+ src/lxc/lxc_driver.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/src/lxc/lxc_driver.c b/src/lxc/lxc_driver.c
+index 3d5b225..4c6f09a 100644
+--- a/src/lxc/lxc_driver.c
++++ b/src/lxc/lxc_driver.c
+@@ -4939,9 +4939,6 @@ static int lxcDomainUpdateDeviceFlags(virDomainPtr dom,
+     }
+ 
+     if (flags & VIR_DOMAIN_AFFECT_LIVE) {
+-        if (virDomainDefCompatibleDevice(vm->def, dev_copy) < 0)
+-            goto endjob;
+-
+         virReportError(VIR_ERR_OPERATION_UNSUPPORTED, "%s",
+                        _("Unable to modify live devices"));
+ 
+-- 
+2.7.4
+

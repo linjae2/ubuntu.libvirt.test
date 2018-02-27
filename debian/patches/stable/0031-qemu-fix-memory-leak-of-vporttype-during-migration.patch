@@ -1,0 +1,39 @@
+From 4b529ca433196b53ba613a7c919d46a40578607e Mon Sep 17 00:00:00 2001
+From: Zhangzijian <zhang.zijian@h3c.com>
+Date: Wed, 28 Feb 2018 01:18:23 +0000
+Subject: [PATCH 30/31] qemu: fix memory leak of @vporttype during migration.
+
+12 bytes in 1 blocks are definitely lost in loss record 188 of 1,145
+at 0x4C2B6CD: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+by 0x5D2CD77: xmlStrndup (in /lib/x86_64-linux-gnu/libxml2.so.2.7.8)
+by 0x514E137: virXMLPropString (virxml.c:506)
+by 0x234F51: qemuMigrationCookieNetworkXMLParse qemu_migration.c:1001)
+by 0x235FF8: qemuMigrationCookieXMLParse (qemu_migration.c:1333)
+by 0x236214: qemuMigrationCookieXMLParseStr (qemu_migration.c:1372)
+by 0x2365D2: qemuMigrationEatCookie (qemu_migration.c:1456)
+by 0x243DBA: qemuMigrationFinish (qemu_migration.c:6381)
+by 0x204032: qemuDomainMigrateFinish3 (qemu_driver.c:13228)
+by 0x521CCBB: virDomainMigrateFinish3 (libvirt-domain.c:4788)
+by 0x1936DE: remoteDispatchDomainMigrateFinish3 (remote.c:4580)
+by 0x16DBB1: remoteDispatchDomainMigrateFinish3Helper(remote_dispatch.h:7582)
+
+Signed-off-by: ZhangZijian <zhang.zijian@h3c.com>
+---
+ src/qemu/qemu_migration_cookie.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/qemu/qemu_migration_cookie.c b/src/qemu/qemu_migration_cookie.c
+index 2877913..4d0b206 100644
+--- a/src/qemu/qemu_migration_cookie.c
++++ b/src/qemu/qemu_migration_cookie.c
+@@ -900,6 +900,7 @@ qemuMigrationCookieNetworkXMLParse(xmlXPathContextPtr ctxt)
+             goto error;
+         }
+         optr->net[i].vporttype = virNetDevVPortTypeFromString(vporttype);
++        VIR_FREE(vporttype);
+     }
+ 
+     VIR_FREE(interfaces);
+-- 
+2.7.4
+

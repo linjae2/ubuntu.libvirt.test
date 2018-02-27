@@ -1,0 +1,32 @@
+From 57e13cb098f3185e04e627e770974af7e41ec5e5 Mon Sep 17 00:00:00 2001
+From: Nikolay Shirokovskiy <nshirokovskiy@virtuozzo.com>
+Date: Mon, 26 Feb 2018 14:13:49 +0300
+Subject: [PATCH 28/31] daemon: fix rpc event leak on error path in
+ remoteDispatchObjectEventSend
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+Signed-off-by: Nikolay Shirokovskiy <nshirokovskiy@virtuozzo.com>
+---
+ daemon/remote.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/daemon/remote.c b/daemon/remote.c
+index b6fe6d8..42bc200 100644
+--- a/daemon/remote.c
++++ b/daemon/remote.c
+@@ -4008,7 +4008,8 @@ remoteDispatchObjectEventSend(virNetServerClientPtr client,
+         goto cleanup;
+ 
+     VIR_DEBUG("Queue event %d %zu", procnr, msg->bufferLength);
+-    virNetServerClientSendMessage(client, msg);
++    if (virNetServerClientSendMessage(client, msg) < 0)
++        goto cleanup;
+ 
+     xdr_free(proc, data);
+     return;
+-- 
+2.7.4
+

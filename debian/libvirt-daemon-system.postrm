@@ -38,6 +38,16 @@ case "$1" in
     		deluser libvirt-dnsmasq >/dev/null || true
 	fi
 
+    # a running libvirt-dnsmasq will break these removals
+    # yet the lifecycle of the network is non-related to the pkg purge
+    # Therefore ignore errors on these removals, better leave a user than break
+    if getent group libvirt-dnsmasq >/dev/null; then
+        delgroup libvirt-dnsmasq --system 2>/dev/null >/dev/null || true
+    fi
+    if getent passwd libvirt-dnsmasq >/dev/null; then
+        deluser libvirt-dnsmasq --system 2>/dev/null >/dev/null || true
+    fi
+
 	# Clean up logs and cached capabilities
 	rm -rf /var/log/libvirt \
 	       /var/cache/libvirt/qemu/capabilities
