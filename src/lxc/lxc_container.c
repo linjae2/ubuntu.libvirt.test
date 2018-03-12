@@ -473,7 +473,7 @@ lxcContainerGetNetDef(virDomainDefPtr vmDef, const char *devName)
 
     for (i = 0; i < vmDef->nnets; i++) {
         netDef = vmDef->nets[i];
-        if (STREQ(netDef->ifname_guest_actual, devName))
+        if (netDef->ifname_guest_actual && STREQ(netDef->ifname_guest_actual, devName))
             return netDef;
     }
 
