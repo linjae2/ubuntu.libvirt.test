@@ -63,6 +63,7 @@
 VIR_LOG_INIT("util.log");
 
 static regex_t *virLogRegex;
+static char virLogHostname[HOST_NAME_MAX+1];
 
 
 #define VIR_LOG_DATE_REGEX "[0-9]{4}-[0-9]{2}-[0-9]{2}"
@@ -259,6 +260,8 @@ virLogPriorityString(virLogPriority lvl)
 static int
 virLogOnceInit(void)
 {
+    int r;
+
     if (virMutexInit(&virLogMutex) < 0)
         return -1;
 
@@ -268,6 +271,21 @@ virLogOnceInit(void)
     if (VIR_ALLOC_QUIET(virLogRegex) >= 0) {
         if (regcomp(virLogRegex, VIR_LOG_REGEX, REG_EXTENDED) != 0)
             VIR_FREE(virLogRegex);
+    }
+
+    /* We get and remember the hostname early, because at later time
+     * it might not be possible to load NSS modules via getaddrinfo()
+     * (e.g. at container startup the host filesystem will not be
+     * accessible anymore.
+     * Must not use virGetHostname though as that causes re-entrancy
+     * problems if it triggers logging codepaths
+     */
+    r = gethostname(virLogHostname, sizeof(virLogHostname));
+    if (r == -1) {
+        ignore_value(virStrcpy(virLogHostname,
+                               "(unknown)", sizeof(virLogHostname)));
+    } else {
+        NUL_TERMINATE(virLogHostname);
     }
 
     virLogUnlock();
@@ -465,17 +483,10 @@ static int
 virLogHostnameString(char **rawmsg,
                      char **msg)
 {
-    char *hostname = virGetHostnameQuiet();
     char *hoststr;
 
-    if (!hostname)
+    if (virAsprintfQuiet(&hoststr, "hostname: %s", virLogHostname) < 0)
         return -1;
-
-    if (virAsprintfQuiet(&hoststr, "hostname: %s", hostname) < 0) {
-        VIR_FREE(hostname);
-        return -1;
-    }
-    VIR_FREE(hostname);
 
     if (virLogFormatString(msg, 0, NULL, VIR_LOG_INFO, hoststr) < 0) {
         VIR_FREE(hoststr);
