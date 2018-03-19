@@ -1,0 +1,37 @@
+From 5535856f0e31aa6abf4cda11b5c53c0f164680f0 Mon Sep 17 00:00:00 2001
+From: John Ferlan <jferlan@redhat.com>
+Date: Thu, 1 Mar 2018 07:08:32 -0500
+Subject: [PATCH] conf: Fix crash in virDomainDefCompatibleDevice
+
+Commit id 'edae027c' blindly assumed that the passed @oldDev
+parameter would not be NULL when calling virDomainDeviceGetInfo;
+however, commit id 'b6a264e8' passed NULL for AttachDevice
+callers under the premise that there wouldn't be a device
+to check/update against.
+
+Signed-off-by: John Ferlan <jferlan@redhat.com>
+---
+ src/conf/domain_conf.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index d96b012..fcafc8b 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -27417,9 +27417,12 @@ virDomainDefCompatibleDevice(virDomainDefPtr def,
+ {
+     virDomainCompatibleDeviceData data = {
+         .newInfo = virDomainDeviceGetInfo(dev),
+-        .oldInfo = virDomainDeviceGetInfo(oldDev),
++        .oldInfo = NULL,
+     };
+ 
++    if (oldDev)
++        data.oldInfo = virDomainDeviceGetInfo(oldDev);
++
+     if (!virDomainDefHasUSB(def) &&
+         def->os.type != VIR_DOMAIN_OSTYPE_EXE &&
+         virDomainDeviceIsUSB(dev)) {
+-- 
+2.7.4
+

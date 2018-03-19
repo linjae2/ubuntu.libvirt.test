@@ -1,0 +1,123 @@
+From ab62344360da329a63dae70ea48d63137ab0f09e Mon Sep 17 00:00:00 2001
+From: Jim Fehlig <jfehlig@suse.com>
+Date: Thu, 8 Mar 2018 15:04:48 -0700
+Subject: [PATCH 35/37] libvirtd: fix potential deadlock when reloading
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+It is possible to deadlock libvirtd when concurrently starting a domain
+and restarting the daemon. Threads involved in the deadlock are
+
+Thread 4 (Thread 0x7fc13b53e700 (LWP 64084)):
+/lib64/libpthread.so.0
+    at util/virthread.c:154
+    at qemu/qemu_monitor.c:1083
+    cmd=0x7fc110017700, scm_fd=-1, reply=0x7fc13b53d318) at
+qemu/qemu_monitor_json.c:305
+cmd=0x7fc110017700,
+    reply=0x7fc13b53d318) at qemu/qemu_monitor_json.c:335
+    at qemu/qemu_monitor_json.c:1298
+    at qemu/qemu_monitor.c:1697
+    vm=0x7fc110003d00, asyncJob=QEMU_ASYNC_JOB_START) at qemu/qemu_process.c:1763
+vm=0x7fc110003d00,
+    asyncJob=6, logCtxt=0x7fc1100089c0) at qemu/qemu_process.c:1835
+    vm=0x7fc110003d00, asyncJob=6, logCtxt=0x7fc1100089c0) at
+qemu/qemu_process.c:2180
+driver=0x7fc12004e1e0,
+    vm=0x7fc110003d00, asyncJob=QEMU_ASYNC_JOB_START, incoming=0x0, snapshot=0x0,
+    vmop=VIR_NETDEV_VPORT_PROFILE_OP_CREATE, flags=17) at qemu/qemu_process.c:6111
+driver=0x7fc12004e1e0,
+    vm=0x7fc110003d00, updatedCPU=0x0, asyncJob=QEMU_ASYNC_JOB_START,
+migrateFrom=0x0,
+    migrateFd=-1, migratePath=0x0, snapshot=0x0,
+vmop=VIR_NETDEV_VPORT_PROFILE_OP_CREATE,
+    flags=17) at qemu/qemu_process.c:6334
+    xml=0x7fc110000ed0 "<!--\nWARNING: THIS IS AN AUTO-GENERATED FILE.
+CHANGES TO IT ARE LIKELY TO BE\nOVERWRITTEN AND LOST. Changes to this xml
+configuration should be made using:\n  virsh edit testvv\nor other
+applicati"..., flags=0) at qemu/qemu_driver.c:1776
+...
+
+Thread 1 (Thread 0x7fc143c66880 (LWP 64081)):
+/lib64/libpthread.so.0
+    at util/virthread.c:122
+conf/nwfilter_conf.c:159
+sig=0x7ffe0a831e30,
+    opaque=0x0) at remote/remote_daemon.c:724
+    opaque=0x558c5328b230) at rpc/virnetdaemon.c:654
+    at util/vireventpoll.c:508
+rpc/virnetdaemon.c:858
+remote/remote_daemon.c:1496
+(gdb) thr 1
+[Switching to thread 1 (Thread 0x7fc143c66880 (LWP 64081))]
+/lib64/libpthread.so.0
+(gdb) f 1
+    at util/virthread.c:122
+122	    pthread_rwlock_wrlock(&m->lock);
+(gdb) p updateLock
+$1 = {lock = {__data = {__lock = 0, __nr_readers = 1, __readers_wakeup = 0,
+      __writer_wakeup = 0, __nr_readers_queued = 0, __nr_writers_queued = 1,
+__writer = 0,
+      __shared = 0, __rwelision = 0 '\000', __pad1 = "\000\000\000\000\000\000",
+      __pad2 = 0, __flags = 0},
+    __size = "\000\000\000\000\001", '\000' <repeats 15 times>, "\001",
+'\000' <repeats 34 times>, __align = 4294967296}}
+
+Reloading of the nwfilter driver is stuck waiting for a write lock, which
+already has a reader (from qemuDomainCreateXML) in the critical section.
+Since the reload occurs in the context of the main event loop thread,
+libvirtd becomes deadlocked. The deadlock can be avoided by offloading
+the reload work to a thread.
+
+Signed-off-by: Jim Fehlig <jfehlig@suse.com>
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+---
+ daemon/libvirtd.c | 22 +++++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/daemon/libvirtd.c b/daemon/libvirtd.c
+index 6d3b833..5409859 100644
+--- a/daemon/libvirtd.c
++++ b/daemon/libvirtd.c
+@@ -709,20 +709,32 @@ static void daemonShutdownHandler(virNetDaemonPtr dmn,
+     virNetDaemonQuit(dmn);
+ }
+ 
++static void daemonReloadHandlerThread(void *opague ATTRIBUTE_UNUSED)
++{
++    VIR_INFO("Reloading configuration on SIGHUP");
++    virHookCall(VIR_HOOK_DRIVER_DAEMON, "-",
++                VIR_HOOK_DAEMON_OP_RELOAD, SIGHUP, "SIGHUP", NULL, NULL);
++    if (virStateReload() < 0)
++        VIR_WARN("Error while reloading drivers");
++}
++
+ static void daemonReloadHandler(virNetDaemonPtr dmn ATTRIBUTE_UNUSED,
+                                 siginfo_t *sig ATTRIBUTE_UNUSED,
+                                 void *opaque ATTRIBUTE_UNUSED)
+ {
++    virThread thr;
++
+     if (!driversInitialized) {
+         VIR_WARN("Drivers are not initialized, reload ignored");
+         return;
+     }
+ 
+-    VIR_INFO("Reloading configuration on SIGHUP");
+-    virHookCall(VIR_HOOK_DRIVER_DAEMON, "-",
+-                VIR_HOOK_DAEMON_OP_RELOAD, SIGHUP, "SIGHUP", NULL, NULL);
+-    if (virStateReload() < 0)
+-        VIR_WARN("Error while reloading drivers");
++    if (virThreadCreate(&thr, false, daemonReloadHandlerThread, NULL) < 0) {
++        /*
++         * Not much we can do on error here except log it.
++         */
++        VIR_ERROR(_("Failed to create thread to handle daemon restart"));
++    }
+ }
+ 
+ static int daemonSetupSignals(virNetDaemonPtr dmn)
+-- 
+2.7.4
+
