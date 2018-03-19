@@ -1,0 +1,56 @@
+From 77cd862fb5e1d61922ab945f52ad94f7753704a5 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Mon, 19 Mar 2018 11:10:29 +0100
+Subject: [PATCH] virt-aa-helper: resolve file symlinks
+
+In a recent change b932ed69: "virt-aa-helper: resolve yet to be created
+paths" several cases with symlinks in paths were fixed, but it regressed
+cases where the file being last element of the path was the actual link.
+
+In the case of the last element being the symlink realpath can (and shall)
+be called on the full path that was passed.
+
+Examples would be zfs/lvm block devices like:
+ <disk type='block' device='disk'>
+    <driver name='qemu' type='raw'/>
+    <source dev='/dev/mapper/testlvm-testvol1'/>
+    <target dev='vdd' bus='virtio'/>
+ </disk>
+With the target being:
+ /dev/mapper/testlvm-testvol1 -> ../dm-0
+
+That currently is rendered as
+ "/dev/mapper/testlvm-testvol1" rwk,
+but instead should be (and is with the fix):
+ "/dev/dm-0" rwk,
+
+Fixes: b932ed69: "virt-aa-helper: resolve yet to be created paths"
+Fixes: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1756394
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=77cd862fb5e1d61922ab945f52ad94f7753704a5
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1756394
+Last-Update: 2018-03-21
+---
+ src/security/virt-aa-helper.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index 992bd44..456cfce 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -777,7 +777,7 @@ vah_add_path(virBufferPtr buf, const char *path, const char *perms, bool recursi
+      * 3. re-combine the realpath with the remaining suffix
+      * Note: A totally non existent path is used as-is
+      */
+-     if ((pathdir = mdir_name(path)) == NULL)
++     if (VIR_STRDUP_QUIET(pathdir, path) < 0)
+          goto cleanup;
+      while (!virFileExists(pathdir)) {
+          if ((pathtmp = mdir_name(pathdir)) == NULL)
+-- 
+2.7.4
+

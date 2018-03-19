@@ -1,0 +1,34 @@
+From 1606edc6b8f0a6eaef79db6b4bb48a0e7d6343df Mon Sep 17 00:00:00 2001
+From: Farhan Ali <alifm@linux.vnet.ibm.com>
+Date: Thu, 8 Mar 2018 11:07:04 -0500
+Subject: [PATCH 36/37] qemu: Use correct bus type for input devices
+
+commit 7210cef452db 'qemu: build command line for virtio input devices'
+introduced an error, by checking if input bus type is
+VIR_DOMAIN_DISK_BUS_VIRTIO.
+
+Fix it by using the correct bus type for input devices.
+
+Signed-off-by: Farhan Ali <alifm@linux.vnet.ibm.com>
+Reviewed-by: Boris Fiuczynski <fiuczy@linux.vnet.ibm.com>
+Reviewed-by: John Ferlan <jferlan@redhat.com>
+---
+ src/qemu/qemu_domain_address.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_domain_address.c b/src/qemu/qemu_domain_address.c
+index 600de85..396b0ec 100644
+--- a/src/qemu/qemu_domain_address.c
++++ b/src/qemu/qemu_domain_address.c
+@@ -299,7 +299,7 @@ qemuDomainPrimeVirtioDeviceAddresses(virDomainDefPtr def,
+     }
+ 
+     for (i = 0; i < def->ninputs; i++) {
+-        if (def->inputs[i]->bus == VIR_DOMAIN_DISK_BUS_VIRTIO &&
++        if (def->inputs[i]->bus == VIR_DOMAIN_INPUT_BUS_VIRTIO &&
+             def->inputs[i]->info.type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE)
+             def->inputs[i]->info.type = type;
+     }
+-- 
+2.7.4
+

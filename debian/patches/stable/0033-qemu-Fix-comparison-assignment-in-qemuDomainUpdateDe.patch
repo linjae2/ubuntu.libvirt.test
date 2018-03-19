@@ -1,0 +1,30 @@
+From e30066226f837f46a6f147b8e3cecb841f0bd164 Mon Sep 17 00:00:00 2001
+From: Erik Skultety <eskultet@redhat.com>
+Date: Tue, 6 Mar 2018 09:20:58 +0100
+Subject: [PATCH 33/37] qemu: Fix comparison assignment in
+ qemuDomainUpdateDeviceLive
+
+Fix this common typo and assign a value rather than implicitly
+type-casted comparison result. Introduced by commit b6a264e855.
+
+Signed-off-by: Erik Skultety <eskultet@redhat.com>
+---
+ src/qemu/qemu_driver.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 21b3220..7daeba4 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -7914,7 +7914,7 @@ qemuDomainUpdateDeviceLive(virConnectPtr conn,
+         break;
+ 
+     case VIR_DOMAIN_DEVICE_GRAPHICS:
+-        if ((idx = qemuDomainFindGraphicsIndex(vm->def, dev->data.graphics) >= 0)) {
++        if ((idx = qemuDomainFindGraphicsIndex(vm->def, dev->data.graphics)) >= 0) {
+             oldDev.data.graphics = vm->def->graphics[idx];
+             if (virDomainDefCompatibleDevice(vm->def, dev, &oldDev) < 0)
+                 return -1;
+-- 
+2.7.4
+

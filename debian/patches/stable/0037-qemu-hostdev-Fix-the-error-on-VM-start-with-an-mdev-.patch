@@ -1,0 +1,56 @@
+From 10d80bd89ccd00e5a90effc0001ad14cab4ce569 Mon Sep 17 00:00:00 2001
+From: Erik Skultety <eskultet@redhat.com>
+Date: Thu, 15 Mar 2018 14:58:22 +0100
+Subject: [PATCH 37/37] qemu: hostdev: Fix the error on VM start with an mdev
+ when IOMMU is off
+
+Commit b4c2ac8d56 made a false assumption that IOMMU support necessary
+for an mdev device to be assigned to a VM. Unlike direct PCI assignment,
+IOMMU support is not needed for mediated devices, as the physical parent
+device provides the isolation, therefore, simply checking for VFIO
+presence is enough to successfully start a VM.
+
+Luckily, this issue is not serious, since as of yet, libvirt mandates
+mdevs to be pre-created prior to a domain's launch - if it is,
+everything does work smoothly even with IOMMU disabled, because the
+parent device will ensure the iommu groups we try to access exist.
+However, if there are *no* IOMMU groups yet, thus no mdev exists yet, one
+would see the following error:
+
+"unsupported configuration: Mediated host device assignment requires VFIO
+support"
+
+The error msg above is simply wrong and doesn't even reflect the IOMMU
+reality, so after applying this patch one would rather see the following
+error in such case instead:
+
+"device not found: mediated device '<UUID>' not found"
+
+Signed-off-by: Erik Skultety <eskultet@redhat.com>
+---
+ src/qemu/qemu_hostdev.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_hostdev.c b/src/qemu/qemu_hostdev.c
+index 73d26f4..afe445d 100644
+--- a/src/qemu/qemu_hostdev.c
++++ b/src/qemu/qemu_hostdev.c
+@@ -330,9 +330,14 @@ qemuHostdevPrepareMediatedDevices(virQEMUDriverPtr driver,
+                                   int nhostdevs)
+ {
+     virHostdevManagerPtr hostdev_mgr = driver->hostdevMgr;
+-    bool supportsVFIO = qemuHostdevHostSupportsPassthroughVFIO();
++    bool supportsVFIO;
+     size_t i;
+ 
++    /* Checking for VFIO only is fine with mdev, as IOMMU isolation is achieved
++     * by the physical parent device.
++     */
++    supportsVFIO = virFileExists("/dev/vfio/vfio");
++
+     for (i = 0; i < nhostdevs; i++) {
+         if (hostdevs[i]->mode == VIR_DOMAIN_HOSTDEV_MODE_SUBSYS &&
+             hostdevs[i]->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV) {
+-- 
+2.7.4
+

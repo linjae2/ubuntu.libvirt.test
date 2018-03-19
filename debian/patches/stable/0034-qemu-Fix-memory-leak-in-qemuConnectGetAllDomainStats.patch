@@ -1,0 +1,30 @@
+From 42123edf84137b84b7242c529392384138a7a63a Mon Sep 17 00:00:00 2001
+From: John Ferlan <jferlan@redhat.com>
+Date: Wed, 7 Mar 2018 09:43:30 -0500
+Subject: [PATCH 34/37] qemu: Fix memory leak in qemuConnectGetAllDomainStats
+ error path
+
+If we return -1 on VIR_ALLOC_N failure, we leaked @vms, so
+goto cleanup instead.
+
+Signed-off-by: John Ferlan <jferlan@redhat.com>
+---
+ src/qemu/qemu_driver.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 7daeba4..b4c28ae 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -20256,7 +20256,7 @@ qemuConnectGetAllDomainStats(virConnectPtr conn,
+     }
+ 
+     if (VIR_ALLOC_N(tmpstats, nvms + 1) < 0)
+-        return -1;
++        goto cleanup;
+ 
+     if (qemuDomainGetStatsNeedMonitor(stats))
+         privflags |= QEMU_DOMAIN_STATS_HAVE_JOB;
+-- 
+2.7.4
+

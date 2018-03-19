@@ -36,6 +36,7 @@ ubuntu/CVE-2018-6764-2.patch
 ubuntu/CVE-2018-6764-3.patch
 ubuntu/dnsmasq-as-priv-user
 ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch
+ubuntu/lp1688508-tools-fix-variable-scope-in-in-check_guests_shutdown.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0001-apparmor-Allow-pygrub-to-run-on-Debian-Ubuntu.patch
@@ -52,10 +53,11 @@ ubuntu-aa/0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch
 ubuntu-aa/0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch
 ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/0040-apparmor-add-mediation-rules-for-unconfined.patch
-
-# backport non feature fixes to stabilize
 ubuntu-aa/0041-apparmor-add-ro-rule-for-sasl-GSSAPI-plugin-on-etc-g.patch
 ubuntu-aa/0042-virt-aa-helper-resolve-yet-to-be-created-paths.patch
+ubuntu-aa/lp1756394-virt-aa-helper-resolve-file-symlinks.patch
+
+# backport non feature fixes to stabilize
 stable/0001-Revert-qemu-monitor-do-not-report-error-on-shutdown.patch
 stable/0002-nodedev-Fix-failing-to-parse-PCI-address-for-non-PCI.patch
 stable/0003-qemu-assign-correct-type-of-PCI-address-for-vhost-sc.patch
@@ -88,3 +90,9 @@ stable/0030-daemon-fix-rpc-event-leak-on-error-path-in-remoteDis.patch
 stable/0029-lxc-fix-rpc-event-leak-on-error-path-in-virLXCContro.patch
 stable/0031-qemu-fix-memory-leak-of-vporttype-during-migration.patch
 stable/0032-virsh-fixing-segfault-by-pool-autocompleter-function.patch
+stable/0033-qemu-Fix-comparison-assignment-in-qemuDomainUpdateDe.patch
+stable/0034-qemu-Fix-memory-leak-in-qemuConnectGetAllDomainStats.patch
+stable/0035-libvirtd-fix-potential-deadlock-when-reloading.patch
+stable/0036-qemu-Use-correct-bus-type-for-input-devices.patch
+stable/0037-qemu-hostdev-Fix-the-error-on-VM-start-with-an-mdev-.patch
+stable/0038-conf-Fix-crash-in-virDomainDefCompatibleDevice.patch
