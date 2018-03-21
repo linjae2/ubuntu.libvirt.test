@@ -56,6 +56,10 @@ ubuntu-aa/0040-apparmor-add-mediation-rules-for-unconfined.patch
 ubuntu-aa/0041-apparmor-add-ro-rule-for-sasl-GSSAPI-plugin-on-etc-g.patch
 ubuntu-aa/0042-virt-aa-helper-resolve-yet-to-be-created-paths.patch
 ubuntu-aa/lp1756394-virt-aa-helper-resolve-file-symlinks.patch
+ubuntu-aa/lp1755153-apparmor-add-Set-Restore-MemoryLabel.patch
+ubuntu-aa/lp1755153-apparmor-add-Set-Restore-InputLabel.patch
+ubuntu-aa/lp1757085-virt-aa-helper-passthrough-input.patch
+ubuntu-aa/lp1757085-virt-aa-helper-nvdimm-memory.patch
 
 # backport non feature fixes to stabilize
 stable/0001-Revert-qemu-monitor-do-not-report-error-on-shutdown.patch

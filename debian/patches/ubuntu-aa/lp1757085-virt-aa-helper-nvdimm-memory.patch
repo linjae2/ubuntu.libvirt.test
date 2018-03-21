@@ -1,0 +1,69 @@
+From ac254f342ff59b18792394ce9b01b1c8c2da7e28 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Tue, 20 Mar 2018 11:13:54 +0100
+Subject: [PATCH 4/4] virt-aa-helper: generate rules for nvdimm memory
+
+nvdimm memory is backed by a path on the host. This currently works only via
+hotplug where the AppArmor label is created via the domain label callbacks.
+
+This adds the virt-aa-helper support for nvdimm memory devices to generate
+rules for the needed paths from the initial guest definition as well.
+
+Example in domain xml:
+  <memory model='nvdimm'>
+    <source>
+      <path>/tmp/nvdimm-base</path>
+    </source>
+    <target>
+     <size unit='KiB'>524288</size>
+     <node>0</node>
+    </target>
+  </memory>
+Works to start now and creates:
+  "/tmp/nvdimm-base" rw,
+
+Fixes: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1757085
+
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+---
+ src/security/virt-aa-helper.c | 8 ++++++++
+ tests/virt-aa-helper-test     | 3 +++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index ad1371d..a1bc109 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -1177,6 +1177,14 @@ get_files(vahControl * ctl)
+         }
+     }
+ 
++    for (i = 0; i < ctl->def->nmems; i++) {
++        if (ctl->def->mems[i] &&
++                ctl->def->mems[i]->model == VIR_DOMAIN_MEMORY_MODEL_NVDIMM) {
++            if (vah_add_file(&buf, ctl->def->mems[i]->nvdimmPath, "rw") != 0)
++                goto cleanup;
++        }
++    }
++
+     if (ctl->def->virtType == VIR_DOMAIN_VIRT_KVM) {
+         for (i = 0; i < ctl->def->nnets; i++) {
+             virDomainNetDefPtr net = ctl->def->nets[i];
+diff --git a/tests/virt-aa-helper-test b/tests/virt-aa-helper-test
+index 054269c..7c839e4 100755
+--- a/tests/virt-aa-helper-test
++++ b/tests/virt-aa-helper-test
+@@ -362,6 +362,9 @@ testme "0" "vnc socket" "-r -u $valid_uuid" "$test_xml"
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<input type='passthrough' bus='virtio'><source evdev='$disk2' /></input></devices>,g" "$template_xml" > "$test_xml"
+ testme "0" "input dev passthrough" "-r -u $valid_uuid" "$test_xml"
+ 
++sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,<memory>524288</memory>,<memory>1048576</memory>,g" -e "s,</devices>,<memory model='nvdimm'><source><path>$disk2</path></source><target><size unit='KiB'>524288</size><node>0</node></target></memory></devices>,g" "$template_xml" > "$test_xml"
++testme "0" "nvdimm" "-r -u $valid_uuid" "$test_xml"
++
+ testme "0" "help" "-h"
+ 
+ echo "" >$output
+-- 
+2.7.4
+
