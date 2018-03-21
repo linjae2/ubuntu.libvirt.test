@@ -1,0 +1,99 @@
+From 999998a7920c11a3c8969bba6e32714ea810508c Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Mon, 19 Mar 2018 13:12:14 +0100
+Subject: [PATCH 1/4] security, apparmor: add (Set|Restore)MemoryLabel
+
+Recent changes have made implementing this mandatory to hot add any
+memory.
+Implementing this in apparmor fixes this as well as allows hot-add of nvdimm
+tpye memory with an nvdimmPath set generating a AppArmor rule for that
+path.
+
+Example hot adding:
+  <memory model='nvdimm'>
+    <source>
+      <path>/tmp/nvdimm-test</path>
+    </source>
+    <target>
+      <size unit='KiB'>524288</size>
+      <node>0</node>
+    </target>
+  </memory>
+Creates now:
+  "/tmp/nvdimm-test" rwk,
+
+Fixes: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1755153
+
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+---
+ src/security/security_apparmor.c | 46 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
+
+diff --git a/src/security/security_apparmor.c b/src/security/security_apparmor.c
+index a989992..18908c8 100644
+--- a/src/security/security_apparmor.c
++++ b/src/security/security_apparmor.c
+@@ -718,6 +718,49 @@ AppArmorRestoreSecurityDiskLabel(virSecurityManagerPtr mgr,
+ 
+ /* Called when hotplugging */
+ static int
++AppArmorSetMemoryLabel(virSecurityManagerPtr mgr,
++                       virDomainDefPtr def,
++                       virDomainMemoryDefPtr mem)
++{
++    if (mem == NULL)
++        return 0;
++
++    switch ((virDomainMemoryModel) mem->model) {
++    case VIR_DOMAIN_MEMORY_MODEL_NVDIMM:
++        if (mem->nvdimmPath == NULL) {
++            virReportError(VIR_ERR_INTERNAL_ERROR,
++                           _("%s: nvdimm without a path"),
++                           __func__);
++            return -1;
++        }
++        if (!virFileExists(mem->nvdimmPath)) {
++            virReportError(VIR_ERR_INTERNAL_ERROR,
++                           _("%s: \'%s\' does not exist"),
++                           __func__, mem->nvdimmPath);
++            return -1;
++        }
++        return reload_profile(mgr, def, mem->nvdimmPath, true);
++        break;
++    case VIR_DOMAIN_MEMORY_MODEL_NONE:
++    case VIR_DOMAIN_MEMORY_MODEL_DIMM:
++    case VIR_DOMAIN_MEMORY_MODEL_LAST:
++        break;
++    }
++
++    return 0;
++}
++
++
++static int
++AppArmorRestoreMemoryLabel(virSecurityManagerPtr mgr,
++                           virDomainDefPtr def,
++                           virDomainMemoryDefPtr mem ATTRIBUTE_UNUSED)
++{
++    return reload_profile(mgr, def, NULL, false);
++}
++
++/* Called when hotplugging */
++static int
+ AppArmorSetSecurityImageLabel(virSecurityManagerPtr mgr,
+                               virDomainDefPtr def,
+                               virStorageSourcePtr src)
+@@ -1115,6 +1158,9 @@ virSecurityDriver virAppArmorSecurityDriver = {
+     .domainSetSecurityImageLabel        = AppArmorSetSecurityImageLabel,
+     .domainRestoreSecurityImageLabel    = AppArmorRestoreSecurityImageLabel,
+ 
++    .domainSetSecurityMemoryLabel       = AppArmorSetMemoryLabel,
++    .domainRestoreSecurityMemoryLabel   = AppArmorRestoreMemoryLabel,
++
+     .domainSetSecurityDaemonSocketLabel = AppArmorSetSecurityDaemonSocketLabel,
+     .domainSetSecuritySocketLabel       = AppArmorSetSecuritySocketLabel,
+     .domainClearSecuritySocketLabel     = AppArmorClearSecuritySocketLabel,
+-- 
+2.7.4
+

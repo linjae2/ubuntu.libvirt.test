@@ -1,0 +1,64 @@
+From 26bb6d76ec0951affd98f1e8e31855c3534e39fa Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Tue, 20 Mar 2018 11:11:13 +0100
+Subject: [PATCH 3/4] virt-aa-helper: generate rules for passthrough input
+ devices
+
+Input devices can passthrough an event device. This currently works only via
+hotplug where the AppArmor label is created via the domain label callbacks.
+
+This adds the virt-aa-helper support for passthrough input devices to generate
+rules for the needed paths from the initial guest definition as well.
+
+Example in domain xml:
+  <input type='passthrough' bus='virtio'>
+          <source evdev='/dev/input/event0' />
+  </input>
+Works to start now and creates:
+  "/dev/input/event0" rw,
+
+Fixes: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1757085
+
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+---
+ src/security/virt-aa-helper.c | 8 ++++++++
+ tests/virt-aa-helper-test     | 3 +++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index 456cfce..ad1371d 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -1157,6 +1157,14 @@ get_files(vahControl * ctl)
+         }
+     }
+ 
++    for (i = 0; i < ctl->def->ninputs; i++) {
++        if (ctl->def->inputs[i] &&
++                ctl->def->inputs[i]->type == VIR_DOMAIN_INPUT_TYPE_PASSTHROUGH) {
++            if (vah_add_file(&buf, ctl->def->inputs[i]->source.evdev, "rw") != 0)
++                goto cleanup;
++        }
++    }
++
+     for (i = 0; i < ctl->def->nnets; i++) {
+         if (ctl->def->nets[i] &&
+                 ctl->def->nets[i]->type == VIR_DOMAIN_NET_TYPE_VHOSTUSER &&
+diff --git a/tests/virt-aa-helper-test b/tests/virt-aa-helper-test
+index 1e96b8e..054269c 100755
+--- a/tests/virt-aa-helper-test
++++ b/tests/virt-aa-helper-test
+@@ -359,6 +359,9 @@ testme "0" "hugepages" "-r -u $valid_uuid -F /run/hugepages/kvm/\*\*" "$test_xml
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,<graphics.*>,<graphics type='vnc' socket='/var/lib/libvirt/qemu/myself.vnc'><listen type='address' address='0.0.0.0'/></graphics>,g" "$template_xml" > "$test_xml"
+ testme "0" "vnc socket" "-r -u $valid_uuid" "$test_xml"
+ 
++sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<input type='passthrough' bus='virtio'><source evdev='$disk2' /></input></devices>,g" "$template_xml" > "$test_xml"
++testme "0" "input dev passthrough" "-r -u $valid_uuid" "$test_xml"
++
+ testme "0" "help" "-h"
+ 
+ echo "" >$output
+-- 
+2.7.4
+
