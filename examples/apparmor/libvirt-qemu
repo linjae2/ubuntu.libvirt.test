@@ -13,6 +13,10 @@
   capability setgid,
   capability setuid,
 
+  # for 9p
+  capability fsetid,
+  capability fowner,
+
   # this is needed with libcap-ng support, however it breaks a lot of things
   # atm, so just silence the denial until libcap-ng works right. LP: #522845
   deny capability setpcap,
