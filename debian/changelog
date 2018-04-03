@@ -1,3 +1,11 @@
+libvirt (3.6.0-1ubuntu6.5) artful; urgency=medium
+
+  * d/p/ubuntu/lp1688508-fix-variable-scope-in-in-check_guests_shutdown.patch:
+    backport further upstream fixes that were identified on verification.
+    Together with the former change this fixes (LP: #1688508)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 03 Apr 2018 16:23:04 +0200
+
 libvirt (3.6.0-1ubuntu6.4) artful; urgency=medium
 
   * d/p/ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch:
