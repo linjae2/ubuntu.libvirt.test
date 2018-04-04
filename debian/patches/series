@@ -99,3 +99,5 @@ CVE-2018-6764-1.patch
 CVE-2018-6764-2.patch
 CVE-2018-6764-3.patch
 ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch
+ubuntu/lp1688508-fix-variable-scope-in-in-check_guests_shutdown.patch
+ubuntu/lp1753604-nwfilter-fix-lock-order-deadlock.patch
