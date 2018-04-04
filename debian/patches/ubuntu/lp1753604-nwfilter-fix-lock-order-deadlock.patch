@@ -1,0 +1,80 @@
+From 2f5e24ba00d93c25b87561cb1f5259de175d70f9 Mon Sep 17 00:00:00 2001
+From: Maxim Nestratov <mnestratov@virtuozzo.com>
+Date: Sat, 9 Apr 2016 19:14:30 +0300
+Subject: [PATCH] nwfilter: fix lock order deadlock
+
+Below is backtraces of two deadlocked threads:
+
+thread #1:
+ virDomainConfVMNWFilterTeardown
+   virNWFilterTeardownFilter
+       lock updateMutex <------------
+       _virNWFilterTeardownFilter
+            try to lock interface <----------
+
+thread #2:
+ learnIPAddressThread
+    lock interface <-------
+    virNWFilterInstantiateFilterLate
+        try to lock updateMutex <----------
+
+The problem is fixed by unlocking interface before calling
+virNWFilterInstantiateFilterLate to avoid updateMutex and interface ordering
+deadlocks. Otherwise we are going to instantiate the filter while holding
+interface lock, which will try to lock updateMutex, and if some other thread
+instantiating a filter in parallel is holding updateMutex and is trying to
+lock interface, both will deadlock.
+Also it is safe to unlock interface before virNWFilterInstantiateFilterLate
+because learnIPAddressThread stopped capturing packets and applied necessary
+rules on the interface, while instantiating a new filter doesn't require a
+locked interface.
+
+Signed-off-by: Maxim Nestratov <mnestratov@virtuozzo.com>
+
+Forwarded: no (backport)
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Maxim Nestratov <mnestratov@virtuozzo.com>
+Origin: upstream, 2f5e24ba00d93c25b87561cb1f5259de175d70f9
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1753604
+Last-Update: 2018-04-04
+---
+ src/nwfilter/nwfilter_learnipaddr.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/src/nwfilter/nwfilter_learnipaddr.c b/src/nwfilter/nwfilter_learnipaddr.c
+index 1adbadb..cfd92d9 100644
+--- a/src/nwfilter/nwfilter_learnipaddr.c
++++ b/src/nwfilter/nwfilter_learnipaddr.c
+@@ -611,6 +611,16 @@ learnIPAddressThread(void *arg)
+         sa.data.inet4.sin_addr.s_addr = vmaddr;
+         char *inetaddr;
+ 
++        /* It is necessary to unlock interface here to avoid updateMutex and
++         * interface ordering deadlocks. Otherwise we are going to
++         * instantiate the filter, which will try to lock updateMutex, and
++         * some other thread instantiating a filter in parallel is holding
++         * updateMutex and is trying to lock interface, both will deadlock.
++         * Also it is safe to unlock interface here because we stopped
++         * capturing and applied necessary rules on the interface, while
++         * instantiating a new filter doesn't require a locked interface.*/
++        virNWFilterUnlockIface(req->ifname);
++
+         if ((inetaddr = virSocketAddrFormat(&sa)) != NULL) {
+             if (virNWFilterIPAddrMapAddIPAddr(req->ifname, inetaddr) < 0) {
+                 VIR_ERROR(_("Failed to add IP address %s to IP address "
+@@ -636,11 +646,11 @@ learnIPAddressThread(void *arg)
+                                  req->ifname, req->ifindex);
+ 
+         techdriver->applyDropAllRules(req->ifname);
++        virNWFilterUnlockIface(req->ifname);
+     }
+ 
+     VIR_DEBUG("pcap thread terminating for interface %s", req->ifname);
+ 
+-    virNWFilterUnlockIface(req->ifname);
+ 
+  err_no_lock:
+     virNWFilterDeregisterLearnReq(req->ifindex);
+-- 
+2.7.4
+

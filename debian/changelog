@@ -1,3 +1,13 @@
+libvirt (1.3.1-1ubuntu10.21) xenial; urgency=medium
+
+  * d/p/ubuntu/lp1688508-fix-variable-scope-in-in-check_guests_shutdown.patch:
+    backport further upstream fixes that were identified on verification.
+    Together with the former change this fixes (LP: #1688508)
+  * d/p/ubuntu/lp1753604-nwfilter-fix-lock-order-deadlock.patch:
+    fix intermittent deadlock in NWFilter handling (LP: #1753604)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 04 Apr 2018 10:46:12 +0200
+
 libvirt (1.3.1-1ubuntu10.20) xenial; urgency=medium
 
   * d/p/ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch:
