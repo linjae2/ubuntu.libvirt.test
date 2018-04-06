@@ -1,3 +1,18 @@
+libvirt (4.2.0-1) unstable; urgency=medium
+
+  [ Laurent Bigonville ]
+  * [8d62a8c] Start admin sockets on installation (Closes: #893484)
+
+  [ Guido Günther ]
+  * [417534b] New upstream version 4.2.0 (Closes: #894985)
+  * [9d7fa44] Bump symbol versions
+  * [c23ed3d] Rediff patches.
+    Applied upstream:
+      lockd-fix-typo-in-virtlockd-admin.socket.patch
+      CVE-2018-1064-qemu-avoid-denial-of-service-reading-from-Q.patch
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 06 Apr 2018 12:33:30 +0200
+
 libvirt (4.1.0-2) unstable; urgency=medium
 
   * [0b6cf2f] lockd: fix typo in virtlockd-admin.socket
