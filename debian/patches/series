@@ -100,3 +100,6 @@ stable/0035-libvirtd-fix-potential-deadlock-when-reloading.patch
 stable/0036-qemu-Use-correct-bus-type-for-input-devices.patch
 stable/0037-qemu-hostdev-Fix-the-error-on-VM-start-with-an-mdev-.patch
 stable/0038-conf-Fix-crash-in-virDomainDefCompatibleDevice.patch
+
+ubuntu/lp-1764668-fix-check_guests_shutdown-loop.patch
+ubuntu/lp-1764668-do-not-report-unknown-guests.patch
