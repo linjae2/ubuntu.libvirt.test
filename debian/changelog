@@ -1,3 +1,11 @@
+libvirt (3.6.0-1ubuntu6.6) artful; urgency=medium
+
+  * Fix clean shut down of guests on system shutdown (LP: #1764668)
+    - d/p/ubuntu/lp-1764668-do-not-report-unknown-guests.patch
+    - d/p/ubuntu/lp-1764668-fix-check_guests_shutdown-loop.patch
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 25 Apr 2018 09:24:08 +0200
+
 libvirt (3.6.0-1ubuntu6.5) artful; urgency=medium
 
   * d/p/ubuntu/lp1688508-fix-variable-scope-in-in-check_guests_shutdown.patch:
