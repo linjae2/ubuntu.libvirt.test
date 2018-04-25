@@ -37,8 +37,11 @@ profile virt-aa-helper /usr/{lib,lib64}/libvirt/virt-aa-helper {
   /etc/apparmor.d/libvirt/* r,
   /etc/apparmor.d/libvirt/libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]* rw,
 
-  # for backingstore -- allow access to non-hidden files in @{HOME} as well
-  # as storage pools
+  # For backingstore, virt-aa-helper needs to peek inside the disk image, so
+  # allow access to non-hidden files in @{HOME} as well as storage pools, and
+  # removable media and filesystems, and certain file extentions. A
+  # virt-aa-helper failure when checking a disk for backinsgstore is non-fatal
+  # (but obviously the backingstore won't be added).
   audit deny @{HOME}/.* mrwkl,
   audit deny @{HOME}/.*/ rw,
   audit deny @{HOME}/.*/** mrwkl,
