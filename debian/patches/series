@@ -103,3 +103,4 @@ stable/0038-conf-Fix-crash-in-virDomainDefCompatibleDevice.patch
 
 ubuntu/lp-1764668-fix-check_guests_shutdown-loop.patch
 ubuntu/lp-1764668-do-not-report-unknown-guests.patch
+ubuntu/lp-1758037-nwfilter-increase-pcap-buffer-size.patch
