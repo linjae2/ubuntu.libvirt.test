@@ -37,7 +37,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
     WITH_LIBNL           = -Dlibnl=enabled
     WITH_NETWORK         = -Ddriver_network=enabled
     WITH_OPENVZ          = -Ddriver_openvz=enabled
-    WITH_NETCF           = -Dnetcf=enabled
+    WITH_NETCF           = -Dnetcf=disabled
     WITH_POLKIT          = -Dpolkit=enabled
     WITH_SANLOCK         = -Dsanlock=enabled
     WITH_INIT_SCRIPT     = -Dinit_script=systemd
