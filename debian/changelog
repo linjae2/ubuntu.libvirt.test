@@ -1,3 +1,12 @@
+libvirt (4.0.0-1ubuntu10) cosmic; urgency=medium
+
+  * Fix nwfilters that set CTRL_IP_LEARNING set to dhcp failing with "An error
+    occurred, but the cause is unknown" due to a buffer being too small
+    for pcap with TPACKET_V3 enabled (LP: #1758037)
+    - debian/patches/ubuntu/lp-1758037-nwfilter-increase-pcap-buffer-size.patch
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 09 May 2018 17:07:59 +0200
+
 libvirt (4.0.0-1ubuntu9) cosmic; urgency=medium
 
   * debian/rules: disable the netcf backend. (LP: #1764314)
