@@ -1,3 +1,10 @@
+libvirt (4.0.0-1ubuntu9) cosmic; urgency=medium
+
+  * debian/rules: disable the netcf backend. (LP: #1764314)
+  * debian/control: drop libnetcf from Build-Depends.
+
+ -- Mathieu Trudel-Lapierre <cyphermox@ubuntu.com>  Wed, 09 May 2018 10:06:15 -0400
+
 libvirt (4.0.0-1ubuntu8) bionic; urgency=medium
 
   * Fix clean shut down of guests on system shutdown (LP: #1764668)
