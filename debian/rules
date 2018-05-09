@@ -37,7 +37,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_MACVTAP        = --with-macvtap
   WITH_NETWORK        = --with-network
   WITH_OPENVZ         = --with-openvz
-  WITH_NETCF          = --with-netcf
+  WITH_NETCF          = --without-netcf
   WITH_SANLOCK        = --with-sanlock
   WITH_INIT_SCRIPT    =	--with-init-script=systemd
   WITH_SYSTEMD        = --with-systemd-daemon
