@@ -7914,7 +7914,7 @@ qemuDomainUpdateDeviceLive(virConnectPtr conn,
         break;
 
     case VIR_DOMAIN_DEVICE_GRAPHICS:
-        if ((idx = qemuDomainFindGraphicsIndex(vm->def, dev->data.graphics) >= 0)) {
+        if ((idx = qemuDomainFindGraphicsIndex(vm->def, dev->data.graphics)) >= 0) {
             oldDev.data.graphics = vm->def->graphics[idx];
             if (virDomainDefCompatibleDevice(vm->def, dev, &oldDev) < 0)
                 return -1;
