@@ -1,3 +1,12 @@
+libvirt (4.0.0-1ubuntu8.1) bionic; urgency=medium
+
+  * Fix nwfilters that set CTRL_IP_LEARNING set to dhcp failing with "An error
+    occurred, but the cause is unknown" due to a buffer being too small
+    for pcap with TPACKET_V3 enabled (LP: #1758037)
+    - debian/patches/ubuntu/lp-1758037-nwfilter-increase-pcap-buffer-size.patch
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 11 May 2018 07:32:28 +0200
+
 libvirt (4.0.0-1ubuntu8) bionic; urgency=medium
 
   * Fix clean shut down of guests on system shutdown (LP: #1764668)
