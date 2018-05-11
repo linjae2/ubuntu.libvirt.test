@@ -103,3 +103,4 @@ ubuntu/lp1688508-fix-variable-scope-in-in-check_guests_shutdown.patch
 ubuntu/lp1753604-nwfilter-fix-lock-order-deadlock.patch
 ubuntu/lp-1764668-fix-check_guests_shutdown-loop.patch
 ubuntu/lp-1764668-do-not-report-unknown-guests.patch
+ubuntu/lp-1758037-nwfilter-increase-pcap-buffer-size.patch
