@@ -218,12 +218,12 @@ install-polkit::
 		$(DESTDIR)$(policydir)/org.libvirt.unix.policy
 	$(MKDIR_P) $(DESTDIR)$(datadir)/polkit-1/rules.d
 	$(INSTALL_DATA) $(srcdir)/remote/libvirtd.rules \
-		$(DESTDIR)$(datadir)/polkit-1/rules.d/50-libvirt.rules
+		$(DESTDIR)$(datadir)/polkit-1/rules.d/60-libvirt.rules
 
 uninstall-polkit::
 	rm -f $(DESTDIR)$(policydir)/org.libvirt.unix.policy
 	rmdir $(DESTDIR)$(policydir) || :
-	rm -f $(DESTDIR)$(datadir)/polkit-1/rules.d/50-libvirt.rules
+	rm -f $(DESTDIR)$(datadir)/polkit-1/rules.d/60-libvirt.rules
 	rmdir $(DESTDIR)$(datadir)/polkit-1/rules.d || :
 
 else ! WITH_POLKIT
