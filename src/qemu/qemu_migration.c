@@ -1661,7 +1661,7 @@ qemuMigrationUpdateJobStatus(virQEMUDriverPtr driver,
                              enum qemuDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
-    int ret;
+    int ret, setting_up;
     qemuMonitorMigrationStatus status;
 
     memset(&status, 0, sizeof(status));
@@ -1671,7 +1671,7 @@ qemuMigrationUpdateJobStatus(virQEMUDriverPtr driver,
         /* Guest already exited; nothing further to update.  */
         return -1;
     }
-    ret = qemuMonitorGetMigrationStatus(priv->mon, &status);
+    ret = qemuMonitorGetMigrationStatus(priv->mon, &status, &setting_up);
 
     qemuDomainObjExitMonitor(driver, vm);
 
@@ -1696,21 +1696,35 @@ qemuMigrationUpdateJobStatus(virQEMUDriverPtr driver,
         break;
 
     case QEMU_MONITOR_MIGRATION_STATUS_ACTIVE:
-        priv->job.info.fileTotal = priv->job.status.disk_total;
-        priv->job.info.fileRemaining = priv->job.status.disk_remaining;
-        priv->job.info.fileProcessed = priv->job.status.disk_transferred;
+        if (setting_up) {
+            priv->job.info.fileTotal = -1;
+            priv->job.info.fileRemaining = -1;
+            priv->job.info.fileProcessed = 0;
 
-        priv->job.info.memTotal = priv->job.status.ram_total;
-        priv->job.info.memRemaining = priv->job.status.ram_remaining;
-        priv->job.info.memProcessed = priv->job.status.ram_transferred;
+            priv->job.info.memTotal = -1;
+            priv->job.info.memRemaining = -1;
+            priv->job.info.memProcessed = 0;
 
-        priv->job.info.dataTotal =
-            priv->job.status.ram_total + priv->job.status.disk_total;
-        priv->job.info.dataRemaining =
-            priv->job.status.ram_remaining + priv->job.status.disk_remaining;
-        priv->job.info.dataProcessed =
-            priv->job.status.ram_transferred +
-            priv->job.status.disk_transferred;
+            priv->job.info.dataTotal = -1;
+            priv->job.info.dataRemaining = -1;
+            priv->job.info.dataProcessed = 0;
+        } else {
+            priv->job.info.fileTotal = priv->job.status.disk_total;
+            priv->job.info.fileRemaining = priv->job.status.disk_remaining;
+            priv->job.info.fileProcessed = priv->job.status.disk_transferred;
+
+            priv->job.info.memTotal = priv->job.status.ram_total;
+            priv->job.info.memRemaining = priv->job.status.ram_remaining;
+            priv->job.info.memProcessed = priv->job.status.ram_transferred;
+
+            priv->job.info.dataTotal =
+                priv->job.status.ram_total + priv->job.status.disk_total;
+            priv->job.info.dataRemaining =
+                priv->job.status.ram_remaining + priv->job.status.disk_remaining;
+            priv->job.info.dataProcessed =
+                priv->job.status.ram_transferred +
+                priv->job.status.disk_transferred;
+        }
 
         ret = 0;
         break;
