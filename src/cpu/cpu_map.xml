@@ -534,6 +534,11 @@
       <feature name='rtm'/>
     </model>
 
+    <model name='Haswell-IBRS'>
+      <model name='Haswell'/>
+      <feature name='spec-ctrl'/>
+    </model>
+
     <!-- AMD CPUs -->
     <model name='athlon'>
       <model name='pentiumpro'/>
