@@ -1,3 +1,18 @@
+libvirt (4.0.0-1ubuntu8.2) bionic-security; urgency=medium
+
+  * SECURITY UPDATE: QEMU monitor DoS
+    - debian/patches/CVE-2018-1064.patch: add size limit to
+      src/qemu/qemu_agent.c.
+    - CVE-2018-1064
+  * SECURITY UPDATE: Speculative Store Bypass
+    - debian/patches/CVE-2018-3639-1.patch: define the 'ssbd' CPUID feature
+      bit in src/cpu/cpu_map.xml.
+    - debian/patches/CVE-2018-3639-2.patch: define the 'virt-ssbd' CPUID
+      feature bit in src/cpu/cpu_map.xml.
+    - CVE-2018-3639
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 23 May 2018 13:23:01 -0400
+
 libvirt (4.0.0-1ubuntu8.1) bionic; urgency=medium
 
   * Fix nwfilters that set CTRL_IP_LEARNING set to dhcp failing with "An error
