@@ -300,6 +300,9 @@
     <feature name='spec-ctrl'>
       <cpuid eax_in='0x07' ecx_in='0x00' edx='0x04000000'/>
     </feature>
+    <feature name='ssbd'>
+      <cpuid eax_in='0x07' ecx_in='0x00' edx='0x80000000'/>
+    </feature>
 
     <!-- cpuid level 0x0000000f:1 (edx) -->
     <feature name='mbm_total'>
