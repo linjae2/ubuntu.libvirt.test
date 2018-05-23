@@ -42,6 +42,7 @@
 #include "virfile.h"
 #include "configmake.h"
 #include "virstring.h"
+#include "virtime.h"
 
 #define VIR_FROM_THIS VIR_FROM_STREAMS
 
@@ -516,8 +517,7 @@ int virFDStreamConnectUNIX(virStreamPtr st,
                            bool abstract)
 {
     struct sockaddr_un sa;
-    size_t i = 0;
-    int timeout = 3;
+    virTimeBackOffVar timeout;
     int ret;
 
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -537,7 +537,9 @@ int virFDStreamConnectUNIX(virStreamPtr st,
             goto error;
     }
 
-    do {
+    if (virTimeBackOffStart(&timeout, 1, 3*1000 /* ms */) < 0)
+        goto error;
+    while (virTimeBackOffWait(&timeout)) {
         ret = connect(fd, (struct sockaddr *)&sa, sizeof(sa));
         if (ret == 0)
             break;
@@ -549,7 +551,7 @@ int virFDStreamConnectUNIX(virStreamPtr st,
         }
 
         goto error;
-    } while ((++i <= timeout*5) && (usleep(.2 * 1000000) <= 0));
+    }
 
     if (virFDStreamOpenInternal(st, fd, NULL, -1, 0) < 0)
         goto error;
