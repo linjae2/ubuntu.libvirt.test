@@ -1,0 +1,50 @@
+From a15bab0c687ed4f0479ed5909a8d990d33edcbc0 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Mon, 11 Jun 2018 13:45:31 +0200
+Subject: [PATCH] apparmor: fix vfio usage without initial hostdev
+
+The base vfio has not much functionality but to provide a custom
+container by opening this path.
+See https://www.kernel.org/doc/Documentation/vfio.txt for more.
+
+Systems with static hostdevs will get /dev/vfio/vfio by virt-aa-hotplug
+right from the beginning. But if the guest initially had no hostdev at
+all it will run into the following deny before the security module
+labelling callbacks will make the actual vfio device (like /dev/vfio/93)
+known.
+
+Example of such a deny:
+[ 2652.756712] audit: type=1400 audit(1491303691.719:25):
+  apparmor="DENIED" operation="open"
+  profile="libvirt-17a61b87-5132-497c-b928-421ac2ee0c8a"
+  name="/dev/vfio/vfio" pid=8486 comm="qemu-system-x86"
+  requested_mask="wr" denied_mask="wr" fsuid=64055 ouid=0
+
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1678322
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1775777
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Reviewed-by: Erik Skultety <eskultet@redhat.com>
+---
+ examples/apparmor/libvirt-qemu | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/examples/apparmor/libvirt-qemu b/examples/apparmor/libvirt-qemu
+index 2c47652250..874aca2092 100644
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
+@@ -193,6 +193,9 @@
+   deny /dev/shm/lttng-ust-wait-* r,
+   deny /run/shm/lttng-ust-wait-* r,
+ 
++  # for vfio hotplug on systems without static vfio (LP: #1775777)
++  /dev/vfio/vfio rw,
++
+   # required for sasl GSSAPI plugin
+   /etc/gss/mech.d/ r,
+   /etc/gss/mech.d/* r,
+-- 
+2.17.1
+

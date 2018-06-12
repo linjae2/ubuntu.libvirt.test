@@ -1,3 +1,11 @@
+libvirt (4.0.0-1ubuntu12) cosmic; urgency=medium
+
+  * d/p/ubuntu-aa/lp1775777-vfio-usage-without-initial-hostdev.patch: fix
+    hotplug use cases where the initial guest had no hostdev at all and
+    therefore vrit-aa-helper did not allow /dev/vfio/vfio (LP: #1775777)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 12 Jun 2018 16:24:01 +0200
+
 libvirt (4.0.0-1ubuntu11) cosmic; urgency=medium
 
   * SECURITY UPDATE: QEMU monitor DoS
