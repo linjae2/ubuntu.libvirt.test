@@ -108,3 +108,4 @@ CVE-2018-1064.patch
 CVE-2018-3639-1.patch
 CVE-2018-3639-2.patch
 ubuntu-aa/lp1775777-vfio-usage-without-initial-hostdev.patch
+ubuntu/ovmf_paths.patch
