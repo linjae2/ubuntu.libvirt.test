@@ -1,3 +1,11 @@
+libvirt (4.0.0-1ubuntu13) cosmic; urgency=medium
+
+  * ddebian/patches/ubuntu/ovmf_paths.patch: adjust paths to secboot.fd UEFI
+    Secure Boot enabled variants of the OVMF firmware and variable store for
+    the paths where we ship these files in Ubuntu.
+
+ -- Mathieu Trudel-Lapierre <cyphermox@ubuntu.com>  Wed, 27 Jun 2018 11:16:23 -0400
+
 libvirt (4.0.0-1ubuntu12) cosmic; urgency=medium
 
   * d/p/ubuntu-aa/lp1775777-vfio-usage-without-initial-hostdev.patch: fix
