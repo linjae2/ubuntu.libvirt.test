@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-minds.org>
 Build-Depends:
+ bash-completion,
  debhelper (>= 9.20160709~),
  dh-autoreconf,
  dh-apparmor [linux-any],
@@ -57,6 +58,7 @@ Build-Depends:
  glusterfs-common (>= 3.4.0),
 # for --with-wireshark-dissector
  libwireshark-dev (>= 1.11.3),
+ libwiretap-dev,
 # for lxc fuse support
  libfuse-dev [linux-any],
 # for libssh2 connection URIs
@@ -212,8 +214,16 @@ Recommends:
  iproute2,
  parted,
 Section: admin
-Suggests: radvd, auditd, systemtap, systemd, apparmor,
- nfs-common, zfsutils, pm-utils
+Suggests:
+ apparmor,
+ auditd,
+ nfs-common,
+ open-iscsi [linux-any],
+ pm-utils,
+ radvd,
+ systemd,
+ systemtap,
+ zfsutils,
 Breaks: avahi-daemon (<< 0.6.31-3~),
  systemd-sysv (<< 224-1~)
 Description: Libvirt daemon configuration files
