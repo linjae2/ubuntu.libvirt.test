@@ -66,6 +66,11 @@ add_users_groups()
         adduser --quiet libvirt-qemu libvirt-qemu
     fi
 
+    # Add each sudo user to the libvirt group
+    for u in $(getent group sudo | sed -e "s/^.*://" -e "s/,/ /g"); do
+        adduser "$u" libvirt >/dev/null || true
+    done
+
     if ! getent group libvirt-dnsmasq >/dev/null; then
         addgroup --quiet --system libvirt-dnsmasq
     fi
