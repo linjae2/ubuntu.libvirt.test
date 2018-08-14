@@ -292,7 +292,7 @@ BuildRequires: libblkid-devel >= 2.17
 BuildRequires: augeas
 BuildRequires: systemd-devel >= 185
 BuildRequires: libpciaccess-devel >= 0.10.9
-BuildRequires: jansson-devel
+BuildRequires: yajl-devel
 %if %{with_sanlock}
 BuildRequires: sanlock-devel >= 2.4
 %endif
@@ -898,8 +898,6 @@ Requires: ncurses
 Requires: gettext
 # Needed by virt-pki-validate script.
 Requires: gnutls-utils
-# We dlopen(libjansson.so.4), so need an explicit dep
-Requires: jansson
 %if %{with_bash_completion}
 Requires: %{name}-bash-completion = %{version}-%{release}
 %endif
@@ -1228,7 +1226,7 @@ rm -f po/stamp-po
            --without-apparmor \
            --without-hal \
            --with-udev \
-           --with-jansson \
+           --with-yajl \
            %{?arg_sanlock} \
            --with-libpcap \
            --with-macvtap \

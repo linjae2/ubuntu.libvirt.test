@@ -2098,6 +2098,7 @@ virJSONValueNewNumberUint;
 virJSONValueNewNumberUlong;
 virJSONValueNewObject;
 virJSONValueNewString;
+virJSONValueNewStringLen;
 virJSONValueObjectAdd;
 virJSONValueObjectAddVArgs;
 virJSONValueObjectAppend;
@@ -2133,10 +2134,6 @@ virJSONValueObjectRemoveKey;
 virJSONValueObjectStealArray;
 virJSONValueObjectStealObject;
 virJSONValueToString;
-
-
-# util/virjsoncompat.h
-virJSONInitialize;
 
 
 # util/virkeycode.h

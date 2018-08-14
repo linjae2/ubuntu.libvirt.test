@@ -544,7 +544,7 @@ libvirt_admin_la_CFLAGS = \
 libvirt_admin_la_CFLAGS += \
 		$(XDR_CFLAGS) \
 		$(CAPNG_CFLAGS) \
-		$(JANSSON_CFLAGS) \
+		$(YAJL_CFLAGS) \
 		$(SSH2_CFLAGS) \
 		$(SASL_CFLAGS) \
 		$(GNUTLS_CFLAGS) \
@@ -552,6 +552,7 @@ libvirt_admin_la_CFLAGS += \
 
 libvirt_admin_la_LIBADD += \
 		$(CAPNG_LIBS) \
+		$(YAJL_LIBS) \
 		$(DEVMAPPER_LIBS) \
 		$(LIBXML_LIBS) \
 		$(SSH2_LIBS) \
@@ -689,7 +690,6 @@ libvirt_setuid_rpc_client_la_SOURCES = \
 		util/virhashcode.c \
 		util/virhostcpu.c \
 		util/virjson.c \
-		util/virjsoncompat.c \
 		util/virlog.c \
 		util/virobject.c \
 		util/virpidfile.c \
@@ -960,8 +960,6 @@ libvirt_nss_la_SOURCES = \
 		util/virhashcode.h \
 		util/virjson.c \
 		util/virjson.h \
-		util/virjsoncompat.c \
-		util/virjsoncompat.h \
 		util/virkmod.c \
 		util/virkmod.h \
 		util/virlease.c \
@@ -995,10 +993,14 @@ libvirt_nss_la_SOURCES = \
 libvirt_nss_la_CFLAGS = \
 		-DLIBVIRT_NSS \
 		$(AM_CFLAGS) \
-		$(JANSSON_CFLAGS) \
+		$(YAJL_CFLAGS) \
 		$(NULL)
 libvirt_nss_la_LDFLAGS = \
 		$(AM_LDFLAGS) \
+		$(NULL)
+
+libvirt_nss_la_LIBADD = \
+		$(YAJL_LIBS) \
 		$(NULL)
 endif WITH_NSS
 
