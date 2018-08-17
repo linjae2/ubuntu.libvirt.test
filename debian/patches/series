@@ -20,6 +20,7 @@ ubuntu/daemon-augeas-fix-expected.patch
 ubuntu/ubuntu_machine_type.patch
 ubuntu/parallel-shutdown.patch
 ubuntu/dnsmasq-as-priv-user
+ubuntu/ovmf_paths.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0003-apparmor-libvirt-qemu-Allow-read-access-to-overcommi.patch
