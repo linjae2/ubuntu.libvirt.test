@@ -1,0 +1,33 @@
+Description: Avoid restarting virtlogd
+.
+dh_systemd_start will parse the Also lines (intended for services) but today
+also will collect sockets. That would make it restart the sockets which in turn
+deb-invoke-systemd knows that it has to restart the services.
+.
+Overall that would restart virtlogd (and virtlockd) on an upgrade which breaks
+it.
+.
+This can be dropped once fixed in the dh_* tools and libvirt packaging in Debian
+is using that new code.
+.
+It was discussed if dropping these lines would imply any loss of features, but
+since the service already has a requires to those sockets it should be safe.
+.
+Forwarded: no
+Forward-info: Distro specific
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1786179
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=905772
+Last-Update: 2018-0i8-13
+
+--- a/src/remote/libvirtd.service.in
++++ b/src/remote/libvirtd.service.in
+@@ -40,5 +40,6 @@ TasksMax=32768
+ 
+ [Install]
+ WantedBy=multi-user.target
+-Also=virtlockd.socket
+-Also=virtlogd.socket
++# Disabled until dh_*systemd* no more restarts the services via the sockets (LP: #1786179)
++#Also=virtlockd.socket
++#Also=virtlogd.socket

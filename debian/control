@@ -1,7 +1,8 @@
 Source: libvirt
 Section: libs
 Priority: optional
-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-minds.org>
 Build-Depends:
  bash-completion,
@@ -34,17 +35,16 @@ Build-Depends:
  libnl-route-3-dev [linux-any],
  libyajl-dev,
  libpcap0.8-dev,
- libnuma-dev [amd64 arm64 i386 ia64 mips mipsel powerpc ppc64 ppc64el],
- numad [amd64 arm64 i386 ia64 mips mipsel powerpc ppc64 ppc64el],
+ libnuma-dev [amd64 arm64 i386 ia64 mips mipsel powerpc ppc64 ppc64el s390x],
+ numad [amd64 arm64 i386 ia64 mips mipsel powerpc ppc64 ppc64el s390x],
  radvd [linux-any],
- libnetcf-dev (>= 1:0.2.3-3~) [linux-any],
  libsanlock-dev [linux-any],
  libaudit-dev [linux-any],
  libselinux1-dev (>= 2.0.82) [linux-any],
  libapparmor-dev [linux-any],
  libdbus-1-dev [linux-any],
  nfs-common,
- systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc s390],
+ systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc ppc64el s390 s390x],
  python,
  xsltproc,
  zfsutils [kfreebsd-amd64 kfreebsd-i386],
@@ -62,7 +62,7 @@ Build-Depends:
 # for lxc fuse support
  libfuse-dev [linux-any],
 # for libssh2 connection URIs
- libssh2-1-dev,
+# libssh2-1-dev,
 # for qemu-bridge-helper
  qemu-system-common,
 # For "make check"
@@ -75,8 +75,10 @@ Build-Depends:
  iptables [linux-any],
  qemu-utils,
 Build-Conflicts: dpkg-dev (= 1.15.3)
-Vcs-Git: https://anonscm.debian.org/git/pkg-libvirt/libvirt.git
-Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/libvirt.git/
+XS-Debian-Vcs-Git: https://anonscm.debian.org/git/pkg-libvirt/libvirt.git
+XS-Debian-Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/libvirt.git/
+Vcs-Git: git://git.launchpad.net/~libvirt-maintainers/ubuntu/+source/libvirt
+Vcs-Browser: https://git.launchpad.net/~libvirt-maintainers/ubuntu/+source/libvirt
 Homepage: http://libvirt.org
 Standards-Version: 4.1.1
 
@@ -109,9 +111,9 @@ Recommends:
  qemu-kvm | qemu (>= 0.9.1),
  libxml2-utils,
  netcat-openbsd,
+ libvirt-daemon-driver-storage-rbd,
 Suggests:
  libvirt-daemon-driver-storage-gluster,
- libvirt-daemon-driver-storage-rbd,
  libvirt-daemon-driver-storage-sheepdog,
  libvirt-daemon-driver-storage-zfs,
  libvirt-daemon-system,
@@ -236,6 +238,8 @@ Description: Libvirt daemon configuration files
 
 Package: libvirt0
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: lvm2 [linux-any]
 Breaks: selinux-policy-default (<< 2:2.20131214-1~), selinux-policy-mls (<< 2:2.20131214-1~)
@@ -261,6 +265,7 @@ Description: documentation for the libvirt library
 Package: libvirt-dev
 Architecture: any
 Section: libdevel
+Multi-Arch: same
 Depends: ${misc:Depends}, libvirt0 (= ${binary:Version}), libxen-dev [i386 amd64 armhf arm64]
 Recommends: pkg-config
 Description: development files for the libvirt library
@@ -294,6 +299,8 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
  libvirt0 (= ${binary:Version}),
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Priority: optional
 Description: nss plugin providing IP address resolution for virtual machines
  Libvirt is a C toolkit to interact with the virtualization capabilities
