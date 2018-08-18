@@ -1,0 +1,55 @@
+From aa9e3354ef66db0093b903a45cf587705af9e7bb Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Tue, 14 Aug 2018 07:51:35 +0200
+Subject: [PATCH 3/4] apparmor: allow expected /tmp access patterns
+
+Several cases were found needing /tmp, for example ceph will try to list /tmp
+This is a compromise of security and usability:
+ - we only allow generally enumerating the base dir
+ - enumerating anything deeper in the dir is at least guarded by the
+   "owner" restriction, but while that protects files of other services
+   it won't protect qemu instances against each other as they usually run
+   with the same user.
+ - even with the owner restriction we only allow read for the wildcard
+   path
+
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Backport Note: this once contained also changes for bug 1786159, but it does
+no more for security concerns. It is only cleaning up the issue left behind
+by e.g. ceph trying to access /tmp flooding the logs.
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=aa9e3354ef66db0093b903a45cf587705af9e7bb
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1365261
+Last-Update: 2018-05-19
+---
+ examples/apparmor/libvirt-qemu | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/examples/apparmor/libvirt-qemu b/examples/apparmor/libvirt-qemu
+index 5caf14e418..eaa5167525 100644
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
+@@ -180,6 +180,19 @@
+   # for rbd
+   /etc/ceph/ceph.conf r,
+ 
++  # Various functions will need to enumerate /tmp (e.g. ceph), allow the base
++  # dir and a few known functions like samba support.
++  # We want to avoid to give blanket rw permission to everything under /tmp,
++  # users are expected to add site specific addons for more uncommon cases.
++  # Qemu processes usually all run as the same users, so the "owner"
++  # restriction prevents access to other services files, but not across
++  # different instances.
++  # This is a tradeoff between usability and security - if paths would be more
++  # predictable that would be preferred - at least for write rules we would
++  # want more unique paths per rule.
++  /{,var/}tmp/ r,
++  owner /{,var/}tmp/**/ r,
++
+   # for file-posix getting limits since 9103f1ce
+   /sys/devices/**/block/*/queue/max_segments r,
+ 
+-- 
+2.17.1

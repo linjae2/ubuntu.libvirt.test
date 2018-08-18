@@ -1,0 +1,50 @@
+From a2028ae7162b293d569335b52286e8ae627f0ba3 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Mon, 13 Aug 2018 16:06:04 +0200
+Subject: [PATCH 2/4] apparmor: add mediation rules for unconfined guests
+
+If a guest runs unconfined <seclabel type='none'>, but libvirtd is
+confined then the peer for signal can only be detected as
+'unconfined'. That triggers issues like:
+   apparmor="DENIED" operation="signal"
+   profile="/usr/sbin/libvirtd" pid=22395 comm="libvirtd"
+   requested_mask="send" denied_mask="send" signal=term peer="unconfined"
+
+To fix this add unconfined as an allowed peer for those operations.
+
+I discussed with the apparmor folks, right now there is no better
+separation to be made in this case. But there might be further down the
+road with "policy namespaces with scope and view control + stacking"
+
+This is more a use-case addition than a fix to the following two changes:
+- 3b1d19e6 AppArmor: add rules needed with additional mediation features
+- b482925c apparmor: support ptrace checks
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Acked-by: intrigeri <intrigeri+libvirt@boum.org>
+
+Forwarded: yes
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=a2028ae7162b293d569335b52286e8ae627f0ba3
+Bug-Ubuntu: None, part of the 3.10 merge
+Last-Update: 2018-08-16
+---
+ examples/apparmor/usr.sbin.libvirtd | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/examples/apparmor/usr.sbin.libvirtd b/examples/apparmor/usr.sbin.libvirtd
+index dd37866c2a..3ff43c32a2 100644
+--- a/examples/apparmor/usr.sbin.libvirtd
++++ b/examples/apparmor/usr.sbin.libvirtd
+@@ -74,6 +74,9 @@
+   # unconfined also required if guests run without security module
+   unix (send, receive) type=stream addr=none peer=(label=unconfined),
+ 
++  # required if guests run unconfined seclabel type='none' but libvirtd is confined
++  signal (read, send) peer=unconfined,
++
+   # Very lenient profile for libvirtd since we want to first focus on confining
+   # the guests. Guests will have a very restricted profile.
+   / r,
+-- 
+2.17.1

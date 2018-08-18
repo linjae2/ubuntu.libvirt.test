@@ -1,0 +1,60 @@
+From 1262cbf3a07f361f4417ccd9076d98b13f4cd223 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Mon, 13 Aug 2018 15:58:06 +0200
+Subject: [PATCH 1/4] apparmor: allow openGraphicsFD for virt manager >1.4
+
+virt-manager's UI connection will need socket access for openGraphicsFD
+to work - otherwise users will face a failed connection error when
+opening the UI view.
+
+Depending on the exact versions of libvirt and qemu involved this needs
+either a rule from qemu to libvirt or vice versa.
+
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Backport note: this bug had two versions through the evolving of
+libvirt. Finally we got it upstream and this is the form now backported.
+This can be dropped libvirt >=4.7
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=1262cbf3a07f361f4417ccd9076d98b13f4cd223
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1668681
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1747442
+Last-Update: 2018-08-16
+---
+ examples/apparmor/libvirt-qemu      | 3 +++
+ examples/apparmor/usr.sbin.libvirtd | 5 +++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/examples/apparmor/libvirt-qemu b/examples/apparmor/libvirt-qemu
+index df5f512487..5caf14e418 100644
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
+@@ -188,6 +188,9 @@
+   @{PROC}/device-tree/** r,
+   /sys/firmware/devicetree/** r,
+ 
++  # allow connect with openGraphicsFD to work
++  unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
++
+   # for gathering information about available host resources
+   /sys/devices/system/cpu/ r,
+   /sys/devices/system/node/ r,
+diff --git a/examples/apparmor/usr.sbin.libvirtd b/examples/apparmor/usr.sbin.libvirtd
+index 3102cab382..dd37866c2a 100644
+--- a/examples/apparmor/usr.sbin.libvirtd
++++ b/examples/apparmor/usr.sbin.libvirtd
+@@ -69,6 +69,11 @@
+   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd//qemu_bridge_helper),
+   signal (send) set=("term") peer=/usr/sbin/libvirtd//qemu_bridge_helper,
+ 
++  # allow connect with openGraphicsFD, direction reversed in newer versions
++  unix (send, receive) type=stream addr=none peer=(label=libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*),
++  # unconfined also required if guests run without security module
++  unix (send, receive) type=stream addr=none peer=(label=unconfined),
++
+   # Very lenient profile for libvirtd since we want to first focus on confining
+   # the guests. Guests will have a very restricted profile.
+   / r,
+-- 
+2.17.1
