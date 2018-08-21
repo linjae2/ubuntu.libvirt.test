@@ -1,0 +1,134 @@
+From be2ca0444728edd12a000653d3693d68a5c9102f Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Thu, 2 Aug 2018 09:05:18 +0200
+Subject: [PATCH 1/2] process: wait longer on kill per assigned Hostdev
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+It was found that in cases with host devices virProcessKillPainfully
+might be able to send signal zero to the target PID for quite a while
+with the process already being gone from /proc/<PID>.
+
+That is due to cleanup and reset of devices which might include a
+secondary bus reset that on top of the actions taken has a 1s delay
+to let the bus settle. Due to that guests with plenty of Host devices
+could easily exceed the default timeouts.
+
+To solve that, this adds an extra delay of 2s per hostdev that is associated
+to a VM.
+
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=be2ca0444728edd12a000653d3693d68a5c9102f
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1788226
+Last-Update: 2018-08-21
+---
+ src/libvirt_private.syms |  1 +
+ src/qemu/qemu_process.c  |  7 +++++--
+ src/util/virprocess.c    | 20 +++++++++++++++++---
+ src/util/virprocess.h    |  3 +++
+ 4 files changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index ca4a192a4a..47ea35f864 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -2605,6 +2605,7 @@ virProcessGetPids;
+ virProcessGetStartTime;
+ virProcessKill;
+ virProcessKillPainfully;
++virProcessKillPainfullyDelay;
+ virProcessNamespaceAvailable;
+ virProcessRunInMountNamespace;
+ virProcessSchedPolicyTypeFromString;
+diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
+index b899eed143..ab749389ee 100644
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -6908,8 +6908,11 @@ qemuProcessKill(virDomainObjPtr vm, unsigned int flags)
+         return 0;
+     }
+ 
+-    ret = virProcessKillPainfully(vm->pid,
+-                                  !!(flags & VIR_QEMU_PROCESS_KILL_FORCE));
++    /* Request an extra delay of two seconds per current nhostdevs
++     * to be safe against stalls by the kernel freeing up the resources */
++    ret = virProcessKillPainfullyDelay(vm->pid,
++                                       !!(flags & VIR_QEMU_PROCESS_KILL_FORCE),
++                                       vm->def->nhostdevs * 2);
+ 
+     return ret;
+ }
+diff --git a/src/util/virprocess.c b/src/util/virprocess.c
+index ecea27a2d4..4c7f2ed97c 100644
+--- a/src/util/virprocess.c
++++ b/src/util/virprocess.c
+@@ -341,15 +341,21 @@ int virProcessKill(pid_t pid, int sig)
+  * Returns 0 if it was killed gracefully, 1 if it
+  * was killed forcibly, -1 if it is still alive,
+  * or another error occurred.
++ *
++ * Callers can proide an extra delay in seconds to
++ * wait longer than the default.
+  */
+ int
+-virProcessKillPainfully(pid_t pid, bool force)
++virProcessKillPainfullyDelay(pid_t pid, bool force, unsigned int extradelay)
+ {
+     size_t i;
+     int ret = -1;
++    /* This is in 1/5th seconds since polling is on a 0.2s interval */
++    unsigned int polldelay = 75 + (extradelay*5);
+     const char *signame = "TERM";
+ 
+-    VIR_DEBUG("vpid=%lld force=%d", (long long)pid, force);
++    VIR_DEBUG("vpid=%lld force=%d extradelay=%u",
++              (long long)pid, force, extradelay);
+ 
+     /* This loop sends SIGTERM, then waits a few iterations (10 seconds)
+      * to see if it dies. If the process still hasn't exited, and
+@@ -357,9 +363,12 @@ virProcessKillPainfully(pid_t pid, bool force)
+      * wait up to 5 seconds more for the process to exit before
+      * returning.
+      *
++     * An extra delay can be passed by the caller for cases that are
++     * expected to clean up slower than usual.
++     *
+      * Note that setting @force could result in dataloss for the process.
+      */
+-    for (i = 0; i < 75; i++) {
++    for (i = 0; i < polldelay; i++) {
+         int signum;
+         if (i == 0) {
+             signum = SIGTERM; /* kindly suggest it should exit */
+@@ -402,6 +411,11 @@ virProcessKillPainfully(pid_t pid, bool force)
+ }
+ 
+ 
++int virProcessKillPainfully(pid_t pid, bool force)
++{
++    return virProcessKillPainfullyDelay(pid, force, 0);
++}
++
+ #if HAVE_SCHED_GETAFFINITY
+ 
+ int virProcessSetAffinity(pid_t pid, virBitmapPtr map)
+diff --git a/src/util/virprocess.h b/src/util/virprocess.h
+index 3c5a882772..5faa0892fe 100644
+--- a/src/util/virprocess.h
++++ b/src/util/virprocess.h
+@@ -55,6 +55,9 @@ virProcessWait(pid_t pid, int *exitstatus, bool raw)
+ int virProcessKill(pid_t pid, int sig);
+ 
+ int virProcessKillPainfully(pid_t pid, bool force);
++int virProcessKillPainfullyDelay(pid_t pid,
++                                 bool force,
++                                 unsigned int extradelay);
+ 
+ int virProcessSetAffinity(pid_t pid, virBitmapPtr map);
+ 
+-- 
+2.17.1
+
