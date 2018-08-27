@@ -1,3 +1,10 @@
+libvirt (4.6.0-2ubuntu3) cosmic; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1788603-fix-ptrace-rules-with-kernel-4.18.patch:
+    avoid issues with newer kernels >=4.18 (LP: #1788603)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 27 Aug 2018 10:57:57 +0200
+
 libvirt (4.6.0-2ubuntu2) cosmic; urgency=medium
 
   * Fix an issue where guests with plenty of hostdevs attached where detected
