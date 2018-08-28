@@ -1,3 +1,13 @@
+libvirt (4.0.0-1ubuntu8.5) bionic; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1788603-fix-ptrace-rules-with-kernel-4.18.patch:
+    avoid issues with newer kernels >=4.18 (LP: #1788603)
+  * d/p/ubuntu/lp-1789659-don-t-check-for-parallel-iteration-in-hash.patch:
+    remove broken and redundant check for parallel iteration in hash functions
+    (LP: #1789659)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 28 Aug 2018 07:26:19 +0200
+
 libvirt (4.0.0-1ubuntu8.4) bionic; urgency=medium
 
   * Fix an issue where guests with plenty of hostdevs attached where detected
