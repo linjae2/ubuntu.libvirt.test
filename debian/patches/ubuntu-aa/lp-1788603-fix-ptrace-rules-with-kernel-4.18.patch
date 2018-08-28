@@ -1,0 +1,50 @@
+From 8741b9435108b1f0d87670e44e1ed75f806b7791 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Fri, 24 Aug 2018 08:07:39 +0200
+Subject: [PATCH] apparmor: fix ptrace rules with kernel 4.18
+
+Due to kernel upstream change 338d0be4 ("apparmor: fix ptrace read check")
+libvirt now hits apparmor denies like:
+  apparmor="DENIED" operation="ptrace" profile="/usr/sbin/libvirtd"
+  pid=4409 comm="libvirtd" requested_mask="read" denied_mask="read"
+  peer="libvirt-14e92a75-7668-4b97-8f92-322fc1b9c78a"
+
+Extend the ptrace rule to also allow 'ptrace (read)' for libvirtd to work
+with these newer kernels.
+
+Fixes: https://bugs.launchpad.net/bugs/1788603
+
+Reported-by: Thadeu Lima de Souza Cascardo <thadeu.cascardo@canonical.com>
+Reviewed-by: Erik Skultety <eskultet@redhat.com>
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=8741b9435108b1f0d87670e44e1ed75f806b7791
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1788603
+Last-Update: 2018-08-27
+---
+ examples/apparmor/usr.sbin.libvirtd | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/examples/apparmor/usr.sbin.libvirtd b/examples/apparmor/usr.sbin.libvirtd
+index 80e348b7ee..f0ffc53008 100644
+--- a/examples/apparmor/usr.sbin.libvirtd
++++ b/examples/apparmor/usr.sbin.libvirtd
+@@ -50,10 +50,10 @@
+   # for --p2p migrations
+   unix (send, receive) type=stream addr=none peer=(label=unconfined addr=none),
+ 
+-  ptrace (trace) peer=unconfined,
+-  ptrace (trace) peer=/usr/sbin/libvirtd,
+-  ptrace (trace) peer=/usr/sbin/dnsmasq,
+-  ptrace (trace) peer=libvirt-*,
++  ptrace (read,trace) peer=unconfined,
++  ptrace (read,trace) peer=/usr/sbin/libvirtd,
++  ptrace (read,trace) peer=/usr/sbin/dnsmasq,
++  ptrace (read,trace) peer=libvirt-*,
+ 
+   signal (send) peer=/usr/sbin/dnsmasq,
+   signal (read, send) peer=libvirt-*,
+-- 
+2.17.1
+
