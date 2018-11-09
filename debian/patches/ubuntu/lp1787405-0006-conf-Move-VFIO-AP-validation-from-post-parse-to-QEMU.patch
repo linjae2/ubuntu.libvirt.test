@@ -1,0 +1,156 @@
+From faab373b53e1a4eacf0d6f524eb47df243f21fac Mon Sep 17 00:00:00 2001
+From: Erik Skultety <eskultet@redhat.com>
+Date: Mon, 19 Nov 2018 10:09:52 +0100
+Subject: [PATCH 6/6] conf: Move VFIO AP validation from post parse to QEMU
+ validation code
+
+VFIO AP has a limitation on a single device per domain, however, when
+commit 11708641 added the support for vfio-ap, check for this limitation
+was performed as part of the post parse code. Generally, checks like that
+should be performed within the driver's validation callback to eliminate
+any slight chance of failing in post parse, which could potentially
+result in the domain XML config vanishing.
+
+Backport: this doesn't backport all changes but fuse just the changes needed
+from two upstream commits 25dde373 and 208d6e6f.
+
+Signed-off-by: Erik Skultety <eskultet@redhat.com>
+Reviewed-by: Boris Fiuczynski <fiuczy@linux.ibm.com>
+
+Author: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Original-Author: Erik Skultety <eskultet@redhat.com>
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=25dde373730545894f60ce5b1497f19d61714c69
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=208d6e6f5aafa102d04ce300c6338b0736bb52df
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1787405
+Last-Update: 2018-11-20
+---
+ src/conf/domain_conf.c | 28 ----------------------
+ src/qemu/qemu_domain.c | 54 +++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 53 insertions(+), 29 deletions(-)
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 57ed4fd..1ea8c54 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -4195,31 +4195,6 @@ virDomainDefPostParseGraphics(virDomainDef *def)
+ }
+ 
+ 
+-static int
+-virDomainDefPostParseHostdev(virDomainDefPtr def)
+-{
+-    size_t i;
+-    bool vfioap_found = false;
+-
+-    /* verify settings of hostdevs vfio-ap */
+-    for (i = 0; i < def->nhostdevs; i++) {
+-        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
+-
+-        if (virHostdevIsMdevDevice(hostdev) &&
+-            hostdev->source.subsys.u.mdev.model == VIR_MDEV_MODEL_TYPE_VFIO_AP) {
+-            if (vfioap_found) {
+-                virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+-                               _("Only one hostdev of model vfio-ap is "
+-                                 "supported"));
+-                return -1;
+-            }
+-            vfioap_found = true;
+-        }
+-    }
+-    return 0;
+-}
+-
+-
+ /**
+  * virDomainDriveAddressIsUsedByDisk:
+  * @def: domain definition containing the disks to check
+@@ -5004,9 +4979,6 @@ virDomainDefPostParseCommon(virDomainDefPtr def,
+ 
+     virDomainDefPostParseGraphics(def);
+ 
+-    if (virDomainDefPostParseHostdev(def) < 0)
+-        return -1;
+-
+     if (virDomainDefPostParseCPU(def) < 0)
+         return -1;
+ 
+diff --git a/src/qemu/qemu_domain.c b/src/qemu/qemu_domain.c
+index 555dcd4..7635e8c 100644
+--- a/src/qemu/qemu_domain.c
++++ b/src/qemu/qemu_domain.c
+@@ -3878,10 +3878,60 @@ qemuDomainDeviceDefValidateNetwork(const virDomainNetDef *net)
+ }
+ 
+ 
++static int
++qemuDomainMdevDefVFIOAPValidate(const virDomainDef *def)
++{
++    size_t i;
++    bool vfioap_found = false;
++
++    /* VFIO-AP is restricted to a single mediated device only */
++    for (i = 0; i < def->nhostdevs; i++) {
++        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
++
++        if (virHostdevIsMdevDevice(hostdev) &&
++            hostdev->source.subsys.u.mdev.model == VIR_MDEV_MODEL_TYPE_VFIO_AP) {
++            if (vfioap_found) {
++                virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
++                               _("Only one hostdev of model vfio-ap is "
++                                 "supported"));
++                return -1;
++            }
++            vfioap_found = true;
++        }
++    }
++
++    return 0;
++}
++
++
++static int
++qemuDomainMdevDefValidate(const virDomainHostdevSubsysMediatedDev *mdevsrc,
++                          const virDomainDef *def)
++{
++    switch ((virMediatedDeviceModelType) mdevsrc->model) {
++    case VIR_MDEV_MODEL_TYPE_VFIO_PCI:
++        break;
++    case VIR_MDEV_MODEL_TYPE_VFIO_AP:
++        return qemuDomainMdevDefVFIOAPValidate(def);
++    case VIR_MDEV_MODEL_TYPE_LAST:
++    default:
++        virReportError(VIR_ERR_INTERNAL_ERROR,
++                       _("Unexpected enum value %d for "
++                         "virMediatedDeviceModelType"),
++                       mdevsrc->model);
++        return -1;
++    }
++
++    return 0;
++}
++
++
+ static int
+ qemuDomainDeviceDefValidateHostdev(const virDomainHostdevDef *hostdev,
+                                    const virDomainDef *def)
+ {
++    const virDomainHostdevSubsysMediatedDev *mdevsrc;
++
+     /* forbid capabilities mode hostdev in this kind of hypervisor */
+     if (hostdev->mode == VIR_DOMAIN_HOSTDEV_MODE_CAPABILITIES) {
+         virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+@@ -3897,8 +3947,10 @@ qemuDomainDeviceDefValidateHostdev(const virDomainHostdevDef *hostdev,
+         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI:
+         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI:
+         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI_HOST:
+-        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV:
+             break;
++        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV:
++            mdevsrc = &hostdev->source.subsys.u.mdev;
++            return qemuDomainMdevDefValidate(mdevsrc, def);
+         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_LAST:
+         default:
+             virReportError(VIR_ERR_INTERNAL_ERROR,
+-- 
+2.17.0
+

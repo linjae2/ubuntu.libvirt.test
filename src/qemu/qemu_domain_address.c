@@ -320,6 +320,11 @@ qemuDomainPrimeVirtioDeviceAddresses(virDomainDefPtr def,
             VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI_HOST &&
             def->hostdevs[i]->info->type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE)
             def->hostdevs[i]->info->type = type;
+
+        if (def->hostdevs[i]->mode == VIR_DOMAIN_HOSTDEV_MODE_SUBSYS &&
+            def->hostdevs[i]->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV &&
+            def->hostdevs[i]->source.subsys.u.mdev.model == VIR_MDEV_MODEL_TYPE_VFIO_AP)
+            def->hostdevs[i]->info->type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE;
     }
 
     if (def->memballoon &&
@@ -621,10 +626,10 @@ qemuDomainDeviceCalculatePCIConnectFlags(virDomainDeviceDefPtr dev,
         virPCIDevicePtr pciDev;
         virPCIDeviceAddressPtr hostAddr = &hostdev->source.subsys.u.pci.addr;
 
-        if (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS ||
-            (hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI &&
-             hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV &&
-             hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI_HOST)) {
+        if (!virHostdevIsMdevDevice(hostdev) &&
+            (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS ||
+             (hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI &&
+              hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI_HOST))) {
             return 0;
         }
 
