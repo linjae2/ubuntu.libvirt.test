@@ -491,6 +491,7 @@ typedef enum { /* virQEMUCapsFlags grouping marker for syntax-check */
 
     /* 315 */
     QEMU_CAPS_VFIO_PCI_DISPLAY, /* -device vfio-pci.display */
+    QEMU_CAPS_DEVICE_VFIO_AP, /* -device vfio-ap */
 
     QEMU_CAPS_LAST /* this must always be the last item */
 } virQEMUCapsFlags;
