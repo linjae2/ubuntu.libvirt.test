@@ -1,0 +1,163 @@
+From f865d58028ccd568b6e7909608678584b12d3c90 Mon Sep 17 00:00:00 2001
+From: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Date: Mon, 19 Nov 2018 10:09:50 +0100
+Subject: [PATCH 4/6] qemu: vfio-ap device support
+
+Adjusting domain format documentation, adding device address
+support and adding command line generation for vfio-ap.
+Since only one mediated hostdev with model vfio-ap is supported a check
+disallows to define domains with more than one such hostdev device.
+
+Signed-off-by: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Reviewed-by: Bjoern Walk <bwalk@linux.ibm.com>
+Reviewed-by: Chris Venteicher <cventeic@redhat.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=11708641983e9107a129c62fd343d0fec228342f
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1787405
+Last-Update: 2018-11-20
+---
+ docs/formatdomain.html.in      |  3 ++-
+ docs/schemas/domaincommon.rng  |  1 +
+ src/conf/domain_conf.c         | 28 ++++++++++++++++++++++++++++
+ src/qemu/qemu_command.c        |  8 ++++++++
+ src/qemu/qemu_domain_address.c |  4 ++++
+ src/util/virmdev.c             |  3 ++-
+ src/util/virmdev.h             |  1 +
+ 7 files changed, 46 insertions(+), 2 deletions(-)
+
+diff --git a/docs/formatdomain.html.in b/docs/formatdomain.html.in
+index 8189959773..269741a690 100644
+--- a/docs/formatdomain.html.in
++++ b/docs/formatdomain.html.in
+@@ -4616,8 +4616,9 @@
+           <dd>For mediated devices (<span class="since">Since 3.2.0</span>)
+           the <code>model</code> attribute specifies the device API which
+           determines how the host's vfio driver will expose the device to the
+-          guest. Currently, <code>model='vfio-pci'</code> and
++          guest. Currently, <code>model='vfio-pci'</code>,
+           <code>model='vfio-ccw'</code> (<span class="since">Since 4.4.0</span>)
++          and <code>model='vfio-ap'</code> (<span class="since">Since 4.9.0</span>)
+           is supported. <a href="drvnodedev.html#MDEV">MDEV</a> section
+           provides more information about mediated devices as well as how to
+           create mediated devices on the host.
+diff --git a/docs/schemas/domaincommon.rng b/docs/schemas/domaincommon.rng
+index 099a949cf8..b9ac5df479 100644
+--- a/docs/schemas/domaincommon.rng
++++ b/docs/schemas/domaincommon.rng
+@@ -4618,6 +4618,7 @@
+       <choice>
+         <value>vfio-pci</value>
+         <value>vfio-ccw</value>
++        <value>vfio-ap</value>
+       </choice>
+     </attribute>
+     <optional>
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index e8e0adc819..237540bccc 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -4275,6 +4275,31 @@ virDomainDefPostParseGraphics(virDomainDef *def)
+ }
+ 
+ 
++static int
++virDomainDefPostParseHostdev(virDomainDefPtr def)
++{
++    size_t i;
++    bool vfioap_found = false;
++
++    /* verify settings of hostdevs vfio-ap */
++    for (i = 0; i < def->nhostdevs; i++) {
++        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
++
++        if (virHostdevIsMdevDevice(hostdev) &&
++            hostdev->source.subsys.u.mdev.model == VIR_MDEV_MODEL_TYPE_VFIO_AP) {
++            if (vfioap_found) {
++                virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
++                               _("Only one hostdev of model vfio-ap is "
++                                 "supported"));
++                return -1;
++            }
++            vfioap_found = true;
++        }
++    }
++    return 0;
++}
++
++
+ /**
+  * virDomainDriveAddressIsUsedByDisk:
+  * @def: domain definition containing the disks to check
+@@ -5185,6 +5210,9 @@ virDomainDefPostParseCommon(virDomainDefPtr def,
+ 
+     virDomainDefPostParseGraphics(def);
+ 
++    if (virDomainDefPostParseHostdev(def) < 0)
++        return -1;
++
+     if (virDomainDefPostParseCPU(def) < 0)
+         return -1;
+ 
+diff --git a/src/qemu/qemu_command.c b/src/qemu/qemu_command.c
+index 1ff593c657..6e3ff67660 100644
+--- a/src/qemu/qemu_command.c
++++ b/src/qemu/qemu_command.c
+@@ -5476,6 +5476,14 @@ qemuBuildHostdevCommandLine(virCommandPtr cmd,
+                     return -1;
+                 }
+                 break;
++            case VIR_MDEV_MODEL_TYPE_VFIO_AP:
++                if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_VFIO_AP)) {
++                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
++                                   _("VFIO AP device assignment is not "
++                                     "supported by this version of QEMU"));
++                    return -1;
++                }
++                break;
+             case VIR_MDEV_MODEL_TYPE_LAST:
+             default:
+                 virReportEnumRangeError(virMediatedDeviceModelType,
+diff --git a/src/qemu/qemu_domain_address.c b/src/qemu/qemu_domain_address.c
+index 8a8764cff5..24dd7c1a58 100644
+--- a/src/qemu/qemu_domain_address.c
++++ b/src/qemu/qemu_domain_address.c
+@@ -294,6 +294,10 @@ qemuDomainPrimeVfioDeviceAddresses(virDomainDefPtr def,
+             subsys->u.mdev.model == VIR_MDEV_MODEL_TYPE_VFIO_CCW &&
+             def->hostdevs[i]->info->type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE)
+             def->hostdevs[i]->info->type = type;
++
++        if (virHostdevIsMdevDevice(def->hostdevs[i]) &&
++            subsys->u.mdev.model == VIR_MDEV_MODEL_TYPE_VFIO_AP)
++            def->hostdevs[i]->info->type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE;
+     }
+ }
+ 
+diff --git a/src/util/virmdev.c b/src/util/virmdev.c
+index 10a2b08337..3e11e38802 100644
+--- a/src/util/virmdev.c
++++ b/src/util/virmdev.c
+@@ -48,7 +48,8 @@ struct _virMediatedDeviceList {
+ 
+ VIR_ENUM_IMPL(virMediatedDeviceModel, VIR_MDEV_MODEL_TYPE_LAST,
+               "vfio-pci",
+-              "vfio-ccw")
++              "vfio-ccw",
++              "vfio-ap")
+ 
+ static virClassPtr virMediatedDeviceListClass;
+ 
+diff --git a/src/util/virmdev.h b/src/util/virmdev.h
+index 7c93c4d390..c856ff5bdb 100644
+--- a/src/util/virmdev.h
++++ b/src/util/virmdev.h
+@@ -27,6 +27,7 @@
+ typedef enum {
+     VIR_MDEV_MODEL_TYPE_VFIO_PCI = 0,
+     VIR_MDEV_MODEL_TYPE_VFIO_CCW = 1,
++    VIR_MDEV_MODEL_TYPE_VFIO_AP  = 2,
+ 
+     VIR_MDEV_MODEL_TYPE_LAST
+ } virMediatedDeviceModelType;
+-- 
+2.17.1
+
