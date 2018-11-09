@@ -1,0 +1,48 @@
+From e8067c9e7210c77c58ae2cff12728197cf3b3969 Mon Sep 17 00:00:00 2001
+From: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Date: Mon, 19 Nov 2018 10:09:49 +0100
+Subject: [PATCH 3/6] qemu: add vfio-ap capability
+
+Introduce vfio-ap capability.
+
+Signed-off-by: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Reviewed-by: Bjoern Walk <bwalk@linux.ibm.com>
+Reviewed-by: Thomas Huth <thuth@redhat.com>
+Reviewed-by: Chris Venteicher <cventeic@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=dc788d254017d51c6a3ccb5e5c9663ce82a4683b
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1787405
+Last-Update: 2018-11-20
+---
+ src/qemu/qemu_capabilities.c | 2 ++
+ src/qemu/qemu_capabilities.h | 1 +
+ 2 files changed, 3 insertions(+)
+
+--- a/src/qemu/qemu_capabilities.c
++++ b/src/qemu/qemu_capabilities.c
+@@ -507,6 +507,7 @@ VIR_ENUM_IMPL(virQEMUCaps, QEMU_CAPS_LAS
+ 
+               /* 315 */
+               "vfio-pci.display",
++              "vfio-ap",
+     );
+ 
+ 
+@@ -1149,6 +1150,7 @@ struct virQEMUCapsStringFlags virQEMUCap
+     { "vhost-vsock-device", QEMU_CAPS_DEVICE_VHOST_VSOCK },
+     { "mch", QEMU_CAPS_DEVICE_MCH },
+     { "sev-guest", QEMU_CAPS_SEV_GUEST },
++    { "vfio-ap", QEMU_CAPS_DEVICE_VFIO_AP },
+ };
+ 
+ static struct virQEMUCapsStringFlags virQEMUCapsDevicePropsVirtioBalloon[] = {
+--- a/src/qemu/qemu_capabilities.h
++++ b/src/qemu/qemu_capabilities.h
+@@ -491,6 +491,7 @@ typedef enum { /* virQEMUCapsFlags group
+ 
+     /* 315 */
+     QEMU_CAPS_VFIO_PCI_DISPLAY, /* -device vfio-pci.display */
++    QEMU_CAPS_DEVICE_VFIO_AP, /* -device vfio-ap */
+ 
+     QEMU_CAPS_LAST /* this must always be the last item */
+ } virQEMUCapsFlags;
