@@ -1,0 +1,48 @@
+From 542816e81827fb370db2b53737fcdc98a6fab97a Mon Sep 17 00:00:00 2001
+From: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Date: Mon, 19 Nov 2018 17:23:19 +0100
+Subject: [PATCH 2/6] qemu: command line generation based on mediated device
+ model
+
+This is ripped out of commit 21442874cf and changes the command
+line generation from a static vfio-ap into a model based generation.
+
+Signed-off-by: Boris Fiuczynski <fiuczy@linux.ibm.com>
+
+Backprt-Note: remove the tests which do not apply the same way on the
+older version.
+Author: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Original-Author: Shalini Chellathurai Saroja <shalini@linux.vnet.ibm.com>
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=21442874cf61ce61c7e0f8bcd616641f35adda2b
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1787405
+Last-Update: 2018-11-20
+---
+ src/qemu/qemu_command.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_command.c b/src/qemu/qemu_command.c
+index a5659fb..fb24710 100644
+--- a/src/qemu/qemu_command.c
++++ b/src/qemu/qemu_command.c
+@@ -5418,11 +5418,17 @@ qemuBuildHostdevMediatedDevStr(const virDomainDef *def,
+     virDomainHostdevSubsysMediatedDevPtr mdevsrc = &dev->source.subsys.u.mdev;
+     char *ret = NULL;
+     char *mdevPath = NULL;
++    const char *dev_str = NULL;
+ 
+     if (!(mdevPath = virMediatedDeviceGetSysfsPath(mdevsrc->uuidstr)))
+         goto cleanup;
+ 
+-    virBufferAddLit(&buf, "vfio-pci");
++    dev_str = virMediatedDeviceModelTypeToString(mdevsrc->model);
++
++    if (!dev_str)
++        goto cleanup;
++
++    virBufferAdd(&buf, dev_str, -1);
+     virBufferAsprintf(&buf, ",id=%s,sysfsdev=%s", dev->info->alias, mdevPath);
+ 
+     if (qemuBuildDeviceAddressStr(&buf, def, dev->info, qemuCaps) < 0)
+-- 
+2.17.0
+

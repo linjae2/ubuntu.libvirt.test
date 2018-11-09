@@ -1,0 +1,53 @@
+From ef6bbfff786c47457754c9788be6121dded92c4e Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Thu, 22 Nov 2018 13:55:02 +0100
+Subject: [PATCH] security: aa-helper: Fix static defined vfio MDEVs
+
+virt-aa-helper needs to grant QEMU access to VFIO MDEV devices.
+
+This extends commit 74e86b6b which only covered PCI hostdevs for VFIO-PCI
+assignment by now also covering vfio MDEVs.
+It has still the same limitations regarding the device lifecycle, IOW we're
+unable to predict the actual VFIO device being created, thus we need
+wildcards.
+
+Also note that the hotplug case, where apparmor is able to detect the actual
+VFIO device during runtime, is already covered by commit 606afafb.
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Erik Skultety <eskultet@redhat.com>
+Reviewed-by: Boris Fiuczynski <fiuczy@linux.ibm.com>
+
+Backport-Note: the old code didn't do the full-enum check yet, so drop
+that part. It is mostly a compile-time check for upstream development
+that after adding enum entried you'd need also to adapt all switch/case.
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=ef6bbfff786c47457754c9788be6121dded92c4e
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1787405
+Last-Update: 2018-11-23
+
+---
+ src/security/virt-aa-helper.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -1115,6 +1115,17 @@ get_files(vahControl * ctl)
+                 break;
+             }
+ 
++            case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV: {
++                virDomainHostdevSubsysMediatedDevPtr mdevsrc = &dev->source.subsys.u.mdev;
++                switch ((virMediatedDeviceModelType) mdevsrc->model) {
++                    case VIR_MDEV_MODEL_TYPE_VFIO_PCI:
++                    case VIR_MDEV_MODEL_TYPE_VFIO_AP:
++                        needsVfio = true;
++                        break;
++                }
++                break;
++            }
++
+             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
+                 virPCIDevicePtr pci = virPCIDeviceNew(
+                            dev->source.subsys.u.pci.addr.domain,

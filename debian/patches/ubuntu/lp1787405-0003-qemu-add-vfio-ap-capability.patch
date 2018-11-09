@@ -1,0 +1,55 @@
+From e8067c9e7210c77c58ae2cff12728197cf3b3969 Mon Sep 17 00:00:00 2001
+From: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Date: Mon, 19 Nov 2018 10:09:49 +0100
+Subject: [PATCH 3/6] qemu: add vfio-ap capability
+
+Introduce vfio-ap capability.
+
+Signed-off-by: Boris Fiuczynski <fiuczy@linux.ibm.com>
+Reviewed-by: Bjoern Walk <bwalk@linux.ibm.com>
+Reviewed-by: Thomas Huth <thuth@redhat.com>
+Reviewed-by: Chris Venteicher <cventeic@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=dc788d254017d51c6a3ccb5e5c9663ce82a4683b
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1787405
+Last-Update: 2018-11-20
+---
+ src/qemu/qemu_capabilities.c | 2 ++
+ src/qemu/qemu_capabilities.h | 1 +
+ 2 files changed, 3 insertions(+)
+
+diff --git a/src/qemu/qemu_capabilities.c b/src/qemu/qemu_capabilities.c
+index 44b8fd9..a67c8fd 100644
+--- a/src/qemu/qemu_capabilities.c
++++ b/src/qemu/qemu_capabilities.c
+@@ -458,6 +458,7 @@ VIR_ENUM_IMPL(virQEMUCaps, QEMU_CAPS_LAST,
+               /* 280 */
+               "pl011",
+               "machine.pseries.max-cpu-compat",
++              "vfio-ap",
+     );
+ 
+ 
+@@ -1693,6 +1694,7 @@ struct virQEMUCapsStringFlags virQEMUCapsObjectTypes[] = {
+     { "sclplmconsole", QEMU_CAPS_DEVICE_SCLPLMCONSOLE },
+     { "isa-serial", QEMU_CAPS_DEVICE_ISA_SERIAL },
+     { "pl011", QEMU_CAPS_DEVICE_PL011 },
++    { "vfio-ap", QEMU_CAPS_DEVICE_VFIO_AP },
+ };
+ 
+ static struct virQEMUCapsStringFlags virQEMUCapsObjectPropsVirtioBalloon[] = {
+diff --git a/src/qemu/qemu_capabilities.h b/src/qemu/qemu_capabilities.h
+index 3dfc77f..12eba1d 100644
+--- a/src/qemu/qemu_capabilities.h
++++ b/src/qemu/qemu_capabilities.h
+@@ -443,6 +443,7 @@ typedef enum {
+     /* 280 */
+     QEMU_CAPS_DEVICE_PL011, /* -device pl011 (not user-instantiable) */
+     QEMU_CAPS_MACHINE_PSERIES_MAX_CPU_COMPAT, /* -machine pseries,max-cpu-compat= */
++    QEMU_CAPS_DEVICE_VFIO_AP, /* -device vfio-ap */
+ 
+     QEMU_CAPS_LAST /* this must always be the last item */
+ } virQEMUCapsFlags;
+-- 
+2.17.0
+

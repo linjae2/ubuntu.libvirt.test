@@ -1,3 +1,12 @@
+libvirt (4.0.0-1ubuntu8.6) bionic; urgency=medium
+
+  * d/control: explicitly Build-dep on libwiretap-dev to fix FTBFS since
+    libwireshark 2.6.x SRU upload (LP: #1801666)
+  * debian/patches/ubuntu/lp1787405-*: Support guest dedicated Crypto
+    Adapters on s390x (LP: #1787405)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 09 Nov 2018 07:42:01 +0100
+
 libvirt (4.0.0-1ubuntu8.5) bionic; urgency=medium
 
   * d/p/ubuntu-aa/lp-1788603-fix-ptrace-rules-with-kernel-4.18.patch:
