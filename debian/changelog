@@ -1,3 +1,11 @@
+libvirt (4.6.0-2ubuntu3.2) cosmic; urgency=medium
+
+  * d/p/ubuntu/lp1787405-0008-qemu-mdev-Use-vfio-pci-display-property-only
+    -with-vf.patch: fix handling of non PCI vfio display propery (part
+    of LP: #1787405)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 06 Dec 2018 09:16:13 +0100
+
 libvirt (4.6.0-2ubuntu3.1) cosmic; urgency=medium
 
   * debian/patches/ubuntu/lp1787405-*: Support guest dedicated Crypto

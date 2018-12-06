@@ -69,3 +69,4 @@ ubuntu/lp1787405-0004-qemu-vfio-ap-device-support.patch
 ubuntu/lp1787405-0005-qemu-Extract-MDEV-VFIO-PCI-validation-code-into-a-se.patch
 ubuntu/lp1787405-0006-conf-Move-VFIO-AP-validation-from-post-parse-to-QEMU.patch
 ubuntu/lp1787405-0007-virt-aa-helper-mdevs-need-vfio.patch
+ubuntu/lp1787405-0008-qemu-mdev-Use-vfio-pci-display-property-only-with-vf.patch
