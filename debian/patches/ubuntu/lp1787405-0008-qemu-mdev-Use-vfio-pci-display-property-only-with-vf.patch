@@ -1,0 +1,41 @@
+From d6f97d1338ba9470f7c745fab317d272cde84d38 Mon Sep 17 00:00:00 2001
+From: Farhan Ali <alifm@linux.ibm.com>
+Date: Thu, 30 Aug 2018 13:07:34 -0400
+Subject: [PATCH] qemu: mdev: Use vfio-pci 'display' property only with
+ vfio-pci mdevs
+
+S390 is aware of both vfio-pci and vfio-ccw devices, so
+on S390 the capability QEMU_CAPS_VFIO_PCI_DISPLAY will be
+available. Add an extra check to make sure we only set the
+display to off for vfio-pci mediated devices. Otherwise we
+add display for vfio-ccw device and this breaks vfio-ccw
+device qemu command line.
+
+Fixes: d54e45b6e conf: Introduce new <hostdev> attribute 'display'
+Signed-off-by: Farhan Ali <alifm@linux.ibm.com>
+Reviewed-by: Marc Hartmayer <mhartmay@linux.ibm.com>
+Reviewed-by: Erik Skultety <eskultet@redhat.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=d6f97d1338ba9470f7c745fab317d272cde84d38
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1787405
+Last-Update: 2018-12-06
+
+---
+ src/qemu/qemu_domain.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/qemu/qemu_domain.c b/src/qemu/qemu_domain.c
+index e4ac58e95b..f161cf6c84 100644
+--- a/src/qemu/qemu_domain.c
++++ b/src/qemu/qemu_domain.c
+@@ -6391,6 +6391,7 @@ qemuDomainHostdevDefMdevPostParse(virDomainHostdevSubsysMediatedDevPtr mdevsrc,
+     /* QEMU 2.12 added support for vfio-pci display type, we default to
+      * 'display=off' to stay safe from future changes */
+     if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_VFIO_PCI_DISPLAY) &&
++        mdevsrc->model == VIR_MDEV_MODEL_TYPE_VFIO_PCI &&
+         mdevsrc->display == VIR_TRISTATE_SWITCH_ABSENT)
+         mdevsrc->display = VIR_TRISTATE_SWITCH_OFF;
+ 
+-- 
+2.17.1
+
