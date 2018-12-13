@@ -22,7 +22,7 @@
 
 #include "testutils.h"
 
-#ifdef __linux__
+#if defined HAVE_SYSFS_MOCK
 
 
 # define __VIR_CGROUP_ALLOW_INCLUDE_PRIV_H__
