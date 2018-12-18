@@ -810,7 +810,6 @@ else ! WITH_LIBVIRTD
 install-logrotate:
 uninstall-logrotate:
 endif ! WITH_LIBVIRTD
-
 if LIBVIRT_INIT_SCRIPT_RED_HAT
 install-init:: $(SYSVINIT_FILES) install-sysconfig
 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/rc.d/init.d
