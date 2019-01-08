@@ -1,0 +1,57 @@
+From 6452e2f5e1837bd753ee465e6607ed3c4f62b815 Mon Sep 17 00:00:00 2001
+From: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Date: Tue, 22 Jan 2019 12:26:12 -0700
+Subject: [PATCH 1/4] util: fixing wrong assumption that PF has to have netdev
+ assigned
+
+libvirt wrongly assumes that VF netdev has to have the
+netdev assigned to PF. There is no such requirement in SRIOV standard.
+This patch change the virNetDevSwitchdevFeature() function to deal
+with SRIOV devices which does not have netdev on PF. Also corrects
+one comment about PF netdev assumption.
+
+One example of such devices is ThunderX VNIC.
+By applying this change, VF device is used for virNetlinkCommand() as
+it is the only netdev assigned to VNIC.
+
+Signed-off-by: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Signed-off-by: dann frazier <dann.frazier@canonical.com>
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+---
+ src/util/virnetdev.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/src/util/virnetdev.c b/src/util/virnetdev.c
+index 2111b3ada9..d3e69b6f60 100644
+--- a/src/util/virnetdev.c
++++ b/src/util/virnetdev.c
+@@ -1355,9 +1355,8 @@ virNetDevGetPhysicalFunction(const char *ifname, char **pfname)
+     }
+ 
+     if (!*pfname) {
+-        /* this shouldn't be possible. A VF can't exist unless its
+-         * PF device is bound to a network driver
+-         */
++        /* The SRIOV standard does not require VF netdevs to have
++         * the netdev assigned to a PF. */
+         virReportError(VIR_ERR_INTERNAL_ERROR,
+                        _("The PF device for VF %s has no network device name"),
+                        ifname);
+@@ -3178,8 +3177,12 @@ virNetDevSwitchdevFeature(const char *ifname,
+     if ((is_vf = virNetDevIsVirtualFunction(ifname)) < 0)
+         return ret;
+ 
+-    if (is_vf == 1 && virNetDevGetPhysicalFunction(ifname, &pfname) < 0)
+-        goto cleanup;
++    if (is_vf == 1) {
++        /* Ignore error if PF does not have netdev assigned.
++         * In that case pfname == NULL. */
++        if (virNetDevGetPhysicalFunction(ifname, &pfname) < 0)
++            virResetLastError();
++    }
+ 
+     pci_device_ptr = pfname ? virNetDevGetPCIDevice(pfname) :
+                               virNetDevGetPCIDevice(ifname);
+-- 
+2.17.1
+

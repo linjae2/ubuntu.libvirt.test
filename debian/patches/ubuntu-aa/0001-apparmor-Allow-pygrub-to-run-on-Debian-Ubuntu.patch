@@ -1,0 +1,28 @@
+From bc90a5617bd0f55294c1b0d500b2fdef9d14e189 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Tue, 4 Jul 2017 07:31:38 +0200
+Subject: [PATCH 01/33] apparmor: Allow pygrub to run on Debian/Ubuntu
+
+In Debian/Ubuntu the pygrub command is located under
+/usr/lib/xen-<version>/bin/pygrub.
+
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1326003
+
+Forwarded: no (part of continuous upstreaming effort)
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+---
+ src/security/apparmor/usr.sbin.libvirtd | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/src/security/apparmor/usr.sbin.libvirtd
++++ b/src/security/apparmor/usr.sbin.libvirtd
+@@ -79,6 +79,7 @@
+   /usr/{lib,lib64}/xen-common/bin/xen-toolstack PUx,
+   /usr/{lib,lib64}/xen/bin/* Ux,
+   /usr/lib/xen-*/bin/libxl-save-helper PUx,
++  /usr/lib/xen-*/bin/pygrub PUx,
+ 
+   # Required by nwfilter_ebiptables_driver.c:ebiptablesWriteToTempFile() to
+   # read and run an ebtables script.
