@@ -917,11 +917,11 @@ add_file_path(virDomainDiskDefPtr disk,
 
     if (depth == 0) {
         if (disk->src->readonly)
-            ret = vah_add_file(buf, path, "rk");
+            ret = vah_add_file(buf, path, "Rk");
         else
             ret = vah_add_file(buf, path, "rwk");
     } else {
-        ret = vah_add_file(buf, path, "rk");
+        ret = vah_add_file(buf, path, "Rk");
     }
 
     if (ret != 0)
@@ -1062,6 +1062,18 @@ get_files(vahControl * ctl)
     for (i = 0; i < ctl->def->ngraphics; i++) {
         virDomainGraphicsDefPtr graphics = ctl->def->graphics[i];
         size_t n;
+        const char *rendernode = virDomainGraphicsGetRenderNode(graphics);
+
+        if (rendernode)
+            vah_add_file(&buf, rendernode, "rw");
+        else
+            if (virDomainGraphicsNeedsAutoRenderNode(graphics)) {
+                char * defaultRenderNode = virHostGetDRMRenderNode();
+                if (defaultRenderNode) {
+                    vah_add_file(&buf, defaultRenderNode, "rw");
+                    VIR_FREE(defaultRenderNode);
+            }
+        }
 
         for (n = 0; n < graphics->nListens; n++) {
             virDomainGraphicsListenDef listenObj = graphics->listens[n];
@@ -1157,7 +1169,7 @@ get_files(vahControl * ctl)
             /* We don't need to add deny rw rules for readonly mounts,
              * this can only lead to troubles when mounting / readonly.
              */
-            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rw", true) != 0)
+            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rwl", true) != 0)
                 goto cleanup;
         }
     }

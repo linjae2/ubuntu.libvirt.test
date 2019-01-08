@@ -1,3 +1,4 @@
+usr/share/apport/package-hooks/source_libvirt.py
 usr/sbin/*
 usr/lib/libvirt/libvirt*
 usr/lib/libvirt/lock-driver/lockd.so

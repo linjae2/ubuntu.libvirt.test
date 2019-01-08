@@ -3,17 +3,20 @@
 DEB_RELEASE=$(shell dpkg-parsechangelog -SVersion | sed 's/[^-]\+-//')
 DEB_BUILDDATE=$(shell dpkg-parsechangelog -SDate)
 DEB_BUILDUSER=$(shell dpkg-parsechangelog -SMaintainer)
+
+# This is a default flag in Ubuntu only, but breaks the self tests as
+# required mockups are no more called
+export DEB_LDFLAGS_MAINT_STRIP=-Wl,-Bsymbolic-functions
+
 NULL=
 
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   ifneq (,$(findstring $(DEB_HOST_ARCH), i386 amd64))
     WITH_VBOX         = --with-vbox
-    FAIL_CHECK        = 1
   else
     WITH_VBOX         = --without-vbox
   endif
   ifneq (,$(findstring $(DEB_HOST_ARCH), i386 amd64 armhf arm64))
-    MAKE_CHECK        = 1
     WITH_XEN          = --with-xen
     WITH_LIBXL        = --with-libxl
     XEN_ENABLED       = 1
@@ -21,6 +24,8 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
     WITH_XEN          = --without-xen
     WITH_LIBXL        = --without-libxl
   endif
+  MAKE_CHECK        = 1
+  FAIL_CHECK        = 1
   WITH_STORAGE_LVM    = --with-storage-lvm
   WITH_STORAGE_ISCSI  = --with-storage-iscsi
   WITH_STORAGE_DISK   =	--with-storage-disk
@@ -32,21 +37,21 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_MACVTAP        = --with-macvtap
   WITH_NETWORK        = --with-network
   WITH_OPENVZ         = --with-openvz
-  WITH_NETCF          = --with-netcf
+  WITH_NETCF          = --without-netcf
   WITH_SANLOCK        = --with-sanlock
   WITH_INIT_SCRIPT    =	--with-init-script=systemd
   WITH_SYSTEMD        = --with-systemd-daemon
-  WITH_FIREWALLD      = --with-firewalld
+  WITH_FIREWALLD      = --without-firewalld
   WITH_AUDIT          = --with-audit
   WITH_SELINUX        = --with-selinux --with-secdriver-selinux --with-selinux-mount=/sys/fs/selinux
   WITH_APPARMOR       = --with-apparmor --with-secdriver-apparmor --with-apparmor-profiles
   WITH_NSS_PLUGIN     = --with-nss-plugin
-  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 armel armhf i386 ia64 powerpc s390))
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 armel armhf i386 ia64 powerpc ppc64el s390 s390x))
       WITH_DTRACE     = --with-dtrace
   else
       WITH_DTRACE     = --without-dtrace
   endif
-  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 arm64 i386 ia64 mips mipsel powerpc ppc64el))
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 arm64 i386 ia64 mips mipsel powerpc ppc64el s390x))
       WITH_NUMA       = --with-numactl --with-numad
   else
       WITH_NUMA       = --without-numactl --without-numad
@@ -92,12 +97,12 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	--disable-rpath          \
 	--with-qemu		 \
 	--with-qemu-user=libvirt-qemu  \
-	--with-qemu-group=libvirt-qemu \
+	--with-qemu-group=kvm \
 	$(WITH_OPENVZ)		 \
 	--with-avahi             \
 	--with-sasl              \
 	--with-yajl              \
-	--with-ssh2		 \
+	--without-ssh2		 \
 	--with-polkit		 \
 	$(WITH_UDEV)		 \
 	--with-storage-fs        \
@@ -175,6 +180,17 @@ override_dh_install-arch:
 	   debian/tmp/usr/lib/pkgconfig \
 	   debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)
 
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
+
 	dh_install
 
 	# Copy upstream files to debian/ so dh_* can find them
@@ -230,6 +246,7 @@ endif
 
 override_dh_installinit:
 	dh_installinit -p libvirt-daemon-system --name=virtlogd --no-restart-on-upgrade
+	dh_installinit -p libvirt-daemon-system --name=virtlockd --no-restart-on-upgrade
 	dh_installinit -p libvirt-daemon-system --name=libvirtd --restart-after-upgrade -- defaults 28 72
 	dh_installinit -p libvirt-daemon-system --name=libvirt-guests --no-restart-on-upgrade -- defaults 29 71
 

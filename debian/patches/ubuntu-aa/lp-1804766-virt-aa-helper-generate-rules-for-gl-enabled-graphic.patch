@@ -1,0 +1,88 @@
+From c1072abd21af2cd400a4df4197031e3b17e7c56a Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Mon, 14 Jan 2019 15:15:06 +0200
+Subject: [PATCH] virt-aa-helper: generate rules for gl enabled graphics
+ devices
+
+This adds the virt-aa-helper support for gl enabled graphics devices to
+generate rules for the needed rendernode paths.
+
+Example in domain xml:
+<graphics type='spice'>
+  <gl enable='yes' rendernode='/dev/dri/bar'/>
+</graphics>
+
+results in:
+  "/dev/dri/bar" rw,
+
+Special cases are:
+- multiple devices with rendernodes -> all are added
+- non explicit rendernodes -> follow recently added virHostGetDRMRenderNode
+- rendernode without opengl (in egl-headless for example) -> still add
+  the node
+
+Updates in V2:
+- avoid leaking rendernode
+- logically group patch hunks
+- drop base /dev/dri access
+- simplify detection of the need for a default rendernode
+- add tests in tests/virt-aa-helper-test
+
+Fixes: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1757085
+
+Reviewed-by: Erik Skultety <eskultet@redhat.com>
+Acked-by: Jamie Strandboge <jamie@canonical.com>
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: https://libvirt.org/git/?p=libvirt.git;a=commit;h=fb01e1a44daea773cd53f275cad6f031506c20db
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1804766
+Last-Update: 2019-01-15
+
+---
+ src/security/virt-aa-helper.c | 12 ++++++++++++
+ tests/virt-aa-helper-test     |  6 ++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index 64a425671d..a84dd5a8c9 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -1062,6 +1062,18 @@ get_files(vahControl * ctl)
+     for (i = 0; i < ctl->def->ngraphics; i++) {
+         virDomainGraphicsDefPtr graphics = ctl->def->graphics[i];
+         size_t n;
++        const char *rendernode = virDomainGraphicsGetRenderNode(graphics);
++
++        if (rendernode)
++            vah_add_file(&buf, rendernode, "rw");
++        else
++            if (virDomainGraphicsNeedsAutoRenderNode(graphics)) {
++                char * defaultRenderNode = virHostGetDRMRenderNode();
++                if (defaultRenderNode) {
++                    vah_add_file(&buf, defaultRenderNode, "rw");
++                    VIR_FREE(defaultRenderNode);
++            }
++        }
+ 
+         for (n = 0; n < graphics->nListens; n++) {
+             virDomainGraphicsListenDef listenObj = graphics->listens[n];
+diff --git a/tests/virt-aa-helper-test b/tests/virt-aa-helper-test
+index fb400574dc..6e674bfe5c 100755
+--- a/tests/virt-aa-helper-test
++++ b/tests/virt-aa-helper-test
+@@ -378,6 +378,12 @@ testme "0" "input dev passthrough" "-r -u $valid_uuid" "$test_xml" "$disk2.*rw,$
+ sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,<memory>524288</memory>,<memory>1048576</memory>,g" -e "s,</devices>,<memory model='nvdimm'><source><path>$disk2</path></source><target><size unit='KiB'>524288</size><node>0</node></target></memory></devices>,g" "$template_xml" > "$test_xml"
+ testme "0" "nvdimm" "-r -u $valid_uuid" "$test_xml" "$disk2.*rw,$"
+ 
++sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<graphics type='egl-headless'><gl rendernode='/dev/dri/testegl1'/></graphics></devices>,g" "$template_xml" > "$test_xml"
++testme "0" "dri egl" "-r -u $valid_uuid" "$test_xml" "/dev/dri/testegl1.*rw,$"
++
++sed -e "s,###UUID###,$uuid,g" -e "s,###DISK###,$disk1,g" -e "s,</devices>,<graphics type='spice'><gl enable='yes' rendernode='/dev/dri/testegl2'/></graphics></devices>,g" "$template_xml" > "$test_xml"
++testme "0" "dri spice" "-r -u $valid_uuid" "$test_xml" "/dev/dri/testegl2.*rw,$"
++
+ testme "0" "help" "-h"
+ 
+ echo "" >$output
+-- 
+2.17.1
+
