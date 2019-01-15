@@ -1,3 +1,9 @@
+libvirt (4.6.0-2ubuntu6) disco; urgency=medium
+
+  * No-change rebuild for readline soname change.
+
+ -- Matthias Klose <doko@ubuntu.com>  Tue, 15 Jan 2019 10:26:04 +0000
+
 libvirt (4.6.0-2ubuntu5) disco; urgency=medium
 
   * d/p/ubuntu/lp1787405-0008-qemu-mdev-Use-vfio-pci-display-property-only
