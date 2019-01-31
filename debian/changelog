@@ -1,3 +1,12 @@
+libvirt (4.6.0-2ubuntu3.3) cosmic; urgency=medium
+
+  * d/p/ubuntu/lp-1811198-utils-Remove-arbitrary-limit-on-socket_id-core_id
+    .patch: fix arm servers with high core_id (LP: #1811198)
+  * d/p/ubuntu/lp-1771662-*: fix assumption that all VFs have PFs assigned
+    (LP: #1771662)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 31 Jan 2019 12:29:37 +0100
+
 libvirt (4.6.0-2ubuntu3.2) cosmic; urgency=medium
 
   * d/p/ubuntu/lp1787405-0008-qemu-mdev-Use-vfio-pci-display-property-only

@@ -1,0 +1,35 @@
+From 04983c3c6a821f67994b1c65d4d6175f3ac49d69 Mon Sep 17 00:00:00 2001
+From: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Date: Tue, 22 Jan 2019 12:26:15 -0700
+Subject: [PATCH 4/4] util: Fixing invalid error checking from
+ virPCIGetNetname()
+
+The @linkdev is In/Out function parameter as second order
+reference pointer so requires first order dereference for
+checking NULL which can be the result of virPCIGetNetName().
+
+Fixes: d6ee56d7237 (util: change virPCIGetNetName() to not return error if device has no net name)
+Signed-off-by: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Signed-off-by: dann frazier <dann.frazier@canonical.com>
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=04983c3c6a821f67994b1c65d4d6175f3ac49d69
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1771662
+Last-Update: 2019-01-31
+
+---
+ src/util/virhostdev.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/src/util/virhostdev.c
++++ b/src/util/virhostdev.c
+@@ -319,7 +319,7 @@ virHostdevNetDevice(virDomainHostdevDefP
+         if (virPCIGetNetName(sysfs_path, 0, NULL, linkdev) < 0)
+             return -1;
+ 
+-        if (!linkdev) {
++        if (!(*linkdev)) {
+             virReportError(VIR_ERR_INTERNAL_ERROR,
+                            _("The device at %s has no network device name"),
+                              sysfs_path);
