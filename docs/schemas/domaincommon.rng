@@ -4578,6 +4578,7 @@
       <choice>
         <value>vfio-pci</value>
         <value>vfio-ccw</value>
+        <value>vfio-ap</value>
       </choice>
     </attribute>
     <optional>
