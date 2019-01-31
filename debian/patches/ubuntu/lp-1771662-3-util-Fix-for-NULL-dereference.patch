@@ -1,0 +1,74 @@
+From 8fac64db5e7941efb820626f0043f5e0a31c79ee Mon Sep 17 00:00:00 2001
+From: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Date: Tue, 22 Jan 2019 12:26:14 -0700
+Subject: [PATCH 3/4] util: Fix for NULL dereference
+
+The device xml parser code does not set "model" while parsing the
+following XML:
+
+  <interface type='hostdev'>
+    <source>
+      <address type='pci' domain='0x0002' bus='0x01' slot='0x00' function='0x2'/>
+    </source>
+  </interface>
+
+The net->model can be NULL and therefore must be compared using
+STREQ_NULLABLE instead of plain STREQ.
+
+Fixes: ac47e4a6225 (qemu: replace "def->nets[i]" with "net" and "def->sounds[i]" with "sound")
+Fixes: c7fc151eec7 (qemu: assign virtio devices to PCIe slot when appropriate)
+Signed-off-by: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Signed-off-by: dann frazier <dann.frazier@canonical.com>
+Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
+
+Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Original-Author: Radoslaw Biernacki <radoslaw.biernacki@linaro.org>
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=8fac64db5e7941efb820626f0043f5e0a31c79ee
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1771662
+Last-Update: 2019-01-31
+
+---
+ src/qemu/qemu_domain_address.c | 13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
+
+--- a/src/qemu/qemu_domain_address.c
++++ b/src/qemu/qemu_domain_address.c
+@@ -232,10 +232,8 @@ qemuDomainAssignSpaprVIOAddresses(virDom
+     for (i = 0; i < def->nnets; i++) {
+         virDomainNetDefPtr net = def->nets[i];
+ 
+-        if (net->model &&
+-            STREQ(net->model, "spapr-vlan")) {
++        if (STREQ_NULLABLE(net->model, "spapr-vlan"))
+             net->info.type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_SPAPRVIO;
+-        }
+ 
+         if (qemuDomainAssignSpaprVIOAddress(def, &net->info, VIO_ADDR_NET) < 0)
+             goto cleanup;
+@@ -323,7 +321,7 @@ qemuDomainPrimeVirtioDeviceAddresses(vir
+     for (i = 0; i < def->nnets; i++) {
+         virDomainNetDefPtr net = def->nets[i];
+ 
+-        if (STREQ(net->model, "virtio") &&
++        if (STREQ_NULLABLE(net->model, "virtio") &&
+             net->info.type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE) {
+             net->info.type = type;
+         }
+@@ -604,14 +602,14 @@ qemuDomainDeviceCalculatePCIConnectFlags
+          * addresses for other hostdev devices.
+          */
+         if (net->type == VIR_DOMAIN_NET_TYPE_HOSTDEV ||
+-            STREQ(net->model, "usb-net")) {
++            STREQ_NULLABLE(net->model, "usb-net")) {
+             return 0;
+         }
+ 
+-        if (STREQ(net->model, "virtio"))
++        if (STREQ_NULLABLE(net->model, "virtio"))
+             return  virtioFlags;
+ 
+-        if (STREQ(net->model, "e1000e"))
++        if (STREQ_NULLABLE(net->model, "e1000e"))
+             return pcieFlags;
+ 
+         return pciFlags;
