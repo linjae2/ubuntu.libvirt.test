@@ -1,3 +1,18 @@
+libvirt (5.0.0-1ubuntu2) disco; urgency=medium
+
+  * Implement further apparmor rules for usage of gl enabled
+    graphics (LP: #1815452)
+    - d/p/ubuntu-aa/lp-1815452-more-gl-rules.patch
+    - d/p/ubuntu-aa/lp-1815452-virt-aa-helper-rule.patch
+  * Implement further apparmor rules for usage of gl enabled
+    graphics with nvidia cards (LP: #1817943)
+    - d/p/ubuntu-aa/lp-1817943-nvidia-gl-rules.patch
+    - d/p/ubuntu-aa/lp-1817943-devices-in-sysfs.patch
+  * d/p/ubuntu-aa/lp-1804766-*: updated to the upstream accepted
+    version (no functional change, LP: 1804766)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 12 Feb 2019 11:27:14 +0100
+
 libvirt (5.0.0-1ubuntu1) disco; urgency=medium
 
   * Merged with Debian unstable
