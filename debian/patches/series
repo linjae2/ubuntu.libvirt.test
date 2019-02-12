@@ -47,3 +47,7 @@ ubuntu/lp-1771662-util-fixing-wrong-assumption-that-PF-has-to-have-net.patch
 ubuntu/lp-1771662-util-Code-simplification.patch
 ubuntu/lp-1771662-util-Fix-for-NULL-dereference.patch
 ubuntu/lp-1771662-util-Fixing-invalid-error-checking-from-virPCIGetNet.patch
+ubuntu-aa/lp-1815452-virt-aa-helper-rule.patch
+ubuntu-aa/lp-1815452-more-gl-rules.patch
+ubuntu-aa/lp-1817943-nvidia-gl-rules.patch
+ubuntu-aa/lp-1817943-devices-in-sysfs.patch

@@ -39,28 +39,30 @@ Bug-Ubuntu: https://bugs.launchpad.net/bugs/1804766
 Last-Update: 2019-01-15
 
 ---
- src/security/virt-aa-helper.c | 12 ++++++++++++
+ src/security/virt-aa-helper.c | 14 ++++++++++++++
  tests/virt-aa-helper-test     |  6 ++++++
- 2 files changed, 18 insertions(+)
+ 2 files changed, 20 insertions(+)
 
 diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
-index 64a425671d..a84dd5a8c9 100644
+index 64a425671d..46443a3153 100644
 --- a/src/security/virt-aa-helper.c
 +++ b/src/security/virt-aa-helper.c
-@@ -1062,6 +1062,18 @@ get_files(vahControl * ctl)
+@@ -1062,6 +1062,20 @@ get_files(vahControl * ctl)
      for (i = 0; i < ctl->def->ngraphics; i++) {
          virDomainGraphicsDefPtr graphics = ctl->def->graphics[i];
          size_t n;
 +        const char *rendernode = virDomainGraphicsGetRenderNode(graphics);
 +
-+        if (rendernode)
++        if (rendernode) {
 +            vah_add_file(&buf, rendernode, "rw");
-+        else
++        } else {
 +            if (virDomainGraphicsNeedsAutoRenderNode(graphics)) {
-+                char * defaultRenderNode = virHostGetDRMRenderNode();
++                char *defaultRenderNode = virHostGetDRMRenderNode();
++
 +                if (defaultRenderNode) {
 +                    vah_add_file(&buf, defaultRenderNode, "rw");
 +                    VIR_FREE(defaultRenderNode);
++                }
 +            }
 +        }
  
