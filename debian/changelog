@@ -1,3 +1,12 @@
+libvirt (4.6.0-2ubuntu3.4) cosmic-security; urgency=medium
+
+  * SECURITY UPDATE: NULL pointer dereference in qemuAgentGetInterfaces
+    - debian/patches/CVE-2019-3840.patch: require a reply in
+      src/qemu/qemu_agent.c.
+    - CVE-2019-3840
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 13 Mar 2019 08:07:59 -0400
+
 libvirt (4.6.0-2ubuntu3.3) cosmic; urgency=medium
 
   * d/p/ubuntu/lp-1811198-utils-Remove-arbitrary-limit-on-socket_id-core_id
