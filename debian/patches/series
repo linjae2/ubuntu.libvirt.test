@@ -107,3 +107,4 @@ ubuntu/lp-1758037-nwfilter-increase-pcap-buffer-size.patch
 CVE-2018-1064.patch
 CVE-2018-3639-1.patch
 CVE-2018-3639-2.patch
+CVE-2019-3840.patch
