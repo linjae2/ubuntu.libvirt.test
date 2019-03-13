@@ -125,3 +125,4 @@ ubuntu/lp-1771662-1-util-fixing-wrong-assumption-that-PF-has-to-have-net.patch
 ubuntu/lp-1771662-2-util-Code-simplification.patch
 ubuntu/lp-1771662-3-util-Fix-for-NULL-dereference.patch
 ubuntu/lp-1771662-4-util-Fixing-invalid-error-checking-from-virPCIGetNet.patch
+CVE-2019-3840.patch
