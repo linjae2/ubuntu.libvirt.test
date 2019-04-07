@@ -27,6 +27,7 @@
 #include "virsh-nodedev.h"
 #include "virsh-util.h"
 #include "virsh-secret.h"
+#include "virsh-network.h"
 #include "internal.h"
 #include "virutil.h"
 #include "viralloc.h"
@@ -277,6 +278,7 @@ virshStorageVolNameCompleter(vshControl *ctl,
     virshControlPtr priv = ctl->privData;
     virStoragePoolPtr pool = NULL;
     virStorageVolPtr *vols = NULL;
+    int rc;
     int nvols = 0;
     size_t i = 0;
     char **ret = NULL;
@@ -289,8 +291,9 @@ virshStorageVolNameCompleter(vshControl *ctl,
     if (!(pool = virshCommandOptPool(ctl, cmd, "pool", NULL)))
         return NULL;
 
-    if ((nvols = virStoragePoolListAllVolumes(pool, &vols, flags)) < 0)
+    if ((rc = virStoragePoolListAllVolumes(pool, &vols, flags)) < 0)
         goto error;
+    nvols = rc;
 
     if (VIR_ALLOC_N(ret, nvols + 1) < 0)
         goto error;
@@ -411,6 +414,32 @@ virshNetworkNameCompleter(vshControl *ctl,
     for (i = 0; i < nnets; i++)
         VIR_FREE(ret[i]);
     VIR_FREE(ret);
+    return NULL;
+}
+
+
+char **
+virshNetworkEventNameCompleter(vshControl *ctl ATTRIBUTE_UNUSED,
+                               const vshCmd *cmd ATTRIBUTE_UNUSED,
+                               unsigned int flags)
+{
+    size_t i = 0;
+    char **ret = NULL;
+
+    virCheckFlags(0, NULL);
+
+    if (VIR_ALLOC_N(ret, VIR_NETWORK_EVENT_ID_LAST + 1) < 0)
+        goto error;
+
+    for (i = 0; i < VIR_NETWORK_EVENT_ID_LAST; i++) {
+        if (VIR_STRDUP(ret[i], virshNetworkEventCallbacks[i].name) < 0)
+            goto error;
+    }
+
+    return ret;
+
+ error:
+    virStringListFree(ret);
     return NULL;
 }
 
@@ -604,6 +633,7 @@ virshSnapshotNameCompleter(vshControl *ctl,
     virshControlPtr priv = ctl->privData;
     virDomainPtr dom = NULL;
     virDomainSnapshotPtr *snapshots = NULL;
+    int rc;
     int nsnapshots = 0;
     size_t i = 0;
     char **ret = NULL;
@@ -616,8 +646,9 @@ virshSnapshotNameCompleter(vshControl *ctl,
     if (!(dom = virshCommandOptDomain(ctl, cmd, NULL)))
         return NULL;
 
-    if ((nsnapshots = virDomainListAllSnapshots(dom, &snapshots, flags)) < 0)
+    if ((rc = virDomainListAllSnapshots(dom, &snapshots, flags)) < 0)
         goto error;
+    nsnapshots = rc;
 
     if (VIR_ALLOC_N(ret, nsnapshots + 1) < 0)
         goto error;
