@@ -1,3 +1,12 @@
+libvirt (1.3.1-1ubuntu10.26) xenial-security; urgency=medium
+
+  * SECURITY UPDATE: Add support for md-clear functionality
+    - debian/patches/md-clear.patch: Define md-clear CPUID bit in
+      src/cpu/cpu_map.xml.
+    - CVE-2018-12126, CVE-2018-12127, CVE-2018-12130, CVE-2019-11091
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Tue, 14 May 2019 15:13:18 -0400
+
 libvirt (1.3.1-1ubuntu10.25) xenial-security; urgency=medium
 
   * SECURITY UPDATE: NULL pointer dereference in qemuAgentGetInterfaces
