@@ -26,6 +26,7 @@ ubuntu/apibuild-skip-libvirt-common.h
 ubuntu/dnsmasq-as-priv-user
 ubuntu/avoid-restarting-virtlog-socket.patch
 ubuntu/ovmf_paths.patch
+ubuntu/md-clear.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0001-apparmor-Allow-pygrub-to-run-on-Debian-Ubuntu.patch
