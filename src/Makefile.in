@@ -13358,8 +13358,7 @@ lxc/lxc_controller_dispatch.h: $(srcdir)/rpc/gendispatch.pl \
 @WITH_NETWORK_TRUE@	      $(DESTDIR)$(confdir)/qemu/networks/default.xml && \
 @WITH_NETWORK_TRUE@	    rm $(DESTDIR)$(confdir)/qemu/networks/default.xml.t; }
 @WITH_NETWORK_TRUE@	( cd $(DESTDIR)$(confdir)/qemu/networks/autostart && \
-@WITH_NETWORK_TRUE@	  rm -f default.xml && \
-@WITH_NETWORK_TRUE@	  $(LN_S) ../default.xml default.xml )
+@WITH_NETWORK_TRUE@	  rm -f default.xml )
 
 @WITH_NETWORK_TRUE@uninstall-data-network:
 @WITH_NETWORK_TRUE@	rm -f $(DESTDIR)$(confdir)/qemu/networks/autostart/default.xml
