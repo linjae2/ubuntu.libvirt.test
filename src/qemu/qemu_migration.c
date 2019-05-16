@@ -2109,6 +2109,13 @@ static char
                         VIR_STRDUP(def->os.machine, "pc-1.0-precise") < 0)
                     goto cleanup;
             }
+            if (STREQ_NULLABLE(vm->def->os.machine, "pc-i440fx-1.5")) {
+                VIR_FREE(vm->def->os.machine);
+                VIR_FREE(def->os.machine);
+                if (VIR_STRDUP(vm->def->os.machine, "pc-i440fx-1.5-saucy") < 0 ||
+                        VIR_STRDUP(def->os.machine, "pc-i440fx-1.5-saucy") < 0)
+                    goto cleanup;
+            }
         }
 
         rv = qemuDomainDefFormatLive(driver, def, false, true);
@@ -2445,6 +2452,11 @@ qemuMigrationPrepareAny(virQEMUDriverPtr driver,
             if (STREQ_NULLABLE(vm->def->os.machine, "pc-1.0")) {
                 VIR_FREE(vm->def->os.machine);
                 if (VIR_STRDUP(vm->def->os.machine, "pc-1.0-precise") < 0)
+                    goto endjob;
+            }
+            if (STREQ_NULLABLE(vm->def->os.machine, "pc-i440fx-1.5")) {
+                VIR_FREE(vm->def->os.machine);
+                if (VIR_STRDUP(vm->def->os.machine, "pc-i440fx-1.5-saucy") < 0)
                     goto endjob;
             }
     }
