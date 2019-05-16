@@ -315,6 +315,46 @@ vshCatchDisconnect(virConnectPtr conn ATTRIBUTE_UNUSED,
         disconnected++;
 }
 
+/* Main Function which should be used for connecting.
+ * This function properly handles keepalive settings. */
+virConnectPtr
+vshConnect(vshControl *ctl, const char *uri, bool readonly)
+{
+    virConnectPtr c = NULL;
+    int interval = 5; /* Default */
+    int count = 6;    /* Default */
+    bool keepalive_forced = false;
+
+    if (ctl->keepalive_interval >= 0) {
+        interval = ctl->keepalive_interval;
+        keepalive_forced = true;
+    }
+    if (ctl->keepalive_count >= 0) {
+        count = ctl->keepalive_count;
+        keepalive_forced = true;
+    }
+
+    c = virConnectOpenAuth(uri, virConnectAuthPtrDefault,
+                           readonly ? VIR_CONNECT_RO : 0);
+    if (!c)
+        return NULL;
+
+    if (interval > 0 &&
+        virConnectSetKeepAlive(c, interval, count) != 0) {
+        if (keepalive_forced) {
+            vshError(ctl, "%s",
+                     _("Cannot setup keepalive on connection "
+                       "as requested, disconnecting"));
+            virConnectClose(c);
+            return NULL;
+        }
+        vshDebug(ctl, VSH_ERR_INFO, "%s",
+                 _("Failed to setup keepalive on connection\n"));
+    }
+
+    return c;
+}
+
 /*
  * vshReconnect:
  *
@@ -340,9 +380,8 @@ vshReconnect(vshControl *ctl)
                                   "disconnect from the hypervisor"));
     }
 
-    ctl->conn = virConnectOpenAuth(ctl->name,
-                                   virConnectAuthPtrDefault,
-                                   ctl->readonly ? VIR_CONNECT_RO : 0);
+    ctl->conn = vshConnect(ctl, ctl->name, ctl->readonly);
+
     if (!ctl->conn) {
         if (disconnected)
             vshError(ctl, "%s", _("Failed to reconnect to the hypervisor"));
@@ -417,8 +456,7 @@ cmdConnect(vshControl *ctl, const vshCmd *cmd)
     ctl->useSnapshotOld = false;
     ctl->readonly = ro;
 
-    ctl->conn = virConnectOpenAuth(ctl->name, virConnectAuthPtrDefault,
-                                   ctl->readonly ? VIR_CONNECT_RO : 0);
+    ctl->conn = vshConnect(ctl, ctl->name, ctl->readonly);
 
     if (!ctl->conn) {
         vshError(ctl, "%s", _("Failed to connect to the hypervisor"));
@@ -3113,6 +3151,10 @@ vshUsage(void)
                       "    -r | --readonly         connect readonly\n"
                       "    -d | --debug=NUM        debug level [0-4]\n"
                       "    -h | --help             this help\n"
+                      "    -k | --keepalive-interval=NUM\n"
+                      "                            keepalive interval in seconds, 0 for disable\n"
+                      "    -K | --keepalive-count=NUM\n"
+                      "                            number of possible missed keepalive messages\n"
                       "    -q | --quiet            quiet mode\n"
                       "    -t | --timing           print timing information\n"
                       "    -l | --log=FILE         output logging to file\n"
@@ -3302,12 +3344,14 @@ vshAllowedEscapeChar(char c)
 static bool
 vshParseArgv(vshControl *ctl, int argc, char **argv)
 {
-    int arg, len, debug;
+    int arg, len, debug, keepalive;
     size_t i;
     int longindex = -1;
     struct option opt[] = {
         {"debug", required_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
+        {"keepalive-interval", required_argument, NULL, 'k'},
+        {"keepalive-count", required_argument, NULL, 'K'},
         {"quiet", no_argument, NULL, 'q'},
         {"timing", no_argument, NULL, 't'},
         {"version", optional_argument, NULL, 'v'},
@@ -3321,7 +3365,7 @@ vshParseArgv(vshControl *ctl, int argc, char **argv)
     /* Standard (non-command) options. The leading + ensures that no
      * argument reordering takes place, so that command options are
      * not confused with top-level virsh options. */
-    while ((arg = getopt_long(argc, argv, "+:d:hqtc:vVrl:e:", opt, &longindex)) != -1) {
+    while ((arg = getopt_long(argc, argv, "+:d:hk:K:qtc:vVrl:e:", opt, &longindex)) != -1) {
         switch (arg) {
         case 'd':
             if (virStrToLong_i(optarg, NULL, 10, &debug) < 0) {
@@ -3360,6 +3404,24 @@ vshParseArgv(vshControl *ctl, int argc, char **argv)
             exit(EXIT_SUCCESS);
         case 'r':
             ctl->readonly = true;
+            break;
+        case 'k':
+            if (virStrToLong_i(optarg, NULL, 0, &keepalive) < 0 ||
+                keepalive < 0) {
+                vshError(ctl, _("option -%s requires a positive numeric argument"),
+                         longindex == -1 ? "-k" : "--keepalive-interval");
+                exit(EXIT_FAILURE);
+            }
+            ctl->keepalive_interval = keepalive;
+            break;
+        case 'K':
+            if (virStrToLong_i(optarg, NULL, 0, &keepalive) < 0 ||
+                keepalive < 0) {
+                vshError(ctl, _("option -%s requires a positive numeric argument"),
+                         longindex == -1 ? "-K" : "--keepalive-count");
+                exit(EXIT_FAILURE);
+            }
+            ctl->keepalive_count = keepalive;
             break;
         case 'l':
             vshCloseLogFile(ctl);
@@ -3490,6 +3552,11 @@ main(int argc, char **argv)
     ctl->log_fd = -1;           /* Initialize log file descriptor */
     ctl->debug = VSH_DEBUG_DEFAULT;
     ctl->escapeChar = "^]";     /* Same default as telnet */
+
+    /* In order to distinguish default from setting to 0 */
+    ctl->keepalive_interval = -1;
+    ctl->keepalive_count = -1;
+
     ctl->eventPipe[0] = -1;
     ctl->eventPipe[1] = -1;
     ctl->eventTimerId = -1;

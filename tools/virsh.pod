@@ -78,6 +78,18 @@ Enable debug messages at integer I<LEVEL> and above.  I<LEVEL> can
 range from 0 to 4 (default).  See the documentation of B<VIRSH_DEBUG>
 environment variable below for the description of each I<LEVEL>.
 
+=item B<-k>, B<--keepalive-interval> I<INTERVAL>
+
+Set an I<INTERVAL> (in seconds) for sending keepalive messages to
+check whether connection to the server is still alive.  Setting the
+interval to 0 disables client keepalive mechanism.
+
+=item B<-K>, B<--keepalive-count> I<COUNT>
+
+Set a number of times keepalive message can be sent without getting an
+answer from the server without marking the connection dead.  There is
+no effect to this setting in case the I<INTERVAL> is set to 0.
+
 =item B<-l>, B<--log> I<FILE>
 
 Output logging details to I<FILE>.
