@@ -62,3 +62,4 @@ CVE-2016-5008.patch
 CVE-2018-1064.patch
 CVE-2018-3639-1.patch
 CVE-2018-3639-2.patch
+md-clear.patch
