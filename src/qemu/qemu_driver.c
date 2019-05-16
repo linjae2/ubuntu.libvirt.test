@@ -15341,6 +15341,16 @@ qemuDomainBlockCommit(virDomainPtr dom, const char *path, const char *base,
                        top, path);
         goto endjob;
     }
+
+    /* FIXME: qemu 2.0 supports active commit, but as a two-stage
+    * process; qemu 2.1 is further improving active commit. We need
+    * to start supporting it in libvirt. */
+    if (top_meta == disk->backingChain) {
+        virReportError(VIR_ERR_OPERATION_UNSUPPORTED, "%s",
+                       _("committing the active layer not supported yet"));
+        goto endjob;
+    }
+
     if (!top_meta || !top_meta->backingStore) {
         virReportError(VIR_ERR_INVALID_ARG,
                        _("top '%s' in chain for '%s' has no backing file"),
