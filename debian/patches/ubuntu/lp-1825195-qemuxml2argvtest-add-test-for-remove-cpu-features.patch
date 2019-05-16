@@ -1,0 +1,96 @@
+From b51bfa70554f4bc43cbd6841b78d67b391909184 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Thu, 25 Apr 2019 11:51:55 +0200
+Subject: [PATCH 2/2] qemuxml2argvtest: add test for remove cpu features
+
+CPU features that always were a no-op in qemu got removed there.
+We no more specify them as that would trigger errors and fail to start
+qemu. This test ensures that those features really are not rendered into
+qemu command line.
+
+Without the related fix this test will trigger and fail like:
+ In 'tests/qemuxml2argvdata/cpu-no-removed-features.args':
+ Offset 371
+ Expect [ ]
+ Actual [,-osxsave,-ospke ]
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Daniel Henrique Barboza <danielhb413@gmail.com>
+Tested-by: Daniel Henrique Barboza <danielhb413@gmail.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=b51bfa70554f4bc43cbd6841b78d67b391909184
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1825195
+Last-Update: 2019-05-15
+
+---
+ .../cpu-no-removed-features.args              | 29 +++++++++++++++++++
+ .../cpu-no-removed-features.xml               | 23 +++++++++++++++
+ tests/qemuxml2argvtest.c                      |  1 +
+ 3 files changed, 53 insertions(+)
+ create mode 100644 tests/qemuxml2argvdata/cpu-no-removed-features.args
+ create mode 100644 tests/qemuxml2argvdata/cpu-no-removed-features.xml
+
+--- /dev/null
++++ b/tests/qemuxml2argvdata/cpu-no-removed-features.args
+@@ -0,0 +1,25 @@
++LC_ALL=C \
++PATH=/bin \
++HOME=/home/test \
++USER=test \
++LOGNAME=test \
++QEMU_AUDIO_DRV=none \
++/usr/bin/qemu-system-x86_64 \
++-name QEMUGuest1 \
++-S \
++-machine pc,accel=kvm,usb=off,dump-guest-core=off \
++-cpu core2duo \
++-m 214 \
++-smp 6,sockets=6,cores=1,threads=1 \
++-uuid c7a5fdbd-edaf-9455-926a-d65c16db1809 \
++-display none \
++-no-user-config \
++-nodefaults \
++-chardev socket,id=charmonitor,path=/tmp/lib/domain--1-QEMUGuest1/monitor.sock,\
++server,nowait \
++-mon chardev=charmonitor,id=monitor,mode=control \
++-rtc base=utc \
++-no-shutdown \
++-no-acpi \
++-usb \
++-device virtio-balloon-pci,id=balloon0,bus=pci.0,addr=0x3
+--- /dev/null
++++ b/tests/qemuxml2argvdata/cpu-no-removed-features.xml
+@@ -0,0 +1,23 @@
++<domain type='kvm'>
++  <name>QEMUGuest1</name>
++  <uuid>c7a5fdbd-edaf-9455-926a-d65c16db1809</uuid>
++  <memory unit='KiB'>219100</memory>
++  <currentMemory unit='KiB'>219100</currentMemory>
++  <vcpu placement='static'>6</vcpu>
++  <os>
++    <type arch='x86_64' machine='pc'>hvm</type>
++    <boot dev='network'/>
++  </os>
++  <cpu match='exact'>
++    <model>core2duo</model>
++    <feature name='osxsave' policy='optional'/>
++    <feature name='ospke' policy='optional'/>
++  </cpu>
++  <clock offset='utc'/>
++  <on_poweroff>destroy</on_poweroff>
++  <on_reboot>restart</on_reboot>
++  <on_crash>destroy</on_crash>
++  <devices>
++      <emulator>/usr/bin/qemu-system-x86_64</emulator>
++  </devices>
++</domain>
+--- a/tests/qemuxml2argvtest.c
++++ b/tests/qemuxml2argvtest.c
+@@ -1771,6 +1771,7 @@ mymain(void)
+     DO_TEST("cpu-fallback", QEMU_CAPS_KVM);
+     DO_TEST_FAILURE("cpu-nofallback", QEMU_CAPS_KVM);
+     DO_TEST("cpu-strict1", QEMU_CAPS_KVM);
++    DO_TEST("cpu-no-removed-features", QEMU_CAPS_KVM);
+     DO_TEST("cpu-numa1", NONE);
+     DO_TEST("cpu-numa2", NONE);
+     DO_TEST("cpu-numa-no-memory-element", NONE);

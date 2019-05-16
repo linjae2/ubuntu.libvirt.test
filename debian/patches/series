@@ -52,3 +52,5 @@ ubuntu-aa/lp-1815452-virt-aa-helper-rule.patch
 ubuntu-aa/lp-1815452-more-gl-rules.patch
 ubuntu-aa/lp-1817943-nvidia-gl-rules.patch
 ubuntu-aa/lp-1817943-devices-in-sysfs.patch
+ubuntu/lp-1825195-qemu-do-not-define-known-no-op-features.patch
+ubuntu/lp-1825195-qemuxml2argvtest-add-test-for-remove-cpu-features.patch

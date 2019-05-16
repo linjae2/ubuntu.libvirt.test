@@ -1,3 +1,10 @@
+libvirt (5.0.0-1ubuntu2.2) disco; urgency=medium
+
+  * d/p/ubuntu/lp-1825195-*.patch: fix issues with old guests that defined
+    the never functional osxsave and ospke features (LP: #1825195).
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 16 May 2019 10:42:09 +0200
+
 libvirt (5.0.0-1ubuntu2.1) disco-security; urgency=medium
 
   * SECURITY UPDATE: Add support for md-clear functionality
