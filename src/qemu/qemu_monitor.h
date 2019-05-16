@@ -434,7 +434,8 @@ struct _qemuMonitorMigrationStatus {
 };
 
 int qemuMonitorGetMigrationStatus(qemuMonitorPtr mon,
-                                  qemuMonitorMigrationStatusPtr status);
+                                  qemuMonitorMigrationStatusPtr status,
+                                  int *setting_up);
 int qemuMonitorGetSpiceMigrationStatus(qemuMonitorPtr mon,
                                        bool *spice_migrated);
 
