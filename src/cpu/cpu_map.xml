@@ -513,6 +513,11 @@
       <feature name='rdtscp'/>
     </model>
 
+    <model name='SandyBridge-IBRS'>
+      <model name='SandyBridge'/>
+      <feature name='spec-ctrl'/>
+    </model>
+
     <model name='Haswell'>
       <model name='SandyBridge'/>
       <feature name='fma'/>
