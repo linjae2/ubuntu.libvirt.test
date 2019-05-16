@@ -499,10 +499,12 @@ mymain(void)
     if (virtTestRun("Socket UNIX Addrs", testSocketUNIXAddrs, NULL) < 0)
         ret = -1;
 
+#if 0
     if (virtTestRun("Socket External Command /dev/zero", testSocketCommandNormal, NULL) < 0)
         ret = -1;
     if (virtTestRun("Socket External Command /dev/does-not-exist", testSocketCommandFail, NULL) < 0)
         ret = -1;
+#endif
 
     struct testSSHData sshData1 = {
         .nodename = "somehost",
