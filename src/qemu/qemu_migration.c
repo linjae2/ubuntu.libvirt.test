@@ -2101,6 +2101,16 @@ static char
         if (!qemuDomainDefCheckABIStability(driver, vm->def, def))
             goto cleanup;
 
+        if (driver->config->allow_incoming_qemukvm) {
+            if (STREQ_NULLABLE(vm->def->os.machine, "pc-1.0")) {
+                VIR_FREE(vm->def->os.machine);
+                VIR_FREE(def->os.machine);
+                if (VIR_STRDUP(vm->def->os.machine, "pc-1.0-precise") < 0 ||
+                        VIR_STRDUP(def->os.machine, "pc-1.0-precise") < 0)
+                    goto cleanup;
+            }
+        }
+
         rv = qemuDomainDefFormatLive(driver, def, false, true);
     } else {
         rv = qemuDomainDefFormatLive(driver, vm->def, false, true);
@@ -2431,6 +2441,14 @@ qemuMigrationPrepareAny(virQEMUDriverPtr driver,
         goto endjob;
     }
 
+    if (driver->config->allow_incoming_qemukvm) {
+            if (STREQ_NULLABLE(vm->def->os.machine, "pc-1.0")) {
+                VIR_FREE(vm->def->os.machine);
+                if (VIR_STRDUP(vm->def->os.machine, "pc-1.0-precise") < 0)
+                    goto endjob;
+            }
+    }
+ 
     /* Start the QEMU daemon, with the same command-line arguments plus
      * -incoming $migrateFrom
      */
