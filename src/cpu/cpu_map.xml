@@ -488,6 +488,11 @@
       <feature name='popcnt'/>
     </model>
 
+    <model name='Nehalem-IBRS'>
+      <model name='Nehalem'/>
+      <feature name='spec-ctrl'/>
+    </model>
+
     <model name='Westmere'>
       <model name='Nehalem'/>
       <feature name='aes'/>
