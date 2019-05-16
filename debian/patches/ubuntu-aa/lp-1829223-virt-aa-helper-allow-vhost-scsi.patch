@@ -1,0 +1,53 @@
+From 0541b65464a2047fca6c0ab83e4d693ba0cc41a2 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Wed, 15 May 2019 13:35:32 +0200
+Subject: [PATCH] virt-aa-helper: allow sysfs path used for vhost-scsi
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+When a vhost scsi device is hotplugged virt-aa-helper is called to
+add the respective path.
+For example the config:
+  <hostdev mode='subsystem' type='scsi_host' managed='no'>
+    <source protocol='vhost' wwpn='naa.50014059de6fba4f'/>
+  </hostdev>
+Will call it to add:
+ /sys/kernel/config/target/vhost//naa.50014059de6fba4f
+
+But in general /sys paths are filtered in virt-aa-helper.c:valid_path
+To allow the path used for vhost-scsi we need to add it to the list of
+known and accepted overrides.
+
+Fixes: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1829223
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=0541b65464a2047fca6c0ab83e4d693ba0cc41a2
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1829223
+Last-Update: 2019-05-16
+
+---
+ src/security/virt-aa-helper.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index d0fe86cefc..ad9a7dda94 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -510,8 +510,9 @@ valid_path(const char *path, const bool readonly)
+     };
+     /* override the above with these */
+     const char * const override[] = {
+-        "/sys/devices/pci",              /* for hostdev pci devices */
+-        "/etc/libvirt-sandbox/services/" /* for virt-sandbox service config */
++        "/sys/devices/pci",                /* for hostdev pci devices */
++        "/sys/kernel/config/target/vhost", /* for hostdev vhost_scsi devices */
++        "/etc/libvirt-sandbox/services/"   /* for virt-sandbox service config */
+     };
+ 
+     const int nropaths = ARRAY_CARDINALITY(restricted);
+-- 
+2.21.0
+
