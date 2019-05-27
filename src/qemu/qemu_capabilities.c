@@ -458,6 +458,7 @@ VIR_ENUM_IMPL(virQEMUCaps, QEMU_CAPS_LAST,
               /* 280 */
               "pl011",
               "machine.pseries.max-cpu-compat",
+              "vfio-ap",
     );
 
 
@@ -1693,6 +1694,7 @@ struct virQEMUCapsStringFlags virQEMUCapsObjectTypes[] = {
     { "sclplmconsole", QEMU_CAPS_DEVICE_SCLPLMCONSOLE },
     { "isa-serial", QEMU_CAPS_DEVICE_ISA_SERIAL },
     { "pl011", QEMU_CAPS_DEVICE_PL011 },
+    { "vfio-ap", QEMU_CAPS_DEVICE_VFIO_AP },
 };
 
 static struct virQEMUCapsStringFlags virQEMUCapsObjectPropsVirtioBalloon[] = {
