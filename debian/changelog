@@ -1,3 +1,10 @@
+libvirt (4.6.0-2ubuntu3.6) cosmic; urgency=medium
+
+  * d/p/ubuntu/lp-1830268-refresh-capabilities-on-KVM-nesting.patch: fix
+    consideration of VMX flag (LP: #1830268)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 28 May 2019 07:59:48 +0200
+
 libvirt (4.6.0-2ubuntu3.5) cosmic-security; urgency=medium
 
   * SECURITY UPDATE: Add support for md-clear functionality

@@ -77,3 +77,4 @@ ubuntu/lp-1771662-3-util-Fix-for-NULL-dereference.patch
 ubuntu/lp-1771662-4-util-Fixing-invalid-error-checking-from-virPCIGetNet.patch
 CVE-2019-3840.patch
 md-clear.patch
+ubuntu/lp-1830268-refresh-capabilities-on-KVM-nesting.patch
