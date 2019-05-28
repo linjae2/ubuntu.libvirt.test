@@ -47,7 +47,7 @@ pre-stop script
 		exit 0
 	fi
 
-        /usr/lib/libvirt/libvirt-stop-guests
+        /etc/init.d/libvirt-guests stop
 end script
 
 # /etc/default/libvirt-bin will be deprecated soon.
