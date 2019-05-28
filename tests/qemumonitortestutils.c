@@ -901,6 +901,7 @@ qemuMonitorTestNew(bool json,
     if (!(test->mon = qemuMonitorOpen(test->vm,
                                       &src,
                                       json,
+                                      0,
                                       &qemuMonitorTestCallbacks,
                                       driver)))
         goto error;
