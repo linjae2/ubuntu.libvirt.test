@@ -32,6 +32,7 @@
 # include "device_conf.h"
 # include "cpu/cpu.h"
 # include "util/virgic.h"
+# include "virenum.h"
 
 typedef struct _qemuMonitor qemuMonitor;
 typedef qemuMonitor *qemuMonitorPtr;
@@ -883,7 +884,8 @@ int qemuMonitorDriveMirror(qemuMonitorPtr mon,
                            unsigned long long bandwidth,
                            unsigned int granularity,
                            unsigned long long buf_size,
-                           unsigned int flags)
+                           bool shallow,
+                           bool reuse)
     ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
 int qemuMonitorBlockdevMirror(qemuMonitorPtr mon,
                               const char *jobname,
@@ -892,7 +894,7 @@ int qemuMonitorBlockdevMirror(qemuMonitorPtr mon,
                               unsigned long long bandwidth,
                               unsigned int granularity,
                               unsigned long long buf_size,
-                              unsigned int flags)
+                              bool shallow)
     ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
 int qemuMonitorDrivePivot(qemuMonitorPtr mon,
                           const char *jobname)
@@ -1219,5 +1221,14 @@ struct _qemuMonitorPRManagerInfo {
 
 int qemuMonitorGetPRManagerInfo(qemuMonitorPtr mon,
                                 virHashTablePtr *retinfo);
+
+typedef struct  _qemuMonitorCurrentMachineInfo qemuMonitorCurrentMachineInfo;
+typedef qemuMonitorCurrentMachineInfo *qemuMonitorCurrentMachineInfoPtr;
+struct _qemuMonitorCurrentMachineInfo {
+    bool wakeupSuspendSupport;
+};
+
+int qemuMonitorGetCurrentMachineInfo(qemuMonitorPtr mon,
+                                     qemuMonitorCurrentMachineInfoPtr info);
 
 #endif /* LIBVIRT_QEMU_MONITOR_H */

@@ -3244,17 +3244,18 @@ qemuMonitorDriveMirror(qemuMonitorPtr mon,
                        const char *device, const char *file,
                        const char *format, unsigned long long bandwidth,
                        unsigned int granularity, unsigned long long buf_size,
-                       unsigned int flags)
+                       bool shallow,
+                       bool reuse)
 {
     VIR_DEBUG("device=%s, file=%s, format=%s, bandwidth=%lld, "
-              "granularity=%#x, buf_size=%lld, flags=0x%x",
+              "granularity=%#x, buf_size=%lld, shallow=%d, reuse=%d",
               device, file, NULLSTR(format), bandwidth, granularity,
-              buf_size, flags);
+              buf_size, shallow, reuse);
 
     QEMU_CHECK_MONITOR(mon);
 
     return qemuMonitorJSONDriveMirror(mon, device, file, format, bandwidth,
-                                      granularity, buf_size, flags);
+                                      granularity, buf_size, shallow, reuse);
 }
 
 
@@ -3266,17 +3267,17 @@ qemuMonitorBlockdevMirror(qemuMonitorPtr mon,
                           unsigned long long bandwidth,
                           unsigned int granularity,
                           unsigned long long buf_size,
-                          unsigned int flags)
+                          bool shallow)
 {
     VIR_DEBUG("jobname=%s, device=%s, target=%s, bandwidth=%lld, "
-              "granularity=%#x, buf_size=%lld, flags=0x%x",
+              "granularity=%#x, buf_size=%lld, shallow=%d",
               NULLSTR(jobname), device, target, bandwidth, granularity,
-              buf_size, flags);
+              buf_size, shallow);
 
     QEMU_CHECK_MONITOR(mon);
 
     return qemuMonitorJSONBlockdevMirror(mon, jobname, device, target, bandwidth,
-                                         granularity, buf_size, flags);
+                                         granularity, buf_size, shallow);
 }
 
 
@@ -4471,4 +4472,14 @@ qemuMonitorGetPRManagerInfo(qemuMonitorPtr mon,
  cleanup:
     virHashFree(info);
     return ret;
+}
+
+
+int
+qemuMonitorGetCurrentMachineInfo(qemuMonitorPtr mon,
+                                 qemuMonitorCurrentMachineInfoPtr info)
+{
+    QEMU_CHECK_MONITOR(mon);
+
+    return qemuMonitorJSONGetCurrentMachineInfo(mon, info);
 }

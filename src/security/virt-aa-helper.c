@@ -510,8 +510,9 @@ valid_path(const char *path, const bool readonly)
     };
     /* override the above with these */
     const char * const override[] = {
-        "/sys/devices/pci",              /* for hostdev pci devices */
-        "/etc/libvirt-sandbox/services/" /* for virt-sandbox service config */
+        "/sys/devices/pci",                /* for hostdev pci devices */
+        "/sys/kernel/config/target/vhost", /* for hostdev vhost_scsi devices */
+        "/etc/libvirt-sandbox/services/"   /* for virt-sandbox service config */
     };
 
     const int nropaths = ARRAY_CARDINALITY(restricted);
@@ -645,7 +646,8 @@ caps_mockup(vahControl * ctl, const char *xmlStr)
 virDomainDefParserConfig virAAHelperDomainDefParserConfig = {
     .features = VIR_DOMAIN_DEF_FEATURE_MEMORY_HOTPLUG |
                 VIR_DOMAIN_DEF_FEATURE_OFFLINE_VCPUPIN |
-                VIR_DOMAIN_DEF_FEATURE_INDIVIDUAL_VCPUS,
+                VIR_DOMAIN_DEF_FEATURE_INDIVIDUAL_VCPUS |
+                VIR_DOMAIN_DEF_FEATURE_NET_MODEL_STRING,
 };
 
 static int
@@ -916,11 +918,11 @@ add_file_path(virDomainDiskDefPtr disk,
 
     if (depth == 0) {
         if (disk->src->readonly)
-            ret = vah_add_file(buf, path, "rk");
+            ret = vah_add_file(buf, path, "Rk");
         else
             ret = vah_add_file(buf, path, "rwk");
     } else {
-        ret = vah_add_file(buf, path, "rk");
+        ret = vah_add_file(buf, path, "Rk");
     }
 
     if (ret != 0)
@@ -1172,7 +1174,7 @@ get_files(vahControl * ctl)
             /* We don't need to add deny rw rules for readonly mounts,
              * this can only lead to troubles when mounting / readonly.
              */
-            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rw", true) != 0)
+            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rwl", true) != 0)
                 goto cleanup;
         }
     }
@@ -1253,7 +1255,7 @@ get_files(vahControl * ctl)
     if (ctl->def->virtType == VIR_DOMAIN_VIRT_KVM) {
         for (i = 0; i < ctl->def->nnets; i++) {
             virDomainNetDefPtr net = ctl->def->nets[i];
-            if (net && net->model) {
+            if (net && virDomainNetGetModelString(net)) {
                 if (net->driver.virtio.name == VIR_DOMAIN_NET_BACKEND_TYPE_QEMU)
                     continue;
                 if (!virDomainNetIsVirtioModel(net))

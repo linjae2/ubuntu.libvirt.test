@@ -35,6 +35,7 @@
 #include "virxml.h"
 #include "virstring.h"
 #include "vsh-table.h"
+#include "virenum.h"
 
 VIR_ENUM_DECL(virshDomainIOError);
 VIR_ENUM_IMPL(virshDomainIOError,
@@ -375,6 +376,10 @@ cmdDomMemStat(vshControl *ctl, const vshCmd *cmd)
             vshPrint(ctl, "last_update %llu\n", stats[i].val);
         if (stats[i].tag == VIR_DOMAIN_MEMORY_STAT_DISK_CACHES)
             vshPrint(ctl, "disk_caches %llu\n", stats[i].val);
+        if (stats[i].tag == VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC)
+            vshPrint(ctl, "hugetlb_pgalloc %llu\n", stats[i].val);
+        if (stats[i].tag == VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL)
+            vshPrint(ctl, "hugetlb_pgfail %llu\n", stats[i].val);
     }
 
     ret = true;
@@ -1228,6 +1233,8 @@ cmdDomBlkError(vshControl *ctl, const vshCmd *cmd)
     ret = true;
 
  cleanup:
+    for (i = 0; i < count; i++)
+        VIR_FREE(disks[i].disk);
     VIR_FREE(disks);
     virshDomainFree(dom);
     return ret;

@@ -1,6 +1,107 @@
 libvirt releases
 ================
 
+# v5.4.0 (2019-06-03)
+
+  * New features
+
+  * Security
+
+    - cpu: Introduce support for the md-clear CPUID bit
+        This bit is set when microcode provides the mechanism to invoke a flush
+        of various exploitable CPU buffers by invoking the x86 VERW
+        instruction. CVE-2018-12126, CVE-2018-12127, CVE-2018-12130,
+        CVE-2019-11091.
+
+    - Restrict user access to virt-admin, virtlogd and virtlockd
+        The intended users for these facilities are the root user and the
+        libvirtd service respectively, but these restrictions were not enforced
+        correctly. CVE-2019-10132.
+
+  * Improvements
+
+    - test driver: Expand API coverage
+        Several APIs that were missing from the test driver have now been
+        implemented.
+
+    - Avoid unnecessary static linking
+        Most binaries shipped as part of libvirt, for example virtlogd and
+        libvirt_iohelper, were embedding parts of the library even though they
+        also linked against the libvirt.so dynamic library. This is no longer
+        the case, which results in both the disk and memory footprint being
+        reduced.
+
+    - qemu: Report stat-htlb-pgalloc and stat-htlb-pgfail balloon stats
+        These stats have been introduced in QEMU 3.0.
+
+  * Bug fixes
+
+    - qemu: Fix emulator scheduler support
+        Setting the scheduler for QEMU's main thread before QEMU had a chance
+        to start up other threads was misleading as it would affect other
+        threads (vCPU and I/O) as well. In some particular situations this
+        could also lead to an error when the thread for vCPU #0 was being moved
+        to its cpu,cpuacct cgroup. This was fixed so that the scheduler for the
+        main thread is set after QEMU starts.
+
+    - apparmor: Allow hotplug of vhost-scsi devices
+
+# v5.3.0 (2019-05-04)
+
+  * New features
+
+    - qemu: Add support for setting the emulator scheduler parameters
+        I/O threads and vCPU threads already support setting schedulers, but
+        until now it was impossible to do so for the main QEMU thread (emulator
+        thread in the libvirt naming). This is, however, requested for some
+        very specific scenarios, for example when vCPU threads are running at
+        such priority that could starve the main thread.
+
+  * Removed features
+
+    - vbox: Drop support for VirtualBox 4.x releases
+        Support for all the 4.x releases was ended by VirtualBox maintainers in
+        December 2015. Therefore, libvirt support for these releases is
+        dropped.
+
+  * Improvements
+
+    - qemu: Use PCI by default for RISC-V guests
+        PCI support for RISC-V guests was already available in libvirt 5.1.0,
+        but it required the user to opt-in by manually assigning PCI addresses:
+        with this release, RISC-V guests will use PCI automatically when
+        running against a recent enough (4.0.0+) QEMU release.
+
+    - qemu: Advertise firmware autoselection in domain capabilities
+        The firmware autoselection feature is now exposed in domain
+        capabilities and management applications can query for accepted values,
+        i.e. values that are accepted and for which libvirt found firmware
+        descriptor files. Firmware Secure Boot support is also advertised.
+
+    - Drop YAJL 1 support
+        YAJL 2 is widely adopted and maintaining side by side support for two
+        versions is unnecessary.
+
+  * Bug fixes
+
+    - rpc: cleanup in virNetTLSContextNew
+        Failed new gnutls context allocations in virNetTLSContextNew function
+        results in double free and segfault. Occasional memory leaks may also
+        occur.
+
+    - virsh: various completers fixes
+        There were some possible crashers, memory leaks, etc. which are now
+        fixed.
+
+    - qemu: Make hugepages work with memfd backend
+        Due to a bug in command line generation libvirt did not honor hugepages
+        setting with memfd backend.
+
+    - Enforce ACL write permission for getting guest time & hostname
+        Getting the guest time and hostname both require use of guest agent
+        commands. These must not be allowed for read-only users, so the
+        permissions check must validate "write" permission not "read".
+
 # v5.2.0 (2019-04-03)
 
   * New features
@@ -348,8 +449,6 @@ libvirt releases
         minimal performance penalty when compared to regular (L1) guests on
         ppc64 hardware.
 
-  * Improvements
-
   * Bug fixes
 
     - Xen: Handle soft reset shutdown event
@@ -512,8 +611,6 @@ libvirt releases
         example, use usb address as usb:<bus>.<port>, use sata address as
         <controller>.<bus>.<unit>.
 
-  * Bug fixes
-
 # v4.5.0 (2018-07-02)
 
   * New features
@@ -670,8 +767,6 @@ libvirt releases
     - virsh: Enhance event name completion
         Implement event name completion for some commands (e.g. event,
         secret-event, pool-event and nodedev-event)
-
-  * Bug fixes
 
 # v4.3.0 (2018-05-02)
 
@@ -1941,4 +2036,5 @@ libvirt releases
 
 ==============================================================================
 Older libvirt releases didn't have proper release notes: if you are interested
-in changes between them, you should check out ChangeLog* and docs/news-*.html.
+in changes between them, you should check out docs/news-*.html or the full git
+log (see instructions in ChangeLog).

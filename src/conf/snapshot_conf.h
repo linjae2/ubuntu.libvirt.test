@@ -25,6 +25,7 @@
 # include "internal.h"
 # include "domain_conf.h"
 # include "moment_conf.h"
+# include "virenum.h"
 
 /* Items related to snapshot state */
 
@@ -73,7 +74,7 @@ struct _virDomainSnapshotDiskDef {
 
 /* Stores the complete snapshot metadata */
 struct _virDomainSnapshotDef {
-    virDomainMomentDef common;
+    virDomainMomentDef parent;
 
     /* Additional public XML.  */
     int state; /* virDomainSnapshotState */
@@ -113,7 +114,7 @@ virDomainSnapshotDefPtr virDomainSnapshotDefParseNode(xmlDocPtr xml,
                                                       virDomainXMLOptionPtr xmlopt,
                                                       bool *current,
                                                       unsigned int flags);
-void virDomainSnapshotDefFree(virDomainSnapshotDefPtr def);
+virDomainSnapshotDefPtr virDomainSnapshotDefNew(void);
 char *virDomainSnapshotDefFormat(const char *uuidstr,
                                  virDomainSnapshotDefPtr def,
                                  virCapsPtr caps,

@@ -582,6 +582,8 @@
     <function name="VIR_DOMAIN_MEMORY_STAT_ACTUAL_BALLOON" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_ACTUAL_BALLOON"/>
     <function name="VIR_DOMAIN_MEMORY_STAT_AVAILABLE" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_AVAILABLE"/>
     <function name="VIR_DOMAIN_MEMORY_STAT_DISK_CACHES" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_DISK_CACHES"/>
+    <function name="VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC"/>
+    <function name="VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL"/>
     <function name="VIR_DOMAIN_MEMORY_STAT_LAST" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_LAST"/>
     <function name="VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE"/>
     <function name="VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT" link="libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT"/>

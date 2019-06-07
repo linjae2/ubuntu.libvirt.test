@@ -1,3 +1,4 @@
+usr/share/apport/package-hooks/source_libvirt.py
 usr/sbin/*
 usr/lib/libvirt/libvirt_*
 usr/lib/libvirt/libvirt-guests.sh

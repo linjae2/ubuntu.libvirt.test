@@ -2292,7 +2292,7 @@ virConnectSupportsFeature</td>
 <td>0.9.10</td>
 <td></td>
 <td></td>
-<td></td>
+<td>5.4.0</td>
 <td></td>
 <td></td>
 <td></td>
@@ -2965,7 +2965,7 @@ virConnectSupportsFeature</td>
 <td>1.2.5</td>
 <td></td>
 <td></td>
-<td></td>
+<td>5.4.0</td>
 <td></td>
 <td></td>
 <td></td>
@@ -3206,7 +3206,7 @@ virConnectSupportsFeature</td>
 <td>1.2.14</td>
 <td></td>
 <td></td>
-<td></td>
+<td>5.4.0</td>
 <td></td>
 <td></td>
 <td></td>
@@ -3609,7 +3609,7 @@ virConnectSupportsFeature</td>
 <td>0.4.2</td>
 <td></td>
 <td></td>
-<td></td>
+<td>5.4.0</td>
 <td></td>
 <td></td>
 <td></td>

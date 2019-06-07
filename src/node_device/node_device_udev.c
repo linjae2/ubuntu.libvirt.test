@@ -318,43 +318,6 @@ udevGenerateDeviceName(struct udev_device *device,
 }
 
 
-#if HAVE_UDEV_LOGGING
-typedef void
-(*udevLogFunctionPtr)(struct udev *udev,
-                      int priority,
-                      const char *file,
-                      int line,
-                      const char *fn,
-                      const char *format,
-                      va_list args);
-
-static void
-ATTRIBUTE_FMT_PRINTF(6, 0)
-udevLogFunction(struct udev *udev ATTRIBUTE_UNUSED,
-                int priority,
-                const char *file,
-                int line,
-                const char *fn,
-                const char *fmt,
-                va_list args)
-{
-    virBuffer buf = VIR_BUFFER_INITIALIZER;
-    char *format = NULL;
-
-    virBufferAdd(&buf, fmt, -1);
-    virBufferTrim(&buf, "\n", -1);
-
-    format = virBufferContentAndReset(&buf);
-
-    virLogVMessage(&virLogSelf,
-                   virLogPriorityFromSyslog(priority),
-                   file, line, fn, NULL, format ? format : fmt, args);
-
-    VIR_FREE(format);
-}
-#endif
-
-
 static int
 udevTranslatePCIIds(unsigned int vendor,
                     unsigned int product,
@@ -1872,10 +1835,6 @@ nodeStateInitialize(bool privileged,
                        _("failed to create udev context"));
         goto cleanup;
     }
-#if HAVE_UDEV_LOGGING
-    /* cast to get rid of missing-format-attribute warning */
-    udev_set_log_fn(udev, (udevLogFunctionPtr) udevLogFunction);
-#endif
 
     virObjectLock(priv);
 
@@ -1888,14 +1847,12 @@ nodeStateInitialize(bool privileged,
 
     udev_monitor_enable_receiving(priv->udev_monitor);
 
-#if HAVE_UDEV_MONITOR_SET_RECEIVE_BUFFER_SIZE
     /* mimic udevd's behaviour and override the systems rmem_max limit in case
      * there's a significant number of device 'add' events
      */
     if (geteuid() == 0)
         udev_monitor_set_receive_buffer_size(priv->udev_monitor,
                                              128 * 1024 * 1024);
-#endif
 
     if (virThreadCreate(&priv->th, true, udevEventHandleThread, NULL) < 0) {
         virReportSystemError(errno, "%s",
