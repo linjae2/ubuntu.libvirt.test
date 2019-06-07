@@ -390,6 +390,14 @@ testDriverNew(void)
         .parse = testDomainDefNamespaceParse,
         .free = testDomainDefNamespaceFree,
     };
+    virDomainDefParserConfig config = {
+        .features = VIR_DOMAIN_DEF_FEATURE_MEMORY_HOTPLUG |
+                    VIR_DOMAIN_DEF_FEATURE_OFFLINE_VCPUPIN |
+                    VIR_DOMAIN_DEF_FEATURE_INDIVIDUAL_VCPUS |
+                    VIR_DOMAIN_DEF_FEATURE_USER_ALIAS |
+                    VIR_DOMAIN_DEF_FEATURE_FW_AUTOSELECT |
+                    VIR_DOMAIN_DEF_FEATURE_NET_MODEL_STRING,
+    };
     testDriverPtr ret;
 
     if (testDriverInitialize() < 0)
@@ -398,7 +406,7 @@ testDriverNew(void)
     if (!(ret = virObjectLockableNew(testDriverClass)))
         return NULL;
 
-    if (!(ret->xmlopt = virDomainXMLOptionNew(NULL, NULL, &ns, NULL, NULL)) ||
+    if (!(ret->xmlopt = virDomainXMLOptionNew(&config, NULL, &ns, NULL, NULL)) ||
         !(ret->eventState = virObjectEventStateNew()) ||
         !(ret->ifaces = virInterfaceObjListNew()) ||
         !(ret->domains = virDomainObjListNew()) ||
@@ -428,6 +436,13 @@ static const char *defaultConnXML =
 "  <os>"
 "    <type>hvm</type>"
 "  </os>"
+"  <devices>"
+"    <interface type='network'>"
+"      <mac address='aa:bb:cc:dd:ee:ff'/>"
+"      <source network='default' bridge='virbr0'/>"
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x1' function='0x0'/>"
+"    </interface>"
+"  </devices>"
 "</domain>"
 ""
 "<network>"
@@ -840,7 +855,7 @@ testParseDomainSnapshots(testDriverPtr privconn,
             goto error;
 
         if (!(snap = virDomainSnapshotAssignDef(domobj->snapshots, def))) {
-            virDomainSnapshotDefFree(def);
+            virObjectUnref(def);
             goto error;
         }
 
@@ -1943,6 +1958,20 @@ testDomainGetState(virDomainPtr domain,
     return 0;
 }
 
+static int
+testDomainGetTime(virDomainPtr dom ATTRIBUTE_UNUSED,
+                  long long *seconds,
+                  unsigned int *nseconds,
+                  unsigned int flags)
+{
+    virCheckFlags(0, -1);
+
+    *seconds = 627319920;
+    *nseconds = 0;
+
+    return 0;
+}
+
 #define TEST_SAVE_MAGIC "TestGuestMagic"
 
 static int
@@ -3024,6 +3053,43 @@ static int testDomainSetAutostart(virDomainPtr domain,
     return 0;
 }
 
+static int testDomainGetDiskErrors(virDomainPtr dom,
+                                   virDomainDiskErrorPtr errors,
+                                   unsigned int maxerrors,
+                                   unsigned int flags)
+{
+    virDomainObjPtr vm = NULL;
+    int ret = -1;
+    size_t i;
+
+    virCheckFlags(0, -1);
+
+    if (!(vm = testDomObjFromDomain(dom)))
+        goto cleanup;
+
+    if (virDomainObjCheckActive(vm) < 0)
+        goto cleanup;
+
+    if (errors) {
+        for (i = 0; i < MIN(vm->def->ndisks, maxerrors); i++) {
+            if (VIR_STRDUP(errors[i].disk, vm->def->disks[i]->dst) < 0)
+                goto cleanup;
+            errors[i].error = i % VIR_DOMAIN_DISK_ERROR_LAST;
+        }
+        ret = i;
+    } else {
+        ret = vm->def->ndisks;
+    }
+
+ cleanup:
+    virDomainObjEndAPI(&vm);
+    if (ret < 0) {
+        for (i = 0; i < MIN(vm->def->ndisks, maxerrors); i++)
+            VIR_FREE(errors[i].disk);
+    }
+    return ret;
+}
+
 static char *testDomainGetSchedulerType(virDomainPtr domain ATTRIBUTE_UNUSED,
                                         int *nparams)
 {
@@ -3158,6 +3224,71 @@ static int testDomainBlockStats(virDomainPtr domain,
     ret = 0;
  error:
     virDomainObjEndAPI(&privdom);
+    return ret;
+}
+
+static int
+testDomainInterfaceAddresses(virDomainPtr dom,
+                             virDomainInterfacePtr **ifaces,
+                             unsigned int source ATTRIBUTE_UNUSED,
+                             unsigned int flags)
+{
+    size_t i;
+    size_t ifaces_count = 0;
+    int ret = -1;
+    char macaddr[VIR_MAC_STRING_BUFLEN];
+    virDomainObjPtr vm = NULL;
+    virDomainInterfacePtr iface = NULL;
+    virDomainInterfacePtr *ifaces_ret = NULL;
+
+    virCheckFlags(0, -1);
+
+    if (!(vm = testDomObjFromDomain(dom)))
+        goto cleanup;
+
+    if (virDomainObjCheckActive(vm) < 0)
+        goto cleanup;
+
+    if (VIR_ALLOC_N(ifaces_ret, vm->def->nnets) < 0)
+        goto cleanup;
+
+    for (i = 0; i < vm->def->nnets; i++) {
+        if (VIR_ALLOC(iface) < 0)
+            goto cleanup;
+
+        if (VIR_STRDUP(iface->name, vm->def->nets[i]->ifname) < 0)
+            goto cleanup;
+
+        virMacAddrFormat(&(vm->def->nets[i]->mac), macaddr);
+        if (VIR_STRDUP(iface->hwaddr, macaddr) < 0)
+            goto cleanup;
+
+        if (VIR_ALLOC(iface->addrs) < 0)
+            goto cleanup;
+
+        iface->addrs[0].type = VIR_IP_ADDR_TYPE_IPV4;
+        iface->addrs[0].prefix = 24;
+        if (virAsprintf(&iface->addrs[0].addr, "192.168.0.%zu", 1 + i) < 0)
+            goto cleanup;
+
+        iface->naddrs = 1;
+
+        VIR_APPEND_ELEMENT_INPLACE(ifaces_ret, ifaces_count, iface);
+    }
+
+    VIR_STEAL_PTR(*ifaces, ifaces_ret);
+    ret = ifaces_count;
+
+ cleanup:
+    virDomainObjEndAPI(&vm);
+
+    if (ifaces_ret) {
+        for (i = 0; i < ifaces_count; i++)
+            virDomainInterfaceFree(ifaces_ret[i]);
+    }
+    virDomainInterfaceFree(iface);
+
+    VIR_FREE(ifaces_ret);
     return ret;
 }
 
@@ -5941,6 +6072,42 @@ testDomainManagedSaveRemove(virDomainPtr dom, unsigned int flags)
     return 0;
 }
 
+static int
+testDomainMemoryPeek(virDomainPtr dom,
+                     unsigned long long start,
+                     size_t size,
+                     void *buffer,
+                     unsigned int flags)
+{
+    int ret = -1;
+    size_t i;
+    unsigned char b = start;
+    virDomainObjPtr vm = NULL;
+
+    virCheckFlags(VIR_MEMORY_VIRTUAL | VIR_MEMORY_PHYSICAL, -1);
+
+    if (flags != VIR_MEMORY_VIRTUAL && flags != VIR_MEMORY_PHYSICAL) {
+        virReportError(VIR_ERR_INVALID_ARG,
+                       "%s", _("flags parameter must be VIR_MEMORY_VIRTUAL or VIR_MEMORY_PHYSICAL"));
+        goto cleanup;
+    }
+
+    if (!(vm = testDomObjFromDomain(dom)))
+        goto cleanup;
+
+    if (virDomainObjCheckActive(vm) < 0)
+        goto cleanup;
+
+    for (i = 0; i < size; i++)
+        ((unsigned char *) buffer)[i] = b++;
+
+    ret = 0;
+
+ cleanup:
+    virDomainObjEndAPI(&vm);
+    return ret;
+}
+
 
 /*
  * Snapshot APIs
@@ -6173,14 +6340,14 @@ testDomainSnapshotGetParent(virDomainSnapshotPtr snapshot,
     if (!(snap = testSnapObjFromSnapshot(vm, snapshot)))
         goto cleanup;
 
-    if (!snap->def->parent) {
+    if (!snap->def->parent_name) {
         virReportError(VIR_ERR_NO_DOMAIN_SNAPSHOT,
                        _("snapshot '%s' does not have a parent"),
                        snap->def->name);
         goto cleanup;
     }
 
-    parent = virGetDomainSnapshot(snapshot->domain, snap->def->parent);
+    parent = virGetDomainSnapshot(snapshot->domain, snap->def->parent_name);
 
  cleanup:
     virDomainObjEndAPI(&vm);
@@ -6326,13 +6493,13 @@ testDomainSnapshotCreateXML(virDomainPtr domain,
 {
     testDriverPtr privconn = domain->conn->privateData;
     virDomainObjPtr vm = NULL;
-    virDomainSnapshotDefPtr def = NULL;
     virDomainMomentObjPtr snap = NULL;
     virDomainSnapshotPtr snapshot = NULL;
     virObjectEventPtr event = NULL;
     bool update_current = true;
     bool redefine = flags & VIR_DOMAIN_SNAPSHOT_CREATE_REDEFINE;
     unsigned int parse_flags = VIR_DOMAIN_SNAPSHOT_PARSE_DISKS;
+    VIR_AUTOUNREF(virDomainSnapshotDefPtr) def = NULL;
 
     /*
      * DISK_ONLY: Not implemented yet
@@ -6381,7 +6548,7 @@ testDomainSnapshotCreateXML(virDomainPtr domain,
                                           &update_current, flags) < 0)
             goto cleanup;
     } else {
-        if (!(def->common.dom = virDomainDefCopy(vm->def,
+        if (!(def->parent.dom = virDomainDefCopy(vm->def,
                                                  privconn->caps,
                                                  privconn->xmlopt,
                                                  NULL,
@@ -6399,7 +6566,7 @@ testDomainSnapshotCreateXML(virDomainPtr domain,
     }
 
     if (!redefine) {
-        if (VIR_STRDUP(snap->def->parent,
+        if (VIR_STRDUP(snap->def->parent_name,
                        virDomainSnapshotGetCurrentName(vm->snapshots)) < 0)
             goto cleanup;
 
@@ -6420,13 +6587,12 @@ testDomainSnapshotCreateXML(virDomainPtr domain,
             if (update_current)
                 virDomainSnapshotSetCurrent(vm->snapshots, snap);
             other = virDomainSnapshotFindByName(vm->snapshots,
-                                                snap->def->parent);
+                                                snap->def->parent_name);
             virDomainMomentSetParent(snap, other);
         }
         virDomainObjEndAPI(&vm);
     }
     virObjectEventStateQueue(privconn->eventState, event);
-    virDomainSnapshotDefFree(def);
     return snapshot;
 }
 
@@ -6469,10 +6635,10 @@ testDomainSnapshotReparentChildren(void *payload,
     if (rep->err < 0)
         return 0;
 
-    VIR_FREE(snap->def->parent);
+    VIR_FREE(snap->def->parent_name);
 
     if (rep->parent->def &&
-        VIR_STRDUP(snap->def->parent, rep->parent->def->name) < 0) {
+        VIR_STRDUP(snap->def->parent_name, rep->parent->def->name) < 0) {
         rep->err = -1;
         return 0;
     }
@@ -6527,12 +6693,12 @@ testDomainSnapshotDelete(virDomainSnapshotPtr snapshot,
     } else {
         virDomainMomentDropParent(snap);
         if (snap == virDomainSnapshotGetCurrent(vm->snapshots)) {
-            if (snap->def->parent) {
+            if (snap->def->parent_name) {
                 parentsnap = virDomainSnapshotFindByName(vm->snapshots,
-                                                         snap->def->parent);
+                                                         snap->def->parent_name);
                 if (!parentsnap)
                     VIR_WARN("missing parent snapshot matching name '%s'",
-                             snap->def->parent);
+                             snap->def->parent_name);
             }
             virDomainSnapshotSetCurrent(vm->snapshots, parentsnap);
         }
@@ -6786,6 +6952,7 @@ static virHypervisorDriver testHypervisorDriver = {
     .domainSetMemory = testDomainSetMemory, /* 0.1.4 */
     .domainGetInfo = testDomainGetInfo, /* 0.1.1 */
     .domainGetState = testDomainGetState, /* 0.9.2 */
+    .domainGetTime = testDomainGetTime, /* 5.4.0 */
     .domainSave = testDomainSave, /* 0.3.2 */
     .domainSaveFlags = testDomainSaveFlags, /* 0.9.4 */
     .domainRestore = testDomainRestore, /* 0.3.2 */
@@ -6810,12 +6977,14 @@ static virHypervisorDriver testHypervisorDriver = {
     .domainUndefineFlags = testDomainUndefineFlags, /* 0.9.4 */
     .domainGetAutostart = testDomainGetAutostart, /* 0.3.2 */
     .domainSetAutostart = testDomainSetAutostart, /* 0.3.2 */
+    .domainGetDiskErrors = testDomainGetDiskErrors, /* 5.4.0 */
     .domainGetSchedulerType = testDomainGetSchedulerType, /* 0.3.2 */
     .domainGetSchedulerParameters = testDomainGetSchedulerParameters, /* 0.3.2 */
     .domainGetSchedulerParametersFlags = testDomainGetSchedulerParametersFlags, /* 0.9.2 */
     .domainSetSchedulerParameters = testDomainSetSchedulerParameters, /* 0.3.2 */
     .domainSetSchedulerParametersFlags = testDomainSetSchedulerParametersFlags, /* 0.9.2 */
     .domainBlockStats = testDomainBlockStats, /* 0.7.0 */
+    .domainInterfaceAddresses = testDomainInterfaceAddresses, /* 5.4.0 */
     .domainInterfaceStats = testDomainInterfaceStats, /* 0.7.0 */
     .nodeGetCellsFreeMemory = testNodeGetCellsFreeMemory, /* 0.4.2 */
     .connectDomainEventRegister = testConnectDomainEventRegister, /* 0.6.0 */
@@ -6837,6 +7006,7 @@ static virHypervisorDriver testHypervisorDriver = {
     .domainManagedSave = testDomainManagedSave, /* 1.1.4 */
     .domainHasManagedSaveImage = testDomainHasManagedSaveImage, /* 1.1.4 */
     .domainManagedSaveRemove = testDomainManagedSaveRemove, /* 1.1.4 */
+    .domainMemoryPeek = testDomainMemoryPeek, /* 5.4.0 */
 
     .domainSnapshotNum = testDomainSnapshotNum, /* 1.1.4 */
     .domainSnapshotListNames = testDomainSnapshotListNames, /* 1.1.4 */

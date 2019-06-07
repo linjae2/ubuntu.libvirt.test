@@ -2710,7 +2710,7 @@ esxConnectDomainXMLFromNative(virConnectPtr conn, const char *nativeFormat,
 
     memset(&data, 0, sizeof(data));
 
-    if (STRNEQ(nativeFormat, "vmware-vmx")) {
+    if (STRNEQ(nativeFormat, VMX_CONFIG_FORMAT_ARGV)) {
         virReportError(VIR_ERR_INVALID_ARG,
                        _("Unsupported config format '%s'"), nativeFormat);
         return NULL;
@@ -2755,7 +2755,7 @@ esxConnectDomainXMLToNative(virConnectPtr conn, const char *nativeFormat,
 
     memset(&data, 0, sizeof(data));
 
-    if (STRNEQ(nativeFormat, "vmware-vmx")) {
+    if (STRNEQ(nativeFormat, VMX_CONFIG_FORMAT_ARGV)) {
         virReportError(VIR_ERR_INVALID_ARG,
                        _("Unsupported config format '%s'"), nativeFormat);
         return NULL;
@@ -4081,7 +4081,6 @@ esxDomainSnapshotCreateXML(virDomainPtr domain, const char *xmlDesc,
                            unsigned int flags)
 {
     esxPrivate *priv = domain->conn->privateData;
-    virDomainSnapshotDefPtr def = NULL;
     esxVI_ObjectContent *virtualMachine = NULL;
     esxVI_VirtualMachineSnapshotTree *rootSnapshotList = NULL;
     esxVI_VirtualMachineSnapshotTree *snapshotTree = NULL;
@@ -4091,6 +4090,7 @@ esxDomainSnapshotCreateXML(virDomainPtr domain, const char *xmlDesc,
     virDomainSnapshotPtr snapshot = NULL;
     bool diskOnly = (flags & VIR_DOMAIN_SNAPSHOT_CREATE_DISK_ONLY) != 0;
     bool quiesce = (flags & VIR_DOMAIN_SNAPSHOT_CREATE_QUIESCE) != 0;
+    VIR_AUTOUNREF(virDomainSnapshotDefPtr) def = NULL;
 
     /* ESX supports disk-only and quiesced snapshots; libvirt tracks no
      * snapshot metadata so supporting that flag is trivial.  */
@@ -4118,7 +4118,7 @@ esxDomainSnapshotCreateXML(virDomainPtr domain, const char *xmlDesc,
            priv->parsedUri->autoAnswer) < 0 ||
         esxVI_LookupRootSnapshotTreeList(priv->primary, domain->uuid,
                                          &rootSnapshotList) < 0 ||
-        esxVI_GetSnapshotTreeByName(rootSnapshotList, def->common.name,
+        esxVI_GetSnapshotTreeByName(rootSnapshotList, def->parent.name,
                                     &snapshotTree, NULL,
                                     esxVI_Occurrence_OptionalItem) < 0) {
         goto cleanup;
@@ -4126,12 +4126,12 @@ esxDomainSnapshotCreateXML(virDomainPtr domain, const char *xmlDesc,
 
     if (snapshotTree) {
         virReportError(VIR_ERR_OPERATION_INVALID,
-                       _("Snapshot '%s' already exists"), def->common.name);
+                       _("Snapshot '%s' already exists"), def->parent.name);
         goto cleanup;
     }
 
     if (esxVI_CreateSnapshot_Task(priv->primary, virtualMachine->obj,
-                                  def->common.name, def->common.description,
+                                  def->parent.name, def->parent.description,
                                   diskOnly ? esxVI_Boolean_False : esxVI_Boolean_True,
                                   quiesce ? esxVI_Boolean_True : esxVI_Boolean_False,
                                   &task) < 0 ||
@@ -4148,10 +4148,9 @@ esxDomainSnapshotCreateXML(virDomainPtr domain, const char *xmlDesc,
         goto cleanup;
     }
 
-    snapshot = virGetDomainSnapshot(domain, def->common.name);
+    snapshot = virGetDomainSnapshot(domain, def->parent.name);
 
  cleanup:
-    virDomainSnapshotDefFree(def);
     esxVI_ObjectContent_Free(&virtualMachine);
     esxVI_VirtualMachineSnapshotTree_Free(&rootSnapshotList);
     esxVI_ManagedObjectReference_Free(&task);
@@ -4189,12 +4188,12 @@ esxDomainSnapshotGetXMLDesc(virDomainSnapshotPtr snapshot,
         goto cleanup;
     }
 
-    def.common.name = snapshot->name;
-    def.common.description = snapshotTree->description;
-    def.common.parent = snapshotTreeParent ? snapshotTreeParent->name : NULL;
+    def.parent.name = snapshot->name;
+    def.parent.description = snapshotTree->description;
+    def.parent.parent_name = snapshotTreeParent ? snapshotTreeParent->name : NULL;
 
     if (esxVI_DateTime_ConvertToCalendarTime(snapshotTree->createTime,
-                                             &def.common.creationTime) < 0) {
+                                             &def.parent.creationTime) < 0) {
         goto cleanup;
     }
 

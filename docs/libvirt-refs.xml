@@ -431,6 +431,8 @@
     <reference name='VIR_DOMAIN_MEMORY_STAT_ACTUAL_BALLOON' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_ACTUAL_BALLOON'/>
     <reference name='VIR_DOMAIN_MEMORY_STAT_AVAILABLE' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_AVAILABLE'/>
     <reference name='VIR_DOMAIN_MEMORY_STAT_DISK_CACHES' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_DISK_CACHES'/>
+    <reference name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC'/>
+    <reference name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL'/>
     <reference name='VIR_DOMAIN_MEMORY_STAT_LAST' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_LAST'/>
     <reference name='VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE'/>
     <reference name='VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT' href='html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT'/>
@@ -2358,6 +2360,8 @@
       <ref name='VIR_DOMAIN_MEMORY_STAT_ACTUAL_BALLOON'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_AVAILABLE'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_DISK_CACHES'/>
+      <ref name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC'/>
+      <ref name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_LAST'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT'/>
@@ -5684,6 +5688,8 @@
       <ref name='VIR_DOMAIN_MEMORY_STAT_ACTUAL_BALLOON'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_AVAILABLE'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_DISK_CACHES'/>
+      <ref name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC'/>
+      <ref name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_LAST'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE'/>
       <ref name='VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT'/>
@@ -9744,6 +9750,12 @@
         <word name='VIR_DOMAIN_MEMORY_STAT_DISK_CACHES'>
           <ref name='virDomainMemoryStats'/>
         </word>
+        <word name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC'>
+          <ref name='virDomainMemoryStats'/>
+        </word>
+        <word name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL'>
+          <ref name='virDomainMemoryStats'/>
+        </word>
         <word name='VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE'>
           <ref name='virDomainMemoryStats'/>
         </word>
@@ -10913,6 +10925,9 @@
           <ref name='virStorageVolGetInfoFlags'/>
           <ref name='virStorageVolResize'/>
           <ref name='virStorageVolUpload'/>
+        </word>
+        <word name='allocations'>
+          <ref name='virDomainMemoryStats'/>
         </word>
         <word name='allow'>
           <ref name='VIR_DOMAIN_BLOCK_IOTUNE_GROUP_NAME'/>
@@ -14814,6 +14829,7 @@
         </word>
         <word name='failed'>
           <ref name='virConnectDomainEventDeviceRemovalFailedCallback'/>
+          <ref name='virDomainMemoryStats'/>
           <ref name='virSaveLastError'/>
           <ref name='virStoragePoolCreateXML'/>
           <ref name='virStoragePoolDefineXML'/>
@@ -15831,6 +15847,7 @@
           <ref name='virConnectOpenReadOnly'/>
         </word>
         <word name='huge'>
+          <ref name='virDomainMemoryStats'/>
           <ref name='virNodeAllocPages'/>
         </word>
         <word name='human-readable'>
@@ -16342,6 +16359,7 @@
           <ref name='virDomainGetVcpuPinInfo'/>
           <ref name='virDomainGetVcpus'/>
           <ref name='virDomainListAllSnapshots'/>
+          <ref name='virDomainMemoryStats'/>
           <ref name='virDomainSetVcpusFlags'/>
         </word>
         <word name='inspected'>
@@ -22406,6 +22424,7 @@
           <ref name='virDomainBlockJobSetSpeed'/>
           <ref name='virDomainInterfaceAddresses'/>
           <ref name='virDomainManagedSave'/>
+          <ref name='virDomainMemoryStats'/>
           <ref name='virDomainMigrate'/>
           <ref name='virDomainMigrate2'/>
           <ref name='virDomainMigrate3'/>

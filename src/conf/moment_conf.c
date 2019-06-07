@@ -21,20 +21,65 @@
 
 #include <config.h>
 
+#include <sys/time.h>
+
 #include "internal.h"
 #include "moment_conf.h"
 #include "domain_conf.h"
 #include "virlog.h"
 #include "viralloc.h"
+#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_DOMAIN
 
 VIR_LOG_INIT("conf.moment_conf");
 
-void virDomainMomentDefClear(virDomainMomentDefPtr def)
+static virClassPtr virDomainMomentDefClass;
+static void virDomainMomentDefDispose(void *obj);
+
+static int
+virDomainMomentOnceInit(void)
 {
+    if (!VIR_CLASS_NEW(virDomainMomentDef, virClassForObject()))
+        return -1;
+
+    return 0;
+}
+
+VIR_ONCE_GLOBAL_INIT(virDomainMoment);
+
+virClassPtr
+virClassForDomainMomentDef(void)
+{
+    if (virDomainMomentInitialize() < 0)
+        return NULL;
+
+    return virDomainMomentDefClass;
+}
+
+static void
+virDomainMomentDefDispose(void *obj)
+{
+    virDomainMomentDefPtr def = obj;
+
     VIR_FREE(def->name);
     VIR_FREE(def->description);
-    VIR_FREE(def->parent);
+    VIR_FREE(def->parent_name);
     virDomainDefFree(def->dom);
+}
+
+/* Provide defaults for creation time and moment name after parsing XML */
+int
+virDomainMomentDefPostParse(virDomainMomentDefPtr def)
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+
+    if (!def->name &&
+        virAsprintf(&def->name, "%lld", (long long)tv.tv_sec) < 0)
+        return -1;
+
+    def->creationTime = tv.tv_sec;
+    return 0;
 }

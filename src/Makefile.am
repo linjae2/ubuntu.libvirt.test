@@ -404,7 +404,6 @@ check-local: check-augeas
 check-augeas: $(AUGEAS_DIRS:%=check-augeas-%)
 
 AUG_GENTEST = $(PERL) $(top_srcdir)/build-aux/augeas-gentest.pl
-EXTRA_DIST += $(top_srcdir)/build-aux/augeas-gentest.pl
 
 
 #
@@ -662,6 +661,7 @@ libvirt_setuid_rpc_client_la_SOURCES = \
 		util/virarch.c \
 		util/viratomic.c \
 		util/viratomic.h \
+		util/virautoclean.h \
 		util/virbitmap.c \
 		util/virbuffer.c \
 		util/vircgroup.c \
@@ -671,6 +671,7 @@ libvirt_setuid_rpc_client_la_SOURCES = \
 		util/vircommand.c \
 		util/virconf.c \
 		util/virdbus.c \
+		util/virenum.c \
 		util/virerror.c \
 		util/virevent.c \
 		util/vireventpoll.c \
@@ -850,7 +851,7 @@ libvirt_iohelper_LDFLAGS = \
 		$(PIE_LDFLAGS) \
 		$(NULL)
 libvirt_iohelper_LDADD = \
-		libvirt_util.la \
+		libvirt.la \
 		../gnulib/lib/libgnu.la
 if WITH_DTRACE_PROBES
 libvirt_iohelper_LDADD += libvirt_probes.lo
@@ -874,12 +875,15 @@ libvirt_nss_la_SOURCES = \
 		util/viralloc.h \
 		util/viratomic.c \
 		util/viratomic.h \
+		util/virautoclean.h \
 		util/virbitmap.c \
 		util/virbitmap.h \
 		util/virbuffer.c \
 		util/virbuffer.h \
 		util/vircommand.c \
 		util/vircommand.h \
+		util/virenum.c \
+		util/virenum.h \
 		util/virerror.c \
 		util/virerror.h \
 		util/virfile.c \

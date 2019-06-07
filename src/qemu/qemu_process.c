@@ -646,27 +646,29 @@ qemuProcessHandleStop(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
 {
     virQEMUDriverPtr driver = opaque;
     virObjectEventPtr event = NULL;
-    virDomainPausedReason reason = VIR_DOMAIN_PAUSED_UNKNOWN;
-    virDomainEventSuspendedDetailType detail = VIR_DOMAIN_EVENT_SUSPENDED_PAUSED;
+    virDomainPausedReason reason;
+    virDomainEventSuspendedDetailType detail;
     virQEMUDriverConfigPtr cfg = virQEMUDriverGetConfig(driver);
+    qemuDomainObjPrivatePtr priv = vm->privateData;
 
     virObjectLock(vm);
-    if (virDomainObjGetState(vm, NULL) == VIR_DOMAIN_RUNNING) {
-        qemuDomainObjPrivatePtr priv = vm->privateData;
 
+    reason = priv->pausedReason;
+    priv->pausedReason = VIR_DOMAIN_PAUSED_UNKNOWN;
+
+    if (virDomainObjGetState(vm, NULL) == VIR_DOMAIN_RUNNING) {
         if (priv->job.asyncJob == QEMU_ASYNC_JOB_MIGRATION_OUT) {
-            if (priv->job.current->status ==
-                        QEMU_DOMAIN_JOB_STATUS_POSTCOPY) {
+            if (priv->job.current->status == QEMU_DOMAIN_JOB_STATUS_POSTCOPY)
                 reason = VIR_DOMAIN_PAUSED_POSTCOPY;
-                detail = VIR_DOMAIN_EVENT_SUSPENDED_POSTCOPY;
-            } else {
+            else
                 reason = VIR_DOMAIN_PAUSED_MIGRATION;
-                detail = VIR_DOMAIN_EVENT_SUSPENDED_MIGRATED;
-            }
         }
 
-        VIR_DEBUG("Transitioned guest %s to paused state, reason %s",
-                  vm->def->name, virDomainPausedReasonTypeToString(reason));
+        detail = qemuDomainPausedReasonToSuspendedEvent(reason);
+        VIR_DEBUG("Transitioned guest %s to paused state, "
+                  "reason %s, event detail %d",
+                  vm->def->name, virDomainPausedReasonTypeToString(reason),
+                  detail);
 
         if (priv->job.current)
             ignore_value(virTimeMillisNow(&priv->job.current->stopped));
@@ -2656,8 +2658,9 @@ qemuProcessSetupPid(virDomainObjPtr vm,
     if (use_cpumask && virProcessSetAffinity(pid, use_cpumask) < 0)
         goto cleanup;
 
-    /* Set scheduler type and priority. */
+    /* Set scheduler type and priority, but not for the main thread. */
     if (sched &&
+        nameval != VIR_CGROUP_THREAD_EMULATOR &&
         virProcessSetScheduler(pid, sched->policy, sched->priority) < 0)
         goto cleanup;
 
@@ -2681,7 +2684,7 @@ qemuProcessSetupEmulator(virDomainObjPtr vm)
                                0, vm->def->cputune.emulatorpin,
                                vm->def->cputune.emulator_period,
                                vm->def->cputune.emulator_quota,
-                               NULL);
+                               vm->def->cputune.emulatorsched);
 }
 
 
@@ -3235,6 +3238,8 @@ int qemuProcessStopCPUs(virQEMUDriverPtr driver,
 
     VIR_FREE(priv->lockState);
 
+    priv->pausedReason = reason;
+
     if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
         goto cleanup;
 
@@ -3251,12 +3256,19 @@ int qemuProcessStopCPUs(virQEMUDriverPtr driver,
     if (priv->job.current)
         ignore_value(virTimeMillisNow(&priv->job.current->stopped));
 
-    virDomainObjSetState(vm, VIR_DOMAIN_PAUSED, reason);
+    /* The STOP event handler will change the domain state with the reason
+     * saved in priv->pausedReason and it will also emit corresponding domain
+     * lifecycle event.
+     */
+
     if (virDomainLockProcessPause(driver->lockManager, vm, &priv->lockState) < 0)
         VIR_WARN("Unable to release lease on %s", vm->def->name);
     VIR_DEBUG("Preserving lock state '%s'", NULLSTR(priv->lockState));
 
  cleanup:
+    if (ret < 0)
+        priv->pausedReason = VIR_DOMAIN_PAUSED_UNKNOWN;
+
     return ret;
 }
 
@@ -3266,6 +3278,7 @@ static void
 qemuProcessNotifyNets(virDomainDefPtr def)
 {
     size_t i;
+    virConnectPtr conn = NULL;
 
     for (i = 0; i < def->nnets; i++) {
         virDomainNetDefPtr net = def->nets[i];
@@ -3277,8 +3290,14 @@ qemuProcessNotifyNets(virDomainDefPtr def)
         if (virDomainNetGetActualType(net) == VIR_DOMAIN_NET_TYPE_DIRECT)
            ignore_value(virNetDevMacVLanReserveName(net->ifname, false));
 
-        virDomainNetNotifyActualDevice(def, net);
+        if (net->type == VIR_DOMAIN_NET_TYPE_NETWORK) {
+            if (!conn && !(conn = virGetConnectNetwork()))
+                continue;
+            virDomainNetNotifyActualDevice(conn, def, net);
+        }
     }
+
+    virObjectUnref(conn);
 }
 
 /* Attempt to instantiate the filters. Ignore failures because it's
@@ -5454,6 +5473,7 @@ qemuProcessNetworkPrepareDevices(virDomainDefPtr def)
 {
     int ret = -1;
     size_t i;
+    virConnectPtr conn = NULL;
 
     for (i = 0; i < def->nnets; i++) {
         virDomainNetDefPtr net = def->nets[i];
@@ -5463,8 +5483,12 @@ qemuProcessNetworkPrepareDevices(virDomainDefPtr def)
          * network's pool of devices, or resolve bridge device name
          * to the one defined in the network definition.
          */
-        if (virDomainNetAllocateActualDevice(def, net) < 0)
-            goto cleanup;
+        if (net->type == VIR_DOMAIN_NET_TYPE_NETWORK) {
+            if (!conn && !(conn = virGetConnectNetwork()))
+                goto cleanup;
+            if (virDomainNetAllocateActualDevice(conn, def, net) < 0)
+                goto cleanup;
+        }
 
         actualType = virDomainNetGetActualType(net);
         if (actualType == VIR_DOMAIN_NET_TYPE_HOSTDEV &&
@@ -5495,6 +5519,7 @@ qemuProcessNetworkPrepareDevices(virDomainDefPtr def)
     }
     ret = 0;
  cleanup:
+    virObjectUnref(conn);
     return ret;
 }
 
@@ -6104,6 +6129,7 @@ qemuProcessPrepareDomain(virQEMUDriverPtr driver,
     priv->monError = false;
     priv->monStart = 0;
     priv->runningReason = VIR_DOMAIN_RUNNING_UNKNOWN;
+    priv->pausedReason = VIR_DOMAIN_PAUSED_UNKNOWN;
 
     VIR_DEBUG("Updating guest CPU definition");
     if (qemuProcessUpdateGuestCPU(vm->def, priv->qemuCaps, caps, flags) < 0)
@@ -6641,6 +6667,10 @@ qemuProcessLaunch(virConnectPtr conn,
     if (qemuProcessInitCpuAffinity(vm) < 0)
         goto cleanup;
 
+    VIR_DEBUG("Setting emulator tuning/settings");
+    if (qemuProcessSetupEmulator(vm) < 0)
+        goto cleanup;
+
     VIR_DEBUG("Setting cgroup for external devices (if required)");
     if (qemuSetupCgroupForExtDevices(vm, driver) < 0)
         goto cleanup;
@@ -6732,10 +6762,6 @@ qemuProcessLaunch(virConnectPtr conn,
     if (qemuProcessDetectIOThreadPIDs(driver, vm, asyncJob) < 0)
         goto cleanup;
 
-    VIR_DEBUG("Setting emulator tuning/settings");
-    if (qemuProcessSetupEmulator(vm) < 0)
-        goto cleanup;
-
     VIR_DEBUG("Setting global CPU cgroup (if required)");
     if (qemuSetupGlobalCpuCgroup(vm) < 0)
         goto cleanup;
@@ -6746,6 +6772,13 @@ qemuProcessLaunch(virConnectPtr conn,
 
     VIR_DEBUG("Setting IOThread tuning/settings");
     if (qemuProcessSetupIOThreads(vm) < 0)
+        goto cleanup;
+
+    VIR_DEBUG("Setting emulator scheduler");
+    if (vm->def->cputune.emulatorsched &&
+        virProcessSetScheduler(vm->pid,
+                               vm->def->cputune.emulatorsched->policy,
+                               vm->def->cputune.emulatorsched->priority) < 0)
         goto cleanup;
 
     VIR_DEBUG("Setting any required VM passwords");
@@ -7109,6 +7142,7 @@ void qemuProcessStop(virQEMUDriverPtr driver,
     size_t i;
     char *timestamp;
     virQEMUDriverConfigPtr cfg = virQEMUDriverGetConfig(driver);
+    virConnectPtr conn = NULL;
 
     VIR_DEBUG("Shutting down vm=%p name=%s id=%d pid=%lld, "
               "reason=%s, asyncJob=%s, flags=0x%x",
@@ -7309,7 +7343,12 @@ void qemuProcessStop(virQEMUDriverPtr driver,
 
         /* kick the device out of the hostdev list too */
         virDomainNetRemoveHostdev(def, net);
-        virDomainNetReleaseActualDevice(vm->def, net);
+        if (net->type == VIR_DOMAIN_NET_TYPE_NETWORK) {
+            if (conn || (conn = virGetConnectNetwork()))
+                virDomainNetReleaseActualDevice(conn, vm->def, net);
+            else
+                VIR_WARN("Unable to release network device '%s'", NULLSTR(net->ifname));
+        }
     }
 
  retry:
@@ -7412,6 +7451,7 @@ void qemuProcessStop(virQEMUDriverPtr driver,
         virSetError(orig_err);
         virFreeError(orig_err);
     }
+    virObjectUnref(conn);
     virObjectUnref(cfg);
 }
 
@@ -8436,6 +8476,21 @@ qemuProcessQMPNew(const char *binary,
 
 
 static int
+qemuProcessQEMULabelUniqPath(qemuProcessQMPPtr proc)
+{
+    /* We cannot use the security driver here, but we should not need to. */
+    if (chown(proc->uniqDir, proc->runUid, -1) < 0) {
+        virReportSystemError(errno,
+                             _("Cannot chown uniq path: %s"),
+                             proc->uniqDir);
+        return -1;
+    }
+
+    return 0;
+}
+
+
+static int
 qemuProcessQMPInit(qemuProcessQMPPtr proc)
 {
     char *template = NULL;
@@ -8453,6 +8508,9 @@ qemuProcessQMPInit(qemuProcessQMPPtr proc)
                              template);
         goto cleanup;
     }
+
+    if (qemuProcessQEMULabelUniqPath(proc) < 0)
+        goto cleanup;
 
     if (virAsprintf(&proc->monpath, "%s/%s", proc->uniqDir,
                     "qmp.monitor") < 0)
