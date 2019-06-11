@@ -176,6 +176,10 @@ override_dh_auto_test:
 	fi
 
 override_dh_install-arch:
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
+
 	dh_install
 
 	# Copy upstream files to debian/ so dh_* can find them
