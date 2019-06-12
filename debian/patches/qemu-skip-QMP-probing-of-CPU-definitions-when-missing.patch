@@ -229,7 +229,7 @@ index faddd50..46aae4f 100644
    <kvmVersion>0</kvmVersion>
    <package></package>
 diff --git a/tests/qemucapabilitiesdata/caps_2.7.0.s390x.xml b/tests/qemucapabilitiesdata/caps_2.7.0.s390x.xml
-index af21017..4c45b38 100644
+index af21017b..4c45b38 100644
 --- a/tests/qemucapabilitiesdata/caps_2.7.0.s390x.xml
 +++ b/tests/qemucapabilitiesdata/caps_2.7.0.s390x.xml
 @@ -127,6 +127,7 @@
