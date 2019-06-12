@@ -356,6 +356,7 @@ VIR_ENUM_IMPL(virQEMUCaps, QEMU_CAPS_LAST,
               "drive-iotune-group",
 
               "query-cpu-model-expansion", /* 245 */
+              "query-cpu-definitions",
     );
 
 
@@ -1520,6 +1521,7 @@ struct virQEMUCapsStringFlags virQEMUCapsCommands[] = {
     { "query-hotpluggable-cpus", QEMU_CAPS_QUERY_HOTPLUGGABLE_CPUS },
     { "query-qmp-schema", QEMU_CAPS_QUERY_QMP_SCHEMA },
     { "query-cpu-model-expansion", QEMU_CAPS_QUERY_CPU_MODEL_EXPANSION},
+    { "query-cpu-definitions", QEMU_CAPS_QUERY_CPU_DEFINITIONS},
 };
 
 struct virQEMUCapsStringFlags virQEMUCapsMigration[] = {
@@ -2785,6 +2787,9 @@ virQEMUCapsProbeQMPCPUDefinitions(virQEMUCapsPtr qemuCaps,
     int ncpus;
     int ret = -1;
     size_t i;
+
+    if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_QUERY_CPU_DEFINITIONS))
+        return 0;
 
     if ((ncpus = qemuMonitorGetCPUDefinitions(mon, &cpus)) < 0)
         return -1;
