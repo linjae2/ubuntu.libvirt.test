@@ -2375,9 +2375,10 @@ qemuMigrationIsSafe(virDomainDefPtr def,
         const char *src = virDomainDiskGetSource(disk);
 
         /* Our code elsewhere guarantees shared disks are either readonly (in
-         * which case cache mode doesn't matter) or used with cache=none */
+         * which case cache mode doesn't matter) or used with cache=none or used with cache=directsync */
         if (qemuMigrateDisk(disk, nmigrate_disks, migrate_disks) &&
-            disk->cachemode != VIR_DOMAIN_DISK_CACHE_DISABLE) {
+            disk->cachemode != VIR_DOMAIN_DISK_CACHE_DISABLE &&
+            disk->cachemode != VIR_DOMAIN_DISK_CACHE_DIRECTSYNC) {
             int rc;
 
             if (virDomainDiskGetType(disk) == VIR_STORAGE_TYPE_FILE) {
@@ -2396,7 +2397,7 @@ qemuMigrationIsSafe(virDomainDefPtr def,
 
             virReportError(VIR_ERR_MIGRATE_UNSAFE, "%s",
                            _("Migration may lead to data corruption if disks"
-                             " use cache != none"));
+                             " use cache != none or cache != directsync"));
             return false;
         }
     }
