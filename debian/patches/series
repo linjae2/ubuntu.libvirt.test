@@ -78,3 +78,6 @@ ubuntu/lp-1771662-4-util-Fixing-invalid-error-checking-from-virPCIGetNet.patch
 CVE-2019-3840.patch
 md-clear.patch
 ubuntu/lp-1830268-refresh-capabilities-on-KVM-nesting.patch
+CVE-2019-10132-1.patch
+CVE-2019-10132-2.patch
+CVE-2019-10132-3.patch
