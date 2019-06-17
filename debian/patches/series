@@ -54,3 +54,8 @@ ubuntu-aa/lp-1817943-nvidia-gl-rules.patch
 ubuntu-aa/lp-1817943-devices-in-sysfs.patch
 ubuntu/lp-1825195-qemu-do-not-define-known-no-op-features.patch
 ubuntu/lp-1825195-qemuxml2argvtest-add-test-for-remove-cpu-features.patch
+CVE-2019-3886-1.patch
+CVE-2019-3886-2.patch
+CVE-2019-10132-1.patch
+CVE-2019-10132-2.patch
+CVE-2019-10132-3.patch
