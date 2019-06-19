@@ -1,0 +1,39 @@
+From 18ffb1670ec8d7ee6e309177a08a24be139c173a Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Wed, 19 Jun 2019 09:04:55 +0200
+Subject: [PATCH] apparmor: Add openGraphicsFD rule for named profile
+
+Commit a3ab6d42 changed the libvirtd profile to a named profile
+but neglected to accommodate the change in the qemu profile
+ptrace and signal rules.
+Later on 4ec3cf9a fixed that for ptrace and signal but openGraphicsFD
+is still missing.
+
+As a result, libvirtd is unable to open UI on libvirt >=5.1 e.g. with
+virt-manager.
+
+Add openGraphicsFD rule that references the libvirtd profile
+by name in addition to full binary path.
+
+Fixes: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1833040
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=18ffb167
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1833040
+Last-Update: 2019-06-19
+
+---
+ src/security/apparmor/libvirt-qemu | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/src/security/apparmor/libvirt-qemu
++++ b/src/security/apparmor/libvirt-qemu
+@@ -214,6 +214,7 @@
+   /sys/firmware/devicetree/** r,
+ 
+   # allow connect with openGraphicsFD to work
++  unix (send, receive) type=stream addr=none peer=(label=libvirtd),
+   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
+ 
+   # allow access to charm-specific ceph config (LP: #1403648).
