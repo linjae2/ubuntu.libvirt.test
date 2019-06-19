@@ -1,3 +1,11 @@
+libvirt (5.4.0-0ubuntu2) eoan; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1833040-Add-openGraphicsFD-rule-for-named-profile.patch:
+    avoid issues with remote screen connections like virt-manager due to
+    apparmor changes in libvirt 5.1 (LP: #1833040)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 19 Jun 2019 14:34:54 +0200
+
 libvirt (5.4.0-0ubuntu1) eoan; urgency=medium
 
   * Merged with Debian git 5.3.0-1~1.gbp7b1637 and upstreams 5.4 release
