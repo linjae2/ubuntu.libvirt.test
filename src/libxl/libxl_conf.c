@@ -892,6 +892,13 @@ libxlDiskSetDiscard(libxl_device_disk *x_disk, int discard)
 int
 libxlDomainGetEmulatorType(const virDomainDef *def)
 {
+	/*
+	 * We do not ship any qemu-dm anymore, so there is no use in the
+	 * callout and it also breaks the test (at least since 1.3.1).
+	 * So just return with the new device-model.
+	 */
+	return LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN;
+#if 0
     int ret = LIBXL_DEVICE_MODEL_VERSION_QEMU_XEN;
     virCommandPtr cmd = NULL;
     char *output = NULL;
@@ -915,6 +922,7 @@ libxlDomainGetEmulatorType(const virDomainDef *def)
     VIR_FREE(output);
     virCommandFree(cmd);
     return ret;
+#endif
 }
 
 
