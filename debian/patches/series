@@ -109,3 +109,5 @@ CVE-2018-3639-1.patch
 CVE-2018-3639-2.patch
 CVE-2019-3840.patch
 md-clear.patch
+CVE-2019-10161.patch
+CVE-2019-10167.patch
