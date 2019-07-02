@@ -81,3 +81,7 @@ ubuntu/lp-1830268-refresh-capabilities-on-KVM-nesting.patch
 CVE-2019-10132-1.patch
 CVE-2019-10132-2.patch
 CVE-2019-10132-3.patch
+CVE-2019-10161.patch
+CVE-2019-10166.patch
+CVE-2019-10167.patch
+CVE-2019-10168.patch
