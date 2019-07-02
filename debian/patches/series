@@ -14,6 +14,10 @@ Set-defaults-for-zfs-tools.patch
 Pass-GPG_TTY-env-var-to-the-ssh-binary.patch
 apparmor-Allow-virt-aa-helper-to-access-the-name-service-.patch
 debian/Prefer-sbin-over-usr-sbin.patch
+CVE-2019-10161.patch
+CVE-2019-10166.patch
+CVE-2019-10167.patch
+CVE-2019-10168.patch
 
 ubuntu/Allow-libvirt-group-to-access-the-socket.patch
 ubuntu/daemon-augeas-fix-expected.patch
