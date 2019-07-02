@@ -214,6 +214,7 @@
   /sys/firmware/devicetree/** r,
 
   # allow connect with openGraphicsFD to work
+  unix (send, receive) type=stream addr=none peer=(label=libvirtd),
   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
 
   # allow access to charm-specific ceph config (LP: #1403648).
