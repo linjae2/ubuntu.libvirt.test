@@ -129,3 +129,6 @@ CVE-2019-3840.patch
 ubuntu/lp-1823676-Use-the-correct-vm-def-on-cold-attach.patch
 md-clear.patch
 ubuntu/lp-1830268-refresh-capabilities-on-KVM-nesting.patch
+CVE-2019-10161.patch
+CVE-2019-10166.patch
+CVE-2019-10167.patch
