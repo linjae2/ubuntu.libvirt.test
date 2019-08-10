@@ -85,8 +85,7 @@ install-data-network:
 	      $(DESTDIR)$(confdir)/qemu/networks/default.xml && \
 	    rm $(DESTDIR)$(confdir)/qemu/networks/default.xml.t; }
 	( cd $(DESTDIR)$(confdir)/qemu/networks/autostart && \
-	  rm -f default.xml && \
-	  $(LN_S) ../default.xml default.xml )
+	  rm -f default.xml )
 
 uninstall-data-network:
 	rm -f $(DESTDIR)$(confdir)/qemu/networks/autostart/default.xml
