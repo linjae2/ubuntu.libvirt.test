@@ -1,0 +1,83 @@
+From 2674d00ed484091faf2b6e6b1efe58ee9a72b96b Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Wed, 19 Jun 2019 22:22:09 +0200
+Subject: [PATCH] qemu: Drop MSR features from host-model with old QEMU
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+With QEMU versions which lack "unavailable-features" we use CPUID based
+detection of features which were enabled or disabled once QEMU starts.
+Thus using MSR features with host-model would result in all of them
+being marked as disabled in the active domain definition even though
+QEMU did not actually disable them.
+
+Let's make sure we add MSR features to host-model only when
+"unavailable-features" property is supported by QEMU.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=2674d00e
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-20
+
+---
+ src/qemu/qemu_capabilities.c                     | 15 +++++++++++++++
+ tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml |  1 -
+ tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml |  1 -
+ 3 files changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/src/qemu/qemu_capabilities.c b/src/qemu/qemu_capabilities.c
+index 4134f319ac..02e84edc15 100644
+--- a/src/qemu/qemu_capabilities.c
++++ b/src/qemu/qemu_capabilities.c
+@@ -3193,6 +3193,21 @@ virQEMUCapsInitHostCPUModel(virQEMUCapsPtr qemuCaps,
+             goto error;
+     }
+ 
++    if (ARCH_IS_X86(qemuCaps->arch) &&
++        !virQEMUCapsGet(qemuCaps, QEMU_CAPS_CPU_UNAVAILABLE_FEATURES)) {
++        if (cpu &&
++            virCPUDefFilterFeatures(cpu, virCPUx86FeatureFilterDropMSR, NULL) < 0)
++            goto error;
++
++        if (migCPU &&
++            virCPUDefFilterFeatures(migCPU, virCPUx86FeatureFilterDropMSR, NULL) < 0)
++            goto error;
++
++        if (fullCPU &&
++            virCPUDefFilterFeatures(fullCPU, virCPUx86FeatureFilterDropMSR, NULL) < 0)
++            goto error;
++    }
++
+     virQEMUCapsSetHostModel(qemuCaps, type, cpu, migCPU, fullCPU);
+ 
+  cleanup:
+diff --git a/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml b/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml
+index dfd186afba..ca3baab88c 100644
+--- a/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml
++++ b/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml
+@@ -42,7 +42,6 @@
+       <feature policy='require' name='xsaves'/>
+       <feature policy='require' name='pdpe1gb'/>
+       <feature policy='require' name='invtsc'/>
+-      <feature policy='require' name='skip-l1dfl-vmentry'/>
+     </mode>
+     <mode name='custom' supported='yes'>
+       <model usable='yes'>qemu64</model>
+diff --git a/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml b/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml
+index 36f6f1e94d..cba841d844 100644
+--- a/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml
++++ b/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml
+@@ -42,7 +42,6 @@
+       <feature policy='require' name='xsaves'/>
+       <feature policy='require' name='pdpe1gb'/>
+       <feature policy='require' name='invtsc'/>
+-      <feature policy='require' name='skip-l1dfl-vmentry'/>
+     </mode>
+     <mode name='custom' supported='yes'>
+       <model usable='yes'>qemu64</model>
+-- 
+2.22.0
+

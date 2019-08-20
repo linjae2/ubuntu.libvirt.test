@@ -1,0 +1,119 @@
+From bcfed7f1c84cbff21d129a79cbd675b0cd51613c Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Wed, 19 Jun 2019 21:59:12 +0200
+Subject: [PATCH] cpu_x86: Introduce virCPUx86FeatureFilter*MSR
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This functions may be used as a virCPUDefFeatureFilter callbacks for
+virCPUDefCheckFeatures, virCPUDefFilerFeatures, and similar functions to
+select (virCPUx86FeatureFilterSelectMSR) or drop
+(virCPUx86FeatureFilterDropMSR) features reported via MSR.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=bcfed7f1
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-20
+
+---
+ src/cpu/cpu_x86.c        | 57 ++++++++++++++++++++++++++++++++++++++++
+ src/cpu/cpu_x86.h        |  6 +++++
+ src/libvirt_private.syms |  3 ++-
+ 3 files changed, 65 insertions(+), 1 deletion(-)
+
+--- a/src/cpu/cpu_x86.c
++++ b/src/cpu/cpu_x86.c
+@@ -3353,6 +3353,63 @@ virCPUx86DataAddFeature(virCPUDataPtr cp
+ }
+ 
+ 
++static bool
++virCPUx86FeatureIsMSR(const char *name)
++{
++    virCPUx86FeaturePtr feature;
++    virCPUx86DataIterator iter;
++    virCPUx86DataItemPtr item;
++    virCPUx86MapPtr map;
++
++    if (!(map = virCPUx86GetMap()))
++        return false;
++
++    if (!(feature = x86FeatureFind(map, name)) &&
++        !(feature = x86FeatureFindInternal(name)))
++        return false;
++
++    virCPUx86DataIteratorInit(&iter, &feature->data);
++    while ((item = virCPUx86DataNext(&iter))) {
++        if (item->type == VIR_CPU_X86_DATA_MSR)
++            return true;
++    }
++
++    return false;
++}
++
++
++/**
++ * virCPUx86FeatureFilterSelectMSR:
++ *
++ * This is a callback for functions filtering features in virCPUDef. The result
++ * will contain only MSR features.
++ *
++ * Returns true if @name is an MSR feature, false otherwise.
++ */
++bool
++virCPUx86FeatureFilterSelectMSR(const char *name,
++                                void *opaque ATTRIBUTE_UNUSED)
++{
++    return virCPUx86FeatureIsMSR(name);
++}
++
++
++/**
++ * virCPUx86FeatureFilterDropMSR:
++ *
++ * This is a callback for functions filtering features in virCPUDef. The result
++ * will not contain any MSR feature.
++ *
++ * Returns true if @name is not an MSR feature, false otherwise.
++ */
++bool
++virCPUx86FeatureFilterDropMSR(const char *name,
++                              void *opaque ATTRIBUTE_UNUSED)
++{
++    return !virCPUx86FeatureIsMSR(name);
++}
++
++
+ struct cpuArchDriver cpuDriverX86 = {
+     .name = "x86",
+     .arch = archs,
+--- a/src/cpu/cpu_x86.h
++++ b/src/cpu/cpu_x86.h
+@@ -42,6 +42,12 @@ uint32_t virCPUx86DataGetSignature(virCP
+ int virCPUx86DataSetVendor(virCPUDataPtr cpuData,
+                            const char *vendor);
+ 
++bool virCPUx86FeatureFilterSelectMSR(const char *name,
++                                     void *opaque);
++
++bool virCPUx86FeatureFilterDropMSR(const char *name,
++                                   void *opaque);
++
+ int virCPUx86DataAddFeature(virCPUDataPtr cpuData,
+                             const char *name);
+ 
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -1250,7 +1250,8 @@ virCPUx86DataAddFeature;
+ virCPUx86DataGetSignature;
+ virCPUx86DataSetSignature;
+ virCPUx86DataSetVendor;
+-
++virCPUx86FeatureFilterDropMSR;
++virCPUx86FeatureFilterSelectMSR;
+ 
+ # datatypes.h
+ virConnectClass;

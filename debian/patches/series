@@ -48,3 +48,14 @@ ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/0050-local-include-for-libvirt-qemu.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 ubuntu-aa/lp-1833040-Add-openGraphicsFD-rule-for-named-profile.patch
+ubuntu/lp-1828495-cpu_conf-Introduce-virCPUDefFilterFeatures.patch
+ubuntu/lp-1828495-qemu-Probe-for-max-x86_64-cpu-type.patch
+ubuntu/lp-1828495-qemu-Probe-for-unavailable-features-CPU-property.patch
+ubuntu/lp-1828495-conf-Introduce-virCPUDefCheckFeatures.patch
+ubuntu/lp-1828495-cpu_x86-Turn-virCPUx86DataIteratorInit-into-a-functi.patch
+ubuntu/lp-1828495-cpu_x86-Introduce-virCPUx86FeatureFilter-MSR.patch
+ubuntu/lp-1828495-cpu_x86-Read-CPU-features-from-IA32_ARCH_CAPABILITIE.patch
+ubuntu/lp-1828495-cpu_map-Introduce-IA32_ARCH_CAPABILITIES-MSR-feature.patch
+ubuntu/lp-1828495-qemu-Forbid-MSR-features-with-old-QEMU.patch
+ubuntu/lp-1828495-qemu-Drop-MSR-features-from-host-model-with-old-QEMU.patch
+ubuntu/lp-1828495-qemu-Probe-host-CPU-after-capabilities.patch

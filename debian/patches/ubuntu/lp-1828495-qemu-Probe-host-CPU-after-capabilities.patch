@@ -1,0 +1,496 @@
+From 6f6401fbae384c66ce6043ced30591050729a4ac Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Mon, 17 Jun 2019 13:16:51 +0200
+Subject: [PATCH] qemu: Probe host CPU after capabilities
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The way we call query-cpu-model-expansion will rely on some capabilities
+bits. Let's make sure all capabilities are set before probing host CPU.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=6f6401fb
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-22
+
+---
+ src/qemu/qemu_capabilities.c                  |  8 +++-
+ .../caps_2.12.0.x86_64.replies                | 44 +++++++++----------
+ .../caps_3.0.0.x86_64.replies                 | 40 ++++++++---------
+ .../caps_3.1.0.x86_64.replies                 | 40 ++++++++---------
+ .../caps_4.0.0.x86_64.replies                 | 40 ++++++++---------
+ 6 files changed, 108 insertions(+), 104 deletions(-)
+
+diff --git a/src/qemu/qemu_capabilities.c b/src/qemu/qemu_capabilities.c
+index cf8237da6c..3af6923e6f 100644
+--- a/src/qemu/qemu_capabilities.c
++++ b/src/qemu/qemu_capabilities.c
+@@ -4504,8 +4504,6 @@ virQEMUCapsInitQMPMonitor(virQEMUCapsPtr qemuCaps,
+         return -1;
+     if (virQEMUCapsProbeQMPSchemaCapabilities(qemuCaps, mon) < 0)
+         return -1;
+-    if (virQEMUCapsProbeQMPHostCPU(qemuCaps, mon, false) < 0)
+-        return -1;
+     if (virQEMUCapsProbeQMPGICCapabilities(qemuCaps, mon) < 0)
+         return -1;
+     if (virQEMUCapsProbeQMPSEVCapabilities(qemuCaps, mon) < 0)
+@@ -4513,6 +4511,12 @@ virQEMUCapsInitQMPMonitor(virQEMUCapsPtr qemuCaps,
+ 
+     virQEMUCapsInitProcessCaps(qemuCaps);
+ 
++    /* The following probes rely on other previously probed capabilities.
++     * No capabilities bits should be set below this point. */
++
++    if (virQEMUCapsProbeQMPHostCPU(qemuCaps, mon, false) < 0)
++        return -1;
++
+     return 0;
+ }
+ 
+diff --git a/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.replies b/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.replies
+index e78ddeb57e..3a2f854531 100644
+--- a/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.replies
+@@ -19272,6 +19272,21 @@
+   "id": "libvirt-44"
+ }
+ 
++{
++  "execute": "query-sev-capabilities",
++  "id": "libvirt-45"
++}
++
++{
++  "return": {
++    "reduced-phys-bits": 1,
++    "cbitpos": 47,
++    "cert-chain": "AQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAA",
++    "pdh": "AQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAA"
++  },
++  "id": "libvirt-45"
++}
++
+ {
+   "execute": "query-cpu-model-expansion",
+   "arguments": {
+@@ -19280,7 +19295,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -19470,7 +19485,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -19662,7 +19677,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -19917,7 +19932,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -19931,7 +19946,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -20121,7 +20136,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -20313,7 +20328,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+@@ -20568,21 +20583,6 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
+-}
+-
+-{
+-  "execute": "query-sev-capabilities",
+-  "id": "libvirt-49"
+-}
+-
+-{
+-  "return": {
+-    "reduced-phys-bits": 1,
+-    "cbitpos": 47,
+-    "cert-chain": "AQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAA",
+-    "pdh": "AQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAA"
+-  },
+   "id": "libvirt-49"
+ }
+ 
+diff --git a/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.replies b/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.replies
+index b618f8c741..b2ec8d75d3 100644
+--- a/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.replies
+@@ -19900,6 +19900,19 @@
+   "id": "libvirt-44"
+ }
+ 
++{
++  "execute": "query-sev-capabilities",
++  "id": "libvirt-45"
++}
++
++{
++  "id": "libvirt-45",
++  "error": {
++    "class": "GenericError",
++    "desc": "SEV feature is not available"
++  }
++}
++
+ {
+   "execute": "query-cpu-model-expansion",
+   "arguments": {
+@@ -19908,7 +19921,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -20101,7 +20114,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -20296,7 +20309,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -20559,7 +20572,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -20573,7 +20586,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -20766,7 +20779,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -20961,7 +20974,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+@@ -21224,22 +21237,9 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
+-}
+-
+-{
+-  "execute": "query-sev-capabilities",
+   "id": "libvirt-49"
+ }
+ 
+-{
+-  "id": "libvirt-49",
+-  "error": {
+-    "class": "GenericError",
+-    "desc": "SEV feature is not available"
+-  }
+-}
+-
+ {
+   "execute": "qmp_capabilities",
+   "id": "libvirt-1"
+diff --git a/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.replies b/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.replies
+index 2b3827db9a..b8b117ffaf 100644
+--- a/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.replies
+@@ -20383,6 +20383,19 @@
+   "id": "libvirt-44"
+ }
+ 
++{
++  "execute": "query-sev-capabilities",
++  "id": "libvirt-45"
++}
++
++{
++  "id": "libvirt-45",
++  "error": {
++    "class": "GenericError",
++    "desc": "SEV feature is not available"
++  }
++}
++
+ {
+   "execute": "query-cpu-model-expansion",
+   "arguments": {
+@@ -20391,7 +20404,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -20593,7 +20606,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -20797,7 +20810,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -21072,7 +21085,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -21086,7 +21099,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -21288,7 +21301,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -21492,7 +21505,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+@@ -21767,22 +21780,9 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
+-}
+-
+-{
+-  "execute": "query-sev-capabilities",
+   "id": "libvirt-49"
+ }
+ 
+-{
+-  "id": "libvirt-49",
+-  "error": {
+-    "class": "GenericError",
+-    "desc": "SEV feature is not available"
+-  }
+-}
+-
+ {
+   "execute": "qmp_capabilities",
+   "id": "libvirt-1"
+diff --git a/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.replies b/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.replies
+index 26d2d65989..b155e2a242 100644
+--- a/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.replies
+@@ -20922,6 +20922,19 @@
+   "id": "libvirt-44"
+ }
+ 
++{
++  "execute": "query-sev-capabilities",
++  "id": "libvirt-45"
++}
++
++{
++  "id": "libvirt-45",
++  "error": {
++    "class": "GenericError",
++    "desc": "SEV feature is not available"
++  }
++}
++
+ {
+   "execute": "query-cpu-model-expansion",
+   "arguments": {
+@@ -20930,7 +20943,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -21134,7 +21147,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -21340,7 +21353,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -21619,7 +21632,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -21633,7 +21646,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -21837,7 +21850,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -22043,7 +22056,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+@@ -22322,22 +22335,9 @@
+       }
+     }
+   },
+-  "id": "libvirt-48"
+-}
+-
+-{
+-  "execute": "query-sev-capabilities",
+   "id": "libvirt-49"
+ }
+ 
+-{
+-  "id": "libvirt-49",
+-  "error": {
+-    "class": "GenericError",
+-    "desc": "SEV feature is not available"
+-  }
+-}
+-
+ {
+   "execute": "qmp_capabilities",
+   "id": "libvirt-1"
+-- 
+2.22.0
+

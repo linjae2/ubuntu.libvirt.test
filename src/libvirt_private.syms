@@ -73,10 +73,12 @@ virCapabilitiesSetNetPrefix;
 virCPUCacheModeTypeFromString;
 virCPUCacheModeTypeToString;
 virCPUDefAddFeature;
+virCPUDefCheckFeatures;
 virCPUDefCopy;
 virCPUDefCopyModel;
 virCPUDefCopyModelFilter;
 virCPUDefCopyWithoutModel;
+virCPUDefFilterFeatures;
 virCPUDefFindFeature;
 virCPUDefFormat;
 virCPUDefFormatBuf;
@@ -1249,7 +1251,8 @@ virCPUx86DataAddFeature;
 virCPUx86DataGetSignature;
 virCPUx86DataSetSignature;
 virCPUx86DataSetVendor;
-
+virCPUx86FeatureFilterDropMSR;
+virCPUx86FeatureFilterSelectMSR;
 
 # datatypes.h
 virConnectClass;

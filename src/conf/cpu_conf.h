@@ -218,6 +218,17 @@ virCPUFeatureDefPtr
 virCPUDefFindFeature(virCPUDefPtr def,
                      const char *name);
 
+int
+virCPUDefFilterFeatures(virCPUDefPtr cpu,
+                        virCPUDefFeatureFilter filter,
+                        void *opaque);
+
+int
+virCPUDefCheckFeatures(virCPUDefPtr cpu,
+                       virCPUDefFeatureFilter filter,
+                       void *opaque,
+                       char ***features);
+
 virCPUDefPtr *
 virCPUDefListParse(const char **xmlCPUs,
                    unsigned int ncpus,

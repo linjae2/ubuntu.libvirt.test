@@ -1,3 +1,11 @@
+libvirt (5.4.0-0ubuntu4) eoan; urgency=medium
+
+  * d/p/ubuntu/lp-1828495-*: make libvirt able to handle arch_capabilities
+    cpu features for the Host. (LP: 1828495 - not closing yet as guest caps
+    are still need fixups to work well LP: 1841066)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 20 Aug 2019 10:50:08 +0200
+
 libvirt (5.4.0-0ubuntu3) eoan; urgency=medium
 
   * SECURITY UPDATE: virDomainSaveImageGetXMLDesc does not check for

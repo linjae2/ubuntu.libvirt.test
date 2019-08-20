@@ -525,6 +525,8 @@ VIR_ENUM_IMPL(virQEMUCaps,
               "virtio-pci-non-transitional",
               "overcommit",
               "query-current-machine",
+              "x86-max-cpu",
+              "cpu-unavailable-features",
     );
 
 
@@ -1113,6 +1115,7 @@ struct virQEMUCapsStringFlags virQEMUCapsObjectTypes[] = {
     { "virtio-scsi-pci-non-transitional", QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL },
     { "virtio-serial-pci-transitional", QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL },
     { "virtio-serial-pci-non-transitional", QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL },
+    { "max-x86_64-cpu", QEMU_CAPS_X86_MAX_CPU },
 };
 
 static struct virQEMUCapsStringFlags virQEMUCapsDevicePropsVirtioBalloon[] = {
@@ -1391,6 +1394,10 @@ static struct virQEMUCapsStringFlags virQEMUCapsObjectPropsMemoryBackendMemfd[] 
     { "hugetlb", QEMU_CAPS_OBJECT_MEMORY_MEMFD_HUGETLB },
 };
 
+static struct virQEMUCapsStringFlags virQEMUCapsObjectPropsMaxX86CPU[] = {
+    { "unavailable-features", QEMU_CAPS_CPU_UNAVAILABLE_FEATURES },
+};
+
 static virQEMUCapsObjectTypeProps virQEMUCapsObjectProps[] = {
     { "memory-backend-file", virQEMUCapsObjectPropsMemoryBackendFile,
       ARRAY_CARDINALITY(virQEMUCapsObjectPropsMemoryBackendFile),
@@ -1398,6 +1405,9 @@ static virQEMUCapsObjectTypeProps virQEMUCapsObjectProps[] = {
     { "memory-backend-memfd", virQEMUCapsObjectPropsMemoryBackendMemfd,
       ARRAY_CARDINALITY(virQEMUCapsObjectPropsMemoryBackendMemfd),
       QEMU_CAPS_OBJECT_MEMORY_MEMFD },
+    { "max-x86_64-cpu", virQEMUCapsObjectPropsMaxX86CPU,
+      ARRAY_CARDINALITY(virQEMUCapsObjectPropsMaxX86CPU),
+      QEMU_CAPS_X86_MAX_CPU },
 };
 
 static struct virQEMUCapsStringFlags virQEMUCapsMachinePropsPSeries[] = {
@@ -3091,6 +3101,21 @@ virQEMUCapsInitHostCPUModel(virQEMUCapsPtr qemuCaps,
             goto error;
     }
 
+    if (ARCH_IS_X86(qemuCaps->arch) &&
+        !virQEMUCapsGet(qemuCaps, QEMU_CAPS_CPU_UNAVAILABLE_FEATURES)) {
+        if (cpu &&
+            virCPUDefFilterFeatures(cpu, virCPUx86FeatureFilterDropMSR, NULL) < 0)
+            goto error;
+
+        if (migCPU &&
+            virCPUDefFilterFeatures(migCPU, virCPUx86FeatureFilterDropMSR, NULL) < 0)
+            goto error;
+
+        if (fullCPU &&
+            virCPUDefFilterFeatures(fullCPU, virCPUx86FeatureFilterDropMSR, NULL) < 0)
+            goto error;
+    }
+
     virQEMUCapsSetHostModel(qemuCaps, type, cpu, migCPU, fullCPU);
 
  cleanup:
@@ -4411,14 +4436,18 @@ virQEMUCapsInitQMPMonitor(virQEMUCapsPtr qemuCaps,
         return -1;
     if (virQEMUCapsProbeQMPSchemaCapabilities(qemuCaps, mon) < 0)
         return -1;
-    if (virQEMUCapsProbeQMPHostCPU(qemuCaps, mon, false) < 0)
-        return -1;
     if (virQEMUCapsProbeQMPGICCapabilities(qemuCaps, mon) < 0)
         return -1;
     if (virQEMUCapsProbeQMPSEVCapabilities(qemuCaps, mon) < 0)
         return -1;
 
     virQEMUCapsInitProcessCaps(qemuCaps);
+
+    /* The following probes rely on other previously probed capabilities.
+     * No capabilities bits should be set below this point. */
+
+    if (virQEMUCapsProbeQMPHostCPU(qemuCaps, mon, false) < 0)
+        return -1;
 
     return 0;
 }
