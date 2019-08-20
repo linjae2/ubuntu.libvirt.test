@@ -1,0 +1,151 @@
+From c8ec678fd9d97189667c0121f48a220dd26856b7 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Thu, 14 Mar 2019 15:44:38 +0100
+Subject: [PATCH] cpu_map: Introduce IA32_ARCH_CAPABILITIES MSR features
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=c8ec678f
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-20
+
+---
+ src/cpu_map/x86_features.xml                  | 20 +++++++++++++++++++
+ .../x86_64-cpuid-Core-i7-7600U-enabled.xml    |  1 +
+ .../x86_64-cpuid-Core-i7-7600U-json.xml       |  1 +
+ ...86_64-cpuid-Xeon-Platinum-8268-enabled.xml |  1 +
+ .../x86_64-cpuid-Xeon-Platinum-8268-guest.xml |  4 ++++
+ .../x86_64-cpuid-Xeon-Platinum-8268-host.xml  |  4 ++++
+ .../x86_64-cpuid-Xeon-Platinum-8268-json.xml  |  3 +++
+ .../qemu_3.1.0.x86_64.xml                     |  1 +
+ .../qemu_4.0.0.x86_64.xml                     |  1 +
+ 10 files changed, 37 insertions(+)
+
+diff --git a/src/cpu_map/x86_features.xml b/src/cpu_map/x86_features.xml
+index 370807f88e..2bed1e0372 100644
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -482,4 +482,24 @@
+   <feature name='amd-no-ssb'>
+     <cpuid eax_in='0x80000008' ebx='0x04000000'/>
+   </feature>
++
++  <!-- IA32_ARCH_CAPABILITIES features -->
++  <feature name='rdctl-no'>
++    <msr index='0x10a' edx='0x00000000' eax='0x00000001'/>
++  </feature>
++  <feature name='ibrs-all'>
++    <msr index='0x10a' edx='0x00000000' eax='0x00000002'/>
++  </feature>
++  <feature name='rsba'>
++    <msr index='0x10a' edx='0x00000000' eax='0x00000004'/>
++  </feature>
++  <feature name='skip-l1dfl-vmentry'>
++    <msr index='0x10a' edx='0x00000000' eax='0x00000008'/>
++  </feature>
++  <feature name='ssb-no'>
++    <msr index='0x10a' edx='0x00000000' eax='0x00000010'/>
++  </feature>
++  <feature name='mds-no'>
++    <msr index='0x10a' edx='0x00000000' eax='0x00000020'/>
++  </feature>
+ </cpus>
+diff --git a/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-enabled.xml b/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-enabled.xml
+index b1cdaa802a..58bc84577c 100644
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-enabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-enabled.xml
+@@ -5,4 +5,5 @@
+   <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x009c4fbb' ecx='0x00000004' edx='0x84000000'/>
+   <cpuid eax_in='0x0000000d' ecx_in='0x01' eax='0x0000000f' ebx='0x00000000' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x80000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000121' edx='0x2c100800'/>
++  <msr index='0x10a' edx='0x00000000' eax='0x00000008'/>
+ </cpudata>
+diff --git a/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-json.xml b/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-json.xml
+index 48089c6003..690081493b 100644
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-json.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-json.xml
+@@ -10,4 +10,5 @@
+   <feature policy='require' name='ssbd'/>
+   <feature policy='require' name='xsaves'/>
+   <feature policy='require' name='pdpe1gb'/>
++  <feature policy='require' name='skip-l1dfl-vmentry'/>
+ </cpu>
+diff --git a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-enabled.xml b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-enabled.xml
+index 434ac1956a..313009b156 100644
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-enabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-enabled.xml
+@@ -5,4 +5,5 @@
+   <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0xd19f4fbb' ecx='0x0000080c' edx='0x84000000'/>
+   <cpuid eax_in='0x0000000d' ecx_in='0x01' eax='0x0000000f' ebx='0x00000000' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x80000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000121' edx='0x2c100800'/>
++  <msr index='0x10a' edx='0x00000000' eax='0x0000000b'/>
+ </cpudata>
+diff --git a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-guest.xml b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-guest.xml
+index c7e8a1fccf..988fb1dbdc 100644
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-guest.xml
+@@ -30,4 +30,8 @@
+   <feature policy='require' name='mbm_total'/>
+   <feature policy='require' name='mbm_local'/>
+   <feature policy='require' name='invtsc'/>
++  <feature policy='require' name='rdctl-no'/>
++  <feature policy='require' name='ibrs-all'/>
++  <feature policy='require' name='skip-l1dfl-vmentry'/>
++  <feature policy='require' name='mds-no'/>
+ </cpu>
+diff --git a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-host.xml b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-host.xml
+index d7482751b4..fdeafc4870 100644
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-host.xml
+@@ -31,4 +31,8 @@
+   <feature name='mbm_total'/>
+   <feature name='mbm_local'/>
+   <feature name='invtsc'/>
++  <feature name='rdctl-no'/>
++  <feature name='ibrs-all'/>
++  <feature name='skip-l1dfl-vmentry'/>
++  <feature name='mds-no'/>
+ </cpu>
+diff --git a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-json.xml b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-json.xml
+index b7d12dced7..78863c61d1 100644
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-json.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-Platinum-8268-json.xml
+@@ -7,4 +7,7 @@
+   <feature policy='require' name='umip'/>
+   <feature policy='require' name='pku'/>
+   <feature policy='require' name='xsaves'/>
++  <feature policy='require' name='rdctl-no'/>
++  <feature policy='require' name='ibrs-all'/>
++  <feature policy='require' name='skip-l1dfl-vmentry'/>
+ </cpu>
+diff --git a/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml b/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml
+index ca3baab88c..dfd186afba 100644
+--- a/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml
++++ b/tests/domaincapsschemadata/qemu_3.1.0.x86_64.xml
+@@ -42,6 +42,7 @@
+       <feature policy='require' name='xsaves'/>
+       <feature policy='require' name='pdpe1gb'/>
+       <feature policy='require' name='invtsc'/>
++      <feature policy='require' name='skip-l1dfl-vmentry'/>
+     </mode>
+     <mode name='custom' supported='yes'>
+       <model usable='yes'>qemu64</model>
+diff --git a/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml b/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml
+index cba841d844..36f6f1e94d 100644
+--- a/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml
++++ b/tests/domaincapsschemadata/qemu_4.0.0.x86_64.xml
+@@ -42,6 +42,7 @@
+       <feature policy='require' name='xsaves'/>
+       <feature policy='require' name='pdpe1gb'/>
+       <feature policy='require' name='invtsc'/>
++      <feature policy='require' name='skip-l1dfl-vmentry'/>
+     </mode>
+     <mode name='custom' supported='yes'>
+       <model usable='yes'>qemu64</model>
+-- 
+2.22.0
+

@@ -1,0 +1,5196 @@
+From 0d254bce4ec6fd62c0277d24e28bf018a4c6cb37 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Mon, 10 Jun 2019 16:49:22 +0200
+Subject: [PATCH] qemu: Probe for "unavailable-features" CPU property
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+It is similar to "filtered-features" property, which reports CPUID bits
+corresponding to disabled features, but more general. The
+"unavailable-features" property supports both CPUID and MSR features by
+listing their names.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=0d254bce
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-20
+
+---
+ src/qemu/qemu_capabilities.c                  |    8 +
+ src/qemu/qemu_capabilities.h                  |    1 +
+ .../caps_2.12.0.x86_64.replies                | 1078 ++++++++++++++-
+ .../caps_3.0.0.x86_64.replies                 | 1110 +++++++++++++++-
+ .../caps_3.1.0.x86_64.replies                 | 1158 +++++++++++++++-
+ .../caps_4.0.0.x86_64.replies                 | 1174 +++++++++++++++-
+ 8 files changed, 5592 insertions(+), 120 deletions(-)
+
+--- a/src/qemu/qemu_capabilities.c
++++ b/src/qemu/qemu_capabilities.c
+@@ -526,6 +526,7 @@ VIR_ENUM_IMPL(virQEMUCaps,
+               "overcommit",
+               "query-current-machine",
+               "x86-max-cpu",
++              "cpu-unavailable-features",
+     );
+ 
+ 
+@@ -1393,6 +1394,10 @@ static struct virQEMUCapsStringFlags vir
+     { "hugetlb", QEMU_CAPS_OBJECT_MEMORY_MEMFD_HUGETLB },
+ };
+ 
++static struct virQEMUCapsStringFlags virQEMUCapsObjectPropsMaxX86CPU[] = {
++    { "unavailable-features", QEMU_CAPS_CPU_UNAVAILABLE_FEATURES },
++};
++
+ static virQEMUCapsObjectTypeProps virQEMUCapsObjectProps[] = {
+     { "memory-backend-file", virQEMUCapsObjectPropsMemoryBackendFile,
+       ARRAY_CARDINALITY(virQEMUCapsObjectPropsMemoryBackendFile),
+@@ -1400,6 +1405,9 @@ static virQEMUCapsObjectTypeProps virQEM
+     { "memory-backend-memfd", virQEMUCapsObjectPropsMemoryBackendMemfd,
+       ARRAY_CARDINALITY(virQEMUCapsObjectPropsMemoryBackendMemfd),
+       QEMU_CAPS_OBJECT_MEMORY_MEMFD },
++    { "max-x86_64-cpu", virQEMUCapsObjectPropsMaxX86CPU,
++      ARRAY_CARDINALITY(virQEMUCapsObjectPropsMaxX86CPU),
++      QEMU_CAPS_X86_MAX_CPU },
+ };
+ 
+ static struct virQEMUCapsStringFlags virQEMUCapsMachinePropsPSeries[] = {
+--- a/src/qemu/qemu_capabilities.h
++++ b/src/qemu/qemu_capabilities.h
+@@ -508,6 +508,7 @@ typedef enum { /* virQEMUCapsFlags group
+     QEMU_CAPS_OVERCOMMIT, /* -overcommit */
+     QEMU_CAPS_QUERY_CURRENT_MACHINE, /* query-current-machine command */
+     QEMU_CAPS_X86_MAX_CPU, /* max-x86_64-cpu type exists */
++    QEMU_CAPS_CPU_UNAVAILABLE_FEATURES, /* "unavailable-features" CPU property */
+ 
+     QEMU_CAPS_LAST /* this must always be the last item */
+ } virQEMUCapsFlags;
+--- a/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.replies
+@@ -4762,11 +4762,1041 @@
+ }
+ 
+ {
+-  "execute": "query-machines",
++  "execute": "qom-list-properties",
++  "arguments": {
++    "typename": "max-x86_64-cpu"
++  },
++  "id": "libvirt-37"
++}
++
++{
++  "return": [
++    {
++      "name": "min-xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "vendor",
++      "type": "string"
++    },
++    {
++      "name": "gfni",
++      "type": "bool"
++    },
++    {
++      "name": "clwb",
++      "type": "bool"
++    },
++    {
++      "name": "nx",
++      "type": "bool"
++    },
++    {
++      "name": "x2apic",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock-stable-bit",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb_clean",
++      "type": "bool"
++    },
++    {
++      "name": "min-level",
++      "type": "uint32"
++    },
++    {
++      "name": "fxsr-opt",
++      "type": "bool"
++    },
++    {
++      "name": "skinit",
++      "type": "bool"
++    },
++    {
++      "name": "avx",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowext",
++      "type": "bool"
++    },
++    {
++      "name": "hv-crash",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid_msr",
++      "type": "bool"
++    },
++    {
++      "name": "hypervisor",
++      "type": "bool"
++    },
++    {
++      "name": "enforce",
++      "type": "bool"
++    },
++    {
++      "name": "stepping",
++      "type": "int"
++    },
++    {
++      "name": "sse4_2",
++      "type": "bool"
++    },
++    {
++      "name": "sse4_1",
++      "type": "bool"
++    },
++    {
++      "name": "x-hv-max-vps",
++      "type": "int32"
++    },
++    {
++      "name": "hv-frequencies",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-hint-dedicated",
++      "type": "bool"
++    },
++    {
++      "name": "cmp_legacy",
++      "type": "bool"
++    },
++    {
++      "name": "tm2",
++      "type": "bool"
++    },
++    {
++      "name": "smx",
++      "type": "bool"
++    },
++    {
++      "name": "host-cache-info",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vendor-id",
++      "type": "str"
++    },
++    {
++      "name": "movbe",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowprefetch",
++      "type": "bool"
++    },
++    {
++      "name": "mtrr",
++      "type": "bool"
++    },
++    {
++      "name": "wdt",
++      "type": "bool"
++    },
++    {
++      "name": "thread-id",
++      "type": "int32"
++    },
++    {
++      "name": "aes",
++      "type": "bool"
++    },
++    {
++      "name": "apic-id",
++      "type": "uint32"
++    },
++    {
++      "name": "lm",
++      "type": "bool"
++    },
++    {
++      "name": "family",
++      "type": "int"
++    },
++    {
++      "name": "tsc-adjust",
++      "type": "bool"
++    },
++    {
++      "name": "pfthreshold",
++      "type": "bool"
++    },
++    {
++      "name": "ospke",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-no-smi-migration",
++      "type": "bool"
++    },
++    {
++      "name": "pse",
++      "type": "bool"
++    },
++    {
++      "name": "filtered-features",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "hv-vpindex",
++      "type": "bool"
++    },
++    {
++      "name": "adx",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bitalg",
++      "type": "bool"
++    },
++    {
++      "name": "i64",
++      "type": "bool"
++    },
++    {
++      "name": "vaes",
++      "type": "bool"
++    },
++    {
++      "name": "ia64",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid-msr",
++      "type": "bool"
++    },
++    {
++      "name": "ibpb",
++      "type": "bool"
++    },
++    {
++      "name": "hv-synic",
++      "type": "bool"
++    },
++    {
++      "name": "ibs",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_mmu",
++      "type": "bool"
++    },
++    {
++      "name": "tcg-cpuid",
++      "type": "bool"
++    },
++    {
++      "name": "nrip_save",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "lbrv",
++      "type": "bool"
++    },
++    {
++      "name": "rdtscp",
++      "type": "bool"
++    },
++    {
++      "name": "memory",
++      "type": "link<qemu:memory-region>"
++    },
++    {
++      "name": "avx512vbmi2",
++      "type": "bool"
++    },
++    {
++      "name": "ace2-en",
++      "type": "bool"
++    },
++    {
++      "name": "invtsc",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.2",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.1",
++      "type": "bool"
++    },
++    {
++      "name": "pbe",
++      "type": "bool"
++    },
++    {
++      "name": "rdrand",
++      "type": "bool"
++    },
++    {
++      "name": "socket-id",
++      "type": "int32"
++    },
++    {
++      "name": "hotpluggable",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-steal-time",
++      "type": "bool"
++    },
++    {
++      "name": "l3-cache",
++      "type": "bool"
++    },
++    {
++      "name": "vmware-cpuid-freq",
++      "type": "bool"
++    },
++    {
++      "name": "xop",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-frequency",
++      "type": "int"
++    },
++    {
++      "name": "fill-mtrr-mask",
++      "type": "bool"
++    },
++    {
++      "name": "core-id",
++      "type": "int32"
++    },
++    {
++      "name": "intel-pt",
++      "type": "bool"
++    },
++    {
++      "name": "pat",
++      "type": "bool"
++    },
++    {
++      "name": "pcid",
++      "type": "bool"
++    },
++    {
++      "name": "pclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-2",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-1",
++      "type": "bool"
++    },
++    {
++      "name": "sha-ni",
++      "type": "bool"
++    },
++    {
++      "name": "cmov",
++      "type": "bool"
++    },
++    {
++      "name": "pae",
++      "type": "bool"
++    },
++    {
++      "name": "smep",
++      "type": "bool"
++    },
++    {
++      "name": "abm",
++      "type": "bool"
++    },
++    {
++      "name": "xstore",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_adjust",
++      "type": "bool"
++    },
++    {
++      "name": "type",
++      "type": "string"
++    },
++    {
++      "name": "kvm-asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "min-xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "pdpe1gb",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-mmu",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "avx512f",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vbmi",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4vnniw",
++      "type": "bool"
++    },
++    {
++      "name": "xd",
++      "type": "bool"
++    },
++    {
++      "name": "mmxext",
++      "type": "bool"
++    },
++    {
++      "name": "decodeassists",
++      "type": "bool"
++    },
++    {
++      "name": "ht",
++      "type": "bool"
++    },
++    {
++      "name": "xsave",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_core",
++      "type": "bool"
++    },
++    {
++      "name": "feature-words",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "migratable",
++      "type": "bool"
++    },
++    {
++      "name": "3dnow",
++      "type": "bool"
++    },
++    {
++      "name": "spec-ctrl",
++      "type": "bool"
++    },
++    {
++      "name": "model",
++      "type": "int"
++    },
++    {
++      "name": "nrip-save",
++      "type": "bool"
++    },
++    {
++      "name": "lwp",
++      "type": "bool"
++    },
++    {
++      "name": "xstore-en",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vl",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "bmi2",
++      "type": "bool"
++    },
++    {
++      "name": "bmi1",
++      "type": "bool"
++    },
++    {
++      "name": "la57",
++      "type": "bool"
++    },
++    {
++      "name": "ffxsr",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb-clean",
++      "type": "bool"
++    },
++    {
++      "name": "pause-filter",
++      "type": "bool"
++    },
++    {
++      "name": "pni",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_steal_time",
++      "type": "bool"
++    },
++    {
++      "name": "svm_lock",
++      "type": "bool"
++    },
++    {
++      "name": "pse36",
++      "type": "bool"
++    },
++    {
++      "name": "hv-stimer",
++      "type": "bool"
++    },
++    {
++      "name": "host-phys-bits",
++      "type": "bool"
++    },
++    {
++      "name": "extapic",
++      "type": "bool"
++    },
++    {
++      "name": "hv-spinlocks",
++      "type": "int"
++    },
++    {
++      "name": "pmu",
++      "type": "bool"
++    },
++    {
++      "name": "pmm",
++      "type": "bool"
++    },
++    {
++      "name": "vpclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-vpopcntdq",
++      "type": "bool"
++    },
++    {
++      "name": "avx512er",
++      "type": "bool"
++    },
++    {
++      "name": "pdcm",
++      "type": "bool"
++    },
++    {
++      "name": "svm",
++      "type": "bool"
++    },
++    {
++      "name": "apic",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt-en",
++      "type": "bool"
++    },
++    {
++      "name": "cr8legacy",
++      "type": "bool"
++    },
++    {
++      "name": "fma4",
++      "type": "bool"
++    },
++    {
++      "name": "erms",
++      "type": "bool"
++    },
++    {
++      "name": "msr",
++      "type": "bool"
++    },
++    {
++      "name": "ds_cpl",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "hotplugged",
++      "type": "bool"
++    },
++    {
++      "name": "hv-relaxed",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-core",
++      "type": "bool"
++    },
++    {
++      "name": "sep",
++      "type": "bool"
++    },
++    {
++      "name": "smap",
++      "type": "bool"
++    },
++    {
++      "name": "sse3",
++      "type": "bool"
++    },
++    {
++      "name": "avx512dq",
++      "type": "bool"
++    },
++    {
++      "name": "ssse3",
++      "type": "bool"
++    },
++    {
++      "name": "pmm-en",
++      "type": "bool"
++    },
++    {
++      "name": "npt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-tlb-flush",
++      "type": "bool"
++    },
++    {
++      "name": "tsc",
++      "type": "bool"
++    },
++    {
++      "name": "monitor",
++      "type": "bool"
++    },
++    {
++      "name": "f16c",
++      "type": "bool"
++    },
++    {
++      "name": "sse2",
++      "type": "bool"
++    },
++    {
++      "name": "rdpid",
++      "type": "bool"
++    },
++    {
++      "name": "mce",
++      "type": "bool"
++    },
++    {
++      "name": "full-cpuid-auto-level",
++      "type": "bool"
++    },
++    {
++      "name": "xtpr",
++      "type": "bool"
++    },
++    {
++      "name": "mca",
++      "type": "bool"
++    },
++    {
++      "name": "cid",
++      "type": "bool"
++    },
++    {
++      "name": "tm",
++      "type": "bool"
++    },
++    {
++      "name": "pku",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vnni",
++      "type": "bool"
++    },
++    {
++      "name": "tce",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock",
++      "type": "bool"
++    },
++    {
++      "name": "sse4a",
++      "type": "bool"
++    },
++    {
++      "name": "ds",
++      "type": "bool"
++    },
++    {
++      "name": "lahf-lm",
++      "type": "bool"
++    },
++    {
++      "name": "xsaves",
++      "type": "bool"
++    },
++    {
++      "name": "clflushopt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm",
++      "type": "bool"
++    },
++    {
++      "name": "ss",
++      "type": "bool"
++    },
++    {
++      "name": "flushbyasid",
++      "type": "bool"
++    },
++    {
++      "name": "pause_filter",
++      "type": "bool"
++    },
++    {
++      "name": "de",
++      "type": "bool"
++    },
++    {
++      "name": "est",
++      "type": "bool"
++    },
++    {
++      "name": "check",
++      "type": "bool"
++    },
++    {
++      "name": "lahf_lm",
++      "type": "bool"
++    },
++    {
++      "name": "dtes64",
++      "type": "bool"
++    },
++    {
++      "name": "vmx",
++      "type": "bool"
++    },
++    {
++      "name": "xsavec",
++      "type": "bool"
++    },
++    {
++      "name": "svm-lock",
++      "type": "bool"
++    },
++    {
++      "name": "avx512ifma",
++      "type": "bool"
++    },
++    {
++      "name": "clflush",
++      "type": "bool"
++    },
++    {
++      "name": "rdseed",
++      "type": "bool"
++    },
++    {
++      "name": "avx512cd",
++      "type": "bool"
++    },
++    {
++      "name": "xsaveopt",
++      "type": "bool"
++    },
++    {
++      "name": "tbm",
++      "type": "bool"
++    },
++    {
++      "name": "ace2",
++      "type": "bool"
++    },
++    {
++      "name": "vme",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vapic",
++      "type": "bool"
++    },
++    {
++      "name": "parent_bus",
++      "type": "link<bus>"
++    },
++    {
++      "name": "lmce",
++      "type": "bool"
++    },
++    {
++      "name": "hv-reset",
++      "type": "bool"
++    },
++    {
++      "name": "hv-runtime",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bw",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt",
++      "type": "bool"
++    },
++    {
++      "name": "fpu",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr",
++      "type": "bool"
++    },
++    {
++      "name": "ds-cpl",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-eoi",
++      "type": "bool"
++    },
++    {
++      "name": "hle",
++      "type": "bool"
++    },
++    {
++      "name": "cx8",
++      "type": "bool"
++    },
++    {
++      "name": "mpx",
++      "type": "bool"
++    },
++    {
++      "name": "invpcid",
++      "type": "bool"
++    },
++    {
++      "name": "pcommit",
++      "type": "bool"
++    },
++    {
++      "name": "arat",
++      "type": "bool"
++    },
++    {
++      "name": "sse",
++      "type": "bool"
++    },
++    {
++      "name": "syscall",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_scale",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "hv-time",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_eoi",
++      "type": "bool"
++    },
++    {
++      "name": "osvw",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-nb",
++      "type": "bool"
++    },
++    {
++      "name": "rtm",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4fmaps",
++      "type": "bool"
++    },
++    {
++      "name": "avx2",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_nb",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "phys-bits",
++      "type": "uint32"
++    },
++    {
++      "name": "avx512pf",
++      "type": "bool"
++    },
++    {
++      "name": "level",
++      "type": "uint32"
++    },
++    {
++      "name": "osxsave",
++      "type": "bool"
++    },
++    {
++      "name": "cpuid-0xb",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-deadline",
++      "type": "bool"
++    },
++    {
++      "name": "xgetbv1",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr_opt",
++      "type": "bool"
++    },
++    {
++      "name": "popcnt",
++      "type": "bool"
++    },
++    {
++      "name": "umip",
++      "type": "bool"
++    },
++    {
++      "name": "realized",
++      "type": "bool"
++    },
++    {
++      "name": "phe",
++      "type": "bool"
++    },
++    {
++      "name": "cmp-legacy",
++      "type": "bool"
++    },
++    {
++      "name": "dca",
++      "type": "bool"
++    },
++    {
++      "name": "acpi",
++      "type": "bool"
++    },
++    {
++      "name": "pn",
++      "type": "bool"
++    },
++    {
++      "name": "model-id",
++      "type": "string"
++    },
++    {
++      "name": "crash-information",
++      "type": "GuestPanicInformation"
++    },
++    {
++      "name": "tsc-scale",
++      "type": "bool"
++    },
++    {
++      "name": "node-id",
++      "type": "int32"
++    },
++    {
++      "name": "cx16",
++      "type": "bool"
++    },
++    {
++      "name": "mmx",
++      "type": "bool"
++    },
++    {
++      "name": "topoext",
++      "type": "bool"
++    },
++    {
++      "name": "pge",
++      "type": "bool"
++    },
++    {
++      "name": "fsgsbase",
++      "type": "bool"
++    },
++    {
++      "name": "pclmuldq",
++      "type": "bool"
++    },
++    {
++      "name": "misalignsse",
++      "type": "bool"
++    },
++    {
++      "name": "phe-en",
++      "type": "bool"
++    },
++    {
++      "name": "fma",
++      "type": "bool"
++    }
++  ],
+   "id": "libvirt-37"
+ }
+ 
+ {
++  "execute": "query-machines",
++  "id": "libvirt-38"
++}
++
++{
+   "return": [
+     {
+       "hotpluggable-cpus": true,
+@@ -4962,12 +5992,12 @@
+       "cpu-max": 255
+     }
+   ],
+-  "id": "libvirt-37"
++  "id": "libvirt-38"
+ }
+ 
+ {
+   "execute": "query-cpu-definitions",
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+@@ -5481,12 +6511,12 @@
+       "migration-safe": true
+     }
+   ],
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+   "execute": "query-tpm-models",
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+@@ -5494,12 +6524,12 @@
+     "tpm-crb",
+     "tpm-tis"
+   ],
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+   "execute": "query-tpm-types",
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+@@ -5507,12 +6537,12 @@
+     "passthrough",
+     "emulator"
+   ],
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+   "execute": "query-command-line-options",
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+@@ -6799,12 +7829,12 @@
+       "option": "drive"
+     }
+   ],
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+   "execute": "query-migrate-capabilities",
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+@@ -6866,12 +7896,12 @@
+       "capability": "dirty-bitmaps"
+     }
+   ],
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+   "execute": "query-qmp-schema",
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -18239,7 +19269,7 @@
+       "meta-type": "object"
+     }
+   ],
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -18250,7 +19280,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -18440,7 +19470,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -18632,7 +19662,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -18887,7 +19917,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -18901,7 +19931,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -19091,7 +20121,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -19283,7 +20313,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -19538,12 +20568,12 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+   "execute": "query-sev-capabilities",
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+@@ -19553,7 +20583,7 @@
+     "cert-chain": "AQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAA",
+     "pdh": "AQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAAAQAAAAAOAAA"
+   },
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+--- a/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.replies
+@@ -4893,13 +4893,1075 @@
+ }
+ 
+ {
+-  "execute": "query-machines",
++  "execute": "qom-list-properties",
++  "arguments": {
++    "typename": "max-x86_64-cpu"
++  },
+   "id": "libvirt-37"
+ }
+ 
+ {
+   "return": [
+     {
++      "name": "min-xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "amd-ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "vendor",
++      "type": "string"
++    },
++    {
++      "name": "gfni",
++      "type": "bool"
++    },
++    {
++      "name": "clwb",
++      "type": "bool"
++    },
++    {
++      "name": "nx",
++      "type": "bool"
++    },
++    {
++      "name": "x2apic",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock-stable-bit",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb_clean",
++      "type": "bool"
++    },
++    {
++      "name": "min-level",
++      "type": "uint32"
++    },
++    {
++      "name": "fxsr-opt",
++      "type": "bool"
++    },
++    {
++      "name": "skinit",
++      "type": "bool"
++    },
++    {
++      "name": "avx",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowext",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid_msr",
++      "type": "bool"
++    },
++    {
++      "name": "hv-crash",
++      "type": "bool"
++    },
++    {
++      "name": "hypervisor",
++      "type": "bool"
++    },
++    {
++      "name": "enforce",
++      "type": "bool"
++    },
++    {
++      "name": "stepping",
++      "type": "int"
++    },
++    {
++      "name": "sse4_2",
++      "type": "bool"
++    },
++    {
++      "name": "sse4_1",
++      "type": "bool"
++    },
++    {
++      "name": "x-hv-max-vps",
++      "type": "int32"
++    },
++    {
++      "name": "hv-frequencies",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-hint-dedicated",
++      "type": "bool"
++    },
++    {
++      "name": "cmp_legacy",
++      "type": "bool"
++    },
++    {
++      "name": "tm2",
++      "type": "bool"
++    },
++    {
++      "name": "smx",
++      "type": "bool"
++    },
++    {
++      "name": "host-cache-info",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vendor-id",
++      "type": "str"
++    },
++    {
++      "name": "movbe",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowprefetch",
++      "type": "bool"
++    },
++    {
++      "name": "mtrr",
++      "type": "bool"
++    },
++    {
++      "name": "wdt",
++      "type": "bool"
++    },
++    {
++      "name": "thread-id",
++      "type": "int32"
++    },
++    {
++      "name": "aes",
++      "type": "bool"
++    },
++    {
++      "name": "apic-id",
++      "type": "uint32"
++    },
++    {
++      "name": "lm",
++      "type": "bool"
++    },
++    {
++      "name": "family",
++      "type": "int"
++    },
++    {
++      "name": "tsc-adjust",
++      "type": "bool"
++    },
++    {
++      "name": "pfthreshold",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-no-smi-migration",
++      "type": "bool"
++    },
++    {
++      "name": "amd-no-ssb",
++      "type": "bool"
++    },
++    {
++      "name": "pse",
++      "type": "bool"
++    },
++    {
++      "name": "filtered-features",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "hv-vpindex",
++      "type": "bool"
++    },
++    {
++      "name": "adx",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bitalg",
++      "type": "bool"
++    },
++    {
++      "name": "i64",
++      "type": "bool"
++    },
++    {
++      "name": "vaes",
++      "type": "bool"
++    },
++    {
++      "name": "ia64",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid-msr",
++      "type": "bool"
++    },
++    {
++      "name": "ibpb",
++      "type": "bool"
++    },
++    {
++      "name": "hv-synic",
++      "type": "bool"
++    },
++    {
++      "name": "ibs",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_mmu",
++      "type": "bool"
++    },
++    {
++      "name": "tcg-cpuid",
++      "type": "bool"
++    },
++    {
++      "name": "nrip_save",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "lbrv",
++      "type": "bool"
++    },
++    {
++      "name": "rdtscp",
++      "type": "bool"
++    },
++    {
++      "name": "memory",
++      "type": "link<qemu:memory-region>"
++    },
++    {
++      "name": "avx512vbmi2",
++      "type": "bool"
++    },
++    {
++      "name": "ace2-en",
++      "type": "bool"
++    },
++    {
++      "name": "invtsc",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.2",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.1",
++      "type": "bool"
++    },
++    {
++      "name": "pbe",
++      "type": "bool"
++    },
++    {
++      "name": "rdrand",
++      "type": "bool"
++    },
++    {
++      "name": "socket-id",
++      "type": "int32"
++    },
++    {
++      "name": "hotpluggable",
++      "type": "bool"
++    },
++    {
++      "name": "l3-cache",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-steal-time",
++      "type": "bool"
++    },
++    {
++      "name": "vmware-cpuid-freq",
++      "type": "bool"
++    },
++    {
++      "name": "legacy-cache",
++      "type": "bool"
++    },
++    {
++      "name": "xop",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-frequency",
++      "type": "int"
++    },
++    {
++      "name": "fill-mtrr-mask",
++      "type": "bool"
++    },
++    {
++      "name": "core-id",
++      "type": "int32"
++    },
++    {
++      "name": "intel-pt",
++      "type": "bool"
++    },
++    {
++      "name": "pat",
++      "type": "bool"
++    },
++    {
++      "name": "pcid",
++      "type": "bool"
++    },
++    {
++      "name": "pclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-2",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-1",
++      "type": "bool"
++    },
++    {
++      "name": "sha-ni",
++      "type": "bool"
++    },
++    {
++      "name": "cmov",
++      "type": "bool"
++    },
++    {
++      "name": "pae",
++      "type": "bool"
++    },
++    {
++      "name": "smep",
++      "type": "bool"
++    },
++    {
++      "name": "virt-ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "abm",
++      "type": "bool"
++    },
++    {
++      "name": "xstore",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_adjust",
++      "type": "bool"
++    },
++    {
++      "name": "type",
++      "type": "string"
++    },
++    {
++      "name": "kvm-asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "pdpe1gb",
++      "type": "bool"
++    },
++    {
++      "name": "min-xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "kvm-mmu",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "avx512f",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vbmi",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4vnniw",
++      "type": "bool"
++    },
++    {
++      "name": "xd",
++      "type": "bool"
++    },
++    {
++      "name": "mmxext",
++      "type": "bool"
++    },
++    {
++      "name": "decodeassists",
++      "type": "bool"
++    },
++    {
++      "name": "ht",
++      "type": "bool"
++    },
++    {
++      "name": "xsave",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_core",
++      "type": "bool"
++    },
++    {
++      "name": "feature-words",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "migratable",
++      "type": "bool"
++    },
++    {
++      "name": "3dnow",
++      "type": "bool"
++    },
++    {
++      "name": "spec-ctrl",
++      "type": "bool"
++    },
++    {
++      "name": "model",
++      "type": "int"
++    },
++    {
++      "name": "nrip-save",
++      "type": "bool"
++    },
++    {
++      "name": "lwp",
++      "type": "bool"
++    },
++    {
++      "name": "xstore-en",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vl",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "bmi2",
++      "type": "bool"
++    },
++    {
++      "name": "bmi1",
++      "type": "bool"
++    },
++    {
++      "name": "la57",
++      "type": "bool"
++    },
++    {
++      "name": "ffxsr",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb-clean",
++      "type": "bool"
++    },
++    {
++      "name": "pause-filter",
++      "type": "bool"
++    },
++    {
++      "name": "pni",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_steal_time",
++      "type": "bool"
++    },
++    {
++      "name": "svm_lock",
++      "type": "bool"
++    },
++    {
++      "name": "pse36",
++      "type": "bool"
++    },
++    {
++      "name": "hv-stimer",
++      "type": "bool"
++    },
++    {
++      "name": "host-phys-bits",
++      "type": "bool"
++    },
++    {
++      "name": "extapic",
++      "type": "bool"
++    },
++    {
++      "name": "hv-spinlocks",
++      "type": "int"
++    },
++    {
++      "name": "pmu",
++      "type": "bool"
++    },
++    {
++      "name": "pmm",
++      "type": "bool"
++    },
++    {
++      "name": "vpclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-vpopcntdq",
++      "type": "bool"
++    },
++    {
++      "name": "avx512er",
++      "type": "bool"
++    },
++    {
++      "name": "pdcm",
++      "type": "bool"
++    },
++    {
++      "name": "svm",
++      "type": "bool"
++    },
++    {
++      "name": "apic",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt-en",
++      "type": "bool"
++    },
++    {
++      "name": "cr8legacy",
++      "type": "bool"
++    },
++    {
++      "name": "fma4",
++      "type": "bool"
++    },
++    {
++      "name": "erms",
++      "type": "bool"
++    },
++    {
++      "name": "msr",
++      "type": "bool"
++    },
++    {
++      "name": "ds_cpl",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "sep",
++      "type": "bool"
++    },
++    {
++      "name": "hotplugged",
++      "type": "bool"
++    },
++    {
++      "name": "hv-relaxed",
++      "type": "bool"
++    },
++    {
++      "name": "cldemote",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-core",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vnni",
++      "type": "bool"
++    },
++    {
++      "name": "smap",
++      "type": "bool"
++    },
++    {
++      "name": "sse3",
++      "type": "bool"
++    },
++    {
++      "name": "avx512dq",
++      "type": "bool"
++    },
++    {
++      "name": "ssse3",
++      "type": "bool"
++    },
++    {
++      "name": "pmm-en",
++      "type": "bool"
++    },
++    {
++      "name": "npt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-tlb-flush",
++      "type": "bool"
++    },
++    {
++      "name": "tsc",
++      "type": "bool"
++    },
++    {
++      "name": "monitor",
++      "type": "bool"
++    },
++    {
++      "name": "f16c",
++      "type": "bool"
++    },
++    {
++      "name": "sse2",
++      "type": "bool"
++    },
++    {
++      "name": "rdpid",
++      "type": "bool"
++    },
++    {
++      "name": "mce",
++      "type": "bool"
++    },
++    {
++      "name": "full-cpuid-auto-level",
++      "type": "bool"
++    },
++    {
++      "name": "xtpr",
++      "type": "bool"
++    },
++    {
++      "name": "mca",
++      "type": "bool"
++    },
++    {
++      "name": "cid",
++      "type": "bool"
++    },
++    {
++      "name": "tm",
++      "type": "bool"
++    },
++    {
++      "name": "pku",
++      "type": "bool"
++    },
++    {
++      "name": "hv-tlbflush",
++      "type": "bool"
++    },
++    {
++      "name": "ds",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock",
++      "type": "bool"
++    },
++    {
++      "name": "tce",
++      "type": "bool"
++    },
++    {
++      "name": "sse4a",
++      "type": "bool"
++    },
++    {
++      "name": "lahf-lm",
++      "type": "bool"
++    },
++    {
++      "name": "xsaves",
++      "type": "bool"
++    },
++    {
++      "name": "clflushopt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm",
++      "type": "bool"
++    },
++    {
++      "name": "ss",
++      "type": "bool"
++    },
++    {
++      "name": "flushbyasid",
++      "type": "bool"
++    },
++    {
++      "name": "md-clear",
++      "type": "bool"
++    },
++    {
++      "name": "pause_filter",
++      "type": "bool"
++    },
++    {
++      "name": "de",
++      "type": "bool"
++    },
++    {
++      "name": "est",
++      "type": "bool"
++    },
++    {
++      "name": "check",
++      "type": "bool"
++    },
++    {
++      "name": "lahf_lm",
++      "type": "bool"
++    },
++    {
++      "name": "dtes64",
++      "type": "bool"
++    },
++    {
++      "name": "vmx",
++      "type": "bool"
++    },
++    {
++      "name": "xsavec",
++      "type": "bool"
++    },
++    {
++      "name": "svm-lock",
++      "type": "bool"
++    },
++    {
++      "name": "avx512ifma",
++      "type": "bool"
++    },
++    {
++      "name": "clflush",
++      "type": "bool"
++    },
++    {
++      "name": "rdseed",
++      "type": "bool"
++    },
++    {
++      "name": "avx512cd",
++      "type": "bool"
++    },
++    {
++      "name": "xsaveopt",
++      "type": "bool"
++    },
++    {
++      "name": "tbm",
++      "type": "bool"
++    },
++    {
++      "name": "ace2",
++      "type": "bool"
++    },
++    {
++      "name": "vme",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vapic",
++      "type": "bool"
++    },
++    {
++      "name": "parent_bus",
++      "type": "link<bus>"
++    },
++    {
++      "name": "lmce",
++      "type": "bool"
++    },
++    {
++      "name": "x-migrate-smi-count",
++      "type": "bool"
++    },
++    {
++      "name": "hv-reset",
++      "type": "bool"
++    },
++    {
++      "name": "hv-runtime",
++      "type": "bool"
++    },
++    {
++      "name": "ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bw",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt",
++      "type": "bool"
++    },
++    {
++      "name": "fpu",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr",
++      "type": "bool"
++    },
++    {
++      "name": "ds-cpl",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-eoi",
++      "type": "bool"
++    },
++    {
++      "name": "hle",
++      "type": "bool"
++    },
++    {
++      "name": "cx8",
++      "type": "bool"
++    },
++    {
++      "name": "mpx",
++      "type": "bool"
++    },
++    {
++      "name": "invpcid",
++      "type": "bool"
++    },
++    {
++      "name": "pcommit",
++      "type": "bool"
++    },
++    {
++      "name": "arat",
++      "type": "bool"
++    },
++    {
++      "name": "sse",
++      "type": "bool"
++    },
++    {
++      "name": "syscall",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_scale",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "hv-time",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_eoi",
++      "type": "bool"
++    },
++    {
++      "name": "osvw",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-nb",
++      "type": "bool"
++    },
++    {
++      "name": "rtm",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4fmaps",
++      "type": "bool"
++    },
++    {
++      "name": "avx2",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_nb",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "avx512pf",
++      "type": "bool"
++    },
++    {
++      "name": "level",
++      "type": "uint32"
++    },
++    {
++      "name": "phys-bits",
++      "type": "uint32"
++    },
++    {
++      "name": "cpuid-0xb",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-deadline",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr_opt",
++      "type": "bool"
++    },
++    {
++      "name": "xgetbv1",
++      "type": "bool"
++    },
++    {
++      "name": "popcnt",
++      "type": "bool"
++    },
++    {
++      "name": "umip",
++      "type": "bool"
++    },
++    {
++      "name": "realized",
++      "type": "bool"
++    },
++    {
++      "name": "phe",
++      "type": "bool"
++    },
++    {
++      "name": "cmp-legacy",
++      "type": "bool"
++    },
++    {
++      "name": "dca",
++      "type": "bool"
++    },
++    {
++      "name": "acpi",
++      "type": "bool"
++    },
++    {
++      "name": "pn",
++      "type": "bool"
++    },
++    {
++      "name": "model-id",
++      "type": "string"
++    },
++    {
++      "name": "crash-information",
++      "type": "GuestPanicInformation"
++    },
++    {
++      "name": "tsc-scale",
++      "type": "bool"
++    },
++    {
++      "name": "node-id",
++      "type": "int32"
++    },
++    {
++      "name": "hv-reenlightenment",
++      "type": "bool"
++    },
++    {
++      "name": "cx16",
++      "type": "bool"
++    },
++    {
++      "name": "mmx",
++      "type": "bool"
++    },
++    {
++      "name": "topoext",
++      "type": "bool"
++    },
++    {
++      "name": "pge",
++      "type": "bool"
++    },
++    {
++      "name": "fsgsbase",
++      "type": "bool"
++    },
++    {
++      "name": "pclmuldq",
++      "type": "bool"
++    },
++    {
++      "name": "misalignsse",
++      "type": "bool"
++    },
++    {
++      "name": "phe-en",
++      "type": "bool"
++    },
++    {
++      "name": "fma",
++      "type": "bool"
++    }
++  ],
++  "id": "libvirt-37"
++}
++
++{
++  "execute": "query-machines",
++  "id": "libvirt-38"
++}
++
++{
++  "return": [
++    {
+       "hotpluggable-cpus": true,
+       "name": "isapc",
+       "cpu-max": 1
+@@ -5103,12 +6165,12 @@
+       "cpu-max": 255
+     }
+   ],
+-  "id": "libvirt-37"
++  "id": "libvirt-38"
+ }
+ 
+ {
+   "execute": "query-cpu-definitions",
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+@@ -5545,12 +6607,12 @@
+       "migration-safe": true
+     }
+   ],
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+   "execute": "query-tpm-models",
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+@@ -5558,12 +6620,12 @@
+     "tpm-crb",
+     "tpm-tis"
+   ],
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+   "execute": "query-tpm-types",
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+@@ -5571,12 +6633,12 @@
+     "passthrough",
+     "emulator"
+   ],
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+   "execute": "query-command-line-options",
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+@@ -6875,12 +7937,12 @@
+       "option": "drive"
+     }
+   ],
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+   "execute": "query-migrate-capabilities",
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+@@ -6950,12 +8012,12 @@
+       "capability": "late-block-activate"
+     }
+   ],
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+   "execute": "query-qmp-schema",
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -18835,7 +19897,7 @@
+       "meta-type": "object"
+     }
+   ],
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -18846,7 +19908,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -19039,7 +20101,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -19234,7 +20296,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -19497,7 +20559,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -19511,7 +20573,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -19704,7 +20766,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -19899,7 +20961,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -20162,16 +21224,16 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+   "execute": "query-sev-capabilities",
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+-  "id": "libvirt-48",
++  "id": "libvirt-49",
+   "error": {
+     "class": "GenericError",
+     "desc": "SEV feature is not available"
+--- a/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.replies
+@@ -4956,13 +4956,1123 @@
+ }
+ 
+ {
+-  "execute": "query-machines",
++  "execute": "qom-list-properties",
++  "arguments": {
++    "typename": "max-x86_64-cpu"
++  },
+   "id": "libvirt-37"
+ }
+ 
+ {
+   "return": [
+     {
++      "name": "type",
++      "type": "string"
++    },
++    {
++      "name": "sse4_1",
++      "type": "bool"
++    },
++    {
++      "name": "popcnt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_mmu",
++      "type": "bool"
++    },
++    {
++      "name": "dtes64",
++      "type": "bool"
++    },
++    {
++      "name": "min-xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "xstore",
++      "type": "bool"
++    },
++    {
++      "name": "stepping",
++      "type": "int"
++    },
++    {
++      "name": "pse36",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4vnniw",
++      "type": "bool"
++    },
++    {
++      "name": "fma4",
++      "type": "bool"
++    },
++    {
++      "name": "avx2",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "family",
++      "type": "int"
++    },
++    {
++      "name": "pclmuldq",
++      "type": "bool"
++    },
++    {
++      "name": "vmware-cpuid-freq",
++      "type": "bool"
++    },
++    {
++      "name": "hv-spinlocks",
++      "type": "int"
++    },
++    {
++      "name": "erms",
++      "type": "bool"
++    },
++    {
++      "name": "vaes",
++      "type": "bool"
++    },
++    {
++      "name": "realized",
++      "type": "bool"
++    },
++    {
++      "name": "hv-reset",
++      "type": "bool"
++    },
++    {
++      "name": "rdrand",
++      "type": "bool"
++    },
++    {
++      "name": "model",
++      "type": "int"
++    },
++    {
++      "name": "avx512-vpopcntdq",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt",
++      "type": "bool"
++    },
++    {
++      "name": "tbm",
++      "type": "bool"
++    },
++    {
++      "name": "memory",
++      "type": "link<qemu:memory-region>"
++    },
++    {
++      "name": "kvm-pv-eoi",
++      "type": "bool"
++    },
++    {
++      "name": "lm",
++      "type": "bool"
++    },
++    {
++      "name": "pae",
++      "type": "bool"
++    },
++    {
++      "name": "ssse3",
++      "type": "bool"
++    },
++    {
++      "name": "hv-runtime",
++      "type": "bool"
++    },
++    {
++      "name": "phe",
++      "type": "bool"
++    },
++    {
++      "name": "host-phys-bits",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_nb",
++      "type": "bool"
++    },
++    {
++      "name": "arat",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vbmi2",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_core",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "x2apic",
++      "type": "bool"
++    },
++    {
++      "name": "npt",
++      "type": "bool"
++    },
++    {
++      "name": "avx512ifma",
++      "type": "bool"
++    },
++    {
++      "name": "model-id",
++      "type": "string"
++    },
++    {
++      "name": "hv-evmcs",
++      "type": "bool"
++    },
++    {
++      "name": "tsc",
++      "type": "bool"
++    },
++    {
++      "name": "pmm-en",
++      "type": "bool"
++    },
++    {
++      "name": "dca",
++      "type": "bool"
++    },
++    {
++      "name": "ia64",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-core",
++      "type": "bool"
++    },
++    {
++      "name": "pmu",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock",
++      "type": "bool"
++    },
++    {
++      "name": "pn",
++      "type": "bool"
++    },
++    {
++      "name": "pconfig",
++      "type": "bool"
++    },
++    {
++      "name": "invtsc",
++      "type": "bool"
++    },
++    {
++      "name": "avx512cd",
++      "type": "bool"
++    },
++    {
++      "name": "md-clear",
++      "type": "bool"
++    },
++    {
++      "name": "cmp-legacy",
++      "type": "bool"
++    },
++    {
++      "name": "cx16",
++      "type": "bool"
++    },
++    {
++      "name": "avx512dq",
++      "type": "bool"
++    },
++    {
++      "name": "abm",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-ipi",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr-opt",
++      "type": "bool"
++    },
++    {
++      "name": "skip-l1dfl-vmentry",
++      "type": "bool"
++    },
++    {
++      "name": "fill-mtrr-mask",
++      "type": "bool"
++    },
++    {
++      "name": "x-migrate-smi-count",
++      "type": "bool"
++    },
++    {
++      "name": "pcid",
++      "type": "bool"
++    },
++    {
++      "name": "rdpid",
++      "type": "bool"
++    },
++    {
++      "name": "wbnoinvd",
++      "type": "bool"
++    },
++    {
++      "name": "filtered-features",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "syscall",
++      "type": "bool"
++    },
++    {
++      "name": "pse",
++      "type": "bool"
++    },
++    {
++      "name": "hotpluggable",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_scale",
++      "type": "bool"
++    },
++    {
++      "name": "mce",
++      "type": "bool"
++    },
++    {
++      "name": "xsaves",
++      "type": "bool"
++    },
++    {
++      "name": "node-id",
++      "type": "int32"
++    },
++    {
++      "name": "ibpb",
++      "type": "bool"
++    },
++    {
++      "name": "cldemote",
++      "type": "bool"
++    },
++    {
++      "name": "hv-tlbflush",
++      "type": "bool"
++    },
++    {
++      "name": "rtm",
++      "type": "bool"
++    },
++    {
++      "name": "lwp",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-steal-time",
++      "type": "bool"
++    },
++    {
++      "name": "cpuid-0xb",
++      "type": "bool"
++    },
++    {
++      "name": "nrip_save",
++      "type": "bool"
++    },
++    {
++      "name": "vme",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-no-smi-migration",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "svm",
++      "type": "bool"
++    },
++    {
++      "name": "lahf-lm",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-hint-dedicated",
++      "type": "bool"
++    },
++    {
++      "name": "host-cache-info",
++      "type": "bool"
++    },
++    {
++      "name": "mca",
++      "type": "bool"
++    },
++    {
++      "name": "mtrr",
++      "type": "bool"
++    },
++    {
++      "name": "cid",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb_clean",
++      "type": "bool"
++    },
++    {
++      "name": "pfthreshold",
++      "type": "bool"
++    },
++    {
++      "name": "pmm",
++      "type": "bool"
++    },
++    {
++      "name": "tcg-cpuid",
++      "type": "bool"
++    },
++    {
++      "name": "x-hv-max-vps",
++      "type": "int32"
++    },
++    {
++      "name": "tm",
++      "type": "bool"
++    },
++    {
++      "name": "pbe",
++      "type": "bool"
++    },
++    {
++      "name": "apic-id",
++      "type": "uint32"
++    },
++    {
++      "name": "fpu",
++      "type": "bool"
++    },
++    {
++      "name": "l3-cache",
++      "type": "bool"
++    },
++    {
++      "name": "skinit",
++      "type": "bool"
++    },
++    {
++      "name": "sep",
++      "type": "bool"
++    },
++    {
++      "name": "nx",
++      "type": "bool"
++    },
++    {
++      "name": "ds-cpl",
++      "type": "bool"
++    },
++    {
++      "name": "pause-filter",
++      "type": "bool"
++    },
++    {
++      "name": "pause_filter",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid-msr",
++      "type": "bool"
++    },
++    {
++      "name": "smap",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "cr8legacy",
++      "type": "bool"
++    },
++    {
++      "name": "cmp_legacy",
++      "type": "bool"
++    },
++    {
++      "name": "virt-ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "umip",
++      "type": "bool"
++    },
++    {
++      "name": "avx512er",
++      "type": "bool"
++    },
++    {
++      "name": "xstore-en",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vl",
++      "type": "bool"
++    },
++    {
++      "name": "rsba",
++      "type": "bool"
++    },
++    {
++      "name": "cmov",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt-en",
++      "type": "bool"
++    },
++    {
++      "name": "tm2",
++      "type": "bool"
++    },
++    {
++      "name": "hv-frequencies",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr_opt",
++      "type": "bool"
++    },
++    {
++      "name": "hotplugged",
++      "type": "bool"
++    },
++    {
++      "name": "fsgsbase",
++      "type": "bool"
++    },
++    {
++      "name": "x-hv-synic-kvm-only",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bw",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-frequency",
++      "type": "int"
++    },
++    {
++      "name": "smx",
++      "type": "bool"
++    },
++    {
++      "name": "lbrv",
++      "type": "bool"
++    },
++    {
++      "name": "hle",
++      "type": "bool"
++    },
++    {
++      "name": "monitor",
++      "type": "bool"
++    },
++    {
++      "name": "tce",
++      "type": "bool"
++    },
++    {
++      "name": "sse4a",
++      "type": "bool"
++    },
++    {
++      "name": "vpclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-scale",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-tlb-flush",
++      "type": "bool"
++    },
++    {
++      "name": "i64",
++      "type": "bool"
++    },
++    {
++      "name": "adx",
++      "type": "bool"
++    },
++    {
++      "name": "crash-information",
++      "type": "GuestPanicInformation"
++    },
++    {
++      "name": "ffxsr",
++      "type": "bool"
++    },
++    {
++      "name": "amd-no-ssb",
++      "type": "bool"
++    },
++    {
++      "name": "min-level",
++      "type": "uint32"
++    },
++    {
++      "name": "full-cpuid-auto-level",
++      "type": "bool"
++    },
++    {
++      "name": "svm_lock",
++      "type": "bool"
++    },
++    {
++      "name": "ssb-no",
++      "type": "bool"
++    },
++    {
++      "name": "msr",
++      "type": "bool"
++    },
++    {
++      "name": "clflush",
++      "type": "bool"
++    },
++    {
++      "name": "pclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "mpx",
++      "type": "bool"
++    },
++    {
++      "name": "extapic",
++      "type": "bool"
++    },
++    {
++      "name": "hv-stimer",
++      "type": "bool"
++    },
++    {
++      "name": "xop",
++      "type": "bool"
++    },
++    {
++      "name": "smep",
++      "type": "bool"
++    },
++    {
++      "name": "xsavec",
++      "type": "bool"
++    },
++    {
++      "name": "hv-synic",
++      "type": "bool"
++    },
++    {
++      "name": "cx8",
++      "type": "bool"
++    },
++    {
++      "name": "pku",
++      "type": "bool"
++    },
++    {
++      "name": "kvm",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-2",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb-clean",
++      "type": "bool"
++    },
++    {
++      "name": "hv-reenlightenment",
++      "type": "bool"
++    },
++    {
++      "name": "svm-lock",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-1",
++      "type": "bool"
++    },
++    {
++      "name": "lahf_lm",
++      "type": "bool"
++    },
++    {
++      "name": "legacy-cache",
++      "type": "bool"
++    },
++    {
++      "name": "sse",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vpindex",
++      "type": "bool"
++    },
++    {
++      "name": "ds",
++      "type": "bool"
++    },
++    {
++      "name": "osvw",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_steal_time",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_eoi",
++      "type": "bool"
++    },
++    {
++      "name": "acpi",
++      "type": "bool"
++    },
++    {
++      "name": "nrip-save",
++      "type": "bool"
++    },
++    {
++      "name": "gfni",
++      "type": "bool"
++    },
++    {
++      "name": "ds_cpl",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-mmu",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bitalg",
++      "type": "bool"
++    },
++    {
++      "name": "rdseed",
++      "type": "bool"
++    },
++    {
++      "name": "sha-ni",
++      "type": "bool"
++    },
++    {
++      "name": "ace2",
++      "type": "bool"
++    },
++    {
++      "name": "lmce",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid_msr",
++      "type": "bool"
++    },
++    {
++      "name": "sse3",
++      "type": "bool"
++    },
++    {
++      "name": "f16c",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowprefetch",
++      "type": "bool"
++    },
++    {
++      "name": "xd",
++      "type": "bool"
++    },
++    {
++      "name": "avx",
++      "type": "bool"
++    },
++    {
++      "name": "topoext",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vnni",
++      "type": "bool"
++    },
++    {
++      "name": "rdctl-no",
++      "type": "bool"
++    },
++    {
++      "name": "mmx",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4fmaps",
++      "type": "bool"
++    },
++    {
++      "name": "level",
++      "type": "uint32"
++    },
++    {
++      "name": "sse2",
++      "type": "bool"
++    },
++    {
++      "name": "pni",
++      "type": "bool"
++    },
++    {
++      "name": "movbe",
++      "type": "bool"
++    },
++    {
++      "name": "mmxext",
++      "type": "bool"
++    },
++    {
++      "name": "flushbyasid",
++      "type": "bool"
++    },
++    {
++      "name": "rdtscp",
++      "type": "bool"
++    },
++    {
++      "name": "clwb",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "decodeassists",
++      "type": "bool"
++    },
++    {
++      "name": "pat",
++      "type": "bool"
++    },
++    {
++      "name": "invpcid",
++      "type": "bool"
++    },
++    {
++      "name": "pdpe1gb",
++      "type": "bool"
++    },
++    {
++      "name": "parent_bus",
++      "type": "link<bus>"
++    },
++    {
++      "name": "tsc-adjust",
++      "type": "bool"
++    },
++    {
++      "name": "ht",
++      "type": "bool"
++    },
++    {
++      "name": "xtpr",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_adjust",
++      "type": "bool"
++    },
++    {
++      "name": "ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowext",
++      "type": "bool"
++    },
++    {
++      "name": "clflushopt",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vendor-id",
++      "type": "str"
++    },
++    {
++      "name": "xsave",
++      "type": "bool"
++    },
++    {
++      "name": "pdcm",
++      "type": "bool"
++    },
++    {
++      "name": "hv-crash",
++      "type": "bool"
++    },
++    {
++      "name": "est",
++      "type": "bool"
++    },
++    {
++      "name": "vendor",
++      "type": "string"
++    },
++    {
++      "name": "pge",
++      "type": "bool"
++    },
++    {
++      "name": "pcommit",
++      "type": "bool"
++    },
++    {
++      "name": "ibs",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-deadline",
++      "type": "bool"
++    },
++    {
++      "name": "misalignsse",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock-stable-bit",
++      "type": "bool"
++    },
++    {
++      "name": "check",
++      "type": "bool"
++    },
++    {
++      "name": "hv-time",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-nb",
++      "type": "bool"
++    },
++    {
++      "name": "migratable",
++      "type": "bool"
++    },
++    {
++      "name": "feature-words",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "phys-bits",
++      "type": "uint32"
++    },
++    {
++      "name": "apic",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vbmi",
++      "type": "bool"
++    },
++    {
++      "name": "thread-id",
++      "type": "int32"
++    },
++    {
++      "name": "min-xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "socket-id",
++      "type": "int32"
++    },
++    {
++      "name": "avx512f",
++      "type": "bool"
++    },
++    {
++      "name": "arch-capabilities",
++      "type": "bool"
++    },
++    {
++      "name": "bmi2",
++      "type": "bool"
++    },
++    {
++      "name": "intel-pt",
++      "type": "bool"
++    },
++    {
++      "name": "wdt",
++      "type": "bool"
++    },
++    {
++      "name": "ace2-en",
++      "type": "bool"
++    },
++    {
++      "name": "avx512pf",
++      "type": "bool"
++    },
++    {
++      "name": "bmi1",
++      "type": "bool"
++    },
++    {
++      "name": "enforce",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.2",
++      "type": "bool"
++    },
++    {
++      "name": "ibrs-all",
++      "type": "bool"
++    },
++    {
++      "name": "3dnow",
++      "type": "bool"
++    },
++    {
++      "name": "vmx",
++      "type": "bool"
++    },
++    {
++      "name": "la57",
++      "type": "bool"
++    },
++    {
++      "name": "xsaveopt",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.1",
++      "type": "bool"
++    },
++    {
++      "name": "xgetbv1",
++      "type": "bool"
++    },
++    {
++      "name": "hv-relaxed",
++      "type": "bool"
++    },
++    {
++      "name": "spec-ctrl",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vapic",
++      "type": "bool"
++    },
++    {
++      "name": "phe-en",
++      "type": "bool"
++    },
++    {
++      "name": "hv-ipi",
++      "type": "bool"
++    },
++    {
++      "name": "sse4_2",
++      "type": "bool"
++    },
++    {
++      "name": "hypervisor",
++      "type": "bool"
++    },
++    {
++      "name": "aes",
++      "type": "bool"
++    },
++    {
++      "name": "amd-ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "core-id",
++      "type": "int32"
++    },
++    {
++      "name": "de",
++      "type": "bool"
++    },
++    {
++      "name": "ss",
++      "type": "bool"
++    },
++    {
++      "name": "fma",
++      "type": "bool"
++    }
++  ],
++  "id": "libvirt-37"
++}
++
++{
++  "execute": "query-machines",
++  "id": "libvirt-38"
++}
++
++{
++  "return": [
++    {
+       "hotpluggable-cpus": true,
+       "name": "isapc",
+       "cpu-max": 1
+@@ -5176,12 +6286,12 @@
+       "cpu-max": 255
+     }
+   ],
+-  "id": "libvirt-37"
++  "id": "libvirt-38"
+ }
+ 
+ {
+   "execute": "query-cpu-definitions",
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+@@ -5700,12 +6810,12 @@
+       "migration-safe": true
+     }
+   ],
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+   "execute": "query-tpm-models",
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+@@ -5713,12 +6823,12 @@
+     "tpm-crb",
+     "tpm-tis"
+   ],
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+   "execute": "query-tpm-types",
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+@@ -5726,12 +6836,12 @@
+     "passthrough",
+     "emulator"
+   ],
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+   "execute": "query-command-line-options",
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+@@ -7005,12 +8115,12 @@
+       "option": "drive"
+     }
+   ],
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+   "execute": "query-migrate-capabilities",
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+@@ -7080,12 +8190,12 @@
+       "capability": "late-block-activate"
+     }
+   ],
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+   "execute": "query-qmp-schema",
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -19270,7 +20380,7 @@
+       "meta-type": "object"
+     }
+   ],
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -19281,7 +20391,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -19483,7 +20593,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -19687,7 +20797,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -19962,7 +21072,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -19976,7 +21086,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -20178,7 +21288,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -20382,7 +21492,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -20657,16 +21767,16 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+   "execute": "query-sev-capabilities",
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+-  "id": "libvirt-48",
++  "id": "libvirt-49",
+   "error": {
+     "class": "GenericError",
+     "desc": "SEV feature is not available"
+--- a/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.replies
++++ b/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.replies
+@@ -5189,13 +5189,1139 @@
+ }
+ 
+ {
+-  "execute": "query-machines",
++  "execute": "qom-list-properties",
++  "arguments": {
++    "typename": "max-x86_64-cpu"
++  },
+   "id": "libvirt-37"
+ }
+ 
+ {
+   "return": [
+     {
++      "name": "type",
++      "type": "string"
++    },
++    {
++      "name": "sse4_1",
++      "type": "bool"
++    },
++    {
++      "name": "popcnt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_mmu",
++      "type": "bool"
++    },
++    {
++      "name": "dtes64",
++      "type": "bool"
++    },
++    {
++      "name": "min-xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "xstore",
++      "type": "bool"
++    },
++    {
++      "name": "stepping",
++      "type": "int"
++    },
++    {
++      "name": "pse36",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4vnniw",
++      "type": "bool"
++    },
++    {
++      "name": "fma4",
++      "type": "bool"
++    },
++    {
++      "name": "x-intel-pt-auto-level",
++      "type": "bool"
++    },
++    {
++      "name": "avx2",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "family",
++      "type": "int"
++    },
++    {
++      "name": "pclmuldq",
++      "type": "bool"
++    },
++    {
++      "name": "vmware-cpuid-freq",
++      "type": "bool"
++    },
++    {
++      "name": "hv-spinlocks",
++      "type": "int"
++    },
++    {
++      "name": "erms",
++      "type": "bool"
++    },
++    {
++      "name": "vaes",
++      "type": "bool"
++    },
++    {
++      "name": "realized",
++      "type": "bool"
++    },
++    {
++      "name": "hv-reset",
++      "type": "bool"
++    },
++    {
++      "name": "rdrand",
++      "type": "bool"
++    },
++    {
++      "name": "model",
++      "type": "int"
++    },
++    {
++      "name": "avx512-vpopcntdq",
++      "type": "bool"
++    },
++    {
++      "name": "tbm",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt",
++      "type": "bool"
++    },
++    {
++      "name": "movdiri",
++      "type": "bool"
++    },
++    {
++      "name": "memory",
++      "type": "link<qemu:memory-region>"
++    },
++    {
++      "name": "kvm-pv-eoi",
++      "type": "bool"
++    },
++    {
++      "name": "lm",
++      "type": "bool"
++    },
++    {
++      "name": "host-phys-bits-limit",
++      "type": "uint8"
++    },
++    {
++      "name": "pae",
++      "type": "bool"
++    },
++    {
++      "name": "ssse3",
++      "type": "bool"
++    },
++    {
++      "name": "hv-runtime",
++      "type": "bool"
++    },
++    {
++      "name": "phe",
++      "type": "bool"
++    },
++    {
++      "name": "host-phys-bits",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_nb",
++      "type": "bool"
++    },
++    {
++      "name": "arat",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vbmi2",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr_core",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "x2apic",
++      "type": "bool"
++    },
++    {
++      "name": "npt",
++      "type": "bool"
++    },
++    {
++      "name": "avx512ifma",
++      "type": "bool"
++    },
++    {
++      "name": "model-id",
++      "type": "string"
++    },
++    {
++      "name": "hv-evmcs",
++      "type": "bool"
++    },
++    {
++      "name": "tsc",
++      "type": "bool"
++    },
++    {
++      "name": "pmm-en",
++      "type": "bool"
++    },
++    {
++      "name": "dca",
++      "type": "bool"
++    },
++    {
++      "name": "ia64",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-core",
++      "type": "bool"
++    },
++    {
++      "name": "pmu",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock",
++      "type": "bool"
++    },
++    {
++      "name": "invtsc",
++      "type": "bool"
++    },
++    {
++      "name": "pn",
++      "type": "bool"
++    },
++    {
++      "name": "avx512cd",
++      "type": "bool"
++    },
++    {
++      "name": "md-clear",
++      "type": "bool"
++    },
++    {
++      "name": "cmp-legacy",
++      "type": "bool"
++    },
++    {
++      "name": "cx16",
++      "type": "bool"
++    },
++    {
++      "name": "avx512dq",
++      "type": "bool"
++    },
++    {
++      "name": "abm",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-ipi",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr-opt",
++      "type": "bool"
++    },
++    {
++      "name": "skip-l1dfl-vmentry",
++      "type": "bool"
++    },
++    {
++      "name": "fill-mtrr-mask",
++      "type": "bool"
++    },
++    {
++      "name": "x-migrate-smi-count",
++      "type": "bool"
++    },
++    {
++      "name": "pcid",
++      "type": "bool"
++    },
++    {
++      "name": "rdpid",
++      "type": "bool"
++    },
++    {
++      "name": "wbnoinvd",
++      "type": "bool"
++    },
++    {
++      "name": "filtered-features",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "syscall",
++      "type": "bool"
++    },
++    {
++      "name": "pse",
++      "type": "bool"
++    },
++    {
++      "name": "hotpluggable",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_scale",
++      "type": "bool"
++    },
++    {
++      "name": "xsaves",
++      "type": "bool"
++    },
++    {
++      "name": "mce",
++      "type": "bool"
++    },
++    {
++      "name": "node-id",
++      "type": "int32"
++    },
++    {
++      "name": "ibpb",
++      "type": "bool"
++    },
++    {
++      "name": "cldemote",
++      "type": "bool"
++    },
++    {
++      "name": "hv-tlbflush",
++      "type": "bool"
++    },
++    {
++      "name": "rtm",
++      "type": "bool"
++    },
++    {
++      "name": "lwp",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-steal-time",
++      "type": "bool"
++    },
++    {
++      "name": "cpuid-0xb",
++      "type": "bool"
++    },
++    {
++      "name": "nrip_save",
++      "type": "bool"
++    },
++    {
++      "name": "vme",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-no-smi-migration",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_unhalt",
++      "type": "bool"
++    },
++    {
++      "name": "svm",
++      "type": "bool"
++    },
++    {
++      "name": "lahf-lm",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-hint-dedicated",
++      "type": "bool"
++    },
++    {
++      "name": "host-cache-info",
++      "type": "bool"
++    },
++    {
++      "name": "mca",
++      "type": "bool"
++    },
++    {
++      "name": "mtrr",
++      "type": "bool"
++    },
++    {
++      "name": "cid",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb_clean",
++      "type": "bool"
++    },
++    {
++      "name": "pfthreshold",
++      "type": "bool"
++    },
++    {
++      "name": "pmm",
++      "type": "bool"
++    },
++    {
++      "name": "tcg-cpuid",
++      "type": "bool"
++    },
++    {
++      "name": "x-hv-max-vps",
++      "type": "int32"
++    },
++    {
++      "name": "tm",
++      "type": "bool"
++    },
++    {
++      "name": "pbe",
++      "type": "bool"
++    },
++    {
++      "name": "apic-id",
++      "type": "uint32"
++    },
++    {
++      "name": "fpu",
++      "type": "bool"
++    },
++    {
++      "name": "l3-cache",
++      "type": "bool"
++    },
++    {
++      "name": "skinit",
++      "type": "bool"
++    },
++    {
++      "name": "sep",
++      "type": "bool"
++    },
++    {
++      "name": "nx",
++      "type": "bool"
++    },
++    {
++      "name": "ds-cpl",
++      "type": "bool"
++    },
++    {
++      "name": "pause-filter",
++      "type": "bool"
++    },
++    {
++      "name": "pause_filter",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid-msr",
++      "type": "bool"
++    },
++    {
++      "name": "smap",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "cr8legacy",
++      "type": "bool"
++    },
++    {
++      "name": "cmp_legacy",
++      "type": "bool"
++    },
++    {
++      "name": "virt-ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "umip",
++      "type": "bool"
++    },
++    {
++      "name": "avx512er",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vl",
++      "type": "bool"
++    },
++    {
++      "name": "xstore-en",
++      "type": "bool"
++    },
++    {
++      "name": "rsba",
++      "type": "bool"
++    },
++    {
++      "name": "cmov",
++      "type": "bool"
++    },
++    {
++      "name": "xcrypt-en",
++      "type": "bool"
++    },
++    {
++      "name": "tm2",
++      "type": "bool"
++    },
++    {
++      "name": "hv-frequencies",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr_opt",
++      "type": "bool"
++    },
++    {
++      "name": "hotplugged",
++      "type": "bool"
++    },
++    {
++      "name": "fsgsbase",
++      "type": "bool"
++    },
++    {
++      "name": "x-hv-synic-kvm-only",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bw",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-frequency",
++      "type": "int"
++    },
++    {
++      "name": "lbrv",
++      "type": "bool"
++    },
++    {
++      "name": "smx",
++      "type": "bool"
++    },
++    {
++      "name": "hle",
++      "type": "bool"
++    },
++    {
++      "name": "monitor",
++      "type": "bool"
++    },
++    {
++      "name": "sse4a",
++      "type": "bool"
++    },
++    {
++      "name": "tce",
++      "type": "bool"
++    },
++    {
++      "name": "vpclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-scale",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-pv-tlb-flush",
++      "type": "bool"
++    },
++    {
++      "name": "i64",
++      "type": "bool"
++    },
++    {
++      "name": "adx",
++      "type": "bool"
++    },
++    {
++      "name": "crash-information",
++      "type": "GuestPanicInformation"
++    },
++    {
++      "name": "ffxsr",
++      "type": "bool"
++    },
++    {
++      "name": "amd-no-ssb",
++      "type": "bool"
++    },
++    {
++      "name": "min-level",
++      "type": "uint32"
++    },
++    {
++      "name": "full-cpuid-auto-level",
++      "type": "bool"
++    },
++    {
++      "name": "svm_lock",
++      "type": "bool"
++    },
++    {
++      "name": "ssb-no",
++      "type": "bool"
++    },
++    {
++      "name": "msr",
++      "type": "bool"
++    },
++    {
++      "name": "clflush",
++      "type": "bool"
++    },
++    {
++      "name": "pclmulqdq",
++      "type": "bool"
++    },
++    {
++      "name": "xlevel2",
++      "type": "uint32"
++    },
++    {
++      "name": "mpx",
++      "type": "bool"
++    },
++    {
++      "name": "extapic",
++      "type": "bool"
++    },
++    {
++      "name": "hv-stimer",
++      "type": "bool"
++    },
++    {
++      "name": "xop",
++      "type": "bool"
++    },
++    {
++      "name": "smep",
++      "type": "bool"
++    },
++    {
++      "name": "pku",
++      "type": "bool"
++    },
++    {
++      "name": "hv-synic",
++      "type": "bool"
++    },
++    {
++      "name": "cx8",
++      "type": "bool"
++    },
++    {
++      "name": "xsavec",
++      "type": "bool"
++    },
++    {
++      "name": "kvm",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-2",
++      "type": "bool"
++    },
++    {
++      "name": "vmcb-clean",
++      "type": "bool"
++    },
++    {
++      "name": "stibp",
++      "type": "bool"
++    },
++    {
++      "name": "hv-reenlightenment",
++      "type": "bool"
++    },
++    {
++      "name": "svm-lock",
++      "type": "bool"
++    },
++    {
++      "name": "sse4-1",
++      "type": "bool"
++    },
++    {
++      "name": "lahf_lm",
++      "type": "bool"
++    },
++    {
++      "name": "legacy-cache",
++      "type": "bool"
++    },
++    {
++      "name": "sse",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vpindex",
++      "type": "bool"
++    },
++    {
++      "name": "ds",
++      "type": "bool"
++    },
++    {
++      "name": "osvw",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_steal_time",
++      "type": "bool"
++    },
++    {
++      "name": "kvm_pv_eoi",
++      "type": "bool"
++    },
++    {
++      "name": "movdir64b",
++      "type": "bool"
++    },
++    {
++      "name": "acpi",
++      "type": "bool"
++    },
++    {
++      "name": "nrip-save",
++      "type": "bool"
++    },
++    {
++      "name": "gfni",
++      "type": "bool"
++    },
++    {
++      "name": "ds_cpl",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-mmu",
++      "type": "bool"
++    },
++    {
++      "name": "avx512bitalg",
++      "type": "bool"
++    },
++    {
++      "name": "rdseed",
++      "type": "bool"
++    },
++    {
++      "name": "sha-ni",
++      "type": "bool"
++    },
++    {
++      "name": "ace2",
++      "type": "bool"
++    },
++    {
++      "name": "lmce",
++      "type": "bool"
++    },
++    {
++      "name": "nodeid_msr",
++      "type": "bool"
++    },
++    {
++      "name": "sse3",
++      "type": "bool"
++    },
++    {
++      "name": "f16c",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowprefetch",
++      "type": "bool"
++    },
++    {
++      "name": "xd",
++      "type": "bool"
++    },
++    {
++      "name": "avx",
++      "type": "bool"
++    },
++    {
++      "name": "topoext",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vnni",
++      "type": "bool"
++    },
++    {
++      "name": "rdctl-no",
++      "type": "bool"
++    },
++    {
++      "name": "mmx",
++      "type": "bool"
++    },
++    {
++      "name": "avx512-4fmaps",
++      "type": "bool"
++    },
++    {
++      "name": "level",
++      "type": "uint32"
++    },
++    {
++      "name": "sse2",
++      "type": "bool"
++    },
++    {
++      "name": "pni",
++      "type": "bool"
++    },
++    {
++      "name": "movbe",
++      "type": "bool"
++    },
++    {
++      "name": "mmxext",
++      "type": "bool"
++    },
++    {
++      "name": "flushbyasid",
++      "type": "bool"
++    },
++    {
++      "name": "rdtscp",
++      "type": "bool"
++    },
++    {
++      "name": "clwb",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-asyncpf",
++      "type": "bool"
++    },
++    {
++      "name": "decodeassists",
++      "type": "bool"
++    },
++    {
++      "name": "pat",
++      "type": "bool"
++    },
++    {
++      "name": "invpcid",
++      "type": "bool"
++    },
++    {
++      "name": "pdpe1gb",
++      "type": "bool"
++    },
++    {
++      "name": "parent_bus",
++      "type": "link<bus>"
++    },
++    {
++      "name": "tsc-adjust",
++      "type": "bool"
++    },
++    {
++      "name": "ht",
++      "type": "bool"
++    },
++    {
++      "name": "xtpr",
++      "type": "bool"
++    },
++    {
++      "name": "tsc_adjust",
++      "type": "bool"
++    },
++    {
++      "name": "ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "3dnowext",
++      "type": "bool"
++    },
++    {
++      "name": "clflushopt",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vendor-id",
++      "type": "str"
++    },
++    {
++      "name": "xsave",
++      "type": "bool"
++    },
++    {
++      "name": "pdcm",
++      "type": "bool"
++    },
++    {
++      "name": "hv-crash",
++      "type": "bool"
++    },
++    {
++      "name": "est",
++      "type": "bool"
++    },
++    {
++      "name": "vendor",
++      "type": "string"
++    },
++    {
++      "name": "pge",
++      "type": "bool"
++    },
++    {
++      "name": "pcommit",
++      "type": "bool"
++    },
++    {
++      "name": "ibs",
++      "type": "bool"
++    },
++    {
++      "name": "tsc-deadline",
++      "type": "bool"
++    },
++    {
++      "name": "misalignsse",
++      "type": "bool"
++    },
++    {
++      "name": "kvmclock-stable-bit",
++      "type": "bool"
++    },
++    {
++      "name": "check",
++      "type": "bool"
++    },
++    {
++      "name": "hv-time",
++      "type": "bool"
++    },
++    {
++      "name": "perfctr-nb",
++      "type": "bool"
++    },
++    {
++      "name": "migratable",
++      "type": "bool"
++    },
++    {
++      "name": "feature-words",
++      "type": "X86CPUFeatureWordInfo"
++    },
++    {
++      "name": "phys-bits",
++      "type": "uint32"
++    },
++    {
++      "name": "apic",
++      "type": "bool"
++    },
++    {
++      "name": "avx512vbmi",
++      "type": "bool"
++    },
++    {
++      "name": "thread-id",
++      "type": "int32"
++    },
++    {
++      "name": "min-xlevel",
++      "type": "uint32"
++    },
++    {
++      "name": "socket-id",
++      "type": "int32"
++    },
++    {
++      "name": "avx512f",
++      "type": "bool"
++    },
++    {
++      "name": "arch-capabilities",
++      "type": "bool"
++    },
++    {
++      "name": "bmi2",
++      "type": "bool"
++    },
++    {
++      "name": "intel-pt",
++      "type": "bool"
++    },
++    {
++      "name": "wdt",
++      "type": "bool"
++    },
++    {
++      "name": "ace2-en",
++      "type": "bool"
++    },
++    {
++      "name": "avx512pf",
++      "type": "bool"
++    },
++    {
++      "name": "bmi1",
++      "type": "bool"
++    },
++    {
++      "name": "enforce",
++      "type": "bool"
++    },
++    {
++      "name": "kvm-nopiodelay",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.2",
++      "type": "bool"
++    },
++    {
++      "name": "3dnow",
++      "type": "bool"
++    },
++    {
++      "name": "vmx",
++      "type": "bool"
++    },
++    {
++      "name": "la57",
++      "type": "bool"
++    },
++    {
++      "name": "xgetbv1",
++      "type": "bool"
++    },
++    {
++      "name": "ibrs-all",
++      "type": "bool"
++    },
++    {
++      "name": "sse4.1",
++      "type": "bool"
++    },
++    {
++      "name": "xsaveopt",
++      "type": "bool"
++    },
++    {
++      "name": "hv-relaxed",
++      "type": "bool"
++    },
++    {
++      "name": "spec-ctrl",
++      "type": "bool"
++    },
++    {
++      "name": "fxsr",
++      "type": "bool"
++    },
++    {
++      "name": "hv-vapic",
++      "type": "bool"
++    },
++    {
++      "name": "phe-en",
++      "type": "bool"
++    },
++    {
++      "name": "hv-ipi",
++      "type": "bool"
++    },
++    {
++      "name": "sse4_2",
++      "type": "bool"
++    },
++    {
++      "name": "hypervisor",
++      "type": "bool"
++    },
++    {
++      "name": "aes",
++      "type": "bool"
++    },
++    {
++      "name": "amd-ssbd",
++      "type": "bool"
++    },
++    {
++      "name": "core-id",
++      "type": "int32"
++    },
++    {
++      "name": "de",
++      "type": "bool"
++    },
++    {
++      "name": "ss",
++      "type": "bool"
++    },
++    {
++      "name": "fma",
++      "type": "bool"
++    }
++  ],
++  "id": "libvirt-37"
++}
++
++{
++  "execute": "query-machines",
++  "id": "libvirt-38"
++}
++
++{
++  "return": [
++    {
+       "hotpluggable-cpus": true,
+       "name": "isapc",
+       "cpu-max": 1
+@@ -5409,12 +6535,12 @@
+       "alias": "q35"
+     }
+   ],
+-  "id": "libvirt-37"
++  "id": "libvirt-38"
+ }
+ 
+ {
+   "execute": "query-cpu-definitions",
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+@@ -5931,12 +7057,12 @@
+       "migration-safe": true
+     }
+   ],
+-  "id": "libvirt-38"
++  "id": "libvirt-39"
+ }
+ 
+ {
+   "execute": "query-tpm-models",
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+@@ -5944,12 +7070,12 @@
+     "tpm-crb",
+     "tpm-tis"
+   ],
+-  "id": "libvirt-39"
++  "id": "libvirt-40"
+ }
+ 
+ {
+   "execute": "query-tpm-types",
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+@@ -5957,12 +7083,12 @@
+     "passthrough",
+     "emulator"
+   ],
+-  "id": "libvirt-40"
++  "id": "libvirt-41"
+ }
+ 
+ {
+   "execute": "query-command-line-options",
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+@@ -7244,12 +8370,12 @@
+       "option": "drive"
+     }
+   ],
+-  "id": "libvirt-41"
++  "id": "libvirt-42"
+ }
+ 
+ {
+   "execute": "query-migrate-capabilities",
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+@@ -7323,12 +8449,12 @@
+       "capability": "x-ignore-shared"
+     }
+   ],
+-  "id": "libvirt-42"
++  "id": "libvirt-43"
+ }
+ 
+ {
+   "execute": "query-qmp-schema",
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -19793,7 +20919,7 @@
+       ]
+     }
+   ],
+-  "id": "libvirt-43"
++  "id": "libvirt-44"
+ }
+ 
+ {
+@@ -19804,7 +20930,7 @@
+       "name": "host"
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -20008,7 +21134,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-44"
++  "id": "libvirt-45"
+ }
+ 
+ {
+@@ -20214,7 +21340,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -20493,7 +21619,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-45"
++  "id": "libvirt-46"
+ }
+ 
+ {
+@@ -20507,7 +21633,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -20711,7 +21837,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-46"
++  "id": "libvirt-47"
+ }
+ 
+ {
+@@ -20917,7 +22043,7 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+@@ -21196,16 +22322,16 @@
+       }
+     }
+   },
+-  "id": "libvirt-47"
++  "id": "libvirt-48"
+ }
+ 
+ {
+   "execute": "query-sev-capabilities",
+-  "id": "libvirt-48"
++  "id": "libvirt-49"
+ }
+ 
+ {
+-  "id": "libvirt-48",
++  "id": "libvirt-49",
+   "error": {
+     "class": "GenericError",
+     "desc": "SEV feature is not available"

@@ -1,0 +1,128 @@
+From 2a4c23210674b453f91569f0f4b9fd5ebe8d7906 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Mon, 10 Jun 2019 16:46:10 +0200
+Subject: [PATCH] qemu: Probe for max-x86_64-cpu type
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+We will use it to check whether QEMU supports a specific CPU property.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=2a4c2321
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-20
+
+---
+ src/qemu/qemu_capabilities.c                      | 2 ++
+ src/qemu/qemu_capabilities.h                      | 1 +
+ tests/qemucapabilitiesdata/caps_2.10.0.x86_64.xml | 1 +
+ tests/qemucapabilitiesdata/caps_2.11.0.x86_64.xml | 1 +
+ tests/qemucapabilitiesdata/caps_2.12.0.x86_64.xml | 1 +
+ tests/qemucapabilitiesdata/caps_2.9.0.x86_64.xml  | 1 +
+ tests/qemucapabilitiesdata/caps_3.0.0.x86_64.xml  | 1 +
+ tests/qemucapabilitiesdata/caps_3.1.0.x86_64.xml  | 1 +
+ tests/qemucapabilitiesdata/caps_4.0.0.x86_64.xml  | 1 +
+ tests/qemucapabilitiesdata/caps_4.1.0.x86_64.xml  | 1 +
+ 10 files changed, 11 insertions(+)
+
+--- a/src/qemu/qemu_capabilities.c
++++ b/src/qemu/qemu_capabilities.c
+@@ -525,6 +525,7 @@ VIR_ENUM_IMPL(virQEMUCaps,
+               "virtio-pci-non-transitional",
+               "overcommit",
+               "query-current-machine",
++              "x86-max-cpu",
+     );
+ 
+ 
+@@ -1113,6 +1114,7 @@ struct virQEMUCapsStringFlags virQEMUCap
+     { "virtio-scsi-pci-non-transitional", QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL },
+     { "virtio-serial-pci-transitional", QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL },
+     { "virtio-serial-pci-non-transitional", QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL },
++    { "max-x86_64-cpu", QEMU_CAPS_X86_MAX_CPU },
+ };
+ 
+ static struct virQEMUCapsStringFlags virQEMUCapsDevicePropsVirtioBalloon[] = {
+--- a/src/qemu/qemu_capabilities.h
++++ b/src/qemu/qemu_capabilities.h
+@@ -507,6 +507,7 @@ typedef enum { /* virQEMUCapsFlags group
+     QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL, /* virtio *-pci-{non-}transitional devices */
+     QEMU_CAPS_OVERCOMMIT, /* -overcommit */
+     QEMU_CAPS_QUERY_CURRENT_MACHINE, /* query-current-machine command */
++    QEMU_CAPS_X86_MAX_CPU, /* max-x86_64-cpu type exists */
+ 
+     QEMU_CAPS_LAST /* this must always be the last item */
+ } virQEMUCapsFlags;
+--- a/tests/qemucapabilitiesdata/caps_2.10.0.x86_64.xml
++++ b/tests/qemucapabilitiesdata/caps_2.10.0.x86_64.xml
+@@ -180,6 +180,7 @@
+   <flag name='mch'/>
+   <flag name='egl-headless'/>
+   <flag name='iothread.poll-max-ns'/>
++  <flag name='x86-max-cpu'/>
+   <version>2010000</version>
+   <kvmVersion>0</kvmVersion>
+   <microcodeVersion>43100805</microcodeVersion>
+--- a/tests/qemucapabilitiesdata/caps_2.11.0.x86_64.xml
++++ b/tests/qemucapabilitiesdata/caps_2.11.0.x86_64.xml
+@@ -186,6 +186,7 @@
+   <flag name='mch.extended-tseg-mbytes'/>
+   <flag name='egl-headless'/>
+   <flag name='iothread.poll-max-ns'/>
++  <flag name='x86-max-cpu'/>
+   <version>2011000</version>
+   <kvmVersion>0</kvmVersion>
+   <microcodeVersion>43100806</microcodeVersion>
+--- a/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.xml
++++ b/tests/qemucapabilitiesdata/caps_2.12.0.x86_64.xml
+@@ -194,6 +194,7 @@
+   <flag name='memory-backend-memfd.hugetlb'/>
+   <flag name='iothread.poll-max-ns'/>
+   <flag name='memory-backend-file.align'/>
++  <flag name='x86-max-cpu'/>
+   <version>2011090</version>
+   <kvmVersion>0</kvmVersion>
+   <microcodeVersion>43100807</microcodeVersion>
+--- a/tests/qemucapabilitiesdata/caps_2.9.0.x86_64.xml
++++ b/tests/qemucapabilitiesdata/caps_2.9.0.x86_64.xml
+@@ -174,6 +174,7 @@
+   <flag name='vhost-vsock'/>
+   <flag name='mch'/>
+   <flag name='iothread.poll-max-ns'/>
++  <flag name='x86-max-cpu'/>
+   <version>2009000</version>
+   <kvmVersion>0</kvmVersion>
+   <microcodeVersion>43100765</microcodeVersion>
+--- a/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.xml
++++ b/tests/qemucapabilitiesdata/caps_3.0.0.x86_64.xml
+@@ -197,6 +197,7 @@
+   <flag name='iothread.poll-max-ns'/>
+   <flag name='memory-backend-file.align'/>
+   <flag name='nvdimm.unarmed'/>
++  <flag name='x86-max-cpu'/>
+   <version>3000000</version>
+   <kvmVersion>0</kvmVersion>
+   <microcodeVersion>43100757</microcodeVersion>
+--- a/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.xml
++++ b/tests/qemucapabilitiesdata/caps_3.1.0.x86_64.xml
+@@ -200,6 +200,7 @@
+   <flag name='memory-backend-file.pmem'/>
+   <flag name='nvdimm.unarmed'/>
+   <flag name='overcommit'/>
++  <flag name='x86-max-cpu'/>
+   <version>3000092</version>
+   <kvmVersion>0</kvmVersion>
+   <microcodeVersion>43100758</microcodeVersion>
+--- a/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.xml
++++ b/tests/qemucapabilitiesdata/caps_4.0.0.x86_64.xml
+@@ -202,6 +202,7 @@
+   <flag name='virtio-pci-non-transitional'/>
+   <flag name='overcommit'/>
+   <flag name='query-current-machine'/>
++  <flag name='x86-max-cpu'/>
+   <version>4000000</version>
+   <kvmVersion>0</kvmVersion>
+   <microcodeVersion>43100758</microcodeVersion>

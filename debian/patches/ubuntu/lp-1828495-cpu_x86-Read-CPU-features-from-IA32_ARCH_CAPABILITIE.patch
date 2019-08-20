@@ -1,0 +1,93 @@
+From 56b254dccc96b7339494812c9df07ccf6af3da95 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Fri, 22 Mar 2019 16:52:21 +0100
+Subject: [PATCH] cpu_x86: Read CPU features from IA32_ARCH_CAPABILITIES MSR
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This is used by the host capabilities code to construct host CPU
+definition.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=56b254dc
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-20
+
+---
+ src/cpu/cpu_x86.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+--- a/src/cpu/cpu_x86.c
++++ b/src/cpu/cpu_x86.c
+@@ -2392,6 +2392,19 @@ x86Encode(virArch arch,
+ }
+ 
+ 
++static int
++virCPUx86DataCheckFeature(const virCPUData *data,
++                          const char *name)
++{
++    virCPUx86MapPtr map;
++
++    if (!(map = virCPUx86GetMap()))
++        return -1;
++
++    return x86FeatureInData(name, &data->data.x86, map);
++}
++
++
+ #if defined(__i386__) || defined(__x86_64__)
+ static inline void
+ cpuidCall(virCPUx86CPUID *cpuid)
+@@ -2738,6 +2751,28 @@ virCPUx86GetHost(virCPUDefPtr cpu,
+         cpuidSet(CPUX86_EXTENDED, cpuData) < 0)
+         goto cleanup;
+ 
++    /* Read the IA32_ARCH_CAPABILITIES MSR (0x10a) if supported.
++     * This is best effort since there might be no way to read the MSR
++     * when we are not running as root. */
++    if (virCPUx86DataCheckFeature(cpuData, "arch-capabilities") == 1) {
++        uint64_t msr;
++        unsigned long index = 0x10a;
++
++        if (virHostCPUGetMSR(index, &msr) == 0) {
++            virCPUx86DataItem item = {
++                .type = VIR_CPU_X86_DATA_MSR,
++                .data.msr = {
++                    .index = index,
++                    .eax = msr & 0xffffffff,
++                    .edx = msr >> 32,
++                },
++            };
++
++            if (virCPUx86DataAdd(cpuData, &item) < 0)
++                return -1;
++        }
++    }
++
+     ret = x86DecodeCPUData(cpu, cpuData, models);
+     cpu->microcodeVersion = virHostCPUGetMicrocodeVersion();
+ 
+@@ -2770,19 +2805,6 @@ virCPUx86CheckFeature(const virCPUDef *c
+ }
+ 
+ 
+-static int
+-virCPUx86DataCheckFeature(const virCPUData *data,
+-                          const char *name)
+-{
+-    virCPUx86MapPtr map;
+-
+-    if (!(map = virCPUx86GetMap()))
+-        return -1;
+-
+-    return x86FeatureInData(name, &data->data.x86, map);
+-}
+-
+-
+ static virCPUDefPtr
+ virCPUx86Baseline(virCPUDefPtr *cpus,
+                   unsigned int ncpus,

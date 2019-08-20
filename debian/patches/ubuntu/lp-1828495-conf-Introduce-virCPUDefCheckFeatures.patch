@@ -1,0 +1,100 @@
+From 4e6f58b8d55d44fa9f80736b2745b44710f6e25a Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Wed, 19 Jun 2019 19:01:30 +0200
+Subject: [PATCH] conf: Introduce virCPUDefCheckFeatures
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This API can be used to check whether a CPU definition contains features
+matching a given filter.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Reviewed-by: Ján Tomko <jtomko@redhat.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=4e6f58b8
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1828495
+Last-Update: 2019-08-20
+
+---
+ src/conf/cpu_conf.c      | 33 +++++++++++++++++++++++++++++++++
+ src/conf/cpu_conf.h      |  6 ++++++
+ src/libvirt_private.syms |  1 +
+ 3 files changed, 40 insertions(+)
+
+diff --git a/src/conf/cpu_conf.c b/src/conf/cpu_conf.c
+index 675d214c50..7d16a05283 100644
+--- a/src/conf/cpu_conf.c
++++ b/src/conf/cpu_conf.c
+@@ -930,6 +930,39 @@ virCPUDefFilterFeatures(virCPUDefPtr cpu,
+ }
+ 
+ 
++/**
++ * virCPUDefCheckFeatures:
++ *
++ * Check CPU features for which @filter reports true and store them in a NULL
++ * terminated list returned via @features.
++ *
++ * Returns the number of features matching @filter or -1 on error.
++ */
++int
++virCPUDefCheckFeatures(virCPUDefPtr cpu,
++                       virCPUDefFeatureFilter filter,
++                       void *opaque,
++                       char ***features)
++{
++    VIR_AUTOSTRINGLIST list = NULL;
++    size_t n = 0;
++    size_t i;
++
++    *features = NULL;
++
++    for (i = 0; i < cpu->nfeatures; i++) {
++        if (filter(cpu->features[i].name, opaque)) {
++            if (virStringListAdd(&list, cpu->features[i].name) < 0)
++                return -1;
++            n++;
++        }
++    }
++
++    VIR_STEAL_PTR(*features, list);
++    return n;
++}
++
++
+ bool
+ virCPUDefIsEqual(virCPUDefPtr src,
+                  virCPUDefPtr dst,
+diff --git a/src/conf/cpu_conf.h b/src/conf/cpu_conf.h
+index 906ef5368e..19ce816ec2 100644
+--- a/src/conf/cpu_conf.h
++++ b/src/conf/cpu_conf.h
+@@ -224,6 +224,12 @@ virCPUDefFilterFeatures(virCPUDefPtr cpu,
+                         virCPUDefFeatureFilter filter,
+                         void *opaque);
+ 
++int
++virCPUDefCheckFeatures(virCPUDefPtr cpu,
++                       virCPUDefFeatureFilter filter,
++                       void *opaque,
++                       char ***features);
++
+ virCPUDefPtr *
+ virCPUDefListParse(const char **xmlCPUs,
+                    unsigned int ncpus,
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index ab2e4bc6fe..90a6d10666 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -73,6 +73,7 @@ virCapabilitiesSetNetPrefix;
+ virCPUCacheModeTypeFromString;
+ virCPUCacheModeTypeToString;
+ virCPUDefAddFeature;
++virCPUDefCheckFeatures;
+ virCPUDefCopy;
+ virCPUDefCopyModel;
+ virCPUDefCopyModelFilter;
+-- 
+2.22.0
+
