@@ -4398,7 +4398,7 @@ virDomainDriveAddressIsUsedByHostdev(const virDomainDef *def,
  * Return true if the SCSI drive address is already in use, false
  * otherwise.
  */
-static bool
+bool
 virDomainSCSIDriveAddressIsUsed(const virDomainDef *def,
                                 const virDomainDeviceDriveAddress *addr)
 {

@@ -1,3 +1,10 @@
+libvirt (5.0.0-1ubuntu2.5) disco; urgency=medium
+
+  * d/p/ubuntu/lp-1840872-*: avoid hotplug issues with duplicate device
+    addresses (LP: #1840872)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 21 Aug 2019 11:15:43 +0200
+
 libvirt (5.0.0-1ubuntu2.4) disco-security; urgency=medium
 
   * SECURITY UPDATE: virDomainSaveImageGetXMLDesc does not check for
