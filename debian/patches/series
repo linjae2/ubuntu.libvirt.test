@@ -65,3 +65,4 @@ CVE-2019-10167.patch
 CVE-2019-10168.patch
 ubuntu/lp-1840872-conf-Expose-virDomainSCSIDriveAddressIsUsed.patch
 ubuntu/lp-1840872-qemu_hotplug-Check-for-duplicate-drive-addresses.patch
+ubuntu/lp-1840872-qemuhotplugtest-Don-t-plug-a-SCSI-disk-at-unit-7.patch

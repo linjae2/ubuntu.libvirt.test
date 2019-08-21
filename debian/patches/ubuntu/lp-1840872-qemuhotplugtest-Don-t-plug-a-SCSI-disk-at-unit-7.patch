@@ -1,0 +1,68 @@
+From ee2c5ef39fd91345893904433c6f458685543af5 Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Thu, 11 Apr 2019 16:23:38 +0200
+Subject: [PATCH] qemuhotplugtest: Don't plug a SCSI disk at unit 7
+
+Unit number 7 is kind of special. It's reserved for SCSI
+controller. The comment in virDomainSCSIDriveAddressIsUsed()
+summarizes that pretty nicely. Libvirt would never generate
+such address.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+Tested-by: Daniel Henrique Barboza <danielhb413@gmail.com>
+Reviewed-by: Jim Fehlig <jfehlig@suse.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=ee2c5ef39fd91345893904433c6f458685543af5
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1840872
+Last-Update: 2019-08-21
+
+---
+ tests/qemuhotplugtest.c                                       | 2 +-
+ tests/qemuhotplugtestdevices/qemuhotplug-disk-scsi-2.xml      | 2 +-
+ ...uhotplug-base-without-scsi-controller-live+disk-scsi-2.xml | 4 ++--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/tests/qemuhotplugtest.c b/tests/qemuhotplugtest.c
+index 3eb97d886a..fbf488c54c 100644
+--- a/tests/qemuhotplugtest.c
++++ b/tests/qemuhotplugtest.c
+@@ -715,7 +715,7 @@ mymain(void)
+                    "device_del", QMP_OK,
+                    "human-monitor-command", HMP(""));
+     DO_TEST_DETACH("base-with-scsi-controller-live", "disk-scsi-2", false, false,
+-                   "device_del", QMP_DEVICE_DELETED("scsi3-0-5-7") QMP_OK,
++                   "device_del", QMP_DEVICE_DELETED("scsi3-0-5-6") QMP_OK,
+                    "human-monitor-command", HMP(""));
+ 
+     DO_TEST_ATTACH("base-live", "qemu-agent", false, true,
+diff --git a/tests/qemuhotplugtestdevices/qemuhotplug-disk-scsi-2.xml b/tests/qemuhotplugtestdevices/qemuhotplug-disk-scsi-2.xml
+index 3a847fbda6..876afb182f 100644
+--- a/tests/qemuhotplugtestdevices/qemuhotplug-disk-scsi-2.xml
++++ b/tests/qemuhotplugtestdevices/qemuhotplug-disk-scsi-2.xml
+@@ -2,7 +2,7 @@
+   <driver name='qemu' type='raw' cache='none'/>
+   <source file='/dev/null'/>
+   <target dev='sdf' bus='scsi'/>
+-  <address type='drive' controller='3' bus='0' target='5' unit='7'/>
++  <address type='drive' controller='3' bus='0' target='5' unit='6'/>
+   <readonly/>
+   <shareable/>
+ </disk>
+diff --git a/tests/qemuhotplugtestdomains/qemuhotplug-base-without-scsi-controller-live+disk-scsi-2.xml b/tests/qemuhotplugtestdomains/qemuhotplug-base-without-scsi-controller-live+disk-scsi-2.xml
+index d35fea6f5f..72b5174825 100644
+--- a/tests/qemuhotplugtestdomains/qemuhotplug-base-without-scsi-controller-live+disk-scsi-2.xml
++++ b/tests/qemuhotplugtestdomains/qemuhotplug-base-without-scsi-controller-live+disk-scsi-2.xml
+@@ -26,8 +26,8 @@
+       <target dev='sdf' bus='scsi'/>
+       <readonly/>
+       <shareable/>
+-      <alias name='scsi3-0-5-7'/>
+-      <address type='drive' controller='3' bus='0' target='5' unit='7'/>
++      <alias name='scsi3-0-5-6'/>
++      <address type='drive' controller='3' bus='0' target='5' unit='6'/>
+     </disk>
+     <controller type='usb' index='0'>
+       <alias name='usb'/>
+-- 
+2.22.0
+
