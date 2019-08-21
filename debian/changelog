@@ -1,3 +1,10 @@
+libvirt (4.0.0-1ubuntu8.13) bionic; urgency=medium
+
+  * d/p/ubuntu/lp-1840872-*: avoid hotplug issues with duplicate device
+    addresses (LP: #1840872)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 21 Aug 2019 11:08:29 +0200
+
 libvirt (4.0.0-1ubuntu8.12) bionic-security; urgency=medium
 
   * SECURITY UPDATE: virDomainSaveImageGetXMLDesc does not check for
