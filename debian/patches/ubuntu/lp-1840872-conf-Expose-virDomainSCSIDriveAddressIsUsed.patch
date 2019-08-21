@@ -1,0 +1,66 @@
+From 89237d534f0fe950d06a2081089154160c6c2224 Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Thu, 11 Apr 2019 15:44:14 +0200
+Subject: [PATCH] conf: Expose virDomainSCSIDriveAddressIsUsed
+
+This function checks if given drive address is already present in
+passed domain definition. Expose the function as it will be used
+shortly.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+Tested-by: Daniel Henrique Barboza <danielhb413@gmail.com>
+Reviewed-by: Jim Fehlig <jfehlig@suse.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=89237d534f0fe950d06a2081089154160c6c2224
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1840872
+Last-Update: 2019-08-21
+
+---
+ src/conf/domain_conf.c   | 2 +-
+ src/conf/domain_conf.h   | 4 ++++
+ src/libvirt_private.syms | 1 +
+ 3 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index d6494257df..3f2adaa500 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -4786,7 +4786,7 @@ virDomainDriveAddressIsUsedByHostdev(const virDomainDef *def,
+  * Return true if the SCSI drive address is already in use, false
+  * otherwise.
+  */
+-static bool
++bool
+ virDomainSCSIDriveAddressIsUsed(const virDomainDef *def,
+                                 const virDomainDeviceDriveAddress *addr)
+ {
+diff --git a/src/conf/domain_conf.h b/src/conf/domain_conf.h
+index fb053a7ca3..01c22d8cc3 100644
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -2741,6 +2741,10 @@ virDomainXMLNamespacePtr
+ virDomainXMLOptionGetNamespace(virDomainXMLOptionPtr xmlopt)
+     ATTRIBUTE_NONNULL(1);
+ 
++bool
++virDomainSCSIDriveAddressIsUsed(const virDomainDef *def,
++                                const virDomainDeviceDriveAddress *addr);
++
+ int virDomainDefPostParse(virDomainDefPtr def,
+                           virCapsPtr caps,
+                           unsigned int parseFlags,
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index aa123978fa..a03cf0b645 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -539,6 +539,7 @@ virDomainRunningReasonTypeToString;
+ virDomainSaveConfig;
+ virDomainSaveStatus;
+ virDomainSaveXML;
++virDomainSCSIDriveAddressIsUsed;
+ virDomainSeclabelTypeFromString;
+ virDomainSeclabelTypeToString;
+ virDomainShmemDefEquals;
+-- 
+2.22.0
+
