@@ -134,3 +134,4 @@ CVE-2019-10166.patch
 CVE-2019-10167.patch
 ubuntu/lp-1840872-conf-Expose-virDomainSCSIDriveAddressIsUsed.patch
 ubuntu/lp-1840872-qemu_hotplug-Check-for-duplicate-drive-addresses.patch
+ubuntu/lp-1840745-cpu-add-amd-ssbd-and-amd-no-ssb-CPU-features-CVE-201.patch
