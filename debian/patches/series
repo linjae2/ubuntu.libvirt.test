@@ -132,3 +132,5 @@ ubuntu/lp-1830268-refresh-capabilities-on-KVM-nesting.patch
 CVE-2019-10161.patch
 CVE-2019-10166.patch
 CVE-2019-10167.patch
+ubuntu/lp-1840872-conf-Expose-virDomainSCSIDriveAddressIsUsed.patch
+ubuntu/lp-1840872-qemu_hotplug-Check-for-duplicate-drive-addresses.patch

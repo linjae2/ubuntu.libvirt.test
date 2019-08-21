@@ -1,0 +1,40 @@
+From ddc72f99027b063feaf34e5fda89916b6b2c8943 Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Thu, 11 Apr 2019 15:45:27 +0200
+Subject: [PATCH] qemu_hotplug: Check for duplicate drive addresses
+
+This tries to fix the same problem as f1d65853000 but it's doing
+so in a less invasive way.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+Tested-by: Daniel Henrique Barboza <danielhb413@gmail.com>
+Reviewed-by: Jim Fehlig <jfehlig@suse.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=ddc72f99027b063feaf34e5fda89916b6b2c8943
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1840872
+Last-Update: 2019-08-21
+
+---
+ src/qemu/qemu_hotplug.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/qemu/qemu_hotplug.c b/src/qemu/qemu_hotplug.c
+index 16da2b95fd..630be12d54 100644
+--- a/src/qemu/qemu_hotplug.c
++++ b/src/qemu/qemu_hotplug.c
+@@ -1183,6 +1183,12 @@ qemuDomainAttachSCSIDisk(virQEMUDriverPtr driver,
+         return -1;
+     }
+ 
++    if (virDomainSCSIDriveAddressIsUsed(vm->def, &disk->info.addr.drive)) {
++        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
++                       _("Domain already contains a disk with that address"));
++        return -1;
++    }
++
+     /* Let's make sure the disk has a controller defined and loaded before
+      * trying to add it. The controller used by the disk must exist before a
+      * qemu command line string is generated.
+-- 
+2.22.0
+
