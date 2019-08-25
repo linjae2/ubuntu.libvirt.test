@@ -84,39 +84,6 @@ verify(sizeof(gid_t) <= sizeof(unsigned int) &&
 
 VIR_LOG_INIT("util.util");
 
-VIR_ENUM_IMPL(virTristateBool, VIR_TRISTATE_BOOL_LAST,
-              "default",
-              "yes",
-              "no",
-);
-
-VIR_ENUM_IMPL(virTristateSwitch, VIR_TRISTATE_SWITCH_LAST,
-              "default",
-              "on",
-              "off",
-);
-
-
-virTristateBool
-virTristateBoolFromBool(bool val)
-{
-    if (val)
-        return VIR_TRISTATE_BOOL_YES;
-    else
-        return VIR_TRISTATE_BOOL_NO;
-}
-
-
-virTristateSwitch
-virTristateSwitchFromBool(bool val)
-{
-    if (val)
-        return VIR_TRISTATE_SWITCH_ON;
-    else
-        return VIR_TRISTATE_SWITCH_OFF;
-}
-
-
 #ifndef WIN32
 
 int virSetInherit(int fd, bool inherit)
@@ -191,88 +158,6 @@ int virSetSockReuseAddr(int fd, bool fatal)
 }
 #endif
 
-int
-virPipeReadUntilEOF(int outfd, int errfd,
-                    char **outbuf, char **errbuf) {
-
-    struct pollfd fds[2];
-    size_t i;
-    bool finished[2];
-
-    fds[0].fd = outfd;
-    fds[0].events = POLLIN;
-    fds[0].revents = 0;
-    finished[0] = false;
-    fds[1].fd = errfd;
-    fds[1].events = POLLIN;
-    fds[1].revents = 0;
-    finished[1] = false;
-
-    while (!(finished[0] && finished[1])) {
-
-        if (poll(fds, ARRAY_CARDINALITY(fds), -1) < 0) {
-            if ((errno == EAGAIN) || (errno == EINTR))
-                continue;
-            goto pollerr;
-        }
-
-        for (i = 0; i < ARRAY_CARDINALITY(fds); ++i) {
-            char data[1024], **buf;
-            int got, size;
-
-            if (!(fds[i].revents))
-                continue;
-            else if (fds[i].revents & POLLHUP)
-                finished[i] = true;
-
-            if (!(fds[i].revents & POLLIN)) {
-                if (fds[i].revents & POLLHUP)
-                    continue;
-
-                virReportError(VIR_ERR_INTERNAL_ERROR,
-                               "%s", _("Unknown poll response."));
-                goto error;
-            }
-
-            got = read(fds[i].fd, data, sizeof(data));
-
-            if (got == sizeof(data))
-                finished[i] = false;
-
-            if (got == 0) {
-                finished[i] = true;
-                continue;
-            }
-            if (got < 0) {
-                if (errno == EINTR)
-                    continue;
-                if (errno == EAGAIN)
-                    break;
-                goto pollerr;
-            }
-
-            buf = ((fds[i].fd == outfd) ? outbuf : errbuf);
-            size = (*buf ? strlen(*buf) : 0);
-            if (VIR_REALLOC_N(*buf, size+got+1) < 0)
-                goto error;
-            memmove(*buf+size, data, got);
-            (*buf)[size+got] = '\0';
-        }
-        continue;
-
-    pollerr:
-        virReportSystemError(errno,
-                             "%s", _("poll error"));
-        goto error;
-    }
-
-    return 0;
-
- error:
-    VIR_FREE(*outbuf);
-    VIR_FREE(*errbuf);
-    return -1;
-}
 
 /* Convert C from hexadecimal character to integer.  */
 int
@@ -361,37 +246,6 @@ virScaleInteger(unsigned long long *value, const char *suffix,
 
 
 /**
- * virParseNumber:
- * @str: pointer to the char pointer used
- *
- * Parse an unsigned number
- *
- * Returns the unsigned number or -1 in case of error. @str will be
- *         updated to skip the number.
- */
-int
-virParseNumber(const char **str)
-{
-    int ret = 0;
-    const char *cur = *str;
-
-    if ((*cur < '0') || (*cur > '9'))
-        return -1;
-
-    while (c_isdigit(*cur)) {
-        unsigned int c = *cur - '0';
-
-        if ((ret > INT_MAX / 10) ||
-            ((ret == INT_MAX / 10) && (c > INT_MAX % 10)))
-            return -1;
-        ret = ret * 10 + c;
-        cur++;
-    }
-    *str = cur;
-    return ret;
-}
-
-/**
  * virParseVersionString:
  * @str: const char pointer to the version string
  * @version: unsigned long pointer to output the version number
@@ -436,22 +290,6 @@ virParseVersionString(const char *str, unsigned long *version,
 
     return 0;
 }
-
-int virEnumFromString(const char *const*types,
-                      unsigned int ntypes,
-                      const char *type)
-{
-    size_t i;
-    if (!type)
-        return -1;
-
-    for (i = 0; i < ntypes; i++)
-        if (STREQ(types[i], type))
-            return i;
-
-    return -1;
-}
-
 
 /**
  * Format @val as a base-10 decimal number, in the
@@ -531,16 +369,6 @@ virFormatIntPretty(unsigned long long val,
     return val / (limit / 1024);
 }
 
-
-const char *virEnumToString(const char *const*types,
-                            unsigned int ntypes,
-                            int type)
-{
-    if (type < 0 || type >= ntypes)
-        return NULL;
-
-    return types[type];
-}
 
 /* Translates a device name of the form (regex) /^[fhv]d[a-z]+[0-9]*$/
  * into the corresponding index and partition number
@@ -1651,31 +1479,24 @@ virSetUIDGIDWithCaps(uid_t uid, gid_t gid, gid_t *groups, int ngroups,
 #endif
 
 
-#if defined(UDEVADM) || defined(UDEVSETTLE)
 void virWaitForDevices(void)
 {
-# ifdef UDEVADM
-    const char *const settleprog[] = { UDEVADM, "settle", NULL };
-# else
-    const char *const settleprog[] = { UDEVSETTLE, NULL };
-# endif
+    VIR_AUTOPTR(virCommand) cmd = NULL;
+    VIR_AUTOFREE(char *) udev = NULL;
     int exitstatus;
 
-    if (access(settleprog[0], X_OK) != 0)
+    if (!(udev = virFindFileInPath(UDEVADM)))
+        return;
+
+    if (!(cmd = virCommandNewArgList(udev, "settle", NULL)))
         return;
 
     /*
      * NOTE: we ignore errors here; this is just to make sure that any device
      * nodes that are being created finish before we try to scan them.
-     * If this fails for any reason, we still have the backup of polling for
-     * 5 seconds for device nodes.
      */
-    ignore_value(virRun(settleprog, &exitstatus));
+    ignore_value(virCommandRun(cmd, &exitstatus));
 }
-#else
-void virWaitForDevices(void)
-{}
-#endif
 
 #if WITH_DEVMAPPER
 bool
@@ -1917,7 +1738,7 @@ const char *virGetEnvBlockSUID(const char *name)
 
 
 /**
- * virGetEnvBlockSUID:
+ * virGetEnvAllowSUID:
  * @name: the environment variable name
  *
  * Obtain an environment variable which is safe to
@@ -1963,122 +1784,6 @@ void virUpdateSelfLastChanged(const char *path)
     }
 }
 
-#ifndef WIN32
-
-/**
- * virGetListenFDs:
- *
- * Parse LISTEN_PID and LISTEN_FDS passed from caller.
- *
- * Returns number of passed FDs.
- */
-unsigned int
-virGetListenFDs(void)
-{
-    const char *pidstr;
-    const char *fdstr;
-    size_t i = 0;
-    unsigned long long procid;
-    unsigned int nfds;
-
-    VIR_DEBUG("Setting up networking from caller");
-
-    if (!(pidstr = virGetEnvAllowSUID("LISTEN_PID"))) {
-        VIR_DEBUG("No LISTEN_PID from caller");
-        return 0;
-    }
-
-    if (virStrToLong_ull(pidstr, NULL, 10, &procid) < 0) {
-        VIR_DEBUG("Malformed LISTEN_PID from caller %s", pidstr);
-        return 0;
-    }
-
-    if ((pid_t)procid != getpid()) {
-        VIR_DEBUG("LISTEN_PID %s is not for us %lld",
-                  pidstr, (long long) getpid());
-        return 0;
-    }
-
-    if (!(fdstr = virGetEnvAllowSUID("LISTEN_FDS"))) {
-        VIR_DEBUG("No LISTEN_FDS from caller");
-        return 0;
-    }
-
-    if (virStrToLong_ui(fdstr, NULL, 10, &nfds) < 0) {
-        VIR_DEBUG("Malformed LISTEN_FDS from caller %s", fdstr);
-        return 0;
-    }
-
-    unsetenv("LISTEN_PID");
-    unsetenv("LISTEN_FDS");
-
-    VIR_DEBUG("Got %u file descriptors", nfds);
-
-    for (i = 0; i < nfds; i++) {
-        int fd = STDERR_FILENO + i + 1;
-
-        VIR_DEBUG("Disabling inheritance of passed FD %d", fd);
-
-        if (virSetInherit(fd, false) < 0)
-            VIR_WARN("Couldn't disable inheritance of passed FD %d", fd);
-    }
-
-    return nfds;
-}
-
-#else /* WIN32 */
-
-unsigned int
-virGetListenFDs(void)
-{
-    return 0;
-}
-
-#endif /* WIN32 */
-
-#ifdef HAVE_SYS_UN_H
-char *virGetUNIXSocketPath(int fd)
-{
-    union {
-        struct sockaddr sa;
-        struct sockaddr_storage ss;
-        struct sockaddr_un un;
-    } addr = { .ss = { 0 } };
-    socklen_t len = sizeof(addr.ss);
-    char *path;
-
-    if (getsockname(fd, &addr.sa, &len) < 0) {
-        virReportSystemError(errno, _("Unable to get address of FD %d"), fd);
-        return NULL;
-    }
-
-    if (addr.ss.ss_family != AF_UNIX) {
-        virReportSystemError(EINVAL, _("FD %d is not a UNIX socket, has af=%d"),
-                             fd, addr.ss.ss_family);
-        return NULL;
-    }
-
-    if (addr.un.sun_path[0] == '\0')
-        addr.un.sun_path[0] = '@';
-
-    if (VIR_ALLOC_N(path, sizeof(addr.un.sun_path) + 1) < 0)
-        return NULL;
-
-    memcpy(path, addr.un.sun_path, sizeof(addr.un.sun_path));
-    path[sizeof(addr.un.sun_path)] = '\0';
-    return path;
-}
-
-#else /* HAVE_SYS_UN_H */
-
-char *virGetUNIXSocketPath(int fd ATTRIBUTE_UNUSED)
-{
-    virReportSystemError(ENOSYS, "%s",
-                         _("UNIX sockets not supported on this platform"));
-    return NULL;
-}
-
-#endif /* HAVE_SYS_UN_H */
 
 #ifndef WIN32
 long virGetSystemPageSize(void)

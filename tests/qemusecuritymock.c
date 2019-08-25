@@ -29,6 +29,7 @@
 #include "virthread.h"
 #include "virhash.h"
 #include "virstring.h"
+#include "viralloc.h"
 #include "qemusecuritytest.h"
 #include "security/security_manager.h"
 
@@ -50,10 +51,6 @@
 
 
 static int (*real_chown)(const char *path, uid_t uid, gid_t gid);
-static int (*real_lstat)(const char *path, struct stat *sb);
-static int (*real___lxstat)(int ver, const char *path, struct stat *sb);
-static int (*real_stat)(const char *path, struct stat *sb);
-static int (*real___xstat)(int ver, const char *path, struct stat *sb);
 static int (*real_open)(const char *path, int flags, ...);
 static int (*real_close)(int fd);
 
@@ -106,8 +103,6 @@ init_syms(void)
         return;
 
     VIR_MOCK_REAL_INIT(chown);
-    VIR_MOCK_REAL_INIT_ALT(lstat, __lxstat);
-    VIR_MOCK_REAL_INIT_ALT(stat, __xstat);
     VIR_MOCK_REAL_INIT(open);
     VIR_MOCK_REAL_INIT(close);
 
@@ -131,9 +126,9 @@ get_key(const char *path,
 
 
 int
-virFileGetXAttr(const char *path,
-                const char *name,
-                char **value)
+virFileGetXAttrQuiet(const char *path,
+                     const char *name,
+                     char **value)
 {
     int ret = -1;
     char *key;
@@ -157,6 +152,34 @@ virFileGetXAttr(const char *path,
  cleanup:
     virMutexUnlock(&m);
     VIR_FREE(key);
+    return ret;
+}
+
+
+/*
+ * This may look redundant but is needed to work around an
+ * compiler quirk. The call from the real virFileGetXAttr
+ * to the real virFileGetXAttrQuiet has a quirk where the
+ * return value from virFileGetXAttrQuiet gets scrambled
+ * if we mock virFileGetXAttrQuiet, returning -1 instead
+ * of 0 despite succeeding. This happens on FreeBSD 11/12
+ * hosts with CLang, and is suspected to be some kind of
+ * compiler optimization. By mocking this function too we
+ * can workaround it.
+ */
+int
+virFileGetXAttr(const char *path,
+                const char *name,
+                char **value)
+{
+    int ret;
+
+    if ((ret = virFileGetXAttrQuiet(path, name, value)) < 0) {
+        virReportSystemError(errno,
+                             "Unable to get XATTR %s on %s",
+                             name, path);
+    }
+
     return ret;
 }
 
@@ -211,36 +234,35 @@ int virFileRemoveXAttr(const char *path,
 }
 
 
-static int
-mock_stat(const char *path,
-          struct stat *sb)
-{
-    uint32_t *val;
-
-    virMutexLock(&m);
-    init_hash();
-
-    memset(sb, 0, sizeof(*sb));
-
-    sb->st_mode = S_IFREG | 0666;
-    sb->st_size = 123456;
-    sb->st_ino = 1;
-
-    if (!(val = virHashLookup(chown_paths, path))) {
-        /* New path. Set the defaults */
-        sb->st_uid = DEFAULT_UID;
-        sb->st_gid = DEFAULT_GID;
-    } else {
-        /* Known path. Set values passed to chown() earlier */
-        sb->st_uid = *val % 16;
-        sb->st_gid = *val >> 16;
-    }
-
-    virMutexUnlock(&m);
-
-    return 0;
-}
-
+#define VIR_MOCK_STAT_HOOK \
+    do { \
+        if (getenv(ENVVAR)) { \
+            uint32_t *val; \
+\
+            virMutexLock(&m); \
+            init_hash(); \
+\
+            memset(sb, 0, sizeof(*sb)); \
+\
+            sb->st_mode = S_IFREG | 0666; \
+            sb->st_size = 123456; \
+            sb->st_ino = 1; \
+\
+            if (!(val = virHashLookup(chown_paths, path))) { \
+                /* New path. Set the defaults */ \
+                sb->st_uid = DEFAULT_UID; \
+                sb->st_gid = DEFAULT_GID; \
+            } else { \
+                /* Known path. Set values passed to chown() earlier */ \
+                sb->st_uid = *val & 0xffff; \
+                sb->st_gid = *val >> 16; \
+            } \
+\
+            virMutexUnlock(&m); \
+\
+            return 0; \
+        } \
+    } while (0)
 
 static int
 mock_chown(const char *path,
@@ -276,68 +298,12 @@ mock_chown(const char *path,
 }
 
 
-#ifdef HAVE___LXSTAT
-int
-__lxstat(int ver, const char *path, struct stat *sb)
+#include "virmockstathelpers.c"
+
+static int
+virMockStatRedirect(const char *path ATTRIBUTE_UNUSED, char **newpath ATTRIBUTE_UNUSED)
 {
-    int ret;
-
-    init_syms();
-
-    if (getenv(ENVVAR))
-        ret = mock_stat(path, sb);
-    else
-        ret = real___lxstat(ver, path, sb);
-
-    return ret;
-}
-#endif /* HAVE___LXSTAT */
-
-int
-lstat(const char *path, struct stat *sb)
-{
-    int ret;
-
-    init_syms();
-
-    if (getenv(ENVVAR))
-        ret = mock_stat(path, sb);
-    else
-        ret = real_lstat(path, sb);
-
-    return ret;
-}
-
-#ifdef HAVE___XSTAT
-int
-__xstat(int ver, const char *path, struct stat *sb)
-{
-    int ret;
-
-    init_syms();
-
-    if (getenv(ENVVAR))
-        ret = mock_stat(path, sb);
-    else
-        ret = real___xstat(ver, path, sb);
-
-    return ret;
-}
-#endif /* HAVE___XSTAT */
-
-int
-stat(const char *path, struct stat *sb)
-{
-    int ret;
-
-    init_syms();
-
-    if (getenv(ENVVAR))
-        ret = mock_stat(path, sb);
-    else
-        ret = real_stat(path, sb);
-
-    return ret;
+    return 0;
 }
 
 
@@ -386,6 +352,8 @@ close(int fd)
 {
     int ret;
 
+    init_syms();
+
     if (fd == 42 && getenv(ENVVAR))
         ret = 0;
     else
@@ -413,20 +381,28 @@ int virFileUnlock(int fd ATTRIBUTE_UNUSED,
 }
 
 
+typedef struct _checkOwnerData checkOwnerData;
+struct _checkOwnerData {
+    const char **paths;
+    bool chown_fail;
+};
+
+
 static int
 checkOwner(void *payload,
            const void *name,
-           void *data)
+           void *opaque)
 {
-    bool *chown_fail = data;
+    checkOwnerData *data = opaque;
     uint32_t owner = *((uint32_t*) payload);
 
-    if (owner % 16 != DEFAULT_UID ||
-        owner >> 16 != DEFAULT_GID) {
+    if ((owner % 16 != DEFAULT_UID ||
+         owner >> 16 != DEFAULT_GID) &&
+        !virStringListHasString(data->paths, name)) {
         fprintf(stderr,
                 "Path %s wasn't restored back to its original owner\n",
                 (const char *) name);
-        *chown_fail = false;
+        data->chown_fail = true;
     }
 
     return 0;
@@ -442,7 +418,7 @@ printXATTR(void *payload,
 
     /* The fact that we are in this function means that there are
      * some XATTRs left behind. This is enough to claim an error. */
-    *xattr_fail = false;
+    *xattr_fail = true;
 
     /* Hash table key consists of "$path:$xattr_name", xattr
      * value is then the value stored in the hash table. */
@@ -451,28 +427,64 @@ printXATTR(void *payload,
 }
 
 
-int checkPaths(void)
+/**
+ * checkPaths:
+ * @paths: a NULL terminated list of paths expected not to be restored
+ *
+ * Check if all paths were restored and if no XATTR was left
+ * behind. Since restore is not done on all domain's paths, some
+ * paths are expected to be not restored. A list of such paths
+ * can be passed in @paths argument. If a path is not restored
+ * but it's on the list no error is indicated.
+ */
+int checkPaths(const char **paths)
 {
     int ret = -1;
-    bool chown_fail = false;
+    checkOwnerData data = { .paths = paths, .chown_fail = false };
     bool xattr_fail = false;
+    size_t i;
 
     virMutexLock(&m);
     init_hash();
 
-    if ((virHashForEach(chown_paths, checkOwner, &chown_fail)) < 0)
+    for (i = 0; paths && paths[i]; i++) {
+        if (!virHashLookup(chown_paths, paths[i])) {
+            fprintf(stderr, "Unexpected path restored: %s\n", paths[i]);
+            goto cleanup;
+        }
+    }
+
+    if ((virHashForEach(chown_paths, checkOwner, &data)) < 0)
         goto cleanup;
 
     if ((virHashForEach(xattr_paths, printXATTR, &xattr_fail)) < 0)
         goto cleanup;
 
-    if (chown_fail || xattr_fail)
+    if (data.chown_fail || xattr_fail)
         goto cleanup;
 
     ret = 0;
  cleanup:
-    virHashRemoveAll(chown_paths);
-    virHashRemoveAll(xattr_paths);
     virMutexUnlock(&m);
     return ret;
+}
+
+
+void freePaths(void)
+{
+    virMutexLock(&m);
+    init_hash();
+
+    virHashFree(chown_paths);
+    virHashFree(xattr_paths);
+    chown_paths = xattr_paths = NULL;
+    virMutexUnlock(&m);
+}
+
+
+int
+virProcessRunInFork(virProcessForkCallback cb,
+                    void *opaque)
+{
+    return cb(-1, opaque);
 }

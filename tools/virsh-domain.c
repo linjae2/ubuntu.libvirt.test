@@ -55,6 +55,7 @@
 #include "virsh-nodedev.h"
 #include "viruri.h"
 #include "vsh-table.h"
+#include "virenum.h"
 
 /* Gnulib doesn't guarantee SA_SIGINFO support.  */
 #ifndef SA_SIGINFO
@@ -682,7 +683,7 @@ cmdAttachDisk(vshControl *ctl, const vshCmd *cmd)
         virBufferAsprintf(&buf, "<serial>%s</serial>\n", serial);
 
     if (alias)
-        virBufferAsprintf(&buf, "<alias name='%s'/>", alias);
+        virBufferAsprintf(&buf, "<alias name='%s'/>\n", alias);
 
     if (wwn)
         virBufferAsprintf(&buf, "<wwn>%s</wwn>\n", wwn);
@@ -3616,6 +3617,10 @@ static const vshCmdOptDef opts_undefine[] = {
      .help = N_("remove all associated storage volumes (use with caution)")
     },
     {.name = "delete-snapshots",
+     .type = VSH_OT_ALIAS,
+     .help = "delete-storage-volume-snapshots"
+    },
+    {.name = "delete-storage-volume-snapshots",
      .type = VSH_OT_BOOL,
      .help = N_("delete snapshots associated with volume(s), requires "
                 "--remove-all-storage (must be supported by storage driver)")
@@ -3626,7 +3631,11 @@ static const vshCmdOptDef opts_undefine[] = {
     },
     {.name = "snapshots-metadata",
      .type = VSH_OT_BOOL,
-     .help = N_("remove all domain snapshot metadata, if inactive")
+     .help = N_("remove all domain snapshot metadata (vm must be inactive)")
+    },
+    {.name = "checkpoints-metadata",
+     .type = VSH_OT_BOOL,
+     .help = N_("remove all domain checkpoint metadata (vm must be inactive)")
     },
     {.name = "nvram",
      .type = VSH_OT_BOOL,
@@ -3657,6 +3666,7 @@ cmdUndefine(vshControl *ctl, const vshCmd *cmd)
     /* User-requested actions.  */
     bool managed_save = vshCommandOptBool(cmd, "managed-save");
     bool snapshots_metadata = vshCommandOptBool(cmd, "snapshots-metadata");
+    bool checkpoints_metadata = vshCommandOptBool(cmd, "checkpoints-metadata");
     bool wipe_storage = vshCommandOptBool(cmd, "wipe-storage");
     bool remove_all_storage = vshCommandOptBool(cmd, "remove-all-storage");
     bool delete_snapshots = vshCommandOptBool(cmd, "delete-snapshots");
@@ -3711,6 +3721,8 @@ cmdUndefine(vshControl *ctl, const vshCmd *cmd)
         flags |= VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA;
         snapshots_safe = true;
     }
+    if (checkpoints_metadata)
+        flags |= VIR_DOMAIN_UNDEFINE_CHECKPOINTS_METADATA;
     if (nvram)
         flags |= VIR_DOMAIN_UNDEFINE_NVRAM;
     if (keep_nvram)
@@ -4805,13 +4817,13 @@ cmdManagedSaveRemove(vshControl *ctl, const vshCmd *cmd)
  * "managedsave-edit" command
  */
 static const vshCmdInfo info_managed_save_edit[] = {
-   {.name = "help",
-    .data = N_("edit XML for a domain's managed save state file")
-   },
-   {.name = "desc",
-    .data = N_("Edit the domain XML associated with the managed save state file")
-   },
-   {.name = NULL}
+    {.name = "help",
+     .data = N_("edit XML for a domain's managed save state file")
+    },
+    {.name = "desc",
+     .data = N_("Edit the domain XML associated with the managed save state file")
+    },
+    {.name = NULL}
 };
 
 static const vshCmdOptDef opts_managed_save_edit[] = {
@@ -5644,12 +5656,14 @@ static const vshCmdOptDef opts_setLifecycleAction[] = {
     {.name = NULL}
 };
 
-VIR_ENUM_IMPL(virDomainLifecycle, VIR_DOMAIN_LIFECYCLE_LAST,
+VIR_ENUM_IMPL(virDomainLifecycle,
+              VIR_DOMAIN_LIFECYCLE_LAST,
               "poweroff",
               "reboot",
               "crash");
 
-VIR_ENUM_IMPL(virDomainLifecycleAction, VIR_DOMAIN_LIFECYCLE_ACTION_LAST,
+VIR_ENUM_IMPL(virDomainLifecycleAction,
+              VIR_DOMAIN_LIFECYCLE_ACTION_LAST,
               "destroy",
               "restart",
               "rename-restart",
@@ -5829,6 +5843,7 @@ static const vshCmdOptDef opts_shutdown[] = {
     VIRSH_COMMON_OPT_DOMAIN_FULL(VIR_CONNECT_LIST_DOMAINS_ACTIVE),
     {.name = "mode",
      .type = VSH_OT_STRING,
+     .completer = virshDomainShutdownModeCompleter,
      .help = N_("shutdown mode: acpi|agent|initctl|signal|paravirt")
     },
     {.name = NULL}
@@ -5913,6 +5928,7 @@ static const vshCmdOptDef opts_reboot[] = {
     VIRSH_COMMON_OPT_DOMAIN_FULL(VIR_CONNECT_LIST_DOMAINS_ACTIVE),
     {.name = "mode",
      .type = VSH_OT_STRING,
+     .completer = virshDomainShutdownModeCompleter,
      .help = N_("shutdown mode: acpi|agent|initctl|signal|paravirt")
     },
     {.name = NULL}
@@ -8308,7 +8324,8 @@ static const vshCmdInfo info_desc[] = {
      .data = N_("show or set domain's description or title")
     },
     {.name = "desc",
-     .data = N_("Allows to show or modify description or title of a domain.")
+     .data = N_("Allows setting or modifying the description or title of "
+                "a domain.")
     },
     {.name = NULL}
 };
@@ -10775,13 +10792,14 @@ doMigrate(void *opaque)
             goto save_error;
     }
 
-    if (vshCommandOptInt(ctl, cmd, "parallel-connections", &intOpt) < 0)
+    if ((rv = vshCommandOptInt(ctl, cmd, "parallel-connections", &intOpt)) < 0) {
         goto out;
-    if (intOpt &&
-        virTypedParamsAddInt(&params, &nparams, &maxparams,
-                             VIR_MIGRATE_PARAM_PARALLEL_CONNECTIONS,
-                             intOpt) < 0)
-        goto save_error;
+    } else if (rv > 0) {
+        if (virTypedParamsAddInt(&params, &nparams, &maxparams,
+                                 VIR_MIGRATE_PARAM_PARALLEL_CONNECTIONS,
+                                 intOpt) < 0)
+            goto save_error;
+    }
 
     if (vshCommandOptBool(cmd, "live"))
         flags |= VIR_MIGRATE_LIVE;

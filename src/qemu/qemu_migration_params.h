@@ -19,15 +19,16 @@
  *
  */
 
-#ifndef LIBVIRT_QEMU_MIGRATION_PARAMS_H
-# define LIBVIRT_QEMU_MIGRATION_PARAMS_H
+#pragma once
 
-# include "internal.h"
+#include "internal.h"
 
-# include "virbuffer.h"
-# include "virxml.h"
-# include "qemu_monitor.h"
-# include "qemu_conf.h"
+#include "virbuffer.h"
+#include "virxml.h"
+#include "qemu_monitor.h"
+#include "qemu_conf.h"
+#include "virautoclean.h"
+#include "virenum.h"
 
 typedef enum {
     QEMU_MIGRATION_CAP_XBZRLE,
@@ -159,5 +160,3 @@ qemuMigrationCapsCheck(virQEMUDriverPtr driver,
 bool
 qemuMigrationCapsGet(virDomainObjPtr vm,
                      qemuMigrationCapability cap);
-
-#endif /* LIBVIRT_QEMU_MIGRATION_PARAMS_H */

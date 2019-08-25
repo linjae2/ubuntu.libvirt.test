@@ -16,26 +16,33 @@
 ## License along with this library.  If not, see
 ## <http://www.gnu.org/licenses/>.
 
+HTML_DIR = $(docdir)/html
 DEVHELP_DIR=$(datadir)/gtk-doc/html/libvirt
+
+modules = \
+	libvirt-common \
+	libvirt-domain \
+	libvirt-domain-checkpoint \
+	libvirt-domain-snapshot \
+	libvirt-event \
+	libvirt-host \
+	libvirt-interface \
+	libvirt-network \
+	libvirt-nodedev \
+	libvirt-nwfilter \
+	libvirt-secret \
+	libvirt-storage \
+	libvirt-stream \
+	virterror \
+	$(NULL)
 
 apihtml = \
   html/index.html \
   $(apihtml_generated)
 
 apihtml_generated = \
-  html/libvirt-libvirt-common.html \
-  html/libvirt-libvirt-domain.html \
-  html/libvirt-libvirt-domain-snapshot.html \
-  html/libvirt-libvirt-event.html \
-  html/libvirt-libvirt-host.html \
-  html/libvirt-libvirt-interface.html \
-  html/libvirt-libvirt-network.html \
-  html/libvirt-libvirt-nodedev.html \
-  html/libvirt-libvirt-nwfilter.html \
-  html/libvirt-libvirt-secret.html \
-  html/libvirt-libvirt-storage.html \
-  html/libvirt-libvirt-stream.html \
-  html/libvirt-virterror.html
+	$(addprefix html/libvirt-,$(addsuffix .html,$(modules))) \
+	$(NULL)
 
 apipng = \
   html/left.png \
@@ -47,13 +54,21 @@ devhelphtml = \
   devhelp/libvirt.devhelp \
   devhelp/index.html \
   devhelp/general.html \
-  devhelp/libvirt-virterror.html
+  $(devhelphtml_generated)
+
+devhelphtml_generated = \
+	$(addprefix devhelp/libvirt-,$(addsuffix .html,$(modules))) \
+	$(NULL)
 
 css = \
   generic.css \
   libvirt.css \
   mobile.css \
   main.css
+
+javascript = \
+  js/main.js \
+  $(NULL)
 
 fonts = \
   fonts/LICENSE.md \
@@ -118,6 +133,10 @@ internals_html_in = \
   $(patsubst $(srcdir)/%,%,$(wildcard $(srcdir)/internals/*.html.in))
 internals_html = $(internals_html_in:%.html.in=%.html)
 
+kbase_html_in = \
+  $(patsubst $(srcdir)/%,%,$(wildcard $(srcdir)/kbase/*.html.in))
+kbase_html = $(kbase_html_in:%.html.in=%.html)
+
 # Since we ship pre-built html in the tarball, we must also
 # ship the sources, even when those sources are themselves
 # generated.
@@ -127,10 +146,6 @@ dot_html_in = \
   news.html.in \
   $(notdir $(wildcard $(srcdir)/*.html.in))
 dot_html = $(dot_html_in:%.html.in=%.html)
-
-dot_php_in = $(notdir $(wildcard $(srcdir)/*.php.in))
-dot_php_code_in = $(dot_php_in:%.php.in=%.php.code.in)
-dot_php = $(dot_php_in:%.php.in=%.php)
 
 xml = \
   libvirt-api.xml \
@@ -175,8 +190,9 @@ EXTRA_DIST= \
   $(dot_html) $(dot_html_in) $(gif) $(apihtml) $(apipng) \
   $(devhelphtml) $(devhelppng) $(devhelpcss) $(devhelpxsl) \
   $(xml) $(qemu_xml) $(lxc_xml) $(admin_xml) $(fig) $(png) $(css) \
-  $(logofiles) $(dot_php_in) $(dot_php_code_in) $(dot_php)\
+  $(javascript) $(logofiles) \
   $(internals_html_in) $(internals_html) $(fonts) \
+  $(kbase_html_in) $(kbase_html) \
   aclperms.htmlinc \
   hvsupport.pl \
   $(schema_DATA)
@@ -192,7 +208,7 @@ MAINTAINERCLEANFILES = \
   $(addprefix $(srcdir)/,$(apihtml)) \
   $(addprefix $(srcdir)/,$(devhelphtml)) \
   $(addprefix $(srcdir)/,$(internals_html)) \
-  $(addprefix $(srcdir)/,$(dot_php)) \
+  $(addprefix $(srcdir)/,$(kbase_html)) \
   $(srcdir)/hvsupport.html.in $(srcdir)/aclperms.htmlinc
 
 timestamp="$(shell if test -n "$$SOURCE_DATE_EPOCH"; \
@@ -209,8 +225,8 @@ qemu_api: $(srcdir)/libvirt-qemu-api.xml $(srcdir)/libvirt-qemu-refs.xml
 lxc_api: $(srcdir)/libvirt-lxc-api.xml $(srcdir)/libvirt-lxc-refs.xml
 admin_api: $(srcdir)/libvirt-admin-api.xml $(srcdir)/libvirt-admin-refs.xml
 
-web: $(dot_html) $(internals_html) html/index.html devhelp/index.html \
-  $(dot_php)
+web: $(dot_html) $(internals_html) $(kbase_html) \
+	html/index.html devhelp/index.html
 
 hvsupport.html: $(srcdir)/hvsupport.html.in
 
@@ -221,20 +237,14 @@ $(srcdir)/hvsupport.html.in: $(srcdir)/hvsupport.pl $(api_DATA) \
 	$(AM_V_GEN)$(PERL) $(srcdir)/hvsupport.pl $(top_srcdir)/src > $@ \
 		|| { rm $@ && exit 1; }
 
-# xsltproc seems to add the xmlns="" attribute to random output elements:
-# use sed to strip it out, as leaving it there triggers XML errors during
-# further transformation steps
 news.html.in: \
 	  $(srcdir)/news.xml \
 	  $(srcdir)/news-html.xsl
 	$(AM_V_GEN)$(XSLTPROC) --nonet \
 	    $(srcdir)/news-html.xsl \
 	    $(srcdir)/news.xml \
-	  >$@-tmp \
-	    || { rm -f $@-tmp; exit 1; }; \
-	  sed 's/ xmlns=""//g' $@-tmp >$@ \
-	    || { rm -f $@-tmp; exit 1; }; \
-	  rm -f $@-tmp
+	  >$@ \
+	    || { rm -f $@; exit 1; };
 EXTRA_DIST += \
 	$(srcdir)/news.xml \
 	$(srcdir)/news.rng \
@@ -264,18 +274,6 @@ MAINTAINERCLEANFILES += \
 %.html: %.html.tmp
 	$(AM_V_GEN)$(XMLLINT) --nonet --format $< > $(srcdir)/$@ \
 	  || { rm $(srcdir)/$@ && exit 1; }
-
-%.php.tmp: %.php.in site.xsl page.xsl
-	$(AM_V_GEN)$(XSLTPROC) --stringparam pagename $(@:.tmp=) \
-	    --stringparam timestamp $(timestamp) --nonet \
-	    $(top_srcdir)/docs/site.xsl $< > $@ \
-	    || { rm $@ && exit 1; }
-
-%.php: %.php.tmp %.php.code.in
-	$(AM_V_GEN)sed \
-	    -e '/<span id="php_placeholder"><\/span>/r '"$(srcdir)/$@.code.in" \
-	    -e /php_placeholder/d < $@.tmp > $(srcdir)/$@ \
-	    || { rm $(srcdir)/$@ && exit 1; }
 
 $(apihtml_generated): html/index.html
 
@@ -316,6 +314,7 @@ $(python_generated_files): $(APIBUILD_STAMP)
 $(APIBUILD_STAMP): $(srcdir)/apibuild.py \
 		$(top_srcdir)/include/libvirt/libvirt.h \
 		$(top_srcdir)/include/libvirt/libvirt-common.h.in \
+		$(top_srcdir)/include/libvirt/libvirt-domain-checkpoint.h \
 		$(top_srcdir)/include/libvirt/libvirt-domain-snapshot.h \
 		$(top_srcdir)/include/libvirt/libvirt-domain.h \
 		$(top_srcdir)/include/libvirt/libvirt-event.h \
@@ -332,6 +331,7 @@ $(APIBUILD_STAMP): $(srcdir)/apibuild.py \
 		$(top_srcdir)/include/libvirt/libvirt-admin.h \
 		$(top_srcdir)/include/libvirt/virterror.h \
 		$(top_srcdir)/src/libvirt.c \
+		$(top_srcdir)/src/libvirt-domain-checkpoint.c \
 		$(top_srcdir)/src/libvirt-domain-snapshot.c \
 		$(top_srcdir)/src/libvirt-domain.c \
 		$(top_srcdir)/src/libvirt-host.c \
@@ -371,6 +371,9 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(HTML_DIR)
 	for f in $(css) $(dot_html) $(gif) $(png); do \
 	  $(INSTALL) -m 0644 $(srcdir)/$$f $(DESTDIR)$(HTML_DIR); done
+	$(mkinstalldirs) $(DESTDIR)$(HTML_DIR)/js
+	for f in $(javascript); do \
+	  $(INSTALL) -m 0644 $(srcdir)/$$f $(DESTDIR)$(HTML_DIR)/js/; done
 	$(mkinstalldirs) $(DESTDIR)$(HTML_DIR)/logos
 	for f in $(logofiles); do \
 	  $(INSTALL) -m 0644 $(srcdir)/$$f $(DESTDIR)$(HTML_DIR)/logos; done
@@ -382,6 +385,9 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(HTML_DIR)/internals
 	for f in $(internals_html); do \
 	  $(INSTALL) -m 0644 $(srcdir)/$$f $(DESTDIR)$(HTML_DIR)/internals; done
+	$(mkinstalldirs) $(DESTDIR)$(HTML_DIR)/kbase
+	for f in $(kbase_html); do \
+	  $(INSTALL) -m 0644 $(srcdir)/$$f $(DESTDIR)$(HTML_DIR)/kbase; done
 	$(mkinstalldirs) $(DESTDIR)$(DEVHELP_DIR)
 	for file in $(devhelphtml) $(devhelppng) $(devhelpcss); do \
 	    $(INSTALL) -m 0644 $(srcdir)/$${file} $(DESTDIR)$(DEVHELP_DIR) ; \
@@ -398,9 +404,15 @@ uninstall-local:
 	for f in $(logofiles); do \
 	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
 	done
+	for f in $(javascript); do \
+	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
+	done
 	for h in $(apihtml); do rm -f $(DESTDIR)$(HTML_DIR)/$$h; done
 	for p in $(apipng); do rm -f $(DESTDIR)$(HTML_DIR)/$$p; done
 	for f in $(internals_html); do \
+	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
+	done
+	for f in $(kbase_html); do \
 	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
 	done
 	for f in $(devhelphtml) $(devhelppng) $(devhelpcss); do \

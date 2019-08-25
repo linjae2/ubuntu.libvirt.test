@@ -45,7 +45,6 @@
 #include "libxl_capabilities.h"
 #include "libxl_migration.h"
 #include "xen_xm.h"
-#include "xen_sxpr.h"
 #include "xen_xl.h"
 #include "virtypedparam.h"
 #include "viruri.h"
@@ -54,6 +53,7 @@
 #include "viraccessapicheck.h"
 #include "viratomic.h"
 #include "virhostdev.h"
+#include "virpidfile.h"
 #include "locking/domain_lock.h"
 #include "virnetdevtap.h"
 #include "cpu/cpu.h"
@@ -352,6 +352,34 @@ libxlAutostartDomain(virDomainObjPtr vm,
     return ret;
 }
 
+
+static void
+libxlReconnectNotifyNets(virDomainDefPtr def)
+{
+    size_t i;
+    virConnectPtr conn = NULL;
+
+    for (i = 0; i < def->nnets; i++) {
+        virDomainNetDefPtr net = def->nets[i];
+        /* keep others from trying to use the macvtap device name, but
+         * don't return error if this happens, since that causes the
+         * domain to be unceremoniously killed, which would be *very*
+         * impolite.
+         */
+        if (virDomainNetGetActualType(net) == VIR_DOMAIN_NET_TYPE_DIRECT)
+           ignore_value(virNetDevMacVLanReserveName(net->ifname, false));
+
+        if (net->type == VIR_DOMAIN_NET_TYPE_NETWORK) {
+            if (!conn && !(conn = virGetConnectNetwork()))
+                continue;
+            virDomainNetNotifyActualDevice(conn, def, net);
+        }
+    }
+
+    virObjectUnref(conn);
+}
+
+
 /*
  * Reconnect to running domains that were previously started/created
  * with libxenlight driver.
@@ -424,6 +452,11 @@ libxlReconnectDomain(virDomainObjPtr vm,
     /* Enable domain death events */
     libxl_evenable_domain_death(cfg->ctx, vm->def->id, 0, &priv->deathW);
 
+    libxlReconnectNotifyNets(vm->def);
+
+    if (virDomainSaveStatus(driver->xmlopt, cfg->stateDir, vm, cfg->caps) < 0)
+        VIR_WARN("Cannot update XML for running Xen guest %s", vm->def->name);
+
     /* now that we know it's reconnected call the hook if present */
     if (virHookPresent(VIR_HOOK_DRIVER_LIBXL) &&
         STRNEQ("Domain-0", vm->def->name)) {
@@ -474,7 +507,6 @@ libxlStateCleanup(void)
         return -1;
 
     virObjectUnref(libxl_driver->hostdevMgr);
-    virObjectUnref(libxl_driver->config);
     virObjectUnref(libxl_driver->xmlopt);
     virObjectUnref(libxl_driver->domains);
     virPortAllocatorRangeFree(libxl_driver->reservedGraphicsPorts);
@@ -484,6 +516,10 @@ libxlStateCleanup(void)
     virObjectUnref(libxl_driver->domainEventState);
     virSysinfoDefFree(libxl_driver->hostsysinfo);
 
+    if (libxl_driver->lockFD != -1)
+        virPidFileRelease(libxl_driver->config->stateDir, "driver", libxl_driver->lockFD);
+
+    virObjectUnref(libxl_driver->config);
     virMutexDestroy(&libxl_driver->lock);
     VIR_FREE(libxl_driver);
 
@@ -493,12 +529,10 @@ libxlStateCleanup(void)
 static bool
 libxlDriverShouldLoad(bool privileged)
 {
-    bool ret = false;
-
     /* Don't load if non-root */
     if (!privileged) {
         VIR_INFO("Not running privileged, disabling libxenlight driver");
-        return ret;
+        return false;
     }
 
     if (virFileExists(HYPERVISOR_CAPABILITIES)) {
@@ -517,31 +551,15 @@ libxlDriverShouldLoad(bool privileged)
             VIR_INFO("No Xen capabilities detected, probably not running "
                      "in a Xen Dom0.  Disabling libxenlight driver");
 
-            return ret;
+            return false;
         }
     } else if (!virFileExists(HYPERVISOR_XENSTORED)) {
         VIR_INFO("Disabling driver as neither " HYPERVISOR_CAPABILITIES
                  " nor " HYPERVISOR_XENSTORED " exist");
-        return ret;
+        return false;
     }
 
-    /* Don't load if legacy xen toolstack (xend) is in use */
-    if (virFileExists("/usr/sbin/xend")) {
-        virCommandPtr cmd;
-
-        cmd = virCommandNewArgList("/usr/sbin/xend", "status", NULL);
-        if (virCommandRun(cmd, NULL) == 0) {
-            VIR_INFO("Legacy xen tool stack seems to be in use, disabling "
-                     "libxenlight driver.");
-        } else {
-            ret = true;
-        }
-        virCommandFree(cmd);
-    } else {
-        ret = true;
-    }
-
-    return ret;
+    return true;
 }
 
 /* Callbacks wrapping libvirt's event loop interface */
@@ -574,7 +592,6 @@ libxlAddDom0(libxlDriverPrivatePtr driver)
     libxlDriverConfigPtr cfg = libxlDriverConfigGet(driver);
     virDomainDefPtr def = NULL;
     virDomainObjPtr vm = NULL;
-    virDomainDefPtr oldDef = NULL;
     libxl_dominfo d_info;
     unsigned long long maxmem;
     int ret = -1;
@@ -604,7 +621,7 @@ libxlAddDom0(libxlDriverPrivatePtr driver)
     if (!(vm = virDomainObjListAdd(driver->domains, def,
                                    driver->xmlopt,
                                    0,
-                                   &oldDef)))
+                                   NULL)))
         goto cleanup;
     def = NULL;
 
@@ -625,7 +642,6 @@ libxlAddDom0(libxlDriverPrivatePtr driver)
  cleanup:
     libxl_dominfo_dispose(&d_info);
     virDomainDefFree(def);
-    virDomainDefFree(oldDef);
     virDomainObjEndAPI(&vm);
     virObjectUnref(cfg);
     return ret;
@@ -646,6 +662,7 @@ libxlStateInitialize(bool privileged,
     if (VIR_ALLOC(libxl_driver) < 0)
         return -1;
 
+    libxl_driver->lockFD = -1;
     if (virMutexInit(&libxl_driver->lock) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        "%s", _("cannot initialize mutex"));
@@ -728,6 +745,10 @@ libxlStateInitialize(bool privileged,
                        virStrerror(errno, ebuf, sizeof(ebuf)));
         goto error;
     }
+
+    if ((libxl_driver->lockFD =
+         virPidFileAcquire(cfg->stateDir, "driver", false, getpid())) < 0)
+        goto error;
 
     if (!(libxl_driver->lockManager =
           virLockManagerPluginNew(cfg->lockManagerName ?
@@ -2669,16 +2690,9 @@ libxlConnectDomainXMLFromNative(virConnectPtr conn,
                                driver->xmlopt)))
             goto cleanup;
     } else if (STREQ(nativeFormat, XEN_CONFIG_FORMAT_SEXPR)) {
-        /* only support latest xend config format */
-        if (!(def = xenParseSxprString(nativeConfig,
-                                       NULL,
-                                       -1,
-                                       cfg->caps,
-                                       driver->xmlopt))) {
-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                           _("parsing sxpr config failed"));
-            goto cleanup;
-        }
+        virReportError(VIR_ERR_OPERATION_UNSUPPORTED, "%s",
+                       _("conversion from 'xen-sxpr' format is no longer supported"));
+        goto cleanup;
     } else {
         virReportError(VIR_ERR_INVALID_ARG,
                        _("unsupported config type %s"), nativeFormat);
@@ -3379,6 +3393,8 @@ libxlDomainAttachNetDevice(libxlDriverPrivatePtr driver,
     libxl_device_nic nic;
     int ret = -1;
     char mac[VIR_MAC_STRING_BUFLEN];
+    virConnectPtr conn = NULL;
+    virErrorPtr save_err = NULL;
 
     libxl_device_nic_init(&nic);
 
@@ -3390,8 +3406,12 @@ libxlDomainAttachNetDevice(libxlDriverPrivatePtr driver,
      * network's pool of devices, or resolve bridge device name
      * to the one defined in the network definition.
      */
-    if (virDomainNetAllocateActualDevice(vm->def, net) < 0)
-        goto cleanup;
+    if (net->type == VIR_DOMAIN_NET_TYPE_NETWORK) {
+        if (!(conn = virGetConnectNetwork()))
+            goto cleanup;
+        if (virDomainNetAllocateActualDevice(conn, vm->def, net) < 0)
+            goto cleanup;
+    }
 
     actualType = virDomainNetGetActualType(net);
 
@@ -3435,14 +3455,18 @@ libxlDomainAttachNetDevice(libxlDriverPrivatePtr driver,
     ret = 0;
 
  cleanup:
+    virErrorPreserveLast(&save_err);
     libxl_device_nic_dispose(&nic);
     if (!ret) {
         vm->def->nets[vm->def->nnets++] = net;
     } else {
         virDomainNetRemoveHostdev(vm->def, net);
-        virDomainNetReleaseActualDevice(vm->def, net);
+        if (net->type == VIR_DOMAIN_NET_TYPE_NETWORK && conn)
+            virDomainNetReleaseActualDevice(conn, vm->def, net);
     }
+    virObjectUnref(conn);
     virObjectUnref(cfg);
+    virErrorRestore(&save_err);
     return ret;
 }
 
@@ -3510,7 +3534,7 @@ libxlDomainAttachDeviceConfig(virDomainDefPtr vmdef, virDomainDeviceDefPtr dev)
                                _("target %s already exists."), disk->dst);
                 return -1;
             }
-            if (virDomainDiskInsert(vmdef, disk))
+            if (virDomainDiskInsert(vmdef, disk) < 0)
                 return -1;
             /* vmdef has the pointer. Generic codes for vmdef will do all jobs */
             dev->data.disk = NULL;
@@ -3831,6 +3855,7 @@ libxlDomainDetachNetDevice(libxlDriverPrivatePtr driver,
     libxl_device_nic nic;
     char mac[VIR_MAC_STRING_BUFLEN];
     int ret = -1;
+    virErrorPtr save_err = NULL;
 
     libxl_device_nic_init(&nic);
 
@@ -3861,12 +3886,22 @@ libxlDomainDetachNetDevice(libxlDriverPrivatePtr driver,
     ret = 0;
 
  cleanup:
+    virErrorPreserveLast(&save_err);
     libxl_device_nic_dispose(&nic);
     if (!ret) {
-        virDomainNetReleaseActualDevice(vm->def, detach);
+        if (detach->type == VIR_DOMAIN_NET_TYPE_NETWORK) {
+            virConnectPtr conn = virGetConnectNetwork();
+            if (conn) {
+                virDomainNetReleaseActualDevice(conn, vm->def, detach);
+                virObjectUnref(conn);
+            } else {
+                VIR_WARN("Unable to release network device '%s'", NULLSTR(detach->ifname));
+            }
+        }
         virDomainNetRemove(vm->def, detachidx);
     }
     virObjectUnref(cfg);
+    virErrorRestore(&save_err);
     return ret;
 }
 
@@ -3900,9 +3935,9 @@ libxlDomainDetachDeviceLive(libxlDriverPrivatePtr driver,
             /* If this is a network hostdev, we need to use the higher-level
              * detach function so that mac address / virtualport are reset
              */
-            if (hostdev->parent.type == VIR_DOMAIN_DEVICE_NET)
+            if (hostdev->parentnet)
                 ret = libxlDomainDetachNetDevice(driver, vm,
-                                                 hostdev->parent.data.net);
+                                                 hostdev->parentnet);
             else
                 ret = libxlDomainDetachHostDevice(driver, vm, hostdev);
             break;

@@ -20,10 +20,9 @@
  *
  */
 
-#ifndef LIBVIRT_VIRALLOC_H
-# define LIBVIRT_VIRALLOC_H
+#pragma once
 
-# include "internal.h"
+#include "internal.h"
 
 /* Return 1 if an array of N objects, each of size S, cannot exist due
    to size arithmetic overflow.  S must be positive and N must be
@@ -37,10 +36,10 @@
    sizeof(ptrdiff_t) <= sizeof(size_t), so do not bother to test for
    exactly-SIZE_MAX allocations on such hosts; this avoids a test and
    branch when S is known to be 1.  */
-# ifndef xalloc_oversized
-#  define xalloc_oversized(n, s) \
+#ifndef xalloc_oversized
+# define xalloc_oversized(n, s) \
     ((size_t) (sizeof(ptrdiff_t) <= sizeof(size_t) ? -1 : -2) / (s) < (n))
-# endif
+#endif
 
 
 
@@ -79,6 +78,8 @@ void virFree(void *ptrptr) ATTRIBUTE_NONNULL(1);
 
 void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countptr)
     ATTRIBUTE_NONNULL(1);
+void virDisposeString(char **strptr)
+    ATTRIBUTE_NONNULL(1);
 
 /**
  * VIR_ALLOC:
@@ -92,8 +93,8 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_ALLOC(ptr) virAlloc(&(ptr), sizeof(*(ptr)), true, VIR_FROM_THIS, \
-                                 __FILE__, __FUNCTION__, __LINE__)
+#define VIR_ALLOC(ptr) virAlloc(&(ptr), sizeof(*(ptr)), true, VIR_FROM_THIS, \
+                                __FILE__, __FUNCTION__, __LINE__)
 
 /**
  * VIR_ALLOC_QUIET:
@@ -107,7 +108,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure, 0 on success
  */
-# define VIR_ALLOC_QUIET(ptr) virAlloc(&(ptr), sizeof(*(ptr)), false, 0, NULL, NULL, 0)
+#define VIR_ALLOC_QUIET(ptr) virAlloc(&(ptr), sizeof(*(ptr)), false, 0, NULL, NULL, 0)
 
 /**
  * VIR_ALLOC_N:
@@ -122,8 +123,8 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_ALLOC_N(ptr, count) virAllocN(&(ptr), sizeof(*(ptr)), (count), true, \
-                                           VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
+#define VIR_ALLOC_N(ptr, count) virAllocN(&(ptr), sizeof(*(ptr)), (count), true, \
+                                          VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
 
 /**
  * VIR_ALLOC_N_QUIET:
@@ -138,8 +139,8 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure, 0 on success
  */
-# define VIR_ALLOC_N_QUIET(ptr, count) virAllocN(&(ptr), sizeof(*(ptr)), (count), \
-                                                 false, 0, NULL, NULL, 0)
+#define VIR_ALLOC_N_QUIET(ptr, count) virAllocN(&(ptr), sizeof(*(ptr)), (count), \
+                                                false, 0, NULL, NULL, 0)
 
 /**
  * VIR_REALLOC_N:
@@ -154,9 +155,9 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_REALLOC_N(ptr, count) virReallocN(&(ptr), sizeof(*(ptr)), (count), \
-                                               true, VIR_FROM_THIS, __FILE__, \
-                                               __FUNCTION__, __LINE__)
+#define VIR_REALLOC_N(ptr, count) virReallocN(&(ptr), sizeof(*(ptr)), (count), \
+                                              true, VIR_FROM_THIS, __FILE__, \
+                                              __FUNCTION__, __LINE__)
 
 /**
  * VIR_REALLOC_N_QUIET:
@@ -171,8 +172,8 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure, 0 on success
  */
-# define VIR_REALLOC_N_QUIET(ptr, count) virReallocN(&(ptr), sizeof(*(ptr)), (count), \
-                                                     false, 0, NULL, NULL, 0)
+#define VIR_REALLOC_N_QUIET(ptr, count) virReallocN(&(ptr), sizeof(*(ptr)), (count), \
+                                                    false, 0, NULL, NULL, 0)
 
 /**
  * VIR_EXPAND_N:
@@ -189,7 +190,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_EXPAND_N(ptr, count, add) \
+#define VIR_EXPAND_N(ptr, count, add) \
     virExpandN(&(ptr), sizeof(*(ptr)), &(count), add, true, VIR_FROM_THIS, \
                __FILE__, __FUNCTION__, __LINE__)
 
@@ -208,7 +209,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure, 0 on success
  */
-# define VIR_EXPAND_N_QUIET(ptr, count, add) \
+#define VIR_EXPAND_N_QUIET(ptr, count, add) \
     virExpandN(&(ptr), sizeof(*(ptr)), &(count), add, false, 0, NULL, NULL, 0)
 
 /**
@@ -233,7 +234,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_RESIZE_N(ptr, alloc, count, add) \
+#define VIR_RESIZE_N(ptr, alloc, count, add) \
     virResizeN(&(ptr), sizeof(*(ptr)), &(alloc), count, add, true, \
                VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
 
@@ -259,7 +260,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure, 0 on success
  */
-# define VIR_RESIZE_N_QUIET(ptr, alloc, count, add) \
+#define VIR_RESIZE_N_QUIET(ptr, alloc, count, add) \
     virResizeN(&(ptr), sizeof(*(ptr)), &(alloc), count, add, \
                false, 0, NULL, NULL, 0)
 
@@ -278,7 +279,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * No return value.
  */
-# define VIR_SHRINK_N(ptr, count, remove) \
+#define VIR_SHRINK_N(ptr, count, remove) \
     virShrinkN(&(ptr), sizeof(*(ptr)), &(count), remove)
 
 /**
@@ -317,7 +318,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  * or evaluate to "1", and in the meantime check that we've actually
  * added the correct &'s and/or *'s to the arguments. (Whew!)
 */
-# define VIR_TYPEMATCH(a, b) \
+#define VIR_TYPEMATCH(a, b) \
     sizeof(char[2 * (sizeof(*(a) = *(b)) == sizeof(*(b))) - 1])
 
 /**
@@ -356,37 +357,37 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_INSERT_ELEMENT(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), true, false, \
                        true, VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
-# define VIR_INSERT_ELEMENT_COPY(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT_COPY(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), false, false, \
                        true, VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
-# define VIR_INSERT_ELEMENT_INPLACE(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT_INPLACE(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), true, true, \
                        true, VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
-# define VIR_INSERT_ELEMENT_COPY_INPLACE(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT_COPY_INPLACE(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), false, true, \
                        true, VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
 
 /* Quiet version of macros above */
-# define VIR_INSERT_ELEMENT_QUIET(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT_QUIET(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), true, false, \
                        false, 0, NULL, NULL, 0)
-# define VIR_INSERT_ELEMENT_COPY_QUIET(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT_COPY_QUIET(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), false, false, \
                        false, 0, NULL, NULL, 0)
-# define VIR_INSERT_ELEMENT_INPLACE_QUIET(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT_INPLACE_QUIET(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), true, true, \
                        false, 0, NULL, NULL, 0)
-# define VIR_INSERT_ELEMENT_COPY_INPLACE_QUIET(ptr, at, count, newelem) \
+#define VIR_INSERT_ELEMENT_COPY_INPLACE_QUIET(ptr, at, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), at, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), false, true, \
                        false, 0, NULL, NULL, 0)
@@ -426,21 +427,21 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_APPEND_ELEMENT(ptr, count, newelem) \
+#define VIR_APPEND_ELEMENT(ptr, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), -1, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), true, false, \
                        true, VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
-# define VIR_APPEND_ELEMENT_COPY(ptr, count, newelem) \
+#define VIR_APPEND_ELEMENT_COPY(ptr, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), -1, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), false, false, \
                        true, VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
-# define VIR_APPEND_ELEMENT_INPLACE(ptr, count, newelem) \
+#define VIR_APPEND_ELEMENT_INPLACE(ptr, count, newelem) \
     ignore_value(virInsertElementsN(&(ptr), sizeof(*(ptr)), -1, &(count), \
                                     VIR_TYPEMATCH(ptr, &(newelem)), \
                                     &(newelem), true, true, false, \
                                     VIR_FROM_THIS, __FILE__, \
                                     __FUNCTION__, __LINE__))
-# define VIR_APPEND_ELEMENT_COPY_INPLACE(ptr, count, newelem) \
+#define VIR_APPEND_ELEMENT_COPY_INPLACE(ptr, count, newelem) \
     ignore_value(virInsertElementsN(&(ptr), sizeof(*(ptr)), -1, &(count), \
                                     VIR_TYPEMATCH(ptr, &(newelem)), \
                                     &(newelem), false, true, false, \
@@ -448,11 +449,11 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
                                     __FUNCTION__, __LINE__))
 
 /* Quiet version of macros above */
-# define VIR_APPEND_ELEMENT_QUIET(ptr, count, newelem) \
+#define VIR_APPEND_ELEMENT_QUIET(ptr, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), -1, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), true, false, \
                        false, 0, NULL, NULL, 0)
-# define VIR_APPEND_ELEMENT_COPY_QUIET(ptr, count, newelem) \
+#define VIR_APPEND_ELEMENT_COPY_QUIET(ptr, count, newelem) \
     virInsertElementsN(&(ptr), sizeof(*(ptr)), -1, &(count), \
                        VIR_TYPEMATCH(ptr, &(newelem)), &(newelem), false, false, \
                        false, 0, NULL, NULL, 0)
@@ -475,9 +476,9 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure, 0 on success
  */
-# define VIR_DELETE_ELEMENT(ptr, at, count) \
+#define VIR_DELETE_ELEMENT(ptr, at, count) \
     virDeleteElementsN(&(ptr), sizeof(*(ptr)), at, &(count), 1, false)
-# define VIR_DELETE_ELEMENT_INPLACE(ptr, at, count) \
+#define VIR_DELETE_ELEMENT_INPLACE(ptr, at, count) \
     virDeleteElementsN(&(ptr), sizeof(*(ptr)), at, &(count), 1, true)
 
 /**
@@ -490,7 +491,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  * arithmetic overflow in the allocation size.  The check is
  * essentially the same as that in gnulib's xalloc_oversized.
  */
-# define VIR_ALLOC_VAR_OVERSIZED(M, N, S) ((((size_t)-1) - (M)) / (S) < (N))
+#define VIR_ALLOC_VAR_OVERSIZED(M, N, S) ((((size_t)-1) - (M)) / (S) < (N))
 
 /**
  * VIR_ALLOC_VAR:
@@ -511,7 +512,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure (with OOM error reported), 0 on success
  */
-# define VIR_ALLOC_VAR(ptr, type, count) \
+#define VIR_ALLOC_VAR(ptr, type, count) \
     virAllocVar(&(ptr), sizeof(*(ptr)), sizeof(type), (count), true, \
                 VIR_FROM_THIS, __FILE__, __FUNCTION__, __LINE__)
 
@@ -534,7 +535,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * Returns -1 on failure, 0 on success
  */
-# define VIR_ALLOC_VAR_QUIET(ptr, type, count) \
+#define VIR_ALLOC_VAR_QUIET(ptr, type, count) \
     virAllocVar(&(ptr), sizeof(*(ptr)), sizeof(type), (count), false, 0, NULL, NULL, 0)
 
 /**
@@ -550,7 +551,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  * integer type, all while evaluating ptr only once.  This gives us
  * extra compiler safety when compiling under gcc.
  */
-# define VIR_FREE(ptr) virFree(1 ? (void *) &(ptr) : (ptr))
+#define VIR_FREE(ptr) virFree(1 ? (void *) &(ptr) : (ptr))
 
 
 /**
@@ -563,7 +564,7 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * This macro is safe to use on arguments with side effects.
  */
-# define VIR_DISPOSE_N(ptr, count) virDispose(1 ? (void *) &(ptr) : (ptr), 0, \
+#define VIR_DISPOSE_N(ptr, count) virDispose(1 ? (void *) &(ptr) : (ptr), 0, \
                                              sizeof(*(ptr)), &(count))
 
 
@@ -575,9 +576,17 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * This macro is not safe to be used on arguments with side effects.
  */
-# define VIR_DISPOSE_STRING(ptr) virDispose(1 ? (void *) &(ptr) : (ptr), \
-                                            (ptr) ? strlen((ptr)) : 0, 1, NULL)
+#define VIR_DISPOSE_STRING(ptr) virDisposeString(&(ptr))
 
+/**
+ * VIR_AUTODISPOSE_STR:
+ *
+ * Macro to automatically free and clear the memory allocated to
+ * the string variable declared with it by calling virDisposeString
+ * when the variable goes out of scope.
+ */
+#define VIR_AUTODISPOSE_STR \
+    __attribute__((cleanup(virDisposeString))) char *
 
 /**
  * VIR_DISPOSE:
@@ -587,50 +596,14 @@ void virDispose(void *ptrptr, size_t count, size_t element_size, size_t *countpt
  *
  * This macro is safe to be used on arguments with side effects.
  */
-# define VIR_DISPOSE(ptr) virDispose(1 ? (void *) &(ptr) : (ptr), 1, \
-                                     sizeof(*(ptr)), NULL)
+#define VIR_DISPOSE(ptr) virDispose(1 ? (void *) &(ptr) : (ptr), 1, \
+                                    sizeof(*(ptr)), NULL)
 
 
 void virAllocTestInit(void);
 int virAllocTestCount(void);
 void virAllocTestOOM(int n, int m);
 void virAllocTestHook(void (*func)(int, void*), void *data);
-
-# define VIR_AUTOPTR_FUNC_NAME(type) type##AutoPtrFree
-
-/**
- * VIR_DEFINE_AUTOPTR_FUNC:
- * @type: type of the variable to be freed automatically
- * @func: cleanup function to be automatically called
- *
- * This macro defines a function for automatic freeing of
- * resources allocated to a variable of type @type. This newly
- * defined function works as a necessary wrapper around @func.
- */
-# define VIR_DEFINE_AUTOPTR_FUNC(type, func) \
-    static inline void VIR_AUTOPTR_FUNC_NAME(type)(type **_ptr) \
-    { \
-        if (*_ptr) \
-            (func)(*_ptr); \
-        *_ptr = NULL; \
-    }
-
-# define VIR_AUTOCLEAN_FUNC_NAME(type) type##AutoClean
-
-/**
- * VIR_DEFINE_AUTOCLEAN_FUNC:
- * @type: type of the variable to be cleared automatically
- * @func: cleanup function to be automatically called
- *
- * This macro defines a function for automatic clearing of
- * resources in a stack'd variable of type @type. Note that @func must
- * take pointer to @type.
- */
-# define VIR_DEFINE_AUTOCLEAN_FUNC(type, func) \
-    static inline void VIR_AUTOCLEAN_FUNC_NAME(type)(type *_ptr) \
-    { \
-        (func)(_ptr); \
-    }
 
 /**
  * VIR_AUTOFREE:
@@ -640,47 +613,4 @@ void virAllocTestHook(void (*func)(int, void*), void *data);
  * the variable declared with it by calling virFree
  * when the variable goes out of scope.
  */
-# define VIR_AUTOFREE(type) __attribute__((cleanup(virFree))) type
-
-/**
- * VIR_AUTOPTR:
- * @type: type of the variable to be freed automatically
- *
- * Macro to automatically free the memory allocated to
- * the variable declared with it by calling the function
- * defined by VIR_DEFINE_AUTOPTR_FUNC when the variable
- * goes out of scope.
- *
- * Note that this macro must NOT be used with vectors! The freeing function
- * will not free any elements beyond the first.
- */
-# define VIR_AUTOPTR(type) \
-    __attribute__((cleanup(VIR_AUTOPTR_FUNC_NAME(type)))) type *
-
-/**
- * VIR_AUTOCLEAN:
- * @type: type of the variable to be cleared automatically
- *
- * Macro to automatically call clearing function registered for variable of @type
- * when the variable goes out of scope.
- * The cleanup function is registered by VIR_DEFINE_AUTOCLEAN_FUNC macro for
- * the given type.
- *
- * Note that this macro must NOT be used with vectors! The cleaning function
- * will not clean any elements beyond the first.
- */
-# define VIR_AUTOCLEAN(type) \
-    __attribute__((cleanup(VIR_AUTOCLEAN_FUNC_NAME(type)))) type
-
-
-/**
- * VIR_AUTOUNREF:
- * @type: type of an virObject subclass to be unref'd automatically
- *
- * Declares a variable of @type which will be automatically unref'd when
- * control goes out of the scope.
- */
-# define VIR_AUTOUNREF(type) \
-    __attribute__((cleanup(virObjectAutoUnref))) type
-
-#endif /* LIBVIRT_VIRALLOC_H */
+#define VIR_AUTOFREE(type) __attribute__((cleanup(virFree))) type

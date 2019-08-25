@@ -19,12 +19,12 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBVIRT_LXC_DOMAIN_H
-# define LIBVIRT_LXC_DOMAIN_H
+#pragma once
 
-# include "vircgroup.h"
-# include "lxc_conf.h"
-# include "lxc_monitor.h"
+#include "vircgroup.h"
+#include "lxc_conf.h"
+#include "lxc_monitor.h"
+#include "virenum.h"
 
 
 typedef enum {
@@ -112,5 +112,3 @@ virLXCDomainGetMachineName(virDomainDefPtr def, pid_t pid);
 int
 virLXCDomainSetRunlevel(virDomainObjPtr vm,
                         int runlevel);
-
-#endif /* LIBVIRT_LXC_DOMAIN_H */

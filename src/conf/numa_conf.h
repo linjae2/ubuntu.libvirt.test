@@ -18,15 +18,15 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBVIRT_NUMA_CONF_H
-# define LIBVIRT_NUMA_CONF_H
+#pragma once
 
-# include <libxml/xpath.h>
+#include <libxml/xpath.h>
 
-# include "internal.h"
-# include "virutil.h"
-# include "virbitmap.h"
-# include "virbuffer.h"
+#include "internal.h"
+#include "virutil.h"
+#include "virbitmap.h"
+#include "virbuffer.h"
+#include "virenum.h"
 
 
 typedef struct _virDomainNuma virDomainNuma;
@@ -184,6 +184,3 @@ int virDomainNumaDefCPUParseXML(virDomainNumaPtr def, xmlXPathContextPtr ctxt);
 int virDomainNumaDefCPUFormatXML(virBufferPtr buf, virDomainNumaPtr def);
 
 unsigned int virDomainNumaGetCPUCountTotal(virDomainNumaPtr numa);
-
-
-#endif /* LIBVIRT_NUMA_CONF_H */

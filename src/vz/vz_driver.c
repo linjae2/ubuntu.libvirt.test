@@ -41,6 +41,7 @@
 #include "vircommand.h"
 #include "configmake.h"
 #include "virfile.h"
+#include "virpidfile.h"
 #include "virstoragefile.h"
 #include "virstring.h"
 #include "cpu/cpu.h"
@@ -59,8 +60,13 @@ VIR_LOG_INIT("parallels.parallels_driver");
 
 #define PRLCTL                      "prlctl"
 
+#define VZ_STATEDIR LOCALSTATEDIR "/run/libvirt/vz"
+
 static virClassPtr vzDriverClass;
 
+static bool vz_driver_privileged;
+/* pid file FD, ensures two copies of the driver can't use the same root */
+static int vz_driver_lock_fd = -1;
 static virMutex vz_driver_lock;
 static vzDriverPtr vz_driver;
 static vzConnPtr vz_conn_list;
@@ -166,6 +172,11 @@ VIR_ONCE_GLOBAL_INIT(vzDriver);
 vzDriverPtr
 vzGetDriverConnection(void)
 {
+    if (!vz_driver_privileged) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("vz state driver is not active"));
+        return NULL;
+    }
     virMutexLock(&vz_driver_lock);
     if (!vz_driver)
         vz_driver = vzDriverObjNew();
@@ -265,10 +276,9 @@ vzDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
     if (dev->type == VIR_DOMAIN_DEVICE_NET &&
         (dev->data.net->type == VIR_DOMAIN_NET_TYPE_NETWORK ||
          dev->data.net->type == VIR_DOMAIN_NET_TYPE_BRIDGE) &&
-        !dev->data.net->model &&
-        def->os.type == VIR_DOMAIN_OSTYPE_HVM &&
-        VIR_STRDUP(dev->data.net->model, "e1000") < 0)
-        return -1;
+        dev->data.net->model == VIR_DOMAIN_NET_MODEL_UNKNOWN &&
+        def->os.type == VIR_DOMAIN_OSTYPE_HVM)
+        dev->data.net->model = VIR_DOMAIN_NET_MODEL_E1000;
 
     return 0;
 }
@@ -2152,29 +2162,6 @@ vzSnapObjFromSnapshot(virDomainSnapshotObjListPtr snapshots,
 }
 
 static int
-vzCurrentSnapshotIterator(void *payload,
-                              const void *name ATTRIBUTE_UNUSED,
-                              void *data)
-{
-    virDomainMomentObjPtr snapshot = payload;
-    virDomainMomentObjPtr *current = data;
-
-    if (snapshot->def->current)
-        *current = snapshot;
-
-    return 0;
-}
-
-static virDomainMomentObjPtr
-vzFindCurrentSnapshot(virDomainSnapshotObjListPtr snapshots)
-{
-    virDomainMomentObjPtr current = NULL;
-
-    virDomainSnapshotForEach(snapshots, vzCurrentSnapshotIterator, &current);
-    return current;
-}
-
-static int
 vzDomainSnapshotNum(virDomainPtr domain, unsigned int flags)
 {
     virDomainObjPtr dom;
@@ -2289,7 +2276,8 @@ vzDomainSnapshotGetXMLDesc(virDomainSnapshotPtr snapshot, unsigned int flags)
 
     virUUIDFormat(snapshot->domain->uuid, uuidstr);
 
-    xml = virDomainSnapshotDefFormat(uuidstr, snap->def, privconn->driver->caps,
+    xml = virDomainSnapshotDefFormat(uuidstr, virDomainSnapshotObjGetDef(snap),
+                                     privconn->driver->caps,
                                      privconn->driver->xmlopt,
                                      virDomainSnapshotFormatConvertXMLFlags(flags));
 
@@ -2452,7 +2440,7 @@ vzDomainHasCurrentSnapshot(virDomainPtr domain, unsigned int flags)
     if (!(snapshots = prlsdkLoadSnapshots(dom)))
         goto cleanup;
 
-    ret = vzFindCurrentSnapshot(snapshots) != NULL;
+    ret = virDomainSnapshotGetCurrent(snapshots) != NULL;
 
  cleanup:
     virDomainSnapshotObjListFree(snapshots);
@@ -2483,14 +2471,14 @@ vzDomainSnapshotGetParent(virDomainSnapshotPtr snapshot, unsigned int flags)
     if (!(snap = vzSnapObjFromSnapshot(snapshots, snapshot)))
         goto cleanup;
 
-    if (!snap->def->parent) {
+    if (!snap->def->parent_name) {
         virReportError(VIR_ERR_NO_DOMAIN_SNAPSHOT,
                        _("snapshot '%s' does not have a parent"),
                        snap->def->name);
         goto cleanup;
     }
 
-    parent = virGetDomainSnapshot(snapshot->domain, snap->def->parent);
+    parent = virGetDomainSnapshot(snapshot->domain, snap->def->parent_name);
 
  cleanup:
     virDomainSnapshotObjListFree(snapshots);
@@ -2518,7 +2506,7 @@ vzDomainSnapshotCurrent(virDomainPtr domain, unsigned int flags)
     if (!(snapshots = prlsdkLoadSnapshots(dom)))
         goto cleanup;
 
-    if (!(current = vzFindCurrentSnapshot(snapshots))) {
+    if (!(current = virDomainSnapshotGetCurrent(snapshots))) {
         virReportError(VIR_ERR_NO_DOMAIN_SNAPSHOT, "%s",
                        _("the domain does not have a current snapshot"));
         goto cleanup;
@@ -2552,7 +2540,7 @@ vzDomainSnapshotIsCurrent(virDomainSnapshotPtr snapshot, unsigned int flags)
     if (!(snapshots = prlsdkLoadSnapshots(dom)))
         goto cleanup;
 
-    current = vzFindCurrentSnapshot(snapshots);
+    current = virDomainSnapshotGetCurrent(snapshots);
     ret = current && STREQ(snapshot->name, current->def->name);
 
  cleanup:
@@ -2599,7 +2587,6 @@ vzDomainSnapshotCreateXML(virDomainPtr domain,
                           const char *xmlDesc,
                           unsigned int flags)
 {
-    virDomainSnapshotDefPtr def = NULL;
     virDomainSnapshotPtr snapshot = NULL;
     virDomainObjPtr dom;
     vzConnPtr privconn = domain->conn->privateData;
@@ -2608,14 +2595,18 @@ vzDomainSnapshotCreateXML(virDomainPtr domain,
     virDomainSnapshotObjListPtr snapshots = NULL;
     virDomainMomentObjPtr current;
     bool job = false;
+    VIR_AUTOUNREF(virDomainSnapshotDefPtr) def = NULL;
 
-    virCheckFlags(0, NULL);
+    virCheckFlags(VIR_DOMAIN_SNAPSHOT_CREATE_VALIDATE, NULL);
 
     if (!(dom = vzDomObjFromDomain(domain)))
         return NULL;
 
     if (virDomainSnapshotCreateXMLEnsureACL(domain->conn, dom->def, flags) < 0)
         goto cleanup;
+
+    if (flags & VIR_DOMAIN_SNAPSHOT_CREATE_VALIDATE)
+        parse_flags |= VIR_DOMAIN_SNAPSHOT_PARSE_VALIDATE;
 
     if (!(def = virDomainSnapshotDefParseString(xmlDesc, driver->caps,
                                                 driver->xmlopt, NULL,
@@ -2642,13 +2633,13 @@ vzDomainSnapshotCreateXML(virDomainPtr domain,
         goto cleanup;
 
     /* snaphot name is ignored, it will be set to auto generated by sdk uuid */
-    if (prlsdkCreateSnapshot(dom, def->description) < 0)
+    if (prlsdkCreateSnapshot(dom, def->parent.description) < 0)
         goto cleanup;
 
     if (!(snapshots = prlsdkLoadSnapshots(dom)))
         goto cleanup;
 
-    if (!(current = vzFindCurrentSnapshot(snapshots))) {
+    if (!(current = virDomainSnapshotGetCurrent(snapshots))) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("can't find created snapshot"));
         goto cleanup;
@@ -2659,7 +2650,6 @@ vzDomainSnapshotCreateXML(virDomainPtr domain,
 
  cleanup:
     virDomainSnapshotObjListFree(snapshots);
-    virDomainSnapshotDefFree(def);
     if (job)
         vzDomainObjEndJob(dom);
     virDomainObjEndAPI(&dom);
@@ -4111,18 +4101,37 @@ static virConnectDriver vzConnectDriver = {
 static int
 vzStateCleanup(void)
 {
-    virObjectUnref(vz_driver);
-    vz_driver = NULL;
-    virMutexDestroy(&vz_driver_lock);
-    prlsdkDeinit();
+    if (vz_driver_privileged) {
+        virObjectUnref(vz_driver);
+        vz_driver = NULL;
+        if (vz_driver_lock_fd != -1)
+            virPidFileRelease(VZ_STATEDIR, "driver", vz_driver_lock_fd);
+        virMutexDestroy(&vz_driver_lock);
+        prlsdkDeinit();
+    }
     return 0;
 }
 
 static int
-vzStateInitialize(bool privileged ATTRIBUTE_UNUSED,
+vzStateInitialize(bool privileged,
                   virStateInhibitCallback callback ATTRIBUTE_UNUSED,
                   void *opaque ATTRIBUTE_UNUSED)
 {
+    if (!privileged)
+        return 0;
+
+    vz_driver_privileged = privileged;
+
+    if (virFileMakePathWithMode(VZ_STATEDIR, S_IRWXU) < 0) {
+        virReportSystemError(errno, _("cannot create state directory '%s'"),
+                             VZ_STATEDIR);
+        return -1;
+    }
+
+    if ((vz_driver_lock_fd =
+         virPidFileAcquire(VZ_STATEDIR, "driver", false, getpid())) < 0)
+        return -1;
+
     if (prlsdkInit() < 0) {
         VIR_DEBUG("%s", _("Can't initialize Parallels SDK"));
         return -1;

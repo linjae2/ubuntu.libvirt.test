@@ -25,12 +25,14 @@
 #include "internal.h"
 #include "datatypes.h"
 #include "virdomainobjlist.h"
+#include "checkpoint_conf.h"
 #include "snapshot_conf.h"
 #include "viralloc.h"
 #include "virfile.h"
 #include "virlog.h"
 #include "virstring.h"
 #include "virdomainsnapshotobjlist.h"
+#include "virdomaincheckpointobjlist.h"
 
 #define VIR_FROM_THIS VIR_FROM_DOMAIN
 
@@ -141,14 +143,9 @@ virDomainObjListFindByUUIDLocked(virDomainObjListPtr doms,
 
     virUUIDFormat(uuid, uuidstr);
     obj = virHashLookup(doms->objs, uuidstr);
-    virObjectRef(obj);
     if (obj) {
+        virObjectRef(obj);
         virObjectLock(obj);
-        if (obj->removing) {
-            virObjectUnlock(obj);
-            virObjectUnref(obj);
-            obj = NULL;
-        }
     }
     return obj;
 }
@@ -172,6 +169,12 @@ virDomainObjListFindByUUID(virDomainObjListPtr doms,
     obj = virDomainObjListFindByUUIDLocked(doms, uuid);
     virObjectRWUnlock(doms);
 
+    if (obj && obj->removing) {
+        virObjectUnlock(obj);
+        virObjectUnref(obj);
+        obj = NULL;
+    }
+
     return obj;
 }
 
@@ -183,14 +186,9 @@ virDomainObjListFindByNameLocked(virDomainObjListPtr doms,
     virDomainObjPtr obj;
 
     obj = virHashLookup(doms->objsName, name);
-    virObjectRef(obj);
     if (obj) {
+        virObjectRef(obj);
         virObjectLock(obj);
-        if (obj->removing) {
-            virObjectUnlock(obj);
-            virObjectUnref(obj);
-            obj = NULL;
-        }
     }
     return obj;
 }
@@ -213,6 +211,12 @@ virDomainObjListFindByName(virDomainObjListPtr doms,
     virObjectRWLockRead(doms);
     obj = virDomainObjListFindByNameLocked(doms, name);
     virObjectRWUnlock(doms);
+
+    if (obj && obj->removing) {
+        virObjectUnlock(obj);
+        virObjectUnref(obj);
+        obj = NULL;
+    }
 
     return obj;
 }
@@ -285,8 +289,13 @@ virDomainObjListAddLocked(virDomainObjListPtr doms,
 
     /* See if a VM with matching UUID already exists */
     if ((vm = virDomainObjListFindByUUIDLocked(doms, def->uuid))) {
-        /* UUID matches, but if names don't match, refuse it */
-        if (STRNEQ(vm->def->name, def->name)) {
+        if (vm->removing) {
+            virReportError(VIR_ERR_OPERATION_FAILED,
+                           _("domain '%s' is already being removed"),
+                           vm->def->name);
+            goto error;
+        } else if (STRNEQ(vm->def->name, def->name)) {
+            /* UUID matches, but if names don't match, refuse it */
             virUUIDFormat(vm->def->uuid, uuidstr);
             virReportError(VIR_ERR_OPERATION_FAILED,
                            _("domain '%s' is already defined with uuid %s"),
@@ -325,7 +334,7 @@ virDomainObjListAddLocked(virDomainObjListPtr doms,
         }
 
         if (!(vm = virDomainObjNew(xmlopt)))
-            goto cleanup;
+            goto error;
         vm->def = def;
 
         if (virDomainObjListAddObjLocked(doms, vm) < 0) {
@@ -333,7 +342,7 @@ virDomainObjListAddLocked(virDomainObjListPtr doms,
             goto error;
         }
     }
- cleanup:
+
     return vm;
 
  error:
@@ -877,6 +886,15 @@ virDomainObjMatchFilter(virDomainObjPtr vm,
         int nsnap = virDomainSnapshotObjListNum(vm->snapshots, NULL, 0);
         if (!((MATCH(VIR_CONNECT_LIST_DOMAINS_HAS_SNAPSHOT) && nsnap > 0) ||
               (MATCH(VIR_CONNECT_LIST_DOMAINS_NO_SNAPSHOT) && nsnap <= 0)))
+            return false;
+    }
+
+    /* filter by checkpoint existence */
+    if (MATCH(VIR_CONNECT_LIST_DOMAINS_FILTERS_CHECKPOINT)) {
+        int nchk = virDomainListCheckpoints(vm->checkpoints, NULL, NULL,
+                                            NULL, 0);
+        if (!((MATCH(VIR_CONNECT_LIST_DOMAINS_HAS_CHECKPOINT) && nchk > 0) ||
+              (MATCH(VIR_CONNECT_LIST_DOMAINS_NO_CHECKPOINT) && nchk <= 0)))
             return false;
     }
 

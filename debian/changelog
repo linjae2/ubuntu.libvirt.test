@@ -1,3 +1,49 @@
+libvirt (5.6.0-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Guido Günther ]
+  * [fb43676] d/control: Drop dh-autoreconf build-dep
+  * [81d21d5] d/not-installed: Use multi-arch dirs
+  * [07d5669] New upstream version 5.6.0
+    Fixes CVE-2018-12126, CVE-2018-12127, CVE-2018-12130, CVE-2019-11091,
+    CVE-2019-10132
+    (Closes: #915107, #931243, #929334)
+  * [9f38a9e] apparmor: Allow run pygrub
+    (Closes: #931768)
+  * Acknowledge NMU. Thanks Jonathan Wiltshire
+
+  [ Christian Ehrhardt ]
+  * [c28c3b3] d/libvirt0.install: install translations
+  * [c3c4cd4] d/libvirt-daemon-system.install: drop in helper for firewalld
+  * [3e8b43c] d/not-installed: ignore default files /etc/sysconfig
+  * [c223d7f] d/libvirt-daemon-system.examples: ship sysctl config as example
+  * [f19acf6] d/libvirt-daemon-system.install: ship libxl-sanlock.conf
+    (Closes: #919484)
+  * [483e44a] d/libvirt-doc.docs: fix whitespace issue
+  * [4f4751f] d/libvirt-doc.docs: install new doc elements
+  * [781e22e] d/not-installed: ignore documentation already being installed
+  * [eda89b2] d/no-installed, d/libvirt-doc.docs: do not install fonts
+  * [ab67a28] d/copyright: add license for docs/fonts/
+  * [2e222a2] d/rules: strip symbolic-functions linker option
+  * [39b658c] Revert "d/libvirt-daemon-system.install: ship
+    libxl-sanlock.conf"
+  * [ce46360] d/rules: install libxl-sanlock.conf dependent on xen being
+    enabled
+
+  [ Andrea Bolognani ]
+  * [6a2eae3] Simplify and improve watch file
+  * [82a1edc] Bump symbol versions
+  * [73fccd9] Specify --doc-main-package for dh_installdocs
+  * [d48fdf6] Rediff patches
+  * [3b16c86] Bump symbol versions
+  * [48c9b75] Drop Avahi support
+  * [a49de91] Fix AppArmor profile for virt-aa-helper
+  * [b8e92da] Disable libvirtd socket activation
+  * [73d1e8c] Install kbase articles
+
+ -- Andrea Bolognani <eof@kiyuko.org>  Sun, 25 Aug 2019 16:32:31 +0200
+
 libvirt (5.2.0-2) experimental; urgency=medium
 
   [ Guido Günther ]
@@ -84,6 +130,55 @@ libvirt (5.1.0-1) experimental; urgency=medium
   * [cdf3787] d/rules: Adjust to now versioned wireshark module path
 
  -- Guido Günther <agx@sigxcpu.org>  Thu, 28 Mar 2019 13:03:29 +0100
+
+libvirt (5.0.0-4) unstable; urgency=medium
+
+  * [0fdc2af] Fix multiple CVEs related to privilege escalations on R/O
+    connections.
+    - CVE-2019-10161:
+      CVE-2019-10161-api-disallow-virDomainSaveImageGetXMLDesc-.patch
+    - CVE-2019-10166:
+      api-disallow-virDomainManagedSaveDefineXML-on-read-only-c.patch
+    - CVE-2019-10167:
+      api-disallow-virConnectGetDomainCapabilities-on-read-only.patch
+    - CVE-2019-10168:
+      api-disallow-virConnect-HypervisorCPU-on-read-only-connec.patch
+  * Include /etc/pki/qemu in apparmor (Closes: #930100)
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 17 Jun 2019 19:05:40 +0200
+
+libvirt (5.0.0-3) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [6bc6e60] CVE-2019-10132: Fix vir{lock,log}d socket access.
+    All patches were cherry-picked from upstream's v5.0-maint branch.
+    (Closes: #929334)
+  * [09016dd] d/patches: Move security fixes into security/
+
+  [ Joachim Falk ]
+  * [5d96699] lxc: Fix killing of lxc containers if cgroup backend v2 is
+    unavailable.
+    (Closes: #926999)
+  * [ea7a491] lxc: Fix container shutdown and host reboot
+    (Closes: #927310, #897394)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 22 May 2019 12:31:08 +0200
+
+libvirt (5.0.0-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+
+  [ Guido Günther ]
+  * [3a9c65c] d/control: Fix typo
+  * [b9935e5] d/control: Drop Debian revision on iptables build-dep.
+    Any version greater than 1.8.1 will do.
+
+  [ Salvatore Bonaccorso ]
+  * [b811e38] cpu_map: Define md-clear CPUID bit (CVE-2018-12126,
+    CVE-2018-12127, CVE-2018-12130, CVE-2019-11091)
+    (Closes: #929154)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sun, 19 May 2019 13:50:25 +0200
 
 libvirt (5.0.0-2) unstable; urgency=medium
 

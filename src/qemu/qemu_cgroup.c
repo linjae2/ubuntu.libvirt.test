@@ -113,8 +113,6 @@ qemuSetupImagePathCgroup(virDomainObjPtr vm,
 }
 
 
-#define DEVICE_MAPPER_CONTROL_PATH "/dev/mapper/control"
-
 static int
 qemuSetupImageCgroupInternal(virDomainObjPtr vm,
                              virStorageSourcePtr src,
@@ -127,8 +125,8 @@ qemuSetupImageCgroupInternal(virDomainObjPtr vm,
     }
 
     if (virStoragePRDefIsManaged(src->pr) &&
-        virFileExists(DEVICE_MAPPER_CONTROL_PATH) &&
-        qemuSetupImagePathCgroup(vm, DEVICE_MAPPER_CONTROL_PATH, false) < 0)
+        virFileExists(QEMU_DEVICE_MAPPER_CONTROL_PATH) &&
+        qemuSetupImagePathCgroup(vm, QEMU_DEVICE_MAPPER_CONTROL_PATH, false) < 0)
         return -1;
 
     return qemuSetupImagePathCgroup(vm, src->path, src->readonly || forceReadonly);
@@ -162,7 +160,7 @@ qemuTeardownImageCgroup(virDomainObjPtr vm,
         return 0;
     }
 
-    if (virFileExists(DEVICE_MAPPER_CONTROL_PATH)) {
+    if (virFileExists(QEMU_DEVICE_MAPPER_CONTROL_PATH)) {
         for (i = 0; i < vm->def->ndisks; i++) {
             virStorageSourcePtr diskSrc = vm->def->disks[i]->src;
 
@@ -176,9 +174,10 @@ qemuTeardownImageCgroup(virDomainObjPtr vm,
         if (i == vm->def->ndisks) {
             VIR_DEBUG("Disabling device mapper control");
             ret = virCgroupDenyDevicePath(priv->cgroup,
-                                          DEVICE_MAPPER_CONTROL_PATH, perms, true);
+                                          QEMU_DEVICE_MAPPER_CONTROL_PATH,
+                                          perms, true);
             virDomainAuditCgroupPath(vm, priv->cgroup, "deny",
-                                     DEVICE_MAPPER_CONTROL_PATH,
+                                     QEMU_DEVICE_MAPPER_CONTROL_PATH,
                                      virCgroupGetDevicePermsString(perms), ret);
             if (ret < 0)
                 return ret;
@@ -824,41 +823,6 @@ qemuSetupDevicesCgroup(virDomainObjPtr vm)
 }
 
 
-int
-qemuSetupCpusetMems(virDomainObjPtr vm)
-{
-    virCgroupPtr cgroup_temp = NULL;
-    qemuDomainObjPrivatePtr priv = vm->privateData;
-    virDomainNumatuneMemMode mode;
-    char *mem_mask = NULL;
-    int ret = -1;
-
-    if (!virCgroupHasController(priv->cgroup, VIR_CGROUP_CONTROLLER_CPUSET))
-        return 0;
-
-    if (virDomainNumatuneGetMode(vm->def->numa, -1, &mode) < 0 ||
-        mode != VIR_DOMAIN_NUMATUNE_MEM_STRICT)
-        return 0;
-
-    if (virDomainNumatuneMaybeFormatNodeset(vm->def->numa,
-                                            priv->autoNodeset,
-                                            &mem_mask, -1) < 0)
-        goto cleanup;
-
-    if (mem_mask)
-        if (virCgroupNewThread(priv->cgroup, VIR_CGROUP_THREAD_EMULATOR, 0,
-                               false, &cgroup_temp) < 0 ||
-            virCgroupSetCpusetMems(cgroup_temp, mem_mask) < 0)
-            goto cleanup;
-
-    ret = 0;
- cleanup:
-    VIR_FREE(mem_mask);
-    virCgroupFree(&cgroup_temp);
-    return ret;
-}
-
-
 static int
 qemuSetupCpusetCgroup(virDomainObjPtr vm)
 {
@@ -965,6 +929,7 @@ qemuInitCgroup(virDomainObjPtr vm,
                             nnicindexes, nicindexes,
                             vm->def->resource->partition,
                             cfg->cgroupControllers,
+                            cfg->maxThreadsPerProc,
                             &priv->cgroup) < 0) {
         if (virCgroupNewIgnoreError())
             goto done;

@@ -38,6 +38,7 @@
 #include "virkmod.h"
 #include "virstring.h"
 #include "virutil.h"
+#include "viralloc.h"
 
 VIR_LOG_INIT("util.pci");
 
@@ -45,18 +46,21 @@ VIR_LOG_INIT("util.pci");
 #define PCI_ID_LEN 10   /* "XXXX XXXX" */
 #define PCI_ADDR_LEN 13 /* "XXXX:XX:XX.X" */
 
-VIR_ENUM_IMPL(virPCIELinkSpeed, VIR_PCIE_LINK_SPEED_LAST,
+VIR_ENUM_IMPL(virPCIELinkSpeed,
+              VIR_PCIE_LINK_SPEED_LAST,
               "", "2.5", "5", "8", "16",
 );
 
-VIR_ENUM_IMPL(virPCIStubDriver, VIR_PCI_STUB_DRIVER_LAST,
+VIR_ENUM_IMPL(virPCIStubDriver,
+              VIR_PCI_STUB_DRIVER_LAST,
               "none",
               "pciback", /* XEN */
               "pci-stub", /* KVM */
               "vfio-pci", /* VFIO */
 );
 
-VIR_ENUM_IMPL(virPCIHeader, VIR_PCI_HEADER_LAST,
+VIR_ENUM_IMPL(virPCIHeader,
+              VIR_PCI_HEADER_LAST,
               "endpoint",
               "pci-bridge",
               "cardbus-bridge",
@@ -2586,19 +2590,6 @@ virZPCIDeviceAddressIsEmpty(const virZPCIDeviceAddress *addr)
 
 #ifdef __linux__
 
-/*
- * returns true if equal
- */
-static bool
-virPCIDeviceAddressIsEqual(virPCIDeviceAddressPtr bdf1,
-                           virPCIDeviceAddressPtr bdf2)
-{
-    return ((bdf1->domain == bdf2->domain) &&
-            (bdf1->bus == bdf2->bus) &&
-            (bdf1->slot == bdf2->slot) &&
-            (bdf1->function == bdf2->function));
-}
-
 virPCIDeviceAddressPtr
 virPCIGetDeviceAddressFromSysfsLink(const char *device_link)
 {
@@ -2783,7 +2774,7 @@ virPCIGetVirtualFunctionIndex(const char *pf_sysfs_device_link,
     }
 
     for (i = 0; i < num_virt_fns; i++) {
-        if (virPCIDeviceAddressIsEqual(vf_bdf, virt_fns[i])) {
+        if (virPCIDeviceAddressEqual(vf_bdf, virt_fns[i])) {
             *vf_index = i;
             ret = 0;
             break;
@@ -3096,6 +3087,14 @@ virPCIGetVirtualFunctionIndex(const char *pf_sysfs_device_link ATTRIBUTE_UNUSED,
 }
 
 int
+virPCIGetSysfsFile(char *virPCIDeviceName ATTRIBUTE_UNUSED,
+                   char **pci_sysfs_device_link ATTRIBUTE_UNUSED)
+{
+    virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
+    return -1;
+}
+
+int
 virPCIDeviceAddressGetSysfsFile(virPCIDeviceAddressPtr dev ATTRIBUTE_UNUSED,
                                 char **pci_sysfs_device_link ATTRIBUTE_UNUSED)
 {
@@ -3235,7 +3234,8 @@ int virPCIGetHeaderType(virPCIDevicePtr dev, int *hdrType)
     type &= PCI_HEADER_TYPE_MASK;
     if (type >= VIR_PCI_HEADER_LAST) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Unknown PCI header type '%d'"), type);
+                       _("Unknown PCI header type '%d' for device '%s'"),
+                       type, dev->name);
         return -1;
     }
 

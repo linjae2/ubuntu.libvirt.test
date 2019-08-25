@@ -16,19 +16,18 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBVIRT_VIRNETDEVTAP_H
-# define LIBVIRT_VIRNETDEVTAP_H
+#pragma once
 
-# include "internal.h"
-# include "virnetdev.h"
-# include "virnetdevvportprofile.h"
-# include "virnetdevvlan.h"
+#include "internal.h"
+#include "virnetdev.h"
+#include "virnetdevvportprofile.h"
+#include "virnetdevvlan.h"
 
-# ifdef __FreeBSD__
+#ifdef __FreeBSD__
 /* This should be defined on OSes that don't automatically
  * cleanup released devices */
-#  define VIR_NETDEV_TAP_REQUIRE_MANUAL_CLEANUP 1
-# endif
+# define VIR_NETDEV_TAP_REQUIRE_MANUAL_CLEANUP 1
+#endif
 
 int virNetDevTapCreate(char **ifname,
                        const char *tunpath,
@@ -71,6 +70,18 @@ virNetDevTapAttachBridge(const char *tapname,
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
     ATTRIBUTE_RETURN_CHECK;
 
+int
+virNetDevTapReattachBridge(const char *tapname,
+                           const char *brname,
+                           const virMacAddr *macaddr,
+                           const unsigned char *vmuuid,
+                           virNetDevVPortProfilePtr virtPortProfile,
+                           virNetDevVlanPtr virtVlan,
+                           unsigned int mtu,
+                           unsigned int *actualMTU)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
+    ATTRIBUTE_RETURN_CHECK;
+
 int virNetDevTapCreateInBridgePort(const char *brname,
                                    char **ifname,
                                    const virMacAddr *macaddr,
@@ -91,5 +102,3 @@ int virNetDevTapInterfaceStats(const char *ifname,
                                virDomainInterfaceStatsPtr stats,
                                bool swapped)
     ATTRIBUTE_RETURN_CHECK;
-
-#endif /* LIBVIRT_VIRNETDEVTAP_H */
