@@ -20,19 +20,18 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBVIRT_VIRUTIL_H
-# define LIBVIRT_VIRUTIL_H
+#pragma once
 
-# include "internal.h"
-# include <unistd.h>
-# include <sys/types.h>
+#include "internal.h"
+#include <unistd.h>
+#include <sys/types.h>
 
-# ifndef MIN
-#  define MIN(a, b) ((a) < (b) ? (a) : (b))
-# endif
-# ifndef MAX
-#  define MAX(a, b) ((a) > (b) ? (a) : (b))
-# endif
+#ifndef MIN
+# define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
+# define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 
 int virSetBlocking(int fd, bool blocking) ATTRIBUTE_RETURN_CHECK;
@@ -40,9 +39,6 @@ int virSetNonBlock(int fd) ATTRIBUTE_RETURN_CHECK;
 int virSetInherit(int fd, bool inherit) ATTRIBUTE_RETURN_CHECK;
 int virSetCloseExec(int fd) ATTRIBUTE_RETURN_CHECK;
 int virSetSockReuseAddr(int fd, bool fatal) ATTRIBUTE_RETURN_CHECK;
-
-int virPipeReadUntilEOF(int outfd, int errfd,
-                        char **outbuf, char **errbuf);
 
 int virSetUIDGID(uid_t uid, gid_t gid, gid_t *groups, int ngroups);
 int virSetUIDGIDWithCaps(uid_t uid, gid_t gid, gid_t *groups, int ngroups,
@@ -57,7 +53,6 @@ int virScaleInteger(unsigned long long *value, const char *suffix,
 
 int virHexToBin(unsigned char c);
 
-int virParseNumber(const char **str);
 int virParseVersionString(const char *str, unsigned long *version,
                           bool allowMissing);
 
@@ -72,55 +67,29 @@ int virDiskNameParse(const char *name, int *disk, int *partition);
 int virDiskNameToIndex(const char* str);
 char *virIndexToDiskName(int idx, const char *prefix);
 
-int virEnumFromString(const char *const*types,
-                      unsigned int ntypes,
-                      const char *type);
-
-const char *virEnumToString(const char *const*types,
-                            unsigned int ntypes,
-                            int type);
-
-# define VIR_ENUM_IMPL(name, lastVal, ...) \
-    static const char *const name ## TypeList[] = { __VA_ARGS__ }; \
-    const char *name ## TypeToString(int type) { \
-        return virEnumToString(name ## TypeList, \
-                               ARRAY_CARDINALITY(name ## TypeList), \
-                               type); \
-    } \
-    int name ## TypeFromString(const char *type) { \
-        return virEnumFromString(name ## TypeList, \
-                                 ARRAY_CARDINALITY(name ## TypeList), \
-                                 type); \
-    } \
-    verify(ARRAY_CARDINALITY(name ## TypeList) == lastVal)
-
-# define VIR_ENUM_DECL(name) \
-    const char *name ## TypeToString(int type); \
-    int name ## TypeFromString(const char*type)
-
 /* No-op workarounds for functionality missing in mingw.  */
-# ifndef HAVE_GETUID
+#ifndef HAVE_GETUID
 static inline int getuid(void)
 { return 0; }
-# endif
+#endif
 
-# ifndef HAVE_GETEUID
+#ifndef HAVE_GETEUID
 static inline int geteuid(void)
 { return 0; }
-# endif
+#endif
 
-# ifndef HAVE_GETGID
+#ifndef HAVE_GETGID
 static inline int getgid(void)
 { return 0; }
-# endif
+#endif
 
-# ifndef HAVE_GETEGID
+#ifndef HAVE_GETEGID
 static inline int getegid(void)
 { return 0; }
-# endif
+#endif
 
-# ifdef FUNC_PTHREAD_SIGMASK_BROKEN
-#  undef pthread_sigmask
+#ifdef FUNC_PTHREAD_SIGMASK_BROKEN
+# undef pthread_sigmask
 static inline int pthread_sigmask(int how,
                                   const void *set,
                                   void *old)
@@ -130,7 +99,7 @@ static inline int pthread_sigmask(int how,
     (void) old;
     return 0;
 }
-# endif
+#endif
 
 char *virGetHostname(void);
 char *virGetHostnameQuiet(void);
@@ -180,37 +149,6 @@ bool virIsSUID(void);
 time_t virGetSelfLastChanged(void);
 void virUpdateSelfLastChanged(const char *path);
 
-typedef enum {
-    VIR_TRISTATE_BOOL_ABSENT = 0,
-    VIR_TRISTATE_BOOL_YES,
-    VIR_TRISTATE_BOOL_NO,
-
-    VIR_TRISTATE_BOOL_LAST
-} virTristateBool;
-
-typedef enum {
-    VIR_TRISTATE_SWITCH_ABSENT = 0,
-    VIR_TRISTATE_SWITCH_ON,
-    VIR_TRISTATE_SWITCH_OFF,
-
-    VIR_TRISTATE_SWITCH_LAST
-} virTristateSwitch;
-
-VIR_ENUM_DECL(virTristateBool);
-VIR_ENUM_DECL(virTristateSwitch);
-
-virTristateBool virTristateBoolFromBool(bool val);
-virTristateSwitch virTristateSwitchFromBool(bool val);
-
-/* the two enums must be in sync to be able to use helpers interchangeably in
- * some special cases */
-verify((int)VIR_TRISTATE_BOOL_YES == (int)VIR_TRISTATE_SWITCH_ON);
-verify((int)VIR_TRISTATE_BOOL_NO == (int)VIR_TRISTATE_SWITCH_OFF);
-verify((int)VIR_TRISTATE_BOOL_ABSENT == (int)VIR_TRISTATE_SWITCH_ABSENT);
-
-unsigned int virGetListenFDs(void);
-char *virGetUNIXSocketPath(int fd);
-
 long virGetSystemPageSize(void) ATTRIBUTE_NOINLINE;
 long virGetSystemPageSizeKB(void) ATTRIBUTE_NOINLINE;
 
@@ -230,7 +168,5 @@ char *virHostGetDRMRenderNode(void) ATTRIBUTE_NOINLINE;
  * This macro assigns @lvalue to @rvalue and evaluates as true if the value of
  * @rvalue did not fit into the @lvalue.
  */
-# define VIR_ASSIGN_IS_OVERFLOW(lvalue, rvalue) \
+#define VIR_ASSIGN_IS_OVERFLOW(lvalue, rvalue) \
     (((lvalue) = (rvalue)) != (rvalue))
-
-#endif /* LIBVIRT_VIRUTIL_H */

@@ -94,6 +94,8 @@
   /etc/pki/CA/* r,
   /etc/pki/libvirt{,-spice,-vnc}/ r,
   /etc/pki/libvirt{,-spice,-vnc}/** r,
+  /etc/pki/qemu/ r,
+  /etc/pki/qemu/** r,
 
   # the various binaries
   /usr/bin/kvm rmix,
@@ -208,6 +210,7 @@
   /sys/firmware/devicetree/** r,
 
   # allow connect with openGraphicsFD to work
+  unix (send, receive) type=stream addr=none peer=(label=libvirtd),
   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
 
   # for gathering information about available host resources

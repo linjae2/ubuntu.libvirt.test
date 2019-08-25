@@ -20,14 +20,14 @@
  *
  */
 
-#ifndef LIBVIRT_VIRJSON_H
-# define LIBVIRT_VIRJSON_H
+#pragma once
 
-# include "internal.h"
-# include "virbitmap.h"
-# include "viralloc.h"
+#include "internal.h"
+#include "virbitmap.h"
+#include "virbuffer.h"
+#include "virautoclean.h"
 
-# include <stdarg.h>
+#include <stdarg.h>
 
 
 typedef enum {
@@ -126,6 +126,7 @@ int virJSONValueObjectGetBoolean(virJSONValuePtr object, const char *key, bool *
 int virJSONValueObjectIsNull(virJSONValuePtr object, const char *key);
 
 int virJSONValueObjectAppendString(virJSONValuePtr object, const char *key, const char *value);
+int virJSONValueObjectPrependString(virJSONValuePtr object, const char *key, const char *value);
 int virJSONValueObjectAppendNumberInt(virJSONValuePtr object, const char *key, int number);
 int virJSONValueObjectAppendNumberUint(virJSONValuePtr object, const char *key, unsigned int number);
 int virJSONValueObjectAppendNumberLong(virJSONValuePtr object, const char *key, long long number);
@@ -143,6 +144,10 @@ int virJSONValueArrayAppendString(virJSONValuePtr object, const char *value);
 virJSONValuePtr virJSONValueFromString(const char *jsonstring);
 char *virJSONValueToString(virJSONValuePtr object,
                            bool pretty);
+int virJSONValueToBuffer(virJSONValuePtr object,
+                         virBufferPtr buf,
+                         bool pretty)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_RETURN_CHECK;
 
 typedef int (*virJSONValueObjectIteratorFunc)(const char *key,
                                               virJSONValuePtr value,
@@ -159,5 +164,3 @@ char *virJSONStringReformat(const char *jsonstr, bool pretty);
 virJSONValuePtr virJSONValueObjectDeflatten(virJSONValuePtr json);
 
 VIR_DEFINE_AUTOPTR_FUNC(virJSONValue, virJSONValueFree);
-
-#endif /* LIBVIRT_VIRJSON_H */

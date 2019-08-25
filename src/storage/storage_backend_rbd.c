@@ -209,7 +209,7 @@ virStorageBackendRBDOpenRADOSConn(virStorageBackendRBDStatePtr ptr,
     virStorageAuthDefPtr authdef = source->auth;
     unsigned char *secret_value = NULL;
     size_t secret_value_size = 0;
-    char *rados_key = NULL;
+    VIR_AUTODISPOSE_STR rados_key = NULL;
     virBuffer mon_host = VIR_BUFFER_INITIALIZER;
     size_t i;
     const char *client_mount_timeout = "30";
@@ -261,6 +261,7 @@ virStorageBackendRBDOpenRADOSConn(virStorageBackendRBDStatePtr ptr,
     VIR_DEBUG("Found %zu RADOS cluster monitors in the pool configuration",
               source->nhost);
 
+    /* combine host and port into portal */
     for (i = 0; i < source->nhost; i++) {
         if (source->hosts[i].name != NULL &&
             !source->hosts[i].port) {
@@ -268,7 +269,15 @@ virStorageBackendRBDOpenRADOSConn(virStorageBackendRBDStatePtr ptr,
                               source->hosts[i].name);
         } else if (source->hosts[i].name != NULL &&
             source->hosts[i].port) {
-            virBufferAsprintf(&mon_host, "%s:%d,",
+            const char *incFormat;
+            if (virSocketAddrNumericFamily(source->hosts[i].name) == AF_INET6) {
+                /* IPv6 address must be escaped in brackets on the cmd line */
+                incFormat = "[%s]:%d,";
+            } else {
+                /* listenAddress is a hostname or IPv4 */
+                incFormat = "%s:%d,";
+            }
+            virBufferAsprintf(&mon_host, incFormat,
                               source->hosts[i].name,
                               source->hosts[i].port);
         } else {
@@ -343,7 +352,6 @@ virStorageBackendRBDOpenRADOSConn(virStorageBackendRBDStatePtr ptr,
 
  cleanup:
     VIR_DISPOSE_N(secret_value, secret_value_size);
-    VIR_DISPOSE_STRING(rados_key);
 
     virObjectUnref(conn);
     virBufferFreeAndReset(&mon_host);
@@ -502,8 +510,8 @@ virStorageBackendRBDSetAllocation(virStorageVolDefPtr vol,
 
 #else
 static int
-volStorageBackendRBDGetFlags(rbd_image_t image,
-                             const char *volname,
+volStorageBackendRBDGetFlags(rbd_image_t image ATTRIBUTE_UNUSED,
+                             const char *volname ATTRIBUTE_UNUSED,
                              uint64_t *flags)
 {
     *flags = 0;
@@ -612,7 +620,7 @@ virStorageBackendRBDGetVolNames(virStorageBackendRBDStatePtr ptr)
     size_t i;
 
     while (true) {
-        if (VIR_ALLOC_N(images, nimages) < 0)
+        if (VIR_REALLOC_N(images, nimages) < 0)
             goto error;
 
         rc = rbd_list2(ptr->ioctx, images, &nimages);
@@ -629,7 +637,7 @@ virStorageBackendRBDGetVolNames(virStorageBackendRBDStatePtr ptr)
     nnames = nimages;
 
     for (i = 0; i < nimages; i++)
-        VIR_STEAL_PTR(names[i], images->name);
+        VIR_STEAL_PTR(names[i], images[i].name);
 
     return names;
 

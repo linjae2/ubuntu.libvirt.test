@@ -24,6 +24,7 @@
 #include <sys/types.h>
 
 #include "virbitmap.h"
+#include "viralloc.h"
 #include "virbuffer.h"
 #include "c-ctype.h"
 #include "count-one-bits.h"
@@ -824,10 +825,14 @@ virBitmapToDataBuf(virBitmapPtr bitmap,
                    unsigned char *bytes,
                    size_t len)
 {
+    size_t nbytes = bitmap->map_len * (VIR_BITMAP_BITS_PER_UNIT / CHAR_BIT);
     unsigned long *l;
     size_t i, j;
 
     memset(bytes, 0, len);
+
+    /* If bitmap and buffer differ in size, only fill to the smaller length */
+    len = MIN(len, nbytes);
 
     /* htole64 is not provided by gnulib, so we do the conversion by hand */
     l = bitmap->map;
@@ -1252,6 +1257,33 @@ virBitmapIntersect(virBitmapPtr a,
 
     for (i = 0; i < max; i++)
         a->map[i] &= b->map[i];
+}
+
+
+/**
+ * virBitmapUnion:
+ * @a: bitmap, modified to contain result
+ * @b: other bitmap
+ *
+ * Performs union of two bitmaps: a = union(a, b)
+ *
+ * Returns 0 on success, <0 on failure.
+ */
+int
+virBitmapUnion(virBitmapPtr a,
+               const virBitmap *b)
+{
+    size_t i;
+
+    if (a->nbits < b->nbits &&
+        virBitmapExpand(a, b->nbits - 1) < 0) {
+        return -1;
+    }
+
+    for (i = 0; i < b->map_len; i++)
+        a->map[i] |= b->map[i];
+
+    return 0;
 }
 
 

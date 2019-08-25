@@ -53,14 +53,16 @@ VIR_LOG_INIT("util.virresctrl");
  * consistent in between all of them. */
 
 /* Cache name mapping for Linux kernel naming. */
-VIR_ENUM_IMPL(virCacheKernel, VIR_CACHE_TYPE_LAST,
+VIR_ENUM_IMPL(virCacheKernel,
+              VIR_CACHE_TYPE_LAST,
               "Unified",
               "Instruction",
               "Data",
 );
 
 /* Cache name mapping for our XML naming. */
-VIR_ENUM_IMPL(virCache, VIR_CACHE_TYPE_LAST,
+VIR_ENUM_IMPL(virCache,
+              VIR_CACHE_TYPE_LAST,
               "both",
               "code",
               "data",
@@ -68,14 +70,16 @@ VIR_ENUM_IMPL(virCache, VIR_CACHE_TYPE_LAST,
 
 /* Cache name mapping for resctrl interface naming. */
 VIR_ENUM_DECL(virResctrl);
-VIR_ENUM_IMPL(virResctrl, VIR_CACHE_TYPE_LAST,
+VIR_ENUM_IMPL(virResctrl,
+              VIR_CACHE_TYPE_LAST,
               "",
               "CODE",
               "DATA",
 );
 
 /* Monitor feature name prefix mapping for monitor naming */
-VIR_ENUM_IMPL(virResctrlMonitorPrefix, VIR_RESCTRL_MONITOR_TYPE_LAST,
+VIR_ENUM_IMPL(virResctrlMonitorPrefix,
+              VIR_RESCTRL_MONITOR_TYPE_LAST,
               "__unsupported__",
               "llc_",
               "mbm_",
@@ -407,6 +411,7 @@ virResctrlAllocDispose(void *obj)
         virResctrlAllocMemBWPtr mem_bw = alloc->mem_bw;
         for (i = 0; i < mem_bw->nbandwidths; i++)
             VIR_FREE(mem_bw->bandwidths[i]);
+        VIR_FREE(alloc->mem_bw->bandwidths);
         VIR_FREE(alloc->mem_bw);
     }
 
@@ -2654,8 +2659,8 @@ static int
 virResctrlMonitorStatsSorter(const void *a,
                              const void *b)
 {
-    return ((virResctrlMonitorStatsPtr)a)->id
-        - ((virResctrlMonitorStatsPtr)b)->id;
+    return (*(virResctrlMonitorStatsPtr *)a)->id
+        - (*(virResctrlMonitorStatsPtr *)b)->id;
 }
 
 
@@ -2753,7 +2758,7 @@ virResctrlMonitorGetStats(virResctrlMonitorPtr monitor,
 
     /* Sort in id's ascending order */
     if (*nstats)
-        qsort(*stats, *nstats, sizeof(*stat), virResctrlMonitorStatsSorter);
+        qsort(*stats, *nstats, sizeof(**stats), virResctrlMonitorStatsSorter);
 
     ret = 0;
  cleanup:

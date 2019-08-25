@@ -18,12 +18,12 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBVIRT_QEMU_FIRMWARE_H
-# define LIBVIRT_QEMU_FIRMWARE_H
+#pragma once
 
-# include "domain_conf.h"
-# include "viralloc.h"
-# include "qemu_conf.h"
+#include "domain_conf.h"
+#include "qemu_conf.h"
+#include "virautoclean.h"
+#include "virarch.h"
 
 typedef struct _qemuFirmware qemuFirmware;
 typedef qemuFirmware *qemuFirmwarePtr;
@@ -48,4 +48,11 @@ qemuFirmwareFillDomain(virQEMUDriverPtr driver,
                        virDomainObjPtr vm,
                        unsigned int flags);
 
-#endif /* LIBVIRT_QEMU_FIRMWARE_H */
+int
+qemuFirmwareGetSupported(const char *machine,
+                         virArch arch,
+                         bool privileged,
+                         uint64_t *supported,
+                         bool *secure);
+
+verify(VIR_DOMAIN_OS_DEF_FIRMWARE_LAST <= 64);

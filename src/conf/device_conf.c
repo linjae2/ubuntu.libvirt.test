@@ -31,7 +31,8 @@
 
 #define VIR_FROM_THIS VIR_FROM_DEVICE
 
-VIR_ENUM_IMPL(virDomainDeviceAddress, VIR_DOMAIN_DEVICE_ADDRESS_TYPE_LAST,
+VIR_ENUM_IMPL(virDomainDeviceAddress,
+              VIR_DOMAIN_DEVICE_ADDRESS_TYPE_LAST,
               "none",
               "pci",
               "drive",
@@ -83,27 +84,6 @@ virZPCIDeviceAddressParseXML(xmlNodePtr node,
     VIR_FREE(uid);
     VIR_FREE(fid);
     return ret;
-}
-
-int
-virDomainDeviceInfoCopy(virDomainDeviceInfoPtr dst,
-                        virDomainDeviceInfoPtr src)
-{
-    /* Assume that dst is already cleared */
-
-    /* first a shallow copy of *everything* */
-    *dst = *src;
-
-    /* then copy whatever's left */
-    dst->alias = NULL;
-    dst->romfile = NULL;
-    dst->loadparm = NULL;
-
-    if (VIR_STRDUP(dst->alias, src->alias) < 0 ||
-        VIR_STRDUP(dst->romfile, src->romfile) < 0 ||
-        VIR_STRDUP(dst->loadparm, src->loadparm) < 0)
-        return -1;
-    return 0;
 }
 
 void

@@ -18,12 +18,12 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBVIRT_DOMAIN_CAPABILITIES_H
-# define LIBVIRT_DOMAIN_CAPABILITIES_H
+#pragma once
 
-# include "internal.h"
-# include "domain_conf.h"
-# include "viralloc.h"
+#include "internal.h"
+#include "domain_conf.h"
+#include "virautoclean.h"
+#include "virenum.h"
 
 typedef const char * (*virDomainCapsValToStr)(int value);
 
@@ -51,12 +51,14 @@ struct _virDomainCapsLoader {
     virDomainCapsStringValues values;   /* Info about values for the element */
     virDomainCapsEnum type;     /* Info about virDomainLoader */
     virDomainCapsEnum readonly; /* Info about readonly:virTristateBool */
+    virDomainCapsEnum secure;   /* Info about secure:virTristateBool */
 };
 
 typedef struct _virDomainCapsOS virDomainCapsOS;
 typedef virDomainCapsOS *virDomainCapsOSPtr;
 struct _virDomainCapsOS {
     virTristateBool supported;
+    virDomainCapsEnum firmware;     /* Info about virDomainOsDefFirmware */
     virDomainCapsLoader loader;     /* Info about virDomainLoaderDef */
 };
 
@@ -198,7 +200,7 @@ virDomainCapsCPUModelsGet(virDomainCapsCPUModelsPtr cpuModels,
                           const char *name);
 
 
-# define VIR_DOMAIN_CAPS_ENUM_SET(capsEnum, ...) \
+#define VIR_DOMAIN_CAPS_ENUM_SET(capsEnum, ...) \
     do { \
         unsigned int __values[] = {__VA_ARGS__}; \
         size_t __nvalues = ARRAY_CARDINALITY(__values); \
@@ -218,5 +220,3 @@ void
 virSEVCapabilitiesFree(virSEVCapability *capabilities);
 
 VIR_DEFINE_AUTOPTR_FUNC(virSEVCapability, virSEVCapabilitiesFree);
-
-#endif /* LIBVIRT_DOMAIN_CAPABILITIES_H */

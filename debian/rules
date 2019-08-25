@@ -5,6 +5,11 @@ DEB_BUILDDATE=$(shell dpkg-parsechangelog -SDate)
 DEB_BUILDUSER=$(shell dpkg-parsechangelog -SMaintainer)
 NULL=
 
+# If the build environment sets -Bsymbolic-functions, which is often used as
+# hardening option, that would break libvirt build time self-testing.
+# Therefore let dpkg-buildflag strip that option if present.
+export DEB_LDFLAGS_MAINT_STRIP = -Wl,-Bsymbolic-functions
+
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   ifneq (,$(findstring $(DEB_HOST_ARCH), i386 amd64))
     WITH_VBOX         = --with-vbox
@@ -95,7 +100,6 @@ DEB_CONFIGURE_EXTRA_ARGS :=      \
 	--with-qemu-user=libvirt-qemu  \
 	--with-qemu-group=libvirt-qemu \
 	$(WITH_OPENVZ)		 \
-	--with-avahi             \
 	--with-sasl              \
 	--with-yajl              \
 	--with-ssh2		 \
@@ -150,14 +154,13 @@ LOGROTATE = $(basename $(basename $(notdir $(wildcard src/remote/libvirtd*.logro
 EXAMPLES_DIR = $(CURDIR)/debian/libvirt-doc/usr/share/doc/libvirt-doc/examples/
 
 %:
-	dh $@ --builddirectory=$(DEB_BUILDDIR) --with autoreconf
+	dh $@ --builddirectory=$(DEB_BUILDDIR)
 
 override_dh_auto_configure:
 	IPTABLES_PATH=/usr/sbin/iptables \
 	IP6TABLES_PATH=/usr/sbin/ip6tables \
 	EBTABLES_PATH=/usr/sbin/ebtables \
 	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_ARGS) $(shell dpkg-buildflags --export=configure)
-	mkdir -p debian/build/docs/internals
 
 override_dh_auto_test:
 	export LD_PRELOAD="";     \
@@ -185,6 +188,10 @@ override_dh_install-arch:
 	cp debian/polkit/60-libvirt.pkla \
 	    debian/libvirt-daemon-system/var/lib/polkit-1/localauthority/10-vendor.d/
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
+	# Socket activation for libvirtd is currently broken. Fixes are being
+	# worked on upstream, but until they are in place it's much better for
+	# us to pretend the feature doesn't exist at all
+	rm -f debian/tmp/usr/lib/systemd/system/libvirtd*.socket
 	# Linux supports more nice things:
 	dh_install -p libvirt-daemon-system usr/lib/systemd/system lib/systemd/
 	dh_install -p libvirt-daemon-system usr/lib/libvirt/virt-aa-helper
@@ -206,6 +213,7 @@ endif
 ifeq ($(XEN_ENABLED), 1)
 	dh_install -p libvirt-daemon-system etc/libvirt/libxl.conf
 	dh_install -p libvirt-daemon-system etc/libvirt/libxl-lockd.conf
+	dh_install -p libvirt-daemon-system etc/libvirt/libxl-sanlock.conf
 endif
 
 	set -e; for l in $(LOGROTATE); do \
@@ -233,7 +241,8 @@ override_dh_installsystemd:
 	dh_installsystemd -p libvirt-daemon-system --no-stop-on-upgrade $(LIBVIRT_SYSTEM_SERVICES)
 
 override_dh_installdocs:
-	dh_installdocs
+	dh_installdocs -plibvirt-doc --doc-main-package libvirt-doc
+	dh_installdocs -Nlibvirt-doc
 	# Remove binaries and object files examples
 	[ ! -d $(EXAMPLES_DIR) ] || find $(EXAMPLES_DIR) -name "*.o" -type f -delete -o -name .libs -type d -exec rm -rf {} \;
 	rm -f $(EXAMPLES_DIR)domain-events/events-c/event-test \
@@ -257,6 +266,3 @@ override_dh_auto_clean:
 override_dh_installchangelogs:
 	dh_installchangelogs -plibvirt0
 	dh_installchangelogs -Nlibvirt0 -XChangeLog
-
-override_dh_missing:
-	dh_missing --list-missing

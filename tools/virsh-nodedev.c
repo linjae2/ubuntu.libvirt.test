@@ -28,6 +28,7 @@
 #include "virstring.h"
 #include "virtime.h"
 #include "conf/node_device_conf.h"
+#include "virenum.h"
 
 /*
  * "nodedev-create" command
@@ -374,6 +375,7 @@ static const vshCmdOptDef opts_node_list_devices[] = {
     },
     {.name = "cap",
      .type = VSH_OT_STRING,
+     .completer = virshNodedevCapabilityNameCompleter,
      .help = N_("capability names, separated by comma")
     },
     {.name = NULL}

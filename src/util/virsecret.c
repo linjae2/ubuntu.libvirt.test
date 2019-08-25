@@ -32,8 +32,9 @@
 
 VIR_LOG_INIT("util.secret");
 
-VIR_ENUM_IMPL(virSecretUsage, VIR_SECRET_USAGE_TYPE_LAST,
-              "none", "volume", "ceph", "iscsi", "tls",
+VIR_ENUM_IMPL(virSecretUsage,
+              VIR_SECRET_USAGE_TYPE_LAST,
+              "none", "volume", "ceph", "iscsi", "tls", "vtpm",
 );
 
 void

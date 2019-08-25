@@ -18,17 +18,17 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBVIRT_VMWARE_CONF_H
-# define LIBVIRT_VMWARE_CONF_H
+#pragma once
 
-# define NOGUI "nogui"
+#define NOGUI "nogui"
 
-# include "internal.h"
-# include "virdomainobjlist.h"
-# include "virthread.h"
+#include "internal.h"
+#include "virdomainobjlist.h"
+#include "virthread.h"
+#include "virenum.h"
 
-# define VIR_FROM_THIS VIR_FROM_VMWARE
-# define PROGRAM_SENTINEL ((char *)0x1)
+#define VIR_FROM_THIS VIR_FROM_VMWARE
+#define PROGRAM_SENTINEL ((char *)0x1)
 
 enum vmwareDriverType {
     VMWARE_DRIVER_PLAYER      = 0, /* VMware Player */
@@ -84,5 +84,3 @@ int vmwareMakePath(char *srcDir, char *srcName, char *srcExt,
 int vmwareExtractPid(const char * vmxPath);
 
 char *vmwareCopyVMXFileName(const char *datastorePath, void *opaque);
-
-#endif /* LIBVIRT_VMWARE_CONF_H */

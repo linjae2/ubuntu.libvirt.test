@@ -1,9 +1,12 @@
 docs/*.rng
 docs/*.png
 docs/*.xml
-docs/*.html 
+docs/*.html
 docs/*.gif
 docs/*.css
 docs/html/
 docs/devhelp/
+docs/internals/
+docs/kbase/
+docs/logos/
 examples/

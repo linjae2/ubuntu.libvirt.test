@@ -23,11 +23,10 @@
 # error "vircgrouppriv.h may only be included by vircgroup.c or its test suite"
 #endif /* LIBVIRT_VIRCGROUPPRIV_H_ALLOW */
 
-#ifndef LIBVIRT_VIRCGROUPPRIV_H
-# define LIBVIRT_VIRCGROUPPRIV_H
+#pragma once
 
-# include "vircgroup.h"
-# include "vircgroupbackend.h"
+#include "vircgroup.h"
+#include "vircgroupbackend.h"
 
 struct _virCgroupV1Controller {
     int type;
@@ -58,6 +57,12 @@ struct _virCgroup {
     virCgroupV1Controller legacy[VIR_CGROUP_CONTROLLER_LAST];
     virCgroupV2Controller unified;
 };
+
+int virCgroupSetValueRaw(const char *path,
+                         const char *value);
+
+int virCgroupGetValueRaw(const char *path,
+                         char **value);
 
 int virCgroupSetValueStr(virCgroupPtr group,
                          int controller,
@@ -93,10 +98,8 @@ int virCgroupPartitionEscape(char **path);
 
 char *virCgroupGetBlockDevString(const char *path);
 
-int virCgroupGetValueForBlkDev(virCgroupPtr group,
-                               int controller,
-                               const char *key,
-                               const char *path,
+int virCgroupGetValueForBlkDev(const char *str,
+                               const char *devPath,
                                char **value);
 
 int virCgroupNew(pid_t pid,
@@ -127,5 +130,3 @@ int virCgroupKillRecursiveInternal(virCgroupPtr group,
                                    int controller,
                                    const char *taskFile,
                                    bool dormdir);
-
-#endif /* LIBVIRT_VIRCGROUPPRIV_H */
