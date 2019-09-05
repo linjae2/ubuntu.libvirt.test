@@ -1,3 +1,9 @@
+libvirt (5.4.0-0ubuntu5) eoan; urgency=medium
+
+  * No-change upload with strops.h and sys/strops.h removed in glibc.
+
+ -- Matthias Klose <doko@ubuntu.com>  Thu, 05 Sep 2019 11:00:53 +0000
+
 libvirt (5.4.0-0ubuntu4) eoan; urgency=medium
 
   * d/p/ubuntu/lp-1828495-*: make libvirt able to handle arch_capabilities
