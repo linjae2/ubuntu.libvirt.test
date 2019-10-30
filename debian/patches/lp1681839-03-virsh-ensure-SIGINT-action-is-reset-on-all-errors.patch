@@ -1,0 +1,32 @@
+From 8fa216bbb40df33e7fce5d727aa3dc334480878a Mon Sep 17 00:00:00 2001
+From: Michael Chapman <mike@very.puzzling.org>
+Date: Wed, 27 Jan 2016 13:24:53 +1100
+Subject: [PATCH] virsh: ensure SIGINT action is reset on all errors
+
+If virTimeMillisNow() fails, the SIGINT action must be reset back to
+its previous state.
+
+Signed-off-by: Michael Chapman <mike@very.puzzling.org>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=8fa216bbb40df33e7fce5d727aa3dc334480878a
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1681839
+Applied-Upstream: 1.3.2
+Last-Update: 2019-11-07
+
+---
+ tools/virsh-domain.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: libvirt-1.3.1/tools/virsh-domain.c
+===================================================================
+--- libvirt-1.3.1.orig/tools/virsh-domain.c
++++ libvirt-1.3.1/tools/virsh-domain.c
+@@ -1857,7 +1857,7 @@ virshBlockJobWait(virshBlockJobWaitDataP
+ 
+     if (data->timeout && virTimeMillisNow(&start) < 0) {
+         vshSaveLibvirtError();
+-        return -1;
++        goto cleanup;
+     }
+ 
+     last.cur = last.end = 0;
