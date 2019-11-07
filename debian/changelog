@@ -1,3 +1,11 @@
+libvirt (1.3.1-1ubuntu10.29) xenial; urgency=medium
+
+  * debian/patches/lp1681839-*.patch: Fix block commit timeout
+    races, and ensure that once commit has reached 100%, timeouts
+    no longer apply. (LP: #1681839)
+
+ -- Matthew Ruffell <matthew.ruffell@canonical.com>  Thu, 31 Oct 2019 10:52:41 +1300
+
 libvirt (1.3.1-1ubuntu10.28) xenial; urgency=medium
 
   [ Matthew Ruffell ]
