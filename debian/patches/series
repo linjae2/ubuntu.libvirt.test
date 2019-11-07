@@ -111,3 +111,7 @@ CVE-2019-3840.patch
 md-clear.patch
 CVE-2019-10161.patch
 CVE-2019-10167.patch
+lp1681839-01-virsh-avoid-unnecessary-progress-updates.patch
+lp1681839-02-virsh-be-consistent-with-style-of-loop-exit.patch
+lp1681839-03-virsh-ensure-SIGINT-action-is-reset-on-all-errors.patch
+lp1681839-04-virsh-improve-waiting-for-block-job-readiness.patch

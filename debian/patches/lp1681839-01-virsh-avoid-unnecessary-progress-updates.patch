@@ -1,0 +1,53 @@
+From 704dfd6b0fafe7eafca93a03793389239f8ab869 Mon Sep 17 00:00:00 2001
+From: Michael Chapman <mike@very.puzzling.org>
+Date: Wed, 27 Jan 2016 13:24:51 +1100
+Subject: [PATCH] virsh: avoid unnecessary progress updates
+
+There is no need to call virshPrintJobProgress() unless the block job's
+cur or end cursors have changed since the last iteration.
+
+Signed-off-by: Michael Chapman <mike@very.puzzling.org>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=704dfd6b0fafe7eafca93a03793389239f8ab869
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1681839
+Applied-Upstream: 1.3.2
+Last-Update: 2019-11-07
+
+---
+ tools/virsh-domain.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+Index: libvirt-1.3.1/tools/virsh-domain.c
+===================================================================
+--- libvirt-1.3.1.orig/tools/virsh-domain.c
++++ libvirt-1.3.1/tools/virsh-domain.c
+@@ -1837,7 +1837,7 @@ virshBlockJobWait(virshBlockJobWaitDataP
+ 
+     unsigned int abort_flags = 0;
+     int ret = -1;
+-    virDomainBlockJobInfo info;
++    virDomainBlockJobInfo info, last;
+     int result;
+ 
+     if (!data)
+@@ -1860,6 +1860,8 @@ virshBlockJobWait(virshBlockJobWaitDataP
+         return -1;
+     }
+ 
++    last.cur = last.end = 0;
++
+     while (true) {
+         pthread_sigmask(SIG_BLOCK, &sigmask, &oldsigmask);
+         result = virDomainGetBlockJobInfo(data->dom, data->dev, &info, 0);
+@@ -1891,9 +1893,10 @@ virshBlockJobWait(virshBlockJobWaitDataP
+             goto cleanup;
+         }
+ 
+-        if (data->verbose)
++        if (data->verbose && (info.cur != last.cur || info.end != last.end))
+             virshPrintJobProgress(data->job_name, info.end - info.cur,
+                                   info.end);
++        last = info;
+ 
+         if (data->timeout && virTimeMillisNow(&curr) < 0) {
+             vshSaveLibvirtError();
