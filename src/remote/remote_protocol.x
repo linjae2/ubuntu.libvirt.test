@@ -5505,7 +5505,7 @@ enum remote_procedure {
 
     /**
      * @generate: both
-     * @acl: domain:read
+     * @acl: domain:write
      */
     REMOTE_PROC_DOMAIN_GET_HOSTNAME = 277,
 
@@ -5900,7 +5900,7 @@ enum remote_procedure {
 
     /**
      * @generate: none
-     * @acl: domain:read
+     * @acl: domain:write
      */
     REMOTE_PROC_DOMAIN_GET_TIME = 337,
 
