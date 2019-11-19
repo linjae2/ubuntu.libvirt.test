@@ -11359,6 +11359,7 @@ virConnectGetDomainCapabilities(virConnectPtr conn,
     virResetLastError();
 
     virCheckConnectReturn(conn, NULL);
+    virCheckReadOnlyGoto(conn->flags, error);
 
     if (conn->driver->connectGetDomainCapabilities) {
         char *ret;
