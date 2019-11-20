@@ -332,7 +332,7 @@ virHostdevNetDevice(virDomainHostdevDefPtr hostdev,
         if (virPCIGetNetName(sysfs_path, 0, NULL, linkdev) < 0)
             goto cleanup;
 
-        if (!linkdev) {
+        if (!(*linkdev)) {
             virReportError(VIR_ERR_INTERNAL_ERROR,
                            _("The device at %s has no network device name"),
                              sysfs_path);
