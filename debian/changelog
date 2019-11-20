@@ -1,3 +1,9 @@
+libvirt (4.0.0-1ubuntu8.14) bionic; urgency=medium
+
+  * debian/rules: libnss-libvirt: Install libnss_libvirt_guest (LP: #1853074)
+
+ -- Rafael David Tinoco <rafaeldtinoco@ubuntu.com>  Wed, 20 Nov 2019 11:52:51 +0000
+
 libvirt (4.0.0-1ubuntu8.13) bionic; urgency=medium
 
   * d/p/ubuntu/lp-1840872-*: avoid hotplug issues with duplicate device
