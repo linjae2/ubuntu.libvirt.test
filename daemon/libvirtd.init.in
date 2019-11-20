@@ -4,7 +4,7 @@
 # http://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/initscrcomconv.html
 #
 ### BEGIN INIT INFO
-# Provides: libvirtd
+# Provides: libvirtd libvirt-bin
 # Default-Start: 3 4 5
 # Default-Stop: 0 1 2 6
 # Required-Start: $network messagebus virtlogd
