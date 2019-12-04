@@ -2748,6 +2748,11 @@ virQEMUCapsProbeQMPSEVCapabilities(virQEMUCapsPtr qemuCaps,
 }
 
 
+/*
+ * Filter for features which should never be passed to QEMU. Either because
+ * QEMU never supported them or they were dropped as they never did anything
+ * useful.
+ */
 bool
 virQEMUCapsCPUFilterFeatures(const char *name,
                              void *opaque)
@@ -2759,7 +2764,9 @@ virQEMUCapsCPUFilterFeatures(const char *name,
 
     if (STREQ(name, "cmt") ||
         STREQ(name, "mbm_total") ||
-        STREQ(name, "mbm_local"))
+        STREQ(name, "mbm_local") ||
+        STREQ(name, "osxsave") ||
+        STREQ(name, "ospke"))
         return false;
 
     return true;
