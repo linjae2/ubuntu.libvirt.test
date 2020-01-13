@@ -44,6 +44,7 @@ Build-Depends:
  libxml2-dev (>= 2.9.2+really2.9.1+dfsg1-0.2),
  libxml2-utils,
  libyajl-dev,
+ libzfslinux-dev [linux-amd64 linux-arm64 linux-armhf linux-i386 linux-ppc64el linux-s390x],
  lvm2 [linux-any],
  meson (>= 0.54.0~),
  nfs-common,
