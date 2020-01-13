@@ -1,3 +1,4 @@
+skip-qemuhotplugtest.patch
 debian/Debianize-libvirt-guests.patch
 debian/Debianize-systemd-service-files.patch
 debian/Debianize-virtlockd.patch
@@ -15,6 +16,28 @@ Pass-GPG_TTY-env-var-to-the-ssh-binary.patch
 apparmor-Allow-virt-aa-helper-to-access-the-name-service-.patch
 debian/Prefer-sbin-over-usr-sbin.patch
 Include-etc-pki-qemu-in-apparmor.patch
-virt-aa-helper-Fix-AppArmor-profile.patch
-virt-aa-helper-Actually-fix-AppArmor-profile.patch
 apparmor-Allow-run-pygrub.patch
+
+ubuntu/Allow-libvirt-group-to-access-the-socket.patch
+ubuntu/daemon-augeas-fix-expected.patch
+ubuntu/ubuntu_machine_type.patch
+ubuntu/parallel-shutdown.patch
+ubuntu/dnsmasq-as-priv-user
+ubuntu/ovmf_paths.patch
+ubuntu/set-default-machine-to-ubuntu.patch
+
+# Ubuntu Apparmor Changes
+ubuntu-aa/0003-apparmor-libvirt-qemu-Allow-read-access-to-overcommi.patch
+ubuntu-aa/0007-apparmor-libvirt-qemu-Allow-owner-read-access-to-PRO.patch
+ubuntu-aa/0017-apparmor-virt-aa-helper-Allow-access-to-tmp-director.patch
+ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
+ubuntu-aa/0021-apparmor-virt-aa-helper-Add-openvswitch-support.patch
+ubuntu-aa/0029-appmor-libvirt-qemu-Add-9p-support.patch
+ubuntu-aa/0030-virt-aa-helper-Complete-9p-support.patch
+ubuntu-aa/0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch
+ubuntu-aa/0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch
+ubuntu-aa/0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch
+ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
+ubuntu-aa/0050-local-include-for-libvirt-qemu.patch
+ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
+ubuntu/lp-1655111-apparmor-fix-qemu_bridge_helper-for-named-profile.patch
