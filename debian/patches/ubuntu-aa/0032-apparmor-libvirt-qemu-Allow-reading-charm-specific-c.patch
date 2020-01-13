@@ -19,8 +19,8 @@ Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 
 --- a/src/security/apparmor/libvirt-qemu
 +++ b/src/security/apparmor/libvirt-qemu
-@@ -197,6 +197,12 @@
-   # allow connect with openGraphicsFD to work
+@@ -219,6 +219,12 @@
+   unix (send, receive) type=stream addr=none peer=(label=libvirtd),
    unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
  
 +  # allow access to charm-specific ceph config (LP: #1403648).
