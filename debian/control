@@ -47,6 +47,7 @@ Build-Depends:
  python3-docutils,
  xsltproc,
  zfsutils [kfreebsd-amd64 kfreebsd-i386],
+ libzfslinux-dev [linux-any],
  po-debconf,
 # for --with-storage-rados
  librbd-dev [linux-any],
