@@ -37,7 +37,7 @@ virsh start ${DOMAIN}
 grep -qs "starting up" /var/log/libvirt/lxc/sl.log
 check_domain
 # Make sure a restart doesn't termiante the domain
-/etc/init.d/libvirtd restart
+systemctl restart libvirtd
 check_domain
 virsh destroy ${DOMAIN} || true
 virsh undefine ${DOMAIN}
