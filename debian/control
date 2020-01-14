@@ -110,11 +110,11 @@ Recommends:
  qemu-kvm | qemu (>= 0.9.1),
  libxml2-utils,
  netcat-openbsd,
+ libvirt-daemon-driver-storage-rbd,
+Suggests:
  libvirt-daemon-driver-lxc,
  libvirt-daemon-driver-vbox,
  libvirt-daemon-driver-xen,
- libvirt-daemon-driver-storage-rbd,
-Suggests:
  libvirt-daemon-driver-storage-gluster,
  libvirt-daemon-driver-storage-zfs,
  libvirt-daemon-system,
