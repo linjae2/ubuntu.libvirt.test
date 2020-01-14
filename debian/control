@@ -129,9 +129,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
- libvirt-daemon-driver-lxc,
- libvirt-daemon-driver-vbox,
- libvirt-daemon-driver-xen,
  libxml2-utils,
  netcat-openbsd,
  qemu-kvm | qemu-system (>= 0.9.1),
@@ -140,6 +137,9 @@ Suggests:
  libvirt-daemon-driver-storage-iscsi-direct,
  libvirt-daemon-driver-storage-rbd,
  libvirt-daemon-driver-storage-zfs,
+ libvirt-daemon-driver-lxc,
+ libvirt-daemon-driver-vbox,
+ libvirt-daemon-driver-xen,
  libvirt-daemon-system,
  numad,
 Enhances:
