@@ -1,3 +1,26 @@
+libvirt (6.0.0-0ubuntu2) focal; urgency=medium
+
+  [ Christian Ehrhardt ]
+  * Bring back the ubuntu default URI handling. While no more needed for xen
+    its removal made libvirt fallback further to the upstream default
+    qemu:///session while Ubuntu forever had and for now wants to keep
+    qemu:///system (LP: #1861693)
+    - revert 'd/libvirt-clients.maintscript: rm_conffile libvirt-uri.sh that
+      was optional for use on xen hosts'
+    - libvirt-uri.sh: Automatically switch default libvirt URI for users on
+      Xen dom0 via user profile
+      [added back former delta]
+
+  [ Andrea Bolognani ]
+  * Merge further fixes from debian/experimental
+    - Install virt-login-shell-helper
+    - Install augeas lenses for all drivers
+    - Remove all mentions of Devhelp
+    - not-installed: Remove obsolete entries
+    - not-installed: List all split daemons files
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 04 Feb 2020 13:08:49 +0100
+
 libvirt (6.0.0-0ubuntu1) focal; urgency=medium
 
   * Merged with Debian 5.6.0-4 from experimental and v6.0.0 from upstream
