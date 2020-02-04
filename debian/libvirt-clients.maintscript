@@ -1,3 +1,0 @@
-# Xen is in universe, old unmaintained delta dropped
-# Can be removed after 20.04
-rm_conffile /etc/profile.d/libvirt-uri.sh 6.0.0~rc1-0 libvirt-clients
