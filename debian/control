@@ -43,7 +43,8 @@ Build-Depends:
  libdbus-1-dev [linux-any],
  nfs-common,
  systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc s390],
- python,
+ python3,
+ python3-docutils,
  xsltproc,
  zfsutils [kfreebsd-amd64 kfreebsd-i386],
  po-debconf,
@@ -346,7 +347,6 @@ Package: libvirt-doc
 Architecture: all
 Section: doc
 Depends: ${misc:Depends}
-Suggests: devhelp
 Description: documentation for the libvirt library
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
