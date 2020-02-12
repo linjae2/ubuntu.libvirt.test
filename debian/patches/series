@@ -42,3 +42,6 @@ ubuntu-aa/0050-local-include-for-libvirt-qemu.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 ubuntu/lp-1655111-apparmor-fix-qemu_bridge_helper-for-named-profile.patch
 ubuntu-aa/virt-aa-helper-Add-support-for-smartcard-host-certif.patch
+ubuntu/lp-1861125-qemu-Pass-machine-type-to-virQEMUCapsIsCPUModeSuppor.patch
+ubuntu/lp-1861125-qemuxml2-test-Add-default-CPU-tests-for-s390-ccw-vir.patch
+ubuntu/lp-1861125-qemu_capabilities-Disable-CPU-models-on-old-s390-mac.patch
