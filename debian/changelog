@@ -1,3 +1,13 @@
+libvirt (6.0.0-0ubuntu3) focal; urgency=medium
+
+  * rebuild against libxen-dev 4.11.3 (no change needed)
+  * d/p/ubuntu-aa/virt-aa-helper-Add-support-for-smartcard-host-certif.patch:
+    allow emulation of smartcard via host certificates
+  * d/p/ubuntu/lp-1861125-*: fix non host-model migrations from old machine
+    types (LP: #1861125)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 12 Feb 2020 14:20:08 +0100
+
 libvirt (6.0.0-0ubuntu2) focal; urgency=medium
 
   [ Christian Ehrhardt ]
