@@ -2152,14 +2152,34 @@ virQEMUCapsIsVirtTypeSupported(virQEMUCapsPtr qemuCaps,
     return false;
 }
 
+const char *s390HostPassthroughOnlyMachines[] = {
+    "s390-ccw-virtio-2.4",
+    "s390-ccw-virtio-2.5",
+    "s390-ccw-virtio-2.6",
+    "s390-ccw-virtio-2.7",
+    "s390-ccw-virtio-xenial",
+    "s390-ccw-virtio-yakkety",
+    NULL
+};
 
 bool
 virQEMUCapsIsCPUModeSupported(virQEMUCapsPtr qemuCaps,
                               virArch hostarch,
                               virDomainVirtType type,
-                              virCPUMode mode)
+                              virCPUMode mode,
+                              const char *machineType)
 {
     qemuMonitorCPUDefsPtr cpus;
+
+    /* CPU models (except for "host") are not supported by QEMU for on s390
+     * KVM domains with old machine types regardless on QEMU version. */
+    if (ARCH_IS_S390(qemuCaps->arch) &&
+        type == VIR_DOMAIN_VIRT_KVM &&
+        mode != VIR_CPU_MODE_HOST_PASSTHROUGH &&
+        machineType &&
+        g_strv_contains(s390HostPassthroughOnlyMachines, machineType)) {
+        return false;
+    }
 
     switch (mode) {
     case VIR_CPU_MODE_HOST_PASSTHROUGH:
@@ -5502,18 +5522,21 @@ virQEMUCapsFillDomainCPUCaps(virQEMUCapsPtr qemuCaps,
                              virDomainCapsPtr domCaps)
 {
     if (virQEMUCapsIsCPUModeSupported(qemuCaps, hostarch, domCaps->virttype,
-                                      VIR_CPU_MODE_HOST_PASSTHROUGH))
+                                      VIR_CPU_MODE_HOST_PASSTHROUGH,
+                                      domCaps->machine))
         domCaps->cpu.hostPassthrough = true;
 
     if (virQEMUCapsIsCPUModeSupported(qemuCaps, hostarch, domCaps->virttype,
-                                      VIR_CPU_MODE_HOST_MODEL)) {
+                                      VIR_CPU_MODE_HOST_MODEL,
+                                      domCaps->machine)) {
         virCPUDefPtr cpu = virQEMUCapsGetHostModel(qemuCaps, domCaps->virttype,
                                                    VIR_QEMU_CAPS_HOST_CPU_REPORTED);
         domCaps->cpu.hostModel = virCPUDefCopy(cpu);
     }
 
     if (virQEMUCapsIsCPUModeSupported(qemuCaps, hostarch, domCaps->virttype,
-                                      VIR_CPU_MODE_CUSTOM)) {
+                                      VIR_CPU_MODE_CUSTOM,
+                                      domCaps->machine)) {
         const char *blacklist[] = { "host", NULL };
         VIR_AUTOSTRINGLIST models = NULL;
 
