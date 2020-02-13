@@ -5,6 +5,8 @@ libvirt (6.0.0-0ubuntu3) focal; urgency=medium
     allow emulation of smartcard via host certificates
   * d/p/ubuntu/lp-1861125-*: fix non host-model migrations from old machine
     types (LP: #1861125)
+  * d/p/ubuntu-aa/apparmor-allow-to-call-vhost-user-gpu.patch: do not apparmor
+    block vhost-user-gpu usage
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 12 Feb 2020 14:20:08 +0100
 
