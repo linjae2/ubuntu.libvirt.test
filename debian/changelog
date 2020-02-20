@@ -1,3 +1,10 @@
+libvirt (5.4.0-0ubuntu5.1) eoan; urgency=medium
+
+  * d/p/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch:
+    fix memory-leak from PCI-related structure. (LP: #1844455)
+
+ -- Guilherme G. Piccoli <gpiccoli@canonical.com>  Thu, 20 Feb 2020 12:35:23 -0300
+
 libvirt (5.4.0-0ubuntu5) eoan; urgency=medium
 
   * No-change upload with strops.h and sys/strops.h removed in glibc.

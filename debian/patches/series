@@ -59,3 +59,4 @@ ubuntu/lp-1828495-cpu_map-Introduce-IA32_ARCH_CAPABILITIES-MSR-feature.patch
 ubuntu/lp-1828495-qemu-Forbid-MSR-features-with-old-QEMU.patch
 ubuntu/lp-1828495-qemu-Drop-MSR-features-from-host-model-with-old-QEMU.patch
 ubuntu/lp-1828495-qemu-Probe-host-CPU-after-capabilities.patch
+ubuntu/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch
