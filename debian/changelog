@@ -1,3 +1,10 @@
+libvirt (4.0.0-1ubuntu8.15) bionic; urgency=medium
+
+  * d/p/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch:
+    fix memory-leak from PCI-related structure. (LP: #1844455)
+
+ -- Guilherme G. Piccoli <gpiccoli@canonical.com>  Thu, 20 Feb 2020 13:07:33 -0300
+
 libvirt (4.0.0-1ubuntu8.14) bionic; urgency=medium
 
   * debian/rules: libnss-libvirt: Install libnss_libvirt_guest (LP: #1853074)
