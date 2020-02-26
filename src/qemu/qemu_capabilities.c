@@ -3621,7 +3621,7 @@ virQEMUCapsInitQMP(virQEMUCapsPtr qemuCaps,
 
     vm->pid = pid;
 
-    if (!(mon = qemuMonitorOpen(vm, &config, true, &callbacks, NULL))) {
+    if (!(mon = qemuMonitorOpen(vm, &config, true, 0, &callbacks, NULL))) {
         ret = 0;
         goto cleanup;
     }
