@@ -947,6 +947,9 @@ virStorageBackendCreateQemuImgCmdFromVol(virConnectPtr conn,
     if (vol->type == VIR_STORAGE_VOL_BLOCK)
         info.format = VIR_STORAGE_FILE_RAW;
 
+    if (info.format == VIR_STORAGE_FILE_ISO)
+        info.format = VIR_STORAGE_FILE_RAW;
+
     if (!(type = virStorageFileFormatTypeToString(info.format))) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("unknown storage vol type %d"),
@@ -979,6 +982,8 @@ virStorageBackendCreateQemuImgCmdFromVol(virConnectPtr conn,
 
         info.inputFormat = inputvol->target.format;
         if (inputvol->type == VIR_STORAGE_VOL_BLOCK)
+            info.inputFormat = VIR_STORAGE_FILE_RAW;
+        if (info.inputFormat == VIR_STORAGE_FILE_ISO)
             info.inputFormat = VIR_STORAGE_FILE_RAW;
         if (!(inputType = virStorageFileFormatTypeToString(info.inputFormat))) {
             virReportError(VIR_ERR_INTERNAL_ERROR,
