@@ -1,0 +1,23 @@
+Subject: node_device_conf: Don't leak @physical_function in virNodeDeviceGetPCISRIOVCaps
+
+The pci_dev->physical_function is rewritten in
+virPCIGetPhysicalFunction() to a newly allocated pointer.
+Therefore, we must free the old one to avoid memleak.
+
+Author: Jiang Kun <jiang.kun2@zte.com.cn>
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=38816336
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1844455
+Last-Update: 2020-02-20
+
+diff --git a/src/node_device/node_device_linux_sysfs.c b/src/node_device/node_device_linux_sysfs.c
+index 431f471f7a0e..d9046c93d480 100644
+--- a/src/node_device/node_device_linux_sysfs.c
++++ b/src/node_device/node_device_linux_sysfs.c
+@@ -149,6 +149,7 @@ nodeDeviceSysfsGetPCISRIOVCaps(const char *sysfsPath,
+     for (i = 0; i < data->pci_dev.num_virtual_functions; i++)
+        VIR_FREE(data->pci_dev.virtual_functions[i]);
+     VIR_FREE(data->pci_dev.virtual_functions);
++    VIR_FREE(data->pci_dev.physical_function);
+     data->pci_dev.num_virtual_functions = 0;
+     data->pci_dev.max_virtual_functions = 0;
+     data->pci_dev.flags &= ~VIR_NODE_DEV_CAP_FLAG_PCI_VIRTUAL_FUNCTION;
