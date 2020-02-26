@@ -1,0 +1,29 @@
+Subject: Fix TLS test suites with gnutls 3.6.0
+
+With gnutls 3.6.0, SHA1 is no longer accepted for certificate
+signatures. We must use SHA256 instead.
+
+Author: "Daniel P. Berrange" <berrange@redhat.com>
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=c666661b
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1864918
+Last-Update: 2020-02-26
+---
+ tests/virnettlshelpers.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tests/virnettlshelpers.c b/tests/virnettlshelpers.c
+index 531d0b9075a9..b735c4e2f056 100644
+--- a/tests/virnettlshelpers.c
++++ b/tests/virnettlshelpers.c
+@@ -384,7 +384,7 @@ testTLSGenerateCert(struct testTLSCertReq *req,
+      * If no 'ca' is set then we are self signing
+      * the cert. This is done for the root CA certs
+      */
+-    if ((err = gnutls_x509_crt_sign(crt, ca ? ca : crt, privkey)) < 0) {
++    if ((err = gnutls_x509_crt_sign2(crt, ca ? ca : crt, privkey, GNUTLS_DIG_SHA256, 0)) < 0) {
+         VIR_WARN("Failed to sign certificate %s", gnutls_strerror(err));
+         abort();
+     }
+-- 
+2.24.1
+
