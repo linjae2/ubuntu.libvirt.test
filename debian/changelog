@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu4) focal; urgency=medium
+
+  * d/p/ubuntu/lp-1865425-*: avoid killing the monitor job in
+    qemuDomainSetTimeAgent (LP: #1865425)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 02 Mar 2020 10:44:22 +0100
+
 libvirt (6.0.0-0ubuntu3) focal; urgency=medium
 
   * rebuild against libxen-dev 4.11.3 (no change needed)
