@@ -48,3 +48,4 @@ ubuntu/lp-1861125-qemu_capabilities-Disable-CPU-models-on-old-s390-mac.patch
 ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu-aa/apparmor-allow-to-call-vhost-user-gpu.patch
 ubuntu/lp-1865425-qemu-end-the-agent-job-in-qemuDomainSetTimeAgent.patch
+ubuntu-aa/lp-1847361-load-versioned-module.patch
