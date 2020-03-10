@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu5) focal; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1847361-load-versioned-module.patch: allow loading
+    versioned modules after qemu package upgrades (LP: #1847361)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 10 Mar 2020 08:58:04 +0100
+
 libvirt (6.0.0-0ubuntu4) focal; urgency=medium
 
   * d/p/ubuntu/lp-1865425-*: avoid killing the monitor job in
