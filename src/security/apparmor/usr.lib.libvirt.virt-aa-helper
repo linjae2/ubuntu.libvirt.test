@@ -41,6 +41,9 @@ profile virt-aa-helper /usr/{lib,lib64}/libvirt/virt-aa-helper {
   /usr/{lib,lib64}/libvirt/virt-aa-helper mr,
   /{usr/,}sbin/apparmor_parser Ux,
 
+  # for openvswitch
+  /{,var/}run/** rw,
+
   /etc/apparmor.d/libvirt/* r,
   /etc/apparmor.d/libvirt/libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]* rw,
 
