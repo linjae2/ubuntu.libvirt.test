@@ -1,3 +1,10 @@
+libvirt (5.4.0-0ubuntu5.2) eoan; urgency=medium
+
+  * d/p/u/lp-1655111-apparmor-fix-qemu_bridge_helper-for-named-profile.patch:
+    fix qemu_bridge_helper to work with named profiles (LP: #1655111)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 17 Mar 2020 09:09:01 +0100
+
 libvirt (5.4.0-0ubuntu5.1) eoan; urgency=medium
 
   * d/p/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch:
