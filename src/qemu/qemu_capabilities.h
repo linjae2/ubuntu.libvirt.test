@@ -507,6 +507,7 @@ typedef enum { /* virQEMUCapsFlags grouping marker for syntax-check */
     QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL, /* virtio *-pci-{non-}transitional devices */
     QEMU_CAPS_OVERCOMMIT, /* -overcommit */
     QEMU_CAPS_QUERY_CURRENT_MACHINE, /* query-current-machine command */
+    QEMU_CAPS_X86_MAX_CPU, /* max-x86_64-cpu type exists */
 
     QEMU_CAPS_LAST /* this must always be the last item */
 } virQEMUCapsFlags;
