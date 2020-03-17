@@ -60,3 +60,4 @@ ubuntu/lp-1828495-qemu-Forbid-MSR-features-with-old-QEMU.patch
 ubuntu/lp-1828495-qemu-Drop-MSR-features-from-host-model-with-old-QEMU.patch
 ubuntu/lp-1828495-qemu-Probe-host-CPU-after-capabilities.patch
 ubuntu/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch
+ubuntu/lp-1655111-apparmor-fix-qemu_bridge_helper-for-named-profile.patch
