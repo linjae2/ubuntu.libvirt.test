@@ -125,6 +125,8 @@ typedef struct _virCPUx86Model virCPUx86Model;
 typedef virCPUx86Model *virCPUx86ModelPtr;
 struct _virCPUx86Model {
     char *name;
+    bool decodeHost;
+    bool decodeGuest;
     virCPUx86VendorPtr vendor;
     size_t nsignatures;
     uint32_t *signatures;
@@ -1348,6 +1350,44 @@ x86ModelCompare(virCPUx86ModelPtr model1,
 
 
 static int
+x86ModelParseDecode(virCPUx86ModelPtr model,
+                    xmlXPathContextPtr ctxt)
+{
+    g_autofree char *host = NULL;
+    g_autofree char *guest = NULL;
+    int val;
+
+    if ((host = virXPathString("string(./decode/@host)", ctxt)))
+        val = virTristateSwitchTypeFromString(host);
+    else
+        val = VIR_TRISTATE_SWITCH_ABSENT;
+
+    if (val <= 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("invalid or missing decode/host attribute in CPU model %s"),
+                       model->name);
+        return -1;
+    }
+    model->decodeHost = val == VIR_TRISTATE_SWITCH_ON;
+
+    if ((guest = virXPathString("string(./decode/@guest)", ctxt)))
+        val = virTristateSwitchTypeFromString(guest);
+    else
+        val = VIR_TRISTATE_SWITCH_ABSENT;
+
+    if (val <= 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("invalid or missing decode/guest attribute in CPU model %s"),
+                       model->name);
+        return -1;
+    }
+    model->decodeGuest = val == VIR_TRISTATE_SWITCH_ON;
+
+    return 0;
+}
+
+
+static int
 x86ModelParseAncestor(virCPUx86ModelPtr model,
                       xmlXPathContextPtr ctxt,
                       virCPUx86MapPtr map)
@@ -1520,6 +1560,9 @@ x86ModelParse(xmlXPathContextPtr ctxt,
         goto cleanup;
 
     model->name = g_strdup(name);
+
+    if (x86ModelParseDecode(model, ctxt) < 0)
+        goto cleanup;
 
     if (x86ModelParseAncestor(model, ctxt, map) < 0)
         goto cleanup;
@@ -2001,10 +2044,23 @@ x86DecodeUseCandidate(virCPUx86ModelPtr current,
                       virCPUx86ModelPtr candidate,
                       virCPUDefPtr cpuCandidate,
                       uint32_t signature,
-                      const char *preferred,
-                      bool checkPolicy)
+                      const char *preferred)
 {
-    if (checkPolicy) {
+    if (cpuCandidate->type == VIR_CPU_TYPE_HOST &&
+        !candidate->decodeHost) {
+        VIR_DEBUG("%s is not supposed to be used for host CPU definition",
+                  cpuCandidate->model);
+        return 0;
+    }
+
+    if (cpuCandidate->type == VIR_CPU_TYPE_GUEST &&
+        !candidate->decodeGuest) {
+        VIR_DEBUG("%s is not supposed to be used for guest CPU definition",
+                  cpuCandidate->model);
+        return 0;
+    }
+
+    if (cpuCandidate->type == VIR_CPU_TYPE_HOST) {
         size_t i;
         for (i = 0; i < cpuCandidate->nfeatures; i++) {
             if (cpuCandidate->features[i].policy == VIR_CPU_FEATURE_DISABLE)
@@ -2166,8 +2222,7 @@ x86Decode(virCPUDefPtr cpu,
 
         if ((rc = x86DecodeUseCandidate(model, cpuModel,
                                         candidate, cpuCandidate,
-                                        signature, preferred,
-                                        cpu->type == VIR_CPU_TYPE_HOST))) {
+                                        signature, preferred))) {
             virCPUDefFree(cpuModel);
             cpuModel = cpuCandidate;
             model = candidate;

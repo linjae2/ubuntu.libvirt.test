@@ -3293,7 +3293,7 @@ qemuDomainSaveInternal(virQEMUDriverPtr driver,
     virObjectEventPtr event = NULL;
     qemuDomainObjPrivatePtr priv = vm->privateData;
     virQEMUSaveDataPtr data = NULL;
-    qemuDomainSaveCookiePtr cookie = NULL;
+    g_autoptr(qemuDomainSaveCookie) cookie = NULL;
 
     if (!qemuMigrationSrcIsAllowed(driver, vm, false, 0))
         goto cleanup;
@@ -3399,7 +3399,6 @@ qemuDomainSaveInternal(virQEMUDriverPtr driver,
         qemuDomainRemoveInactiveJob(driver, vm);
 
  cleanup:
-    virObjectUnref(cookie);
     virQEMUSaveDataFree(data);
     virObjectEventStateQueue(driver->domainEventState, event);
     return ret;
@@ -6801,14 +6800,15 @@ qemuDomainSaveImageStartVM(virConnectPtr conn,
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
     int ret = -1;
-    bool restored = false;
+    bool started = false;
     virObjectEventPtr event;
-    int intermediatefd = -1;
-    virCommandPtr cmd = NULL;
+    VIR_AUTOCLOSE intermediatefd = -1;
+    g_autoptr(virCommand) cmd = NULL;
     g_autofree char *errbuf = NULL;
     g_autoptr(virQEMUDriverConfig) cfg = virQEMUDriverGetConfig(driver);
     virQEMUSaveHeaderPtr header = &data->header;
-    qemuDomainSaveCookiePtr cookie = NULL;
+    g_autoptr(qemuDomainSaveCookie) cookie = NULL;
+    int rc = 0;
 
     if (virSaveCookieParseString(data->cookie, (virObjectPtr *)&cookie,
                                  virDomainXMLOptionGetSaveCookie(driver->xmlopt)) < 0)
@@ -6829,6 +6829,7 @@ qemuDomainSaveImageStartVM(virConnectPtr conn,
 
         if (virCommandRunAsync(cmd, NULL) < 0) {
             *fd = intermediatefd;
+            intermediatefd = -1;
             goto cleanup;
         }
     }
@@ -6848,12 +6849,12 @@ qemuDomainSaveImageStartVM(virConnectPtr conn,
                          VIR_NETDEV_VPORT_PROFILE_OP_RESTORE,
                          VIR_QEMU_PROCESS_START_PAUSED |
                          VIR_QEMU_PROCESS_START_GEN_VMID) == 0)
-        restored = true;
+        started = true;
 
     if (intermediatefd != -1) {
         virErrorPtr orig_err = NULL;
 
-        if (!restored) {
+        if (!started) {
             /* if there was an error setting up qemu, the intermediate
              * process will wait forever to write to stdout, so we
              * must manually kill it and ignore any error related to
@@ -6864,23 +6865,17 @@ qemuDomainSaveImageStartVM(virConnectPtr conn,
             VIR_FORCE_CLOSE(*fd);
         }
 
-        if (virCommandWait(cmd, NULL) < 0) {
-            qemuProcessStop(driver, vm, VIR_DOMAIN_SHUTOFF_FAILED, asyncJob, 0);
-            restored = false;
-        }
+        rc = virCommandWait(cmd, NULL);
         VIR_DEBUG("Decompression binary stderr: %s", NULLSTR(errbuf));
-
         virErrorRestore(&orig_err);
     }
-    VIR_FORCE_CLOSE(intermediatefd);
-
     if (VIR_CLOSE(*fd) < 0) {
         virReportSystemError(errno, _("cannot close file: %s"), path);
-        restored = false;
+        rc = -1;
     }
 
-    virDomainAuditStart(vm, "restored", restored);
-    if (!restored)
+    virDomainAuditStart(vm, "restored", started);
+    if (!started || rc < 0)
         goto cleanup;
 
     /* qemuProcessStart doesn't unset the qemu error reporting infrastructure
@@ -6920,8 +6915,10 @@ qemuDomainSaveImageStartVM(virConnectPtr conn,
     ret = 0;
 
  cleanup:
-    virObjectUnref(cookie);
-    virCommandFree(cmd);
+    if (ret < 0 && started) {
+        qemuProcessStop(driver, vm, VIR_DOMAIN_SHUTOFF_FAILED,
+                        asyncJob, VIR_QEMU_PROCESS_STOP_MIGRATED);
+    }
     if (qemuSecurityRestoreSavedStateLabel(driver, vm, path) < 0)
         VIR_WARN("failed to restore save state label on %s", path);
     return ret;
@@ -11645,12 +11642,18 @@ qemuDomainSetInterfaceParameters(virDomainPtr dom,
 
         if (virNetDevBandwidthSet(net->ifname, newBandwidth, false,
                                   !virDomainNetTypeSharesHostView(net)) < 0) {
+            virErrorPtr orig_err;
+
+            virErrorPreserveLast(&orig_err);
             ignore_value(virNetDevBandwidthSet(net->ifname,
                                                net->bandwidth,
                                                false,
                                                !virDomainNetTypeSharesHostView(net)));
-            ignore_value(virDomainNetBandwidthUpdate(net,
-                                                     net->bandwidth));
+            if (net->bandwidth) {
+                ignore_value(virDomainNetBandwidthUpdate(net,
+                                                         net->bandwidth));
+            }
+            virErrorRestore(&orig_err);
             goto endjob;
         }
 
@@ -21511,8 +21514,12 @@ qemuDomainGetStatsIOThread(virQEMUDriverPtr driver,
     if ((niothreads = qemuDomainGetIOThreadsMon(driver, dom, &iothreads)) < 0)
         return -1;
 
-    if (niothreads == 0)
-        return 0;
+    /* qemuDomainGetIOThreadsMon returns a NULL-terminated list, so we must free
+     * it even if it returns 0 */
+    if (niothreads == 0) {
+        ret = 0;
+        goto cleanup;
+    }
 
     if (virTypedParamListAddUInt(params, niothreads, "iothread.count") < 0)
         goto cleanup;
