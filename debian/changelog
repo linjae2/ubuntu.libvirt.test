@@ -2,6 +2,8 @@ libvirt (6.0.0-0ubuntu6) focal; urgency=medium
 
   * d/p/ubuntu/lp-1867460-*: fix domcapabilities before capabilities
     and binary autodetection in general (LP: #1867460)
+  * d/p/stable/lp-1868539-*: stabilize libvirt by backporting upstream
+    fixes (LP: #1868539)
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 20 Mar 2020 10:34:19 +0100
 
