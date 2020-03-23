@@ -72,3 +72,8 @@ stable/lp-1868539-qemu-Don-t-compare-local-and-remote-hostnames-on-mig.patch
 stable/lp-1868539-virsystemdtest-do-not-leak-socket-path.patch
 stable/lp-1868539-tests-fix-double-unlock-of-monitor-in-hotplug-test.patch
 stable/lp-1868539-security-Try-harder-to-run-transactions.patch
+ubuntu/lp-1853200-cputest-Add-data-for-Intel-R-Core-TM-i7-8550U-CPU-wi.patch
+ubuntu/lp-1853200-cpu_map-Add-more-noTSX-x86-CPU-models.patch
+ubuntu/lp-1853200-cpu_map-Add-decode-element-to-x86-CPU-model-definiti.patch
+ubuntu/lp-1853200-cpu_x86-Honor-CPU-models-decode-element.patch
+ubuntu/lp-1853200-cpu_map-Don-t-use-new-noTSX-models-for-host-model-CP.patch
