@@ -6,6 +6,8 @@ libvirt (6.0.0-0ubuntu6) focal; urgency=medium
     fixes (LP: #1868539)
   * d/p/ubuntu/lp-1853200*: add cpu models without hle/rtm features to have
     modern types on kernels with recent security fixes (LP: #1853200)
+  * d/p/ubuntu/lp-1868528-*: Fail when fetching CPU Status for invalid CPU
+    (LP: #1868528)
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 20 Mar 2020 10:34:19 +0100
 
