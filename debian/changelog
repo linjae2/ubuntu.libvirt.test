@@ -4,6 +4,8 @@ libvirt (6.0.0-0ubuntu6) focal; urgency=medium
     and binary autodetection in general (LP: #1867460)
   * d/p/stable/lp-1868539-*: stabilize libvirt by backporting upstream
     fixes (LP: #1868539)
+  * d/p/ubuntu/lp-1853200*: add cpu models without hle/rtm features to have
+    modern types on kernels with recent security fixes (LP: #1853200)
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 20 Mar 2020 10:34:19 +0100
 
