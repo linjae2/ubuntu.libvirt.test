@@ -5,7 +5,7 @@ Subject: [PATCH] cpu_x86: Honor CPU models' <decode> element
 
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
 
-Origin: upstream, https://www.redhat.com/archives/libvir-list/2020-March/msg00631.html
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=7cd896ef31
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1853200
 Last-Update: 2020-03-23
 

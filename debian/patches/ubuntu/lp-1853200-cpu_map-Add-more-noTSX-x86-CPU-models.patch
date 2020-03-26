@@ -43,7 +43,7 @@ Reviewed-by: Jiri Denemark <jdenemar@redhat.com>
 Backport Note: upstream also had data on qemu 5.0 which doesn't exist in
 focals libvirt yet - removed those hunks
 
-Origin: backport, https://www.redhat.com/archives/libvir-list/2020-March/msg00634.html
+Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=dd17a4eba8
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1853200
 Last-Update: 2020-03-23
 

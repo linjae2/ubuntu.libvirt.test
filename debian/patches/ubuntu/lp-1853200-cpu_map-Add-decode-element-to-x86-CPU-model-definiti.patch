@@ -12,7 +12,7 @@ attribute.
 
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
 
-Origin: upstream, https://www.redhat.com/archives/libvir-list/2020-March/msg00635.html
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=f4914045c2
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1853200
 Last-Update: 2020-03-23
 
