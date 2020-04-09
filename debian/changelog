@@ -1,3 +1,10 @@
+libvirt (5.4.0-0ubuntu5.3) eoan; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1847361-load-versioned-module.patch: allow loading
+    versioned modules after qemu package upgrades (LP: #1847361)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 09 Apr 2020 08:28:33 +0200
+
 libvirt (5.4.0-0ubuntu5.2) eoan; urgency=medium
 
   * d/p/u/lp-1655111-apparmor-fix-qemu_bridge_helper-for-named-profile.patch:
