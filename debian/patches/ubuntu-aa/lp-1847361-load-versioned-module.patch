@@ -28,8 +28,8 @@ Forwarded: yes, https://www.redhat.com/archives/libvir-list/2020-March/msg00486.
 Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1847361
 Last-Update: 2020-03-13
---- a/src/security/apparmor/libvirt-qemu
-+++ b/src/security/apparmor/libvirt-qemu
+--- a/examples/apparmor/libvirt-qemu
++++ b/examples/apparmor/libvirt-qemu
 @@ -164,6 +164,11 @@
    /usr/{lib,lib64}/qemu/*.so mr,
    /usr/lib/@{multiarch}/qemu/*.so mr,
@@ -39,6 +39,6 @@ Last-Update: 2020-03-13
 +  # but explicitly deny with auditing writing to these files
 +  audit deny /{var/,}run/qemu/*/*.so w,
 +
-   # swtpm
-   /{usr/,}bin/swtpm rmix,
-   /usr/{lib,lib64}/libswtpm_libtpms.so mr,
+   # for save and resume
+   /{usr/,}bin/dash rmix,
+   /{usr/,}bin/dd rmix,
