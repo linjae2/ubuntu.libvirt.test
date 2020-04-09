@@ -1,3 +1,10 @@
+libvirt (4.0.0-1ubuntu8.16) bionic; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1847361-load-versioned-module.patch: allow loading
+    versioned modules after qemu package upgrades (LP: #1847361)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 09 Apr 2020 08:28:33 +0200
+
 libvirt (4.0.0-1ubuntu8.15) bionic; urgency=medium
 
   * d/p/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch:
