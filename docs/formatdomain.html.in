@@ -4233,7 +4233,9 @@
           <dd>For mediated devices (<span class="since">Since 3.2.0</span>)
           the <code>model</code> attribute specifies the device API which
           determines how the host's vfio driver will expose the device to the
-          guest. Currently, only <code>model='vfio-pci'</code> is supported.
+          guest. Currently, only <code>model='vfio-pci'</code> and
+          <code>model='vfio-ap'</code> (<span class="since">Since 4.9.0</span>)
+          are supported.
           There are also some implications on the usage of guest's address type
           depending on the <code>model</code> attribute, see the
           <code>address</code> element below.</dd>
