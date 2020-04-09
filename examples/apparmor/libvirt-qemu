@@ -164,6 +164,11 @@
   /usr/{lib,lib64}/qemu/*.so mr,
   /usr/lib/@{multiarch}/qemu/*.so mr,
 
+  # let qemu load old shared objects after upgrades (LP: #1847361)
+  /{var/,}run/qemu/*/*.so mr,
+  # but explicitly deny with auditing writing to these files
+  audit deny /{var/,}run/qemu/*/*.so w,
+
   # for save and resume
   /{usr/,}bin/dash rmix,
   /{usr/,}bin/dd rmix,
