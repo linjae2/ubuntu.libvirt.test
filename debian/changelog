@@ -2,6 +2,9 @@ libvirt (6.0.0-0ubuntu7) focal; urgency=medium
 
   * d/p/ubuntu-aa/lp-1871354*: fix apparmor denials on libpmem init
     (LP: #1871354)
+  * d/p/ubuntu/CVE-CVE-2020-10701-api-disallow-virDomainAgentSetResponseTimeout
+    -on-rea.patch: avoid DOS through read only connections
+    CVE-2020-10701
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 15 Apr 2020 12:29:12 +0200
 
