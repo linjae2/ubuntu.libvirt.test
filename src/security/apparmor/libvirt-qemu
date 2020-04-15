@@ -248,3 +248,6 @@
   # required for sasl GSSAPI plugin
   /etc/gss/mech.d/ r,
   /etc/gss/mech.d/* r,
+
+  # Site-specific additions and overrides. See local/README for details.
+  #include <local/abstractions/libvirt-qemu>
