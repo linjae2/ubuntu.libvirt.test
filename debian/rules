@@ -27,8 +27,13 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   WITH_STORAGE_LVM    = --with-storage-lvm
   WITH_STORAGE_ISCSI  = --with-storage-iscsi
   WITH_STORAGE_DISK   =	--with-storage-disk
-  WITH_STORAGE_RBD    = --with-storage-rbd
-  WITH_STORAGE_ZFS    = --with-storage-zfs
+  ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 arm64 armhf i386 ppc64el s390x))
+    WITH_STORAGE_RBD  = --with-storage-rbd
+    WITH_STORAGE_ZFS  = --with-storage-zfs
+  else
+    WITH_STORAGE_RBD  = --without-storage-rbd
+    WITH_STORAGE_ZFS  = --without-storage-zfs
+  endif
   WITH_STORAGE_GLUSTER = --with-storage-gluster
   WITH_UDEV           = --with-udev
   WITH_CAPNG          = --with-capng
