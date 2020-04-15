@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu7) focal; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1871354*: fix apparmor denials on libpmem init
+    (LP: #1871354)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 15 Apr 2020 12:29:12 +0200
+
 libvirt (6.0.0-0ubuntu6) focal; urgency=medium
 
   * d/p/ubuntu/lp-1867460-*: fix domcapabilities before capabilities
