@@ -12554,6 +12554,8 @@ virDomainAgentSetResponseTimeout(virDomainPtr domain,
     virCheckDomainReturn(domain, -1);
     conn = domain->conn;
 
+    virCheckReadOnlyGoto(conn->flags, error);
+
     if (conn->driver->domainAgentSetResponseTimeout) {
         if (conn->driver->domainAgentSetResponseTimeout(domain, timeout, flags) < 0)
             goto error;
