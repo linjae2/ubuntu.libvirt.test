@@ -1,3 +1,12 @@
+libvirt (6.0.0-0ubuntu8) focal; urgency=medium
+
+  [ William Grant ]
+  * d/control, d/rules: enable riscv build (LP: #1872952)
+    - disable unavailable rbd support on riscv
+    - disable unavailable support zfs on riscv
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 17 Apr 2020 10:15:00 +0200
+
 libvirt (6.0.0-0ubuntu7) focal; urgency=medium
 
   * d/p/ubuntu-aa/lp-1871354*: fix apparmor denials on libpmem init
