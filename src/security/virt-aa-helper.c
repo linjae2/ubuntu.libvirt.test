@@ -883,11 +883,11 @@ add_file_path(virStorageSourcePtr src,
 
     if (depth == 0) {
         if (src->readonly)
-            ret = vah_add_file(buf, src->path, "rk");
+            ret = vah_add_file(buf, src->path, "Rk");
         else
             ret = vah_add_file(buf, src->path, "rwk");
     } else {
-        ret = vah_add_file(buf, src->path, "rk");
+        ret = vah_add_file(buf, src->path, "Rk");
     }
 
     if (ret != 0)
