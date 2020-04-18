@@ -47,11 +47,11 @@ Build-Depends:
  python3-docutils,
  xsltproc,
  zfsutils [kfreebsd-amd64 kfreebsd-i386],
- libzfslinux-dev [linux-any],
+ libzfslinux-dev [amd64 arm64 armhf i386 ppc64el s390x],
  po-debconf,
 # for --with-storage-rados
- librbd-dev [linux-any],
- librados-dev [linux-any],
+ librbd-dev [amd64 arm64 armhf i386 ppc64el s390x],
+ librados-dev [amd64 arm64 armhf i386 ppc64el s390x],
 # for --with-storage-gluster
  libglusterfs-dev,
 # for --with-wireshark-dissector
@@ -213,7 +213,7 @@ Description: Virtualization daemon glusterfs storage driver
  This package contains the libvirtd storage driver for GlusterFS.
 
 Package: libvirt-daemon-driver-storage-rbd
-Architecture: linux-any
+Architecture: amd64 arm64 armhf i386 ppc64el s390x
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -230,7 +230,7 @@ Description: Virtualization daemon RBD storage driver
  This package contains the libvirtd storage driver for RBD/Rados/Ceph.
 
 Package: libvirt-daemon-driver-storage-zfs
-Architecture: linux-any
+Architecture: amd64 arm64 armhf i386 ppc64el s390x
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
