@@ -4440,7 +4440,10 @@
       <value>mdev</value>
     </attribute>
     <attribute name="model">
-      <value>vfio-pci</value>
+      <choice>
+        <value>vfio-pci</value>
+        <value>vfio-ap</value>
+      </choice>
     </attribute>
     <element name="source">
       <ref name="mdevaddress"/>
