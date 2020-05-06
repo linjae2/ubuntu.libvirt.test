@@ -42,6 +42,12 @@ uint32_t virCPUx86DataGetSignature(virCPUDataPtr cpuData,
 int virCPUx86DataSetVendor(virCPUDataPtr cpuData,
                            const char *vendor);
 
+bool virCPUx86FeatureFilterSelectMSR(const char *name,
+                                     void *opaque);
+
+bool virCPUx86FeatureFilterDropMSR(const char *name,
+                                   void *opaque);
+
 int virCPUx86DataAddFeature(virCPUDataPtr cpuData,
                             const char *name);
 
