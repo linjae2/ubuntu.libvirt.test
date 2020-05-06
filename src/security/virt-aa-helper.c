@@ -1115,6 +1115,17 @@ get_files(vahControl * ctl)
                 break;
             }
 
+            case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV: {
+                virDomainHostdevSubsysMediatedDevPtr mdevsrc = &dev->source.subsys.u.mdev;
+                switch ((virMediatedDeviceModelType) mdevsrc->model) {
+                    case VIR_MDEV_MODEL_TYPE_VFIO_PCI:
+                    case VIR_MDEV_MODEL_TYPE_VFIO_AP:
+                        needsVfio = true;
+                        break;
+                }
+                break;
+            }
+
             case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
                 virPCIDevicePtr pci = virPCIDeviceNew(
                            dev->source.subsys.u.pci.addr.domain,
