@@ -3891,6 +3891,24 @@ qemuDomainDeviceDefValidateHostdev(const virDomainHostdevDef *hostdev,
         return -1;
     }
 
+    if (hostdev->mode == VIR_DOMAIN_HOSTDEV_MODE_SUBSYS) {
+        switch ((virDomainHostdevSubsysType) hostdev->source.subsys.type) {
+        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB:
+        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI:
+        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI:
+        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI_HOST:
+        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV:
+            break;
+        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_LAST:
+        default:
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("Unexpected enum value %d for "
+                             "virMediatedDeviceModelType"),
+                           hostdev->source.subsys.type);
+            return -1;
+        }
+    }
+
     return 0;
 }
 
