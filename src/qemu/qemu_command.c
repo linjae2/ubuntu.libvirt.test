@@ -5418,11 +5418,17 @@ qemuBuildHostdevMediatedDevStr(const virDomainDef *def,
     virDomainHostdevSubsysMediatedDevPtr mdevsrc = &dev->source.subsys.u.mdev;
     char *ret = NULL;
     char *mdevPath = NULL;
+    const char *dev_str = NULL;
 
     if (!(mdevPath = virMediatedDeviceGetSysfsPath(mdevsrc->uuidstr)))
         goto cleanup;
 
-    virBufferAddLit(&buf, "vfio-pci");
+    dev_str = virMediatedDeviceModelTypeToString(mdevsrc->model);
+
+    if (!dev_str)
+        goto cleanup;
+
+    virBufferAdd(&buf, dev_str, -1);
     virBufferAsprintf(&buf, ",id=%s,sysfsdev=%s", dev->info->alias, mdevPath);
 
     if (qemuBuildDeviceAddressStr(&buf, def, dev->info, qemuCaps) < 0)
