@@ -40,5 +40,6 @@ TasksMax=32768
 
 [Install]
 WantedBy=multi-user.target
-Also=virtlockd.socket
-Also=virtlogd.socket
+# Disabled until dh_*systemd* no more restarts the services via the sockets (LP: #1786179)
+#Also=virtlockd.socket
+#Also=virtlogd.socket
