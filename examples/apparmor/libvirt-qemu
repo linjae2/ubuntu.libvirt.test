@@ -192,6 +192,12 @@
   # allow connect with openGraphicsFD to work
   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
 
+  # allow access to charm-specific ceph config and silence spurious
+  # denials (LP: #1403648).
+  /var/lib/charm/*/ceph.conf r,
+  deny /tmp/{,**} r,
+  deny /var/tmp/{,**} r,
+
   # for gathering information about available host resources
   /sys/devices/system/cpu/ r,
   /sys/devices/system/node/ r,
