@@ -3879,9 +3879,59 @@ qemuDomainDeviceDefValidateNetwork(const virDomainNetDef *net)
 
 
 static int
+qemuDomainMdevDefVFIOAPValidate(const virDomainDef *def)
+{
+    size_t i;
+    bool vfioap_found = false;
+
+    /* VFIO-AP is restricted to a single mediated device only */
+    for (i = 0; i < def->nhostdevs; i++) {
+        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
+
+        if (virHostdevIsMdevDevice(hostdev) &&
+            hostdev->source.subsys.u.mdev.model == VIR_MDEV_MODEL_TYPE_VFIO_AP) {
+            if (vfioap_found) {
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                               _("Only one hostdev of model vfio-ap is "
+                                 "supported"));
+                return -1;
+            }
+            vfioap_found = true;
+        }
+    }
+
+    return 0;
+}
+
+
+static int
+qemuDomainMdevDefValidate(const virDomainHostdevSubsysMediatedDev *mdevsrc,
+                          const virDomainDef *def)
+{
+    switch ((virMediatedDeviceModelType) mdevsrc->model) {
+    case VIR_MDEV_MODEL_TYPE_VFIO_PCI:
+        break;
+    case VIR_MDEV_MODEL_TYPE_VFIO_AP:
+        return qemuDomainMdevDefVFIOAPValidate(def);
+    case VIR_MDEV_MODEL_TYPE_LAST:
+    default:
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Unexpected enum value %d for "
+                         "virMediatedDeviceModelType"),
+                       mdevsrc->model);
+        return -1;
+    }
+
+    return 0;
+}
+
+
+static int
 qemuDomainDeviceDefValidateHostdev(const virDomainHostdevDef *hostdev,
                                    const virDomainDef *def)
 {
+    const virDomainHostdevSubsysMediatedDev *mdevsrc;
+
     /* forbid capabilities mode hostdev in this kind of hypervisor */
     if (hostdev->mode == VIR_DOMAIN_HOSTDEV_MODE_CAPABILITIES) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
@@ -3897,8 +3947,10 @@ qemuDomainDeviceDefValidateHostdev(const virDomainHostdevDef *hostdev,
         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI:
         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI:
         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_SCSI_HOST:
-        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV:
             break;
+        case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_MDEV:
+            mdevsrc = &hostdev->source.subsys.u.mdev;
+            return qemuDomainMdevDefValidate(mdevsrc, def);
         case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_LAST:
         default:
             virReportError(VIR_ERR_INTERNAL_ERROR,
