@@ -2680,6 +2680,10 @@ virDomainXMLNamespacePtr
 virDomainXMLOptionGetNamespace(virDomainXMLOptionPtr xmlopt)
     ATTRIBUTE_NONNULL(1);
 
+bool
+virDomainSCSIDriveAddressIsUsed(const virDomainDef *def,
+                                const virDomainDeviceDriveAddress *addr);
+
 int virDomainDefPostParse(virDomainDefPtr def,
                           virCapsPtr caps,
                           unsigned int parseFlags,
