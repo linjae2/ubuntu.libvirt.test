@@ -62,3 +62,5 @@ ubuntu/lp-1828495-qemu-Probe-host-CPU-after-capabilities.patch
 ubuntu/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch
 ubuntu/lp-1655111-apparmor-fix-qemu_bridge_helper-for-named-profile.patch
 ubuntu-aa/lp-1847361-load-versioned-module.patch
+ubuntu/CVE-2020-10703.patch
+ubuntu/CVE-2020-12430.patch
