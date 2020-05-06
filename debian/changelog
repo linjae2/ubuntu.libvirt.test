@@ -1,3 +1,16 @@
+libvirt (5.4.0-0ubuntu5.4) eoan-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service via active pool without target path
+    - debian/patches/ubuntu/CVE-2020-10703.patch: fix daemon crash on
+      lookup storagepool by targetpath in src/storage/storage_driver.c.
+    - CVE-2020-10703
+  * SECURITY UPDATE: memory leak in virDomainListGetStats
+    - debian/patches/ubuntu/CVE-2020-12430.patch: don't leak array with 0
+      iothreads in src/qemu/qemu_driver.c.
+    - CVE-2020-12430
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 06 May 2020 13:26:20 -0400
+
 libvirt (5.4.0-0ubuntu5.3) eoan; urgency=medium
 
   * d/p/ubuntu-aa/lp-1847361-load-versioned-module.patch: allow loading
