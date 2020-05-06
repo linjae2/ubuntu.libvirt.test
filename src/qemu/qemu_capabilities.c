@@ -526,6 +526,7 @@ VIR_ENUM_IMPL(virQEMUCaps,
               "overcommit",
               "query-current-machine",
               "x86-max-cpu",
+              "cpu-unavailable-features",
     );
 
 
@@ -1393,6 +1394,10 @@ static struct virQEMUCapsStringFlags virQEMUCapsObjectPropsMemoryBackendMemfd[] 
     { "hugetlb", QEMU_CAPS_OBJECT_MEMORY_MEMFD_HUGETLB },
 };
 
+static struct virQEMUCapsStringFlags virQEMUCapsObjectPropsMaxX86CPU[] = {
+    { "unavailable-features", QEMU_CAPS_CPU_UNAVAILABLE_FEATURES },
+};
+
 static virQEMUCapsObjectTypeProps virQEMUCapsObjectProps[] = {
     { "memory-backend-file", virQEMUCapsObjectPropsMemoryBackendFile,
       ARRAY_CARDINALITY(virQEMUCapsObjectPropsMemoryBackendFile),
@@ -1400,6 +1405,9 @@ static virQEMUCapsObjectTypeProps virQEMUCapsObjectProps[] = {
     { "memory-backend-memfd", virQEMUCapsObjectPropsMemoryBackendMemfd,
       ARRAY_CARDINALITY(virQEMUCapsObjectPropsMemoryBackendMemfd),
       QEMU_CAPS_OBJECT_MEMORY_MEMFD },
+    { "max-x86_64-cpu", virQEMUCapsObjectPropsMaxX86CPU,
+      ARRAY_CARDINALITY(virQEMUCapsObjectPropsMaxX86CPU),
+      QEMU_CAPS_X86_MAX_CPU },
 };
 
 static struct virQEMUCapsStringFlags virQEMUCapsMachinePropsPSeries[] = {
