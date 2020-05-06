@@ -2392,6 +2392,19 @@ x86Encode(virArch arch,
 }
 
 
+static int
+virCPUx86DataCheckFeature(const virCPUData *data,
+                          const char *name)
+{
+    virCPUx86MapPtr map;
+
+    if (!(map = virCPUx86GetMap()))
+        return -1;
+
+    return x86FeatureInData(name, &data->data.x86, map);
+}
+
+
 #if defined(__i386__) || defined(__x86_64__)
 static inline void
 cpuidCall(virCPUx86CPUID *cpuid)
@@ -2738,6 +2751,28 @@ virCPUx86GetHost(virCPUDefPtr cpu,
         cpuidSet(CPUX86_EXTENDED, cpuData) < 0)
         goto cleanup;
 
+    /* Read the IA32_ARCH_CAPABILITIES MSR (0x10a) if supported.
+     * This is best effort since there might be no way to read the MSR
+     * when we are not running as root. */
+    if (virCPUx86DataCheckFeature(cpuData, "arch-capabilities") == 1) {
+        uint64_t msr;
+        unsigned long index = 0x10a;
+
+        if (virHostCPUGetMSR(index, &msr) == 0) {
+            virCPUx86DataItem item = {
+                .type = VIR_CPU_X86_DATA_MSR,
+                .data.msr = {
+                    .index = index,
+                    .eax = msr & 0xffffffff,
+                    .edx = msr >> 32,
+                },
+            };
+
+            if (virCPUx86DataAdd(cpuData, &item) < 0)
+                return -1;
+        }
+    }
+
     ret = x86DecodeCPUData(cpu, cpuData, models);
     cpu->microcodeVersion = virHostCPUGetMicrocodeVersion();
 
@@ -2767,19 +2802,6 @@ virCPUx86CheckFeature(const virCPUDef *cpu,
  cleanup:
     x86ModelFree(model);
     return ret;
-}
-
-
-static int
-virCPUx86DataCheckFeature(const virCPUData *data,
-                          const char *name)
-{
-    virCPUx86MapPtr map;
-
-    if (!(map = virCPUx86GetMap()))
-        return -1;
-
-    return x86FeatureInData(name, &data->data.x86, map);
 }
 
 
