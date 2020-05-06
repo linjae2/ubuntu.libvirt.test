@@ -65,6 +65,11 @@
   signal (read, send) peer=libvirt-*,
   signal (send) set=("kill", "term") peer=unconfined,
 
+  # Since libvirt 4.0 we also need the reverse direction (LP: #1741617)
+  unix (send, receive) type=stream addr=none peer=(label=libvirt-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*),
+  # unconfined also required if guests run without security module
+  unix (send, receive) type=stream addr=none peer=(label=unconfined),
+
   # Very lenient profile for libvirtd since we want to first focus on confining
   # the guests. Guests will have a very restricted profile.
   / r,
