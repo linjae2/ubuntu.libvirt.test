@@ -3579,6 +3579,7 @@ lxcDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
 {
     int ret = -1;
     virDomainNetDefPtr net;
+    virDomainDeviceDef oldDev = { .type = dev->type };
     int idx;
 
     switch (dev->type) {
@@ -3587,8 +3588,11 @@ lxcDomainUpdateDeviceConfig(virDomainDefPtr vmdef,
         if ((idx = virDomainNetFindIdx(vmdef, net)) < 0)
             goto cleanup;
 
-        virDomainNetDefFree(vmdef->nets[idx]);
+        oldDev.data.net = vmdef->nets[idx];
+        if (virDomainDefCompatibleDevice(vmdef, dev, &oldDev) < 0)
+            return -1;
 
+        virDomainNetDefFree(vmdef->nets[idx]);
         vmdef->nets[idx] = net;
         dev->data.net = NULL;
         ret = 0;
@@ -4791,7 +4795,7 @@ static int lxcDomainAttachDeviceFlags(virDomainPtr dom,
         if (!vmdef)
             goto endjob;
 
-        if (virDomainDefCompatibleDevice(vmdef, dev) < 0)
+        if (virDomainDefCompatibleDevice(vmdef, dev, NULL) < 0)
             goto endjob;
 
         if ((ret = lxcDomainAttachDeviceConfig(vmdef, dev)) < 0)
@@ -4799,7 +4803,7 @@ static int lxcDomainAttachDeviceFlags(virDomainPtr dom,
     }
 
     if (flags & VIR_DOMAIN_AFFECT_LIVE) {
-        if (virDomainDefCompatibleDevice(vm->def, dev_copy) < 0)
+        if (virDomainDefCompatibleDevice(vm->def, dev_copy, NULL) < 0)
             goto endjob;
 
         if ((ret = lxcDomainAttachDeviceLive(dom->conn, driver, vm, dev_copy)) < 0)
@@ -4902,9 +4906,8 @@ static int lxcDomainUpdateDeviceFlags(virDomainPtr dom,
         if (!vmdef)
             goto endjob;
 
-        if (virDomainDefCompatibleDevice(vmdef, dev) < 0)
-            goto endjob;
-
+        /* virDomainDefCompatibleDevice call is delayed until we know the
+         * device we're going to update. */
         if ((ret = lxcDomainUpdateDeviceConfig(vmdef, dev)) < 0)
             goto endjob;
     }
