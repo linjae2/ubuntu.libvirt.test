@@ -13,6 +13,10 @@
   capability setgid,
   capability setuid,
 
+  # for 9p
+  capability fsetid,
+  capability fowner,
+
   network inet stream,
   network inet6 stream,
 
