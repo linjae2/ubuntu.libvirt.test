@@ -1,3 +1,12 @@
+libvirt (4.0.0-1ubuntu8.17) bionic-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service via active pool without target path
+    - debian/patches/ubuntu/CVE-2020-10703.patch: fix daemon crash on
+      lookup storagepool by targetpath in src/storage/storage_driver.c.
+    - CVE-2020-10703
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 06 May 2020 14:18:23 -0400
+
 libvirt (4.0.0-1ubuntu8.16) bionic; urgency=medium
 
   * d/p/ubuntu-aa/lp-1847361-load-versioned-module.patch: allow loading

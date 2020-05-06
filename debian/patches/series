@@ -138,3 +138,4 @@ ubuntu/lp-1840745-cpu-add-amd-ssbd-and-amd-no-ssb-CPU-features-CVE-201.patch
 ubuntu/lp-1840872-qemuhotplugtest-Don-t-plug-a-SCSI-disk-at-unit-7.patch
 ubuntu/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch
 ubuntu-aa/lp-1847361-load-versioned-module.patch
+ubuntu/CVE-2020-10703.patch
