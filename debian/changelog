@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu8.1) focal; urgency=medium
+
+  * d/p/ubuntu/lp-1879325-*: avoid issues with apparmor metadata labeling
+    (LP: #1879325)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 20 May 2020 06:59:57 +0200
+
 libvirt (6.0.0-0ubuntu8) focal; urgency=medium
 
   * d/control, d/rules: Disable rbd and zfs on riscv64 where they are
