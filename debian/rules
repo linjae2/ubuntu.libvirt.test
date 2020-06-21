@@ -5,10 +5,15 @@ DEB_BUILDDATE=$(shell dpkg-parsechangelog -SDate)
 DEB_BUILDUSER=$(shell dpkg-parsechangelog -SMaintainer)
 NULL=
 
+DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow
+
 # If the build environment sets -Bsymbolic-functions, which is often used as
 # hardening option, that would break libvirt build time self-testing.
 # Therefore let dpkg-buildflag strip that option if present.
-export DEB_LDFLAGS_MAINT_STRIP = -Wl,-Bsymbolic-functions
+DEB_LDFLAGS_MAINT_STRIP = -Wl,-Bsymbolic-functions
+
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
 
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   ifneq (,$(findstring $(DEB_HOST_ARCH), i386 amd64))
@@ -22,8 +27,6 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
   else
     WITH_LIBXL        = --without-libxl
   endif
-  MAKE_CHECK        = 1
-  FAIL_CHECK        = 1
   WITH_STORAGE_LVM    = --with-storage-lvm
   WITH_STORAGE_ISCSI  = --with-storage-iscsi
   WITH_STORAGE_DISK   =	--with-storage-disk
@@ -154,7 +157,6 @@ LIBVIRT_NOSTART_UNITS = \
 
 DEB_BUILDDIR := $(CURDIR)/debian/build
 DEB_DESTDIR := $(CURDIR)/debian/tmp
-LOGROTATE = $(basename $(basename $(notdir $(wildcard src/remote/libvirtd*.logrotate.in))))
 SRV_MONOLITHIC = libvirt-guests virtlogd virtlockd libvirtd libvirtd-tcp libvirtd-tls virt-guest-shutdown
 # For split daemons later, as of 6.0 the remaining elments are
 #SRV_SPLIT = virtnwfilterd virtinterfaced virtlxcd virtnetworkd virtnodedevd virtproxyd virtqemud virtsecretd virtstoraged virtvboxd virtxend virtproxyd-tcp virtproxyd-tls
@@ -166,32 +168,56 @@ override_dh_auto_configure:
 	IPTABLES_PATH=/usr/sbin/iptables \
 	IP6TABLES_PATH=/usr/sbin/ip6tables \
 	EBTABLES_PATH=/usr/sbin/ebtables \
-	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_ARGS) $(shell dpkg-buildflags --export=configure)
+	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_ARGS)
 
 override_dh_auto_test:
 	export LD_PRELOAD="";     \
 	export VIR_TEST_DEBUG=1;  \
-	[ -n "$(MAKE_CHECK)" ] || exit 0; \
 	if ! dh_auto_test; then \
 	    cat $(DEB_BUILDDIR)/tests/test-suite.log; \
-	    [ -z "$(FAIL_CHECK)" ] || exit 1; \
+	    exit 1; \
 	fi
+
+# After the upstream build system has installed libvirt into $(DEB_DESTDIR),
+# we need to make some tweaks (add a few extra files, delete some contents
+# we're not interested in, move things around) so that later calls to the
+# various dh_* tools will work optimally. This target is the perfect place
+# to perform such operations
+override_dh_auto_install:
+	dh_auto_install
+
+	# Copy upstream files to debian/ so dh_* can find them
+	cp $(DEB_DESTDIR)/usr/lib/libvirt/libvirt-guests.sh \
+	   debian/libvirt-daemon-system-sysv.libvirt-guests.init
+	cp tools/libvirt-guests.sysconf \
+	   debian/libvirt-daemon-system.libvirt-guests.default
+	cp src/logging/virtlogd.sysconf \
+	   debian/libvirt-daemon-system.virtlogd.default
+	cp src/locking/virtlockd.sysconf \
+	   debian/libvirt-daemon-system.virtlockd.default
+
+	# Copy the release notes where dh_installdocs can find them
+	cp NEWS \
+	   $(DEB_DESTDIR)/usr/share/doc/libvirt/
+
+	# Add our backward compat polkit rule
+	mkdir -p $(DEB_DESTDIR)/var/lib/polkit-1/localauthority/10-vendor.d/
+	cp debian/polkit/60-libvirt.pkla \
+	   $(DEB_DESTDIR)/var/lib/polkit-1/localauthority/10-vendor.d/
+
+	# Don't ship any la files
+	rm $(DEB_DESTDIR)/usr/lib/*/wireshark/plugins/*/*/*.la
+
+	# Don't ship any files that are managed by the user only
+	rm $(DEB_DESTDIR)/etc/apparmor.d/local/*
+
+	# Don't ship the CI dashboard, which is not useful as documentation
+	# triggers the privacy-breach-generic Lintian tag
+	rm $(DEB_DESTDIR)/usr/share/doc/libvirt/html/ci.html
 
 override_dh_install-arch:
 	dh_install
 
-	# Copy upstream files to debian/ so dh_* can find them
-	cp $(DEB_DESTDIR)/usr/lib/libvirt/libvirt-guests.sh \
-	    debian/libvirt-daemon-system-sysv.libvirt-guests.init
-	cp tools/libvirt-guests.sysconf \
-	    debian/libvirt-daemon-system.libvirt-guests.default
-	cp src/logging/virtlogd.sysconf \
-	    debian/libvirt-daemon-system.virtlogd.default
-	cp src/locking/virtlockd.sysconf \
-	    debian/libvirt-daemon-system.virtlockd.default
-	# Add our backward compat polkit rule
-	cp debian/polkit/60-libvirt.pkla \
-	    debian/libvirt-daemon-system/var/lib/polkit-1/localauthority/10-vendor.d/
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	# Linux supports more nice things:
 	set -e; for f in $(SRV_MONOLITHIC); do \
@@ -220,17 +246,6 @@ ifeq ($(XEN_ENABLED), 1)
 	dh_install -p libvirt-daemon-system etc/libvirt/libxl-sanlock.conf
 endif
 
-	set -e; for l in $(LOGROTATE); do \
-		mv $(DEB_DESTDIR)/etc/logrotate.d/$$l \
-	        debian/libvirt-daemon-system.$$l.logrotate; \
-		dh_installlogrotate --name=$$l;     \
-	done
-
-	# Don't ship any la files
-	rm debian/libvirt-wireshark/usr/lib/*/wireshark/plugins/*/*/*.la
-	# Don't ship any files that are managed by the user only
-	rm debian/libvirt-daemon-system/etc/apparmor.d/local/*
-
 override_dh_installinit:
 	dh_installinit -p libvirt-daemon-system-sysv --name=virtlogd --no-stop-on-upgrade
 	dh_installinit -p libvirt-daemon-system-sysv --name=virtlockd --no-stop-on-upgrade
@@ -252,16 +267,15 @@ override_dh_installdocs:
 	dh_installdocs -Nlibvirt-doc
 
 override_dh_auto_clean:
-	[ ! -f Makefile ] || dh_auto_clean
+	dh_auto_clean
+
 	rm -f $(CURDIR)/debian/libvirt-daemon-system.libvirt-guests.init \
 	      $(CURDIR)/debian/libvirt-daemon-system.libvirt-guests.default \
-	      $(CURDIR)/debian/libvirt-daemon-system.*.logrotate \
-	      $(CURDIR)/debian/*.service \
 	      $(CURDIR)/debian/libvirt-daemon-system.virtlogd.default \
 	      $(CURDIR)/debian/libvirt-daemon-system.virtlockd.default \
 	      $(NULL)
-	rm -rf $(DEB_BUILDDIR)
 
+# The upstream ChangeLog file doesn't contain any useful information, and we
+# already install the release notes elsewhere
 override_dh_installchangelogs:
-	dh_installchangelogs -plibvirt0
-	dh_installchangelogs -Nlibvirt0 -XChangeLog
+	dh_installchangelogs -XChangeLog
