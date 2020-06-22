@@ -1,3 +1,12 @@
+libvirt (6.0.0-0ubuntu10) groovy; urgency=medium
+
+  * enable attr support to store XATTR labels. Among other things
+    this allows to properly restore file ownership (LP: #691590)
+      - d/control: build depend to libattr1-dev
+      - d/rules: configure --with-attr
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 22 Jun 2020 21:30:50 +0200
+
 libvirt (6.0.0-0ubuntu9) groovy; urgency=medium
 
   * d/p/ubuntu/lp-1879325-*: avoid issues with apparmor metadata labeling
