@@ -1,0 +1,3 @@
+  * debian/patches/Autodetect-if-the-remote-nc-command-supports-the-q-o.patch:
+    updated to support target systems where the grep utility has no -q
+    option. (LP: #792985)
