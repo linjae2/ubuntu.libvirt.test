@@ -1,0 +1,4 @@
+  * [f254551] New upstream version 0.9.11.3
+  * [5362229] Drop virURIParse-don-t-forget-to-copy-the-user-part.patch.
+    Fixed upstream.
+  * [36ed9f0] Update symbols file
