@@ -1,0 +1,5 @@
+  [ Rafael David Tinoco ]
+  * d/p/reject-blockcommit-of-active-layer.patch:
+    Block commit code isn't ready for QEMU 2.0 and has to be blocked.
+    This avoids virsh to hang forever on blackcommit jobs.
+    (LP: #1317491)
