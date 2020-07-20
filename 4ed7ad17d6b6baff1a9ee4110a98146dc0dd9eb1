@@ -1,0 +1,5 @@
+  * [422c506] Use "getent passwd" instead of the non existing "getent user"
+    Thanks to again to Adam D. Barratt
+  * [56bcb4c] Properly remove libvirt-qemu group and user.
+    Thanks to Adam D. Barratt for noticing
+  * [8abfe79] Make sure libvirt-bin.NEWS gets displayed in wheezy as well
