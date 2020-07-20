@@ -1,0 +1,5 @@
+  * Fix an issue where guests with plenty of hostdevs attached where detected
+    as not shut down due to the kernel needing more time to free up
+    resources (LP: #1788226)
+    - d/p/ubuntu/lp-1788226-wait-longer-5-30s-on-hard-shutdown.patch
+    - d/p/ubuntu/lp-1788226-wait-longer-on-kill-per-assigned-Hostdev.patch
