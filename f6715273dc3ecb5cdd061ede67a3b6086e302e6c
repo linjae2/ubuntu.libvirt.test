@@ -1,0 +1,3 @@
+  * [d45d576] qemu: Add support for -no-user-config
+    so newer cpu models can be used.
+    Thanks to Philipp Kern for his report and testing (Closes: #699813)
