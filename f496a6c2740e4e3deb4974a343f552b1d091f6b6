@@ -1,0 +1,2 @@
+  * git_set_xdg_env.patch: correctly define the xdg environment,
+    otherwise the clients can fail to locate the service (lp: #1074418)
