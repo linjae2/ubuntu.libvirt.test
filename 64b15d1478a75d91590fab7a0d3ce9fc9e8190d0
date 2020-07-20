@@ -1,0 +1,4 @@
+  * handle_resume_1.0.0-0ubuntu4.patch: Add RESUME event listener to qemu
+    monitor (LP: #1097824)
+  * build-work-around-broken-kernel-header: work around FTBFS due to a
+    broken linux/if_bridge.h.
