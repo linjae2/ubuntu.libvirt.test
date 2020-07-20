@@ -1,0 +1,2 @@
+  * debian/libvirt-bin.{dirs,install}: install dnsmasq.d-available/libvirt-bin
+    (LP: #1113821)
