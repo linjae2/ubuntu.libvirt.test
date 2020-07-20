@@ -1,0 +1,85 @@
+  * Merge from debian unstable. Remaining changes:
+    - debian/control:
+      + Build-Depends on qemu-kvm, not qemu
+      + Build-Depends on open-iscsi-utils, not open-iscsi
+      + Build-Depends on libxml2-utils
+      + Build-Depends on libapparmor-dev and Suggests apparmor (>=
+        2.3+1289-0ubuntu14)
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin
+      + Recommends qemu-kvm (>= 0.11.0-0ubuntu6)
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such
+      + We call libxen-dev libxen3-dev, so change all references
+      + temporarily remove Build-Depends on libcap-ng-dev, which isn't
+        available in Ubuntu main yet
+      + Rename Vcs-* to XS-Debian-Vcs-*
+    - debian/libvirt-bin.postinst:
+      + rename the libvirt group to libvirtd
+      + add each admin user to the libvirtd group
+      + reload apparmor profiles
+      + 0.7.2 moved /usr/bin/virt-aa-helper to /usr/lib/libvirt, so the
+        profile changed from usr.bin.virt-aa-helper to
+        usr.lib.libvirt.virt-aa-helper and needs to be migrated. If the user
+        made no changes to the old profile, remove it, otherwise, update the
+        paths, preserving the shipped usr.lib.libvirt.virt-aa-helper
+    - debian/libvirt-bin.postrm:
+      + rename the libvirt group to libvirtd
+      + remove apparmor symlinks on purge
+    - debian/libvirt-bin.preinst: added to force complain on certain
+      upgrades
+    - debian/README.Debian: add AppArmor section based on the upstream
+      documentation
+    - debian/rules:
+      + update DEB_DH_INSTALLINIT_ARGS for upstart
+      + add DEB_MAKE_CHECK_TARGET := check
+      + use --with-apparmor
+      + copy apparmor and apport hook to debian/tmp
+    - add debian/libvirt-bin.upstart
+    - debian/libvirt-bin.dirs: add /etc/apparmor.d/abstractions,
+      /etc/apparmor.d/disable, /etc/apparmor.d/force-complain,
+      /etc/apparmor.d/libvirt, /etc/cron.daily and
+      /usr/share/apport/package-hooks
+    - add debian/libvirt-bin.cron.daily
+    - add debian/libvirt-bin.apport
+    - debian/libvirt-bin.install: install apparmor profiles, abstractions
+      and apport hook
+    - debian/patches/series: don't apply 0002-qemu-disable-network.diff.patch
+      + 9000-delayed_iff_up_bridge.patch
+      + 9001-dont_clobber_existing_bridges.patch
+      + 9002-better_default_uri_virsh.patch
+      + 9003-increase-logoutput-timeout.patch
+      + 9004-better-default-arch.patch
+      + 9005-libvirtd-group-name.patch
+      + 9006-increase-unix-socket-timeout.patch
+      + 9007-default-config-test-case.patch
+      + 9008-warn-on-daemon-conf-test-wait.patch (renamed from 9016)
+    - Dropped the following patches now including upstream:
+      + 0005-Fix-SELinux-linking-issues.patch
+      + 9008-apparmor-caps-mockup.patch
+      + 9009-apparmor-lp453335.patch
+      + 9010-apparmor-lp460271.patch
+      + 9011-apparmor-code-cleanups.patch
+      + 9012-apparmor-add-virt-aa-helper-test.patch
+      + 9013-apparmor-examples.patch
+      + 9014-event-fuzz.patch
+      + 9015-hal-startup-failure-is-nonfatal.patch
+  * debian/patches/9009-run-as-root-by-default.patch: run virtual machines
+    via qemu:///system as root. As of 0.7, upstream libvirt has the ability to
+    run VMs started via qemu:///system as an unprivileged user. Debian's
+    libvirt now runs these VMs as libvirt-qemu:kvm. However, the upstream
+    implementation is contentious among the community and while the it does
+    reduce the privileges of the VMs running under qemu:///system, all VMs
+    currently run under the same user, so there is no guest isolation. Even if
+    each user ran under its own user, an attacker could potentially break out
+    of the VM and have unconfined user access (albeit non-root). In Ubuntu,
+    Qemu/KVM virtual machines are already fully isolated and confined by the
+    AppArmor security driver so this feature has been disabled. Once there is
+    consensus among the community on the implementation and its use, changing
+    this default in Ubuntu can be considered as an additional protection to
+    the AppArmor driver.
+  * debian/README.Debian: add section discussing the security implications of
+    using qemu:///system
+  * debian/patches/9010-apparmor-ftbfs.patch: fix missing bracket in
+    virt-aa-helper.c and automake dependency declaration. This should be
+    dropped in 0.7.6 or higher.
