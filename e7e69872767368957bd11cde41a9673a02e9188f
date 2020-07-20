@@ -1,0 +1,3 @@
+  * debian/patches/event-handling-fix-rh499698-lp362288.patch: cherry pick
+    from upstream; fixes critical, destructive bug whereby calling
+    'virsh destroy foo' kills foo, plus another vm; LP: #362288
