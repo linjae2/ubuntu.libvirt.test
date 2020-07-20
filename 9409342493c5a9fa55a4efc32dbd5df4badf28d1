@@ -1,0 +1,5 @@
+  * d/libvirt-bin.virtlockd.init: Replace by the version I had already
+    prepared and was tested (LP: #1547208).
+  * d/libvirt-bin.virtlogd.init: Fix up some left-over references to
+    libvirtd.
+  * d/control: Add provides libvirt-daemon for libvirt-bin (LP: #1551643)
