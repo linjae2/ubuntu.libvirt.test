@@ -1,0 +1,3 @@
+  * debian/patches/nonblock-fix.patch: cherrypicked upstream patch to
+    not mark qemu migration fd non-blocking.  This fixes tcp live
+    migration. (LP: #1157626)
