@@ -1,0 +1,2 @@
+  * debian/patches/add-armhf-sysinfo-infomration.patch: Disable
+    to fix FTBFS on arm.
