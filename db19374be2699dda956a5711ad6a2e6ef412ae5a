@@ -1,0 +1,7 @@
+  * virsh api is stuck when vm is down with NFS borken (LP: #1746630)
+    - d/p/0001-qemu-driver-Remove-unnecessary-flag-in-qemuDomainGet.patch
+      qemu: driver: Remove unnecessary flag in qemuDomainGetStatsBlock
+    - d/p/0002-qemu-driver-Separate-bulk-stats-worker-for-block-dev.patch
+      qemu: driver: Separate bulk stats worker for block devices
+    - d/p/0003-qemu-bulk-stats-Don-t-access-possibly-blocked-storag.patch
+      qemu: bulk stats: Don't access possibly blocked storage
