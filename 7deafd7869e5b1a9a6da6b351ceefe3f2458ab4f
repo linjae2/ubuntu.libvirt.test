@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.sbin.libvirtd: use PUx instead of Ux for executables
+    (LP: #573315)
