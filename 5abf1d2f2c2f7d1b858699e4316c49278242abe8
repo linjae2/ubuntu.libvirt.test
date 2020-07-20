@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow owner read of
+    @{PROC}/[0-9]*/status
