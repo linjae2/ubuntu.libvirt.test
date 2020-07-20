@@ -663,12 +663,9 @@ static int qemuMonitorParseBalloonInfo(char *text,
 /* The reply from QEMU contains 'ballon: actual=421' where value is in MB */
 #define BALLOON_PREFIX "balloon: "
 
-/*
- * Returns: 0 if balloon not supported, +1 if balloon query worked
- * or -1 on failure
- */
-int qemuMonitorTextGetBalloonInfo(qemuMonitorPtr mon,
-                                  unsigned long long *currmem)
+int
+qemuMonitorTextGetBalloonInfo(qemuMonitorPtr mon,
+                              unsigned long long *currmem)
 {
     char *reply = NULL;
     int ret = -1;
@@ -971,16 +968,6 @@ qemuMonitorTextGetAllBlockStatsInfo(qemuMonitorPtr mon,
     return ret;
 }
 
-
-int qemuMonitorTextGetBlockExtent(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
-                                  const char *dev_name ATTRIBUTE_UNUSED,
-                                  unsigned long long *extent ATTRIBUTE_UNUSED)
-{
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                   _("unable to query block extent with this QEMU"));
-    return -1;
-}
-
 /* Return 0 on success, -1 on failure, or -2 if not supported.  Size
  * is in bytes. */
 int qemuMonitorTextBlockResize(qemuMonitorPtr mon,
@@ -1113,12 +1100,10 @@ int qemuMonitorTextExpirePassword(qemuMonitorPtr mon,
     return ret;
 }
 
-/*
- * Returns: 0 if balloon not supported, +1 if balloon adjust worked
- * or -1 on failure
- */
-int qemuMonitorTextSetBalloon(qemuMonitorPtr mon,
-                              unsigned long newmem)
+
+int
+qemuMonitorTextSetBalloon(qemuMonitorPtr mon,
+                          unsigned long long newmem)
 {
     char *cmd;
     char *reply = NULL;
@@ -1128,7 +1113,7 @@ int qemuMonitorTextSetBalloon(qemuMonitorPtr mon,
      * 'newmem' is in KB, QEMU monitor works in MB, and we all wish
      * we just worked in bytes with unsigned long long everywhere.
      */
-    if (virAsprintf(&cmd, "balloon %lu", VIR_DIV_UP(newmem, 1024)) < 0)
+    if (virAsprintf(&cmd, "balloon %llu", VIR_DIV_UP(newmem, 1024)) < 0)
         return -1;
 
     if (qemuMonitorHMPCommand(mon, cmd, &reply) < 0) {
@@ -1184,6 +1169,14 @@ int qemuMonitorTextSetCPU(qemuMonitorPtr mon, int cpu, bool online)
 }
 
 
+/**
+ * Run HMP command to eject a media from ejectable device.
+ *
+ * Returns:
+ *      -2 on error, when the tray is locked
+ *      -1 on all other errors
+ *      0 on success
+ */
 int qemuMonitorTextEjectMedia(qemuMonitorPtr mon,
                               const char *dev_name,
                               bool force)
@@ -1202,6 +1195,8 @@ int qemuMonitorTextEjectMedia(qemuMonitorPtr mon,
      * device not found, device is locked ...
      * No message is printed on success it seems */
     if (c_strcasestr(reply, "device ")) {
+        if (c_strcasestr(reply, "is locked"))
+            ret = -2;
         virReportError(VIR_ERR_OPERATION_FAILED,
                        _("could not eject media on %s: %s"), dev_name, reply);
         goto cleanup;

@@ -63,6 +63,7 @@
 #include "vircommand.h"
 #include "virerror.h"
 #include "virfile.h"
+#include "virkmod.h"
 #include "virlog.h"
 #include "virprocess.h"
 #include "virstring.h"
@@ -745,6 +746,7 @@ int virFileLoopDeviceAssociate(const char *file,
 
 
 # define SYSFS_BLOCK_DIR "/sys/block"
+# define NBD_DRIVER "nbd"
 
 
 static int
@@ -811,17 +813,41 @@ virFileNBDDeviceFindUnused(void)
     return ret;
 }
 
+static bool
+virFileNBDLoadDriver(void)
+{
+    if (virKModIsBlacklisted(NBD_DRIVER)) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                       _("Failed to load nbd module: "
+                         "administratively prohibited"));
+        return false;
+    } else {
+        char *errbuf = NULL;
+
+        if ((errbuf = virKModLoad(NBD_DRIVER, true))) {
+            VIR_FREE(errbuf);
+            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                           _("Failed to load nbd module"));
+            return false;
+        }
+        VIR_FREE(errbuf);
+    }
+    return true;
+}
 
 int virFileNBDDeviceAssociate(const char *file,
                               virStorageFileFormat fmt,
                               bool readonly,
                               char **dev)
 {
-    char *nbddev;
+    char *nbddev = NULL;
     char *qemunbd = NULL;
     virCommandPtr cmd = NULL;
     int ret = -1;
     const char *fmtstr = NULL;
+
+    if (!virFileNBDLoadDriver())
+        goto cleanup;
 
     if (!(nbddev = virFileNBDDeviceFindUnused()))
         goto cleanup;
@@ -2376,6 +2402,7 @@ virDirCreate(const char *path,
     if (pid) { /* parent */
         /* wait for child to complete, and retrieve its exit code */
         VIR_FREE(groups);
+
         while ((waitret = waitpid(pid, &status, 0)) == -1 && errno == EINTR);
         if (waitret == -1) {
             ret = -errno;
@@ -2384,11 +2411,27 @@ virDirCreate(const char *path,
                                  path);
             goto parenterror;
         }
-        if (!WIFEXITED(status) || (ret = -WEXITSTATUS(status)) == -EACCES) {
-            /* fall back to the simpler method, which works better in
-             * some cases */
-            return virDirCreateNoFork(path, mode, uid, gid, flags);
+
+        /*
+         * If waitpid succeeded, but if the child exited abnormally or
+         * reported non-zero status, report failure, except for EACCES where
+         * we try to fall back to non-fork method as in the original logic
+         * introduced and explained by commit 98f6f381.
+         */
+        if (!WIFEXITED(status) || (WEXITSTATUS(status)) != 0) {
+            if (WEXITSTATUS(status) == EACCES)
+                return virDirCreateNoFork(path, mode, uid, gid, flags);
+            char *msg = virProcessTranslateStatus(status);
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("child failed to create '%s': %s"),
+                           path, msg);
+            VIR_FREE(msg);
+            if (WIFEXITED(status))
+                ret = -WEXITSTATUS(status);
+            else
+                ret = -EACCES;
         }
+
  parenterror:
         return ret;
     }
@@ -2397,40 +2440,49 @@ virDirCreate(const char *path,
 
     /* set desired uid/gid, then attempt to create the directory */
     if (virSetUIDGID(uid, gid, groups, ngroups) < 0) {
-        ret = -errno;
+        ret = errno;
         goto childerror;
     }
+
     if (mkdir(path, mode) < 0) {
-        ret = -errno;
-        if (ret != -EACCES) {
+        ret = errno;
+        if (ret != EACCES) {
             /* in case of EACCES, the parent will retry */
             virReportSystemError(errno, _("child failed to create directory '%s'"),
                                  path);
         }
         goto childerror;
     }
+
     /* check if group was set properly by creating after
      * setgid. If not, try doing it with chown */
     if (stat(path, &st) == -1) {
-        ret = -errno;
+        ret = errno;
         virReportSystemError(errno,
                              _("stat of '%s' failed"), path);
         goto childerror;
     }
+
     if ((st.st_gid != gid) && (chown(path, (uid_t) -1, gid) < 0)) {
-        ret = -errno;
+        ret = errno;
         virReportSystemError(errno,
                              _("cannot chown '%s' to group %u"),
                              path, (unsigned int) gid);
         goto childerror;
     }
+
     if (mode != (mode_t) -1 && chmod(path, mode) < 0) {
         virReportSystemError(errno,
                              _("cannot set mode of '%s' to %04o"),
                              path, mode);
         goto childerror;
     }
+
  childerror:
+    if ((ret & 0xff) != ret) {
+        VIR_WARN("unable to pass desired return value %d", ret);
+        ret = 0xff;
+    }
     _exit(ret);
 }
 

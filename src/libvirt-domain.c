@@ -3175,8 +3175,34 @@ virDomainMigrateVersion3Full(virDomainPtr domain,
             (dconn, dname, cookiein, cookieinlen, &cookieout, &cookieoutlen,
              NULL, uri, destflags, cancelled);
     }
-    if (cancelled && ddomain)
-        VIR_ERROR(_("finish step ignored that migration was cancelled"));
+
+    if (cancelled) {
+        if (ddomain) {
+            VIR_ERROR(_("finish step ignored that migration was cancelled"));
+        } else {
+            /* If Finish reported a useful error, use it instead of the
+             * original "migration unexpectedly failed" error.
+             *
+             * This is ugly but we can't do better with the APIs we have. We
+             * only replace the error if Finish was called with cancelled == 1
+             * and reported a real error (old libvirt would report an error
+             * from RPC instead of MIGRATE_FINISH_OK), which only happens when
+             * the domain died on destination. To further reduce a possibility
+             * of false positives we also check that Perform returned
+             * VIR_ERR_OPERATION_FAILED.
+             */
+            if (orig_err &&
+                orig_err->domain == VIR_FROM_QEMU &&
+                orig_err->code == VIR_ERR_OPERATION_FAILED) {
+                virErrorPtr err = virGetLastError();
+                if (err->domain == VIR_FROM_QEMU &&
+                    err->code != VIR_ERR_MIGRATE_FINISH_OK) {
+                    virFreeError(orig_err);
+                    orig_err = NULL;
+                }
+            }
+        }
+    }
 
     /* If ddomain is NULL, then we were unable to start
      * the guest on the target, and must restart on the
@@ -6065,7 +6091,7 @@ virDomainBlockPeek(virDomainPtr dom,
     conn = dom->conn;
 
     virCheckReadOnlyGoto(conn->flags, error);
-    virCheckNonNullArgGoto(disk, error);
+    virCheckNonEmptyStringArgGoto(disk, error);
 
     /* Allow size == 0 as an access test. */
     if (size > 0)
@@ -6333,7 +6359,7 @@ virDomainGetBlockInfo(virDomainPtr domain, const char *disk,
         memset(info, 0, sizeof(*info));
 
     virCheckDomainReturn(domain, -1);
-    virCheckNonNullArgGoto(disk, error);
+    virCheckNonEmptyStringArgGoto(disk, error);
     virCheckNonNullArgGoto(info, error);
 
     conn = domain->conn;
@@ -7267,22 +7293,12 @@ virDomainSetVcpusFlags(virDomainPtr domain, unsigned int nvcpus,
                           VIR_DOMAIN_AFFECT_CONFIG,
                           error);
 
-    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_CURRENT,
-                             VIR_DOMAIN_AFFECT_LIVE,
-                             error);
-    VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_AFFECT_CURRENT,
-                             VIR_DOMAIN_AFFECT_CONFIG,
-                             error);
     VIR_EXCLUSIVE_FLAGS_GOTO(VIR_DOMAIN_VCPU_GUEST,
                              VIR_DOMAIN_AFFECT_CONFIG,
                              error);
 
     virCheckNonZeroArgGoto(nvcpus, error);
 
-    if ((unsigned short) nvcpus != nvcpus) {
-        virReportError(VIR_ERR_OVERFLOW, _("input too large: %u"), nvcpus);
-        goto error;
-    }
     conn = domain->conn;
 
     if (conn->driver->domainSetVcpusFlags) {
@@ -7403,11 +7419,6 @@ virDomainPinVcpu(virDomainPtr domain, unsigned int vcpu,
     virCheckNonNullArgGoto(cpumap, error);
     virCheckPositiveArgGoto(maplen, error);
 
-    if ((unsigned short) vcpu != vcpu) {
-        virReportError(VIR_ERR_OVERFLOW, _("input too large: %u"), vcpu);
-        goto error;
-    }
-
     if (conn->driver->domainPinVcpu) {
         int ret;
         ret = conn->driver->domainPinVcpu(domain, vcpu, cpumap, maplen);
@@ -7474,11 +7485,6 @@ virDomainPinVcpuFlags(virDomainPtr domain, unsigned int vcpu,
     virCheckReadOnlyGoto(conn->flags, error);
     virCheckNonNullArgGoto(cpumap, error);
     virCheckPositiveArgGoto(maplen, error);
-
-    if ((unsigned short) vcpu != vcpu) {
-        virReportError(VIR_ERR_OVERFLOW, _("input too large: %u"), vcpu);
-        goto error;
-    }
 
     if (conn->driver->domainPinVcpuFlags) {
         int ret;
@@ -7920,11 +7926,6 @@ virDomainPinIOThread(virDomainPtr domain,
     conn = domain->conn;
 
     virCheckReadOnlyGoto(conn->flags, error);
-    if ((unsigned short) iothread_id != iothread_id) {
-        virReportError(VIR_ERR_OVERFLOW, _("input too large: %u"),
-                       iothread_id);
-        goto error;
-    }
     virCheckPositiveArgGoto(iothread_id, error);
     virCheckNonNullArgGoto(cpumap, error);
     virCheckPositiveArgGoto(maplen, error);

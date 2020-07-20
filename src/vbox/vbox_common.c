@@ -318,7 +318,7 @@ static virCapsPtr vboxCapsInit(void)
                                    false, false)) == NULL)
         goto no_memory;
 
-    if (nodeCapsInitNUMA(caps) < 0)
+    if (nodeCapsInitNUMA(NULL, caps) < 0)
         goto no_memory;
 
     if ((guest = virCapabilitiesAddGuest(caps,
@@ -4603,7 +4603,7 @@ vboxSnapshotRedefine(virDomainPtr dom,
             readWriteDisk->location = realReadWriteDisksPath[it];
             /*
              * We get the current snapshot's read-only disk uuid in order to add the
-             * read-write disk to the media registry as it's child. The read-only disk
+             * read-write disk to the media registry as its child. The read-only disk
              * is already in the media registry because it is the fake disk's parent.
              */
             parentUuid = virVBoxSnapshotConfHardDiskUuidByLocation(snapshotMachineDesc,
@@ -7537,7 +7537,7 @@ static int
 vboxNodeGetInfo(virConnectPtr conn ATTRIBUTE_UNUSED,
                 virNodeInfoPtr nodeinfo)
 {
-    return nodeGetInfo(nodeinfo);
+    return nodeGetInfo(NULL, nodeinfo);
 }
 
 static int

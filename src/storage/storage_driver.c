@@ -1,7 +1,7 @@
 /*
  * storage_driver.c: core driver for storage APIs
  *
- * Copyright (C) 2006-2014 Red Hat, Inc.
+ * Copyright (C) 2006-2015 Red Hat, Inc.
  * Copyright (C) 2006-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -142,11 +142,6 @@ storagePoolUpdateAllState(void)
         virStoragePoolObjPtr pool = driver->pools.objs[i];
 
         virStoragePoolObjLock(pool);
-        if (!virStoragePoolObjIsActive(pool)) {
-            virStoragePoolObjUnlock(pool);
-            continue;
-        }
-
         storagePoolUpdateState(pool);
         virStoragePoolObjUnlock(pool);
     }
@@ -1906,9 +1901,8 @@ storageVolCreateXMLFrom(virStoragePoolPtr obj,
 {
     virStoragePoolObjPtr pool, origpool = NULL;
     virStorageBackendPtr backend;
-    virStorageVolDefPtr origvol = NULL, newvol = NULL;
+    virStorageVolDefPtr origvol = NULL, newvol = NULL, shadowvol = NULL;
     virStorageVolPtr ret = NULL, volobj = NULL;
-    unsigned long long allocation;
     int buildret;
 
     virCheckFlags(VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA |
@@ -1984,11 +1978,6 @@ storageVolCreateXMLFrom(virStoragePoolPtr obj,
     if (newvol->target.capacity < origvol->target.capacity)
         newvol->target.capacity = origvol->target.capacity;
 
-    /* Make sure allocation is at least as large as the destination cap,
-     * to make absolutely sure we copy all possible contents */
-    if (newvol->target.allocation < origvol->target.capacity)
-        newvol->target.allocation = origvol->target.capacity;
-
     if (!backend->buildVolFrom) {
         virReportError(VIR_ERR_NO_SUPPORT,
                        "%s", _("storage pool does not support"
@@ -2018,6 +2007,15 @@ storageVolCreateXMLFrom(virStoragePoolPtr obj,
     if (backend->createVol(obj->conn, pool, newvol) < 0)
         goto cleanup;
 
+    /* Make a shallow copy of the 'defined' volume definition, since the
+     * original allocation value will change as the user polls 'info',
+     * but we only need the initial requested values
+     */
+    if (VIR_ALLOC(shadowvol) < 0)
+        goto cleanup;
+
+    memcpy(shadowvol, newvol, sizeof(*newvol));
+
     pool->volumes.objs[pool->volumes.count++] = newvol;
     volobj = virGetStorageVol(obj->conn, pool->def->name, newvol->name,
                               newvol->key, NULL, NULL);
@@ -2037,7 +2035,7 @@ storageVolCreateXMLFrom(virStoragePoolPtr obj,
         virStoragePoolObjUnlock(origpool);
     }
 
-    buildret = backend->buildVolFrom(obj->conn, pool, newvol, origvol, flags);
+    buildret = backend->buildVolFrom(obj->conn, pool, shadowvol, origvol, flags);
 
     storageDriverLock();
     virStoragePoolObjLock(pool);
@@ -2047,7 +2045,6 @@ storageVolCreateXMLFrom(virStoragePoolPtr obj,
 
     origvol->in_use--;
     newvol->building = false;
-    allocation = newvol->target.allocation;
     pool->asyncjobs--;
 
     if (origpool) {
@@ -2067,8 +2064,8 @@ storageVolCreateXMLFrom(virStoragePoolPtr obj,
      * it updates the pool values
      */
     if (pool->def->type != VIR_STORAGE_POOL_DISK) {
-        pool->def->allocation += allocation;
-        pool->def->available -= allocation;
+        pool->def->allocation += shadowvol->target.allocation;
+        pool->def->available -= shadowvol->target.allocation;
     }
 
     VIR_INFO("Creating volume '%s' in storage pool '%s'",
@@ -2079,6 +2076,7 @@ storageVolCreateXMLFrom(virStoragePoolPtr obj,
  cleanup:
     virObjectUnref(volobj);
     virStorageVolDefFree(newvol);
+    VIR_FREE(shadowvol);
     if (pool)
         virStoragePoolObjUnlock(pool);
     if (origpool)
@@ -3317,6 +3315,16 @@ virStorageTranslateDiskSourcePool(virConnectPtr conn,
            if (virStorageTranslateDiskSourcePoolAuth(def,
                                                      &pooldef->source) < 0)
                goto cleanup;
+
+           /* Source pool may not fill in the secrettype field,
+            * so we need to do so here
+            */
+           if (def->src->auth && !def->src->auth->secrettype) {
+               const char *secrettype =
+                   virSecretUsageTypeToString(VIR_SECRET_USAGE_TYPE_ISCSI);
+               if (VIR_STRDUP(def->src->auth->secrettype, secrettype) < 0)
+                   goto cleanup;
+           }
 
            if (virStorageAddISCSIPoolSourceHost(def, pooldef) < 0)
                goto cleanup;

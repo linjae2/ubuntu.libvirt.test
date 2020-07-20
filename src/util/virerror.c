@@ -133,6 +133,7 @@ VIR_ENUM_IMPL(virErrorDomain, VIR_ERR_DOMAIN_LAST,
 
               "Polkit", /* 60 */
               "Thread jobs",
+              "Admin Interface",
     )
 
 
@@ -212,6 +213,22 @@ virCopyError(virErrorPtr from,
      */
     return ret;
 }
+
+
+virErrorPtr
+virErrorCopyNew(virErrorPtr err)
+{
+    virErrorPtr ret;
+
+    if (VIR_ALLOC_QUIET(ret) < 0)
+        return NULL;
+
+    if (virCopyError(err, ret) < 0)
+        VIR_FREE(ret);
+
+    return ret;
+}
+
 
 static virErrorPtr
 virLastErrorObject(void)
@@ -1351,6 +1368,9 @@ virErrorMsg(virErrorNumber error, const char *info)
                 errmsg = _("XML document failed to validate against schema");
             else
                 errmsg = _("XML document failed to validate against schema: %s");
+            break;
+        case VIR_ERR_MIGRATE_FINISH_OK:
+            errmsg = _("migration successfully aborted");
             break;
     }
     return errmsg;

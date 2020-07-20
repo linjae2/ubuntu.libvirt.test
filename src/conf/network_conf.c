@@ -803,6 +803,32 @@ virNetworkDefGetIpByIndex(const virNetworkDef *def,
     return NULL;
 }
 
+/* return routes[index], or NULL if there aren't enough routes */
+virNetworkRouteDefPtr
+virNetworkDefGetRouteByIndex(const virNetworkDef *def,
+                             int family, size_t n)
+{
+    size_t i;
+
+    if (!def->routes || n >= def->nroutes)
+        return NULL;
+
+    if (family == AF_UNSPEC)
+        return def->routes[n];
+
+    /* find the nth route of type "family" */
+    for (i = 0; i < def->nroutes; i++) {
+        virSocketAddrPtr addr = virNetworkRouteDefGetAddress(def->routes[i]);
+        if (VIR_SOCKET_ADDR_IS_FAMILY(addr, family)
+            && (n-- <= 0)) {
+            return def->routes[i];
+        }
+    }
+
+    /* failed to find enough of the right family */
+    return NULL;
+}
+
 /* return number of 1 bits in netmask for the network's ipAddress,
  * or -1 on error
  */
@@ -832,8 +858,9 @@ int virNetworkIpDefNetmask(const virNetworkIpDef *def,
 
 static int
 virSocketAddrRangeParseXML(const char *networkName,
-                               xmlNodePtr node,
-                               virSocketAddrRangePtr range)
+                           virNetworkIpDefPtr ipdef,
+                           xmlNodePtr node,
+                           virSocketAddrRangePtr range)
 {
 
 
@@ -859,12 +886,9 @@ virSocketAddrRangeParseXML(const char *networkName,
         goto cleanup;
 
     /* do a sanity check of the range */
-    if (virSocketAddrGetRange(&range->start, &range->end) < 0) {
-        virReportError(VIR_ERR_XML_ERROR,
-                       _("Invalid dhcp range '%s' to '%s' in network '%s'"),
-                       start, end, networkName);
+    if (virSocketAddrGetRange(&range->start, &range->end, &ipdef->address,
+                              virNetworkIpDefPrefix(ipdef)) < 0)
         goto cleanup;
-    }
 
     ret = 0;
 
@@ -999,33 +1023,32 @@ virNetworkDHCPDefParseXML(const char *networkName,
                           xmlNodePtr node,
                           virNetworkIpDefPtr def)
 {
-
+    int ret = -1;
     xmlNodePtr cur;
+    virSocketAddrRange range;
+    virNetworkDHCPHostDef host;
+
+    memset(&range, 0, sizeof(range));
+    memset(&host, 0, sizeof(host));
 
     cur = node->children;
     while (cur != NULL) {
         if (cur->type == XML_ELEMENT_NODE &&
             xmlStrEqual(cur->name, BAD_CAST "range")) {
 
-            if (VIR_REALLOC_N(def->ranges, def->nranges + 1) < 0)
-                return -1;
-            if (virSocketAddrRangeParseXML(networkName, cur,
-                                               &def->ranges[def->nranges]) < 0) {
-                return -1;
-            }
-            def->nranges++;
+            if (virSocketAddrRangeParseXML(networkName, def, cur, &range) < 0)
+                goto cleanup;
+            if (VIR_APPEND_ELEMENT(def->ranges, def->nranges, range) < 0)
+                goto cleanup;
 
         } else if (cur->type == XML_ELEMENT_NODE &&
             xmlStrEqual(cur->name, BAD_CAST "host")) {
 
-            if (VIR_REALLOC_N(def->hosts, def->nhosts + 1) < 0)
-                return -1;
             if (virNetworkDHCPHostDefParseXML(networkName, def, cur,
-                                              &def->hosts[def->nhosts],
-                                              false) < 0) {
-                return -1;
-            }
-            def->nhosts++;
+                                              &host, false) < 0)
+                goto cleanup;
+            if (VIR_APPEND_ELEMENT(def->hosts, def->nhosts, host) < 0)
+                goto cleanup;
 
         } else if (VIR_SOCKET_ADDR_IS_FAMILY(&def->address, AF_INET) &&
                    cur->type == XML_ELEMENT_NODE &&
@@ -1045,7 +1068,7 @@ virNetworkDHCPDefParseXML(const char *networkName,
                 virSocketAddrParse(&inaddr, server, AF_UNSPEC) < 0) {
                 VIR_FREE(file);
                 VIR_FREE(server);
-                return -1;
+                goto cleanup;
             }
 
             def->bootfile = file;
@@ -1056,7 +1079,10 @@ virNetworkDHCPDefParseXML(const char *networkName,
         cur = cur->next;
     }
 
-    return 0;
+    ret = 0;
+ cleanup:
+    virNetworkDHCPHostDefClear(&host);
+    return ret;
 }
 
 static int
@@ -3608,7 +3634,7 @@ virNetworkDefUpdateIPDHCPRange(virNetworkDefPtr def,
         goto cleanup;
     }
 
-    if (virSocketAddrRangeParseXML(def->name, ctxt->node, &range) < 0)
+    if (virSocketAddrRangeParseXML(def->name, ipdef, ctxt->node, &range) < 0)
         goto cleanup;
 
     /* check if an entry with same name/address/ip already exists */

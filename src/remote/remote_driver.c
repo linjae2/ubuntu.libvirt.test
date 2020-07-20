@@ -819,7 +819,7 @@ doRemoteOpen(virConnectPtr conn,
 
         /*FALLTHROUGH*/
     case trans_tcp:
-        priv->client = virNetClientNewTCP(priv->hostname, port);
+        priv->client = virNetClientNewTCP(priv->hostname, port, AF_UNSPEC);
         if (!priv->client)
             goto failed;
 
@@ -854,6 +854,7 @@ doRemoteOpen(virConnectPtr conn,
 
         priv->client = virNetClientNewLibSSH2(priv->hostname,
                                               port,
+                                              AF_UNSPEC,
                                               username,
                                               keyfile,
                                               knownHosts,
@@ -6455,7 +6456,7 @@ remoteDomainOpenGraphicsFD(virDomainPtr dom,
                            unsigned int flags)
 {
     int rv = -1;
-    remote_domain_open_graphics_args args;
+    remote_domain_open_graphics_fd_args args;
     struct private_data *priv = dom->conn->privateData;
     int *fdout = NULL;
     size_t fdoutlen = 0;
