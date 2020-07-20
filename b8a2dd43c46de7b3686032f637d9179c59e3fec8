@@ -1,0 +1,2 @@
+  * [d98aa3b] Fix wrong relation in preinst.
+    Thanks to Laurent Bigonville (Closes: #758136)
