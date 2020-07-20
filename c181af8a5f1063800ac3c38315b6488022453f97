@@ -1,0 +1,3 @@
+  * debian/patches/0010-Use-base-16-for-product-vendor.patch: parse the USB
+    and PCI product and vendor ids in hexadecimal. This fixes incorrect
+    USB ids being used in virt-manager. (LP: #514610)
