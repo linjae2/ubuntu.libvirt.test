@@ -1,0 +1,3 @@
+  * [008e65d] New patch Skip-nodeinfo-test-on-non-intel-architectures.patch:
+    Skip nodeinfo test on non intel architectures since the testfiles assume a
+    /proc/cpuinfo specific to this architecture.
