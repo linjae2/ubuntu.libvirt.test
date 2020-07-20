@@ -1,0 +1,70 @@
+  * Merge from Debian unstable.  Remaining changes:
+    - debian/apparmor/{libvirt-lxc,libvirt-qemu,local-usr.sbin.libvirtd,
+      TEMPLATE.lxc,TEMPLATE.qemu,usr.lib.libvirt.virt-aa-helper,
+      usr.sbin.libvirtd} Add apparmor profiles.
+    - debian/bug-presubj: removed
+    - debian/control:
+      - add cdbs, dh-autoreconf, libcurl4-gnutls-dev
+      - add libxml-libxml-perl, libhal-dev
+      - swap open-iscsi to open-iscsi-utils
+      - Enable numa support on ppc64el.
+      - remove libsanlock-dev, libselinux1-dev
+      - use libsystemd-daemon-dev instead of libsystemd-dev
+      - remove systemtap-sdt-dev, python, sheepdog, librados-dev, libfuse-dev
+      - remove libssh2-1, augeas-tools
+      - add libcgmanager-dev, xsltproc
+      - remove Vcs-Git
+      - adjust X-Python-Version > 2.7
+      - don't build libvirt-clients, libvirt-daemon, libvirt-sanlock packages
+    - keep debian/{libvirt-bin.apport,libvirt-bin.cron.daily}
+    - debian/libvirt-daemon.* has been mostly renamed to debian/libvirt-bin.*
+    - add upstart script for libvirt-bin
+    - debian/*.{links,maintscript} files not added
+    - keep ubuntu maintscript modifications
+    - debian/libvirt-sanlock* not merged
+    - debian/libvirt-clients* not merged
+    - keep debian/{libvirt-migrate-qemu-disks.*,
+      libvirt-migrate-qemu-machinetype.*,
+      libvirt-migrate-xend-managed-domains.*}
+    - keep debian/libvirt-suspendonreboot
+    - keep debian/libvirt-uri.sh
+    - debian/polkit/* not added
+    - debian/README.Debian:
+      - add 'Apparmor Profile' section
+      - add 'Disk migration' section
+    - debian/rules:
+      - add cdbs and autoconf stuff
+      - don't build WITH_SANLOCK, WITH_INIT_SCRIPT, WITH_SYSTEMD, WITH_FIREWALLD
+        WITH_SELINUX
+      - use qemu-group kvm instead of libvirt-qemu
+      - set DEB_DH_INSTALLINIT_ARGS to '--upstart-only'
+      - remove auto_test section
+      - add build/libvirt-bin:: section to install
+        - apparmor files
+        - apport hooks
+        - libvirt-migrate-qemu-disks
+      - use clean:: instead of dh_*clean
+    - Move ubuntu specific patches to 'debian/patches/ubuntu'
+  * Dropped patches:
+    - drop 9033-apparmor-use-TEMPLATE.qemu-for-kvm.patch (upstream 16d2bc8b)
+    - drop 9036-util-prepare-uri-for-libxml2-2.9.2.patch (upstream 8f17d0ea)
+    - drop 9040-virt-aa-helper-add-unix-channels (upstream 03d7462d)
+    - drop CVE-2014-3633.patch (upstream 3e745e8f)
+    - drop CVE-2014-3657.patch (upstream fc22b2e7)
+    - drop CVE-2014-7823.patch (upstream b1674ad5)
+    - drop Don-t-fail-if-we-can-t-setup-avahi.patch (dropped in debian)
+    - drop add-ppc64le-support.patch (upstream 9265fd19, addce06c, 1e911742,
+      bdbe723f, 5e4f49ab)
+    - drop blockdev-migration patches (upstream 1049a8d8, 9c5efd1a, cb7297c1,
+      a5250449, e9ef8565, 952907f5, 5eb03b6e, 93a19e28, a4e92f9e, de0aeafe)
+    - storage-allow-zero-capacity-with-non-backing-file-to.patch,
+      tests-add-vol-qcow2-zerocapacity-test-to-storagevolx.patch
+      (upstream 0bcda653, b8cc0cc5)
+    - ubuntu/fix-ubuntu-xen-qemu-dm-path.patch dropped in favor of
+      Allow-xen-toolstack-to-find-it-s-binaries.patch
+    - drop ubuntu-libxl-Implement-basic-video-device-selection.patch
+      (upstream 1298daca)
+    - remove dont-include-non-migrateable-features-in-host-model
+      (upstream and not included in series)
+    - remove upstream-libxl-Allow-libxl-to-find-pygrub-binary.patch
+      (upstream and not included in series)
