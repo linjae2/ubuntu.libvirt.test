@@ -1,0 +1,10 @@
+  * SECURITY UPDATE: force qemu-img backing stores creation to have a defined
+    disk format.
+    - debian/patches/CVE-2010-2239: explicitly set the user defined backing
+      store format when creating a new image
+    - CVE-2010-2239
+  * SECURITY UPDATE: fix to disallow privileged users in guests from accessing
+    privileged resources, such as NFS
+    - debian/patches/9901-CVE-2010-2242.patch: set iptables masqerading rules
+      to use ports 1024-65535
+    - CVE-2010-2242
