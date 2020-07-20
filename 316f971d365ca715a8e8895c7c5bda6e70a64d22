@@ -1,0 +1,1 @@
+  * Fix libvirt-guest.sh to handle multiple guests (LP: #1591695).
