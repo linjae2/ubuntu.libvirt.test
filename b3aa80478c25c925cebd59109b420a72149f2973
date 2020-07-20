@@ -1,0 +1,5 @@
+  * [8ff38ac] New upstream version 4.7.0
+    (Closes: #908341)
+  * [afdd147] Bump symbol versions
+  * [41fa8f5] Rediff patches.
+    Drop all jansson related patches. Fixed ustream.
