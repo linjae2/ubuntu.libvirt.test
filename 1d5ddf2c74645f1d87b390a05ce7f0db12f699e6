@@ -1,0 +1,4 @@
+  * Let Apparmor allow libvirtd to create PF_PACKET sockets. Several
+    utility functions require it. Of particular interest, the NWFilter
+    code uses it, so libvirt's firewalling functionality depends on
+    this. (LP: #646706)
