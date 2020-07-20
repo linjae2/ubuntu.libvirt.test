@@ -1,0 +1,7 @@
+  * d/p/ubuntu/lp-1825195-*.patch: fix issues with old guests that defined
+    the never functional osxsave and ospke features (LP: #1825195).
+  * d/p/series: reorder ubuntu Delta
+  * d/p/ubuntu-aa/lp-1815910-allow-vhost-net.patch: avoid apparmor issues
+    with vhost-net/vhost-vsock/vhost-scsi hotplug (LP: #1815910)
+  * d/p/ubuntu-aa/lp-1829223-virt-aa-helper-allow-vhost-scsi.patch fix
+    vhost-scsi hotplug in virt-aa-helper (LP: #1829223)
