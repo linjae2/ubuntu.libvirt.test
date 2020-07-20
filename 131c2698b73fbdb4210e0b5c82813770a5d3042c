@@ -1,0 +1,14 @@
+  [ Laurent Léonard ]
+  * [51a4814] Imported Upstream version 0.7.2
+  * [12268f6] Update patches.
+  * [175d497] Fix SELinux linking issues. Pulled from upstream
+    309acaa0230494b8ec08d03375c10238cb2daf55.
+  * [5cfdaf8] Update libvirt-doc docs.
+  * [dc2059f] Update libvirt-bin manpages.
+  * [a62a4a7] Update libvirt-bin examples.
+  * [9e38cbc] Update libvirt0 symbols.
+  * [412b12f] Make init.d script provide itself.
+  * [35451bf] Update debian/rules to support new example files.
+  * [43b7dac] Don't let parent of daemon exit until basic initialization is
+    done.
+  * [5a37e69] Make init.d provide libvirtd for backward compatibility.
