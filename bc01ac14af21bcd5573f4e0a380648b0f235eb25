@@ -1,0 +1,7 @@
+  * [dd3adb2] Imported Upstream version 0.6.4
+  * [2320162] update symbols file
+  * [89c9720] remove bashism (Closes: #530122)
+  * [30d86c1] drop patches fixed upstream:
+        0005-don-t-crash-with-def-NULL.patch
+        0006-Fix-QEMU-ARGV-detection-with-kvm-85.patch
+        0007-Declare-support-for-QEMU-migration-in-capabilities.patch
