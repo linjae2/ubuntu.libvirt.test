@@ -1,0 +1,4 @@
+  * Have upstart job source /etc/default/libvirt-bin.  This is only a
+    temporary fix until upstart provides proper default override support
+    through /etc/init/libvirt-bin.override (or any other mechanism).
+    (LP: #708172)
