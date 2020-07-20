@@ -1,0 +1,2 @@
+  * debian/patches/9902-lp665531.patch: restore use of '<driver name='qemu'
+    type='host_device'/>' (LP: #665531)
