@@ -1,0 +1,2 @@
+  * [d7df842] Don't restart libvirt-guests on upgrade
+    (Closes: #954921)
