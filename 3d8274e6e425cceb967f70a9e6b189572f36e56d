@@ -1,0 +1,94 @@
+  * Merge from Debian Unstable, remaining changes are: 
+    - debian/control:
+      * set X-Python-Version to 2.7, as 2.6 is not in oneiric.
+      * set ubuntu maintainer
+      * Build-Depends:
+        - swap  open-iscsi to open-iscsi-utils
+        - remove virtualbox-ose
+        - add libapparmor-dev
+        - swap libnl-dev for libnl3-dev
+      * convert Vcs-Git to Xs-Debian-Vcs-Git
+      * libvirt-bin Depends: move netcat-openbsd, bridge-utils, dnsmasq-base
+        (>= 2.46-1), and iptables from Recommends to Depends
+      * libvirt-bin Recommends: move qemu to Suggests
+      * libvirt-bin Suggests: add apparmor
+      * libvirt0 Recommends: move lvm2 to Suggests
+      * Install cgroup-lite
+    - keep debian/libvirt-bin.apport
+    - keep debian/libvirt-bin.cron.daily
+    - debian/libvirt-bin.dirs:
+      * add apparmor, cron.daily, and apport dirs
+    - debian/libvirt-bin.examples:
+      * add debian/libvirt-suspendonreboot
+    - debian/libvirt-bin.install:
+      * add /etc/apparmor.d files
+      * add apport hook
+    - debian/libvirt-bin.postinst:
+      * replace libvirt groupname with libvirtd
+      * add each admin user to libvirtd group
+      * call apparmor_parser on usr.sbin.libvirtd and
+        usr.lib.libvirt.virt-aa-helper
+      * call 'libvirt-migrate-qemu-disks -a' after
+        libvirt-bin has started if migrating from
+        older than 0.8.3-1ubuntu1
+    - debian/libvirt-bin.postrm:
+      * replace libvirt groupname with libvirtd
+      * remove usr.sbin.libvirtd and
+        usr.lib.libvirt.virt-aa-helper
+    - keep added files under debian/:
+      * libvirt-bin.upstart
+      * libvirt-migrate-qemu-disks
+      * libvirt-migrate-qemu-disks.1
+      * libvirt-suspendonreboot
+      * apparmor profiles
+    - debian/README.Debian:
+      * add 'Apparmor Profile' section
+      * add 'Disk migration' section
+    - debian/rules:
+      * don't build with vbox since virtualbox-ose is in universe
+        - remove WITH_VBOX, add explicit --without-vbox
+      * add --with-apparmor to DEB_CONFIGURE_EXTRA_FLAGS
+      * set DEB_DH_INSTALLINIT_ARGS to '--upstart-only'
+      * remove unneeded clean:: section (they only deal with sysvinit stuff)
+      * comment out binary-install/libvirt-bin:: part dealing with sysvinit
+      * dont ship libvirt-guests init script for now.
+      * add build/libvirt-bin:: section to install
+        - apparmor files
+        - apport hooks
+        - libvirt-migrate-qemu-disks
+  * debian/patches/series:
+    - don't apply Debian-specific Debianize-libvirt-guests.patch (sysvinit only)
+    - don't apply Disable qemu-disable-network.diff.patch
+  * debian/patches(/ubuntu):
+    - Disable-gnulib-s-test-nonplocking-pipe.sh.patch is in sid's debian/patches
+    - drop patches:
+      * 9000-delayed_iff_up_bridge.patch
+      * 9011-move-ebtables-script.patch
+      * apparmor-allow-tunnelled-migration.patch
+      * apparmor-allow-tunnelled-migration-2.patch
+      * fix-qemu-1.0.patch
+      * conf-dont-drop-console-def-ondomain-restart.patch
+    - keep (and refreshed) patches:
+      * 9002-better_default_uri_virsh.patch
+      * 9003-better-default-arch.patch
+      * 9004-libvirtd-group-name.patch
+      * 9005-increase-unix-socket-timeout.patch
+      * 9006-default-config-test-case.patch
+      * 9020-lp545795.patch
+      * 9021-fix-uint64_t.patch
+      * libnl3.patch
+      * arm-gcc-workaround.patch
+  * disable numa - until the MIR for numa is done
+    - debian/control: remove from dependencies
+    - debian/rules: turn it off
+  * Fix default network autostart symlink disappearing on upgrade (LP: #901298)
+    - debian/libvirt-bin.preinst: note if the symlink exists
+    - debian/libvirt-bin.postinst: if symlink existed, OR if we are upgrading
+      from one of the broken versions, then recreate the symlink.  (Continue
+      to create the symlink on new installs.)
+   * enable use of libvirt with kvm-spice (LP: #903962):
+    . src/qemu/qemu_capabilities.c: search for 'kvm-spice' before
+      'kvm' (debian/patches/ubuntu/enable-kvm-spice.patch)
+    . debian/apparmor/libvirt-qemu:
+      * prepend 'owner' to /run/shm/spice.* rule
+      * add more needed spice perms 
