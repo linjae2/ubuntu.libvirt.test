@@ -1,0 +1,3 @@
+  * put libvirt-bin dnsmasq file into /etc/dnsmasq.d-available, and
+    create a symlink in /etc/dnsmasq.d, to avoid problems when removing
+    and re-installing libvirt-bin.  (LP: #1113821)
