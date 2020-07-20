@@ -1,0 +1,6 @@
+  [ Jamie Strandboge ]
+  * debian/apparmor/usr.lib.virt-aa-helper: add read access to new 'loader'
+    for eucalyptus (LP: #637544)
+  [ Soren Hansen ]
+  * Add 9025-Add-nwfilter-support-to-UML-driver.patch. Adds missing
+    nwfilter support to UML.
