@@ -1,0 +1,7 @@
+  * debian/apparmor/usr.sbin.libvirtd:
+    - allow access to /etc/libvirt/hooks/** (LP: #891472)
+    - #include <local/usr.sbin.libvirtd> for site-local customizations
+  * debian/control: Suggest cgroup-lite | cgroup-bin (LP: #544146)
+  * debian/patches/ubuntu/apparmor-allow-tunnelled-migration-2.patch:
+    Warn but don't error out when we can't find a pathname for a file.
+    This is needed to support tunnelled migration.  (LP: #869553)
