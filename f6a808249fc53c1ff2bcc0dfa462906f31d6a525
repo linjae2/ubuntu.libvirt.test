@@ -1,0 +1,3 @@
+  * [e559e92] libvirt-bin.init: Fix typo in path when checking for systemd
+  * [fef0f8f] New upstream version 1.2.1~rc2
+  * [caf3c45] Rediff patches
