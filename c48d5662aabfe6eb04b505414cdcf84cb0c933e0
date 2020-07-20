@@ -1,0 +1,2 @@
+  * move cgroup-lite | cgroup-bin to depends, now that cgroup-lite is in
+    main.
