@@ -1,0 +1,6 @@
+  * Run test suite at build time.
+  * Add libxml2-utils dependency. Needed by the test suite.
+  * Remove "Connecting to uri: " notice from virsh. It breaks the test
+    suite, the information is readily available with the "uri" command
+    inside virsh, and it's a usability delta with upstream, so
+    constantly causes confusion.
