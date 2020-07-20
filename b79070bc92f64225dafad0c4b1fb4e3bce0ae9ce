@@ -1,0 +1,61 @@
+  [ Chris J Arges ]
+  * Merge from Debian unstable.  Remaining changes:
+    - debian/apparmor/{libvirt-lxc,libvirt-qemu,local-usr.sbin.libvirtd,
+      TEMPLATE.lxc,TEMPLATE.qemu,usr.lib.libvirt.virt-aa-helper,
+      usr.sbin.libvirtd} Add apparmor profiles.
+    - debian/bug-presubj: removed
+    - debian/control:
+      - add cdbs, dh-autoreconf, libcurl4-gnutls-dev
+      - add libxml-libxml-perl, libhal-dev
+      - swap open-iscsi to open-iscsi-utils
+      - Enable numa support on ppc64 and ppc64el.
+      - remove libsanlock-dev, libselinux1-dev, libsystemd-daemon-dev
+      - remove systemtap-sdt-dev, python, sheepdog, librados-dev, libfuse-dev
+      - remove libssh2-1, augeas-tools
+      - add libcgmanager-dev, xsltproc
+      - remove Vcs-Git
+      - adjust X-Python-Version > 2.7
+      - don't build libvirt-clients, libvirt-daemon, libvirt-sanlock packages
+    * keep debian/{libvirt-bin.apport,libvirt-bin.cron.daily}
+    * debian/libvirt-daemon.* has been mostly renamed to debian/libvirt-bin.*
+    * add upstart script for libvirt-bin
+    * debian/*.links files not added
+    * debian/libvirt-sanlock* not merged
+    * debian/libvirt-clients* not merged
+    * debian smoke tests not merged
+    * keep debian/{libvirt-migrate-qemu-disks.*,
+      libvirt-migrate-qemu-machinetype.*,
+      libvirt-migrate-xend-managed-domains.*}
+    * keep debian/libvirt-suspendonreboot
+    * keep debian/libvirt-uri.sh
+    * Don't apply the following patches:
+      - d/p/Debianize-libvirt-guests.patch
+      - d/p/Debianize-systemd-service-files.patch
+      - d/p/debian/Debianize-virtlockd.patch
+      - d/p/fix-Debian-specific-path-to-hvm-loader.patch
+      - d/p/Disable-gnulib-s-test-nonplocking-pipe.sh.patch
+      - d/p/patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
+    * debian/polkit/* not added
+    * debian/README.Debian:
+      - add 'Apparmor Profile' section
+      - add 'Disk migration' section
+    * debian/rules:
+      - add cdbs and autoconf stuff
+      - don't build WITH_SANLOCK, WITH_INIT_SCRIPT, WITH_SYSTEMD, WITH_FIREWALLD
+        WITH_SELINUX
+      - use qemu-group kvm instead of libvirt-qemu
+      - set DEB_DH_INSTALLINIT_ARGS to '--upstart-only'
+      - remove auto_test section
+      - add build/libvirt-bin:: section to install
+        - apparmor files
+        - apport hooks
+        - libvirt-migrate-qemu-disks
+      - use clean:: instead of dh_*clean
+  [ Chuck Short ]
+    + Rediffed:                                                                 
+     - debian/patches/storage-default-permission-mode-to-0711
+     - debian/patches/ubuntu_machine_type.patch
+  * debian/libvirt-bin.init: Adjust avahi to avahi-daemon (LP: #1453572)
+  [ Serge Hallyn ]
+  * 9040-virt-aa-helper-add-unix-channels.patch: add support for unix
+    sockets for serials.  (LP: #1015154)
