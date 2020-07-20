@@ -1,0 +1,3 @@
+  * [6db6929] Catch dnsmasq start failures
+  * [0254bfb] Add empty log directories to make logrotate happy
+    (Closes: #635239)
