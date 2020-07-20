@@ -1,0 +1,4 @@
+  * [e6c5184] New patch Don-t-pass-empty-arguments-to-dnsmasq.patch: Don't
+    pass empty arguments to dnsmasq
+    Thanks to Simon McVittie for the detailed description (Closes: #613944)
+  * [8887de6] Add gbp.conf
