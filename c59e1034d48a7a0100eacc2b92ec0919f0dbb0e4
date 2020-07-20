@@ -1,0 +1,4 @@
+  * d/apparmor/usr.lib.libvirt.virt-aa-helper: Allow access to base
+    images and snapshots stored in nova-hypervisor snap's $SNAP_COMMON
+    directory, enabling use of the libvirt deb from the nova-hypervisor
+    snap (LP: #1644507).
