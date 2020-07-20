@@ -1,0 +1,15 @@
+  * [320f8b6] New upstream version 0.9.3 (Closes: #633840)
+  * [fff5144] Update symbols
+  * [787d91c] Depend on dnsmasq-base, netcat-openbsd and openssh-client for
+    "make check"
+  * [1fa64b0] Remove article from libvirt-bin description to make lintian
+    happy.
+  * [3689fc5] Drop patches applied upstream:
+    - Skip-nodeinfo-test-on-non-intel-architectures.patch
+    - Split-out-dlopen-detection.patch
+    - nodeinfo-remove-superfluous-braces.patch
+  * [31b17c8] Drop Update-generated-autoconf-files.patch. No need to
+    regenerate autoconf for 0.9.3
+  * [65871eb] Adjust nc autodetect patch to new socket code
+  * [7b0c6df] Disable failing virnetsockettest until investigated further
+  * [248bc3f] Rediff remaining patches
