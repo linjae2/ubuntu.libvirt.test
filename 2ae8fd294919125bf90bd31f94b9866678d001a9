@@ -1,0 +1,29 @@
+  [ Guido Günther ]
+  * [116cb98] New upstream version 3.5.0
+  * [22f685c] Explicitly enable directory based storage backend.  We do so for
+    the other storage backends as well.
+  * [1619c0f] Ship storage backends
+  * [b0f6946] New upstream version 3.5.0-rc2
+  * [e0507a8] New upstream version 3.1.0
+  * [603e376] New upstream version 3.1.0-rc2
+  * [172bcdf,21aa1f3,0d45d3b] Bump symbol versions
+  * [9c4dfe3] Dropped Disable-use-of-namespaces-by-default.patch: not needed,
+    namespaces are now enabled
+  * [7cb82a1] Add pt debconf translation.
+    Thanks to Rui Branco (Closes: #858742)
+  * [fcd509f] Remove defaults file on clean
+  * [6b9ffbb] Build depend on libparted-dev to ease cross building
+    Thanks to Helmut Grohne (Closes: #864671)
+  * [849c8e2] Rediff patches.
+    Dropped patches for things fixed upstream:
+     CVE-2017-2635-qemu-Don-t-update-physical-storage-size-of-.patch
+     apparmor-allow-usr-lib-qemu-qemu-bridge-helper.patchupstream
+     virt-aa-helper-apparmor-allow-usr-share-OVMF-too.patch
+     Allow-access-to-libnl-3-config-files.patch
+     Dropped qemu-skip-QMP-probing-of-CPU-definitions-when-missing.patch
+  * [a0cd0f0] Update key for upstream tarball verification
+  [ Christian Ehrhardt ]
+  * [8fa2c4f] Ship libvirt-admin.conf
+  * [dd2991f] Ship default file for virtlockd
+  * [aef2f3c] Ship libvirt-admin.conf (Closes: #863649)
+  * [c3b6ff2] Ship default file for virtlockd (Closes: #863648)
