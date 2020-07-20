@@ -1,0 +1,4 @@
+  * Fix the preinst and postinst: the check for whether libvirt-bin was
+    running was wrong for upstart systems, but we don't need to do that
+    anyway - just stop libvirt-bin unconditionally.  (LP: #1499199)
+  * libvirt-guests.service: fix libvirtd.service -> libvirt-bin.service
