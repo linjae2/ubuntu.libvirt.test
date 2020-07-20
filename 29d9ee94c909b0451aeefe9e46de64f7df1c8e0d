@@ -1,0 +1,3 @@
+  * debian/apparmor/libvirt-qemu: add /sys read accesses needed by newer
+    qemu: /sys/devices/system/node/, /sys/devices/system/cpu/ and
+    /sys/devices/system/node/node[0-9]*/meminfo
