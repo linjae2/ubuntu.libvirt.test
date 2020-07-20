@@ -1,0 +1,3 @@
+  * Non-maintainer upload.
+  * Build-depend on libglusterfs-dev for required libgfapi headers
+    (Closes: #933020)
