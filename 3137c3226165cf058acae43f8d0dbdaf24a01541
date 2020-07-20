@@ -1,0 +1,10 @@
+  * SECURITY UPDATE: LXC driver unsafe path use under /proc/$PID/root
+    - debian/patches/CVE-2013-6456.patch: refactor code in
+      src/lxc/lxc_driver.c, src/util/virinitctl.c, src/util/virinitctl.h,
+      added some new helpers to src/util/{virprocess.*,virfile.*,
+      virstoragefile.c}, src/libvirt_private.syms, src/conf/domain_conf.c.
+    - CVE-2013-6456
+  * SECURITY UPDATE: denial of service via SPICE migration
+    - debian/patches/CVE-2013-7336.patch: enter monitor asynchronously in
+      src/qemu/qemu_migration.c.
+    - CVE-2013-7336
