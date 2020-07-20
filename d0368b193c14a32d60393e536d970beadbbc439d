@@ -1,0 +1,2 @@
+  * d/apparmor/libvirt-qemu: add permission to the systemd-mounted hugepages
+    path.  (LP: #1524737)
