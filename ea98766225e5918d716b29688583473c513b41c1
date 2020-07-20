@@ -1,0 +1,13 @@
+  * SECURITY UPDATE: possible privilege escalation via pkcheck race.
+    - debian/patches/CVE-2013-4311.patch: add uid to pkcheck call in
+      configure.ac, daemon/remote.c, src/access/viraccessdriverpolkit.c,
+      src/rpc/virnetserverclient.c, src/util/viridentity.*.
+    - debian/rules: use DEB_AUTO_UPDATE_AUTOCONF and
+      DEB_AUTO_UPDATE_AUTOHEADER.
+    - debian/control: specify version of policykit-1 security update, add
+      libpolkit-gobject-1-dev to Build-Depends.
+    - CVE-2013-4311
+  * SECURITY UPDATE: denial of service in remoteDispatchDomainMemoryStats
+    - debian/patches/CVE-2013-4296.patch: properly initialize stats in
+      daemon/remote.c.
+    - CVE-2013-4296
