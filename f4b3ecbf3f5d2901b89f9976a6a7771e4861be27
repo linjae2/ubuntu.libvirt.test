@@ -1,0 +1,4 @@
+  * [7b0894e] Debianize virtlockd unit file
+  * [2c522fd] Tag Debian specific patches as such
+  * [e1e734b] CVE-2014-3633: qemu: blkiotune: Use correct definition when
+    looking up disk. Thanks to Peter Krempa (Closes: #762203)
