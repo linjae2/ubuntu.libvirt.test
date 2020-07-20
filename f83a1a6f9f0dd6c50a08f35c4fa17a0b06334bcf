@@ -1,0 +1,3 @@
+  * ddebian/patches/ubuntu/ovmf_paths.patch: adjust paths to secboot.fd UEFI
+    Secure Boot enabled variants of the OVMF firmware and variable store for
+    the paths where we ship these files in Ubuntu.
