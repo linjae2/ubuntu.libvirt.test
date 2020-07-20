@@ -1,0 +1,4 @@
+  * CVE-2018-5748: qemu: avoid denial of service reading from QEMU monitor
+    (Closes: #887700)
+  * qemu: shared disks with cache=directsync should be safe for migration.
+    Thanks to Carsten Burkhardt (Closes: #883208)
