@@ -1,0 +1,8 @@
+  * d/p/ubuntu-libxl-qemu-path.patch: Set correct path for qemu binary
+    for new configs and convert old configs using qemu-dm.
+    (LP: #1459600)
+  * d/p/ubuntu-libxl-hvmloader-path.patch: Get Xen version from dpkg-query
+    at compile time and set LIBXL_FIRMWARE_DIR as long as libxen-dev does
+    not provide a xenlight.pc file. Use that directory to update existing
+    configs.
+    (LP: #1459603)
