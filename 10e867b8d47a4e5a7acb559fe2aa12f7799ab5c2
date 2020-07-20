@@ -1,0 +1,2 @@
+  * [48f7eb0] libvirt-guests: use wants instead of requires to prevent
+    libvirtd restarts affecting libvirt-guests
