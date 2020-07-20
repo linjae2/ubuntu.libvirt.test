@@ -1,0 +1,8 @@
+  * Fix bad SRU backport to match apparmor structure of libvirt
+    in Xenial (LP: #1680384)
+    - drop d/p/ubuntu/apparmor-shutdown.patch as the libvirt code here doesn't
+      trigger it.
+    - drop d/p/ubuntu/apparmor-vfio.patch as xenial still uses profiles from
+      debian/apparmor/
+    - apply content of apparmor-vfio.patch to debian/apparmor/libvirt-qemu
+      to fix the actual issue.
