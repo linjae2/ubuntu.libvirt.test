@@ -1,0 +1,5 @@
+  [ Stefan Bader ]
+  * Add alias for libvirtd.service into  libvirt-bin.service
+  [ Serge Hallyn ]
+  * d/p/u/libvirt-bin-service-set-notifyaccess.patch: Set NotifyAccess=all in
+    libvirt-bin systemd service file. (LP: #1574566)
