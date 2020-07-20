@@ -1,0 +1,4 @@
+  * [4087b7d] disable lxc on ia64 to work around FTBFS until we have
+              access to a test machine
+  * [df5f5a0] pull some kvm/qemu related patches from upstream 
+              (Closes: #529324)
