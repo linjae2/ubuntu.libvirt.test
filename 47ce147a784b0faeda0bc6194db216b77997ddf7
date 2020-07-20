@@ -1,0 +1,3 @@
+  * [9da83d8] CVE-2016-5008: qemu: Let empty default VNC password work as
+    documented.
+  * [27d6b02] Adjust gbp.conf for jessie-security
