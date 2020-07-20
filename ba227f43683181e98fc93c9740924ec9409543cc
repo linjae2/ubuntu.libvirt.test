@@ -1,0 +1,5 @@
+  [ Guido Günther ]
+  * [7e378ce] Make sure the cgroup update notice is also shown in backports
+  * [bd11c4c] Unbreak compilation of qemuhelptest
+  [ Hilko Bengen ]
+  * [fffb132] Add patch to improve qemu v2.6+ compatibility (Closes: #841291)
