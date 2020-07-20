@@ -1,0 +1,5 @@
+  * [1546b8c] New upstream version 0.9.1
+  * [2418ebf] Rediff patches
+  * [d4e2b71] Drop Make-sure-DNSMASQ_STATE_DIR-exists.patch: applied upstream
+  * [0fef693] libvirt0: Update symbols
+  * [b4ff149] Bump standards version to 3.9.2
