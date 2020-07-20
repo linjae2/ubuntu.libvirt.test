@@ -1,0 +1,35 @@
+  [ Christian Ehrhardt ]
+  * Backport of 23 bug fixes from recent upstream to stabilize libvirt on 18.04
+    - d/p/stable/0001-Revert-qemu-monitor-do-not-report-error-on-shutdown.patch
+    - d/p/stable/0002-nodedev-Fix-failing-to-parse-PCI-address-for-non-PCI.patch
+    - d/p/stable/0003-qemu-assign-correct-type-of-PCI-address-for-vhost-sc.patch
+    - d/p/stable/0004-qemu-Refresh-caps-cache-after-booting-a-different-ke.patch
+    - d/p/stable/0005-qemu-auto-add-generic-xhci-rather-than-NEC-xhci-to-Q.patch
+    - d/p/stable/0006-libvirtd-Explicit-dependency-on-systemd-machined.patch
+    - d/p/stable/0007-rpc-fix-race-sending-and-encoding-sasl-data.patch
+    - d/p/stable/0008-vhost-user-add-support-reconnect-for-vhost-user-port.patch
+    - d/p/stable/0009-qemu-Fix-memory-leak-in-processGuestPanicEvent.patch
+    - d/p/stable/0010-storage-util-Properly-ignore-errors-when-backing-vol.patch
+    - d/p/stable/0011-conf-Use-correct-attribute-name-in-error-message.patch
+    - d/p/stable/0012-util-json-Add-helper-to-return-string-or-number-prop.patch
+    - d/p/stable/0013-util-storage-Parse-lun-for-iSCSI-protocol-from-JSON-.patch
+    - d/p/stable/0014-virsh-Offer-only-persistent-domains-for-autostart.patch
+    - d/p/stable/0015-blockjob-Fix-a-error-checking-of-blockjob-status-in-.patch
+    - d/p/stable/0016-qemu-Expose-rx-tx_queue_size-in-qemu.conf-too.patch
+    - d/p/stable/0017-qemu-migration-Refresh-device-information-after-tran.patch
+    - d/p/stable/0018-qemuDomainRemoveMemoryDevice-unlink-memory-backing-f.patch
+    - d/p/stable/0019-vbox-fix-SEGV-during-dumpxml-of-a-serial-port.patch
+    - d/p/stable/0020-qemu-Initialize-priv-in-qemuDomainCoreDumpWithFormat.patch
+    - d/p/stable/0021-fix-regex-to-check-CN-from-server-certificate.patch
+    - d/p/stable/0022-storage-Fix-formatting-and-parsing-of-qemu-type-Unix.patch
+    - d/p/stable/0023-util-storage-Remove-detected-authentication-data-for.patch
+  * d/rules: enable build time self tests on all architectures
+  [ Marc Deslauriers ]
+  * SECURITY UPDATE: code injection via libnss_dns.so
+    - debian/patches/CVE-2018-6764-1.patch: determine the hostname on
+      startup in src/util/virlog.c.
+    - debian/patches/CVE-2018-6764-2.patch: fix syntax-check in
+      src/util/virlog.c.
+    - debian/patches/CVE-2018-6764-3.patch: fix deadlock obtaining hostname
+      in cfg.mk, src/util/virlog.c.
+    - CVE-2018-6764
