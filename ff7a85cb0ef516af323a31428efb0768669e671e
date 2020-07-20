@@ -1,0 +1,3 @@
+  * debian/apparmor/usr.sbin.libvirtd: allow libvirtd to run
+    libxl-save-helper (required for save restore through libxl).
+    (LP: #1334195)
