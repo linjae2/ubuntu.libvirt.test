@@ -1,0 +1,3 @@
+  * 9026-Rebuild-network-filter-for-UML-guests-on-updates.patch.
+    NWFilter updates are supposed to be immediate. Add this support to
+    the UML driver.
