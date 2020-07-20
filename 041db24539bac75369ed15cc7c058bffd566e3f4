@@ -1,0 +1,5 @@
+  * [8fe8522] Build-Depend on libnuma-dev for ppc64 as well.  Thanks to Andrea
+    Bolognani
+  * [17113e4] gbp.conf: Use upstream/latest as upstream branch name as
+    suggested by DEP14
+  * [3364f65] New upstream version 2.0.0 (fixes CVE-2016-5008)
