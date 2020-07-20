@@ -1,0 +1,2 @@
+  * add qemu-relax-hard-rss-limit.rss to avoid OOM kills (LP: #1102290)
+  * debian/rules: replace --without-vbox with --with-vbox (LP: #1103721)
