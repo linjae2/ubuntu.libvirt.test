@@ -1,0 +1,2 @@
+  [ Felix Geyer ] 
+  * d/p/ubuntu_machine_type.patch: Fix No PCI buses available. (LP: #1379346).
