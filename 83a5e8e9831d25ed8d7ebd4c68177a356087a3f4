@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: Update for nova.
+    (LP: #907269) 
