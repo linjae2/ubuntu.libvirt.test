@@ -1,0 +1,3 @@
+  * ubuntu/fix-bridge-fd.patch: cherrypick commit
+    2d5046d31f4f5c961fc4aa6b415a00bb9eadae2b from upstream to write the
+    bridge delay to the right file.  (LP: #924446)
