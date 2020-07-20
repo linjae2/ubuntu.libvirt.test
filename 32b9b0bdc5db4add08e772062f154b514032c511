@@ -1,0 +1,2 @@
+  * d/p/ubuntu-aa/lp-1788603-fix-ptrace-rules-with-kernel-4.18.patch:
+    avoid issues with newer kernels >=4.18 (LP: #1788603)
