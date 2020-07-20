@@ -1,0 +1,5 @@
+  [ Guido Günther ]
+  * [cf4919c] Recommend either qemu-kvm or qemu
+  [ Laurent Léonard ]
+  * [1b12f02] Change libparted1.8-dev build dependency to libparted0- dev.
+    (Closes: #574906)
