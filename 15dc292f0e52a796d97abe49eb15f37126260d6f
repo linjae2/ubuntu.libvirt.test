@@ -1,0 +1,36 @@
+  * Merge with Debian experimental. Remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge
+      before at least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the
+      user has write access to the libvirt socket, otherwise
+      qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+    - Included (but did not enable) opennebula patch (since it's not in
+      main yet).
+  * [30be86d] Imported Upstream version 0.6.0
+  * [179781c] drop patches
+          * fixed upstream:
+                0006-Fix-missing-read-only-access-checks-CVE-2008-5086.patch
+          * applied upstream:
+                0004-Open-qemu-monitor-log-O_APPEND-instead-of-O_TRUNC.patch
+                0005-qemu-fix-parallel-serial-mode-tcp-and-unix.patch
+                0007-don-t-fail-on-missing-locales.patch
+  * [d80a176] adjust remaining patches to new upstream version
+  * [208c924] add minimal workaround for qemu startup race
+  * [6e8caa0] restart libvirt daemon on upgrades if possible 
+    (Closes: #492694, #499008)
+  * [d4a69d1] don't fail on missing locales (Closes: #512721)
+  * [cecac4c] don't hardcode ssh port - based on a patch by Adrian
+    Bridgett. (Closes: #513605)
+  * [4565a65] drop superflous headers and footers from remaining patches
