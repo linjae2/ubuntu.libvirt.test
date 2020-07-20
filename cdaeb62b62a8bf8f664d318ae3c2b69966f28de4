@@ -1,0 +1,3 @@
+  * Upload to unstable
+    Closes: #878153
+  * [646a20f] apparmor: add dnsmasq ptrace rule to libvirtd profile
