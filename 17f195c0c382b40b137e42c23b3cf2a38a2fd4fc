@@ -1,0 +1,6 @@
+  * d/p/ubuntu-aa/0025-apparmor-fix-newer-virt-manager-1.4.0.patch: refreshed
+    as libvirt 4.0 needs a reversed rule for openGraphicsFD (LP: #1747442)
+    - refreshed 0032 and 0040 to match the new context.
+  * d/p/ubuntu/virt-aa-helper-Set-the-supported-features.patch: allow parsing
+    of memory slots and other extended features without breaking
+    virt-aa-helper (LP: #1746431).
