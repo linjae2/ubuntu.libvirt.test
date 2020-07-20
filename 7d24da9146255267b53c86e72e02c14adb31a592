@@ -1,0 +1,7 @@
+  * [297be03] Reload virtlogd on updates (Closes: #833745)
+  * [ee7cd36] Enable zfs pool support (Closes: #827245)
+  * [52ce8c2] Demote pm-utils to suggests.  We still need to port over the
+    code to allow one to use systemd for the same functionality.
+    (Closes: #748205)
+  * [746e1cc] qemu: Fix the command line generation for rbd auth using aes
+    secrets (Closes: #827164)
