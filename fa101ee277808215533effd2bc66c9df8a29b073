@@ -1,0 +1,8 @@
+  * SECURITY UPDATE: resource exhaustion resulting in DoS
+    - debian/patches/CVE-2018-5748.patch: avoid DoS reading from
+      QEMU monitor in src/qemu/qemu_monitor.c.
+    - CVE-2018-5748
+  * SECURITY UPDATE: Bypass authentication
+    - debian/patches/CVE-2016-5008.patch: let empty default VNC
+      password work as documented in src/qemu/qemu_hotplug.c.
+    - CVE-2016-5008
