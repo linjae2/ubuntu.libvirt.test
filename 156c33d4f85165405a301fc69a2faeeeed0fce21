@@ -1,0 +1,4 @@
+  * Fix nwfilters that set CTRL_IP_LEARNING set to dhcp failing with "An error
+    occurred, but the cause is unknown" due to a buffer being too small
+    for pcap with TPACKET_V3 enabled (LP: #1758037)
+    - debian/patches/ubuntu/lp-1758037-nwfilter-increase-pcap-buffer-size.patch
