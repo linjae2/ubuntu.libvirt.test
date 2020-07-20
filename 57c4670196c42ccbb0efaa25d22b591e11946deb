@@ -1,0 +1,4 @@
+  * Upload to unstable
+  * [22e83d7] New upstream version 1.2.1.
+    Fixes CVE-2014-0028, CVE-2014-1447, CVE-2013-6457
+    (Closes: #735676)
