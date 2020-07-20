@@ -1,0 +1,6 @@
+  * debian/patches/9024-free-memory-for-invalid-devices.patch: updated
+    to match upstream patch which includes a fix for an entry path
+    not found originally, LP: #571093
+  * debian/patches/9025-avoid-NULL-dereference-upon-disk-op-fail.patch:
+    backport upstream patch to avoid failures when attempting to attach
+    a disk or image twice.  LP: #455832
