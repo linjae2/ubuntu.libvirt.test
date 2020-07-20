@@ -1,0 +1,3 @@
+  * debian/patches/9903-lp668042.patch:  When libvirtd is restarted, do not 
+    remove network interface details from active domains. Patched based on
+    upstream git commit.  (LP: #668042)
