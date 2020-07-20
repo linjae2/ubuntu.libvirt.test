@@ -1,0 +1,9 @@
+  [ dann frazier ]
+  * d/p/u/qemu-Add-virQEMUCapsSupportsGICVersion.patch,
+    d/p/u/qemu-Automatically-choose-usable-GIC-version.patch: If no GIC
+    was specified for an ARM virt guest, choose a GIC version supported
+    by the host. (LP: #1566564)
+  [ Serge Hallyn ]
+  * libvirt-bin.preinst: on upgrades from prior to 1.3.3-2, also remove the
+    service file for the Alias - /etc/systemd/system/libvirtd.service.
+    (LP: #1579922)
