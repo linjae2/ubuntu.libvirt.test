@@ -1,0 +1,4 @@
+  * [4db5aa3] Remove unneeded systemd targets.
+    While it's nice to have them upstream for backward compat we can drop
+    them in Debian already.
+  * [b4a9eaf] New upstream version 1.1.2~rc2 (Closes: #721325)
