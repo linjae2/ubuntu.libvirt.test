@@ -1,0 +1,8 @@
+  * Team upload.
+  [ Christian Ehrhardt ]
+  * Move qemu, lxc, uml, vbox and xen connection drivers into separate
+    packages. This reduces the dependencies pulled into default installations.
+    (Closes: #901940)
+  * d/copyright: Update
+  [ Guido Günther ]
+  * [362bec6] autopkgtest: Adjust to new path
