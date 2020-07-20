@@ -1,0 +1,13 @@
+  * ubuntu-xen-fix-api-deadlocks.patch (LP: #1191782)
+    Fix the deadlocks in the xen driver when doing a dumpxml for active
+    domains.
+  * ubuntu-libxl-qemu-nopath.patch
+    Create libxl configurations without paths for qemu-dm and hvmloader.
+    The Xen toolstack can figure this out.
+  * ubuntu-xen-hypervisor-4.3.patch
+    Update the xen driver to handle the new sysctl and domctl versions
+    in Xen-4.3.
+  * Add apparmor definitions to execute scripts in /etc/xen/scrips as
+    the libxl driver calls out to them (with the xen/xm driver this was
+    done by the xen toolstack and communication with that was through
+    a socket).
