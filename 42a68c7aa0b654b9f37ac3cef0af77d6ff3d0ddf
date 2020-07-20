@@ -1,0 +1,5 @@
+  * apparmor libvirt-qemu template: allow reading charm-specific ceph config
+    and allow reading under /tmp and /var/tmp (for SRU only)  (LP: #1403648)
+  * numa-cgroups-fix-cpuset-mems-init.patch - cherrypicked, refreshed patch
+    (by Richard Laager) to fix failure to start on numa node 1 (LP: #1404388)
+  * libvirt-qemu: add r to sgabios.bin (LP: #1393548)
