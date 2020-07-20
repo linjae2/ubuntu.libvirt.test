@@ -1,0 +1,20 @@
+  * fix conffile upgrade handling to avoid obsolete files
+    and inactive duplicates (LP: #1694159)
+    - d/libvirt-daemon-system.maintscript: revert to Debian content
+    - d/libvirt-bin.maintscript: add missing rm_conffile related to
+      dropping upstart.
+    - d/libvirt-bin.maintscript: add missing rm of conffiles due
+      to re-aligning with debian package names since yakkety.
+    - d/libvirt-bin.maintscript: for LTS->LTS upgraders try to move and retain
+      custom changes.
+    - d/libvirt-bin.maintscript: for upgraders from yakkety or later remove
+      the (now duplicate) conffiles, but retain custom changes in backups if
+      they exist
+    - d/libvirt-bin.preinst: drop manual mv of conffiles which lacked
+      retaining changes and upgrade-abort handling.
+    - d/libvirt-bin.preinst: handle upgrades up to the latest predecessor
+      possible before yakkety.
+    - d/libvirt-bin.preinst: fixup the combination of rm+mv conffile in case
+      the package is upgrading from pre yakkety.
+    - d/libvirt-daemon-system.postinst: clean up old dnsmasq enablement symlink
+      if unmodified.
