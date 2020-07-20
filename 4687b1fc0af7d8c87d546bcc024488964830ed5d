@@ -1,0 +1,12 @@
+  [ Christian Ehrhardt ]
+  * avoid migration postcopy issues by ensuring valid commands (LP: #1620906)
+    - d/p/ubuntu/check-live-for-postcopy.patch Check for --live flag for
+      postcopy-after-precopy migration.
+    - d/p/ubuntu/make-postcopy-mandatory-for-postcopy-after-precopy.patch to
+  [ Stefan Bader ]
+  * Fix Xenial to Yakkety migration from libvirt-bin.service to
+    libvirtd.service (LP: #1627969).
+  * Update Vcs-Git and Vcs-Browser fields to point to launchpad
+    (LP: #1629210)
+  [ Dann Frazier ]
+  * Fix FTBS in Yakkety due to missing python dependency (LP: #1629041)
