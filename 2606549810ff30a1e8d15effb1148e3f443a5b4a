@@ -1,0 +1,18 @@
+  * SECURITY UPDATE: possible privilege escalation via pkcheck race.
+    - debian/patches/CVE-2013-4311.patch: add uid to pkcheck call in
+      configure.ac, daemon/remote.c, src/locking/lock_daemon.c,
+      src/rpc/virnetserverclient.*, src/rpc/virnetsocket.*,
+      src/util/virprocess.*, src/util/virstring.*.
+    - debian/rules: use DEB_AUTO_UPDATE_AUTOCONF and
+      DEB_AUTO_UPDATE_AUTOHEADER.
+    - debian/control: specify version of policykit-1 security update, add
+      libpolkit-gobject-1-dev to Build-Depends.
+    - CVE-2013-4311
+  * SECURITY UPDATE: denial of service in remoteDispatchDomainMemoryStats
+    - debian/patches/CVE-2013-4296.patch: properly initialize stats in
+      daemon/remote.c.
+    - CVE-2013-4296
+  * SECURITY UPDATE: denial of service via bitmap string out of bounds
+    - debian/patches/CVE-2013-5651.patch: replace virBitmapIsSet usage in
+      src/util/virbitmap.c, properly handle errors in 
+    - CVE-2013-5651
