@@ -1,0 +1,3 @@
+  * Team upload.
+  * [4dcbe93] Revert "Disable libvirtd socket activation" (Closes: #935883)
+  * [b464de1] Add libvirtd sockets handling
