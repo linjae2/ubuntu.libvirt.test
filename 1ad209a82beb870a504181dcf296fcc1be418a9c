@@ -1,0 +1,2 @@
+  * Upload to unstable
+  * [64b60db] qemu: support virt-2.6 machine type on arm (Closes: #820952)
