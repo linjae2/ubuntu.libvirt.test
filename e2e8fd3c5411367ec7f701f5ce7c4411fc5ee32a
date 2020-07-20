@@ -1,0 +1,11 @@
+  [ Guido Günther ]
+  * [a225d2b] New upstream version 4.0.0~rc1
+    (Closes: #881293, #846534)
+  * [2270343] Rediff patches
+  [ intrigeri ]
+  * [89b8ab4] Allow libvirt to kill unconfined domains
+  [ Christian Ehrhardt ]
+  * [b2ce106] Clear more directories on purge
+    (Closes: #884828)
+  * [0cd10ab] Avoid apt seccomp issues due to libnss-libvirt
+    (LP: #1732030)
