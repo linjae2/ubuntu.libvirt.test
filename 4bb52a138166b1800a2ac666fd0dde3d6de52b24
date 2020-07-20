@@ -1,0 +1,4 @@
+  * storage-fix-a-potential-crash-when-creating-vol-object: avoid a crash
+    on bad free() on error lvm storage. (LP: #1035320)
+  * add pm-utils as suggests to avoid log spamming with messages about
+    pm-is-supported not being found. (LP: #994476)
