@@ -1,0 +1,6 @@
+  * [8264435] New upstream version 1.2.19
+  * [0061284] Rediff patches
+  * [4dcd1f0] Drop apparmor-Adjust-path-to-domain-monitor-socket.patch applied
+    upstream
+  * [ec4de6a] Move README.Debian to libvirt-daemon
+    libvirt-bin is a transitional package.
