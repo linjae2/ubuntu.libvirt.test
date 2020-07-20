@@ -1,0 +1,8 @@
+  * [0cb2f83] Imported Upstream version 0.6.3
+        * virtual box support
+  * [06fe518] 0001-remove-RHism.diff.patch: use invoke-rc.d
+  * [ec2fd52] drop patches merged upstream:
+        * 0003-allow-libvirt-group-to-access-the-socket.patch  series
+        * 0004-fix-Debian-specific-path-to-hvm-loader.patch
+  * [6977bde] enable vbox support
+  * [93c4423] add symbols file
