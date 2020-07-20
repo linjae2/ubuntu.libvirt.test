@@ -1,0 +1,4 @@
+  * d/p/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch:
+    fix memory-leak from PCI-related structure. (LP: #1844455)
+  * d/p/lp-1864918-Fix-TLS-test-suites-with-gnutls-3.6.0.patch: fix failing TLS
+    tests due to recent-introduced SHA1 restriction in gnutls. (LP: #1864918)
