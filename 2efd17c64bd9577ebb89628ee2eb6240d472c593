@@ -1,0 +1,1 @@
+  * d/apparmor/libvirt-qemu: Update the ceph.conf allow rule (LP: #1403648)
