@@ -1,0 +1,4 @@
+  * [398a4dd] New patch Split-out-dlopen-detection.patch.  Explicitly pass
+    -ldl since the lock manager needs it.
+  * [3be22be] New patch Update-generated-autoconf-files.patch. Update
+    generated autoconf files
