@@ -1,0 +1,2 @@
+  * debian/control: Revert cgroup-lite | cgroup-bin move from suggests to
+    depends: cgroup-lite is not in main.
