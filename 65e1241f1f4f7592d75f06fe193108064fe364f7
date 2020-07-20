@@ -1,0 +1,6 @@
+  [ Christian Ehrhardt ]
+  * d/p/ubuntu/Ensure-disk-names-follow-the-disk-name-regex.patch:
+    guarantee disk spec is following the defined regex (LP: #1665410).
+  [ Bryan Quigley ]
+  * d/p/ubuntu/0007-apparmor-fix-for-new-virt-manager.patch: Add Apparmor
+    permissions so virt-manager 1.4.0 viewing works (LP: #1668681).
