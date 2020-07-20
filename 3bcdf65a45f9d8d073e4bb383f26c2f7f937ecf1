@@ -1,0 +1,6 @@
+  * debian/patches/9017-dont-disable-ipv6.patch: don't disable IPv6
+    on the bridge interface. The original intent of disabling IPv6 was
+    to prevent RAs received from client VMs from accidentally adding
+    addresses to the bridge interface. However, only accept_ra=0 is
+    necessary to fix this, without the side-effect of disabling IPv6.
+    (LP: #528934)
