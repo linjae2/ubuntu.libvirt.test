@@ -1,0 +1,1 @@
+  * Source /etc/default/libvirt-bin at the upstart 'start' section (LP: #823638)
