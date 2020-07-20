@@ -1,0 +1,2 @@
+  * debian/patches/arm-cpu-baseline.patch: Implement a stub cpuArchDriver.baseline() 
+    handler for arm.
