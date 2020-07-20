@@ -1,0 +1,2 @@
+  * [e50aac4] remote_driver: don't fail if keepalive check fails. This fixes
+    remote connections to older libvirt versions.
