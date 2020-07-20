@@ -1,0 +1,46 @@
+  * Merge with Debian experimental.
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge
+      before at least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the
+      user has write access to the libvirt socket, otherwise
+      qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+  * Included (but did not enable) opennebula patch (since it's not in
+    the archive yet).
+  * [2fd5224] apply upstream patch for CVE-2008-5086 (Closes: #509106)
+  * [d30438c] create libvirt log directory (Closes: #508129)
+  * [417a23c] qemu: fix parallel/serial mode "tcp" and "unix" 
+    (Closes: #507608)
+  * [4cd547b] create /var/run/libvirt (Closes: #507578)
+  * [fe96870] merge back master
+  * [d46313f] drop patches for issues fixed upstream
+     - 0007-also-look-for-usr-bin-kvm.patch
+     - 0008-Increase-initial-qemu-monitor-read-timeout.patch
+     - 0009-Open-qemu-monitor-log-O_APPEND-instead-of-O_TRUNC.patch
+     - 0010-raise-error-on-invalid-volume-format.patch
+  * [d76b3a1] Imported Upstream version 0.5.1 (Closes: #507677, #507547)
+  * [2e550ae] enable hal for device enumeration
+  * [0d9116a] rotate qemu monitor logs (Closes: #507553) - thanks to
+    Harald Staub
+  * [5f85e66] depend on logrotate
+  * [6e955a3] open qemu monitor O_APPEND instead of O_TRUNC for logrotate
+  * [7dbea84] drop 0004-xen-prefer-xenstoraged-driver-for-
+    listDomains.patch - applied upstream
+  * [717ef21] Imported Upstream version 0.5.0
+  * [b7a1fbd] enable OpenVZ support (Closes: #504597) - thanks to Pierre
+    Chifflier for the patch
+  * [ee3590a] drop patches, fixed upstream:
+        * 0004-support-virtio-and-scsi-disks-in-qemudDomainBlockSta.patch
+        * 0005-fix-define-vs.-defined-typos.patch
+  * [f4f601f] bump shlibs to 0.5.0
