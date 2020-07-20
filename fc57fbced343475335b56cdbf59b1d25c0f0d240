@@ -1,0 +1,5 @@
+  [ Scott Moser ]
+  * 9028-linux-3-0-no-micro.patch: support running libvirt with lxc on linux
+    3.0 (LP: #802977)
+  [ Jamie Strandboge ]
+  * debian/apparmor/usr.sbin.libvirtd: allow ipc_lock
