@@ -1,0 +1,17 @@
+  * Cleanup Ubuntu Delta prior to next libvirt merge
+    - drop obsolte patches:
+      d/p/ubuntu/cgroups-ignore-systemd-failure,
+      d/p/ubuntu/ubuntu-skip-virstoragetest,
+      d/p/ubuntu/9021-fix-uint64_t.patch,
+      ubuntu/Disable-failing-virnetsockettest.patch (was only comment),
+      d/p/ubuntu/9002-default_uri_virsh_to_system.patch,
+      d/p/ubuntu/ubuntu-xend-probe.patch
+    - clarify dep3 headers to be more useful:
+      d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch,
+      d/p/ubuntu/daemon-augeas-fix-expected.patch,
+      d/p/ubuntu/enable-kvm-spice.patch,
+      d/p/ubuntu/dnsmasq-as-priv-user,
+      d/p/ubuntu/disable-network-test.patch
+    - split patch containing unrelated changes into two patches, so parts of
+      d/p/ubuntu/storage-default-permission-mode-to-0711 moved into
+      d/p/ubuntu/storage-disable-gluster-test
