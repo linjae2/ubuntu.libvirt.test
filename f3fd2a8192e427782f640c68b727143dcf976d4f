@@ -1,0 +1,9 @@
+  * [6eb4fb6] Don't use current user, hostname and build time but parse
+    debian/changelog instead to work towards reproducibility.
+    Thanks to Ben Hutchings for pointing this out
+  * [3c9129d] Drop Disable-tests-affected-by-broken-libxml2.patch we have a
+    fixed libxml2 in unstable again.
+  * [96ec9e5] Use daemon log facility for journald (Closes: #799633)
+  * [a4989de] New upstream version 1.2.20
+  * [8109247] Bump symbol versions
+  * [c0ad561] Rediff patches.
