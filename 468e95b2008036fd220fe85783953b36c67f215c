@@ -1,0 +1,9 @@
+  * SECURITY UPDATE: denial of service via job usage issues in several APIs
+    - debian/patches/CVE-2013-6458.patch: fix races in
+      src/qemu/qemu_driver.c. Backport virReportError macro to cfg.mk,
+      src/util/virterror_internal.h.
+    - CVE-2013-6458
+  * SECURITY UPDATE: denial of service via keepalive feature
+    - debian/patches/CVE-2014-1447.patch: make sure connection isn't closed
+      in src/rpc/virnetserverclient.c.
+    - CVE-2014-1447
