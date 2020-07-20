@@ -1,0 +1,4 @@
+  * d/p/ubuntu/fix-ftbfs-for-gnutls-3-5-6.patch fix FTBFS due to changes in
+    gnutls that affected the ordering on certificate DN entries (LP: #1641615)
+  * Revert "Fix FTBFS on zesty due to issues with concurrent make check" as it
+    was not the right solution.
