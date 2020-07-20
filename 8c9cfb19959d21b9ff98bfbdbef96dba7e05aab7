@@ -1,0 +1,2 @@
+  * [7da1fd9] New patch Make-macros-work-as-rvalues.patch fixes kFreeBSD build
+  * [08c4915] Add support for kFreeBSD (Closes: #612238)
