@@ -1,0 +1,6 @@
+  * [63167cd] Enable libxl (Closes: #698093)
+  * [c7747b0] Enable rados block device support
+  * [6aa2998] Build against fuse for lxc fuse support
+  * [a2a1a74] Don't fail chmod/chdir if a file doesn't exist.  We don't use -f
+    since we want to detect other errors (ro filesystem, etc.)
+    (Closes: #726203)
