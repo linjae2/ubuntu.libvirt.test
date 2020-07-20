@@ -1,0 +1,3 @@
+  * [9eda310] Depend on lsb-base
+  * [c76b178] Make test failure fail the tests again on amd64.
+    Thanks to Christian Ehrhardt for spotting this (Closes: #844511)
