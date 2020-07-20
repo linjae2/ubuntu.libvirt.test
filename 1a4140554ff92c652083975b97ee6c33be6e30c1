@@ -1,0 +1,8 @@
+  * [5ce607c] Make python-libvirt depend on the exact same libvirt0 version
+    (Closes: #697852)
+  * [9335bdd] New upstream version 1.0.2~rc1
+  * [8af24a9] Dropped patch
+       Define-SANLK_INQ_WAIT-if-missing-in-headers.patch - fixed upstream
+  * [be521af] Update symbols
+  * [47dbf6b] New patch Don-t-fail-the-build-without-libcurl-and-esx.patch
+  * [9e52c7b] Install libvirt-lxc.so
