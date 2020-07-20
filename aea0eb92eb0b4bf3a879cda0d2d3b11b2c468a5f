@@ -1,0 +1,6 @@
+  * New upstream release:
+    + Dropped:
+     - debian/patches/virt-aa-helper-vhost.patch
+     - debian/patches/libxl-Implement-basic-video-device-selection.patch
+     - debian/patches/libxl-Fix-up-VRAM-to-minimum-requirements.patch
+    + debian/rules: Include packaging version in the log file. (LP: #1335221)
