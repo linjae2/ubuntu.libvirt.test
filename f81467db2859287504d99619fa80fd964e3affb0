@@ -1,0 +1,102 @@
+  * upload to unstable
+  * [96c6727] add /var/cache/libvirt needed by qemuDriver for temporary
+    storage
+  * [794f95c] bump standards version to 3.8.0
+  * [05184af] add README.source
+  * [facb983] README.Debian explain "default" network startup
+  * [395a510] add /var/lib/libvirt needed for the dnsmasq lease file
+  * [9c588ac] promote bridge-utils & dnsmasq to Recommends: since
+    they're needed for the default NAT network
+  * [9ed2cd4] recommend iptables - needed for the default NAT network
+  * [0ff1e68] new upstream version
+  * [2098f96] rebase patches for 0.4.4
+  * [abbd15e] enable with-storage-disk now that we have parted1.8
+  * [3942b25] start libvirtd by default
+  * reenable open-iscsi support  - thanks to to the open-iscsi
+    maintainers for fixing this up
+  * build a libvirt0-dbg package
+  * register documentation with doc-base  (Closes: #480294) - thanks to
+    Tzafrir Cohen for the patch
+  * control: fix typo
+  * README.Debian: explain debugging
+  * no need to depend on python-all-dev we only build an extension for
+    the current python version
+  * only build-dep on qemu on architectures that have it  
+    (Closes: #476290)
+  * the packages containing the daemon should suggest polkit
+  * drop the {build-,}dependency on open-iscsi too 
+  * suggest policykit
+  * disable the iscsi storage backend until #423368 is fixed in unstable
+  * disable polkit authentication by default so the libvirt stays accessible
+    for members of the libvirt group
+  * drop no-mac.diff - applied upstream
+  * no need to explicitly link against libpthread
+  * always enable debugging
+  * add Homepage URL
+  * add Vcs-{Git,Browser} fields
+  * symlink devhelp docs
+  * enable policy kit
+  * new upstream version
+       * Xen 3.2 fixes
+       * storage pool support
+  * partition based storage pools are disabled, since this needs parted 1.8
+    which is only in experimental
+  * update patches for new upstream release
+       * boot-dev-error.diff - applied upstream
+       * qemu-parse-error.diff - applied upstream
+       * qemu-path.diff - adjust to new hypervisor detection code
+       * rediff the rest
+  * new patches:
+       * no-mac.diff: don't set mac address on tun device since it breaks kvm
+  * bump shlibs version 
+  * depend on libxen-dev (Closes:#467598)
+  * allow members of the libvirt group to manage virtual machines
+  * thanks to the xen maintainers Debian now has a working libxen-dev, so
+    enable xen support in the default build (Closes: #453826)
+  * recommend netcat-openbsd for unix domain socket support (Closes: #453627)
+  * README.Debian: document necessary xend options
+  * fix spelling of Python 
+  * don't segfault on broken boot device configuration (Closes: #463686)
+  * don't segfault due to missing errorhandling in the XML parsing code
+  * add and remove the libvirt group for the socket
+  * be a bit more verbose on libvirtd reload
+  * depend on adduser since we add the libvirt user
+  * don't restart libvirtd on upgrades since it kills running qemus
+  * enable debugging via DEB_BUILD_OPTS
+  * libvirt-bin.init: fix the reload target
+  * add configuration examples
+  * new upstream version
+  * enable sasl support
+  * leave policykit support disabled since it's not in unstable yet
+  * bump shlibs version
+  * remove CVS metadata
+  * rediff patches
+  * libvirtd-bin.init: libvirtd supports reload
+  * don't include precompiled examples in the doc package (Closes: #456825)
+  * remove RHism from manpage (Closes: #455859)
+  * bump standards version
+  * rebuild with xen support
+  * make libs match overrides
+  * move to team maintenance
+  * suggest dnsmasq and bridge-utils for qemu networking
+  * remove stale PID files
+  * UNRELEASED
+  * build with xen support
+  * debian/control: we also support xen
+  * put packages into the proper sections
+  * fix messed up Standards-Version (Closes: #453900)
+  * build with xen support - depend on our hacked up xen-utils for that
+  * add initscript to start libvirtd
+  * debian/copyright:
+      * update FSF address
+      * update upstream author and copyright information
+  * install the virsh manpage
+  * use binary:Version instead of Source-Version
+  * repackage for Debian (Closes: #384300)
+  * enable avahi
+  * build with qemu/kvm support
+  * disable xen support until #402249 is fixed
+  * disable qemu autonetwork for now, causes libvirtd to seqfault
+  * fix path to kvm
+  * switch off DH_VERBOSE
+  * thanks to the Ubuntu maintainers for their work!
