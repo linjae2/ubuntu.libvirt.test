@@ -1,0 +1,9 @@
+  * [0cde44d] Remove bridge-utils from recommends.  We don't use brctl since
+    ages.  Thanks to Andreas Henriksson
+  * [3c22e06] Drop debian/remove-RHism.diff.patch.
+    Debian has /usr/bin/service since quiet some time now.
+    Thanks to Andrea Bolognani
+  * [54a5cdb] New upstream version 4.10.0
+  * [87f075c] Rediff patches
+  * [f798585] Bump symbol versions
+  * [3bfd881] Depend on sensible-utils
