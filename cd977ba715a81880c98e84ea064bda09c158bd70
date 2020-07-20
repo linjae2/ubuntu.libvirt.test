@@ -1,0 +1,11 @@
+  * Fix CVEs related to privilege escalations on R/O connections.
+    - CVE-2019-10161:
+      CVE-2019-10161-api-disallow-virDomainSaveImageGetXMLDesc-.patch
+    - CVE-2019-10167:
+      api-disallow-virConnectGetDomainCapabilities-on-read-only.patch
+  * cpu_map: Define md-clear CPUID bit.
+    CVE-2018-12126, CVE-2018-12127, CVE-2018-12130, CVE-2019-11091
+  * Add spec-ctrl and ibpb CPU features and ibrs CPU models.
+    CVE-2017-5753, CVE-2017-5715
+  * Add ssbd CPU feature.
+    CVE-2018-3639
