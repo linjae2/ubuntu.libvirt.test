@@ -1,0 +1,5 @@
+  * debian/patches/9011-node_device_driver.patch: Don't free an uninitalized
+    pointer in update_driver_name() in src/node_device/node_device_driver.c
+    (LP: #513544)
+  * debian/patches/9012-dont-crash-on-restart.patch: don't crash on restart
+    if domain(s) with PCI devices are running
