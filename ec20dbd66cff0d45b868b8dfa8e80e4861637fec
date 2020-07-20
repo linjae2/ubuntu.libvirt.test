@@ -1,0 +1,5 @@
+  * SECURITY UPDATE: fix to disallow privileged users in guests from accessing
+    privileged resources, such as NFS
+    - debian/patches/CVE-2010-2242.patch: set iptables masqerading rules to
+      use ports 1024-65535
+    - CVE-2010-2242
