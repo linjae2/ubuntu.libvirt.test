@@ -1,0 +1,3 @@
+  * Make sure cache setting is output by virDomainGetXMLDesc (and, by
+    extension, "virsh dumpxml"), even if no special driverName is set.
+    (LP: #531741)
