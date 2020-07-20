@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: add device-tree access for ppc
+    (LP: #1321365)
