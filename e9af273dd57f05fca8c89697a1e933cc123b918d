@@ -1,0 +1,2 @@
+  * d/p/ubuntu/lp-1823676-Use-the-correct-vm-def-on-cold-attach.patch:
+    fix issues attaching scsi adapters without explicit index (LP: #1823676)
