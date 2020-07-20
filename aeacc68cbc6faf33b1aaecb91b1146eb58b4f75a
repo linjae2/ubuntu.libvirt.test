@@ -1,0 +1,2 @@
+  [ Stefan Bader ]
+  * Add alias for libvirtd.service into libvirt-bin.service (LP: #1567811)
