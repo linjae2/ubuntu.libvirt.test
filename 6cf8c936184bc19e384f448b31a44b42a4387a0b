@@ -1,0 +1,19 @@
+  * New upstream release
+  * Rediffed patches:
+    - debian/patches/9030-create-socket-dir
+    - debian/patches/add-cgmanager-support.patch
+    - debian/patches/cgroups-ignore-systemd-failure
+  * Dropped patches:
+    - debian/patches/ubuntu-libxl-Implement-basic-video-device-selection.patch
+    - debian/patches/ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch
+    - debian/patches/9033-apparmor-use-TEMPLATE.qemu-for-kvm.patch
+    - debian/patches/-CVE-2014-3633.patch
+    - debian/patches/dont-include-non-migrateable-features-in-host-model
+    - debian/patches/9036-util-prepare-uri-for-libxml2-2.9.2.patch
+    - debian/patches/CVE-2014-3657.patch
+    - debian/patches/CVE-2014-7823.patch
+    - debian/patches/add-ppc64le-support.patch
+    - debian/patches/upstream-libxl-Allow-libxl-to-find-pygrub-binary.patch
+  * debian/control: Add libxml-xpath-perl and xsltproc to dependencies
+  * debian/patches/skip-vircgrouptest.patch: Skip cgroup tests.
+  * debian/patches/disable-network-test.patch: Skip network tests
