@@ -1,0 +1,18 @@
+  * Update the correct apparmor profiles to allow AAVMF and qemu-efi
+    firmware for aarch64 (1538882)
+  * Clean up / refresh various patches to finalize switch from libvirt-bin
+    to libvirtd as service name.
+    Drop: d/p/ubuntu/libvirt-bin-service-libvirtd-alias.patch
+    Refresh+Rename: d/p/ubuntu/libvirt-bin-service-set-notifyaccess.patch ->
+                    d/p/ubuntu/libvirtd-service-nolimit.patch
+    Rename: d/p/ubuntu/libvirt-bin-service-set-notifyaccess.patch ->
+            d/p/ubuntu/libvirtd-service-set-notifyaccess.patch
+    Refresh: d/p/ubuntu/libvirtd-service-add-bin-alias.patch
+    Add: d/p/ubuntu/libvirtd-init-add-bin-alias.patch
+  * Change default profile used by libvirtd.service to /etc/default/libvirtd.
+    Drop: d/p/ubuntu/switch-service-files-to-libvirt-bin.patch
+  * Drop virtlockd.service from dh_systemd_start in debian/rules as
+    the service is socket activated (LP: #1588006).
+  * Fix failure to enable libvirtd.service due to lingering libvirt-bin
+    alias. This could happen when the upgrade from a version prior 1.3.3-2
+    happened before 1.3.4-1ubuntu3 (LP: #1588004).
