@@ -1,0 +1,6 @@
+  * Upload to unstable to fix CVE-2012-2693. Bumping urgency to medium.
+    (Closes: #677496)
+  * [9515e28] Only check for cluster fs if we're using a filesystem
+    (Closes: #676328)
+  * [202939f] Reduce udevadm settle timeout to 10 seconds
+    (Closes: #663931)
