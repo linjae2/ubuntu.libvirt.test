@@ -1,0 +1,3 @@
+  * debian/patches/allows-lxc-containers-with-lxcguest.patch:
+    Pass "libvirt" to lxc containers, so that libvirt can 
+    work with lxcguest. (LP: #757752)
