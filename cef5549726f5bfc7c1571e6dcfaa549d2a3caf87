@@ -1,0 +1,2 @@
+  * libvirt-bin.postrm: only remove /etc/dnsmasq.d/libvirt-bin during
+    remove.  (LP: #1113821)
