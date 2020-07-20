@@ -1,0 +1,8 @@
+  * Fix nvdimm memory and passthrough input devices for hotplug via
+    domain security callbacks backporting upstream commits (LP: #1755153).
+    - d/p/ubuntu-aa/lp1755153-apparmor-add-Set-Restore-InputLabel.patch
+    - d/p/ubuntu-aa/lp1755153-apparmor-add-Set-Restore-MemoryLabel.patch
+  * Fix nvdimm memory and passthrough input devices in initial guest
+    description via virt-aa-helper (LP: #1757085).
+    - d/p/ubuntu-aa/lp1757085-virt-aa-helper-nvdimm-memory.patch
+    - d/p/ubuntu-aa/lp1757085-virt-aa-helper-passthrough-input.patch
