@@ -1,0 +1,7 @@
+  * Upload to experimental
+  * [360da79] New upstream version 1.2.10-rc1
+  * [aba073c] Rediff patches.
+    Dropped Use-sensible-editor-...patch: Configurable now
+    Dropped qemu-use-systemd-s-TerminateMachine-...patch: Applied upstream
+  * [f739a80] Configure use of sensible-editor via ./configure
+  * [4f5511b] Update symbols
