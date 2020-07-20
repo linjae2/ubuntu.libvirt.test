@@ -1,0 +1,3 @@
+  * d/libvirt-bin.postinst: call apparmor_parser with options to
+    ignore the apparmor cache and rebuild it, otherwise old apparmor
+    rules are used and this might break upgrades (LP: #1707400)
