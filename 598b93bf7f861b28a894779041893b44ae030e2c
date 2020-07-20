@@ -1,0 +1,4 @@
+  * New upstream release. (FFe: LP: #339868)
+  * Dropped 0004-Don-t-hardcode-ssh-port.patch: Included upstream.
+  * Rewrote dynamic_bridge_names.patch to work with refactored upstream
+    bridging code.
