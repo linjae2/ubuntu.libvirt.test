@@ -1,0 +1,2 @@
+  * debian/control: Use libxml-libxml-perl instead of libxml-xpath-perl. 
+  * debian/patches/docs-remove-xpath.patch: Use libxml instead of XPath.
