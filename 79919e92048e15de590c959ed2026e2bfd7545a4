@@ -1,0 +1,4 @@
+  * Move glusterfs, rbd, sheepdog and zfs storage drivers into separate
+    packages.  This reduces the dependencies pulled into default
+    installations.
+    (Closes: #875834)
