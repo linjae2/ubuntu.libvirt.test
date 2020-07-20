@@ -1,0 +1,3 @@
+  * d/p/libxl-Check-for-control_d-string-to-decide-about-dom.patch: Prevent
+    using the libxl driver when not running in dom0 but having xenfs mounted.
+    (LP: #1248025)
