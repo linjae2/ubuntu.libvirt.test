@@ -1,0 +1,4 @@
+  * Accidentally dropped our changes to
+    0003-allow-libvirt-group-to-access-the-socket.patch, causing the
+    group as which libvirtd expected to run to be wrong. Change it back
+    to "libvirtd" rather than "libvirt". (LP: #328093)
