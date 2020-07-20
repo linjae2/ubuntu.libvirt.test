@@ -1,0 +1,97 @@
+  * Merge from debian unstable. Remaining changes:
+    - Fixes:
+      LP: #522845
+      LP: #553737
+      LP: #520386
+    - debian/control:
+      + Build-Depends on qemu-kvm, not qemu
+      + Build-Depends on open-iscsi-utils, not open-iscsi
+      + Build-Depends on libxml2-utils
+      + Build-Depends on libapparmor-dev and Suggests apparmor
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin
+      + Drop qemu-kvm and qemu to Suggests
+      + We call libxen-dev libxen3-dev, so change all references
+      + Rename Vcs-* to XS-Debian-Vcs-*
+    - debian/libvirt-bin.postinst:
+      + rename the libvirt group to libvirtd
+      + add each admin user to the libvirtd group
+      + reload apparmor profiles
+    - debian/libvirt-bin.postrm:
+      + rename the libvirt group to libvirtd
+      + remove apparmor symlinks on purge
+    - debian/README.Debian: add AppArmor section based on the upstream
+      documentation
+    - debian/rules:
+      + update DEB_DH_INSTALLINIT_ARGS for upstart
+      + add DEB_MAKE_CHECK_TARGET := check
+      + use --with-apparmor
+      + copy apparmor and apport hook to debian/tmp
+    - add debian/libvirt-bin.upstart
+    - debian/libvirt-bin.dirs: add /etc/apparmor.d/abstractions,
+      /etc/apparmor.d/disable, /etc/apparmor.d/force-complain,
+      /etc/apparmor.d/libvirt, /etc/cron.daily and
+      /usr/share/apport/package-hooks
+    - add debian/libvirt-bin.cron.daily
+    - add debian/libvirt-bin.apport
+    - debian/libvirt-bin.install: install apparmor profiles, abstractions
+      and apport hook
+    - debian/apparmor:
+      - add TEMPLATE
+      - add libvirt-qemu abstraction
+      - add usr.lib.libvirt.virt-aa-helper
+      - add usr.sbin.libvirtd
+    - debian/patches/series:
+      + don't apply 0002-qemu-disable-network.diff.patch
+      + don't apply 0005-Terminate-nc-on-EOF.patch. Use
+        9010-autodetect-nc-params.patch instead
+      + 9000-delayed_iff_up_bridge.patch (refreshed)
+      + 9001-dont_clobber_existing_bridges.patch
+      + 9002-better_default_uri_virsh.patch (updated)
+      + 9004-better-default-arch.patch
+      + 9005-libvirtd-group-name.patch
+      + 9006-increase-unix-socket-timeout.patch (refreshed)
+      + 9007-default-config-test-case.patch (updated)
+      + 9008-fix-daemon-conf-ftbfs.patch (rewritten)
+      + 9009-run-as-root-by-default.patch (refreshed)
+      + 9010-autodetect-nc-params.patch (refreshed, formerly 9015)
+      + 9011-dont-disable-ipv6.patch (updated)
+  * Dropped following packaging changes, no longer required with upgrades
+    from Lucid:
+    - debian/control:
+      + versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg
+      + remove Build-Depends on libcap-ng-dev
+    - debian/libvirt-bin.postinst: virt-aa-helper profile migration to
+      /usr/lib/libvirt
+    - debian/libvirt-bin.preinst: added to force complain on certain
+      upgrades
+  * Dropped the following patches, included upstream:
+    - 0010-Use-base-16-for-product-vendor.patch
+    - 9003-increase-logoutput-timeout.patch
+    - 9010-apparmor-ftbfs.patch
+    - 9011-node_device_driver.patch
+    - 9012-dont-crash-on-restart.patch
+    - 9013-apparmor-dont-clear-caps.patch
+    - 9014-apparmor-remove-unloaded-profile-is-not-fatal.patch
+    - 9016-disk-cache-setting-xml.patch
+    - 9018-fix-pty-console.patch
+    - 9019-apparmor-fix-xauth.patch
+    - 9020-apparmor-fix-backingstore.patch
+    - 9021-apparmor-fix-hostdev.patch
+    - 9022-dont-leak-log-fd.path.patch
+    - 9023-virt-pki-validate_fixes.patch
+    - 9024-free-memory-for-invalid-devices.patch (use
+      0008-Fix-leaks-in-udev-device-add-remove.patch from Debian)
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow access to ecryptfs
+    files (LP: #591769)
+  * debian/patches/9012-fix-nodeinfotest-ftbfs.patch: fix FTBFS in
+    nodeinfotest. Drop in 0.8.2.
+  * debian/patches/9013-apparmor-lp457716.patch: properly support/save and
+    restore (LP: #457716). Drop in 0.8.2.
+  * debian/apparmor/libvirt-qemu: remove workaround for LP: #457716
+  * don't create and run ebtables script in /tmp:
+    - debian/apparmor/usr.sbin.libvirt: allow ixr to /var/lib/libvirt/virtd*
+      for new ebtables functionality added in 0.8.0
+    - debian/patches/9014-move-ebtables-script.patch: update
+      nwfilter_ebiptables_driver.c /var/lib/libvirt to use /var/lib/libvirt
+      instead of /tmp
