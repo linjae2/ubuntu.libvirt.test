@@ -1,0 +1,4 @@
+  * debian/rules:
+    - use --with-esx (LP: #565771)
+    - specify restart-after-upgrade (LP: #1215617)
+  * debian/control: add libcurl4-gnutls-dev for esx support
