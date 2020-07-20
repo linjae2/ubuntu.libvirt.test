@@ -357,12 +357,14 @@
 # changes in reported warnings
 %if 0%{?rhel}
     %define enable_werror --enable-werror
+%else
+    %define enable_werror --disable-werror
 %endif
 
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.2.11
+Version: 1.2.12
 Release: 0rc1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -427,7 +429,6 @@ BuildRequires: /usr/bin/pod2man
 %endif
 BuildRequires: git
 BuildRequires: perl
-BuildRequires: perl-XML-XPath
 BuildRequires: python
 %if %{with_systemd}
 BuildRequires: systemd-units
@@ -2280,6 +2281,13 @@ exit 0
 %doc examples/systemtap
 
 %changelog
+* Sat Dec 13 2014 Daniel Veillard <veillard@redhat.com> - 1.2.11-1
+- CVE-2014-8131: Fix possible deadlock and segfault in qemuConnectGetAllDomainStats()
+- CVE-2014-7823: dumpxml: security hole with migratable flag
+- Implement public API for virDomainGetFSInfo
+- Add define support for the new throttle options
+- a number of improvements and bug fixes
+
 * Mon Nov  3 2014 Daniel Veillard <veillard@redhat.com> - 1.2.10-1
 - vbox: various drivers improvements
 - libxl: various drivers improvements
