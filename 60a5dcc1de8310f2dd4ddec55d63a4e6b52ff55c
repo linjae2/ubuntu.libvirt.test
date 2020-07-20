@@ -1,0 +1,6 @@
+  * [afaf26b] Add qemu:///session smoke test
+  * [90ec8ff] Add lxc:/// smoke test
+  * [411c4c9] apparmor: Don't scrub environment of virtlogd process
+    to fix qemu:///session
+  * [ca01064] New upstream version 1.3.5
+  * [6a96655] Rediff patches
