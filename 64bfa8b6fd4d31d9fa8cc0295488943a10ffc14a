@@ -1,0 +1,3 @@
+  * debian/patches/9018-fix-pty-console.patch: fix issue using
+    console in virsh.
+    (LP: #542324)
