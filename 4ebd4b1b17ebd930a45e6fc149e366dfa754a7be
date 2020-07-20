@@ -1,0 +1,4 @@
+  * [3607f2f] Install libvirt_lxc that got list somewhere between our
+              testbuilds. (Closes: #529578)
+  * [070ddd5] install augeas lense
+  * [c9b034d] install schema files
