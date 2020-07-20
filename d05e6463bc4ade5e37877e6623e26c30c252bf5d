@@ -1,0 +1,6 @@
+  * [3a2a899] Create directory for lease files if it's missing
+    (Closes: #715200)
+  * [000df64] Don't assume EXAMPLES_DIR exists as seen on the autobuilders
+    (Closes: #717059)
+  * [8369f65] Fix crash when multiple event callbacks were registered.
+    CVE-2013-2230. Thanks to Ján Tomko (Closes: #715559)
