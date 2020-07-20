@@ -1,0 +1,3 @@
+  * libvirt-bin.upstart: add a pre-stop script to shut down running VMs
+    before the host shuts down.  (LP: #350936)
+  * Source /etc/default/libvirt-bin at the upstart 'start' section (LP: #823638)
