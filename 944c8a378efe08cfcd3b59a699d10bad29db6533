@@ -1,0 +1,4 @@
+  * d/p/accomodate-new-qemu-migration-status-setup.patch: work around
+    libvirt's not yet knowing of qemu's new migration state, 'setup'.
+    This can be removed when upstream libvirt has a proper patch.  QRT
+    fails without this.
