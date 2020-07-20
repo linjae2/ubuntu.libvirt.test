@@ -1,0 +1,14 @@
+  * [d233204] Make sure qemu.conf isn't world readable by default
+    since the user might add passwords to it. (Closes: #710537)
+  * [3a2c75c] New upstream version 1.0.6
+  * [792d607] Update symbols
+  * [7921e44] Update patches:
+     Changed patches.
+        Debianize-libvirt-guests.patch adjuste to upstream changes
+     Dropped patches (applied upstream):
+        Add-sanitytest.py.patch
+        Fixup-rpcgen-code-on-kFreeBSD-too.patch
+        Make-detect_scsi_host_caps-a-function-on-all-archite.patch
+        daemon-fix-leak-after-listing-all-volumes.patch
+        virInitctlRequest-Don-t-hardcode-384-bytes-size.patch
+        virthreadpthread-don-t-try-to-cast-pthread_t-to-void.patch
