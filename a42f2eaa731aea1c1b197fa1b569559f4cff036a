@@ -1,0 +1,4 @@
+  [ Marc Deslauriers <marc.deslauriers@ubuntu.com> ]
+  * 0008-increase-logoutput-timeout.patch: increase timeout waiting
+    for log output in src/qemu_driver.c, set to 30 seconds, which 10x
+    longer than before, and matches the disk-wait in mdadm, LP: #344400
