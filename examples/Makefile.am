@@ -28,16 +28,38 @@ EXTRA_DIST = \
 
 
 AM_CPPFLAGS = \
-	-I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_srcdir)
+	-I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_srcdir) \
+	$(WARN_CFLAGS)
 LDADD = $(STATIC_BINARIES) $(WARN_CFLAGS) \
 	$(top_builddir)/src/libvirt.la \
 	$(top_builddir)/src/libvirt-admin.la
 
-noinst_PROGRAMS=dominfo/info1 dommigrate/dommigrate domsuspend/suspend \
-	domtop/domtop hellolibvirt/hellolibvirt object-events/event-test \
-	openauth/openauth rename/rename admin/list_servers admin/list_clients \
-	admin/threadpool_params admin/client_limits admin/client_info \
-	admin/client_close admin/logging
+# List of example programs. We need to list them here instead of using
+# $(noinst_PROGRAMS) directly because we want to have access to the
+# unmodified list during (un)installation, but at the same time automake
+# might tweak $(noinst_PROGRAMS) to eg. automatically add the .exe file
+# extension when targeting Windows.
+EXAMPLES = \
+	admin/client_close \
+	admin/client_info \
+	admin/client_limits \
+	admin/list_clients \
+	admin/list_servers \
+	admin/logging \
+	admin/threadpool_params \
+	dominfo/info1 \
+	dommigrate/dommigrate \
+	domsuspend/suspend \
+	domtop/domtop \
+	hellolibvirt/hellolibvirt \
+	object-events/event-test \
+	openauth/openauth \
+	rename/rename \
+	$(NULL)
+
+noinst_PROGRAMS = \
+	$(EXAMPLES) \
+	$(NULL)
 
 dominfo_info1_SOURCES = dominfo/info1.c
 dommigrate_dommigrate_SOURCES = dommigrate/dommigrate.c
@@ -83,6 +105,17 @@ INSTALL_DATA_LOCAL += install-nwfilter-local
 UNINSTALL_LOCAL += uninstall-nwfilter-local
 endif WITH_NWFILTER
 
+examplesdir = $(docdir)/examples
+
 install-data-local: $(INSTALL_DATA_LOCAL)
+	$(mkinstalldirs) $(DESTDIR)$(examplesdir)
+	for p in $(EXAMPLES); do \
+		d=$$(dirname $$p); \
+		$(mkinstalldirs) $(DESTDIR)$(examplesdir)/$$d; \
+		$(INSTALL_DATA) $(srcdir)/$${p}.c $(DESTDIR)$(examplesdir)/$$d/; \
+	done
 
 uninstall-local: $(UNINSTALL_LOCAL)
+	for p in $(EXAMPLES); do \
+		rm -f $(DESTDIR)$(examplesdir)/$${p}.c; \
+	done

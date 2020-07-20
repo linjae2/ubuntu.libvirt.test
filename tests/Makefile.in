@@ -549,7 +549,11 @@ libqemumonitortestutils_la_OBJECTS =  \
 	$(am_libqemumonitortestutils_la_OBJECTS)
 @WITH_QEMU_TRUE@@WITH_TESTS_FALSE@am_libqemumonitortestutils_la_rpath =
 @WITH_QEMU_TRUE@@WITH_TESTS_TRUE@am_libqemumonitortestutils_la_rpath =
-@WITH_QEMU_TRUE@libqemutestdriver_la_DEPENDENCIES = $(qemu_LDADDS)
+am__DEPENDENCIES_1 =
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1) $(PROBES_O) $(GNULIB_LIBS) \
+	../src/libvirt.la
+@WITH_QEMU_TRUE@libqemutestdriver_la_DEPENDENCIES = $(qemu_LDADDS) \
+@WITH_QEMU_TRUE@	$(am__DEPENDENCIES_2)
 am_libqemutestdriver_la_OBJECTS =
 libqemutestdriver_la_OBJECTS = $(am_libqemutestdriver_la_OBJECTS)
 libqemutestdriver_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
@@ -588,9 +592,6 @@ libxlmock_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(CFLAGS) $(libxlmock_la_LDFLAGS) $(LDFLAGS) -o $@
 @WITH_LIBXL_TRUE@@WITH_TESTS_FALSE@am_libxlmock_la_rpath =
 @WITH_LIBXL_TRUE@@WITH_TESTS_TRUE@am_libxlmock_la_rpath =
-am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1) $(PROBES_O) $(GNULIB_LIBS) \
-	../src/libvirt.la
 @WITH_LIBXL_TRUE@am__DEPENDENCIES_3 =  \
 @WITH_LIBXL_TRUE@	../src/libvirt_driver_libxl_impl.la \
 @WITH_LIBXL_TRUE@	$(am__append_40) $(am__DEPENDENCIES_2)
@@ -967,11 +968,12 @@ cputest_OBJECTS = $(am_cputest_OBJECTS)
 cputest_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1) \
 	$(am__append_59)
 am__domaincapstest_SOURCES_DIST = domaincapstest.c testutils.h \
-	testutils.c testutilsqemu.c testutilsqemu.h testutilsxen.c \
-	testutilsxen.h
+	testutils.c virfilewrapper.c virfilewrapper.h testutilsqemu.c \
+	testutilsqemu.h testutilsxen.c testutilsxen.h
 @WITH_LIBXL_TRUE@am__objects_3 = testutilsxen.$(OBJEXT)
 am_domaincapstest_OBJECTS = domaincapstest.$(OBJEXT) \
-	testutils.$(OBJEXT) $(am__objects_2) $(am__objects_3)
+	testutils.$(OBJEXT) virfilewrapper.$(OBJEXT) $(am__objects_2) \
+	$(am__objects_3)
 domaincapstest_OBJECTS = $(am_domaincapstest_OBJECTS)
 domaincapstest_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__append_63) \
 	$(am__append_65) $(am__append_66)
@@ -3058,7 +3060,6 @@ HAVE_XLOCALE_H = @HAVE_XLOCALE_H@
 HAVE__BOOL = @HAVE__BOOL@
 HAVE__EXIT = @HAVE__EXIT@
 HOSTENT_LIB = @HOSTENT_LIB@
-HTML_DIR = @HTML_DIR@
 IFCONFIG_PATH = @IFCONFIG_PATH@
 INCLUDE_NEXT = @INCLUDE_NEXT@
 INCLUDE_NEXT_AS_FIRST_DIRECTIVE = @INCLUDE_NEXT_AS_FIRST_DIRECTIVE@
@@ -3580,7 +3581,6 @@ SYS_TIME_H_DEFINES_STRUCT_TIMESPEC = @SYS_TIME_H_DEFINES_STRUCT_TIMESPEC@
 TC = @TC@
 TIME_H_DEFINES_STRUCT_TIMESPEC = @TIME_H_DEFINES_STRUCT_TIMESPEC@
 UDEVADM = @UDEVADM@
-UDEVSETTLE = @UDEVSETTLE@
 UDEV_CFLAGS = @UDEV_CFLAGS@
 UDEV_LIBS = @UDEV_LIBS@
 UINT32_MAX_LT_UINTMAX_MAX = @UINT32_MAX_LT_UINTMAX_MAX@
@@ -3758,7 +3758,7 @@ EXTRA_DIST = .valgrind.supp bhyvexml2argvdata bhyveargv2xmldata \
 	storagevolxml2xmlout sysinfodata test-lib.sh \
 	vboxsnapshotxmldata vircaps2xmldata vircgroupdata virconfdata \
 	virfiledata virjsondata virmacmaptestdata virmock.h \
-	virnetdaemondata virnetdevtestdata \
+	virmockstathelpers.c virnetdaemondata virnetdevtestdata \
 	virnwfilterbindingxml2xmldata virpcitestdata virscsidata \
 	virsh-uriprecedence virusbtestdata vmwareverdata vmx2xmldata \
 	xlconfigdata xmconfigdata xml2sexprdata xml2vmxdata \
@@ -3900,7 +3900,7 @@ QEMUMONITORTESTUTILS_SOURCES = \
 @WITH_QEMU_TRUE@	$(am__append_44)
 @WITH_QEMU_TRUE@libqemutestdriver_la_SOURCES = 
 @WITH_QEMU_TRUE@libqemutestdriver_la_LDFLAGS = $(DRIVERLIB_LDFLAGS)
-@WITH_QEMU_TRUE@libqemutestdriver_la_LIBADD = $(qemu_LDADDS)
+@WITH_QEMU_TRUE@libqemutestdriver_la_LIBADD = $(qemu_LDADDS) $(LDADDS)
 @WITH_QEMU_TRUE@qemucpumock_la_SOURCES = \
 @WITH_QEMU_TRUE@	qemucpumock.c testutilshostcpus.h
 
@@ -4294,7 +4294,8 @@ domaincapsmock_la_SOURCES = domaincapsmock.c
 domaincapsmock_la_LDFLAGS = $(MOCKLIBS_LDFLAGS)
 domaincapsmock_la_LIBADD = $(MOCKLIBS_LIBS)
 domaincapstest_SOURCES = domaincapstest.c testutils.h testutils.c \
-	$(am__append_62) $(am__append_64)
+	virfilewrapper.c virfilewrapper.h $(NULL) $(am__append_62) \
+	$(am__append_64)
 domaincapstest_LDADD = $(LDADDS) $(am__append_63) $(am__append_65) \
 	$(am__append_66)
 virnetmessagetest_SOURCES = \
@@ -4713,9 +4714,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu tests/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign tests/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu tests/Makefile
+	  $(AUTOMAKE) --foreign tests/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \

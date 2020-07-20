@@ -87,14 +87,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = dominfo/info1$(EXEEXT) \
-	dommigrate/dommigrate$(EXEEXT) domsuspend/suspend$(EXEEXT) \
-	domtop/domtop$(EXEEXT) hellolibvirt/hellolibvirt$(EXEEXT) \
-	object-events/event-test$(EXEEXT) openauth/openauth$(EXEEXT) \
-	rename/rename$(EXEEXT) admin/list_servers$(EXEEXT) \
-	admin/list_clients$(EXEEXT) admin/threadpool_params$(EXEEXT) \
-	admin/client_limits$(EXEEXT) admin/client_info$(EXEEXT) \
-	admin/client_close$(EXEEXT) admin/logging$(EXEEXT)
+noinst_PROGRAMS = $(am__EXEEXT_1)
 @WITH_NWFILTER_TRUE@am__append_1 = install-nwfilter-local
 @WITH_NWFILTER_TRUE@am__append_2 = uninstall-nwfilter-local
 subdir = examples
@@ -342,6 +335,14 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/build-aux/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+am__EXEEXT_1 = admin/client_close$(EXEEXT) admin/client_info$(EXEEXT) \
+	admin/client_limits$(EXEEXT) admin/list_clients$(EXEEXT) \
+	admin/list_servers$(EXEEXT) admin/logging$(EXEEXT) \
+	admin/threadpool_params$(EXEEXT) dominfo/info1$(EXEEXT) \
+	dommigrate/dommigrate$(EXEEXT) domsuspend/suspend$(EXEEXT) \
+	domtop/domtop$(EXEEXT) hellolibvirt/hellolibvirt$(EXEEXT) \
+	object-events/event-test$(EXEEXT) openauth/openauth$(EXEEXT) \
+	rename/rename$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_admin_client_close_OBJECTS = admin/client_close.$(OBJEXT)
@@ -1419,7 +1420,6 @@ HAVE_XLOCALE_H = @HAVE_XLOCALE_H@
 HAVE__BOOL = @HAVE__BOOL@
 HAVE__EXIT = @HAVE__EXIT@
 HOSTENT_LIB = @HOSTENT_LIB@
-HTML_DIR = @HTML_DIR@
 IFCONFIG_PATH = @IFCONFIG_PATH@
 INCLUDE_NEXT = @INCLUDE_NEXT@
 INCLUDE_NEXT_AS_FIRST_DIRECTIVE = @INCLUDE_NEXT_AS_FIRST_DIRECTIVE@
@@ -1941,7 +1941,6 @@ SYS_TIME_H_DEFINES_STRUCT_TIMESPEC = @SYS_TIME_H_DEFINES_STRUCT_TIMESPEC@
 TC = @TC@
 TIME_H_DEFINES_STRUCT_TIMESPEC = @TIME_H_DEFINES_STRUCT_TIMESPEC@
 UDEVADM = @UDEVADM@
-UDEVSETTLE = @UDEVSETTLE@
 UDEV_CFLAGS = @UDEV_CFLAGS@
 UDEV_LIBS = @UDEV_LIBS@
 UINT32_MAX_LT_UINTMAX_MAX = @UINT32_MAX_LT_UINTMAX_MAX@
@@ -2054,11 +2053,36 @@ EXTRA_DIST = \
 	$(wildcard $(srcdir)/xml/test/*.xml)
 
 AM_CPPFLAGS = \
-	-I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_srcdir)
+	-I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_srcdir) \
+	$(WARN_CFLAGS)
 
 LDADD = $(STATIC_BINARIES) $(WARN_CFLAGS) \
 	$(top_builddir)/src/libvirt.la \
 	$(top_builddir)/src/libvirt-admin.la
+
+
+# List of example programs. We need to list them here instead of using
+# $(noinst_PROGRAMS) directly because we want to have access to the
+# unmodified list during (un)installation, but at the same time automake
+# might tweak $(noinst_PROGRAMS) to eg. automatically add the .exe file
+# extension when targeting Windows.
+EXAMPLES = \
+	admin/client_close \
+	admin/client_info \
+	admin/client_limits \
+	admin/list_clients \
+	admin/list_servers \
+	admin/logging \
+	admin/threadpool_params \
+	dominfo/info1 \
+	dommigrate/dommigrate \
+	domsuspend/suspend \
+	domtop/domtop \
+	hellolibvirt/hellolibvirt \
+	object-events/event-test \
+	openauth/openauth \
+	rename/rename \
+	$(NULL)
 
 dominfo_info1_SOURCES = dominfo/info1.c
 dommigrate_dommigrate_SOURCES = dommigrate/dommigrate.c
@@ -2082,6 +2106,7 @@ admin_logging_SOURCES = admin/logging.c
 INSTALL_DATA_LOCAL = $(am__append_1)
 UNINSTALL_LOCAL = $(am__append_2)
 @WITH_NWFILTER_TRUE@NWFILTER_DIR = "$(DESTDIR)$(sysconfdir)/libvirt/nwfilter"
+examplesdir = $(docdir)/examples
 all: all-am
 
 .SUFFIXES:
@@ -2095,9 +2120,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu examples/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign examples/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu examples/Makefile
+	  $(AUTOMAKE) --foreign examples/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -2591,8 +2616,17 @@ uninstall-am: uninstall-local
 @WITH_NWFILTER_TRUE@	-test -z "$(shell ls $(NWFILTER_DIR))" || rmdir $(NWFILTER_DIR)
 
 install-data-local: $(INSTALL_DATA_LOCAL)
+	$(mkinstalldirs) $(DESTDIR)$(examplesdir)
+	for p in $(EXAMPLES); do \
+		d=$$(dirname $$p); \
+		$(mkinstalldirs) $(DESTDIR)$(examplesdir)/$$d; \
+		$(INSTALL_DATA) $(srcdir)/$${p}.c $(DESTDIR)$(examplesdir)/$$d/; \
+	done
 
 uninstall-local: $(UNINSTALL_LOCAL)
+	for p in $(EXAMPLES); do \
+		rm -f $(DESTDIR)$(examplesdir)/$${p}.c; \
+	done
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

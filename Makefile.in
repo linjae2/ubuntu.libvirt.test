@@ -1375,7 +1375,6 @@ HAVE_XLOCALE_H = @HAVE_XLOCALE_H@
 HAVE__BOOL = @HAVE__BOOL@
 HAVE__EXIT = @HAVE__EXIT@
 HOSTENT_LIB = @HOSTENT_LIB@
-HTML_DIR = @HTML_DIR@
 IFCONFIG_PATH = @IFCONFIG_PATH@
 INCLUDE_NEXT = @INCLUDE_NEXT@
 INCLUDE_NEXT_AS_FIRST_DIRECTIVE = @INCLUDE_NEXT_AS_FIRST_DIRECTIVE@
@@ -1897,7 +1896,6 @@ SYS_TIME_H_DEFINES_STRUCT_TIMESPEC = @SYS_TIME_H_DEFINES_STRUCT_TIMESPEC@
 TC = @TC@
 TIME_H_DEFINES_STRUCT_TIMESPEC = @TIME_H_DEFINES_STRUCT_TIMESPEC@
 UDEVADM = @UDEVADM@
-UDEVSETTLE = @UDEVSETTLE@
 UDEV_CFLAGS = @UDEV_CFLAGS@
 UDEV_LIBS = @UDEV_LIBS@
 UINT32_MAX_LT_UINTMAX_MAX = @UINT32_MAX_LT_UINTMAX_MAX@
@@ -2007,19 +2005,21 @@ SUBDIRS = . gnulib/lib include/libvirt src tools docs gnulib/tests \
 # have gnulib 'make coverage' output to 'cov' dir
 COVERAGE_OUT = "cov"
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = config-post.h ChangeLog-old libvirt.spec libvirt.spec.in \
+EXTRA_DIST = config-post.h libvirt.spec libvirt.spec.in \
 	mingw-libvirt.spec.in libvirt.pc.in libvirt-qemu.pc.in \
-	libvirt-lxc.pc.in libvirt-admin.pc.in Makefile.nonreentrant \
-	autogen.sh cfg.mk run.in README.md AUTHORS.in \
-	$(srcdir)/docs/news.xml $(srcdir)/docs/news-ascii.xsl \
+	libvirt-lxc.pc.in libvirt-admin.pc.in Makefile.ci \
+	Makefile.nonreentrant autogen.sh cfg.mk run.in README.md \
+	AUTHORS.in build-aux/augeas-gentest.pl \
+	build-aux/check-spacing.pl build-aux/gitlog-to-changelog \
+	build-aux/header-ifdef.pl build-aux/minimize-po.pl \
+	build-aux/mock-noinline.pl \
+	build-aux/prohibit-duplicate-header.pl \
+	build-aux/useless-if-before-free build-aux/vc-list-files \
+	$(NULL) $(srcdir)/docs/news.xml $(srcdir)/docs/news-ascii.xsl \
 	$(srcdir)/docs/reformat-news.py
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libvirt.pc libvirt-qemu.pc libvirt-lxc.pc libvirt-admin.pc
 MAINTAINERCLEANFILES = .git-module-status
-
-# Generate the ChangeLog file (with all entries since the switch to git)
-# and insert it into the directory we're about to use to create a tarball.
-gen_start_date = 2009-07-04
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -2030,15 +2030,15 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
-	      echo ' cd $(srcdir) && $(AUTOMAKE) --gnu'; \
-	      $(am__cd) $(srcdir) && $(AUTOMAKE) --gnu \
+	      echo ' cd $(srcdir) && $(AUTOMAKE) --foreign'; \
+	      $(am__cd) $(srcdir) && $(AUTOMAKE) --foreign \
 		&& exit 0; \
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu Makefile
+	  $(AUTOMAKE) --foreign Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -2577,18 +2577,10 @@ srpm: clean
 
 check-local: all tests
 
-check-access:
+check-access: all
 	@($(MAKE) $(AM_MAKEFLAGS) -C tests check-access)
 
-dist-hook: gen-ChangeLog gen-AUTHORS
-.PHONY: gen-ChangeLog
-gen-ChangeLog:
-	$(AM_V_GEN)if test -d .git; then \
-	  $(top_srcdir)/build-aux/gitlog-to-changelog \
-	    --since=$(gen_start_date) > $(distdir)/cl-t; \
-	  rm -f $(distdir)/ChangeLog; \
-	  mv $(distdir)/cl-t $(distdir)/ChangeLog; \
-	fi
+dist-hook: gen-AUTHORS
 
 .PHONY: gen-AUTHORS
 gen-AUTHORS:
@@ -2606,6 +2598,9 @@ gen-AUTHORS:
 	  mv -f $(distdir)/AUTHORS-tmp $(distdir)/AUTHORS && \
 	  rm -f all.list maint.list contrib.list; \
 	fi
+
+ci-%:
+	$(MAKE) -f Makefile.ci $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

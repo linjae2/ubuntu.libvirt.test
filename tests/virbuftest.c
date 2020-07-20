@@ -20,6 +20,7 @@ static int testBufInfiniteLoop(const void *data)
     char *addstr = NULL, *bufret = NULL;
     int ret = -1;
     const struct testInfo *info = data;
+    int len;
 
     virBufferAddChar(buf, 'a');
 
@@ -29,7 +30,8 @@ static int testBufInfiniteLoop(const void *data)
      * which was the case after the above addchar at the time of the bug.
      * This test is a bit fragile, since it relies on virBuffer internals.
      */
-    if (virAsprintf(&addstr, "%*s", buf->a - buf->b - 1, "a") < 0)
+    len = buf->size - buf->use - 1;
+    if (virAsprintf(&addstr, "%*s", len, "a") < 0)
         goto out;
 
     if (info->doEscape)
@@ -301,6 +303,32 @@ static int testBufAddBuffer(const void *data ATTRIBUTE_UNUSED)
     return ret;
 }
 
+static int
+testBufAddBuffer2(const void *opaque ATTRIBUTE_UNUSED)
+{
+    VIR_AUTOCLEAN(virBuffer) buf1 = VIR_BUFFER_INITIALIZER;
+    VIR_AUTOCLEAN(virBuffer) buf2 = VIR_BUFFER_INITIALIZER;
+
+    /* Intent of this test is to demonstrate a memleak that happen with
+     * virBufferAddBuffer */
+
+    virBufferAddLit(&buf1, "Hello world!\n");
+    virBufferAddLit(&buf2, "Hello world!\n");
+
+    /* Intentional usage error */
+    virBufferAdjustIndent(&buf2, -2);
+
+    virBufferAddBuffer(&buf1, &buf2);
+
+    if (virBufferCurrentContent(&buf1) ||
+        !virBufferCurrentContent(&buf2)) {
+        VIR_TEST_DEBUG("Unexpected buffer content");
+        return -1;
+    }
+
+    return 0;
+}
+
 struct testBufAddStrData {
     const char *data;
     const char *expect;
@@ -458,6 +486,7 @@ mymain(void)
     DO_TEST("Auto-indentation", testBufAutoIndent, 0);
     DO_TEST("Trim", testBufTrim, 0);
     DO_TEST("AddBuffer", testBufAddBuffer, 0);
+    DO_TEST("AddBuffer2", testBufAddBuffer2, 0);
     DO_TEST("set indent", testBufSetIndent, 0);
     DO_TEST("autoclean", testBufferAutoclean, 0);
 

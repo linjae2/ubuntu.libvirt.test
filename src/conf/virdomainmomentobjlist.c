@@ -28,6 +28,7 @@
 #include "virerror.h"
 #include "virstring.h"
 #include "moment_conf.h"
+#include "viralloc.h"
 
 /* FIXME: using virObject would allow us to not need this */
 #include "snapshot_conf.h"
@@ -80,9 +81,11 @@ virDomainMomentActOnDescendant(void *payload,
 {
     virDomainMomentObjPtr obj = payload;
     struct moment_act_on_descendant *curr = data;
+    virDomainMomentObj tmp = *obj;
 
+    /* Careful: curr->iter can delete obj, hence the need for tmp */
     (curr->iter)(payload, name, curr->data);
-    curr->number += 1 + virDomainMomentForEachDescendant(obj,
+    curr->number += 1 + virDomainMomentForEachDescendant(&tmp,
                                                          curr->iter,
                                                          curr->data);
     return 0;
@@ -205,8 +208,7 @@ virDomainMomentObjFree(virDomainMomentObjPtr moment)
 
     VIR_DEBUG("obj=%p", moment);
 
-    /* FIXME: Make this polymorphic by inheriting from virObject */
-    virDomainSnapshotDefFree(virDomainSnapshotObjGetDef(moment));
+    virObjectUnref(moment->def);
     VIR_FREE(moment);
 }
 
@@ -461,7 +463,7 @@ virDomainMomentForEach(virDomainMomentObjListPtr moments,
 
 
 /* Struct and callback function used as a hash table callback; each call
- * inspects the pre-existing moment->def->parent field, and adjusts
+ * inspects the pre-existing moment->def->parent_name field, and adjusts
  * the moment->parent field as well as the parent's child fields to
  * wire up the hierarchical relations for the given moment.  The error
  * indicator gets set if a parent is missing or a requested parent would
@@ -480,7 +482,7 @@ virDomainMomentSetRelations(void *payload,
     virDomainMomentObjPtr tmp;
     virDomainMomentObjPtr parent;
 
-    parent = virDomainMomentFindByName(curr->moments, obj->def->parent);
+    parent = virDomainMomentFindByName(curr->moments, obj->def->parent_name);
     if (!parent) {
         curr->err = -1;
         parent = &curr->moments->metaroot;

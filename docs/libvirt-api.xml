@@ -566,6 +566,8 @@
      <exports symbol='VIR_DOMAIN_MEMORY_STAT_ACTUAL_BALLOON' type='enum'/>
      <exports symbol='VIR_DOMAIN_MEMORY_STAT_AVAILABLE' type='enum'/>
      <exports symbol='VIR_DOMAIN_MEMORY_STAT_DISK_CACHES' type='enum'/>
+     <exports symbol='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC' type='enum'/>
+     <exports symbol='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL' type='enum'/>
      <exports symbol='VIR_DOMAIN_MEMORY_STAT_LAST' type='enum'/>
      <exports symbol='VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE' type='enum'/>
      <exports symbol='VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT' type='enum'/>
@@ -3086,6 +3088,10 @@ running in post-copy mode'/>
     <enum name='VIR_DOMAIN_MEMORY_STAT_DISK_CACHES' file='libvirt-domain' value='10' value_hex='0xa' type='virDomainMemoryStatTags' info='The amount of memory, that can be quickly reclaimed without
  additional I/O (in kB). Typically these pages are used for caching files
  from disk.'/>
+    <enum name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC' file='libvirt-domain' value='11' value_hex='0xb' type='virDomainMemoryStatTags' info='The amount of successful huge page allocations from inside the domain via
+ virtio balloon.'/>
+    <enum name='VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL' file='libvirt-domain' value='12' value_hex='0xc' type='virDomainMemoryStatTags' info='The amount of failed huge page allocations from inside the domain via
+ virtio balloon.'/>
     <enum name='VIR_DOMAIN_MEMORY_STAT_LAST' file='libvirt-domain' value='VIR_DOMAIN_MEMORY_STAT_NR' type='virDomainMemoryStatTags'/>
     <enum name='VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE' file='libvirt-domain' value='9' value_hex='0x9' type='virDomainMemoryStatTags' info='Timestamp of the last update of statistics, in seconds.'/>
     <enum name='VIR_DOMAIN_MEMORY_STAT_MAJOR_FAULT' file='libvirt-domain' value='2' value_hex='0x2' type='virDomainMemoryStatTags' info='Page faults occur when a process makes a valid access to virtual memory
@@ -3093,7 +3099,7 @@ running in post-copy mode'/>
  required, it is considered a major fault.  If not, it is a minor fault.
  These are expressed as the number of faults that have occurred.'/>
     <enum name='VIR_DOMAIN_MEMORY_STAT_MINOR_FAULT' file='libvirt-domain' value='3' value_hex='0x3' type='virDomainMemoryStatTags'/>
-    <enum name='VIR_DOMAIN_MEMORY_STAT_NR' file='libvirt-domain' value='11' value_hex='0xb' type='virDomainMemoryStatTags' info='The number of statistics supported by this version of the interface.
+    <enum name='VIR_DOMAIN_MEMORY_STAT_NR' file='libvirt-domain' value='13' value_hex='0xd' type='virDomainMemoryStatTags' info='The number of statistics supported by this version of the interface.
  To add new statistics, add them to the enum and increase this value.'/>
     <enum name='VIR_DOMAIN_MEMORY_STAT_RSS' file='libvirt-domain' value='7' value_hex='0x7' type='virDomainMemoryStatTags' info='Resident Set Size of the process running the domain. This value
  is in kB'/>
@@ -8161,7 +8167,11 @@ VIR_DOMAIN_MEMORY_STAT_LAST_UPDATE
     Timestamp of the last statistic
 VIR_DOMAIN_MEMORY_STAT_DISK_CACHES
     Memory that can be reclaimed without additional I/O, typically disk
-    caches (in kb).]]></info>
+    caches (in kb).
+VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGALLOC
+    The amount of successful huge page allocations from inside the domain
+VIR_DOMAIN_MEMORY_STAT_HUGETLB_PGFAIL
+    The amount of failed huge page allocations from inside the domain]]></info>
       <return type='int' info='The number of stats provided or -1 in case of failure.'/>
       <arg name='dom' type='virDomainPtr' info='pointer to the domain object'/>
       <arg name='stats' type='virDomainMemoryStatPtr' info='nr_stats-sized array of stat structures (returned)'/>

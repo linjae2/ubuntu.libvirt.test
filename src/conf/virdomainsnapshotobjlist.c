@@ -29,6 +29,7 @@
 #include "virerror.h"
 #include "datatypes.h"
 #include "virstring.h"
+#include "viralloc.h"
 
 #define VIR_FROM_THIS VIR_FROM_DOMAIN_SNAPSHOT
 
@@ -43,7 +44,7 @@ virDomainMomentObjPtr
 virDomainSnapshotAssignDef(virDomainSnapshotObjListPtr snapshots,
                            virDomainSnapshotDefPtr def)
 {
-    return virDomainMomentAssignDef(snapshots->base, &def->common);
+    return virDomainMomentAssignDef(snapshots->base, &def->parent);
 }
 
 

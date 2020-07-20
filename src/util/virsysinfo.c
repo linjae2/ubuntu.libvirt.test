@@ -41,7 +41,8 @@
 
 VIR_LOG_INIT("util.sysinfo");
 
-VIR_ENUM_IMPL(virSysinfo, VIR_SYSINFO_LAST,
+VIR_ENUM_IMPL(virSysinfo,
+              VIR_SYSINFO_LAST,
               "smbios",
 );
 
@@ -843,8 +844,12 @@ virSysinfoParseX86BaseBoard(const char *base,
             nboards--;
     }
 
-    /* This is safe, as we can be only shrinking the memory */
-    ignore_value(VIR_REALLOC_N(boards, nboards));
+    if (nboards == 0) {
+        VIR_FREE(boards);
+    } else {
+        /* This is safe, as we can be only shrinking the memory */
+        ignore_value(VIR_REALLOC_N(boards, nboards));
+    }
 
     *baseBoard = boards;
     *nbaseBoard = nboards;
@@ -1211,13 +1216,12 @@ virSysinfoRead(void)
     return virSysinfoReadARM();
 #elif defined(__s390__) || defined(__s390x__)
     return virSysinfoReadS390();
-#elif defined(WIN32) || \
-    !(defined(__x86_64__) || \
-      defined(__i386__) || \
-      defined(__amd64__) || \
-      defined(__arm__) || \
-      defined(__aarch64__) || \
-      defined(__powerpc__))
+#elif !defined(WIN32) && \
+    (defined(__x86_64__) || \
+     defined(__i386__) || \
+     defined(__amd64__))
+    return virSysinfoReadX86();
+#else /* WIN32 || not supported arch */
     /*
      * this can probably be extracted from Windows using API or registry
      * http://www.microsoft.com/whdc/system/platform/firmware/SMBIOS.mspx
@@ -1225,9 +1229,7 @@ virSysinfoRead(void)
     virReportSystemError(ENOSYS, "%s",
                          _("Host sysinfo extraction not supported on this platform"));
     return NULL;
-#else /* !WIN32 && x86 */
-    return virSysinfoReadX86();
-#endif /* !WIN32 && x86 */
+#endif /* WIN32 || not supported arch */
 }
 
 

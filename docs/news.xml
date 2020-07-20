@@ -30,9 +30,198 @@
     </section>
   </release>
 
+    If relevant for a given release, add a section for removed
+    features too
+
+    <section title="Removed features">
+    </section>
+
      -->
 
 <libvirt>
+  <release version="v5.4.0" date="2019-06-03">
+    <section title="New features">
+    </section>
+    <section title="Security">
+      <change>
+        <summary>
+          cpu: Introduce support for the md-clear CPUID bit
+        </summary>
+        <description>
+          This bit is set when microcode provides the mechanism to invoke a
+          flush of various exploitable CPU buffers by invoking the x86
+          <code>VERW</code> instruction. CVE-2018-12126, CVE-2018-12127,
+          CVE-2018-12130, CVE-2019-11091.
+        </description>
+      </change>
+      <change>
+        <summary>
+          Restrict user access to virt-admin, virtlogd and virtlockd
+        </summary>
+        <description>
+          The intended users for these facilities are the <code>root</code>
+          user and the <code>libvirtd</code> service respectively, but these
+          restrictions were not enforced correctly. CVE-2019-10132.
+        </description>
+      </change>
+    </section>
+    <section title="Improvements">
+      <change>
+        <summary>
+          test driver: Expand API coverage
+        </summary>
+        <description>
+          Several APIs that were missing from the test driver have now been
+          implemented.
+        </description>
+      </change>
+      <change>
+        <summary>
+          Avoid unnecessary static linking
+        </summary>
+        <description>
+          Most binaries shipped as part of libvirt, for example
+          <code>virtlogd</code> and <code>libvirt_iohelper</code>, were
+          embedding parts of the library even though they also linked against
+          the <code>libvirt.so</code> dynamic library. This is no longer the
+          case, which results in both the disk and memory footprint being
+          reduced.
+        </description>
+      </change>
+      <change>
+        <summary>
+          qemu: Report stat-htlb-pgalloc and stat-htlb-pgfail balloon stats
+        </summary>
+        <description>
+          These stats have been introduced in QEMU 3.0.
+        </description>
+      </change>
+    </section>
+    <section title="Bug fixes">
+      <change>
+        <summary>
+          qemu: Fix emulator scheduler support
+        </summary>
+        <description>
+          Setting the scheduler for QEMU's main thread before QEMU had a chance
+          to start up other threads was misleading as it would affect other
+          threads (vCPU and I/O) as well.  In some particular situations this
+          could also lead to an error when the thread for vCPU #0 was being
+          moved to its cpu,cpuacct cgroup.  This was fixed so that the
+          scheduler for the main thread is set after QEMU starts.
+        </description>
+      </change>
+      <change>
+        <summary>
+          apparmor: Allow hotplug of vhost-scsi devices
+        </summary>
+      </change>
+    </section>
+  </release>
+  <release version="v5.3.0" date="2019-05-04">
+    <section title="New features">
+      <change>
+        <summary>
+          qemu: Add support for setting the emulator scheduler parameters
+        </summary>
+        <description>
+          I/O threads and vCPU threads already support setting schedulers, but
+          until now it was impossible to do so for the main QEMU thread
+          (emulator thread in the libvirt naming).  This is, however, requested
+          for some very specific scenarios, for example when vCPU threads are
+          running at such priority that could starve the main thread.
+        </description>
+      </change>
+    </section>
+    <section title="Removed features">
+      <change>
+        <summary>
+          vbox: Drop support for VirtualBox 4.x releases
+        </summary>
+        <description>
+          Support for all the 4.x releases was ended by
+          VirtualBox maintainers in December 2015. Therefore,
+          libvirt support for these releases is dropped.
+        </description>
+      </change>
+    </section>
+    <section title="Improvements">
+      <change>
+        <summary>
+          qemu: Use PCI by default for RISC-V guests
+        </summary>
+        <description>
+          PCI support for RISC-V guests was already available in libvirt
+          5.1.0, but it required the user to opt-in by manually assigning
+          PCI addresses: with this release, RISC-V guests will use PCI
+          automatically when running against a recent enough (4.0.0+) QEMU
+          release.
+        </description>
+      </change>
+      <change>
+        <summary>
+          qemu: Advertise firmware autoselection in domain capabilities
+        </summary>
+        <description>
+          The firmware autoselection feature is now exposed in
+          domain capabilities and management applications can
+          query for accepted values, i.e. values that are accepted
+          and for which libvirt found firmware descriptor files.
+          Firmware Secure Boot support is also advertised.
+        </description>
+      </change>
+      <change>
+        <summary>
+          Drop YAJL 1 support
+        </summary>
+        <description>
+          YAJL 2 is widely adopted and maintaining side by side
+          support for two versions is unnecessary.
+        </description>
+      </change>
+    </section>
+    <section title="Bug fixes">
+      <change>
+        <summary>
+          rpc: cleanup in virNetTLSContextNew
+        </summary>
+        <description>
+          Failed new gnutls context allocations in virNetTLSContextNew
+          function results in double free and segfault. Occasional memory
+          leaks may also occur.
+        </description>
+      </change>
+      <change>
+        <summary>
+          virsh: various completers fixes
+        </summary>
+        <description>
+          There were some possible crashers, memory leaks, etc.
+          which are now fixed.
+        </description>
+      </change>
+      <change>
+        <summary>
+          qemu: Make hugepages work with memfd backend
+        </summary>
+        <description>
+          Due to a bug in command line generation libvirt did not
+          honor hugepages setting with memfd backend.
+        </description>
+      </change>
+      <change>
+        <summary>
+          Enforce ACL write permission for getting guest time &amp; hostname
+        </summary>
+        <description>
+          Getting the guest time and hostname both require use of
+          guest agent commands. These must not be allowed for
+          read-only users, so the permissions check must validate
+          "write" permission not "read".
+        </description>
+      </change>
+    </section>
+  </release>
   <release version="v5.2.0" date="2019-04-03">
     <section title="New features">
       <change>
@@ -681,8 +870,6 @@
         </description>
       </change>
     </section>
-    <section title="Improvements">
-    </section>
     <section title="Bug fixes">
       <change>
         <summary>
@@ -989,8 +1176,6 @@
           sata address as &lt;controller&gt;.&lt;bus&gt;.&lt;unit&gt;.
         </description>
       </change>
-    </section>
-    <section title="Bug fixes">
     </section>
   </release>
   <release version="v4.5.0" date="2018-07-02">
@@ -1304,8 +1489,6 @@
           secret-event, pool-event and nodedev-event)
         </description>
       </change>
-    </section>
-    <section title="Bug fixes">
     </section>
   </release>
   <release version="v4.3.0" date="2018-05-02">

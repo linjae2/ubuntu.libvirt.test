@@ -25,18 +25,23 @@
 
 # include "internal.h"
 # include "virconftypes.h"
+# include "virobject.h"
 
 /* Base class for a domain moment */
 struct _virDomainMomentDef {
+    virObject parent;
+
     /* Common portion of public XML.  */
     char *name;
     char *description;
-    char *parent;
+    char *parent_name;
     long long creationTime; /* in seconds */
 
     virDomainDefPtr dom;
 };
 
-void virDomainMomentDefClear(virDomainMomentDefPtr def);
+virClassPtr virClassForDomainMomentDef(void);
+
+int virDomainMomentDefPostParse(virDomainMomentDefPtr def);
 
 #endif /* LIBVIRT_MOMENT_CONF_H */

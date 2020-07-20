@@ -250,7 +250,8 @@ int qemuMonitorJSONDriveMirror(qemuMonitorPtr mon,
                                unsigned long long speed,
                                unsigned int granularity,
                                unsigned long long buf_size,
-                               unsigned int flags)
+                               bool shallow,
+                               bool reuse)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3);
 int qemuMonitorJSONBlockdevMirror(qemuMonitorPtr mon,
                                   const char *jobname,
@@ -259,7 +260,7 @@ int qemuMonitorJSONBlockdevMirror(qemuMonitorPtr mon,
                                   unsigned long long speed,
                                   unsigned int granularity,
                                   unsigned long long buf_size,
-                                  unsigned int flags)
+                                  bool shallow)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
 int qemuMonitorJSONDrivePivot(qemuMonitorPtr mon,
                               const char *jobname)
@@ -574,6 +575,11 @@ int qemuMonitorJSONBlockdevMediumInsert(qemuMonitorPtr mon,
 
 int qemuMonitorJSONGetPRManagerInfo(qemuMonitorPtr mon,
                                     virHashTablePtr info)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+
+int
+qemuMonitorJSONGetCurrentMachineInfo(qemuMonitorPtr mon,
+                                     qemuMonitorCurrentMachineInfoPtr info)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
 
 #endif /* LIBVIRT_QEMU_MONITOR_JSON_H */

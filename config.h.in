@@ -1288,9 +1288,6 @@
 /* Define to 1 if you have the `sanlock_client' library (-lsanlock_client). */
 #undef HAVE_LIBSANLOCK_CLIENT
 
-/* Define to 1 if you have the `sasl2' library (-lsasl2). */
-#undef HAVE_LIBSASL2
-
 /* Define to 1 if you have the `selinux' library (-lselinux). */
 #undef HAVE_LIBSELINUX
 
@@ -1955,13 +1952,6 @@
 /* Define to 1 if you have the `tzset' function. */
 #undef HAVE_TZSET
 
-/* whether libudev logging can be used */
-#undef HAVE_UDEV_LOGGING
-
-/* Define to 1 if you have the `udev_monitor_set_receive_buffer_size'
-   function. */
-#undef HAVE_UDEV_MONITOR_SET_RECEIVE_BUFFER_SIZE
-
 /* Define to 1 if you have the `uname' function. */
 #undef HAVE_UNAME
 
@@ -2450,9 +2440,6 @@
 /* Location or name of the udevadm program */
 #undef UDEVADM
 
-/* Location or name of the udevsettle program */
-#undef UDEVSETTLE
-
 /* Location or name of the umount programm */
 #undef UMOUNT
 
@@ -2759,11 +2746,8 @@
 /* whether libsanlock_client is available */
 #undef WITH_SANLOCK
 
-/* whether libsasl2 is available */
+/* whether libsasl2 >= 2.1.26 is available */
 #undef WITH_SASL
-
-/* whether libsasl2 is available */
-#undef WITH_SASL1
 
 /* whether AppArmor security driver is available */
 #undef WITH_SECDRIVER_APPARMOR
@@ -2825,7 +2809,7 @@
 /* whether Test driver is enabled */
 #undef WITH_TEST
 
-/* whether libudev >= 145 is available */
+/* whether libudev >= 219 is available */
 #undef WITH_UDEV
 
 /* whether VirtualBox driver is enabled */
@@ -2851,9 +2835,6 @@
 
 /* whether libyajl is available */
 #undef WITH_YAJL
-
-/* whether libyajl is available */
-#undef WITH_YAJL2
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
