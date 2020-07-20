@@ -1,0 +1,6 @@
+  * [721a2d8] New upstream version 0.9.12~rc2
+  * [a469ff6] Update symbols
+  * [a483028] Daemon tests changed so update the patches
+  * [fbd9c12] Drop virURIParse-don-t-forget-to-copy-the-user-part applied
+    upstream
+  * [00931ed] Update gbp.conf for experimental
