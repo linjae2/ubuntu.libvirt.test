@@ -1,0 +1,4 @@
+  * debian/libvirt-bin.upstart: libvirt has a nasty habit of leaving
+    it's pidfile lying around when/if it crashes; add a pre-start
+    check that removes the pidfile if it exists but the daemon is
+    not actually running, LP: #510658
