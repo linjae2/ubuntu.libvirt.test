@@ -1,0 +1,3 @@
+  * Fix /etc/init/libvirt-bin.conf start on to wait until networking.conf
+    has stopped with success, meaning ifup -a completed successfully and
+    all auto-started network devices are up.  (LP: #495394)
