@@ -1,0 +1,11 @@
+  * [e91a86a] CVE-2013-4296: Fix crash in remoteDispatchDomainMemoryStats.
+    Thanks to "Daniel P. Berrange"
+  * [9c12e5a] Fix race condition when destroying guests.
+    Closes: #717893
+    Thanks to Ferenc Wágner for sorting this out.
+  [ Guido Günther ]
+  * [5bc00df] Make sure qemu.conf isn't world readable by default
+    since the user might add passwords to it. (Closes: #710537)
+  [ Ferenc Wagner ]
+  * [ce7ef48] Fix libvirtd crash when destroying a domain with attached console
+    (Closes: #710517)
