@@ -1,0 +1,2 @@
+  * debian/control: add dbus to libvirt-bin depends.  It fails to start
+    otherwise.  (LP: #918343)
