@@ -1,0 +1,2 @@
+  * Refreshed d/p/libxl-Check-for-control_d-string-to-decide-about-dom.patch
+    to avoid logging an error when file is not present.
