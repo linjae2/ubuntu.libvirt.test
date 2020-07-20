@@ -1,0 +1,10 @@
+  * [78a3a68] Revert "rpc: Discard non-blocking calls only when necessary"
+    Thanks to Jiri Denemark for the patch and Philipp Hahn for debugging
+  * [5b4dc1a] qemu: Fix off-by-one error while unescaping monitor strings.
+    Thanks to Peter Krempa for the patch and Philipp Hahn for debugging this
+    (Closes: #699281)
+  * [372f53d] rpc: Fix crash on error paths of message dispatching.
+    This fixes CVE-2013-0170
+    Thanks to Peter Krempa (Closes: #699224)
+  * [2a2a60e] Make python-libvirt depend on the exact same libvirt0 version
+    (Closes: #697852, #699128)
