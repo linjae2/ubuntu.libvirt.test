@@ -1,0 +1,8 @@
+  [ Serge Hallyn ]
+  * Apply patch: 'build: cleanup declaration of xen tests.' to fix
+    the FTBFS for ppc and arm (which are configured without xen).
+  [ Jamie Strandboge ]
+  * debian/patches/9023-vah-require-uuid.patch: require <uuid> in domain
+    XML (LP: #672943)
+  * debian/libvirt-bin.cron.daily: use shell globbing to enumerate xml files.
+    Based on patch thanks to Henryk Plötz (LP: #655176)
