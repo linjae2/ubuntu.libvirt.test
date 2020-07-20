@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.sbin.libvirtd: allow pygrub to be run
+    (LP: #1326003)
