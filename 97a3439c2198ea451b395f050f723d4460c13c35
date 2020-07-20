@@ -1,0 +1,2 @@
+  * Enable systemtap, zfs, numa on s390x.
+  * Enable systemtap on ppc64el.
