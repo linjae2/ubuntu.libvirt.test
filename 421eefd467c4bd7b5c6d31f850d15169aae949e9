@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: add /etc/pki/CA/* and /etc/pki/libvirt/**
+    (LP: #901272)
