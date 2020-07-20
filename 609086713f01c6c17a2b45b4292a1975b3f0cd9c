@@ -1,0 +1,2 @@
+  * debian/libvirt-bin.apport: add filter on AppArmor profile names to
+    prevent false positives from denials originating in other packages.
