@@ -1,0 +1,2 @@
+  * debian/patches/9010-apparmor-ftbfs.patch: updated to match upstream
+    and give proper attribution
