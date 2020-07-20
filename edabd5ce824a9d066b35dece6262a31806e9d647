@@ -1,0 +1,7 @@
+  * Fix default network autostart symlink disappearing on upgrade (LP: #901298)
+    - debian/libvirt-bin.preinst: note if the symlink exists
+    - debian/libvirt-bin.postinst: if symlink existed, OR if we are upgrading
+      from one of the broken versions, then recreate the symlink.  (Continue
+      to create the symlink on new installs.)
+  * debian/patches/fix-qemu-1.0.patch: without this patch, libvirt fails
+    when trying to parse the version # from qemu 1.0.
