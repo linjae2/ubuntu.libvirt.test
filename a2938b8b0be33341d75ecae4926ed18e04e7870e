@@ -1,0 +1,1 @@
+  * [6b610b6] Include stdint.h for uint32_t to fix the build on kFreeBSD
