@@ -1,0 +1,3 @@
+  * [ac2fb88] Create /var/lib/libvirt/qemu/channel/target (Closes: #712179)
+  * [54deab3] Switch to dh
+  * [642e1f9] Set LD_PRELOAD empty (Closes: #714515)
