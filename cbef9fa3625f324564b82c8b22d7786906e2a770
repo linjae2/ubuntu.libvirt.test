@@ -1,0 +1,4 @@
+  * debian/patches/add-armhf-sysinfo-infomration.patch:
+    Provides cpuinfo for armhf cpus.
+  * debian/patches/add-armhf-cpuinfo-parser.patch:
+    Fixes compile time warning about armhf cpus.
