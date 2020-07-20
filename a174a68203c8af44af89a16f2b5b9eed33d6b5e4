@@ -1,0 +1,4 @@
+  * [c0f0178] New upstream version 1.3.3
+  * [96c6ccb] Link-xen-driver-against-libxl.patch: use version applied
+    upstream
+  * [ee7a90c] Dropped apparmor-monitor-socket-moved.patch: fixed upstream
