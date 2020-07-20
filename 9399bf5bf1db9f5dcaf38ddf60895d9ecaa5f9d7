@@ -1,0 +1,5 @@
+  * [c06e393] debian/watch: match releases and release candidates
+  * [2d08768] New upstream version 0.9.7
+  * [a260f43] Add empty hooks dir (Closes: #623996)
+  * [0b10e48] Install logrotate files again. This got broken by moving to
+    separate build-dir. Based on a patch from Serge Hallyn. (Closes: #647953)
