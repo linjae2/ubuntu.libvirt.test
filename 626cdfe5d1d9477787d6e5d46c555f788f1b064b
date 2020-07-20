@@ -1,0 +1,4 @@
+  * Fix build-test autopkgtest: it now expects to run with the current
+    directory set to the root of the unpacked source package, writes to
+    $ADTTMP rather than to the source package, and declares dependencies on
+    build-essential and pkg-config.
