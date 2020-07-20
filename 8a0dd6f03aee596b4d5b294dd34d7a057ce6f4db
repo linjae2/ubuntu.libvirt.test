@@ -1,0 +1,12 @@
+  * debian/apparmor/libvirt-lxc (sync with container-base with lxc):
+    - remove bare 'signal' and 'ptrace' rules (base abstraction covers most
+      of what we need)
+    - allow signal (receive) peer=/usr/sbin/libvirtd
+    - allow ptrace peer=@{profile_name}
+    - deny mount options=(ro, remount, silent) -> /
+    - allow mount fstype=hugetlbfs
+    - shuffle a couple of rules around to make it easier to diff with lxc
+      policy
+  * debian/apparmor/TEMPLATE.lxc (sync with lxc-default):
+    - use attach_disconnected and mediate_deleted
+    - deny mount fstype=devpts,
