@@ -1,0 +1,4 @@
+  * Upload to unstable
+  * [f634d53] Don't try to install qemu configuration on kFreeBSD.
+    QEMU support on kFreeBSD support is currently disabled due to test
+    failures.
