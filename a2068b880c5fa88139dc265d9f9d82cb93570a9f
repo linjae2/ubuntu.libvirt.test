@@ -1,0 +1,4 @@
+  * libxl: Refresh patch(es) to allow the choice between Cirrus and
+    VGA for Xen HVM guests.
+    - d/p/libxl-Implement-basic-video-device-selection.patch [v4]
+    - d/p/libxl-Fix-up-VRAM-to-minimum-requirements.patch
