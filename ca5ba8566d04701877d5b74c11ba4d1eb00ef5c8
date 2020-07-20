@@ -1,0 +1,3 @@
+  * add debian/patches/fix-tap-interfaces-mac-addrs.patch to prevent
+    network freezes due to badly chosen tap interface macaddrs.
+    (LP: #584048)
