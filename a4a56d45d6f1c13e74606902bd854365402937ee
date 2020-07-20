@@ -1,0 +1,2 @@
+  * debian/patches/0008-lp287533.patch: allow 16 VCPUs when using kvm
+    (LP: #287533)
