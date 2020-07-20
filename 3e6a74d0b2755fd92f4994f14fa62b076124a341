@@ -1,0 +1,2 @@
+  * d/p/add-a-mutex-to-serialize-updates-to-fw.patch: fix another deadlock
+    when starting a large number of VMs.  (LP: #1228977)
