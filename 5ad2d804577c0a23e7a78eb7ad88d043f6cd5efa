@@ -1,0 +1,3 @@
+  * 9022-pass-the-virt-driver-name-into-security-drivers and
+    9023-dont-enable-apparmor-driver-with-lxc: fix libvirt-lxc breakages
+    due to incomplete apparmor security driver for lxc.
