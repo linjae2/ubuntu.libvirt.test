@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: add a bunch of newly available qemu-*
+    architecture binaries. (LP: #1519030)
