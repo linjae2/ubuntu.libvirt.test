@@ -1,0 +1,6 @@
+  * debian/libvirt-bin.postinst: add each admin user to libvirtd,
+    LP: #410226; note that this is only a partial fix, as admin users
+    added after libvirt's install will need to be individually added
+    to libvirtd; however, this should fix a huge number of
+    single-admin-user-in-default-Ubuntu-system annoyances
+  * debian/control: bump standards version
