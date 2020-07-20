@@ -1,0 +1,3 @@
+  * d/p/u/virt-aa-helper-apparmor-allow-usr-share-AAVMF-too.patch: Allow
+    access to /usr/share/AAVMF/** and /usr/share/qemu-efi/** for aarch64 UEFI.
+    (LP: #1538882)
