@@ -1,0 +1,10 @@
+  * zfs support (LP: #1553023)
+    - Cherrypick upstream patches to support zfs
+    - debian/rules: build with zfs support
+    - debian/control: add zfs as build-dep
+  * d/p/u/virt-aa-helper-no-explicity-deny-for-basefiles.patch: don't mark
+    readonly files with an explicity deny only because the xml marks it
+    as reasonly. (LP: #1554031)
+  * fix typo in virt-aa-helper helptext
+  * fix d/p/u/preup-virt-aa-helper-better-write-denials-handling.patch to
+    not overwrite const memory.
