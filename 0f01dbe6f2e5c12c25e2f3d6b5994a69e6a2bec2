@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.sbin.libvirtd: add audit_write capability
+    (LP: #1204616)
