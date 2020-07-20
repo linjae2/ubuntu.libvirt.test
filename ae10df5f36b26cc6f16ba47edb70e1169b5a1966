@@ -1,0 +1,5 @@
+  * Refresh changes to match they way they were accepted upstream
+    - d/p/u/aa-helper-Properly-link-with-storage-driver.patch add commit
+      reference now that it is in git.
+    - d/p/u/fix-libxl-default-driver-name.patch: instead of addin the
+      name this is now fixed by relaxing the schema.
