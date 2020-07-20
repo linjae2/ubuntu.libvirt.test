@@ -1,0 +1,3 @@
+  [ Seyeong Kim ]
+  * d/p/fix_libvirtd_killed_by_sigsegv.patch: fix incorrect backport
+    (LP: #1464175)
