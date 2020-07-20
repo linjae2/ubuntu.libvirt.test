@@ -1,0 +1,4 @@
+  * complete the 9p support: (LP: #1378434)
+    - libvirt-qemu: add fowner and fsetid
+    - virt-aa-helper: add 'l' to 9p file options
+  * add mising apparmor permissions for slof (LP: #1374554)
