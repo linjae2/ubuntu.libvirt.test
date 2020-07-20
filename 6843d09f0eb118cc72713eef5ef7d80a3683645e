@@ -1,0 +1,8 @@
+  * 9037-virt-aa-helper-add-unix-channels-esp-for-qemu-guest-.patch: Allow
+    libvirt domains to start when using qemu guest agent. (LP: #1393842)
+  * create /var/lib/libvirt/qemu/channel/target (LP: #1393842)
+    - libvirt-bin.dirs: add /var/lib/libvirt/qemu/channel/target
+    - libvirt-bin.postinst: chown target directory to libvirt-qemu:kvm so
+      qemu can create the unix sockets.
+  * debian/apparmor/libvirt-qemu:
+    allow serial console backed by pts chardev (LP: #1342083)
