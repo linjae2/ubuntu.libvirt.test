@@ -1,0 +1,5 @@
+  * Upload to experimental
+  * [8f97b0f] New upstream version 0.9.10~rc1
+  * [7636706] Update symbols
+  * [8d776a5] Drop xen-Don-t-crash-when-we-fail-to-init-caps.patch applied
+    upstream.
