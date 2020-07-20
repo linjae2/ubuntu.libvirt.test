@@ -1,0 +1,2 @@
+  * debian/patches/fix-ubuntu-xen-qemu-dm-patch.patch:
+    Update patch due to failing tests. 
