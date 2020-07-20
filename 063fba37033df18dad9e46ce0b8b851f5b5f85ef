@@ -1,0 +1,31 @@
+  * Merged with Debian testing. Remaining changes:
+    - Added changes to use the upstream apparmor profiles with added
+      delta (configurable via apparmor profiles version).
+      * d/p/u/0001-apparmor-add-feature-parsing.patch
+      * d/p/u/0002-apparmor-apply-ubuntu-delta.patch
+      * d/p/u/0003-apparmor-debian-ubuntu-delta.patch
+      * d/p/u/0004-apparmor-ubuntu-delta.patch
+    - Avoiding dependency on sheepdog
+    - Additional apport package-hook
+    - Additional dnsmasq configuration
+    - Additional profile.d script to set default URI
+    - Additional debian/bug-presubj
+    - d/rules: debhelper start virtlogd.socket not virtlockd.service
+    - Modifications to adapt for our delayed switch away from libvirt-bin.
+    - Wait on socket in sysvinit script
+    - Backwards compatible handling of groups and default bridged network
+      creation.
+    - Extended handling of apparmor profiles
+    - Convert libvirt0 and libvirt-dev to multi-arch.
+    - Added a fix for the upstream version of adding better write denials
+      handling to virt-aa-helper.
+    - Convert libnss_libvirt to multi-arch and fix up source location that
+      changed when making libvirt0 multi-arch.
+    - Dropped
+      * upstart script for libvirtd
+      * d/p/lp1588841-000[123]-* (upstream)
+      * d/p/u/qemu-Add-virQEMUCapsSupportsGICVersion.patch (upstream)
+      * d/p/u/qemu-Automatically-choose-usable-GIC-version.patch (upstream)
+      * d/p/u/docs-remove-xpath.patch (xpath removed upstream)
+      * d/p/u/preup-virt-aa-helper-better-write-denials-handling.patch (upstr.)
+      * d/p/u/ubuntu/virt-aa-helper-helpfix.patch (upstream)
