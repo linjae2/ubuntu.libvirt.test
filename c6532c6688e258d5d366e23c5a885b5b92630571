@@ -1,0 +1,2 @@
+  * debian/patches/rbd-storage-format.patch: Make image format 2 the default
+    for RBD. 
