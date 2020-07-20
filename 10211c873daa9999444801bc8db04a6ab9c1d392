@@ -1,0 +1,3 @@
+  * implement cgmanager support (LP: #1322677)
+    - debian/control: build-dep on libcgmanager-dev, depend on cgmanager
+    - d/p/add-cgmanager-support.patch
