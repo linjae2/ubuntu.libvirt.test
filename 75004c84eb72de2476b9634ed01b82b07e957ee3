@@ -1,0 +1,3 @@
+  * [dcdab94] CVE-2010-2242: Apply a source port mapping to virtual network
+    masquerading
+  * [ce08070] Fix path to hvmloader. (Closes: #573808)
