@@ -1,0 +1,2 @@
+  * [55ec399] Don't try to configure systemtap support on architectures
+    lacking support for it.
