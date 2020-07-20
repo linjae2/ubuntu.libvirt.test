@@ -1,0 +1,5 @@
+  * [c90d756] New upstream version 1.0.5
+    Fixes a kFreeBSD build failure
+  * [910e185] virthreadpthread: don't try to cast pthread_t to void*
+    Fixes another build failure on kFreeBSD
+  * [3f914e6] Add back sanitytest.py that got lost in the upstream tarball
