@@ -1,0 +1,22 @@
+  * debian/libvirt-bin.upstart:
+    - remove unnecessary pid file existence test, LP: #510658
+    - revert virbr0 up/down hack added in 0.7.5-5ubuntu17, LP: #345485
+  * fix for hostdev devices (LP: #545795). This can be dropped in 0.7.8
+    - debian/patches/9021-apparmor-fix-hostdev.patch: adjust virt-aa-helper to
+      handle pci devices. Update valid_path() to have an override array to
+      check against, and add "/sys/devices/pci" to it. Then rename
+      file_iterate_cb() to file_iterate_hostdev_cb() and create
+      file_iterate_pci_cb() based on it. Update tests suite for this and SDL
+    - debian/apparmor/libvirt-qemu: adjust for the above
+    - debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow access to
+      /sys/devices
+  * handle SDL graphics (LP: #545426). This can be dropped in 0.7.8
+    - 9019-apparmor-fix-xauth.patch: adjust virt-aa-helper to handle SDL
+      graphics, specifically Xauthority. Also remove a couple redundant
+      checks.
+    - debian/apparmor/libvirt-qemu: add comment about /dev/fb*
+  * handle backingstore (LP: #470636). This can be dropped in 0.7.8
+    - debian/patches/9020-apparmor-fix-backingstore.patch: adjust
+      virt-aa-helper to handle disks with backing stores
+    - debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow access to
+      user-tmp, non-hidden files in @{HOME} and storage pools
