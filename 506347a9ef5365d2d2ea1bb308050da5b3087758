@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: ACL bypass using storage pool directory traversal
+    - debian/patches/CVE-2015-5313.patch: filter filesystem volume names in
+      src/storage/storage_backend_fs.c.
+    - CVE-2015-5313
