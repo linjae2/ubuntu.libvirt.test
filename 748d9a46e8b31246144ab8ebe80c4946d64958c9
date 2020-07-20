@@ -1,0 +1,12 @@
+  [ Seyeong Kim ]
+  * virObjectUnref() libvirtd killed by SIGSEGV (LP: #1464175)
+    - upstream, util: identity: Harden virIdentitySetCurrent()
+    - upstream, daemon: Clear fake domain def object that is used to check 
+      ACL prior to use
+    - upstream, rpc: Don't unref identity object while callbacks still can 
+      be executed
+  [ Edward Hope-Morley ]
+  * Add post-start to upstart (/etc/init/libvirt-bin.conf) and
+    sysv (/etc/init.d/libvirt-bin) to ensure libvirt-sock
+    created before up (LP: #1455608)
+  * Re-enable Support-incoming-migration-from-13.10-hosts.patch. (LP: #1425619)
