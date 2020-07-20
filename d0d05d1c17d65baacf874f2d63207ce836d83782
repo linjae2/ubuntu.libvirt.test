@@ -1,0 +1,2 @@
+  * 9037-virt-aa-helper-add-unix-channels-esp-for-qemu-guest-.patch: Allow
+    libvirt domains to start when using qemu guest agent.  (LP: #1393842)
