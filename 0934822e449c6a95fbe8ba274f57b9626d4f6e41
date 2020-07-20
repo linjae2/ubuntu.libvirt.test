@@ -1,0 +1,2 @@
+  * d/p/virt-aa-helper-vhost.patch: allow access to /dev/vhost-net if domain
+    needs it (LP: #1322568)
