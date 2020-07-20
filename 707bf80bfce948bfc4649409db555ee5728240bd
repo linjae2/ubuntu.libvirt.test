@@ -1,0 +1,2 @@
+  * debian/patches/fix-lxc-startup-error.patch: Fix lxc start up error.
+    (LP: #921004)
