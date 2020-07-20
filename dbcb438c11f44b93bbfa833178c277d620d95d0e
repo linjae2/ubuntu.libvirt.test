@@ -1,0 +1,4 @@
+  * [6534478] Check status in a systemd 208 compatible way
+    systemd 204 returned 0 when trying to reload a not running service but
+    208 changed behaviour. So use status instead of is-enabled.
+    Thanks to Neutron Soutmun for his feedback (Closes: #758688)
