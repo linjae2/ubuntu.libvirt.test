@@ -1,0 +1,4 @@
+  * debian/control: Move pm-utils from suggests to Recommends.
+    (LP: #1274772) 
+  * debian/patches/patches/nwfilter-locking.patch: Fix nwfilter locking
+    causing libvirt to crash. (LP: #1228977)
