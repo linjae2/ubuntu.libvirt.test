@@ -1,0 +1,9 @@
+  * New upstream release:
+    + Dropped patches:
+      - d/p/add-cgmanager-support.patch
+      - d/p/cgmanager-mutex
+      - d/p/cgm-ignore-machined-failure
+      - d/p/9020-lp545795.patch
+      - d/pa/ubuntu-libxl-qemu-nopath.patch
+      - d/p/ubuntu-libxl-migrate-dm.patch
+      - d/p9037-virt-aa-helper-add-unix-channels-esp-for-qemu-guest-.patch
