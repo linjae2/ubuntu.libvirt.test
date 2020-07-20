@@ -1,0 +1,8 @@
+  * FFe: LP: #622682.
+  * Replace 9019-Remove-wrong-check-for-uml-monitor-response-size.patch with
+    9019-uml-fix-logic-bug-in-checking-reply-length.patch which is what ended
+    up getting applied upstream.
+  * Add the following patches taken from upstream git:
+    - 9021-Allow-chardev-of-type-file-for-UML-domains.patch
+    - 9022-Rename-qemudShrinkDisks-to-virDomainDiskRemove-and-m.patch
+    - 9023-Support-virDomainAttachDevice-and-virDomainDetachDev.patch
