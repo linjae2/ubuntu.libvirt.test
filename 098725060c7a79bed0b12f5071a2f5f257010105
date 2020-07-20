@@ -1,0 +1,4 @@
+  * [5a5a046] New upstream version 1.2.13
+  * [6c65940] Bump symbol versions
+  * [5755363] Rediff patches
+    This reverts commit 35a256363958bd452cafdfcadec9626b2ce6df45.
