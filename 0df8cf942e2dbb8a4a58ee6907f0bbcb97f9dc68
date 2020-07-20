@@ -1,0 +1,3 @@
+  * Revert Ubuntu-specific patch to build-depend on libsystemd-daemon-dev
+    instead of libsystemd-dev; libsystemd-daemon-dev is no longer built from
+    systemd source so we want libsystemd-dev.
