@@ -1,0 +1,4 @@
+  * [40e1704] Enable auditing on linux-any.
+    Thanks to Laurent Bigonville for testing. (Closes: 688177)
+  * [8d56723] New upstream version 0.10.2
+  * [312d8e6] Update symbols
