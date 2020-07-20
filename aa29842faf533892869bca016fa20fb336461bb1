@@ -1,0 +1,3 @@
+  * Add post-start to upstart (/etc/init/libvirt-bin.conf) and
+    sysv (/etc/init.d/libvirt-bin) jobs to ensure libvirt-sock
+    created before up (LP: #1455608)
