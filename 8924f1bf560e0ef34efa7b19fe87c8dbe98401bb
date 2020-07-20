@@ -1,0 +1,2 @@
+  * d/p/ubuntu/lp-1825195-*.patch: fix issues with old guests that defined
+    the never functional osxsave and ospke features (LP: #1825195).
