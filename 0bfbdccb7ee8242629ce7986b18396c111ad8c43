@@ -1,0 +1,4 @@
+  * create /var/lib/libvirt/qemu/channel/target (LP: #1393842)
+    - libvirt-bin.dirs: add /var/lib/libvirt/qemu/channel/target
+    - libvirt-bin.postinst: chown target directory to libvirt-qemu:kvm so
+      qemu can create the unix sockets.
