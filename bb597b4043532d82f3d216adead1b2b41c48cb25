@@ -1,0 +1,3 @@
+  * Fix "libvirt's defaults are slightly less than sane" (LP: #344913)
+    - more-flexible-emulator-on-x86.patch (from upstream)
+    - default-arch.patch
