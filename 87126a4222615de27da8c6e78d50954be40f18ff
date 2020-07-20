@@ -1,0 +1,2 @@
+  * debian/patches/recognize-trusty-machine-type.patch: Revert patch
+    since it was causing issues with virtio deivces. (LP: #1304107) 
