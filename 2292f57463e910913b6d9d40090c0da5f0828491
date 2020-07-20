@@ -1,0 +1,2 @@
+  * debian/patches/prevent-lxc-shutdown-host.patch: Backport fix
+    from upstream to prevent lxc-containets shutting down the host. 
