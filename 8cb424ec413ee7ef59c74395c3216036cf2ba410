@@ -1,0 +1,2 @@
+  * Upload to unstable. Works with qemu-kvm and qemu 1.0.
+    (Closes: #652454)
