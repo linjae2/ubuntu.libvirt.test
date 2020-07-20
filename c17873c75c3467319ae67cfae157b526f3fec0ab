@@ -1,0 +1,10 @@
+  [ Serge Hallyn ]
+  * Replace 9024-skip-broken-commandtest.patch with
+    9024-fix-broken-commandtest.patch from upstream.
+  [ Jamie Strandboge ]
+  * debian/patches/9026-security-avoid-memory-leak.patch: avoid memory leaks
+    with the security drivers. Can be dropped in 0.8.9.
+  * SECURITY UPDATE: debian/patches/9027-CVE-2011-1146.patch: Add missing
+    checks for read only connections. Patch from Debian. Can be dropped in
+    0.8.8-3.
+    - CVE-2011-1146
