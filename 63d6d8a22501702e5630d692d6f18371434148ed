@@ -1,0 +1,14 @@
+  * New upstream release: 
+    + Dropped patches:
+      - debian/patches/fix-virterror-namechange
+      - debian/patches/apparmor-use-apparmor-setfdlabel
+      - debian/patches/prevent-lxc-shutdown-host.patch
+      - debian/patches/apparmor-no-need-to-check-security-model
+      - debian/patches/nonblock-fix.patch
+     + Refreshed patches:
+      - debian/patches/9002-better_default_uri_virsh.patch
+      - debian/patches/enable-kvm-spice.patch
+      - debian/patches/patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
+   * debian/patches/Add-sanitytest.py.patch: Add patch to fix missing sanitytest.py
+     when building the testsuite.
+   * debian/libvirt-dev.install: dont't ship files for static linking.
