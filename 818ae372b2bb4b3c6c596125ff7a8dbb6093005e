@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: allow access to /dev/kqemu
+  * debian/apparmor/usr.bin.virt-aa-helper: use @{PROC} instead of /proc
