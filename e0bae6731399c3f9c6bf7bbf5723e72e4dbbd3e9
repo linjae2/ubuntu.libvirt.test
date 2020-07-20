@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: denial of service via invalid RPC command
+    - debian/patches/CVE-2012-3445.patch: make sure nparams isn't set to
+      zero in daemon/remote.c.
+    - CVE-2012-3445
