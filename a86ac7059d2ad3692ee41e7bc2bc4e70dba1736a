@@ -1,0 +1,5 @@
+  * [b0b7359] Don't pretend kFreeBSD supports linux only features.  So far we
+    worked around missing kFreeBSD features by creating empty dirs this looks
+    bad on the target systems and makes us maintain things in debian rules and
+    *.install. Explicitly invoke dh_install in debian/rules instead.
+    Closes: #747658
