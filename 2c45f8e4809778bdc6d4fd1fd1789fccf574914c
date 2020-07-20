@@ -1,0 +1,4 @@
+  * complete the 9p support: (LP: #1378434)
+    - libvirt-qemu: add fowner and fsetid
+    - virt-aa-helper: add 'l' to 9p file options
+  * dont-include-non-migrateable-features-in-host-model (LP: #1386503)
