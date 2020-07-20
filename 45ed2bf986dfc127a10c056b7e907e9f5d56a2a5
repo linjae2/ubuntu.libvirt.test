@@ -1,0 +1,4 @@
+  * d/control: explicitly Build-dep on libwiretap-dev to fix FTBFS since
+    libwireshark 2.6.x SRU upload (LP: #1801666)
+  * debian/patches/ubuntu/lp1787405-*: Support guest dedicated Crypto
+    Adapters on s390x (LP: #1787405)
