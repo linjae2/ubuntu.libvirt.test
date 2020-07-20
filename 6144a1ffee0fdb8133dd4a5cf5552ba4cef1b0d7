@@ -1,0 +1,3 @@
+  * d/p/ubuntu-aa/0036-virt-aa-helper-locking-loader-nvram-for-qemu-2.10.patch:
+    for compatibility with the behavior of qemu 2.10 this adds locking
+    permission to rules generated for loader/nvram (LP: #1710960)
