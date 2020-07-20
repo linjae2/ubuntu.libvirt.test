@@ -92,6 +92,9 @@
 #ifdef WITH_XENAPI
 # include "xenapi/xenapi_driver.h"
 #endif
+#ifdef WITH_VZ
+# include "vz/vz_driver.h"
+#endif
 #ifdef WITH_BHYVE
 # include "bhyve/bhyve_driver.h"
 #endif
@@ -257,7 +260,7 @@ virConnectAuthPtr virConnectAuthPtrDefault = &virConnectAuthDefault;
 
 #if HAVE_WINSOCK2_H
 static int
-virWinsockInit(void)
+winsock_init(void)
 {
     WORD winsock_version, err;
     WSADATA winsock_data;
@@ -386,7 +389,7 @@ virGlobalInit(void)
     VIR_DEBUG("register drivers");
 
 #if HAVE_WINSOCK2_H
-    if (virWinsockInit() == -1)
+    if (winsock_init() == -1)
         goto error;
 #endif
 
@@ -428,6 +431,10 @@ virGlobalInit(void)
 # endif
 # ifdef WITH_XENAPI
     if (xenapiRegister() == -1)
+        goto error;
+# endif
+# ifdef WITH_VZ
+    if (vzRegister() == -1)
         goto error;
 # endif
 #endif
@@ -928,39 +935,10 @@ virConnectGetDefaultURI(virConfPtr conf,
 }
 
 
-/*
- * Check to see if an invalid URI like qemu://system (missing /) was passed,
- * offer the suggested fix.
- */
-static int
-virConnectCheckURIMissingSlash(const char *uristr, virURIPtr uri)
-{
-    if (!uri->scheme || !uri->path || !uri->server)
-        return 0;
-
-    /* To avoid false positives, only check drivers that mandate
-       a path component in the URI, like /system or /session */
-    if (STRNEQ(uri->scheme, "qemu") &&
-        STRNEQ(uri->scheme, "vbox") &&
-        STRNEQ(uri->scheme, "vz"))
-        return 0;
-
-    if (STREQ(uri->server, "session") ||
-        STREQ(uri->server, "system")) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("invalid URI %s (maybe you want %s:///%s)"),
-                       uristr, uri->scheme, uri->server);
-        return -1;
-    }
-
-    return 0;
-}
-
-
 static virConnectPtr
-virConnectOpenInternal(const char *name,
-                       virConnectAuthPtr auth,
-                       unsigned int flags)
+do_open(const char *name,
+        virConnectAuthPtr auth,
+        unsigned int flags)
 {
     size_t i;
     int res;
@@ -1023,12 +1001,6 @@ virConnectOpenInternal(const char *name,
                   NULLSTR(ret->uri->scheme), NULLSTR(ret->uri->server),
                   NULLSTR(ret->uri->user), ret->uri->port,
                   NULLSTR(ret->uri->path));
-
-        if (virConnectCheckURIMissingSlash(alias ? alias : name,
-                                           ret->uri) < 0) {
-            VIR_FREE(alias);
-            goto failed;
-        }
 
         VIR_FREE(alias);
     } else {
@@ -1161,7 +1133,7 @@ virConnectOpen(const char *name)
 
     VIR_DEBUG("name=%s", NULLSTR(name));
     virResetLastError();
-    ret = virConnectOpenInternal(name, NULL, 0);
+    ret = do_open(name, NULL, 0);
     if (!ret)
         goto error;
     return ret;
@@ -1197,7 +1169,7 @@ virConnectOpenReadOnly(const char *name)
 
     VIR_DEBUG("name=%s", NULLSTR(name));
     virResetLastError();
-    ret = virConnectOpenInternal(name, NULL, VIR_CONNECT_RO);
+    ret = do_open(name, NULL, VIR_CONNECT_RO);
     if (!ret)
         goto error;
     return ret;
@@ -1237,7 +1209,7 @@ virConnectOpenAuth(const char *name,
 
     VIR_DEBUG("name=%s, auth=%p, flags=%x", NULLSTR(name), auth, flags);
     virResetLastError();
-    ret = virConnectOpenInternal(name, auth, flags);
+    ret = do_open(name, auth, flags);
     if (!ret)
         goto error;
     return ret;

@@ -27,6 +27,7 @@
 
 #include <config.h>
 
+#include <locale.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -37,9 +38,9 @@
 #include "virfile.h"
 #include "viralloc.h"
 #include "virerror.h"
+#include "configmake.h"
 #include "virrandom.h"
 #include "virstring.h"
-#include "virgettext.h"
 
 #define VIR_FROM_THIS VIR_FROM_STORAGE
 
@@ -229,8 +230,14 @@ main(int argc, char **argv)
 
     program_name = argv[0];
 
-    if (virGettextInitialize() < 0 ||
-        virThreadInitialize() < 0 ||
+    if (setlocale(LC_ALL, "") == NULL ||
+        bindtextdomain(PACKAGE, LOCALEDIR) == NULL ||
+        textdomain(PACKAGE) == NULL) {
+        fprintf(stderr, _("%s: initialization failed\n"), program_name);
+        exit(EXIT_FAILURE);
+    }
+
+    if (virThreadInitialize() < 0 ||
         virErrorInitialize() < 0) {
         fprintf(stderr, _("%s: initialization failed\n"), program_name);
         exit(EXIT_FAILURE);

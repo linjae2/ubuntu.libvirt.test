@@ -65,9 +65,9 @@ fillAll(virDomainCapsPtr domCaps,
     virDomainCapsDeviceHostdevPtr hostdev = &domCaps->hostdev;
     domCaps->maxvcpus = 255;
 
-    os->supported = true;
+    os->device.supported = true;
 
-    loader->supported = true;
+    loader->device.supported = true;
     SET_ALL_BITS(loader->type);
     SET_ALL_BITS(loader->readonly);
     if (fillStringValues(&loader->values,
@@ -76,11 +76,11 @@ fillAll(virDomainCapsPtr domCaps,
                          NULL) < 0)
         return -1;
 
-    disk->supported = true;
+    disk->device.supported = true;
     SET_ALL_BITS(disk->diskDevice);
     SET_ALL_BITS(disk->bus);
 
-    hostdev->supported = true;
+    hostdev->device.supported = true;
     SET_ALL_BITS(hostdev->mode);
     SET_ALL_BITS(hostdev->startupPolicy);
     SET_ALL_BITS(hostdev->subsysType);

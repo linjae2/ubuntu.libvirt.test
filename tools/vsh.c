@@ -35,10 +35,12 @@
 #include <sys/time.h>
 #include "c-ctype.h"
 #include <fcntl.h>
+#include <locale.h>
 #include <time.h>
 #include <limits.h>
 #include <sys/stat.h>
 #include <inttypes.h>
+#include <strings.h>
 #include <signal.h>
 
 #if WITH_READLINE
@@ -53,6 +55,7 @@
 #include <libvirt/libvirt-qemu.h>
 #include <libvirt/libvirt-lxc.h>
 #include "virfile.h"
+#include "configmake.h"
 #include "virthread.h"
 #include "vircommand.h"
 #include "conf/domain_conf.h"
@@ -326,8 +329,8 @@ vshCmddefGetInfo(const vshCmdDef * cmd, const char *name)
 
 /* Validate that the options associated with cmd can be parsed.  */
 static int
-vshCmddefOptParse(const vshCmdDef *cmd, uint64_t *opts_need_arg,
-                  uint64_t *opts_required)
+vshCmddefOptParse(const vshCmdDef *cmd, uint32_t *opts_need_arg,
+                  uint32_t *opts_required)
 {
     size_t i;
     bool optional = false;
@@ -341,7 +344,7 @@ vshCmddefOptParse(const vshCmdDef *cmd, uint64_t *opts_need_arg,
     for (i = 0; cmd->opts[i].name; i++) {
         const vshCmdOptDef *opt = &cmd->opts[i];
 
-        if (i > 63)
+        if (i > 31)
             return -1; /* too many options */
         if (opt->type == VSH_OT_BOOL) {
             optional = true;
@@ -376,17 +379,17 @@ vshCmddefOptParse(const vshCmdDef *cmd, uint64_t *opts_need_arg,
         }
         if (opt->flags & VSH_OFLAG_REQ_OPT) {
             if (opt->flags & VSH_OFLAG_REQ)
-                *opts_required |= 1ULL << i;
+                *opts_required |= 1 << i;
             else
                 optional = true;
             continue;
         }
 
-        *opts_need_arg |= 1ULL << i;
+        *opts_need_arg |= 1 << i;
         if (opt->flags & VSH_OFLAG_REQ) {
             if (optional && opt->type != VSH_OT_ARGV)
                 return -1; /* mandatory options must be listed first */
-            *opts_required |= 1ULL << i;
+            *opts_required |= 1 << i;
         } else {
             optional = true;
         }
@@ -404,7 +407,7 @@ static vshCmdOptDef helpopt = {
 };
 static const vshCmdOptDef *
 vshCmddefGetOption(vshControl *ctl, const vshCmdDef *cmd, const char *name,
-                   uint64_t *opts_seen, int *opt_index, char **optstr)
+                   uint32_t *opts_seen, int *opt_index, char **optstr)
 {
     size_t i;
     const vshCmdOptDef *ret = NULL;
@@ -440,11 +443,11 @@ vshCmddefGetOption(vshControl *ctl, const vshCmdDef *cmd, const char *name,
                 }
                 continue;
             }
-            if ((*opts_seen & (1ULL << i)) && opt->type != VSH_OT_ARGV) {
+            if ((*opts_seen & (1 << i)) && opt->type != VSH_OT_ARGV) {
                 vshError(ctl, _("option --%s already seen"), name);
                 goto cleanup;
             }
-            *opts_seen |= 1ULL << i;
+            *opts_seen |= 1 << i;
             *opt_index = i;
             ret = opt;
             goto cleanup;
@@ -461,8 +464,8 @@ vshCmddefGetOption(vshControl *ctl, const vshCmdDef *cmd, const char *name,
 }
 
 static const vshCmdOptDef *
-vshCmddefGetData(const vshCmdDef *cmd, uint64_t *opts_need_arg,
-                 uint64_t *opts_seen)
+vshCmddefGetData(const vshCmdDef *cmd, uint32_t *opts_need_arg,
+                 uint32_t *opts_seen)
 {
     size_t i;
     const vshCmdOptDef *opt;
@@ -471,11 +474,11 @@ vshCmddefGetData(const vshCmdDef *cmd, uint64_t *opts_need_arg,
         return NULL;
 
     /* Grab least-significant set bit */
-    i = ffsl(*opts_need_arg) - 1;
+    i = ffs(*opts_need_arg) - 1;
     opt = &cmd->opts[i];
     if (opt->type != VSH_OT_ARGV)
-        *opts_need_arg &= ~(1ULL << i);
-    *opts_seen |= 1ULL << i;
+        *opts_need_arg &= ~(1 << i);
+    *opts_seen |= 1 << i;
     return opt;
 }
 
@@ -483,8 +486,8 @@ vshCmddefGetData(const vshCmdDef *cmd, uint64_t *opts_need_arg,
  * Checks for required options
  */
 static int
-vshCommandCheckOpts(vshControl *ctl, const vshCmd *cmd, uint64_t opts_required,
-                    uint64_t opts_seen)
+vshCommandCheckOpts(vshControl *ctl, const vshCmd *cmd, uint32_t opts_required,
+                    uint32_t opts_seen)
 {
     const vshCmdDef *def = cmd->def;
     size_t i;
@@ -494,7 +497,7 @@ vshCommandCheckOpts(vshControl *ctl, const vshCmd *cmd, uint64_t opts_required,
         return 0;
 
     for (i = 0; def->opts[i].name; i++) {
-        if (opts_required & (1ULL << i)) {
+        if (opts_required & (1 << i)) {
             const vshCmdOptDef *opt = &def->opts[i];
 
             vshError(ctl,
@@ -595,8 +598,8 @@ vshCmddefHelp(vshControl *ctl, const char *cmdname)
         const char *desc = vshCmddefGetInfo(def, "desc");
         const char *help = _(vshCmddefGetInfo(def, "help"));
         char buf[256];
-        uint64_t opts_need_arg;
-        uint64_t opts_required;
+        uint32_t opts_need_arg;
+        uint32_t opts_required;
         bool shortopt = false; /* true if 'arg' works instead of '--opt arg' */
 
         if (vshCmddefOptParse(def, &opts_need_arg, &opts_required)) {
@@ -1347,9 +1350,9 @@ vshCommandParse(vshControl *ctl, vshCommandParser *parser)
         const vshCmdDef *cmd = NULL;
         vshCommandToken tk;
         bool data_only = false;
-        uint64_t opts_need_arg = 0;
-        uint64_t opts_required = 0;
-        uint64_t opts_seen = 0;
+        uint32_t opts_need_arg = 0;
+        uint32_t opts_required = 0;
+        uint32_t opts_seen = 0;
 
         first = NULL;
 
@@ -1419,7 +1422,7 @@ vshCommandParse(vshControl *ctl, vshCommandParser *parser)
                         goto syntaxError;
                     }
                     if (opt->type != VSH_OT_ARGV)
-                        opts_need_arg &= ~(1ULL << opt_index);
+                        opts_need_arg &= ~(1 << opt_index);
                 } else {
                     tkdata = NULL;
                     if (optstr) {

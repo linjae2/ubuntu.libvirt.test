@@ -26,16 +26,16 @@
 
 int prlsdkInit(void);
 void prlsdkDeinit(void);
-int prlsdkConnect(vzDriverPtr driver);
-void prlsdkDisconnect(vzDriverPtr driver);
+int prlsdkConnect(vzConnPtr privconn);
+void prlsdkDisconnect(vzConnPtr privconn);
 int
-prlsdkLoadDomains(vzDriverPtr driver);
-int prlsdkUpdateDomain(vzDriverPtr driver, virDomainObjPtr dom);
+prlsdkLoadDomains(vzConnPtr privconn);
+int prlsdkUpdateDomain(vzConnPtr privconn, virDomainObjPtr dom);
 int
-prlsdkLoadDomain(vzDriverPtr driver,
+prlsdkLoadDomain(vzConnPtr privconn,
                  virDomainObjPtr dom);
-int prlsdkSubscribeToPCSEvents(vzDriverPtr driver);
-void prlsdkUnsubscribeFromPCSEvents(vzDriverPtr driver);
+int prlsdkSubscribeToPCSEvents(vzConnPtr privconn);
+void prlsdkUnsubscribeFromPCSEvents(vzConnPtr privconn);
 PRL_RESULT prlsdkStart(PRL_HANDLE sdkdom);
 PRL_RESULT prlsdkKill(PRL_HANDLE sdkdom);
 PRL_RESULT prlsdkStop(PRL_HANDLE sdkdom);
@@ -49,29 +49,29 @@ int
 prlsdkDomainChangeState(virDomainPtr domain,
                         prlsdkChangeStateFunc chstate);
 int
-prlsdkDomainChangeStateLocked(vzDriverPtr driver,
+prlsdkDomainChangeStateLocked(vzConnPtr privconn,
                               virDomainObjPtr dom,
                               prlsdkChangeStateFunc chstate);
 int
-prlsdkApplyConfig(vzDriverPtr driver,
+prlsdkApplyConfig(virConnectPtr conn,
                   virDomainObjPtr dom,
                   virDomainDefPtr new);
-int prlsdkCreateVm(vzDriverPtr driver, virDomainDefPtr def);
-int prlsdkCreateCt(vzDriverPtr driver, virDomainDefPtr def);
+int prlsdkCreateVm(virConnectPtr conn, virDomainDefPtr def);
+int prlsdkCreateCt(virConnectPtr conn, virDomainDefPtr def);
 int
-prlsdkUnregisterDomain(vzDriverPtr driver, virDomainObjPtr dom, unsigned int flags);
+prlsdkUnregisterDomain(vzConnPtr privconn, virDomainObjPtr dom, unsigned int flags);
 int
 prlsdkDomainManagedSaveRemove(virDomainObjPtr dom);
 int
-prlsdkAttachVolume(vzDriverPtr driver, virDomainObjPtr dom, virDomainDiskDefPtr disk);
+prlsdkAttachVolume(vzConnPtr privconn, virDomainObjPtr dom, virDomainDiskDefPtr disk);
 int
 prlsdkDetachVolume(virDomainObjPtr dom, virDomainDiskDefPtr disk);
 int
 prlsdkGetBlockStats(virDomainObjPtr dom, virDomainDiskDefPtr disk, virDomainBlockStatsPtr stats);
 int
-prlsdkAttachNet(vzDriverPtr driver, virDomainObjPtr dom, virDomainNetDefPtr net);
+prlsdkAttachNet(vzConnPtr privconn, virDomainObjPtr dom, virDomainNetDefPtr net);
 int
-prlsdkDetachNet(vzDriverPtr driver, virDomainObjPtr dom, virDomainNetDefPtr net);
+prlsdkDetachNet(vzConnPtr privconn, virDomainObjPtr dom, virDomainNetDefPtr net);
 int
 prlsdkGetNetStats(virDomainObjPtr dom, const char *path, virDomainInterfaceStatsPtr stats);
 int
@@ -80,5 +80,3 @@ int
 prlsdkGetMemoryStats(virDomainObjPtr dom, virDomainMemoryStatPtr stats, unsigned int nr_stats);
 void
 prlsdkDomObjFreePrivate(void *p);
-/* memsize is in MiB */
-int prlsdkSetMemsize(virDomainObjPtr dom, unsigned int memsize);

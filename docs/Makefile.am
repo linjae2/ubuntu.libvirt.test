@@ -28,7 +28,6 @@ apihtml =					\
   $(apihtml_generated)
 
 apihtml_generated = \
-  html/libvirt-libvirt-common.html		\
   html/libvirt-libvirt-domain.html		\
   html/libvirt-libvirt-domain-snapshot.html	\
   html/libvirt-libvirt-event.html		\
@@ -325,7 +324,7 @@ $(APIBUILD_STAMP): $(srcdir)/apibuild.py \
 		$(top_srcdir)/src/util/virerror.c \
 		$(top_srcdir)/src/util/virevent.c \
 		$(top_srcdir)/src/util/virtypedparam.c
-	$(AM_V_GEN)srcdir=$(srcdir) builddir=$(builddir) $(PYTHON) $(APIBUILD)
+	$(AM_V_GEN)srcdir=$(srcdir) $(PYTHON) $(APIBUILD)
 	touch $@
 
 
@@ -364,15 +363,8 @@ install-data-local:
 	$(INSTALL_DATA) $(srcdir)/libvirtLogo.png $(DESTDIR)$(pkgdatadir)
 
 uninstall-local:
-	for f in $(css) $(dot_html) $(gif) $(png); do \
-	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
-	done
 	for h in $(apihtml); do rm -f $(DESTDIR)$(HTML_DIR)/$$h; done
 	for p in $(apipng); do rm -f $(DESTDIR)$(HTML_DIR)/$$p; done
-	for f in $(internals_html); do \
-	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
-	done
 	for f in $(devhelphtml) $(devhelppng) $(devhelpcss); do \
 	  rm -f $(DESTDIR)$(DEVHELP_DIR)/$$(basename $$f); \
 	done
-	rm -f $(DESTDIR)$(pkgdatadir)/libvirtLogo.png

@@ -8,7 +8,4 @@
     <disk supported='no'/>
     <hostdev supported='no'/>
   </devices>
-  <features>
-    <gic supported='no'/>
-  </features>
 </domainCapabilities>

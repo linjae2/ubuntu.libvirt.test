@@ -559,6 +559,8 @@ static int virLXCProcessSetupInterfaces(virConnectPtr conn,
             break;
 
         case VIR_DOMAIN_NET_TYPE_ETHERNET:
+            break;
+
         case VIR_DOMAIN_NET_TYPE_USER:
         case VIR_DOMAIN_NET_TYPE_VHOSTUSER:
         case VIR_DOMAIN_NET_TYPE_SERVER:

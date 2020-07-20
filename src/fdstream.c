@@ -42,7 +42,6 @@
 #include "virfile.h"
 #include "configmake.h"
 #include "virstring.h"
-#include "virtime.h"
 
 #define VIR_FROM_THIS VIR_FROM_STREAMS
 
@@ -388,9 +387,7 @@ static int virFDStreamWrite(virStreamPtr st, const char *bytes, size_t nbytes)
  retry:
     ret = write(fdst->fd, bytes, nbytes);
     if (ret < 0) {
-        VIR_WARNINGS_NO_WLOGICALOP_EQUAL_EXPR
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        VIR_WARNINGS_RESET
             ret = -2;
         } else if (errno == EINTR) {
             goto retry;
@@ -440,9 +437,7 @@ static int virFDStreamRead(virStreamPtr st, char *bytes, size_t nbytes)
  retry:
     ret = read(fdst->fd, bytes, nbytes);
     if (ret < 0) {
-        VIR_WARNINGS_NO_WLOGICALOP_EQUAL_EXPR
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        VIR_WARNINGS_RESET
             ret = -2;
         } else if (errno == EINTR) {
             goto retry;
@@ -521,7 +516,8 @@ int virFDStreamConnectUNIX(virStreamPtr st,
                            bool abstract)
 {
     struct sockaddr_un sa;
-    virTimeBackOffVar timeout;
+    size_t i = 0;
+    int timeout = 3;
     int ret;
 
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -541,9 +537,7 @@ int virFDStreamConnectUNIX(virStreamPtr st,
             goto error;
     }
 
-    if (virTimeBackOffStart(&timeout, 1, 3*1000 /* ms */) < 0)
-        goto error;
-    while (virTimeBackOffWait(&timeout)) {
+    do {
         ret = connect(fd, (struct sockaddr *)&sa, sizeof(sa));
         if (ret == 0)
             break;
@@ -555,7 +549,7 @@ int virFDStreamConnectUNIX(virStreamPtr st,
         }
 
         goto error;
-    }
+    } while ((++i <= timeout*5) && (usleep(.2 * 1000000) <= 0));
 
     if (virFDStreamOpenInternal(st, fd, NULL, -1, 0) < 0)
         goto error;

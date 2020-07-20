@@ -30,6 +30,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <grp.h>
+#include <locale.h>
 
 #include "libvirt_internal.h"
 #include "virerror.h"
@@ -57,7 +58,6 @@
 #include "locking/lock_manager.h"
 #include "viraccessmanager.h"
 #include "virutil.h"
-#include "virgettext.h"
 
 #ifdef WITH_DRIVER_MODULES
 # include "driver.h"
@@ -101,9 +101,6 @@
 # ifdef WITH_NWFILTER
 #  include "nwfilter/nwfilter_driver.h"
 # endif
-#endif
-#ifdef WITH_VZ
-# include "vz/vz_driver.h"
 #endif
 
 #include "configmake.h"
@@ -393,9 +390,6 @@ static void daemonInitialize(void)
 # ifdef WITH_BHYVE
     virDriverLoadModule("bhyve");
 # endif
-# ifdef WITH_VZ
-    virDriverLoadModule("vz");
-# endif
 #else
 # ifdef WITH_NETWORK
     networkRegister();
@@ -435,9 +429,6 @@ static void daemonInitialize(void)
 # endif
 # ifdef WITH_BHYVE
     bhyveRegister();
-# endif
-# ifdef WITH_VZ
-    vzRegister();
 # endif
 #endif
 }
@@ -1181,7 +1172,9 @@ int main(int argc, char **argv) {
         {0, 0, 0, 0}
     };
 
-    if (virGettextInitialize() < 0 ||
+    if (setlocale(LC_ALL, "") == NULL ||
+        bindtextdomain(PACKAGE, LOCALEDIR) == NULL ||
+        textdomain(PACKAGE) == NULL ||
         virInitialize() < 0) {
         fprintf(stderr, _("%s: initialization failed\n"), argv[0]);
         exit(EXIT_FAILURE);

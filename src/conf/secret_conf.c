@@ -1,7 +1,7 @@
 /*
  * secret_conf.c: internal <secret> XML handling
  *
- * Copyright (C) 2009-2014, 2016 Red Hat, Inc.
+ * Copyright (C) 2009-2014 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,7 +28,6 @@
 #include "virlog.h"
 #include "viralloc.h"
 #include "secret_conf.h"
-#include "virsecretobj.h"
 #include "virerror.h"
 #include "virxml.h"
 #include "viruuid.h"
@@ -39,28 +38,6 @@ VIR_LOG_INIT("conf.secret_conf");
 
 VIR_ENUM_IMPL(virSecretUsage, VIR_SECRET_USAGE_TYPE_LAST,
               "none", "volume", "ceph", "iscsi")
-
-const char *
-virSecretUsageIDForDef(virSecretDefPtr def)
-{
-    switch (def->usage_type) {
-    case VIR_SECRET_USAGE_TYPE_NONE:
-        return "";
-
-    case VIR_SECRET_USAGE_TYPE_VOLUME:
-        return def->usage.volume;
-
-    case VIR_SECRET_USAGE_TYPE_CEPH:
-        return def->usage.ceph;
-
-    case VIR_SECRET_USAGE_TYPE_ISCSI:
-        return def->usage.target;
-
-    default:
-        return NULL;
-    }
-}
-
 
 void
 virSecretDefFree(virSecretDefPtr def)
@@ -183,9 +160,9 @@ secretXMLParseNode(xmlDocPtr xml, xmlNodePtr root)
     prop = virXPathString("string(./@ephemeral)", ctxt);
     if (prop != NULL) {
         if (STREQ(prop, "yes")) {
-            def->isephemeral = true;
+            def->ephemeral = true;
         } else if (STREQ(prop, "no")) {
-            def->isephemeral = false;
+            def->ephemeral = false;
         } else {
             virReportError(VIR_ERR_XML_ERROR, "%s",
                            _("invalid value of 'ephemeral'"));
@@ -197,9 +174,9 @@ secretXMLParseNode(xmlDocPtr xml, xmlNodePtr root)
     prop = virXPathString("string(./@private)", ctxt);
     if (prop != NULL) {
         if (STREQ(prop, "yes")) {
-            def->isprivate = true;
+            def->private = true;
         } else if (STREQ(prop, "no")) {
-            def->isprivate = false;
+            def->private = false;
         } else {
             virReportError(VIR_ERR_XML_ERROR, "%s",
                            _("invalid value of 'private'"));
@@ -325,8 +302,8 @@ virSecretDefFormat(const virSecretDef *def)
     char uuidstr[VIR_UUID_STRING_BUFLEN];
 
     virBufferAsprintf(&buf, "<secret ephemeral='%s' private='%s'>\n",
-                      def->isephemeral ? "yes" : "no",
-                      def->isprivate ? "yes" : "no");
+                      def->ephemeral ? "yes" : "no",
+                      def->private ? "yes" : "no");
 
     uuid = def->uuid;
     virUUIDFormat(uuid, uuidstr);

@@ -17,12 +17,16 @@
 # along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 
-. "$(dirname $0)/test-lib.sh"
+test -z "$srcdir" && srcdir=$(pwd)
+test -z "$abs_top_srcdir" && abs_top_srcdir=$(pwd)/..
+test -z "$abs_top_builddir" && abs_top_builddir=$(pwd)/..
 
 if test "$VERBOSE" = yes; then
   set -x
   $abs_top_builddir/tools/virsh --version
 fi
+
+. "$srcdir/test-lib.sh"
 
 fail=0
 

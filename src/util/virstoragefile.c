@@ -184,8 +184,6 @@ qedGetBackingStore(char **, int *, const char *, size_t);
 #define QED_F_BACKING_FILE 0x01
 #define QED_F_BACKING_FORMAT_NO_PROBE 0x04
 
-#define PLOOP_IMAGE_SIZE_OFFSET 36
-#define PLOOP_SIZE_MULTIPLIER 512
 
 static struct FileTypeInfo const fileTypeInfo[] = {
     [VIR_STORAGE_FILE_NONE] = { 0, NULL, NULL, LV_LITTLE_ENDIAN,
@@ -238,9 +236,8 @@ static struct FileTypeInfo const fileTypeInfo[] = {
                                -1, {0}, 0, 0, 0, 0, NULL, NULL },
     [VIR_STORAGE_FILE_VHD] = { 0, NULL, NULL, LV_LITTLE_ENDIAN,
                                -1, {0}, 0, 0, 0, 0, NULL, NULL },
-    [VIR_STORAGE_FILE_PLOOP] = { 0, "WithouFreSpacExt", NULL, LV_LITTLE_ENDIAN,
-                                 -2, {0}, PLOOP_IMAGE_SIZE_OFFSET, 0,
-                                 PLOOP_SIZE_MULTIPLIER, -1, NULL, NULL },
+    [VIR_STORAGE_FILE_PLOOP] = { 0, NULL, NULL, LV_LITTLE_ENDIAN,
+                               -1, {0}, 0, 0, 0, 0, NULL, NULL },
 
     /* All formats with a backing store probe below here */
     [VIR_STORAGE_FILE_COW] = {

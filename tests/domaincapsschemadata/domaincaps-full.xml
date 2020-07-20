@@ -68,7 +68,4 @@
       </enum>
     </hostdev>
   </devices>
-  <features>
-    <gic supported='no'/>
-  </features>
 </domainCapabilities>

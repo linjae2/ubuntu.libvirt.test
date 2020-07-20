@@ -46,14 +46,6 @@ DAEMON_SOURCES =					\
 
 LIBVIRTD_CONF_SOURCES = libvirtd-config.c libvirtd-config.h
 
-PODFILES = \
-	libvirtd.pod \
-	$(NULL)
-
-MANINFILES = \
-	libvirtd.8.in \
-	$(NULL)
-
 DISTCLEANFILES =
 EXTRA_DIST =						\
 	remote_dispatch.h				\
@@ -67,6 +59,7 @@ EXTRA_DIST =						\
 	libvirt.rules					\
 	libvirtd.sasl					\
 	libvirtd.service.in				\
+	libvirtd.socket.in				\
 	libvirtd.sysconf				\
 	libvirtd.sysctl					\
 	libvirtd.aug                                    \
@@ -77,8 +70,8 @@ EXTRA_DIST =						\
 	libvirtd.uml.logrotate.in                       \
 	test_libvirtd.aug.in                             \
 	THREADS.txt					\
-	$(PODFILES)					\
-	$(MANINFILES)					\
+	libvirtd.pod.in					\
+	libvirtd.8.in					\
 	$(DAEMON_SOURCES)				\
 	$(LIBVIRTD_CONF_SOURCES)			\
 	$(NULL)
@@ -169,6 +162,13 @@ augeastests_DATA = test_libvirtd.aug
 
 CLEANFILES += test_libvirtd.aug
 
+libvirtd.8: $(srcdir)/libvirtd.8.in
+	$(AM_V_GEN)sed \
+	    -e 's|[@]sysconfdir[@]|$(sysconfdir)|g' \
+	    -e 's|[@]localstatedir[@]|$(localstatedir)|g' \
+	    < $< > $@-t && \
+	mv $@-t $@
+
 libvirtd_SOURCES = $(DAEMON_SOURCES)
 
 #-D_XOPEN_SOURCE=600 -D_XOPEN_SOURCE_EXTENDED=1 -D_POSIX_C_SOURCE=199506L
@@ -232,10 +232,6 @@ endif WITH_UML
 if WITH_VBOX
     libvirtd_LDADD += ../src/libvirt_driver_vbox.la
 endif WITH_VBOX
-
-if WITH_VZ
-    libvirtd_LDADD += ../src/libvirt_driver_vz.la
-endif WITH_VZ
 
 if WITH_STORAGE
     libvirtd_LDADD += ../src/libvirt_driver_storage.la
@@ -450,15 +446,18 @@ endif ! LIBVIRT_INIT_SCRIPT_UPSTART
 if LIBVIRT_INIT_SCRIPT_SYSTEMD
 
 SYSTEMD_UNIT_DIR = $(prefix)/lib/systemd/system
-BUILT_SOURCES += libvirtd.service
+BUILT_SOURCES += libvirtd.service libvirtd.socket
 
-install-init-systemd: install-sysconfig libvirtd.service
+install-init-systemd: install-sysconfig libvirtd.service libvirtd.socket
 	$(MKDIR_P) $(DESTDIR)$(SYSTEMD_UNIT_DIR)
 	$(INSTALL_DATA) libvirtd.service \
 	  $(DESTDIR)$(SYSTEMD_UNIT_DIR)/libvirtd.service
+	$(INSTALL_DATA) libvirtd.socket \
+	  $(DESTDIR)$(SYSTEMD_UNIT_DIR)/libvirtd.socket
 
 uninstall-init-systemd: uninstall-sysconfig
 	rm -f $(DESTDIR)$(SYSTEMD_UNIT_DIR)/libvirtd.service
+	rm -f $(DESTDIR)$(SYSTEMD_UNIT_DIR)/libvirtd.socket
 	rmdir $(DESTDIR)$(SYSTEMD_UNIT_DIR) || :
 else ! LIBVIRT_INIT_SCRIPT_SYSTEMD
 install-init-systemd:
@@ -479,6 +478,12 @@ libvirtd.service: libvirtd.service.in $(top_builddir)/config.status
 	    -e 's|[@]localstatedir[@]|$(localstatedir)|g'	\
 	    -e 's|[@]sbindir[@]|$(sbindir)|g'			\
 	    -e 's|[@]sysconfdir[@]|$(sysconfdir)|g'		\
+	    < $< > $@-t &&					\
+	    mv $@-t $@
+
+libvirtd.socket: libvirtd.socket.in $(top_builddir)/config.status
+	$(AM_V_GEN)sed						\
+	    -e 's|[@]runstatedir[@]|$(runstatedir)|g'		\
 	    < $< > $@-t &&					\
 	    mv $@-t $@
 
@@ -505,24 +510,12 @@ install-data-local: install-data-sasl
 uninstall-local:: uninstall-data-sasl
 endif ! WITH_LIBVIRTD
 
-POD2MAN = pod2man -c "Virtualization Support" -r "$(PACKAGE)-$(VERSION)"
+POD2MAN = pod2man -c "Virtualization Support" \
+			-r "$(PACKAGE)-$(VERSION)" -s 8
 
-%.8.in: %.pod
-	$(AM_V_GEN)$(POD2MAN) --section=8 $< $@-t1 && \
-	if grep 'POD ERROR' $@-t1; then rm $@-t1; exit 1; fi && \
-	sed \
-		-e 's|SYSCONFDIR|\@sysconfdir\@|g' \
-		-e 's|LOCALSTATEDIR|\@localstatedir\@|g' \
-		< $@-t1 > $@-t2 && \
-	rm -f $@-t1 && \
-	mv $@-t2 $@
-
-%.8: %.8.in $(top_srcdir)/configure.ac
-	$(AM_V_GEN)sed \
-		-e 's|[@]sysconfdir[@]|$(sysconfdir)|g' \
-		-e 's|[@]localstatedir[@]|$(localstatedir)|g' \
-		< $< > $@-t && \
-	mv $@-t $@
+$(srcdir)/libvirtd.8.in: libvirtd.pod.in $(top_srcdir)/configure.ac
+	$(AM_V_GEN)$(POD2MAN) --name LIBVIRTD $< $@ \
+	    && if grep 'POD ERROR' $@ ; then rm $@; exit 1; fi
 
 # This is needed for clients too, so can't wrap in
 # the WITH_LIBVIRTD conditional
@@ -543,4 +536,4 @@ endif ! WITH_SASL
 
 CLEANFILES += $(BUILT_SOURCES) $(man8_MANS)
 CLEANFILES += *.cov *.gcov .libs/*.gcda .libs/*.gcno *.gcno *.gcda
-MAINTAINERCLEANFILES = $(MANINFILES) $(DAEMON_GENERATED)
+MAINTAINERCLEANFILES = $(srcdir)/libvirtd.8.in $(DAEMON_GENERATED)

@@ -42,7 +42,6 @@
 #include "virobject.h"
 #include "virprobe.h"
 #include "virstring.h"
-#include "virtime.h"
 
 #ifdef WITH_DTRACE_PROBES
 # include "libvirt_qemu_probes.h"
@@ -169,7 +168,7 @@ VIR_ENUM_IMPL(qemuMonitorMigrationStatus,
 VIR_ENUM_IMPL(qemuMonitorMigrationCaps,
               QEMU_MONITOR_MIGRATION_CAPS_LAST,
               "xbzrle", "auto-converge", "rdma-pin-all", "events",
-              "postcopy-ram", "compress")
+              "postcopy-ram")
 
 VIR_ENUM_IMPL(qemuMonitorVMStatus,
               QEMU_MONITOR_VM_STATUS_LAST,
@@ -328,8 +327,9 @@ qemuMonitorOpenUnix(const char *monitor, pid_t cpid)
 {
     struct sockaddr_un addr;
     int monfd;
-    virTimeBackOffVar timeout;
-    int ret = -1;
+    int timeout = 30; /* In seconds */
+    int ret;
+    size_t i = 0;
 
     if ((monfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
         virReportSystemError(errno,
@@ -345,9 +345,7 @@ qemuMonitorOpenUnix(const char *monitor, pid_t cpid)
         goto error;
     }
 
-    if (virTimeBackOffStart(&timeout, 1, 30*1000 /* ms */) < 0)
-        goto error;
-    while (virTimeBackOffWait(&timeout)) {
+    do {
         ret = connect(monfd, (struct sockaddr *) &addr, sizeof(addr));
 
         if (ret == 0)
@@ -364,7 +362,7 @@ qemuMonitorOpenUnix(const char *monitor, pid_t cpid)
                              _("failed to connect to monitor socket"));
         goto error;
 
-    }
+    } while ((++i <= timeout*5) && (usleep(.2 * 1000000) <= 0));
 
     if (ret != 0) {
         virReportSystemError(errno, "%s",
@@ -1551,25 +1549,6 @@ qemuMonitorEmitMigrationPass(qemuMonitorPtr mon,
 
 
 int
-qemuMonitorEmitAcpiOstInfo(qemuMonitorPtr mon,
-                           const char *alias,
-                           const char *slotType,
-                           const char *slot,
-                           unsigned int source,
-                           unsigned int status)
-{
-    int ret = -1;
-    VIR_DEBUG("mon=%p, alias='%s', slotType='%s', slot='%s', source='%u' status=%u",
-              mon, NULLSTR(alias), slotType, slot, source, status);
-
-    QEMU_MONITOR_CALLBACK(mon, ret, domainAcpiOstInfo, mon->vm,
-                          alias, slotType, slot, source, status);
-
-    return ret;
-}
-
-
-int
 qemuMonitorSetCapabilities(qemuMonitorPtr mon)
 {
     QEMU_CHECK_MONITOR(mon);
@@ -2175,28 +2154,6 @@ qemuMonitorSetMigrationCacheSize(qemuMonitorPtr mon,
     QEMU_CHECK_MONITOR_JSON(mon);
 
     return qemuMonitorJSONSetMigrationCacheSize(mon, cacheSize);
-}
-
-
-int
-qemuMonitorGetMigrationCompression(qemuMonitorPtr mon,
-                                   qemuMonitorMigrationCompressionPtr compress)
-{
-    QEMU_CHECK_MONITOR_JSON(mon);
-
-    return qemuMonitorJSONGetMigrationCompression(mon, compress);
-}
-
-int
-qemuMonitorSetMigrationCompression(qemuMonitorPtr mon,
-                                   qemuMonitorMigrationCompressionPtr compress)
-{
-    VIR_DEBUG("level=%d threads=%d dthreads=%d",
-              compress->level, compress->threads, compress->dthreads);
-
-    QEMU_CHECK_MONITOR_JSON(mon);
-
-    return qemuMonitorJSONSetMigrationCompression(mon, compress);
 }
 
 
@@ -3579,23 +3536,6 @@ qemuMonitorSetMigrationCapability(qemuMonitorPtr mon,
     QEMU_CHECK_MONITOR_JSON(mon);
 
     return qemuMonitorJSONSetMigrationCapability(mon, capability, state);
-}
-
-
-/**
- * qemuMonitorGetGICCapabilities:
- * @mon: QEMU monitor
- * @capabilities: where to store the GIC capabilities
- *
- * See qemuMonitorJSONGetGICCapabilities().
- */
-int
-qemuMonitorGetGICCapabilities(qemuMonitorPtr mon,
-                              virGICCapability **capabilities)
-{
-    QEMU_CHECK_MONITOR_JSON(mon);
-
-    return qemuMonitorJSONGetGICCapabilities(mon, capabilities);
 }
 
 

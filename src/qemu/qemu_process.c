@@ -1359,8 +1359,7 @@ qemuProcessHandleDeviceDeleted(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
     VIR_DEBUG("Device %s removed from domain %p %s",
               devAlias, vm, vm->def->name);
 
-    if (qemuDomainSignalDeviceRemoval(vm, devAlias,
-                                      QEMU_DOMAIN_UNPLUGGING_DEVICE_STATUS_OK))
+    if (qemuDomainSignalDeviceRemoval(vm, devAlias))
         goto cleanup;
 
     if (VIR_ALLOC(processEvent) < 0)
@@ -1386,74 +1385,6 @@ qemuProcessHandleDeviceDeleted(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
         VIR_FREE(processEvent->data);
     VIR_FREE(processEvent);
     goto cleanup;
-}
-
-
-/**
- *
- * Meaning of fields reported by the event according to the ACPI standard:
- * @source:
- *  0x00 - 0xff: Notification values, as passed at the request time
- *  0x100: Operating System Shutdown Processing
- *  0x103: Ejection processing
- *  0x200: Insertion processing
- *  other values are reserved
- *
- * @status:
- *   general values
- *     0x00: success
- *     0x01: non-specific failure
- *     0x02: unrecognized notify code
- *     0x03 - 0x7f: reserved
- *     other values are specific to the notification type
- *
- *   for the 0x100 source the following additional codes are standardized
- *     0x80: OS Shutdown request denied
- *     0x81: OS Shutdown in progress
- *     0x82: OS Shutdown completed
- *     0x83: OS Graceful shutdown not supported
- *     other values are reserved
- *
- * Other fields and semantics are specific to the qemu handling of the event.
- *  - @alias may be NULL for successful unplug operations
- *  - @slotType describes the device type a bit more closely, currently the
- *    only known value is 'DIMM'
- *  - @slot describes the specific device
- *
- *  Note that qemu does not emit the event for all the documented sources or
- *  devices.
- */
-static int
-qemuProcessHandleAcpiOstInfo(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
-                             virDomainObjPtr vm,
-                             const char *alias,
-                             const char *slotType,
-                             const char *slot,
-                             unsigned int source,
-                             unsigned int status,
-                             void *opaque)
-{
-    virQEMUDriverPtr driver = opaque;
-    virObjectEventPtr event = NULL;
-
-    virObjectLock(vm);
-
-    VIR_DEBUG("ACPI OST info for device %s domain %p %s. "
-              "slotType='%s' slot='%s' source=%u status=%u",
-              NULLSTR(alias), vm, vm->def->name, slotType, slot, source, status);
-
-    /* handle memory unplug failure */
-    if (STREQ(slotType, "DIMM") && alias && status == 1) {
-        qemuDomainSignalDeviceRemoval(vm, alias,
-                                      QEMU_DOMAIN_UNPLUGGING_DEVICE_STATUS_GUEST_REJECTED);
-
-        event = virDomainEventDeviceRemovalFailedNewFromObj(vm, alias);
-    }
-
-    virObjectUnlock(vm);
-    qemuDomainEventQueue(driver, event);
-
-    return 0;
 }
 
 
@@ -1652,7 +1583,6 @@ static qemuMonitorCallbacks monitorCallbacks = {
     .domainSpiceMigrated = qemuProcessHandleSpiceMigrated,
     .domainMigrationStatus = qemuProcessHandleMigrationStatus,
     .domainMigrationPass = qemuProcessHandleMigrationPass,
-    .domainAcpiOstInfo = qemuProcessHandleAcpiOstInfo,
 };
 
 static void
@@ -1993,7 +1923,7 @@ qemuRefreshVirtioChannelState(virQEMUDriverPtr driver,
 }
 
 
-int
+static int
 qemuProcessRefreshBalloonState(virQEMUDriverPtr driver,
                                virDomainObjPtr vm,
                                int asyncJob)
@@ -2003,7 +1933,8 @@ qemuProcessRefreshBalloonState(virQEMUDriverPtr driver,
 
     /* if no ballooning is available, the current size equals to the current
      * full memory size */
-    if (!virDomainDefHasMemballoon(vm->def)) {
+    if (!vm->def->memballoon ||
+        vm->def->memballoon->model == VIR_DOMAIN_MEMBALLOON_MODEL_NONE) {
         vm->def->mem.cur_balloon = virDomainDefGetMemoryActual(vm->def);
         return 0;
     }
@@ -2012,7 +1943,10 @@ qemuProcessRefreshBalloonState(virQEMUDriverPtr driver,
         return -1;
 
     rc = qemuMonitorGetBalloonInfo(qemuDomainGetMonitor(vm), &balloon);
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(driver, vm) < 0)
+        rc = -1;
+
+    if (rc < 0)
         return -1;
 
     vm->def->mem.cur_balloon = balloon;
@@ -3510,7 +3444,6 @@ qemuDomainPerfRestart(virDomainObjPtr vm)
 
  cleanup:
     virPerfFree(priv->perf);
-    priv->perf = NULL;
     return -1;
 }
 
@@ -3574,10 +3507,6 @@ qemuProcessReconnect(void *opaque)
     /* XXX If we ever gonna change pid file pattern, come up with
      * some intelligence here to deal with old paths. */
     if (!(priv->pidfile = virPidFileBuildPath(cfg->stateDir, obj->def->name)))
-        goto error;
-
-    /* Restore the masterKey */
-    if (qemuDomainMasterKeyReadFile(priv) < 0)
         goto error;
 
     virNWFilterReadLockFilterUpdates();
@@ -4357,14 +4286,15 @@ qemuProcessSetupGraphics(virQEMUDriverPtr driver,
         if (graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_VNC ||
             graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_SPICE) {
             if (graphics->nListens == 0) {
-                const char *listenAddr
-                    = graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_VNC ?
-                    cfg->vncListen : cfg->spiceListen;
-
-                if (virDomainGraphicsListenAppendAddress(graphics,
-                                                         listenAddr) < 0)
+                if (VIR_EXPAND_N(graphics->listens, graphics->nListens, 1) < 0)
                     goto cleanup;
-
+                graphics->listens[0].type = VIR_DOMAIN_GRAPHICS_LISTEN_TYPE_ADDRESS;
+                if (VIR_STRDUP(graphics->listens[0].address,
+                               graphics->type == VIR_DOMAIN_GRAPHICS_TYPE_VNC ?
+                               cfg->vncListen : cfg->spiceListen) < 0) {
+                    VIR_SHRINK_N(graphics->listens, graphics->nListens, 1);
+                    goto cleanup;
+                }
                 graphics->listens[0].fromConfig = true;
             } else if (graphics->nListens > 1) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
@@ -4452,7 +4382,8 @@ qemuProcessSetupBalloon(virQEMUDriverPtr driver,
     int period;
     int ret = -1;
 
-    if (!virDomainDefHasMemballoon(vm->def))
+    if (!vm->def->memballoon ||
+        vm->def->memballoon->model == VIR_DOMAIN_MEMBALLOON_MODEL_NONE)
         return 0;
 
     period = vm->def->memballoon->period;
@@ -4486,8 +4417,8 @@ qemuProcessMakeDir(virQEMUDriverPtr driver,
         goto cleanup;
     }
 
-    if (virSecurityManagerDomainSetPathLabel(driver->securityManager,
-                                             vm->def, path) < 0)
+    if (virSecurityManagerDomainSetDirLabel(driver->securityManager,
+                                            vm->def, path) < 0)
         goto cleanup;
 
     ret = 0;
@@ -4496,86 +4427,6 @@ qemuProcessMakeDir(virQEMUDriverPtr driver,
     return ret;
 }
 
-
-static void
-qemuProcessStartWarnShmem(virDomainObjPtr vm)
-{
-    size_t i;
-    bool check_shmem = false;
-    bool shmem = vm->def->nshmems;
-
-    /*
-     * For vhost-user to work, the domain has to have some type of
-     * shared memory configured.  We're not the proper ones to judge
-     * whether shared hugepages or shm are enough and will be in the
-     * future, so we'll just warn in case neither is configured.
-     * Moreover failing would give the false illusion that libvirt is
-     * really checking that everything works before running the domain
-     * and not only we are unable to do that, but it's also not our
-     * aim to do so.
-     */
-    for (i = 0; i < vm->def->nnets; i++) {
-        if (virDomainNetGetActualType(vm->def->nets[i]) ==
-                                      VIR_DOMAIN_NET_TYPE_VHOSTUSER) {
-            check_shmem = true;
-            break;
-        }
-    }
-
-    if (!check_shmem)
-        return;
-
-    /*
-     * This check is by no means complete.  We merely check
-     * whether there are *some* hugepages enabled and *some* NUMA
-     * nodes with shared memory access.
-     */
-    if (!shmem && vm->def->mem.nhugepages) {
-        for (i = 0; i < virDomainNumaGetNodeCount(vm->def->numa); i++) {
-            if (virDomainNumaGetNodeMemoryAccessMode(vm->def->numa, i) ==
-                VIR_NUMA_MEM_ACCESS_SHARED) {
-                shmem = true;
-                break;
-            }
-        }
-    }
-
-    if (!shmem) {
-        VIR_WARN("Detected vhost-user interface without any shared memory, "
-                 "the interface might not be operational");
-    }
-}
-
-static int
-qemuProcessStartValidateXML(virDomainObjPtr vm,
-                            virQEMUCapsPtr qemuCaps,
-                            bool migration,
-                            bool snapshot)
-{
-    /* The bits we validate here are XML configs that we previously
-     * accepted. We reject them at VM startup time rather than parse
-     * time so that pre-existing VMs aren't rejected and dropped from
-     * the VM list when libvirt is updated.
-     *
-     * If back compat isn't a concern, XML validation should probably
-     * be done at parse time.
-     */
-    if (qemuValidateCpuCount(vm->def, qemuCaps) < 0)
-        return -1;
-
-    if (!migration && !snapshot &&
-        virDomainDefCheckDuplicateDiskInfo(vm->def) < 0)
-        return -1;
-
-    if (vm->def->mem.min_guarantee) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("Parameter 'min_guarantee' "
-                         "not supported by QEMU."));
-        return -1;
-    }
-
-    return 0;
-}
 
 /**
  * qemuProcessStartValidate:
@@ -4597,6 +4448,9 @@ qemuProcessStartValidate(virQEMUDriverPtr driver,
                          bool snapshot,
                          unsigned int flags)
 {
+    bool check_shmem = false;
+    size_t i;
+
     if (!(flags & VIR_QEMU_PROCESS_START_PRETEND)) {
         if (vm->def->virtType == VIR_DOMAIN_VIRT_KVM) {
             VIR_DEBUG("Checking for KVM availability");
@@ -4620,12 +4474,63 @@ qemuProcessStartValidate(virQEMUDriverPtr driver,
 
     }
 
-    if (qemuProcessStartValidateXML(vm, qemuCaps, migration, snapshot) < 0)
+    if (qemuValidateCpuCount(vm->def, qemuCaps) < 0)
         return -1;
+
+    if (!migration && !snapshot &&
+        virDomainDefCheckDuplicateDiskInfo(vm->def) < 0)
+        return -1;
+
+    if (vm->def->mem.min_guarantee) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("Parameter 'min_guarantee' "
+                         "not supported by QEMU."));
+        return -1;
+    }
 
     VIR_DEBUG("Checking for any possible (non-fatal) issues");
 
-    qemuProcessStartWarnShmem(vm);
+    /*
+     * For vhost-user to work, the domain has to have some type of
+     * shared memory configured.  We're not the proper ones to judge
+     * whether shared hugepages or shm are enough and will be in the
+     * future, so we'll just warn in case neither is configured.
+     * Moreover failing would give the false illusion that libvirt is
+     * really checking that everything works before running the domain
+     * and not only we are unable to do that, but it's also not our
+     * aim to do so.
+     */
+    for (i = 0; i < vm->def->nnets; i++) {
+        if (virDomainNetGetActualType(vm->def->nets[i]) ==
+                                      VIR_DOMAIN_NET_TYPE_VHOSTUSER) {
+            check_shmem = true;
+            break;
+        }
+    }
+
+    if (check_shmem) {
+        bool shmem = vm->def->nshmems;
+
+        /*
+         * This check is by no means complete.  We merely check
+         * whether there are *some* hugepages enabled and *some* NUMA
+         * nodes with shared memory access.
+         */
+        if (!shmem && vm->def->mem.nhugepages) {
+            for (i = 0; i < virDomainNumaGetNodeCount(vm->def->numa); i++) {
+                if (virDomainNumaGetNodeMemoryAccessMode(vm->def->numa, i) ==
+                    VIR_NUMA_MEM_ACCESS_SHARED) {
+                    shmem = true;
+                    break;
+                }
+            }
+        }
+
+        if (!shmem) {
+            VIR_WARN("Detected vhost-user interface without any shared memory, "
+                     "the interface might not be operational");
+        }
+    }
 
     return 0;
 }
@@ -5089,19 +4994,6 @@ qemuProcessPrepareDomain(virConnectPtr conn,
         }
     }
 
-    /*
-     * Normally PCI addresses are assigned in the virDomainCreate
-     * or virDomainDefine methods. We might still need to assign
-     * some here to cope with the question of upgrades. Regardless
-     * we also need to populate the PCI address set cache for later
-     * use in hotplug
-     */
-    if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE)) {
-        VIR_DEBUG("Assigning domain PCI addresses");
-        if ((qemuDomainAssignAddresses(vm->def, priv->qemuCaps, vm)) < 0)
-            goto cleanup;
-    }
-
     if (qemuAssignDeviceAliases(vm->def, priv->qemuCaps) < 0)
         goto cleanup;
 
@@ -5124,6 +5016,19 @@ qemuProcessPrepareDomain(virConnectPtr conn,
     priv->monError = false;
     priv->monStart = 0;
     priv->gotShutdown = false;
+
+    /*
+     * Normally PCI addresses are assigned in the virDomainCreate
+     * or virDomainDefine methods. We might still need to assign
+     * some here to cope with the question of upgrades. Regardless
+     * we also need to populate the PCI address set cache for later
+     * use in hotplug
+     */
+    if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE)) {
+        VIR_DEBUG("Assigning domain PCI addresses");
+        if ((qemuDomainAssignAddresses(vm->def, priv->qemuCaps, vm)) < 0)
+            goto cleanup;
+    }
 
     ret = 0;
  cleanup:
@@ -5238,10 +5143,6 @@ qemuProcessPrepareHost(virQEMUDriverPtr driver,
         qemuProcessMakeDir(driver, vm, priv->channelTargetDir) < 0)
         goto cleanup;
 
-    VIR_DEBUG("Create domain masterKey");
-    if (qemuDomainMasterKeyCreate(driver, vm) < 0)
-        goto cleanup;
-
     ret = 0;
  cleanup:
     virObjectUnref(cfg);
@@ -5326,7 +5227,7 @@ qemuProcessLaunch(virConnectPtr conn,
                                      priv->monJSON, priv->qemuCaps,
                                      incoming ? incoming->launchURI : NULL,
                                      snapshot, vmop,
-                                     false,
+                                     &buildCommandLineCallbacks, false,
                                      qemuCheckFips(),
                                      priv->autoNodeset,
                                      &nnicindexes, &nicindexes,
@@ -5715,7 +5616,7 @@ qemuProcessCreatePretendCmd(virConnectPtr conn,
                             virQEMUDriverPtr driver,
                             virDomainObjPtr vm,
                             const char *migrateURI,
-                            bool enableFips,
+                            bool forceFips,
                             bool standalone,
                             unsigned int flags)
 {
@@ -5746,8 +5647,9 @@ qemuProcessCreatePretendCmd(virConnectPtr conn,
                                migrateURI,
                                NULL,
                                VIR_NETDEV_VPORT_PROFILE_OP_NO_OP,
+                               &buildCommandLineCallbacks,
                                standalone,
-                               enableFips,
+                               forceFips ? true : qemuCheckFips(),
                                priv->autoNodeset,
                                NULL,
                                NULL,
@@ -5927,9 +5829,6 @@ void qemuProcessStop(virQEMUDriverPtr driver,
         priv->monConfig = NULL;
     }
 
-    /* Remove the master key */
-    qemuDomainMasterKeyRemove(priv);
-
     virFileDeleteTree(priv->libDir);
     virFileDeleteTree(priv->channelTargetDir);
 
@@ -6060,7 +5959,6 @@ void qemuProcessStop(virQEMUDriverPtr driver,
     virCgroupFree(&priv->cgroup);
 
     virPerfFree(priv->perf);
-    priv->perf = NULL;
 
     qemuProcessRemoveDomainStatus(driver, vm);
 

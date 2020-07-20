@@ -73,9 +73,8 @@ vzDomObjFromDomain(virDomainPtr domain)
     virDomainObjPtr vm;
     vzConnPtr privconn = domain->conn->privateData;
     char uuidstr[VIR_UUID_STRING_BUFLEN];
-    vzDriverPtr driver = privconn->driver;
 
-    vm = virDomainObjListFindByUUID(driver->domains, domain->uuid);
+    vm = virDomainObjListFindByUUID(privconn->domains, domain->uuid);
     if (!vm) {
         virUUIDFormat(domain->uuid, uuidstr);
         virReportError(VIR_ERR_NO_DOMAIN,
@@ -85,6 +84,7 @@ vzDomObjFromDomain(virDomainPtr domain)
     }
 
     return vm;
+
 }
 
 /**
@@ -103,9 +103,8 @@ vzDomObjFromDomainRef(virDomainPtr domain)
     virDomainObjPtr vm;
     vzConnPtr privconn = domain->conn->privateData;
     char uuidstr[VIR_UUID_STRING_BUFLEN];
-    vzDriverPtr driver = privconn->driver;
 
-    vm = virDomainObjListFindByUUIDRef(driver->domains, domain->uuid);
+    vm = virDomainObjListFindByUUIDRef(privconn->domains, domain->uuid);
     if (!vm) {
         virUUIDFormat(domain->uuid, uuidstr);
         virReportError(VIR_ERR_NO_DOMAIN,
@@ -160,7 +159,7 @@ vzGetOutput(const char *binary, ...)
 }
 
 virDomainObjPtr
-vzNewDomain(vzDriverPtr driver, char *name, const unsigned char *uuid)
+vzNewDomain(vzConnPtr privconn, char *name, const unsigned char *uuid)
 {
     virDomainDefPtr def = NULL;
     virDomainObjPtr dom = NULL;
@@ -179,10 +178,13 @@ vzNewDomain(vzDriverPtr driver, char *name, const unsigned char *uuid)
     pdom->cache.stats = PRL_INVALID_HANDLE;
     pdom->cache.count = -1;
 
-    def->virtType = VIR_DOMAIN_VIRT_VZ;
+    if (STREQ(privconn->drivername, "vz"))
+        def->virtType = VIR_DOMAIN_VIRT_VZ;
+    else
+        def->virtType = VIR_DOMAIN_VIRT_PARALLELS;
 
-    if (!(dom = virDomainObjListAdd(driver->domains, def,
-                                    driver->xmlopt,
+    if (!(dom = virDomainObjListAdd(privconn->domains, def,
+                                    privconn->xmlopt,
                                     0, NULL)))
         goto error;
 
@@ -200,7 +202,7 @@ vzNewDomain(vzDriverPtr driver, char *name, const unsigned char *uuid)
 }
 
 static void
-vzInitCaps(unsigned long vzVersion, vzCapabilitiesPtr vzCaps)
+vzInitCaps(unsigned long vzVersion, vzCapabilities *vzCaps)
 {
     if (vzVersion < VIRTUOZZO_VER_7) {
         vzCaps->ctDiskFormat = VIR_STORAGE_FILE_PLOOP;
@@ -218,7 +220,7 @@ vzInitCaps(unsigned long vzVersion, vzCapabilitiesPtr vzCaps)
 }
 
 int
-vzInitVersion(vzDriverPtr driver)
+vzInitVersion(vzConnPtr privconn)
 {
     char *output, *sVer, *tmp;
     const char *searchStr = "prlsrvctl version ";
@@ -251,12 +253,12 @@ vzInitVersion(vzDriverPtr driver)
     }
 
     tmp[0] = '\0';
-    if (virParseVersionString(sVer, &(driver->vzVersion), true) < 0) {
+    if (virParseVersionString(sVer, &(privconn->vzVersion), true) < 0) {
         vzParseError();
         goto cleanup;
     }
 
-    vzInitCaps(driver->vzVersion, &driver->vzCaps);
+    vzInitCaps(privconn->vzVersion, &privconn->vzCaps);
     ret = 0;
 
  cleanup:
@@ -330,10 +332,9 @@ vzCheckDiskUnsupportedParams(virDomainDiskDefPtr disk)
         return -1;
     }
 
-    if (disk->iomode != VIR_DOMAIN_DISK_IO_DEFAULT &&
-        disk->iomode != VIR_DOMAIN_DISK_IO_NATIVE) {
+    if (disk->iomode) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("Only native iomode is "
+                       _("Setting disk io mode is not "
                          "supported by vz driver."));
         return -1;
     }
@@ -475,10 +476,10 @@ vzCheckUnsupportedControllers(virDomainDefPtr def, vzCapabilitiesPtr vzCaps)
     return 0;
 }
 
-int vzGetDefaultSCSIModel(vzDriverPtr driver,
+int vzGetDefaultSCSIModel(vzConnPtr privconn,
                           PRL_CLUSTERED_DEVICE_SUBTYPE *scsiModel)
 {
-    switch (driver->vzCaps.scsiControllerModel) {
+    switch (privconn->vzCaps.scsiControllerModel) {
     case VIR_DOMAIN_CONTROLLER_MODEL_SCSI_VIRTIO_SCSI:
         *scsiModel = PCD_VIRTIO_SCSI;
         break;
@@ -489,7 +490,7 @@ int vzGetDefaultSCSIModel(vzDriverPtr driver,
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Unknown SCSI controller model %s"),
                        virDomainControllerModelSCSITypeToString(
-                           driver->vzCaps.scsiControllerModel));
+                           privconn->vzCaps.scsiControllerModel));
         return -1;
     }
     return 0;

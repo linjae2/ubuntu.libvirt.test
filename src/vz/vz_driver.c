@@ -62,14 +62,19 @@ VIR_LOG_INIT("parallels.parallels_driver");
 
 #define PRLCTL                      "prlctl"
 
-static virClassPtr vzDriverClass;
+static int vzConnectClose(virConnectPtr conn);
 
-static virMutex vz_driver_lock;
-static vzDriverPtr vz_driver;
-static vzConnPtr vz_conn_list;
+void
+vzDriverLock(vzConnPtr driver)
+{
+    virMutexLock(&driver->lock);
+}
 
-static vzDriverPtr
-vzDriverObjNew(void);
+void
+vzDriverUnlock(vzConnPtr driver)
+{
+    virMutexUnlock(&driver->lock);
+}
 
 static int
 vzCapsAddGuestDomain(virCapsPtr caps,
@@ -104,10 +109,10 @@ vzBuildCapabilities(void)
         VIR_DOMAIN_OSTYPE_EXE
     };
     virArch archs[] = { VIR_ARCH_I686, VIR_ARCH_X86_64 };
-    const char *const emulators[] = { "vz", "parallels"};
+    const char *const emulators[] = { "parallels", "vz" };
     virDomainVirtType virt_types[] = {
-        VIR_DOMAIN_VIRT_VZ,
-        VIR_DOMAIN_VIRT_PARALLELS
+        VIR_DOMAIN_VIRT_PARALLELS,
+        VIR_DOMAIN_VIRT_VZ
     };
     size_t i, j, k;
 
@@ -153,111 +158,24 @@ vzBuildCapabilities(void)
     goto cleanup;
 }
 
-static void vzDriverDispose(void * obj)
-{
-    vzDriverPtr driver = obj;
-
-    if (driver->server) {
-        prlsdkUnsubscribeFromPCSEvents(driver);
-        prlsdkDisconnect(driver);
-    }
-
-    virObjectUnref(driver->domains);
-    virObjectUnref(driver->caps);
-    virObjectUnref(driver->xmlopt);
-    virObjectEventStateFree(driver->domainEventState);
-    virSysinfoDefFree(driver->hostsysinfo);
-}
-
-static int vzDriverOnceInit(void)
-{
-    if (!(vzDriverClass = virClassNew(virClassForObjectLockable(),
-                                      "vzDriver",
-                                      sizeof(vzDriver),
-                                      vzDriverDispose)))
-        return -1;
-
-    return 0;
-}
-VIR_ONCE_GLOBAL_INIT(vzDriver)
-
-vzDriverPtr
-vzGetDriverConnection(void)
-{
-    virMutexLock(&vz_driver_lock);
-    if (!vz_driver)
-        vz_driver = vzDriverObjNew();
-    virObjectRef(vz_driver);
-    virMutexUnlock(&vz_driver_lock);
-
-    return vz_driver;
-}
-
-void
-vzDestroyDriverConnection(void)
-{
-
-    vzDriverPtr driver;
-    vzConnPtr privconn_list;
-
-    virMutexLock(&vz_driver_lock);
-    driver = vz_driver;
-    vz_driver = NULL;
-
-    privconn_list = vz_conn_list;
-    vz_conn_list = NULL;
-
-    virMutexUnlock(&vz_driver_lock);
-
-    while (privconn_list) {
-        vzConnPtr privconn = privconn_list;
-        privconn_list = privconn->next;
-        virConnectCloseCallbackDataCall(privconn->closeCallback,
-                                        VIR_CONNECT_CLOSE_REASON_EOF);
-    }
-    virObjectUnref(driver);
-}
-
 static char *
 vzConnectGetCapabilities(virConnectPtr conn)
 {
     vzConnPtr privconn = conn->privateData;
     char *xml;
 
-    xml = virCapabilitiesFormatXML(privconn->driver->caps);
+    vzDriverLock(privconn);
+    xml = virCapabilitiesFormatXML(privconn->caps);
+    vzDriverUnlock(privconn);
     return xml;
 }
-static int
-vzDomainDefAddDefaultInputDevices(virDomainDefPtr def)
-{
-    if (def->ngraphics == 0)
-        return 0;
-
-    int bus = IS_CT(def) ? VIR_DOMAIN_INPUT_BUS_PARALLELS :
-                           VIR_DOMAIN_INPUT_BUS_PS2;
-
-    if (virDomainDefMaybeAddInput(def,
-                                  VIR_DOMAIN_INPUT_TYPE_MOUSE,
-                                  bus) < 0)
-        return -1;
-
-    if (virDomainDefMaybeAddInput(def,
-                                  VIR_DOMAIN_INPUT_TYPE_KBD,
-                                  bus) < 0)
-        return -1;
-
-    return 0;
-}
 
 static int
-vzDomainDefPostParse(virDomainDefPtr def,
+vzDomainDefPostParse(virDomainDefPtr def ATTRIBUTE_UNUSED,
                      virCapsPtr caps ATTRIBUTE_UNUSED,
                      unsigned int parseFlags ATTRIBUTE_UNUSED,
                      void *opaque)
 {
-    if (vzDomainDefAddDefaultInputDevices(def) < 0)
-        return -1;
-
     if (vzCheckUnsupportedDisks(def, opaque) < 0)
         return -1;
 
@@ -290,41 +208,78 @@ vzDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
 }
 
 
-static virDomainDefParserConfig vzDomainDefParserConfig = {
+virDomainDefParserConfig vzDomainDefParserConfig = {
     .macPrefix = {0x42, 0x1C, 0x00},
     .devicesPostParseCallback = vzDomainDeviceDefPostParse,
     .domainPostParseCallback = vzDomainDefPostParse,
 };
 
-static vzDriverPtr
-vzDriverObjNew(void)
+
+static int
+vzOpenDefault(virConnectPtr conn)
 {
-    vzDriverPtr driver;
+    vzConnPtr privconn;
 
-    if (vzDriverInitialize() < 0)
-        return NULL;
-
-    if (!(driver = virObjectLockableNew(vzDriverClass)))
-        return NULL;
-
-    vzDomainDefParserConfig.priv = &driver->vzCaps;
-
-    if (!(driver->caps = vzBuildCapabilities()) ||
-        !(driver->xmlopt = virDomainXMLOptionNew(&vzDomainDefParserConfig,
-                                                   NULL, NULL)) ||
-        !(driver->domains = virDomainObjListNew()) ||
-        !(driver->domainEventState = virObjectEventStateNew()) ||
-        (vzInitVersion(driver) < 0) ||
-        (prlsdkConnect(driver) < 0) ||
-        (prlsdkSubscribeToPCSEvents(driver) < 0)
-        ) {
-        virObjectUnref(driver);
-        return NULL;
+    if (VIR_ALLOC(privconn) < 0)
+        return VIR_DRV_OPEN_ERROR;
+    if (virMutexInit(&privconn->lock) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                       _("cannot initialize mutex"));
+        goto err_free;
     }
 
-    driver->hostsysinfo = virSysinfoRead();
-    ignore_value(prlsdkLoadDomains(driver));
-    return driver;
+    privconn->drivername = conn->driver->name;
+
+    if (prlsdkInit()) {
+        VIR_DEBUG("%s", _("Can't initialize Parallels SDK"));
+        goto err_free;
+    }
+
+    if (prlsdkConnect(privconn) < 0)
+        goto err_free;
+
+    if (vzInitVersion(privconn) < 0)
+        goto error;
+
+    if (!(privconn->caps = vzBuildCapabilities()))
+        goto error;
+
+    vzDomainDefParserConfig.priv = &privconn->vzCaps;
+    if (!(privconn->xmlopt = virDomainXMLOptionNew(&vzDomainDefParserConfig,
+                                                   NULL, NULL)))
+        goto error;
+
+    if (!(privconn->domains = virDomainObjListNew()))
+        goto error;
+
+    if (!(privconn->domainEventState = virObjectEventStateNew()))
+        goto error;
+
+    if (prlsdkSubscribeToPCSEvents(privconn))
+        goto error;
+
+    if (!(privconn->closeCallback = virNewConnectCloseCallbackData()))
+        goto error;
+
+    conn->privateData = privconn;
+
+    if (prlsdkLoadDomains(privconn))
+        goto error;
+
+    return VIR_DRV_OPEN_SUCCESS;
+
+ error:
+    virObjectUnref(privconn->closeCallback);
+    privconn->closeCallback = NULL;
+    virObjectUnref(privconn->domains);
+    virObjectUnref(privconn->caps);
+    virObjectEventStateFree(privconn->domainEventState);
+    prlsdkDisconnect(privconn);
+    prlsdkDeinit();
+ err_free:
+    conn->privateData = NULL;
+    VIR_FREE(privconn);
+    return VIR_DRV_OPEN_ERROR;
 }
 
 static virDrvOpenStatus
@@ -332,8 +287,7 @@ vzConnectOpen(virConnectPtr conn,
               virConnectAuthPtr auth ATTRIBUTE_UNUSED,
               unsigned int flags)
 {
-    vzDriverPtr driver = NULL;
-    vzConnPtr privconn = NULL;
+    int ret;
 
     virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
 
@@ -365,56 +319,36 @@ vzConnectOpen(virConnectPtr conn,
         return VIR_DRV_OPEN_ERROR;
     }
 
-    if (!(driver = vzGetDriverConnection()))
-        return VIR_DRV_OPEN_ERROR;
-
-    if (VIR_ALLOC(privconn) < 0)
-        goto error;
-
-    conn->privateData = privconn;
-    privconn->driver = driver;
-
-    if (!(privconn->closeCallback = virNewConnectCloseCallbackData()))
-        goto error;
-
-    virMutexLock(&vz_driver_lock);
-    privconn->next = vz_conn_list;
-    vz_conn_list = privconn;
-    virMutexUnlock(&vz_driver_lock);
+    if ((ret = vzOpenDefault(conn)) != VIR_DRV_OPEN_SUCCESS)
+        return ret;
 
     return VIR_DRV_OPEN_SUCCESS;
-
- error:
-
-    conn->privateData = NULL;
-    virObjectUnref(driver);
-    VIR_FREE(privconn);
-    return VIR_DRV_OPEN_ERROR;
 }
 
 static int
 vzConnectClose(virConnectPtr conn)
 {
-    vzConnPtr curr, *prev = &vz_conn_list;
     vzConnPtr privconn = conn->privateData;
 
     if (!privconn)
         return 0;
 
-    virMutexLock(&vz_driver_lock);
-    for (curr = vz_conn_list; curr; prev = &curr->next, curr = curr->next) {
-        if (curr == privconn) {
-            *prev = curr->next;
-            break;
-        }
-    }
-
-    virMutexUnlock(&vz_driver_lock);
-
+    vzDriverLock(privconn);
+    prlsdkUnsubscribeFromPCSEvents(privconn);
+    virObjectUnref(privconn->caps);
+    virObjectUnref(privconn->xmlopt);
+    virObjectUnref(privconn->domains);
     virObjectUnref(privconn->closeCallback);
-    virObjectUnref(privconn->driver);
-    VIR_FREE(privconn);
+    privconn->closeCallback = NULL;
+    virObjectEventStateFree(privconn->domainEventState);
+    prlsdkDisconnect(privconn);
     conn->privateData = NULL;
+    prlsdkDeinit();
+
+    vzDriverUnlock(privconn);
+    virMutexDestroy(&privconn->lock);
+
+    VIR_FREE(privconn);
     return 0;
 }
 
@@ -422,7 +356,7 @@ static int
 vzConnectGetVersion(virConnectPtr conn, unsigned long *hvVer)
 {
     vzConnPtr privconn = conn->privateData;
-    *hvVer = privconn->driver->vzVersion;
+    *hvVer = privconn->vzVersion;
     return 0;
 }
 
@@ -432,28 +366,6 @@ static char *vzConnectGetHostname(virConnectPtr conn ATTRIBUTE_UNUSED)
     return virGetHostname();
 }
 
-static char *
-vzConnectGetSysinfo(virConnectPtr conn, unsigned int flags)
-{
-    vzConnPtr privconn = conn->privateData;
-    vzDriverPtr driver = privconn->driver;
-    virBuffer buf = VIR_BUFFER_INITIALIZER;
-
-    virCheckFlags(0, NULL);
-
-    if (!driver->hostsysinfo) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("Host SMBIOS information is not available"));
-        return NULL;
-    }
-
-    if (virSysinfoFormat(&buf, driver->hostsysinfo) < 0)
-        return NULL;
-    if (virBufferCheckError(&buf) < 0)
-        return NULL;
-
-    return virBufferContentAndReset(&buf);
-}
 
 static int
 vzConnectListDomains(virConnectPtr conn, int *ids, int maxids)
@@ -461,8 +373,10 @@ vzConnectListDomains(virConnectPtr conn, int *ids, int maxids)
     vzConnPtr privconn = conn->privateData;
     int n;
 
-    n = virDomainObjListGetActiveIDs(privconn->driver->domains, ids, maxids,
+    vzDriverLock(privconn);
+    n = virDomainObjListGetActiveIDs(privconn->domains, ids, maxids,
                                      NULL, NULL);
+    vzDriverUnlock(privconn);
 
     return n;
 }
@@ -473,8 +387,10 @@ vzConnectNumOfDomains(virConnectPtr conn)
     vzConnPtr privconn = conn->privateData;
     int count;
 
-    count = virDomainObjListNumOfDomains(privconn->driver->domains, true,
+    vzDriverLock(privconn);
+    count = virDomainObjListNumOfDomains(privconn->domains, true,
                                          NULL, NULL);
+    vzDriverUnlock(privconn);
 
     return count;
 }
@@ -485,9 +401,11 @@ vzConnectListDefinedDomains(virConnectPtr conn, char **const names, int maxnames
     vzConnPtr privconn = conn->privateData;
     int n;
 
+    vzDriverLock(privconn);
     memset(names, 0, sizeof(*names) * maxnames);
-    n = virDomainObjListGetInactiveNames(privconn->driver->domains, names,
+    n = virDomainObjListGetInactiveNames(privconn->domains, names,
                                          maxnames, NULL, NULL);
+    vzDriverUnlock(privconn);
 
     return n;
 }
@@ -498,8 +416,11 @@ vzConnectNumOfDefinedDomains(virConnectPtr conn)
     vzConnPtr privconn = conn->privateData;
     int count;
 
-    count = virDomainObjListNumOfDomains(privconn->driver->domains, false,
+    vzDriverLock(privconn);
+    count = virDomainObjListNumOfDomains(privconn->domains, false,
                                          NULL, NULL);
+    vzDriverUnlock(privconn);
+
     return count;
 }
 
@@ -512,8 +433,10 @@ vzConnectListAllDomains(virConnectPtr conn,
     int ret = -1;
 
     virCheckFlags(VIR_CONNECT_LIST_DOMAINS_FILTERS_ALL, -1);
-    ret = virDomainObjListExport(privconn->driver->domains, conn, domains,
+    vzDriverLock(privconn);
+    ret = virDomainObjListExport(privconn->domains, conn, domains,
                                  NULL, flags);
+    vzDriverUnlock(privconn);
 
     return ret;
 }
@@ -525,7 +448,9 @@ vzDomainLookupByID(virConnectPtr conn, int id)
     virDomainPtr ret = NULL;
     virDomainObjPtr dom;
 
-    dom = virDomainObjListFindByID(privconn->driver->domains, id);
+    vzDriverLock(privconn);
+    dom = virDomainObjListFindByID(privconn->domains, id);
+    vzDriverUnlock(privconn);
 
     if (dom == NULL) {
         virReportError(VIR_ERR_NO_DOMAIN, NULL);
@@ -549,7 +474,9 @@ vzDomainLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     virDomainPtr ret = NULL;
     virDomainObjPtr dom;
 
-    dom = virDomainObjListFindByUUID(privconn->driver->domains, uuid);
+    vzDriverLock(privconn);
+    dom = virDomainObjListFindByUUID(privconn->domains, uuid);
+    vzDriverUnlock(privconn);
 
     if (dom == NULL) {
         char uuidstr[VIR_UUID_STRING_BUFLEN];
@@ -576,7 +503,9 @@ vzDomainLookupByName(virConnectPtr conn, const char *name)
     virDomainPtr ret = NULL;
     virDomainObjPtr dom;
 
-    dom = virDomainObjListFindByName(privconn->driver->domains, name);
+    vzDriverLock(privconn);
+    dom = virDomainObjListFindByName(privconn->domains, name);
+    vzDriverUnlock(privconn);
 
     if (dom == NULL) {
         virReportError(VIR_ERR_NO_DOMAIN,
@@ -699,7 +628,7 @@ vzDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
     def = (flags & VIR_DOMAIN_XML_INACTIVE) &&
         privdom->newDef ? privdom->newDef : privdom->def;
 
-    ret = virDomainDefFormat(def, privconn->driver->caps, flags);
+    ret = virDomainDefFormat(def, privconn->caps, flags);
 
  cleanup:
     if (privdom)
@@ -734,29 +663,28 @@ vzDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int flags)
     virDomainObjPtr olddom = NULL;
     virDomainObjPtr newdom = NULL;
     unsigned int parse_flags = VIR_DOMAIN_DEF_PARSE_INACTIVE;
-    vzDriverPtr driver = privconn->driver;
 
     virCheckFlags(VIR_DOMAIN_DEFINE_VALIDATE, NULL);
 
     if (flags & VIR_DOMAIN_DEFINE_VALIDATE)
         parse_flags |= VIR_DOMAIN_DEF_PARSE_VALIDATE;
 
-    virObjectLock(driver);
-    if ((def = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
+    vzDriverLock(privconn);
+    if ((def = virDomainDefParseString(xml, privconn->caps, privconn->xmlopt,
                                        parse_flags)) == NULL)
         goto cleanup;
 
-    olddom = virDomainObjListFindByUUID(driver->domains, def->uuid);
+    olddom = virDomainObjListFindByUUID(privconn->domains, def->uuid);
     if (olddom == NULL) {
         virResetLastError();
-        newdom = vzNewDomain(driver, def->name, def->uuid);
+        newdom = vzNewDomain(privconn, def->name, def->uuid);
         if (!newdom)
             goto cleanup;
         if (def->os.type == VIR_DOMAIN_OSTYPE_HVM) {
-            if (prlsdkCreateVm(driver, def))
+            if (prlsdkCreateVm(conn, def))
                 goto cleanup;
         } else if (def->os.type == VIR_DOMAIN_OSTYPE_EXE) {
-            if (prlsdkCreateCt(driver, def))
+            if (prlsdkCreateCt(conn, def))
                 goto cleanup;
         } else {
             virReportError(VIR_ERR_INVALID_ARG,
@@ -765,7 +693,7 @@ vzDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int flags)
             goto cleanup;
         }
 
-        if (prlsdkLoadDomain(driver, newdom))
+        if (prlsdkLoadDomain(privconn, newdom))
             goto cleanup;
     } else {
         int state, reason;
@@ -791,10 +719,10 @@ vzDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int flags)
                 goto cleanup;
             }
         } else {
-            if (prlsdkApplyConfig(driver, olddom, def))
+            if (prlsdkApplyConfig(conn, olddom, def))
                 goto cleanup;
 
-            if (prlsdkUpdateDomain(driver, olddom))
+            if (prlsdkUpdateDomain(privconn, olddom))
                 goto cleanup;
         }
     }
@@ -808,12 +736,12 @@ vzDomainDefineXMLFlags(virConnectPtr conn, const char *xml, unsigned int flags)
         virObjectUnlock(olddom);
     if (newdom) {
         if (!retdom)
-             virDomainObjListRemove(driver->domains, newdom);
+             virDomainObjListRemove(privconn->domains, newdom);
         else
              virObjectUnlock(newdom);
     }
     virDomainDefFree(def);
-    virObjectUnlock(driver);
+    vzDriverUnlock(privconn);
     return retdom;
 }
 
@@ -929,7 +857,7 @@ vzConnectDomainEventRegisterAny(virConnectPtr conn,
     int ret = -1;
     vzConnPtr privconn = conn->privateData;
     if (virDomainEventStateRegisterID(conn,
-                                      privconn->driver->domainEventState,
+                                      privconn->domainEventState,
                                       domain, eventID,
                                       callback, opaque, freecb, &ret) < 0)
         ret = -1;
@@ -944,7 +872,7 @@ vzConnectDomainEventDeregisterAny(virConnectPtr conn,
     int ret = -1;
 
     if (virObjectEventStateDeregisterID(conn,
-                                        privconn->driver->domainEventState,
+                                        privconn->domainEventState,
                                         callbackID) < 0)
         goto cleanup;
 
@@ -1023,7 +951,7 @@ vzDomainUndefineFlags(virDomainPtr domain,
     if (!(dom = vzDomObjFromDomain(domain)))
         return -1;
 
-    ret = prlsdkUnregisterDomain(privconn->driver, dom, flags);
+    ret = prlsdkUnregisterDomain(privconn, dom, flags);
     if (ret)
         virObjectUnlock(dom);
 
@@ -1073,12 +1001,12 @@ vzDomainManagedSave(virDomainPtr domain, unsigned int flags)
     state = virDomainObjGetState(dom, &reason);
 
     if (state == VIR_DOMAIN_RUNNING && (flags & VIR_DOMAIN_SAVE_PAUSED)) {
-        ret = prlsdkDomainChangeStateLocked(privconn->driver, dom, prlsdkPause);
+        ret = prlsdkDomainChangeStateLocked(privconn, dom, prlsdkPause);
         if (ret)
             goto cleanup;
     }
 
-    ret = prlsdkDomainChangeStateLocked(privconn->driver, dom, prlsdkSuspend);
+    ret = prlsdkDomainChangeStateLocked(privconn, dom, prlsdkSuspend);
 
  cleanup:
     virObjectUnlock(dom);
@@ -1109,28 +1037,6 @@ vzDomainManagedSaveRemove(virDomainPtr domain, unsigned int flags)
     return ret;
 }
 
-static int vzCheckConfigUpdateFlags(virDomainObjPtr dom, unsigned int *flags)
-{
-    if (virDomainObjUpdateModificationImpact(dom, flags) < 0)
-        return -1;
-
-    if (!(*flags & VIR_DOMAIN_AFFECT_CONFIG)) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("domain config update needs VIR_DOMAIN_AFFECT_CONFIG "
-                         "flag to be set"));
-        return -1;
-    }
-
-    if (virDomainObjIsActive(dom) && !(*flags & VIR_DOMAIN_AFFECT_LIVE)) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Updates on a running domain need "
-                         "VIR_DOMAIN_AFFECT_LIVE flag"));
-        return -1;
-    }
-
-    return 0;
-}
-
 static int vzDomainAttachDeviceFlags(virDomainPtr dom, const char *xml,
                                      unsigned int flags)
 {
@@ -1138,6 +1044,7 @@ static int vzDomainAttachDeviceFlags(virDomainPtr dom, const char *xml,
     vzConnPtr privconn = dom->conn->privateData;
     virDomainDeviceDefPtr dev = NULL;
     virDomainObjPtr privdom = NULL;
+    bool domactive = false;
 
     virCheckFlags(VIR_DOMAIN_AFFECT_LIVE |
                   VIR_DOMAIN_AFFECT_CONFIG, -1);
@@ -1145,17 +1052,34 @@ static int vzDomainAttachDeviceFlags(virDomainPtr dom, const char *xml,
     if (!(privdom = vzDomObjFromDomain(dom)))
         return -1;
 
-    if (vzCheckConfigUpdateFlags(privdom, &flags) < 0)
+    if (!(flags & VIR_DOMAIN_AFFECT_CONFIG)) {
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("device attach needs VIR_DOMAIN_AFFECT_CONFIG "
+                         "flag to be set"));
         goto cleanup;
+    }
 
-    dev = virDomainDeviceDefParse(xml, privdom->def, privconn->driver->caps,
-                                  privconn->driver->xmlopt, VIR_DOMAIN_XML_INACTIVE);
+    domactive = virDomainObjIsActive(privdom);
+    if (!domactive && (flags & VIR_DOMAIN_AFFECT_LIVE)) {
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("cannot do live update a device on "
+                         "inactive domain"));
+        goto cleanup;
+    }
+    if (domactive && !(flags & VIR_DOMAIN_AFFECT_LIVE)) {
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("Updates on a running domain need "
+                         "VIR_DOMAIN_AFFECT_LIVE flag"));
+    }
+
+    dev = virDomainDeviceDefParse(xml, privdom->def, privconn->caps,
+                                  privconn->xmlopt, VIR_DOMAIN_XML_INACTIVE);
     if (dev == NULL)
         goto cleanup;
 
     switch (dev->type) {
     case VIR_DOMAIN_DEVICE_DISK:
-        ret = prlsdkAttachVolume(privconn->driver, privdom, dev->data.disk);
+        ret = prlsdkAttachVolume(privconn, privdom, dev->data.disk);
         if (ret) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("disk attach failed"));
@@ -1163,7 +1087,7 @@ static int vzDomainAttachDeviceFlags(virDomainPtr dom, const char *xml,
         }
         break;
     case VIR_DOMAIN_DEVICE_NET:
-        ret = prlsdkAttachNet(privconn->driver, privdom, dev->data.net);
+        ret = prlsdkAttachNet(privconn, privdom, dev->data.net);
         if (ret) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("network attach failed"));
@@ -1196,6 +1120,7 @@ static int vzDomainDetachDeviceFlags(virDomainPtr dom, const char *xml,
     vzConnPtr privconn = dom->conn->privateData;
     virDomainDeviceDefPtr dev = NULL;
     virDomainObjPtr privdom = NULL;
+    bool domactive = false;
 
     virCheckFlags(VIR_DOMAIN_AFFECT_LIVE |
                   VIR_DOMAIN_AFFECT_CONFIG, -1);
@@ -1204,11 +1129,28 @@ static int vzDomainDetachDeviceFlags(virDomainPtr dom, const char *xml,
     if (privdom == NULL)
         return -1;
 
-    if (vzCheckConfigUpdateFlags(privdom, &flags) < 0)
+    if (!(flags & VIR_DOMAIN_AFFECT_CONFIG)) {
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("device detach needs VIR_DOMAIN_AFFECT_CONFIG "
+                         "flag to be set"));
         goto cleanup;
+    }
 
-    dev = virDomainDeviceDefParse(xml, privdom->def, privconn->driver->caps,
-                                  privconn->driver->xmlopt, VIR_DOMAIN_XML_INACTIVE);
+    domactive = virDomainObjIsActive(privdom);
+    if (!domactive && (flags & VIR_DOMAIN_AFFECT_LIVE)) {
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("cannot do live update a device on "
+                         "inactive domain"));
+        goto cleanup;
+    }
+    if (domactive && !(flags & VIR_DOMAIN_AFFECT_LIVE)) {
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
+                       _("Updates on a running domain need "
+                         "VIR_DOMAIN_AFFECT_LIVE flag"));
+    }
+
+    dev = virDomainDeviceDefParse(xml, privdom->def, privconn->caps,
+                                  privconn->xmlopt, VIR_DOMAIN_XML_INACTIVE);
     if (dev == NULL)
         goto cleanup;
 
@@ -1222,7 +1164,7 @@ static int vzDomainDetachDeviceFlags(virDomainPtr dom, const char *xml,
         }
         break;
     case VIR_DOMAIN_DEVICE_NET:
-        ret = prlsdkDetachNet(privconn->driver, privdom, dev->data.net);
+        ret = prlsdkDetachNet(privconn, privdom, dev->data.net);
         if (ret) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("network detach failed"));
@@ -1239,7 +1181,6 @@ static int vzDomainDetachDeviceFlags(virDomainPtr dom, const char *xml,
     ret = 0;
  cleanup:
     virObjectUnlock(privdom);
-
     return ret;
 }
 
@@ -1511,6 +1452,8 @@ vzConnectRegisterCloseCallback(virConnectPtr conn,
     vzConnPtr privconn = conn->privateData;
     int ret = -1;
 
+    vzDriverLock(privconn);
+
     if (virConnectCloseCallbackDataGetCallback(privconn->closeCallback) != NULL) {
         virReportError(VIR_ERR_OPERATION_INVALID, "%s",
                        _("A close callback is already registered"));
@@ -1522,6 +1465,7 @@ vzConnectRegisterCloseCallback(virConnectPtr conn,
     ret = 0;
 
  cleanup:
+    vzDriverUnlock(privconn);
 
     return ret;
 }
@@ -1532,6 +1476,7 @@ vzConnectUnregisterCloseCallback(virConnectPtr conn, virConnectCloseFunc cb)
     vzConnPtr privconn = conn->privateData;
     int ret = -1;
 
+    vzDriverLock(privconn);
 
     if (virConnectCloseCallbackDataGetCallback(privconn->closeCallback) != cb) {
         virReportError(VIR_ERR_OPERATION_INVALID, "%s",
@@ -1543,51 +1488,17 @@ vzConnectUnregisterCloseCallback(virConnectPtr conn, virConnectCloseFunc cb)
     ret = 0;
 
  cleanup:
+    vzDriverUnlock(privconn);
 
     return ret;
 }
 
-static int vzDomainSetMemoryFlagsImpl(virDomainPtr domain, unsigned long memory,
-                                      unsigned int flags, bool useflags)
-{
-    virDomainObjPtr dom = NULL;
-    int ret = -1;
-
-    virCheckFlags(VIR_DOMAIN_AFFECT_LIVE |
-                  VIR_DOMAIN_AFFECT_CONFIG, -1);
-
-    if (!(dom = vzDomObjFromDomain(domain)))
-        return -1;
-
-    if (useflags && vzCheckConfigUpdateFlags(dom, &flags) < 0)
-        goto cleanup;
-
-    ret = prlsdkSetMemsize(dom, memory >> 10);
-
- cleanup:
-
-    virObjectUnlock(dom);
-    return ret;
-}
-
-static int vzDomainSetMemoryFlags(virDomainPtr domain, unsigned long memory,
-                                  unsigned int flags)
-{
-    return vzDomainSetMemoryFlagsImpl(domain, memory, flags, true);
-}
-
-static int vzDomainSetMemory(virDomainPtr domain, unsigned long memory)
-{
-    return vzDomainSetMemoryFlagsImpl(domain, memory, 0, false);
-}
-
-static virHypervisorDriver vzHypervisorDriver = {
+static virHypervisorDriver vzDriver = {
     .name = "vz",
     .connectOpen = vzConnectOpen,            /* 0.10.0 */
     .connectClose = vzConnectClose,          /* 0.10.0 */
     .connectGetVersion = vzConnectGetVersion,   /* 0.10.0 */
     .connectGetHostname = vzConnectGetHostname,      /* 0.10.0 */
-    .connectGetSysinfo = vzConnectGetSysinfo, /* 1.3.4 */
     .connectGetMaxVcpus = vzConnectGetMaxVcpus, /* 1.2.21 */
     .nodeGetInfo = vzNodeGetInfo,      /* 0.10.0 */
     .nodeGetCPUStats = vzNodeGetCPUStats,      /* 1.2.21 */
@@ -1646,55 +1557,14 @@ static virHypervisorDriver vzHypervisorDriver = {
     .domainMemoryStats = vzDomainMemoryStats, /* 1.2.17 */
     .connectRegisterCloseCallback = vzConnectRegisterCloseCallback, /* 1.3.2 */
     .connectUnregisterCloseCallback = vzConnectUnregisterCloseCallback, /* 1.3.2 */
-    .domainSetMemoryFlags = vzDomainSetMemoryFlags, /* 1.3.4 */
-    .domainSetMemory = vzDomainSetMemory, /* 1.3.4 */
 };
 
 static virConnectDriver vzConnectDriver = {
-    .hypervisorDriver = &vzHypervisorDriver,
-};
-
-static int
-vzStateCleanup(void)
-{
-    virObjectUnref(vz_driver);
-    vz_driver = NULL;
-    virMutexDestroy(&vz_driver_lock);
-    prlsdkDeinit();
-    return 0;
-}
-
-static int
-vzStateInitialize(bool privileged ATTRIBUTE_UNUSED,
-                  virStateInhibitCallback callback ATTRIBUTE_UNUSED,
-                  void *opaque ATTRIBUTE_UNUSED)
-{
-    if (prlsdkInit() < 0) {
-        VIR_DEBUG("%s", _("Can't initialize Parallels SDK"));
-        return -1;
-    }
-
-   if (virMutexInit(&vz_driver_lock) < 0)
-        goto error;
-
-    /* Failing to create driver here is not fatal and only means
-     * that next driver client will try once more when connecting */
-    vz_driver = vzDriverObjNew();
-    return 0;
-
- error:
-    vzStateCleanup();
-    return -1;
-}
-
-static virStateDriver vzStateDriver = {
-    .name = "vz",
-    .stateInitialize = vzStateInitialize,
-    .stateCleanup = vzStateCleanup,
+    .hypervisorDriver = &vzDriver,
 };
 
 /* Parallels domain type backward compatibility*/
-static virHypervisorDriver parallelsHypervisorDriver;
+static virHypervisorDriver parallelsDriver;
 static virConnectDriver parallelsConnectDriver;
 
 /**
@@ -1716,17 +1586,14 @@ vzRegister(void)
     VIR_FREE(prlctl_path);
 
     /* Backward compatibility with Parallels domain type */
-    parallelsHypervisorDriver = vzHypervisorDriver;
-    parallelsHypervisorDriver.name = "Parallels";
+    parallelsDriver = vzDriver;
+    parallelsDriver.name = "Parallels";
     parallelsConnectDriver = vzConnectDriver;
-    parallelsConnectDriver.hypervisorDriver = &parallelsHypervisorDriver;
-    if (virRegisterConnectDriver(&parallelsConnectDriver, true) < 0)
+    parallelsConnectDriver.hypervisorDriver = &parallelsDriver;
+    if (virRegisterConnectDriver(&parallelsConnectDriver, false) < 0)
         return -1;
 
-    if (virRegisterConnectDriver(&vzConnectDriver, true) < 0)
-        return -1;
-
-    if (virRegisterStateDriver(&vzStateDriver) < 0)
+    if (virRegisterConnectDriver(&vzConnectDriver, false) < 0)
         return -1;
 
     return 0;

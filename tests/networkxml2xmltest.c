@@ -16,58 +16,26 @@
 
 #define VIR_FROM_THIS VIR_FROM_NONE
 
-typedef enum {
-    TEST_COMPARE_NET_XML2XML_RESULT_SUCCESS,
-    TEST_COMPARE_NET_XML2XML_RESULT_FAIL_PARSE,
-    TEST_COMPARE_NET_XML2XML_RESULT_FAIL_FORMAT,
-    TEST_COMPARE_NET_XML2XML_RESULT_FAIL_COMPARE,
-} testCompareNetXML2XMLResult;
-
 static int
 testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
-                         unsigned int flags,
-                         testCompareNetXML2XMLResult expectResult)
+                         unsigned int flags)
 {
     char *actual = NULL;
-    int ret;
-    testCompareNetXML2XMLResult result = TEST_COMPARE_NET_XML2XML_RESULT_SUCCESS;
+    int ret = -1;
     virNetworkDefPtr dev = NULL;
 
-    if (!(dev = virNetworkDefParseFile(inxml))) {
-        result = TEST_COMPARE_NET_XML2XML_RESULT_FAIL_PARSE;
-        goto cleanup;
-    }
-    if (expectResult == TEST_COMPARE_NET_XML2XML_RESULT_FAIL_PARSE)
-        goto cleanup;
+    if (!(dev = virNetworkDefParseFile(inxml)))
+        goto fail;
 
-    if (!(actual = virNetworkDefFormat(dev, flags))) {
-        result = TEST_COMPARE_NET_XML2XML_RESULT_FAIL_FORMAT;
-        goto cleanup;
-    }
-    if (expectResult == TEST_COMPARE_NET_XML2XML_RESULT_FAIL_FORMAT)
-        goto cleanup;
+    if (!(actual = virNetworkDefFormat(dev, flags)))
+        goto fail;
 
-    if (virtTestCompareToFile(actual, outxml) < 0) {
-        result = TEST_COMPARE_NET_XML2XML_RESULT_FAIL_COMPARE;
-        goto cleanup;
-    }
-    if (expectResult == TEST_COMPARE_NET_XML2XML_RESULT_FAIL_COMPARE)
-        goto cleanup;
+    if (virtTestCompareToFile(actual, outxml) < 0)
+        goto fail;
 
- cleanup:
-    if (result == expectResult) {
-        ret = 0;
-        if (expectResult != TEST_COMPARE_NET_XML2XML_RESULT_SUCCESS) {
-            VIR_TEST_DEBUG("Got expected failure code=%d msg=%s",
-                           result, virGetLastErrorMessage());
-        }
-    } else {
-        ret = -1;
-        VIR_TEST_DEBUG("Expected result code=%d but received code=%d",
-                       expectResult, result);
-    }
-    virResetLastError();
+    ret = 0;
 
+ fail:
     VIR_FREE(actual);
     virNetworkDefFree(dev);
     return ret;
@@ -76,7 +44,6 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
 struct testInfo {
     const char *name;
     unsigned int flags;
-    testCompareNetXML2XMLResult expectResult;
 };
 
 static int
@@ -94,8 +61,7 @@ testCompareXMLToXMLHelper(const void *data)
         goto cleanup;
     }
 
-    result = testCompareXMLToXMLFiles(inxml, outxml, info->flags,
-                                      info->expectResult);
+    result = testCompareXMLToXMLFiles(inxml, outxml, info->flags);
 
  cleanup:
     VIR_FREE(inxml);
@@ -109,19 +75,14 @@ mymain(void)
 {
     int ret = 0;
 
-#define DO_TEST_FULL(name, flags, expectResult)                         \
+#define DO_TEST_FULL(name, flags)                                       \
     do {                                                                \
-        const struct testInfo info = {name, flags, expectResult};       \
+        const struct testInfo info = {name, flags};                     \
         if (virtTestRun("Network XML-2-XML " name,                      \
-                        testCompareXMLToXMLHelper, &info) < 0) \
+                        testCompareXMLToXMLHelper, &info) < 0)          \
             ret = -1;                                                   \
     } while (0)
-#define DO_TEST(name) \
-    DO_TEST_FULL(name, 0, TEST_COMPARE_NET_XML2XML_RESULT_SUCCESS)
-#define DO_TEST_FLAGS(name, flags) \
-    DO_TEST_FULL(name, flags, TEST_COMPARE_NET_XML2XML_RESULT_SUCCESS)
-#define DO_TEST_PARSE_ERROR(name) \
-    DO_TEST_FULL(name, 0, TEST_COMPARE_NET_XML2XML_RESULT_FAIL_PARSE)
+#define DO_TEST(name) DO_TEST_FULL(name, 0)
 
     DO_TEST("dhcp6host-routed-network");
     DO_TEST("empty-allow-ipv6");
@@ -145,14 +106,12 @@ mymain(void)
     DO_TEST("vepa-net");
     DO_TEST("bandwidth-network");
     DO_TEST("openvswitch-net");
-    DO_TEST_FLAGS("passthrough-pf", VIR_NETWORK_XML_INACTIVE);
+    DO_TEST_FULL("passthrough-pf", VIR_NETWORK_XML_INACTIVE);
     DO_TEST("hostdev");
-    DO_TEST_FLAGS("hostdev-pf", VIR_NETWORK_XML_INACTIVE);
+    DO_TEST_FULL("hostdev-pf", VIR_NETWORK_XML_INACTIVE);
     DO_TEST("passthrough-address-crash");
     DO_TEST("nat-network-explicit-flood");
     DO_TEST("host-bridge-no-flood");
-    DO_TEST_PARSE_ERROR("hostdev-duplicate");
-    DO_TEST_PARSE_ERROR("passthrough-duplicate");
 
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

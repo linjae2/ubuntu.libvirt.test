@@ -44,10 +44,16 @@ struct _virDomainCapsStringValues {
     size_t nvalues; /* number of strings */
 };
 
+typedef struct _virDomainCapsDevice virDomainCapsDevice;
+typedef virDomainCapsDevice *virDomainCapsDevicePtr;
+struct _virDomainCapsDevice {
+    bool supported; /* true if <devtype> is supported by hypervisor */
+};
+
 typedef struct _virDomainCapsLoader virDomainCapsLoader;
 typedef virDomainCapsLoader *virDomainCapsLoaderPtr;
 struct _virDomainCapsLoader {
-    bool supported;
+    virDomainCapsDevice device;
     virDomainCapsStringValues values;   /* Info about values for the element */
     virDomainCapsEnum type;     /* Info about virDomainLoader */
     virDomainCapsEnum readonly; /* Info about readonly:virTristateBool */
@@ -56,14 +62,14 @@ struct _virDomainCapsLoader {
 typedef struct _virDomainCapsOS virDomainCapsOS;
 typedef virDomainCapsOS *virDomainCapsOSPtr;
 struct _virDomainCapsOS {
-    bool supported;
+    virDomainCapsDevice device;
     virDomainCapsLoader loader;     /* Info about virDomainLoaderDef */
 };
 
 typedef struct _virDomainCapsDeviceDisk virDomainCapsDeviceDisk;
 typedef virDomainCapsDeviceDisk *virDomainCapsDeviceDiskPtr;
 struct _virDomainCapsDeviceDisk {
-    bool supported;
+    virDomainCapsDevice device;
     virDomainCapsEnum diskDevice;   /* Info about virDomainDiskDevice enum values */
     virDomainCapsEnum bus;          /* Info about virDomainDiskBus enum values */
     /* add new fields here */
@@ -72,20 +78,13 @@ struct _virDomainCapsDeviceDisk {
 typedef struct _virDomainCapsDeviceHostdev virDomainCapsDeviceHostdev;
 typedef virDomainCapsDeviceHostdev *virDomainCapsDeviceHostdevPtr;
 struct _virDomainCapsDeviceHostdev {
-    bool supported;
+    virDomainCapsDevice device;
     virDomainCapsEnum mode;             /* Info about virDomainHostdevMode */
     virDomainCapsEnum startupPolicy;    /* Info about virDomainStartupPolicy */
     virDomainCapsEnum subsysType;       /* Info about virDomainHostdevSubsysType */
     virDomainCapsEnum capsType;         /* Info about virDomainHostdevCapsType */
     virDomainCapsEnum pciBackend;       /* Info about virDomainHostdevSubsysPCIBackendType */
     /* add new fields here */
-};
-
-typedef struct _virDomainCapsFeatureGIC virDomainCapsFeatureGIC;
-typedef virDomainCapsFeatureGIC *virDomainCapsFeatureGICPtr;
-struct _virDomainCapsFeatureGIC {
-    bool supported;
-    virDomainCapsEnum version; /* Info about virGICVersion */
 };
 
 struct _virDomainCaps {
@@ -103,9 +102,6 @@ struct _virDomainCaps {
     virDomainCapsDeviceDisk disk;
     virDomainCapsDeviceHostdev hostdev;
     /* add new domain devices here */
-
-    virDomainCapsFeatureGIC gic;
-    /* add new domain features here */
 };
 
 virDomainCapsPtr virDomainCapsNew(const char *path,

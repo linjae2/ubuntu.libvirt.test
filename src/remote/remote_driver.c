@@ -132,9 +132,11 @@ static int remoteAuthenticate(virConnectPtr conn, struct private_data *priv,
 #if WITH_SASL
 static int remoteAuthSASL(virConnectPtr conn, struct private_data *priv,
                           virConnectAuthPtr auth, const char *mech);
-#endif /* WITH_SASL */
+#endif
+#if WITH_POLKIT
 static int remoteAuthPolkit(virConnectPtr conn, struct private_data *priv,
                             virConnectAuthPtr auth);
+#endif /* WITH_POLKIT */
 
 static virDomainPtr get_nonnull_domain(virConnectPtr conn, remote_nonnull_domain domain);
 static virNetworkPtr get_nonnull_network(virConnectPtr conn, remote_nonnull_network network);
@@ -320,10 +322,6 @@ static void
 remoteDomainBuildEventCallbackDeviceAdded(virNetClientProgramPtr prog,
                                           virNetClientPtr client,
                                           void *evdata, void *opaque);
-static void
-remoteDomainBuildEventCallbackDeviceRemovalFailed(virNetClientProgramPtr prog,
-                                                  virNetClientPtr client,
-                                                  void *evdata, void *opaque);
 
 static void
 remoteDomainBuildEventBlockJob2(virNetClientProgramPtr prog,
@@ -530,10 +528,6 @@ static virNetClientProgramEvent remoteEvents[] = {
       remoteDomainBuildEventCallbackJobCompleted,
       sizeof(remote_domain_event_callback_job_completed_msg),
       (xdrproc_t)xdr_remote_domain_event_callback_job_completed_msg },
-    { REMOTE_PROC_DOMAIN_EVENT_CALLBACK_DEVICE_REMOVAL_FAILED,
-      remoteDomainBuildEventCallbackDeviceRemovalFailed,
-      sizeof(remote_domain_event_callback_device_removal_failed_msg),
-      (xdrproc_t)xdr_remote_domain_event_callback_device_removal_failed_msg },
 };
 
 static void
@@ -3324,12 +3318,14 @@ remoteAuthenticate(virConnectPtr conn, struct private_data *priv,
     }
 #endif
 
+#if WITH_POLKIT
     case REMOTE_AUTH_POLKIT:
         if (remoteAuthPolkit(conn, priv, auth) < 0) {
             VIR_FREE(ret.types.types_val);
             return -1;
         }
         break;
+#endif
 
     case REMOTE_AUTH_NONE:
         /* Nothing todo, hurrah ! */
@@ -3900,10 +3896,30 @@ remoteAuthSASL(virConnectPtr conn, struct private_data *priv,
 #endif /* WITH_SASL */
 
 
-#if WITH_POLKIT0
-/* Perform the PolicyKit0 authentication process */
+#if WITH_POLKIT
+# if WITH_POLKIT1
 static int
-remoteAuthPolkit0(virConnectPtr conn, struct private_data *priv,
+remoteAuthPolkit(virConnectPtr conn, struct private_data *priv,
+                 virConnectAuthPtr auth ATTRIBUTE_UNUSED)
+{
+    remote_auth_polkit_ret ret;
+    VIR_DEBUG("Client initialize PolicyKit-1 authentication");
+
+    memset(&ret, 0, sizeof(ret));
+    if (call(conn, priv, 0, REMOTE_PROC_AUTH_POLKIT,
+             (xdrproc_t) xdr_void, (char *)NULL,
+             (xdrproc_t) xdr_remote_auth_polkit_ret, (char *) &ret) != 0) {
+        return -1; /* virError already set by call */
+    }
+
+    VIR_DEBUG("PolicyKit-1 authentication complete");
+    return 0;
+}
+# elif WITH_POLKIT0
+/* Perform the PolicyKit authentication process
+ */
+static int
+remoteAuthPolkit(virConnectPtr conn, struct private_data *priv,
                  virConnectAuthPtr auth)
 {
     remote_auth_polkit_ret ret;
@@ -3919,8 +3935,14 @@ remoteAuthPolkit0(virConnectPtr conn, struct private_data *priv,
     };
     VIR_DEBUG("Client initialize PolicyKit-0 authentication");
 
-    /* We only make it here if auth already failed
-     * Ask client to obtain it and check again. */
+    /* Check auth first and if it succeeds we are done. */
+    memset(&ret, 0, sizeof(ret));
+    if (call(conn, priv, 0, REMOTE_PROC_AUTH_POLKIT,
+             (xdrproc_t) xdr_void, (char *)NULL,
+             (xdrproc_t) xdr_remote_auth_polkit_ret, (char *) &ret) == 0)
+        goto out;
+
+    /* Auth failed.  Ask client to obtain it and check again. */
     if (auth && auth->cb) {
         /* Check if the necessary credential type for PolicyKit is supported */
         for (i = 0; i < auth->ncredtype; i++) {
@@ -3956,31 +3978,8 @@ remoteAuthPolkit0(virConnectPtr conn, struct private_data *priv,
     VIR_DEBUG("PolicyKit-0 authentication complete");
     return 0;
 }
-#endif /* WITH_POLKIT0 */
-
-static int
-remoteAuthPolkit(virConnectPtr conn, struct private_data *priv,
-                 virConnectAuthPtr auth ATTRIBUTE_UNUSED)
-{
-    remote_auth_polkit_ret ret;
-    VIR_DEBUG("Client initialize PolicyKit authentication");
-
-    memset(&ret, 0, sizeof(ret));
-    if (call(conn, priv, 0, REMOTE_PROC_AUTH_POLKIT,
-             (xdrproc_t) xdr_void, (char *)NULL,
-             (xdrproc_t) xdr_remote_auth_polkit_ret, (char *) &ret) != 0) {
-        return -1; /* virError already set by call */
-    }
-
-#if WITH_POLKIT0
-    if (remoteAuthPolkit0(conn, priv, auth) < 0)
-        return -1;
-#endif /* WITH_POLKIT0 */
-
-    VIR_DEBUG("PolicyKit authentication complete");
-    return 0;
-}
-
+# endif /* WITH_POLKIT0 */
+#endif /* WITH_POLKIT */
 /*----------------------------------------------------------------------*/
 
 static int
@@ -4824,28 +4823,6 @@ remoteDomainBuildEventCallbackDeviceAdded(virNetClientProgramPtr prog ATTRIBUTE_
         return;
 
     event = virDomainEventDeviceAddedNewFromDom(dom, msg->devAlias);
-
-    virObjectUnref(dom);
-
-    remoteEventQueue(priv, event, msg->callbackID);
-}
-
-
-static void
-remoteDomainBuildEventCallbackDeviceRemovalFailed(virNetClientProgramPtr prog ATTRIBUTE_UNUSED,
-                                                  virNetClientPtr client ATTRIBUTE_UNUSED,
-                                                  void *evdata, void *opaque)
-{
-    virConnectPtr conn = opaque;
-    remote_domain_event_callback_device_added_msg *msg = evdata;
-    struct private_data *priv = conn->privateData;
-    virDomainPtr dom;
-    virObjectEventPtr event = NULL;
-
-    if (!(dom = get_nonnull_domain(conn, msg->dom)))
-        return;
-
-    event = virDomainEventDeviceRemovalFailedNewFromDom(dom, msg->devAlias);
 
     virObjectUnref(dom);
 

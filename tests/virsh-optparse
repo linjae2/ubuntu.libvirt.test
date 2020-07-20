@@ -17,7 +17,9 @@
 # along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 
-. "$(dirname $0)/test-lib.sh"
+: ${srcdir=$(pwd)}
+: ${abs_top_srcdir=$(pwd)/..}
+: ${abs_top_builddir=$(pwd)/..}
 
 # If $abs_top_builddir/tools is not early in $PATH, put it there,
 # so that we can safely invoke "virsh" simply with its name.
@@ -31,6 +33,8 @@ if test "$VERBOSE" = yes; then
   set -x
   virsh --version
 fi
+
+. "$srcdir/test-lib.sh"
 
 cat <<\EOF > exp-out || framework_failure
 

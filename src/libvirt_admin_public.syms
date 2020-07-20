@@ -23,8 +23,6 @@ LIBVIRT_ADMIN_1.3.0 {
         virAdmConnectUnregisterCloseCallback;
         virAdmConnectListServers;
         virAdmServerGetName;
-        virAdmServerGetThreadPoolParameters;
         virAdmServerFree;
         virAdmConnectLookupServer;
-        virAdmServerSetThreadPoolParameters;
 };

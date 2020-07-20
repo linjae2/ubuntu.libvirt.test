@@ -60,8 +60,8 @@ struct _vzCapabilities {
 typedef struct _vzCapabilities vzCapabilities;
 typedef struct _vzCapabilities *vzCapabilitiesPtr;
 
-struct _vzDriver {
-    virObjectLockable parent;
+struct _vzConn {
+    virMutex lock;
 
     /* Immutable pointer, self-locking APIs */
     virDomainObjListPtr domains;
@@ -70,25 +70,15 @@ struct _vzDriver {
     virCapsPtr caps;
     virDomainXMLOptionPtr xmlopt;
     virObjectEventStatePtr domainEventState;
-    virSysinfoDefPtr hostsysinfo;
+    const char *drivername;
+    /* Immutable pointer, self-locking APIs */
+    virConnectCloseCallbackDataPtr closeCallback;
     unsigned long vzVersion;
     vzCapabilities vzCaps;
 };
 
-typedef struct _vzDriver vzDriver;
-typedef struct _vzDriver *vzDriverPtr;
-
-struct _vzConn {
-    struct _vzConn* next;
-
-    vzDriverPtr driver;
-    /* Immutable pointer, self-locking APIs */
-    virConnectCloseCallbackDataPtr closeCallback;
-};
-
 typedef struct _vzConn vzConn;
 typedef struct _vzConn *vzConnPtr;
-
 
 struct _vzCountersCache {
     PRL_HANDLE stats;
@@ -114,19 +104,14 @@ virDomainObjPtr vzDomObjFromDomainRef(virDomainPtr domain);
 
 char * vzGetOutput(const char *binary, ...)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_SENTINEL;
-
-vzDriverPtr
-vzGetDriverConnection(void);
-
-void
-vzDestroyDriverConnection(void);
-
+void vzDriverLock(vzConnPtr driver);
+void vzDriverUnlock(vzConnPtr driver);
 virDomainObjPtr
-vzNewDomain(vzDriverPtr driver,
+vzNewDomain(vzConnPtr privconn,
             char *name,
             const unsigned char *uuid);
 int
-vzInitVersion(vzDriverPtr driver);
+vzInitVersion(vzConnPtr privconn);
 int
 vzCheckUnsupportedDisks(virDomainDefPtr def,
                         vzCapabilitiesPtr vzCaps);
@@ -134,7 +119,7 @@ int
 vzCheckUnsupportedControllers(virDomainDefPtr def,
                               vzCapabilitiesPtr vzCaps);
 int
-vzGetDefaultSCSIModel(vzDriverPtr driver,
+vzGetDefaultSCSIModel(vzConnPtr privconn,
                       PRL_CLUSTERED_DEVICE_SUBTYPE *scsiModel);
 
 # define PARALLELS_BLOCK_STATS_FOREACH(OP)                              \

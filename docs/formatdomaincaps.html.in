@@ -61,18 +61,18 @@
 &lt;/domainCapabilities&gt;
 </pre>
     <dl>
-      <dt><code>path</code></dt>
+      <dt>path</dt>
       <dd>The full path to the emulator binary.</dd>
 
-      <dt><code>domain</code></dt>
+      <dt>domain</dt>
       <dd>Describes the <a href="formatdomain.html#elements">virtualization
           type</a> (or so called domain type).</dd>
 
-      <dt><code>machine</code></dt>
+      <dt>machine</dt>
       <dd>The domain's <a href="formatdomain.html#elementsOSBIOS">machine
           type</a>.</dd>
 
-      <dt><code>arch</code></dt>
+      <dt>arch</dt>
       <dd>The domain's <a href="formatdomain.html#elementsOSBIOS">
           architecture</a>.</dd>
 
@@ -92,7 +92,7 @@
 </pre>
 
     <dl>
-      <dt><code>vcpu</code></dt>
+      <dt>vcpu</dt>
       <dd>The maximum number of supported virtual CPUs</dd>
     </dl>
 
@@ -126,18 +126,18 @@
     <p>For the <code>loader</code> element, the following can occur:</p>
 
     <dl>
-      <dt><code>value</code></dt>
+      <dt>value</dt>
       <dd>List of known loader paths. Currently this is only used
       to advertise known locations of OVMF binaries for qemu. Binaries
       will only be listed if they actually exist on disk.</dd>
 
-      <dt><code>type</code></dt>
+      <dt>type</dt>
       <dd>Whether loader is a typical BIOS (<code>rom</code>) or
       an UEFI binary (<code>pflash</code>). This refers to
       <code>type</code> attribute of the &lt;loader/&gt;
       element.</dd>
 
-      <dt><code>readonly</code></dt>
+      <dt>readonly</dt>
       <dd>Options for the <code>readonly</code> attribute of the
       &lt;loader/&gt; element.</dd>
     </dl>
@@ -145,7 +145,7 @@
     <h3><a name="elementsDevices">Devices</a></h3>
 
     <p>
-      Another set of XML elements describe the supported devices and their
+      The final set of XML elements describe the supported devices and their
       capabilities. All devices occur as children of the main
       <code>devices</code> element.
     </p>
@@ -207,11 +207,11 @@
 </pre>
 
     <dl>
-      <dt><code>diskDevice</code></dt>
+      <dt>diskDevice</dt>
       <dd>Options for the <code>device</code> attribute of the &lt;disk/&gt;
       element.</dd>
 
-      <dt><code>bus</code></dt>
+      <dt>bus</dt>
       <dd>Options for the <code>bus</code> attribute of the &lt;target/&gt;
       element for a &lt;disk/&gt;.</dd>
     </dl>
@@ -257,66 +257,25 @@
 </pre>
 
     <dl>
-      <dt><code>mode</code></dt>
+      <dt>mode</dt>
       <dd>Options for the <code>mode</code> attribute of the &lt;hostdev/&gt;
       element.</dd>
 
-      <dt><code>startupPolicy</code></dt>
+      <dt>startupPolicy</dt>
       <dd>Options for the <code>startupPolicy</code> attribute of the
       &lt;hostdev/&gt; element.</dd>
 
-      <dt><code>subsysType</code></dt>
+      <dt>subsysType</dt>
       <dd>Options for the <code>type</code> attribute of the &lt;hostdev/&gt;
       element in case of <code>mode="subsystem"</code>.</dd>
 
-      <dt><code>capsType</code></dt>
+      <dt>capsType</dt>
       <dd>Options for the <code>type</code> attribute of the &lt;hostdev/&gt;
       element in case of <code>mode="capabilities"</code>.</dd>
 
-      <dt><code>pciBackend</code></dt>
+      <dt>pciBackend</dt>
       <dd>Options for the <code>name</code> attribute of the &lt;driver/&gt;
       element.</dd>
     </dl>
-
-    <h3><a name="elementsFeatures">Features</a></h3>
-
-    <p>One more set of XML elements describe the supported features and
-    their capabilities. All features occur as children of the main
-    <code>features</code> element.</p>
-
-<pre>
-&lt;domainCapabilities&gt;
-  ...
-  &lt;features&gt;
-    &lt;gic supported='yes'&gt;
-      &lt;enum name='version'&gt;
-        &lt;value&gt;2&lt;/value&gt;
-        &lt;value&gt;3&lt;/value&gt;
-      &lt;/enum&gt;
-    &lt;/gic&gt;
-  &lt;/features&gt;
-&lt;/domainCapabilities&gt;
-</pre>
-
-    <p>Reported capabilities are expressed as an enumerated list of
-    possible values for each of the elements or attributes. For example, the
-    <code>gic</code> element has an attribute <code>version</code> which can
-    support the values <code>2</code> or <code>3</code>.</p>
-
-    <p>For information about the purpose of each feature, see the
-    <a href="formatdomain.html#elementsFeatures">relevant section</a> in
-    the domain XML documentation.
-    </p>
-
-    <h4><a name="elementsGIC">GIC capabilities</a></h4>
-
-    <p>GIC capabilities are exposed under the <code>gic</code> element.</p>
-
-    <dl>
-      <dt><code>version</code></dt>
-      <dd>Options for the <code>version</code> attribute of the
-      <code>gic</code> element.</dd>
-    </dl>
-
   </body>
 </html>

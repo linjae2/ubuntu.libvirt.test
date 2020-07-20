@@ -3261,12 +3261,6 @@ struct remote_domain_migrate_start_post_copy_args {
     unsigned int flags;
 };
 
-struct remote_domain_event_callback_device_removal_failed_msg {
-    int callbackID;
-    remote_nonnull_domain dom;
-    remote_nonnull_string devAlias;
-};
-
 /*----- Protocol. -----*/
 
 /* Define the program number, protocol version and procedure numbers here. */
@@ -5787,11 +5781,5 @@ enum remote_procedure {
      * @generate: both
      * @acl: domain:write
      */
-    REMOTE_PROC_DOMAIN_SET_PERF_EVENTS = 366,
-
-    /**
-     * @generate: both
-     * @acl: none
-     */
-    REMOTE_PROC_DOMAIN_EVENT_CALLBACK_DEVICE_REMOVAL_FAILED = 367
+    REMOTE_PROC_DOMAIN_SET_PERF_EVENTS = 366
 };

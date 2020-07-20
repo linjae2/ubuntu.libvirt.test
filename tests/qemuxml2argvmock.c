@@ -125,16 +125,12 @@ virNetDevSetMAC(const char *ifname ATTRIBUTE_UNUSED,
 }
 
 int
-virNetDevSetOnline(const char *ifname ATTRIBUTE_UNUSED,
-                   bool online ATTRIBUTE_UNUSED)
+virCommandRun(virCommandPtr cmd ATTRIBUTE_UNUSED,
+              int *exitstatus)
 {
-    return 0;
-}
+    if (exitstatus)
+        *exitstatus = 0;
 
-int
-virNetDevRunEthernetScript(const char *ifname ATTRIBUTE_UNUSED,
-                           const char *script ATTRIBUTE_UNUSED)
-{
     return 0;
 }
 

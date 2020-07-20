@@ -57,13 +57,13 @@
     </p>
 
     <dl>
-      <dt><code>pid</code></dt>
+      <dt>pid</dt>
       <dd>Process ID of the libvirtd daemon generating the audit record.</dd>
-      <dt><code>uid</code></dt>
+      <dt>uid</dt>
       <dd>User ID of the libvirtd daemon process generating the audit record.</dd>
-      <dt><code>subj</code></dt>
+      <dt>subj</dt>
       <dd>Security context of the libvirtd daemon process generating the audit record.</dd>
-      <dt><code>msg</code></dt>
+      <dt>msg</dt>
       <dd>String containing a list of key=value pairs specific to the type of audit record being reported.</dd>
     </dl>
 
@@ -72,21 +72,21 @@
     </p>
 
     <dl>
-      <dt><code>virt</code></dt>
+      <dt>virt</dt>
       <dd>Type of virtualization driver used. One of <code>qemu</code> or <code>lxc</code></dd>
-      <dt><code>vm</code></dt>
+      <dt>vm</dt>
       <dd>Host driver unique name of the guest</dd>
-      <dt><code>uuid</code></dt>
+      <dt>uuid</dt>
       <dd>Globally unique identifier for the guest</dd>
-      <dt><code>exe</code></dt>
+      <dt>exe</dt>
       <dd>Path of the libvirtd daemon</dd>
-      <dt><code>hostname</code></dt>
+      <dt>hostname</dt>
       <dd>Currently unused</dd>
-      <dt><code>addr</code></dt>
+      <dt>addr</dt>
       <dd>Currently unused</dd>
-      <dt><code>terminal</code></dt>
+      <dt>terminal</dt>
       <dd>Currently unused</dd>
-      <dt><code>res</code></dt>
+      <dt>res</dt>
       <dd>Result of the action, either <code>success</code> or <code>failed</code></dd>
     </dl>
 
@@ -98,15 +98,15 @@
     </p>
 
     <dl>
-      <dt><code>op</code></dt>
+      <dt>op</dt>
       <dd>Type of operation performed. One of <code>start</code>, <code>stop</code> or <code>init</code></dd>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the operation to happen</dd>
-      <dt><code>vm-pid</code></dt>
+      <dt>vm-pid</dt>
       <dd>ID of the primary/leading process associated with the guest</dd>
-      <dt><code>init-pid</code></dt>
+      <dt>init-pid</dt>
       <dd>ID of the <code>init</code> process in a container. Only if <code>op=init</code> and <code>virt=lxc</code></dd>
-      <dt><code>pid-ns</code></dt>
+      <dt>pid-ns</dt>
       <dd>Namespace ID of the <code>init</code> process in a container. Only if <code>op=init</code> and <code>virt=lxc</code></dd>
     </dl>
 
@@ -118,11 +118,11 @@
     </p>
 
     <dl>
-      <dt><code>model</code></dt>
+      <dt>model</dt>
       <dd>The security driver type. One of <code>selinux</code> or <code>apparmor</code></dd>
-      <dt><code>vm-ctx</code></dt>
+      <dt>vm-ctx</dt>
       <dd>Security context for the guest process</dd>
-      <dt><code>img-ctx</code></dt>
+      <dt>img-ctx</dt>
       <dd>Security context for the guest disk images and other assigned host resources</dd>
     </dl>
 
@@ -144,13 +144,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>vcpu</code></dd>
-      <dt><code>old-vcpu</code></dt>
+      <dt>old-vcpu</dt>
       <dd>Original vCPU count, or 0</dd>
-      <dt><code>new-vcpu</code></dt>
+      <dt>new-vcpu</dt>
       <dd>Updated vCPU count</dd>
     </dl>
 
@@ -162,13 +162,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>mem</code></dd>
-      <dt><code>old-mem</code></dt>
+      <dt>old-mem</dt>
       <dd>Original memory size in bytes, or 0</dd>
-      <dt><code>new-mem</code></dt>
+      <dt>new-mem</dt>
       <dd>Updated memory size in bytes</dd>
     </dl>
 
@@ -178,13 +178,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>disk</code></dd>
-      <dt><code>old-disk</code></dt>
+      <dt>old-disk</dt>
       <dd>Original host file or device path acting as the disk backing file</dd>
-      <dt><code>new-disk</code></dt>
+      <dt>new-disk</dt>
       <dd>Updated host file or device path acting as the disk backing file</dd>
     </dl>
 
@@ -195,13 +195,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>net</code></dd>
-      <dt><code>old-net</code></dt>
+      <dt>old-net</dt>
       <dd>Original MAC address of the guest network interface</dd>
-      <dt><code>new-net</code></dt>
+      <dt>new-net</dt>
       <dd>Updated MAC address of the guest network interface</dd>
     </dl>
 
@@ -211,13 +211,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>net</code></dd>
-      <dt><code>net</code></dt>
+      <dt>net</dt>
       <dd>MAC address of the host network interface</dd>
-      <dt><code>rdev</code></dt>
+      <dt>rdev</dt>
       <dd>Name of the host network interface</dd>
     </dl>
 
@@ -227,13 +227,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>fs</code></dd>
-      <dt><code>old-fs</code></dt>
+      <dt>old-fs</dt>
       <dd>Original host directory, file or device path backing the filesystem </dd>
-      <dt><code>new-fs</code></dt>
+      <dt>new-fs</dt>
       <dd>Updated host directory, file or device path backing the filesystem</dd>
     </dl>
 
@@ -243,15 +243,15 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>hostdev</code> or <code>dev</code></dd>
-      <dt><code>dev</code></dt>
+      <dt>dev</dt>
       <dd>The unique bus identifier of the USB, PCI or SCSI device, if <code>resrc=dev</code></dd>
-      <dt><code>disk</code></dt>
+      <dt>disk</dt>
       <dd>The path of the block device assigned to the guest, if <code>resrc=hostdev</code></dd>
-      <dt><code>chardev</code></dt>
+      <dt>chardev</dt>
       <dd>The path of the character device assigned to the guest, if <code>resrc=hostdev</code></dd>
     </dl>
 
@@ -261,11 +261,11 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>tpm</code></dd>
-      <dt><code>device</code></dt>
+      <dt>device</dt>
       <dd>The path of the host TPM device assigned to the guest</dd>
     </dl>
 
@@ -275,13 +275,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>rng</code></dd>
-      <dt><code>old-rng</code></dt>
+      <dt>old-rng</dt>
       <dd>Original path of the host entropy source for the RNG</dd>
-      <dt><code>new-rng</code></dt>
+      <dt>new-rng</dt>
       <dd>Updated path of the host entropy source for the RNG</dd>
     </dl>
 
@@ -291,13 +291,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>chardev</code></dd>
-      <dt><code>old-chardev</code></dt>
+      <dt>old-chardev</dt>
       <dd>Original path of the backing character device for given emulated device</dd>
-      <dt><code>new-chardev</code></dt>
+      <dt>new-chardev</dt>
       <dd>Updated path of the backing character device for given emulated device</dd>
     </dl>
 
@@ -307,15 +307,15 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>smartcard</code></dd>
-      <dt><code>old-smartcard</code></dt>
+      <dt>old-smartcard</dt>
       <dd>Original path of the backing character device, certificate store or
           "nss-smartcard-device" for host smartcard passthrough.
       </dd>
-      <dt><code>new-smartcard</code></dt>
+      <dt>new-smartcard</dt>
       <dd>Updated path of the backing character device, certificate store or
           "nss-smartcard-device" for host smartcard passthrough.
       </dd>
@@ -327,13 +327,13 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>redir</code></dd>
-      <dt><code>bus</code></dt>
+      <dt>bus</dt>
       <dd>The bus type, only <code>usb</code> allowed</dd>
-      <dt><code>device</code></dt>
+      <dt>device</dt>
       <dd>The device type, only <code>USB redir</code> allowed</dd>
     </dl>
 
@@ -344,11 +344,11 @@
     </p>
 
     <dl>
-      <dt><code>reason</code></dt>
+      <dt>reason</dt>
       <dd>The reason which caused the resource to be assigned to happen</dd>
-      <dt><code>resrc</code></dt>
+      <dt>resrc</dt>
       <dd>The type of resource assigned. Set to <code>cgroup</code></dd>
-      <dt><code>cgroup</code></dt>
+      <dt>cgroup</dt>
       <dd>The name of the cgroup controller</dd>
     </dl>
 

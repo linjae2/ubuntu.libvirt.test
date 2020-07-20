@@ -36,13 +36,6 @@
 #include <poll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#ifdef MAJOR_IN_MKDEV
-# include <sys/mkdev.h>
-#elif MAJOR_IN_SYSMACROS
-# include <sys/sysmacros.h>
-#endif
-
 #include <sys/ioctl.h>
 #include <string.h>
 #include <termios.h>
@@ -1607,6 +1600,18 @@ virValidateWWN(const char *wwn)
     return true;
 }
 
+bool
+virStrIsPrint(const char *str)
+{
+    size_t i;
+
+    for (i = 0; str[i]; i++)
+        if (!c_isprint(str[i]))
+            return false;
+
+    return true;
+}
+
 #if defined(major) && defined(minor)
 int
 virGetDeviceID(const char *path, int *maj, int *min)
@@ -2474,7 +2479,7 @@ virParseOwnershipIds(const char *label, uid_t *uidPtr, gid_t *gidPtr)
  */
 const char *virGetEnvBlockSUID(const char *name)
 {
-    return secure_getenv(name); /* exempt from syntax-check */
+    return secure_getenv(name); /* exempt from syntax-check-rules */
 }
 
 
@@ -2488,7 +2493,7 @@ const char *virGetEnvBlockSUID(const char *name)
  */
 const char *virGetEnvAllowSUID(const char *name)
 {
-    return getenv(name); /* exempt from syntax-check */
+    return getenv(name); /* exempt from syntax-check-rules */
 }
 
 

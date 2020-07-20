@@ -122,7 +122,6 @@ int qemuDomainRemoveDevice(virQEMUDriverPtr driver,
                            virDomainDeviceDefPtr dev);
 
 bool qemuDomainSignalDeviceRemoval(virDomainObjPtr vm,
-                                   const char *devAlias,
-                                   qemuDomainUnpluggingDeviceStatus status);
+                                   const char *devAlias);
 
 #endif /* __QEMU_HOTPLUG_H__ */

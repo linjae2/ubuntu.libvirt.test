@@ -31,9 +31,6 @@
         <optional>
           <ref name='devices'/>
         </optional>
-        <optional>
-          <ref name='features'/>
-        </optional>
       </interleave>
     </element>
   </define>
@@ -86,21 +83,6 @@
 
   <define name='hostdev'>
     <element name='hostdev'>
-      <ref name='supported'/>
-      <ref name='enum'/>
-    </element>
-  </define>
-
-  <define name='features'>
-    <element name='features'>
-      <interleave>
-        <ref name='gic'/>
-      </interleave>
-    </element>
-  </define>
-
-  <define name='gic'>
-    <element name='gic'>
       <ref name='supported'/>
       <ref name='enum'/>
     </element>

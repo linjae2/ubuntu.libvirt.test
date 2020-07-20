@@ -34,6 +34,7 @@
 #include <getopt.h>
 #include <sys/time.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <time.h>
 #include <limits.h>
 #include <sys/stat.h>
@@ -52,12 +53,12 @@
 #include <libvirt/libvirt-qemu.h>
 #include <libvirt/libvirt-lxc.h>
 #include "virfile.h"
+#include "configmake.h"
 #include "virthread.h"
 #include "vircommand.h"
 #include "conf/domain_conf.h"
 #include "virtypedparam.h"
 #include "virstring.h"
-#include "virgettext.h"
 
 #include "virsh-console.h"
 #include "virsh-domain.h"
@@ -292,17 +293,6 @@ cmdConnect(vshControl *ctl, const vshCmd *cmd)
     bool ro = vshCommandOptBool(cmd, "readonly");
     const char *name = NULL;
     virshControlPtr priv = ctl->privData;
-    virConnectPtr conn;
-
-    if (vshCommandOptStringReq(ctl, cmd, "name", &name) < 0)
-        return false;
-
-    conn = virshConnect(ctl, name, ro);
-
-    if (!conn) {
-        vshError(ctl, "%s", _("Failed to connect to the hypervisor"));
-        return false;
-    }
 
     if (priv->conn) {
         int ret;
@@ -314,16 +304,26 @@ cmdConnect(vshControl *ctl, const vshCmd *cmd)
         else if (ret > 0)
             vshError(ctl, "%s", _("One or more references were leaked after "
                                   "disconnect from the hypervisor"));
+        priv->conn = NULL;
     }
-    priv->conn = conn;
 
     VIR_FREE(ctl->connname);
+    if (vshCommandOptStringReq(ctl, cmd, "name", &name) < 0)
+        return false;
+
     ctl->connname = vshStrdup(ctl, name);
 
     priv->useGetInfo = false;
     priv->useSnapshotOld = false;
     priv->blockJobNoBytes = false;
     priv->readonly = ro;
+
+    priv->conn = virshConnect(ctl, ctl->connname, priv->readonly);
+
+    if (!priv->conn) {
+        vshError(ctl, "%s", _("Failed to connect to the hypervisor"));
+        return false;
+    }
 
     if (virConnectRegisterCloseCallback(priv->conn, virshCatchDisconnect,
                                         ctl, NULL) < 0)
@@ -579,9 +579,6 @@ virshShowVersion(vshControl *ctl ATTRIBUTE_UNUSED)
 #endif
 #ifdef WITH_OPENVZ
     vshPrint(ctl, " OpenVZ");
-#endif
-#ifdef WITH_VZ
-    vshPrint(ctl, " Virtuozzo");
 #endif
 #ifdef WITH_VMWARE
     vshPrint(ctl, " VMware");
@@ -911,6 +908,7 @@ main(int argc, char **argv)
 {
     vshControl _ctl, *ctl = &_ctl;
     virshControl virshCtl;
+    const char *defaultConn;
     bool ret = true;
 
     memset(ctl, 0, sizeof(vshControl));
@@ -936,8 +934,18 @@ main(int argc, char **argv)
         progname++;
     ctl->progname = progname;
 
-    if (virGettextInitialize() < 0)
+    if (!setlocale(LC_ALL, "")) {
+        perror("setlocale");
+        /* failure to setup locale is not fatal */
+    }
+    if (!bindtextdomain(PACKAGE, LOCALEDIR)) {
+        perror("bindtextdomain");
         return EXIT_FAILURE;
+    }
+    if (!textdomain(PACKAGE)) {
+        perror("textdomain");
+        return EXIT_FAILURE;
+    }
 
     if (isatty(STDIN_FILENO)) {
         ctl->istty = true;
@@ -960,6 +968,9 @@ main(int argc, char **argv)
 
     virFileActivateDirOverride(argv[0]);
 
+    if ((defaultConn = virGetEnvBlockSUID("VIRSH_DEFAULT_CONNECT_URI")))
+        ctl->connname = vshStrdup(ctl, defaultConn);
+
     if (!vshInit(ctl, cmdGroups, NULL))
         exit(EXIT_FAILURE);
 
@@ -968,10 +979,6 @@ main(int argc, char **argv)
         virshDeinit(ctl);
         exit(EXIT_FAILURE);
     }
-
-    if (!ctl->connname)
-        ctl->connname = vshStrdup(ctl,
-                                  virGetEnvBlockSUID("VIRSH_DEFAULT_CONNECT_URI"));
 
     if (!ctl->imode) {
         ret = vshCommandRun(ctl, ctl->cmd);

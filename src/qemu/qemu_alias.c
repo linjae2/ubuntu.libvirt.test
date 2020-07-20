@@ -382,39 +382,10 @@ qemuAssignDeviceRedirdevAlias(virDomainDefPtr def,
 
 
 int
-qemuAssignDeviceRNGAlias(virDomainDefPtr def,
-                         virDomainRNGDefPtr rng)
+qemuAssignDeviceRNGAlias(virDomainRNGDefPtr rng,
+                         size_t idx)
 {
-    size_t i;
-    int maxidx = 0;
-    int idx;
-
-    for (i = 0; i < def->nrngs; i++) {
-        if ((idx = qemuDomainDeviceAliasIndex(&def->rngs[i]->info, "rng")) >= maxidx)
-            maxidx = idx + 1;
-    }
-
-    if (virAsprintf(&rng->info.alias, "rng%d", maxidx) < 0)
-        return -1;
-
-    return 0;
-}
-
-
-int
-qemuAssignDeviceMemoryAlias(virDomainDefPtr def,
-                            virDomainMemoryDefPtr mem)
-{
-    size_t i;
-    int maxidx = 0;
-    int idx;
-
-    for (i = 0; i < def->nmems; i++) {
-        if ((idx = qemuDomainDeviceAliasIndex(&def->mems[i]->info, "dimm")) >= maxidx)
-            maxidx = idx + 1;
-    }
-
-    if (virAsprintf(&mem->info.alias, "dimm%d", maxidx) < 0)
+    if (virAsprintf(&rng->info.alias, "rng%zu", idx) < 0)
         return -1;
 
     return 0;
@@ -509,7 +480,7 @@ qemuAssignDeviceAliases(virDomainDefPtr def, virQEMUCapsPtr qemuCaps)
             return -1;
     }
     for (i = 0; i < def->nrngs; i++) {
-        if (virAsprintf(&def->rngs[i]->info.alias, "rng%zu", i) < 0)
+        if (qemuAssignDeviceRNGAlias(def->rngs[i], i) < 0)
             return -1;
     }
     if (def->tpm) {
@@ -538,21 +509,4 @@ qemuAliasFromDisk(const virDomainDiskDef *disk)
     ignore_value(virAsprintf(&ret, "drive-%s", disk->info.alias));
 
     return ret;
-}
-
-
-/* qemuDomainGetMasterKeyAlias:
- *
- * Generate and return the masterKey alias
- *
- * Returns NULL or a string containing the master key alias
- */
-char *
-qemuDomainGetMasterKeyAlias(void)
-{
-    char *alias;
-
-    ignore_value(VIR_STRDUP(alias, "masterKey0"));
-
-    return alias;
 }

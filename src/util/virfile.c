@@ -1580,7 +1580,7 @@ virFileIsLink(const char *linkpath)
 
 /*
  * Finds a requested executable file in the PATH env. e.g.:
- * "qemu-img" will return "/usr/bin/qemu-img"
+ * "kvm-img" will return "/usr/bin/kvm-img"
  *
  * You must free the result
  */

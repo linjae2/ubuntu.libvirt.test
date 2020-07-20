@@ -40,9 +40,19 @@
 # define QEMU_DRIVE_HOST_PREFIX "drive-"
 # define QEMU_FSDEV_HOST_PREFIX "fsdev-"
 
-# define QEMU_BLOCK_IOTUNE_MAX 1000000000000000LL
-
 VIR_ENUM_DECL(qemuVideo)
+
+typedef struct _qemuBuildCommandLineCallbacks qemuBuildCommandLineCallbacks;
+typedef qemuBuildCommandLineCallbacks *qemuBuildCommandLineCallbacksPtr;
+struct _qemuBuildCommandLineCallbacks {
+    char *(*qemuGetSCSIDeviceSgName) (const char *sysfs_prefix,
+                                      const char *adapter,
+                                      unsigned int bus,
+                                      unsigned int target,
+                                      unsigned long long unit);
+};
+
+extern qemuBuildCommandLineCallbacks buildCommandLineCallbacks;
 
 char *qemuBuildObjectCommandlineFromJSON(const char *type,
                                          const char *alias,
@@ -58,6 +68,7 @@ virCommandPtr qemuBuildCommandLine(virConnectPtr conn,
                                    const char *migrateURI,
                                    virDomainSnapshotObjPtr snapshot,
                                    virNetDevVPortProfileOp vmop,
+                                   qemuBuildCommandLineCallbacksPtr callbacks,
                                    bool standalone,
                                    bool enableFips,
                                    virBitmapPtr nodeset,
@@ -65,7 +76,8 @@ virCommandPtr qemuBuildCommandLine(virConnectPtr conn,
                                    int **nicindexes,
                                    const char *domainLibDir,
                                    const char *domainChannelTargetDir)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(16) ATTRIBUTE_NONNULL(17);
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(11)
+    ATTRIBUTE_NONNULL(17) ATTRIBUTE_NONNULL(18);
 
 /* Generate '-device' string for chardev device */
 int
@@ -93,7 +105,7 @@ char *qemuBuildNicStr(virDomainNetDefPtr net,
 char *qemuBuildNicDevStr(virDomainDefPtr def,
                          virDomainNetDefPtr net,
                          int vlan,
-                         unsigned int bootindex,
+                         int bootindex,
                          size_t vhostfdSize,
                          virQEMUCapsPtr qemuCaps);
 
@@ -109,7 +121,7 @@ char *qemuBuildDriveStr(virConnectPtr conn,
 /* Current, best practice */
 char *qemuBuildDriveDevStr(const virDomainDef *def,
                            virDomainDiskDefPtr disk,
-                           unsigned int bootindex,
+                           int bootindex,
                            virQEMUCapsPtr qemuCaps);
 
 /* Current, best practice */
@@ -117,6 +129,10 @@ char *qemuBuildControllerDevStr(const virDomainDef *domainDef,
                                 virDomainControllerDefPtr def,
                                 virQEMUCapsPtr qemuCaps,
                                 int *nusbcontroller);
+
+char *qemuBuildMemballoonDevStr(const virDomainDef *domainDef,
+                                virDomainMemballoonDefPtr dev,
+                                virQEMUCapsPtr qemuCaps);
 
 int qemuBuildMemoryBackendStr(unsigned long long size,
                               unsigned long long pagesize,
@@ -135,7 +151,7 @@ char *qemuBuildMemoryDeviceStr(virDomainMemoryDefPtr mem);
 /* Current, best practice */
 char *qemuBuildPCIHostdevDevStr(const virDomainDef *def,
                                 virDomainHostdevDefPtr dev,
-                                unsigned int bootIndex,
+                                int bootIndex,
                                 const char *configfd,
                                 virQEMUCapsPtr qemuCaps);
 
@@ -166,8 +182,9 @@ char *qemuBuildUSBHostdevDevStr(const virDomainDef *def,
 
 char *qemuBuildSCSIHostdevDrvStr(virConnectPtr conn,
                                  virDomainHostdevDefPtr dev,
-                                 virQEMUCapsPtr qemuCaps);
-
+                                 virQEMUCapsPtr qemuCaps,
+                                 qemuBuildCommandLineCallbacksPtr callbacks)
+    ATTRIBUTE_NONNULL(4);
 char *qemuBuildSCSIHostdevDevStr(const virDomainDef *def,
                                  virDomainHostdevDefPtr dev,
                                  virQEMUCapsPtr qemuCaps);

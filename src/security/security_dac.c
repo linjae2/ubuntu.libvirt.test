@@ -1542,9 +1542,9 @@ virSecurityDACGetBaseLabel(virSecurityManagerPtr mgr,
 }
 
 static int
-virSecurityDACDomainSetPathLabel(virSecurityManagerPtr mgr,
-                                 virDomainDefPtr def,
-                                 const char *path)
+virSecurityDACDomainSetDirLabel(virSecurityManagerPtr mgr,
+                                virDomainDefPtr def,
+                                const char *path)
 {
     virSecurityDACDataPtr priv = virSecurityManagerGetPrivateData(mgr);
     virSecurityLabelDefPtr seclabel;
@@ -1607,5 +1607,5 @@ virSecurityDriver virSecurityDriverDAC = {
 
     .getBaseLabel                       = virSecurityDACGetBaseLabel,
 
-    .domainSetPathLabel                 = virSecurityDACDomainSetPathLabel,
+    .domainSetDirLabel                  = virSecurityDACDomainSetDirLabel,
 };

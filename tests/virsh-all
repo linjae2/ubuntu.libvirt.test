@@ -17,7 +17,9 @@
 # along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 
-. "$(dirname $0)/test-lib.sh"
+test -z "$srcdir" && srcdir=$(pwd)
+
+. "$srcdir/test-lib.sh"
 
 test_expensive
 

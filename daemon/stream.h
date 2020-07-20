@@ -26,6 +26,8 @@
 
 # include "libvirtd.h"
 
+
+
 daemonClientStream *
 daemonCreateClientStream(virNetServerClientPtr client,
                          virStreamPtr st,

@@ -595,10 +595,12 @@ xenParseVfb(virConfPtr conf, virDomainDefPtr def)
             if (xenConfigCopyStringOpt(conf, "vnclisten", &listenAddr) < 0)
                 goto cleanup;
             if (listenAddr &&
-                virDomainGraphicsListenAppendAddress(graphics, listenAddr) < 0)
-                goto cleanup;
-            VIR_FREE(listenAddr);
+                virDomainGraphicsListenSetAddress(graphics, 0, listenAddr,
+                                                  -1, true) < 0) {
+               goto cleanup;
+            }
 
+            VIR_FREE(listenAddr);
             if (xenConfigCopyStringOpt(conf, "vncpasswd", &graphics->data.vnc.auth.passwd) < 0)
                 goto cleanup;
             if (xenConfigCopyStringOpt(conf, "keymap", &graphics->data.vnc.keymap) < 0)
@@ -664,8 +666,8 @@ xenParseVfb(virConfPtr conf, virDomainDefPtr def)
                         if (STREQ(key + 10, "1"))
                             graphics->data.vnc.autoport = true;
                     } else if (STRPREFIX(key, "vnclisten=")) {
-                        if (virDomainGraphicsListenAppendAddress(graphics,
-                                                                 key+10) < 0)
+                        if (virDomainGraphicsListenSetAddress(graphics, 0, key+10,
+                                                              -1, true) < 0)
                             goto cleanup;
                     } else if (STRPREFIX(key, "vncpasswd=")) {
                         if (VIR_STRDUP(graphics->data.vnc.auth.passwd, key + 10) < 0)
@@ -1628,7 +1630,7 @@ xenFormatVfb(virConfPtr conf, virDomainDefPtr def)
                                        def->graphics[0]->data.sdl.xauth) < 0)
                     return -1;
             } else {
-                virDomainGraphicsListenDefPtr gListen;
+                const char *listenAddr;
 
                 if (xenConfigSetInt(conf, "sdl", 0) < 0)
                     return -1;
@@ -1645,9 +1647,9 @@ xenFormatVfb(virConfPtr conf, virDomainDefPtr def)
                                     def->graphics[0]->data.vnc.port - 5900) < 0)
                     return -1;
 
-                if ((gListen = virDomainGraphicsGetListen(def->graphics[0], 0)) &&
-                    gListen->address &&
-                    xenConfigSetString(conf, "vnclisten", gListen->address) < 0)
+                listenAddr = virDomainGraphicsListenGetAddress(def->graphics[0], 0);
+                if (listenAddr &&
+                    xenConfigSetString(conf, "vnclisten", listenAddr) < 0)
                     return -1;
 
                 if (def->graphics[0]->data.vnc.auth.passwd &&
@@ -1674,8 +1676,8 @@ xenFormatVfb(virConfPtr conf, virDomainDefPtr def)
                     virBufferAsprintf(&buf, ",xauthority=%s",
                                       def->graphics[0]->data.sdl.xauth);
             } else {
-                virDomainGraphicsListenDefPtr gListen
-                    = virDomainGraphicsGetListen(def->graphics[0], 0);
+                const char *listenAddr
+                    = virDomainGraphicsListenGetAddress(def->graphics[0], 0);
 
                 virBufferAddLit(&buf, "type=vnc");
                 virBufferAsprintf(&buf, ",vncunused=%d",
@@ -1683,8 +1685,8 @@ xenFormatVfb(virConfPtr conf, virDomainDefPtr def)
                 if (!def->graphics[0]->data.vnc.autoport)
                     virBufferAsprintf(&buf, ",vncdisplay=%d",
                                       def->graphics[0]->data.vnc.port - 5900);
-                if (gListen && gListen->address)
-                    virBufferAsprintf(&buf, ",vnclisten=%s", gListen->address);
+                if (listenAddr)
+                    virBufferAsprintf(&buf, ",vnclisten=%s", listenAddr);
                 if (def->graphics[0]->data.vnc.auth.passwd)
                     virBufferAsprintf(&buf, ",vncpasswd=%s",
                                       def->graphics[0]->data.vnc.auth.passwd);

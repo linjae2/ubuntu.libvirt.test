@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <sys/utsname.h>
+#include <locale.h>
 
 #include "internal.h"
 #include "virbuffer.h"
@@ -53,7 +54,6 @@
 #include "configmake.h"
 #include "virrandom.h"
 #include "virstring.h"
-#include "virgettext.h"
 
 #include "storage/storage_driver.h"
 
@@ -1062,7 +1062,7 @@ get_files(vahControl * ctl)
     for (i = 0; i < ctl->def->ngraphics; i++) {
         if (ctl->def->graphics[i]->type == VIR_DOMAIN_GRAPHICS_TYPE_VNC &&
             ctl->def->graphics[i]->data.vnc.socket &&
-            vah_add_file(&buf, ctl->def->graphics[i]->data.vnc.socket, "w"))
+            vah_add_file(&buf, ctl->def->graphics[i]->data.vnc.socket, "rw"))
             goto cleanup;
     }
 
@@ -1298,8 +1298,14 @@ main(int argc, char **argv)
     char *profile = NULL;
     char *include_file = NULL;
 
-    if (virGettextInitialize() < 0 ||
-        virThreadInitialize() < 0 ||
+    if (setlocale(LC_ALL, "") == NULL ||
+        bindtextdomain(PACKAGE, LOCALEDIR) == NULL ||
+        textdomain(PACKAGE) == NULL) {
+        fprintf(stderr, _("%s: initialization failed\n"), argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (virThreadInitialize() < 0 ||
         virErrorInitialize() < 0) {
         fprintf(stderr, _("%s: initialization failed\n"), argv[0]);
         exit(EXIT_FAILURE);

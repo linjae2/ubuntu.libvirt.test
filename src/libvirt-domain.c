@@ -9695,13 +9695,11 @@ virDomainOpenChannel(virDomainPtr dom,
  * @domain: a domain object
  * @params: where to store perf events setting
  * @nparams: number of items in @params
- * @flags: bitwise-OR of virDomainModificationImpact
+ * @flags: extra flags; not used yet, so callers should always pass 0
  *
- * Get all Linux perf events setting. Possible fields returned in
- * @params are defined by VIR_PERF_EVENT_* macros and new fields
- * will likely be introduced in the future.
- *
- * Linux perf events are performance analyzing tool in Linux.
+ * Get all perf events setting. Possible fields returned in @params are
+ * defined by VIR_DOMAIN_PERF_* macros and new fields will likely be
+ * introduced in the future.
  *
  * Returns -1 in case of failure, 0 in case of success.
  */
@@ -9745,13 +9743,9 @@ int virDomainGetPerfEvents(virDomainPtr domain,
  * @params: pointer to perf events parameter object
  * @nparams: number of perf event parameters (this value can be the same
  *           less than the number of parameters supported)
- * @flags: bitwise-OR of virDomainModificationImpact
+ * @flags: extra flags; not used yet, so callers should always pass 0
  *
- * Enable or disable the particular list of Linux perf events you
- * care about. The @params argument should contain any subset of
- * VIR_PERF_EVENT_ macros.
- *
- * Linux perf events are performance analyzing tool in Linux.
+ * Enable or disable the particular list of perf events you care about.
  *
  * Returns -1 in case of error, 0 in case of success.
  */

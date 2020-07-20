@@ -387,6 +387,33 @@ qemuCreateInBridgePortWithHelper(virQEMUDriverConfigPtr cfg,
     return *tapfd < 0 ? -1 : 0;
 }
 
+/**
+ * qemuExecuteEthernetScript:
+ * @ifname: the interface name
+ * @script: the script name
+ *
+ * This function executes script for new tap device created by libvirt.
+ * Returns 0 in case of success or -1 on failure
+ */
+static int
+qemuExecuteEthernetScript(const char *ifname, const char *script)
+{
+        virCommandPtr cmd;
+        int ret;
+
+        cmd = virCommandNew(script);
+        virCommandAddArgFormat(cmd, "%s", ifname);
+        virCommandClearCaps(cmd);
+#ifdef CAP_NET_ADMIN
+        virCommandAllowCap(cmd, CAP_NET_ADMIN);
+#endif
+        virCommandAddEnvPassCommon(cmd);
+
+        ret = virCommandRun(cmd, NULL);
+
+        virCommandFree(cmd);
+        return ret;
+}
 
 /* qemuInterfaceEthernetConnect:
  * @def: the definition of the VM
@@ -448,7 +475,7 @@ qemuInterfaceEthernetConnect(virDomainDefPtr def,
         goto cleanup;
 
     if (net->script &&
-        virNetDevRunEthernetScript(net->ifname, net->script) < 0)
+        qemuExecuteEthernetScript(net->ifname, net->script) < 0)
         goto cleanup;
 
     if (cfg->macFilter &&

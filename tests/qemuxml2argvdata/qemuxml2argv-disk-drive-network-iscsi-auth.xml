@@ -19,17 +19,14 @@
       <auth username='myname'>
         <secret type='iscsi' usage='mycluster_myname'/>
       </auth>
-      <source protocol='iscsi' name='iqn.1992-01.com.example:storage/1'>
+      <source protocol='iscsi' name='iqn.1992-01.com.example'>
         <host name='example.org' port='6000'/>
       </source>
       <target dev='vda' bus='virtio'/>
     </disk>
     <disk type='network' device='disk'>
       <driver name='qemu' type='raw'/>
-      <auth username='myname'>
-        <secret type='iscsi' usage='mycluster_myname'/>
-      </auth>
-      <source protocol='iscsi' name='iqn.1992-01.com.example:storage/2'>
+      <source protocol='iscsi' name='iqn.1992-01.com.example/1'>
         <host name='example.org' port='6000'/>
       </source>
       <target dev='vdb' bus='virtio'/>

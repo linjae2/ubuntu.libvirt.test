@@ -85,7 +85,7 @@ virCommandPtr qemuProcessCreatePretendCmd(virConnectPtr conn,
                                           virQEMUDriverPtr driver,
                                           virDomainObjPtr vm,
                                           const char *migrateURI,
-                                          bool enableFips,
+                                          bool forceFips,
                                           bool standalone,
                                           unsigned int flags);
 
@@ -193,8 +193,4 @@ int qemuProcessSetupIOThread(virDomainObjPtr vm,
 
 int qemuRefreshVirtioChannelState(virQEMUDriverPtr driver,
                                   virDomainObjPtr vm);
-
-int qemuProcessRefreshBalloonState(virQEMUDriverPtr driver,
-                                   virDomainObjPtr vm,
-                                   int asyncJob);
 #endif /* __QEMU_PROCESS_H__ */

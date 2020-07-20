@@ -73,19 +73,19 @@
         <dd>This expresses what kind of operating system the hypervisor
         is able to run. Possible values are:
         <dl>
-          <dt><code>xen</code></dt>
+          <dt>xen</dt>
           <dd>for XEN</dd>
 
-          <dt><code>linux</code></dt>
+          <dt>linux</dt>
           <dd>legacy alias for <code>xen</code></dd>
 
-          <dt><code>hvm</code></dt>
+          <dt>hvm</dt>
           <dd>Unmodified operating system</dd>
 
-          <dt><code>exe</code></dt>
+          <dt>exe</dt>
           <dd>Container based virtualization</dd>
 
-          <dt><code>uml</code></dt>
+          <dt>uml</dt>
           <dd>User Mode Linux</dd>
         </dl>
         </dd>
@@ -97,37 +97,37 @@
         <dd>This optional element encases possible features that can be used
           with a guest of described type.  Possible subelements are:
           <dl>
-            <dt><code>pae</code></dt><dd>If present, 32-bit guests can use PAE
+            <dt>pae</dt><dd>If present, 32-bit guests can use PAE
               address space extensions, <span class="since">since
               0.4.1</span></dd>
-            <dt><code>nonpae</code></dt><dd>If present, 32-bit guests can be run
+            <dt>nonpae</dt><dd>If present, 32-bit guests can be run
               without requiring PAE, <span class="since">since
               0.4.1</span></dd>
-            <dt><code>ia64_be</code></dt><dd>If present, IA64 guests can be run in
+            <dt>ia64_be</dt><dd>If present, IA64 guests can be run in
               big-endian mode, <span class="since">since 0.4.1</span></dd>
-            <dt><code>acpi</code></dt><dd>If this element is present,
+            <dt>acpi</dt><dd>If this element is present,
               the <code>default</code> attribute describes whether the
               hypervisor exposes ACPI to the guest by default, and
               the <code>toggle</code> attribute describes whether the
               user can override this
               default. <span class="since">Since 0.4.1</span></dd>
-            <dt><code>apic</code></dt><dd>If this element is present,
+            <dt>apic</dt><dd>If this element is present,
               the <code>default</code> attribute describes whether the
               hypervisor exposes APIC to the guest by default, and
               the <code>toggle</code> attribute describes whether the
               user can override this
               default. <span class="since">Since 0.4.1</span></dd>
-            <dt><code>cpuselection</code></dt><dd>If this element is present, the
+            <dt>cpuselection</dt><dd>If this element is present, the
               hypervisor supports the <code>&lt;cpu&gt;</code> element
               within a domain definition for fine-grained control over
               the CPU presented to the
               guest. <span class="since">Since 0.7.5</span></dd>
-            <dt><code>deviceboot</code></dt><dd>If this element is present,
+            <dt>deviceboot</dt><dd>If this element is present,
               the <code>&lt;boot order='...'/&gt;</code> element can
               be used inside devices, rather than the older boot
               specification by category. <span class="since">Since
               0.8.8</span></dd>
-            <dt><code>disksnapshot</code></dt><dd>If this element is present,
+            <dt>disksnapshot</dt><dd>If this element is present,
               the <code>default</code> attribute describes whether
               external disk snapshots are supported.  If absent,
               external snapshots may still be supported, but it
