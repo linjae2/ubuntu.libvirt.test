@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: Add support for md-clear functionality
+    - debian/patches/md-clear.patch: Define md-clear CPUID bit in
+      src/cpu/cpu_map.xml.
+    - CVE-2018-12126, CVE-2018-12127, CVE-2018-12130, CVE-2019-11091
