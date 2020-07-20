@@ -1,0 +1,1 @@
+  * debian/apparmor/libvirt-qemu: add chown capability (LP: #434417)
