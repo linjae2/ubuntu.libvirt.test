@@ -1,0 +1,5 @@
+  * libvirt-bin.postinst: also put admin group members into the libvirtd
+    group, to support systems installed before precise.  (LP: #1124127)
+  * libvirt-bin.postinst: use getent group instead of grep /etc/group
+  * rules: pass path to collie to enable sheepdog backend (LP: #1129107)
+  * control, rules: enable building against libaudit, which is in main.
