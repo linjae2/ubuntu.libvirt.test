@@ -1,0 +1,2 @@
+  * debian/patches/ubuntu/conf-dont-drop-console-def-ondomain-restart.patch:
+    cherrypicked from upstream to fix 'virsh console'.  (LP: #915355)
