@@ -1,0 +1,3 @@
+  * d/p/ubuntu-aa/lp-1833040-Add-openGraphicsFD-rule-for-named-profile.patch:
+    avoid issues with remote screen connections like virt-manager due to
+    apparmor changes in libvirt 5.1 (LP: #1833040)
