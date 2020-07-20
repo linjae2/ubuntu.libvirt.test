@@ -1,0 +1,4 @@
+  * debian/rules: Disable cdbs' implicitly generated dh_systemd_start calls.
+    We already call it explicitly with the right options, calling it again
+    with the default options stops libvirt-guests during upgrades.
+    (LP: #1533839)
