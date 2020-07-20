@@ -1,0 +1,2 @@
+  * d/apparmor/libvirt-qemu: silence denial to shm/lttng file since shm
+    mountpoint has moved (LP: #1529319)
