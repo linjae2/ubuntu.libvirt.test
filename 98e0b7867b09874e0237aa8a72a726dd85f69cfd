@@ -1,0 +1,8 @@
+  [ Jamie Strandboge ]
+  * updates for AppArmor signals and ptrace mediation (LP: #1298611)
+    - debian/apparmor/libvirt-qemu: allow guests to receive signals from and
+      be tracedby libvirtd (additional signal and ptrace rules come from the
+      AppArmor base abstraction)
+    - debian/apparmor/usr.sbin.libvirtd:
+      + grant bare signal and ptrace rule
+      + grant dbus on the system bus (should have been added in 13.10)
