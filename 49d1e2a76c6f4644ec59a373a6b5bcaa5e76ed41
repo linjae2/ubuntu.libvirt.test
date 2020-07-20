@@ -1,0 +1,3 @@
+  * [f5e46fb] postinst: Use '--' for all adduser options
+  * [a8fee3f] Don't validata filesystem target type.  Since 'virsh' validates
+    XML this can lead to uneditable (but perfectly valid) configs.
