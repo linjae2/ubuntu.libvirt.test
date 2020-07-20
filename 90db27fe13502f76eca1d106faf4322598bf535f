@@ -1,0 +1,2 @@
+  * 9024-initialize-random-generator-in-lxc: invoke virRandomInitialize()
+    to prevent segfaults when lxc uses virRandomBits().  (LP: #1023205)
