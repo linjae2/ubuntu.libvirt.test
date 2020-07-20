@@ -1,0 +1,2 @@
+  * d/libvirt-bin.virtlockd.init: Re-write based on virtlogd init script
+    as upstream provided version is not compatible with Ubuntu/Debian.
