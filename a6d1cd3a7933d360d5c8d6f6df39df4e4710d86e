@@ -1,0 +1,4 @@
+  * allow save/restore to work in $HOME. This is a workaround until upstream
+    https://bugzilla.redhat.com/show_bug.cgi?id=529363 is fixed. (LP: #457716)
+  * debian/libvirt-bin.cron.daily: don't comlain if no domain XML definitions
+    or domain AppArmor profiles. Based on work by Loïc Minier. (LP: #457607)
