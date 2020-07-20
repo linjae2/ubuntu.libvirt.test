@@ -1,0 +1,6 @@
+  * [65d3755] Disable SELinux to work around #559356
+  * [19bd427] Run qemu instances as qemu-libvirt instead of root by default
+    (Closes: #558197)
+  * [0a6c03b] Use kvm as primary group for libvirt-qemu user
+  * [e5ae24b] Fix udev backend startup
+  * [f610a8e] Use udev instead of hal backend
