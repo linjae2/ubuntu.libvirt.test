@@ -1,0 +1,4 @@
+  * debian/apparmor/libvirt-qemu: adjust for /dev/shm -> /run/shm transition
+  * debian/patches/lp810270.patch: adjust AppArmor profile for /var/run ->
+    /run
+    - LP: #810270
