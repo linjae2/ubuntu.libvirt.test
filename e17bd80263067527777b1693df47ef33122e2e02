@@ -1,0 +1,2 @@
+  * debian/libvirt-bin.install, debian/rules: name the apport file
+    source_libvirt.py, not source_libvirt-bin.py.  (LP: #1007405)
