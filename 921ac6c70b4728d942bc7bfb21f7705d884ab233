@@ -1,0 +1,3 @@
+  * update fix-for-parallel-port-passthrough-for-qemu: the xml for the new
+    testcase was too modern and caused the test to fail by including new
+    keywords.
