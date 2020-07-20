@@ -1,0 +1,16 @@
+  * debian/patches/9091-apparmor.patch: sync with upstream for maintenance,
+    licensing compliance with upstream and bug fixes:
+    - handle files with spaces in the name (LP: #432810)
+    - add serial, console, kernel and initrd support (LP: #432581)
+    - allow read only access to /boot, /vmlinuz and /initrd.img
+    - allow access to character devices (eg USB devices)
+    - have virt-aa-helper accept XML on stdin, which allows for adding
+      other devices in the future and helps ensure we always have the most
+      up to date definition
+    - update profile on attach and detach of devices (LP: #435527)
+    - add --dryrun option to virt-aa-helper, and greatly improve the
+      virt-aa-helper-test script
+  * revert workaround for LP: #431090 now that kernel, initrd, et al is
+    properly supported
+  * debian/apparmor/usr.sbin.libvirtd: add various capabilities
+    recommended by upstream to prevent potential regressions
