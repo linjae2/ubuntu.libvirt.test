@@ -1,0 +1,3 @@
+  * [6270001] CVE-2013-1766: Use libvirt-qemu as group to run qemu/kvm
+    instances.  This makes sure we don't chown files to groups possibly used
+    by other programs. (Closes: #701649)
