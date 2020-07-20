@@ -1,0 +1,2 @@
+  * debian/patches/fix-remote-client-segfault.patch: Fix segfault when 
+    using a remote client. 
