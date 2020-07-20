@@ -1,0 +1,2 @@
+  * d/p/upstream-libxl-Allow-libxl-to-find-pygrub-binary.patch:
+    Allow libxl to figure out the path to pygrub. (LP: #1396942)
