@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: Allow qemu-system-aarch64 to be used.
+    (LP: #1301516)
