@@ -1,0 +1,4 @@
+  * [cd7e695] Recommend pm-utils used for host power management.
+  * [2f928f7] Add missing "-d" to libvirt-bin's restart option otherwise
+    daemon restarts will just hang. Thanks to Laurent Bigonville.
+    (Closes: #688146)
