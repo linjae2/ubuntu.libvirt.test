@@ -1,0 +1,26 @@
+  * SECURITY UPDATE: denial of service via lxc guest and virsh memtune
+    - debian/patches/CVE-2013-6436.patch: make sure domain is active in
+      src/lxc/lxc_driver.c.
+    - CVE-2013-6436
+  * SECURITY UPDATE: denial of service via job usage issues in several APIs
+    - debian/patches/CVE-2013-6458.patch: fix races in
+      src/qemu/qemu_driver.c.
+    - CVE-2013-6458
+  * SECURITY UPDATE: information disclosure via incorrect permission checks
+    - debian/patches/CVE-2014-0028.patch: properly apply acls to events in
+      src/access/viraccessperm.h, src/conf/domain_event.*,
+      src/libxl/libxl_driver.c, src/lxc/lxc_driver.c,
+      src/qemu/qemu_driver.c, src/remote/remote_driver.c,
+      src/remote/remote_protocol.x, src/test/test_driver.c,
+      src/uml/uml_driver.c, src/vbox/vbox_tmpl.c, src/xen/xen_driver.c.
+    - CVE-2014-0028
+  * SECURITY UPDATE: denial of service via keepalive feature
+    - debian/patches/CVE-2014-1447.patch: make sure connection isn't closed
+      in src/rpc/virnetserverclient.c.
+    - CVE-2014-1447
+  * SECURITY UPDATE: denial of service via reading libxl guest numa tables
+    - debian/patches/CVE-2013-6457.patch: avoid invalid free in
+      src/libxl/libxl_driver.c.
+    - CVE-2013-6457
+  * This package does _not_ contain the changes from 1.1.1-0ubuntu8.3
+    in saucy-proposed.
