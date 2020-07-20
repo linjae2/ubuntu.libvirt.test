@@ -142,8 +142,6 @@ VIR_ENUM_IMPL(qemuCaps, QEMU_CAPS_LAST,
               "cache-unsafe", /* 75 */
               "rombar",
               "ich9-ahci",
-              "no-acpi",
-              "fsdev-readonly",
     );
 
 struct qemu_feature_flags {
@@ -188,7 +186,6 @@ static const struct qemu_arch_info const arch_info_hvm[] = {
     {  "mipsel", 32, NULL, "qemu-system-mipsel", NULL, NULL, 0 },
     {  "sparc",  32, NULL, "qemu-system-sparc",  NULL, NULL, 0 },
     {  "ppc",    32, NULL, "qemu-system-ppc",    NULL, NULL, 0 },
-    {  "ppc64",    64, NULL, "qemu-system-ppc64",    NULL, NULL, 0 },
     {  "itanium", 64, NULL, "qemu-system-ia64",  NULL, NULL, 0 },
     {  "s390x",  64, NULL, "qemu-system-s390x",  NULL, NULL, 0 },
 };
@@ -445,10 +442,8 @@ qemuCapsParseX86Models(const char *output,
         if (retcpus) {
             unsigned int len;
 
-            if (VIR_REALLOC_N(cpus, count + 1) < 0) {
-                virReportOOMError();
+            if (VIR_REALLOC_N(cpus, count + 1) < 0)
                 goto error;
-            }
 
             if (next)
                 len = next - p - 1;
@@ -460,10 +455,8 @@ qemuCapsParseX86Models(const char *output,
                 len -= 2;
             }
 
-            if (!(cpus[count] = strndup(p, len))) {
-                virReportOOMError();
+            if (!(cpus[count] = strndup(p, len)))
                 goto error;
-            }
         }
         count++;
     } while ((p = next));
@@ -485,76 +478,6 @@ error:
     return -1;
 }
 
-/* ppc64 parser.
- * Format : PowerPC <machine> <description>
- */
-static int
-qemuCapsParsePPCModels(const char *output,
-                       unsigned int *retcount,
-                       const char ***retcpus)
-{
-    const char *p = output;
-    const char *next;
-    unsigned int count = 0;
-    const char **cpus = NULL;
-    int i, ret = -1;
-
-    do {
-        const char *t;
-
-        if ((next = strchr(p, '\n')))
-            next++;
-
-        if (!STRPREFIX(p, "PowerPC "))
-            continue;
-
-        /* Skip the preceding sub-string "PowerPC " */
-        p += 8;
-
-        /*Malformed string, does not obey the format 'PowerPC <model> <desc>'*/
-        if (!(t = strchr(p, ' ')) || (next && t >= next))
-            continue;
-
-        if (*p == '\0')
-            break;
-
-        if (*p == '\n')
-            continue;
-
-        if (retcpus) {
-            unsigned int len;
-
-            if (VIR_REALLOC_N(cpus, count + 1) < 0) {
-                virReportOOMError();
-                goto cleanup;
-            }
-
-            len = t - p - 1;
-
-            if (!(cpus[count] = strndup(p, len))) {
-                virReportOOMError();
-                goto cleanup;
-            }
-        }
-        count++;
-    } while ((p = next));
-
-    if (retcount)
-        *retcount = count;
-    if (retcpus) {
-        *retcpus = cpus;
-        cpus = NULL;
-    }
-    ret = 0;
-
-cleanup:
-    if (cpus) {
-        for (i = 0; i < count; i++)
-            VIR_FREE(cpus[i]);
-        VIR_FREE(cpus);
-    }
-    return ret;
-}
 
 int
 qemuCapsProbeCPUModels(const char *qemu,
@@ -575,8 +498,6 @@ qemuCapsProbeCPUModels(const char *qemu,
 
     if (STREQ(arch, "i686") || STREQ(arch, "x86_64"))
         parse = qemuCapsParseX86Models;
-    else if (STREQ(arch, "ppc64"))
-        parse = qemuCapsParsePPCModels;
     else {
         VIR_DEBUG("don't know how to parse %s CPU models", arch);
         return 0;
@@ -592,8 +513,10 @@ qemuCapsProbeCPUModels(const char *qemu,
     if (virCommandRun(cmd, NULL) < 0)
         goto cleanup;
 
-    if (parse(output, count, cpus) < 0)
+    if (parse(output, count, cpus) < 0) {
+        virReportOOMError();
         goto cleanup;
+    }
 
     ret = 0;
 
@@ -982,7 +905,6 @@ qemuCapsComputeCmdFlags(const char *help,
                         virBitmapPtr flags)
 {
     const char *p;
-    const char *fsdev;
 
     if (strstr(help, "-no-kqemu"))
         qemuCapsSet(flags, QEMU_CAPS_KQEMU);
@@ -1069,8 +991,6 @@ qemuCapsComputeCmdFlags(const char *help,
         qemuCapsSet(flags, QEMU_CAPS_RTC_TD_HACK);
     if (strstr(help, "-no-hpet"))
         qemuCapsSet(flags, QEMU_CAPS_NO_HPET);
-    if (strstr(help, "-no-acpi"))
-        qemuCapsSet(flags, QEMU_CAPS_NO_ACPI);
     if (strstr(help, "-no-kvm-pit-reinjection"))
         qemuCapsSet(flags, QEMU_CAPS_NO_KVM_PIT);
     if (strstr(help, "-tdf"))
@@ -1079,11 +999,8 @@ qemuCapsComputeCmdFlags(const char *help,
         qemuCapsSet(flags, QEMU_CAPS_NESTING);
     if (strstr(help, ",menu=on"))
         qemuCapsSet(flags, QEMU_CAPS_BOOT_MENU);
-    if ((fsdev = strstr(help, "-fsdev"))) {
+    if (strstr(help, "-fsdev"))
         qemuCapsSet(flags, QEMU_CAPS_FSDEV);
-        if (strstr(fsdev, "readonly"))
-            qemuCapsSet(flags, QEMU_CAPS_FSDEV_READONLY);
-    }
     if (strstr(help, "-smbios type"))
         qemuCapsSet(flags, QEMU_CAPS_SMBIOS_TYPE);
 

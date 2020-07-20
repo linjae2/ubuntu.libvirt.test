@@ -24,7 +24,6 @@
 # define DOMAIN_NWFILTER_H
 
 typedef int (*virDomainConfInstantiateNWFilter)(virConnectPtr conn,
-                                                const unsigned char *vmuuid,
                                                 virDomainNetDefPtr net);
 typedef void (*virDomainConfTeardownNWFilter)(virDomainNetDefPtr net);
 
@@ -37,7 +36,6 @@ typedef virDomainConfNWFilterDriver *virDomainConfNWFilterDriverPtr;
 void virDomainConfNWFilterRegister(virDomainConfNWFilterDriverPtr driver);
 
 int virDomainConfNWFilterInstantiate(virConnectPtr conn,
-                                     const unsigned char *vmuuid,
                                      virDomainNetDefPtr net);
 void virDomainConfNWFilterTeardown(virDomainNetDefPtr net);
 void virDomainConfVMNWFilterTeardown(virDomainObjPtr vm);

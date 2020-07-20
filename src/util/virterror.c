@@ -1213,12 +1213,6 @@ virErrorMsg(virErrorNumber error, const char *info)
             else
                 errmsg = _("revert requires force: %s");
             break;
-        case VIR_ERR_OPERATION_ABORTED:
-            if (info == NULL)
-                errmsg = _("operation aborted");
-            else
-                errmsg = _("operation aborted: %s");
-            break;
     }
     return (errmsg);
 }

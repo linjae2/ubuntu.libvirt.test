@@ -329,7 +329,7 @@ int qemuDomainAttachPciControllerDevice(struct qemud_driver *driver,
             goto cleanup;
         }
 
-        if (!(devstr = qemuBuildControllerDevStr(vm->def, controller, priv->qemuCaps, NULL))) {
+        if (!(devstr = qemuBuildControllerDevStr(controller, priv->qemuCaps, NULL))) {
             goto cleanup;
         }
     }
@@ -1097,9 +1097,6 @@ int qemuDomainAttachHostDevice(struct qemud_driver *driver,
     /* Resolve USB product/vendor to bus/device */
     if (hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB &&
         hostdev->source.subsys.u.usb.vendor) {
-        if (qemuPrepareHostdevUSBDevices(driver, vm->def->name, &hostdev, 1) < 0)
-            goto error;
-
         usbDevice *usb
             = usbFindDevice(hostdev->source.subsys.u.usb.vendor,
                             hostdev->source.subsys.u.usb.product);
@@ -1955,17 +1952,14 @@ cleanup:
     return ret;
 }
 
-static int
-qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
-                              virDomainObjPtr vm,
-                              virDomainDeviceDefPtr dev,
-                              virDomainHostdevDefPtr *detach_ret)
+int qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
+                                  virDomainObjPtr vm,
+                                  virDomainDeviceDefPtr dev)
 {
     virDomainHostdevDefPtr detach = NULL;
     qemuDomainObjPrivatePtr priv = vm->privateData;
     int i, ret;
     pciDevice *pci;
-    pciDevice *activePci;
 
     for (i = 0 ; i < vm->def->nhostdevs ; i++) {
         if (vm->def->hostdevs[i]->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS ||
@@ -2025,16 +2019,16 @@ qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
                        detach->source.subsys.u.pci.bus,
                        detach->source.subsys.u.pci.slot,
                        detach->source.subsys.u.pci.function);
-    if (pci) {
-        activePci = pciDeviceListSteal(driver->activePciHostdevs, pci);
-        if (pciResetDevice(activePci, driver->activePciHostdevs, NULL))
-            qemuReattachPciDevice(activePci, driver);
-        else
-            ret = -1;
-        pciFreeDevice(pci);
-        pciFreeDevice(activePci);
-    } else {
+    if (!pci)
         ret = -1;
+    else {
+        pciDeviceSetManaged(pci, detach->managed);
+        pciDeviceListDel(driver->activePciHostdevs, pci);
+        if (pciResetDevice(pci, driver->activePciHostdevs, NULL) < 0)
+            ret = -1;
+        pciDeviceReAttachInit(pci);
+        qemuReattachPciDevice(pci, driver);
+        pciFreeDevice(pci);
     }
 
     if (qemuCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE) &&
@@ -2055,23 +2049,17 @@ qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
         VIR_FREE(vm->def->hostdevs);
         vm->def->nhostdevs = 0;
     }
-    if (detach_ret)
-        *detach_ret = detach;
-    else
-        virDomainHostdevDefFree(detach);
+    virDomainHostdevDefFree(detach);
 
     return ret;
 }
 
-static int
-qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
-                              virDomainObjPtr vm,
-                              virDomainDeviceDefPtr dev,
-                              virDomainHostdevDefPtr *detach_ret)
+int qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
+                                  virDomainObjPtr vm,
+                                  virDomainDeviceDefPtr dev)
 {
     virDomainHostdevDefPtr detach = NULL;
     qemuDomainObjPrivatePtr priv = vm->privateData;
-    usbDevice *usb;
     int i, ret;
 
     for (i = 0 ; i < vm->def->nhostdevs ; i++) {
@@ -2127,17 +2115,6 @@ qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
     if (ret < 0)
         return -1;
 
-    usb = usbGetDevice(detach->source.subsys.u.usb.bus,
-                       detach->source.subsys.u.usb.device);
-    if (usb) {
-        usbDeviceListDel(driver->activeUsbHostdevs, usb);
-        usbFreeDevice(usb);
-    } else {
-        VIR_WARN("Unable to find device %03d.%03d in list of used USB devices",
-                 detach->source.subsys.u.usb.bus,
-                 detach->source.subsys.u.usb.device);
-    }
-
     if (vm->def->nhostdevs > 1) {
         memmove(vm->def->hostdevs + i,
                 vm->def->hostdevs + i + 1,
@@ -2151,10 +2128,7 @@ qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
         VIR_FREE(vm->def->hostdevs);
         vm->def->nhostdevs = 0;
     }
-    if (detach_ret)
-        *detach_ret = detach;
-    else
-        virDomainHostdevDefFree(detach);
+    virDomainHostdevDefFree(detach);
 
     return ret;
 }
@@ -2164,7 +2138,6 @@ int qemuDomainDetachHostDevice(struct qemud_driver *driver,
                                virDomainDeviceDefPtr dev)
 {
     virDomainHostdevDefPtr hostdev = dev->data.hostdev;
-    virDomainHostdevDefPtr detach = NULL;
     int ret;
 
     if (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS) {
@@ -2176,10 +2149,10 @@ int qemuDomainDetachHostDevice(struct qemud_driver *driver,
 
     switch (hostdev->source.subsys.type) {
     case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI:
-        ret = qemuDomainDetachHostPciDevice(driver, vm, dev, &detach);
-       break;
+        ret = qemuDomainDetachHostPciDevice(driver, vm, dev);
+        break;
     case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB:
-        ret = qemuDomainDetachHostUsbDevice(driver, vm, dev, &detach);
+        ret = qemuDomainDetachHostUsbDevice(driver, vm, dev);
         break;
     default:
         qemuReportError(VIR_ERR_CONFIG_UNSUPPORTED,
@@ -2188,12 +2161,9 @@ int qemuDomainDetachHostDevice(struct qemud_driver *driver,
         return -1;
     }
 
-    if (ret == 0 &&
-        virSecurityManagerRestoreHostdevLabel(driver->securityManager,
-                                              vm, detach) < 0)
+    if (virSecurityManagerRestoreHostdevLabel(driver->securityManager,
+                                              vm, dev->data.hostdev) < 0)
         VIR_WARN("Failed to restore host device labelling");
-
-    virDomainHostdevDefFree(detach);
 
     return ret;
 }

@@ -394,11 +394,8 @@ SELinuxGetSecurityProcessLabel(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
     return 0;
 }
 
-/* Attempt to change the label of PATH to TCON.  If OPTIONAL is true,
- * return 1 if labelling was not possible.  Otherwise, require a label
- * change, and return 0 for success, -1 for failure.  */
 static int
-SELinuxSetFileconHelper(const char *path, char *tcon, bool optional)
+SELinuxSetFilecon(const char *path, char *tcon)
 {
     security_context_t econ;
 
@@ -411,7 +408,7 @@ SELinuxSetFileconHelper(const char *path, char *tcon, bool optional)
             if (STREQ(tcon, econ)) {
                 freecon(econ);
                 /* It's alright, there's nothing to change anyway. */
-                return optional ? 1 : 0;
+                return 0;
             }
             freecon(econ);
         }
@@ -443,23 +440,9 @@ SELinuxSetFileconHelper(const char *path, char *tcon, bool optional)
                 VIR_INFO("Setting security context '%s' on '%s' not supported",
                          tcon, path);
             }
-            if (optional)
-                return 1;
         }
     }
     return 0;
-}
-
-static int
-SELinuxSetFileconOptional(const char *path, char *tcon)
-{
-    return SELinuxSetFileconHelper(path, tcon, true);
-}
-
-static int
-SELinuxSetFilecon(const char *path, char *tcon)
-{
-    return SELinuxSetFileconHelper(path, tcon, false);
 }
 
 static int
@@ -566,7 +549,7 @@ SELinuxRestoreSecurityImageLabelInt(virSecurityManagerPtr mgr ATTRIBUTE_UNUSED,
 {
     const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
 
-    if (secdef->norelabel || (disk->seclabel && disk->seclabel->norelabel))
+    if (secdef->norelabel)
         return 0;
 
     /* Don't restore labels on readoly/shared disks, because
@@ -621,35 +604,23 @@ SELinuxSetSecurityFileLabel(virDomainDiskDefPtr disk,
     const virSecurityLabelDefPtr secdef = opaque;
     int ret;
 
-    if (disk->seclabel && disk->seclabel->norelabel)
-        return 0;
-
-    if (disk->seclabel && !disk->seclabel->norelabel &&
-        disk->seclabel->label) {
-        ret = SELinuxSetFilecon(path, disk->seclabel->label);
-    } else if (depth == 0) {
+    if (depth == 0) {
         if (disk->shared) {
-            ret = SELinuxSetFileconOptional(path, default_image_context);
+            ret = SELinuxSetFilecon(path, default_image_context);
         } else if (disk->readonly) {
-            ret = SELinuxSetFileconOptional(path, default_content_context);
+            ret = SELinuxSetFilecon(path, default_content_context);
         } else if (secdef->imagelabel) {
-            ret = SELinuxSetFileconOptional(path, secdef->imagelabel);
+            ret = SELinuxSetFilecon(path, secdef->imagelabel);
         } else {
             ret = 0;
         }
     } else {
-        ret = SELinuxSetFileconOptional(path, default_content_context);
+        ret = SELinuxSetFilecon(path, default_content_context);
     }
-    if (ret == 1 && !disk->seclabel) {
-        /* If we failed to set a label, but virt_use_nfs let us
-         * proceed anyway, then we don't need to relabel later.  */
-        if (VIR_ALLOC(disk->seclabel) < 0) {
-            virReportOOMError();
-            return -1;
-        }
-        disk->seclabel->norelabel = true;
-        ret = 0;
-    }
+    if (ret < 0 &&
+        virStorageFileIsSharedFSType(path,
+                                     VIR_STORAGE_FILE_SHFS_NFS) == 1)
+       ret = 0;
     return ret;
 }
 
@@ -663,9 +634,6 @@ SELinuxSetSecurityImageLabel(virSecurityManagerPtr mgr,
     bool allowDiskFormatProbing = virSecurityManagerGetAllowDiskFormatProbing(mgr);
 
     if (secdef->norelabel)
-        return 0;
-
-    if (disk->type == VIR_DOMAIN_DISK_TYPE_NETWORK)
         return 0;
 
     return virDomainDiskDefForeachPath(disk,

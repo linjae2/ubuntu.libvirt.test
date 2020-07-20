@@ -36,7 +36,6 @@
 # include "security/security_manager.h"
 # include "cgroup.h"
 # include "pci.h"
-# include "hostusb.h"
 # include "cpu_conf.h"
 # include "driver.h"
 # include "bitmap.h"
@@ -106,7 +105,6 @@ struct qemud_driver {
     unsigned int setProcessName : 1;
 
     int maxProcesses;
-    int maxFiles;
 
     int max_queued;
 
@@ -126,7 +124,6 @@ struct qemud_driver {
     bool autoStartBypassCache;
 
     pciDeviceList *activePciHostdevs;
-    usbDeviceList *activeUsbHostdevs;
 
     virBitmapPtr reservedVNCPorts;
 

@@ -37,10 +37,9 @@ virDomainConfNWFilterRegister(virDomainConfNWFilterDriverPtr driver) {
 
 int
 virDomainConfNWFilterInstantiate(virConnectPtr conn,
-                                 const unsigned char *vmuuid,
                                  virDomainNetDefPtr net) {
     if (nwfilterDriver != NULL)
-        return nwfilterDriver->instantiateFilter(conn, vmuuid, net);
+        return nwfilterDriver->instantiateFilter(conn, net);
     /* driver module not available -- don't indicate failure */
     return 0;
 }

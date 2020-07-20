@@ -180,9 +180,6 @@ virSecurityDACSetSecurityImageLabel(virSecurityManagerPtr mgr,
     if (!priv->dynamicOwnership)
         return 0;
 
-    if (disk->type == VIR_DOMAIN_DISK_TYPE_NETWORK)
-        return 0;
-
     return virDomainDiskDefForeachPath(disk,
                                        virSecurityManagerGetAllowDiskFormatProbing(mgr),
                                        false,
@@ -200,9 +197,6 @@ virSecurityDACRestoreSecurityImageLabelInt(virSecurityManagerPtr mgr,
     virSecurityDACDataPtr priv = virSecurityManagerGetPrivateData(mgr);
 
     if (!priv->dynamicOwnership)
-        return 0;
-
-    if (disk->type == VIR_DOMAIN_DISK_TYPE_NETWORK)
         return 0;
 
     /* Don't restore labels on readoly/shared disks, because

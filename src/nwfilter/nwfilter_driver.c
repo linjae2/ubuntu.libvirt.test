@@ -384,7 +384,7 @@ nwfilterUndefine(virNWFilterPtr obj) {
         goto cleanup;
     }
 
-    if (virNWFilterTestUnassignDef(obj->conn, nwfilter) < 0) {
+    if (virNWFilterTestUnassignDef(obj->conn, nwfilter)) {
         virNWFilterReportError(VIR_ERR_OPERATION_INVALID,
                                "%s",
                                _("nwfilter is in use"));
@@ -443,10 +443,8 @@ cleanup:
 
 static int
 nwfilterInstantiateFilter(virConnectPtr conn,
-                          const unsigned char *vmuuid,
-                          virDomainNetDefPtr net)
-{
-    return virNWFilterInstantiateFilter(conn, vmuuid, net);
+                          virDomainNetDefPtr net) {
+    return virNWFilterInstantiateFilter(conn, net);
 }
 
 

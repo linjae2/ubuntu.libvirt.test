@@ -50,91 +50,30 @@
   </define>
   <define name="seclabel">
     <element name="seclabel">
-      <optional>
-        <attribute name='model'>
-          <text/>
-        </attribute>
-      </optional>
-      <choice>
-        <group>
-          <!-- with dynamic label (default), relabel must be yes, baselabel
-               is optional, and label and imagelabel are output-only -->
-          <optional>
-            <attribute name='type'>
-              <value>dynamic</value>
-            </attribute>
-          </optional>
-          <optional>
-            <attribute name='relabel'>
-              <value>yes</value>
-            </attribute>
-          </optional>
-          <interleave>
-            <optional>
-              <element name='label'>
-                <text/>
-              </element>
-            </optional>
-            <optional>
-              <element name='imagelabel'>
-                <text/>
-              </element>
-            </optional>
-            <optional>
-              <element name='baselabel'>
-                <text/>
-              </element>
-            </optional>
-          </interleave>
-        </group>
-        <group>
-          <!-- with static label, relabel can be either format (default
-               no), label is required, imagelabel is output-only, and no
-               baselabel is present -->
-          <attribute name='type'>
-            <value>static</value>
-          </attribute>
-          <optional>
-            <attribute name='relabel'>
-              <choice>
-                <value>yes</value>
-                <value>no</value>
-              </choice>
-            </attribute>
-          </optional>
-          <interleave>
-            <element name='label'>
-              <text/>
-            </element>
-            <optional>
-              <element name='imagelabel'>
-                <text/>
-              </element>
-            </optional>
-          </interleave>
-        </group>
-      </choice>
-    </element>
-  </define>
-  <define name="devSeclabel">
-    <element name="seclabel">
-      <!-- A per-device seclabel override is more limited, either
-           relabel=no or a <label> must be present.  -->
-      <choice>
-        <attribute name='relabel'>
+      <attribute name="model">
+        <text/>
+      </attribute>
+      <attribute name="type">
+        <choice>
+          <value>dynamic</value>
+          <value>static</value>
+        </choice>
+      </attribute>
+      <attribute name="relabel">
+        <choice>
+          <value>yes</value>
           <value>no</value>
-        </attribute>
-        <group>
-          <optional>
-            <attribute name='relabel'>
-              <value>yes</value>
-            </attribute>
-          </optional>
-          <element name='label'>
-            <text/>
-          </element>
-        </group>
-      </choice>
+        </choice>
+      </attribute>
+      <element name="label">
+        <text/>
+      </element>
+      <element name="imagelabel">
+        <text/>
+      </element>
+      <element name="baselabel">
+        <text/>
+      </element>
     </element>
   </define>
   <define name="hvs">
@@ -253,7 +192,6 @@
           <ref name="hvmmips"/>
           <ref name="hvmsparc"/>
           <ref name="hvmppc"/>
-          <ref name="hvmppc64"/>
         </choice>
       </optional>
       <value>hvm</value>
@@ -319,22 +257,6 @@
             <value>g3beige</value>
             <value>mac99</value>
             <value>prep</value>
-          </choice>
-        </attribute>
-      </optional>
-    </group>
-  </define>
-  <define name="hvmppc64">
-    <group>
-      <optional>
-        <attribute name="arch">
-          <value>ppc64</value>
-        </attribute>
-      </optional>
-      <optional>
-        <attribute name="machine">
-          <choice>
-            <value>pseries</value>
           </choice>
         </attribute>
       </optional>
@@ -816,9 +738,7 @@
                 <optional>
                   <ref name="startupPolicy"/>
                 </optional>
-                <optional>
-                  <ref name='devSeclabel'/>
-                </optional>
+                <empty/>
               </element>
             </optional>
             <ref name="diskspec"/>
@@ -834,9 +754,7 @@
                 <attribute name="dev">
                   <ref name="absFilePath"/>
                 </attribute>
-                <optional>
-                  <ref name='devSeclabel'/>
-                </optional>
+                <empty/>
               </element>
             </optional>
             <ref name="diskspec"/>
@@ -1341,11 +1259,7 @@
       </optional>
       <optional>
         <element name="model">
-          <attribute name="type">
-            <data type="string">
-              <param name='pattern'>[a-zA-Z0-9\-_]+</param>
-            </data>
-          </attribute>
+          <attribute name="type"/>
           <empty/>
         </element>
       </optional>
@@ -2264,13 +2178,6 @@
       <ref name="usbPort"/>
     </attribute>
   </define>
-  <define name="spaprvioaddress">
-    <optional>
-      <attribute name="reg">
-        <ref name="spaprvioReg"/>
-      </attribute>
-    </optional>
-  </define>
   <define name="pciaddress">
     <optional>
       <attribute name="domain">
@@ -2649,12 +2556,6 @@
           </attribute>
           <ref name="usbportaddress"/>
         </group>
-        <group>
-          <attribute name="type">
-            <value>spapr-vio</value>
-          </attribute>
-          <ref name="spaprvioaddress"/>
-        </group>
       </choice>
     </element>
   </define>
@@ -2921,7 +2822,7 @@
   </define>
   <define name="featureName">
     <data type="string">
-      <param name='pattern'>[a-zA-Z0-9\-_\.]+</param>
+      <param name='pattern'>[a-zA-Z0-9\-_]+</param>
     </data>
   </define>
   <define name="timeDelta">
@@ -2942,11 +2843,6 @@
   <define name="filter-param-value">
     <data type="string">
       <param name="pattern">[a-zA-Z0-9_\.:]+</param>
-    </data>
-  </define>
-  <define name="spaprvioReg">
-    <data type="string">
-      <param name="pattern">(0x)?[0-9a-fA-F]{1,16}</param>
     </data>
   </define>
 </grammar>

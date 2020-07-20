@@ -92,6 +92,12 @@ int qemuDomainDetachPciControllerDevice(struct qemud_driver *driver,
 int qemuDomainDetachNetDevice(struct qemud_driver *driver,
                               virDomainObjPtr vm,
                               virDomainDeviceDefPtr dev);
+int qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
+                                  virDomainObjPtr vm,
+                                  virDomainDeviceDefPtr dev);
+int qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
+                                  virDomainObjPtr vm,
+                                  virDomainDeviceDefPtr dev);
 int qemuDomainDetachHostDevice(struct qemud_driver *driver,
                                virDomainObjPtr vm,
                                virDomainDeviceDefPtr dev);

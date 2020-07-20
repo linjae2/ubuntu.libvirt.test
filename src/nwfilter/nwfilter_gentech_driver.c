@@ -98,7 +98,7 @@ virNWFilterTechDriverForName(const char *name) {
  * for bidirectional traffic and data needs to be added to the incoming
  * and outgoing chains.
  *
- * Returns 0 in case of success, -1 in case of an error.
+ * Returns 0 in case of success, 1 in case of an error.
  */
 int
 virNWFilterRuleInstAddData(virNWFilterRuleInstPtr res,
@@ -106,7 +106,7 @@ virNWFilterRuleInstAddData(virNWFilterRuleInstPtr res,
 {
     if (VIR_REALLOC_N(res->data, res->ndata+1) < 0) {
         virReportOOMError();
-        return -1;
+        return 1;
     }
     res->data[res->ndata++] = data;
     return 0;
@@ -136,7 +136,7 @@ virNWFilterRuleInstFree(virNWFilterRuleInstPtr inst)
  * @ipaddr: The string of the IP address to add to the hash table;
  *    may be NULL
  *
- * Returns 0 in case of success, -1 in case an error happened with
+ * Returns 0 in case of success, 1 in case an error happened with
  * error having been reported.
  *
  * Adds a couple of standard keys (MAC, IP) to the hash table.
@@ -151,28 +151,28 @@ virNWFilterVarHashmapAddStdValues(virNWFilterHashTablePtr table,
     if (macaddr) {
         val = virNWFilterVarValueCreateSimple(macaddr);
         if (!val)
-            return -1;
+            return 1;
 
         if (virHashAddEntry(table->hashTable,
                             NWFILTER_STD_VAR_MAC,
                             val) < 0) {
             virNWFilterReportError(VIR_ERR_INTERNAL_ERROR,
                                    "%s", _("Could not add variable 'MAC' to hashmap"));
-            return -1;
+            return 1;
         }
     }
 
     if (ipaddr) {
         val = virNWFilterVarValueCopy(ipaddr);
         if (!val)
-            return -1;
+            return 1;
 
         if (virHashAddEntry(table->hashTable,
                             NWFILTER_STD_VAR_IP,
                             val) < 0) {
             virNWFilterReportError(VIR_ERR_INTERNAL_ERROR,
                                    "%s", _("Could not add variable 'IP' to hashmap"));
-            return -1;
+            return 1;
         }
     }
 
@@ -200,7 +200,7 @@ virNWFilterCreateVarHashmap(char *macaddr,
         return NULL;
     }
 
-    if (virNWFilterVarHashmapAddStdValues(table, macaddr, ipaddr) < 0) {
+    if (virNWFilterVarHashmapAddStdValues(table, macaddr, ipaddr)) {
         virNWFilterHashTableFree(table);
         return NULL;
     }
@@ -339,10 +339,10 @@ virNWFilterCreateVarsFrom(virNWFilterHashTablePtr vars1,
         return NULL;
     }
 
-    if (virNWFilterHashTablePutAll(vars1, res) < 0)
+    if (virNWFilterHashTablePutAll(vars1, res))
         goto err_exit;
 
-    if (virNWFilterHashTablePutAll(vars2, res) < 0)
+    if (virNWFilterHashTablePutAll(vars2, res))
         goto err_exit;
 
     return res;
@@ -404,13 +404,13 @@ _virNWFilterInstantiateRec(virNWFilterTechDriverPtr techdriver,
                                               ifname,
                                               vars);
             if (!inst) {
-                rc = -1;
+                rc = 1;
                 break;
             }
 
             if (VIR_REALLOC_N(*insts, (*nEntries)+1) < 0) {
                 virReportOOMError();
-                rc = -1;
+                rc = 1;
                 break;
             }
 
@@ -425,7 +425,7 @@ _virNWFilterInstantiateRec(virNWFilterTechDriverPtr techdriver,
                     virNWFilterReportError(VIR_ERR_NO_NWFILTER,
                                            _("Filter '%s' is in use."),
                                            inc->filterref);
-                    rc = -1;
+                    rc = 1;
                     virNWFilterObjUnlock(obj);
                     break;
                 }
@@ -436,7 +436,7 @@ _virNWFilterInstantiateRec(virNWFilterTechDriverPtr techdriver,
                                                                 vars);
                 if (!tmpvars) {
                     virReportOOMError();
-                    rc = -1;
+                    rc = 1;
                     virNWFilterObjUnlock(obj);
                     break;
                 }
@@ -467,13 +467,13 @@ _virNWFilterInstantiateRec(virNWFilterTechDriverPtr techdriver,
                 virNWFilterHashTableFree(tmpvars);
 
                 virNWFilterObjUnlock(obj);
-                if (rc < 0)
+                if (rc)
                     break;
             } else {
                 virNWFilterReportError(VIR_ERR_INTERNAL_ERROR,
                                        _("referenced filter '%s' is missing"),
                                        inc->filterref);
-                rc = -1;
+                rc = 1;
                 break;
             }
         }
@@ -504,7 +504,7 @@ virNWFilterDetermineMissingVarsRec(virNWFilterDefPtr filter,
                 if (!virHashLookup(vars->hashTable, rule->vars[j])) {
                     val = virNWFilterVarValueCreateSimpleCopyValue("1");
                     if (!val) {
-                        rc = -1;
+                        rc = 1;
                         break;
                     }
                     virNWFilterHashTablePut(missing_vars, rule->vars[j],
@@ -522,7 +522,7 @@ virNWFilterDetermineMissingVarsRec(virNWFilterDefPtr filter,
                     virNWFilterReportError(VIR_ERR_NO_NWFILTER,
                                            _("Filter '%s' is in use."),
                                            inc->filterref);
-                    rc = -1;
+                    rc = 1;
                     virNWFilterObjUnlock(obj);
                     break;
                 }
@@ -533,7 +533,7 @@ virNWFilterDetermineMissingVarsRec(virNWFilterDefPtr filter,
                                                                 vars);
                 if (!tmpvars) {
                     virReportOOMError();
-                    rc = -1;
+                    rc = 1;
                     virNWFilterObjUnlock(obj);
                     break;
                 }
@@ -559,13 +559,13 @@ virNWFilterDetermineMissingVarsRec(virNWFilterDefPtr filter,
                 virNWFilterHashTableFree(tmpvars);
 
                 virNWFilterObjUnlock(obj);
-                if (rc < 0)
+                if (rc)
                     break;
             } else {
                 virNWFilterReportError(VIR_ERR_INTERNAL_ERROR,
                                        _("referenced filter '%s' is missing"),
                                        inc->filterref);
-                rc = -1;
+                rc = 1;
                 break;
             }
         }
@@ -592,7 +592,7 @@ virNWFilterRuleInstancesToArray(int nEntries,
 
     if (VIR_ALLOC_N((*ptrs), (*nptrs)) < 0) {
         virReportOOMError();
-        return -1;
+        return 1;
     }
 
     (*nptrs) = 0;
@@ -607,7 +607,6 @@ virNWFilterRuleInstancesToArray(int nEntries,
 
 /**
  * virNWFilterInstantiate:
- * @vmuuid: The UUID of the VM
  * @techdriver: The driver to use for instantiation
  * @filter: The filter to instantiate
  * @ifname: The name of the interface to apply the rules to
@@ -626,8 +625,7 @@ virNWFilterRuleInstancesToArray(int nEntries,
  * Call this function while holding the NWFilter filter update lock
  */
 static int
-virNWFilterInstantiate(const unsigned char *vmuuid ATTRIBUTE_UNUSED,
-                       virNWFilterTechDriverPtr techdriver,
+virNWFilterInstantiate(virNWFilterTechDriverPtr techdriver,
                        enum virDomainNetType nettype,
                        virNWFilterDefPtr filter,
                        const char *ifname,
@@ -651,7 +649,7 @@ virNWFilterInstantiate(const unsigned char *vmuuid ATTRIBUTE_UNUSED,
     virNWFilterHashTablePtr missing_vars = virNWFilterHashTableCreate(0);
     if (!missing_vars) {
         virReportOOMError();
-        rc = -1;
+        rc = 1;
         goto err_exit;
     }
 
@@ -660,7 +658,7 @@ virNWFilterInstantiate(const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                             missing_vars,
                                             useNewFilter,
                                             driver);
-    if (rc < 0)
+    if (rc)
         goto err_exit;
 
     if (virHashSize(missing_vars->hashTable) == 1) {
@@ -695,7 +693,7 @@ virNWFilterInstantiate(const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                     useNewFilter, foundNewFilter,
                                     driver);
 
-    if (rc < 0)
+    if (rc)
         goto err_exit;
 
     switch (useNewFilter) {
@@ -711,10 +709,10 @@ virNWFilterInstantiate(const unsigned char *vmuuid ATTRIBUTE_UNUSED,
 
         rc = virNWFilterRuleInstancesToArray(nEntries, insts,
                                              &ptrs, &nptrs);
-        if (rc < 0)
+        if (rc)
             goto err_exit;
 
-        if (virNWFilterLockIface(ifname) < 0)
+        if (virNWFilterLockIface(ifname))
             goto err_exit;
 
         rc = techdriver->applyNewRules(ifname, nptrs, ptrs);
@@ -726,7 +724,7 @@ virNWFilterInstantiate(const unsigned char *vmuuid ATTRIBUTE_UNUSED,
             virResetLastError();
             /* interface changed/disppeared */
             techdriver->allTeardown(ifname);
-            rc = -1;
+            rc = 1;
         }
 
         virNWFilterUnlockIface(ifname);
@@ -754,7 +752,7 @@ err_unresolvable_vars:
         VIR_FREE(buf);
     }
 
-    rc = -1;
+    rc = 1;
     goto err_exit;
 }
 
@@ -763,8 +761,7 @@ err_unresolvable_vars:
  * Call this function while holding the NWFilter filter update lock
  */
 static int
-__virNWFilterInstantiateFilter(const unsigned char *vmuuid,
-                               bool teardownOld,
+__virNWFilterInstantiateFilter(bool teardownOld,
                                const char *ifname,
                                int ifindex,
                                const char *linkdev,
@@ -795,7 +792,7 @@ __virNWFilterInstantiateFilter(const unsigned char *vmuuid,
                                _("Could not get access to ACL tech "
                                "driver '%s'"),
                                drvname);
-        return -1;
+        return 1;
     }
 
     VIR_DEBUG("filter name: %s", filtername);
@@ -805,14 +802,14 @@ __virNWFilterInstantiateFilter(const unsigned char *vmuuid,
         virNWFilterReportError(VIR_ERR_NO_NWFILTER,
                                _("Could not find filter '%s'"),
                                filtername);
-        return -1;
+        return 1;
     }
 
     if (obj->wantRemoved) {
         virNWFilterReportError(VIR_ERR_NO_NWFILTER,
                                _("Filter '%s' is in use."),
                                filtername);
-        rc = -1;
+        rc = 1;
         goto err_exit;
     }
 
@@ -820,7 +817,7 @@ __virNWFilterInstantiateFilter(const unsigned char *vmuuid,
     str_macaddr = strdup(vmmacaddr);
     if (!str_macaddr) {
         virReportOOMError();
-        rc = -1;
+        rc = 1;
         goto err_exit;
     }
 
@@ -828,7 +825,7 @@ __virNWFilterInstantiateFilter(const unsigned char *vmuuid,
 
     vars1 = virNWFilterCreateVarHashmap(str_macaddr, ipaddr);
     if (!vars1) {
-        rc = -1;
+        rc = 1;
         goto err_exit;
     }
 
@@ -838,7 +835,7 @@ __virNWFilterInstantiateFilter(const unsigned char *vmuuid,
     vars = virNWFilterCreateVarsFrom(vars1,
                                      filterparams);
     if (!vars) {
-        rc = -1;
+        rc = 1;
         goto err_exit_vars1;
     }
 
@@ -856,8 +853,7 @@ __virNWFilterInstantiateFilter(const unsigned char *vmuuid,
     break;
     }
 
-    rc = virNWFilterInstantiate(vmuuid,
-                                techdriver,
+    rc = virNWFilterInstantiate(techdriver,
                                 nettype,
                                 filter,
                                 ifname,
@@ -887,7 +883,6 @@ err_exit:
 
 static int
 _virNWFilterInstantiateFilter(virConnectPtr conn,
-                              const unsigned char *vmuuid,
                               const virDomainNetDefPtr net,
                               bool teardownOld,
                               enum instCase useNewFilter,
@@ -913,8 +908,7 @@ _virNWFilterInstantiateFilter(virConnectPtr conn,
         goto cleanup;
     }
 
-    rc = __virNWFilterInstantiateFilter(vmuuid,
-                                        teardownOld,
+    rc = __virNWFilterInstantiateFilter(teardownOld,
                                         net->ifname,
                                         ifindex,
                                         linkdev,
@@ -935,8 +929,7 @@ cleanup:
 
 
 int
-virNWFilterInstantiateFilterLate(const unsigned char *vmuuid,
-                                 const char *ifname,
+virNWFilterInstantiateFilterLate(const char *ifname,
                                  int ifindex,
                                  const char *linkdev,
                                  enum virDomainNetType nettype,
@@ -950,8 +943,7 @@ virNWFilterInstantiateFilterLate(const unsigned char *vmuuid,
 
     virNWFilterLockFilterUpdates();
 
-    rc = __virNWFilterInstantiateFilter(vmuuid,
-                                        true,
+    rc = __virNWFilterInstantiateFilter(true,
                                         ifname,
                                         ifindex,
                                         linkdev,
@@ -963,7 +955,7 @@ virNWFilterInstantiateFilterLate(const unsigned char *vmuuid,
                                         driver,
                                         true,
                                         &foundNewFilter);
-    if (rc < 0) {
+    if (rc) {
         /* something went wrong... 'DOWN' the interface */
         if ((virNetDevValidateConfig(ifname, NULL, ifindex) <= 0) ||
             (virNetDevSetOnline(ifname, false) < 0)) {
@@ -981,12 +973,11 @@ virNWFilterInstantiateFilterLate(const unsigned char *vmuuid,
 
 int
 virNWFilterInstantiateFilter(virConnectPtr conn,
-                             const unsigned char *vmuuid,
                              const virDomainNetDefPtr net)
 {
     bool foundNewFilter = false;
 
-    return _virNWFilterInstantiateFilter(conn, vmuuid, net,
+    return _virNWFilterInstantiateFilter(conn, net,
                                          1,
                                          INSTANTIATE_ALWAYS,
                                          &foundNewFilter);
@@ -995,13 +986,12 @@ virNWFilterInstantiateFilter(virConnectPtr conn,
 
 int
 virNWFilterUpdateInstantiateFilter(virConnectPtr conn,
-                                   const unsigned char *vmuuid,
                                    const virDomainNetDefPtr net,
                                    bool *skipIface)
 {
     bool foundNewFilter = false;
 
-    int rc = _virNWFilterInstantiateFilter(conn, vmuuid, net,
+    int rc = _virNWFilterInstantiateFilter(conn, net,
                                            0,
                                            INSTANTIATE_FOLLOW_NEWFILTER,
                                            &foundNewFilter);
@@ -1010,8 +1000,7 @@ virNWFilterUpdateInstantiateFilter(virConnectPtr conn,
     return rc;
 }
 
-static int
-virNWFilterRollbackUpdateFilter(const virDomainNetDefPtr net)
+int virNWFilterRollbackUpdateFilter(const virDomainNetDefPtr net)
 {
     const char *drvname = EBIPTABLES_DRIVER_ID;
     int ifindex;
@@ -1023,7 +1012,7 @@ virNWFilterRollbackUpdateFilter(const virDomainNetDefPtr net)
                                _("Could not get access to ACL tech "
                                "driver '%s'"),
                                drvname);
-        return -1;
+        return 1;
     }
 
     /* don't tear anything while the address is being learned */
@@ -1036,7 +1025,7 @@ virNWFilterRollbackUpdateFilter(const virDomainNetDefPtr net)
 }
 
 
-static int
+int
 virNWFilterTearOldFilter(virDomainNetDefPtr net)
 {
     const char *drvname = EBIPTABLES_DRIVER_ID;
@@ -1049,7 +1038,7 @@ virNWFilterTearOldFilter(virDomainNetDefPtr net)
                                _("Could not get access to ACL tech "
                                "driver '%s'"),
                                drvname);
-        return -1;
+        return 1;
     }
 
     /* don't tear anything while the address is being learned */
@@ -1074,13 +1063,13 @@ _virNWFilterTeardownFilter(const char *ifname)
                                _("Could not get access to ACL tech "
                                "driver '%s'"),
                                drvname);
-        return -1;
+        return 1;
     }
 
     virNWFilterTerminateLearnReq(ifname);
 
-    if (virNWFilterLockIface(ifname) < 0)
-       return -1;
+    if (virNWFilterLockIface(ifname))
+       return 1;
 
     techdriver->allTeardown(ifname);
 
@@ -1119,7 +1108,6 @@ virNWFilterDomainFWUpdateCB(void *payload,
                 switch (cb->step) {
                 case STEP_APPLY_NEW:
                     cb->err = virNWFilterUpdateInstantiateFilter(cb->conn,
-                                                                 vm->uuid,
                                                                  net,
                                                                  &skipIface);
                     if (cb->err == 0 && skipIface) {
