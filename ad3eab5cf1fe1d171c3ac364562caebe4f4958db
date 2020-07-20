@@ -1,0 +1,11 @@
+  [ Laurent Léonard ]
+  * [6e46f0e] Fix wrong regular expression in debian/watch
+  [ Guido Günther ]
+  * [f561b2e] New patch 0010-nwfilter-resolve-deadlock-between-VM-
+    operations-and-.patch nwfilter: resolve deadlock between VM operations and
+    filter update (Closes: #602715)
+  * [239bbe5] New patch 0011-OpenVZ-take-veid-from-vmdef-name-when-
+    defining-new-d.patch: Fixes OpenVZ domain creation (Closes: #592817) -
+    thanks to Eric Litak.
+  * [c4a2a6b] New patch 0012-OpenVZ-Fix-some-overwritten-error-codes.patch:
+    Improve error reporting.
