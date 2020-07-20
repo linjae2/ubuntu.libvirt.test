@@ -1,0 +1,2 @@
+  * debian/libvirt-bin.upstart: bring virbr0 up/down on upstart start/stop
+    of libvirt, LP: #345485
