@@ -1,0 +1,4 @@
+  * [836190e] Avoid duplicates in package descriptions. Thanks lintian
+  * [9f29e58] Remove unused pycompat
+  * [e89c059] test: qemuxml2argv: Mock virMemoryMaxValue to remove 32/64 bit
+    difference to fix the testsuite on i386
