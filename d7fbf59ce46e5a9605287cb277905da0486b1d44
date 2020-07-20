@@ -1,0 +1,2 @@
+  * [885f33d] Fix CVE-2015-0236.
+    Patches cherry-picked from upstream (Closes: #776065)
