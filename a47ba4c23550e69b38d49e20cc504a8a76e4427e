@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: NULL pointer dereference in qemuAgentGetInterfaces
+    - debian/patches/CVE-2019-3840.patch: require a reply in
+      src/qemu/qemu_agent.c.
+    - CVE-2019-3840
