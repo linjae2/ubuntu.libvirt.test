@@ -1,0 +1,6 @@
+  * Switch gbp.conf to jessie
+  * Rediff patches
+    to avoid diff noise when using gbp-pq.
+  * CVE-2018-5748: qemu: avoid denial of service reading from QEMU monitor
+    (Closes: #887700)
+  * CVE-2018-1064: qemu: avoid denial of service reading from QEMU guest agent
