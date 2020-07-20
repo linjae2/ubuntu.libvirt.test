@@ -1,0 +1,2 @@
+  * d/p/avoid-double-locking.patch: fix a deadlock that could occur when
+    libvirtd interactions raced with dbus causing a deadlock (LP: #1714254).
