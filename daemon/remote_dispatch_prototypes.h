@@ -50,6 +50,14 @@ static int remoteDispatchClose(
     remote_error *err,
     void *args,
     void *ret);
+static int remoteDispatchCpuCompare(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_cpu_compare_args *args,
+    remote_cpu_compare_ret *ret);
 static int remoteDispatchDomainAttachDevice(
     struct qemud_server *server,
     struct qemud_client *client,
@@ -226,6 +234,22 @@ static int remoteDispatchDomainInterfaceStats(
     remote_error *err,
     remote_domain_interface_stats_args *args,
     remote_domain_interface_stats_ret *ret);
+static int remoteDispatchDomainIsActive(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_domain_is_active_args *args,
+    remote_domain_is_active_ret *ret);
+static int remoteDispatchDomainIsPersistent(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_domain_is_persistent_args *args,
+    remote_domain_is_persistent_ret *ret);
 static int remoteDispatchDomainLookupById(
     struct qemud_server *server,
     struct qemud_client *client,
@@ -258,6 +282,14 @@ static int remoteDispatchDomainMemoryPeek(
     remote_error *err,
     remote_domain_memory_peek_args *args,
     remote_domain_memory_peek_ret *ret);
+static int remoteDispatchDomainMemoryStats(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_domain_memory_stats_args *args,
+    remote_domain_memory_stats_ret *ret);
 static int remoteDispatchDomainMigrateFinish(
     struct qemud_server *server,
     struct qemud_client *client,
@@ -450,6 +482,14 @@ static int remoteDispatchGetHostname(
     remote_error *err,
     void *args,
     remote_get_hostname_ret *ret);
+static int remoteDispatchGetLibVersion(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    void *args,
+    remote_get_lib_version_ret *ret);
 static int remoteDispatchGetMaxVcpus(
     struct qemud_server *server,
     struct qemud_client *client,
@@ -514,6 +554,14 @@ static int remoteDispatchInterfaceGetXmlDesc(
     remote_error *err,
     remote_interface_get_xml_desc_args *args,
     remote_interface_get_xml_desc_ret *ret);
+static int remoteDispatchInterfaceIsActive(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_interface_is_active_args *args,
+    remote_interface_is_active_ret *ret);
 static int remoteDispatchInterfaceLookupByMacString(
     struct qemud_server *server,
     struct qemud_client *client,
@@ -538,6 +586,14 @@ static int remoteDispatchInterfaceUndefine(
     remote_error *err,
     remote_interface_undefine_args *args,
     void *ret);
+static int remoteDispatchIsSecure(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    void *args,
+    remote_is_secure_ret *ret);
 static int remoteDispatchListDefinedDomains(
     struct qemud_server *server,
     struct qemud_client *client,
@@ -666,6 +722,22 @@ static int remoteDispatchNetworkGetBridgeName(
     remote_error *err,
     remote_network_get_bridge_name_args *args,
     remote_network_get_bridge_name_ret *ret);
+static int remoteDispatchNetworkIsActive(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_network_is_active_args *args,
+    remote_network_is_active_ret *ret);
+static int remoteDispatchNetworkIsPersistent(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_network_is_persistent_args *args,
+    remote_network_is_persistent_ret *ret);
 static int remoteDispatchNetworkLookupByName(
     struct qemud_server *server,
     struct qemud_client *client,
@@ -1034,6 +1106,22 @@ static int remoteDispatchStoragePoolGetInfo(
     remote_error *err,
     remote_storage_pool_get_info_args *args,
     remote_storage_pool_get_info_ret *ret);
+static int remoteDispatchStoragePoolIsActive(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_storage_pool_is_active_args *args,
+    remote_storage_pool_is_active_ret *ret);
+static int remoteDispatchStoragePoolIsPersistent(
+    struct qemud_server *server,
+    struct qemud_client *client,
+    virConnectPtr conn,
+    remote_message_header *hdr,
+    remote_error *err,
+    remote_storage_pool_is_persistent_args *args,
+    remote_storage_pool_is_persistent_ret *ret);
 static int remoteDispatchStoragePoolListVolumes(
     struct qemud_server *server,
     struct qemud_client *client,

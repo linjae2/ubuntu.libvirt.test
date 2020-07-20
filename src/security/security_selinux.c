@@ -77,8 +77,8 @@ mcsRemove(const char *mcs)
             else {
                 mcsList = ptr->next;
             }
-            free(ptr->mcs);
-            free(ptr);
+            VIR_FREE(ptr->mcs);
+            VIR_FREE(ptr);
             return 0;
         }
         prevptr = ptr;
@@ -107,8 +107,6 @@ SELinuxInitialize(virConnectPtr conn)
 {
     char *ptr = NULL;
     int fd = 0;
-
-    virRandomInitialize(time(NULL) ^ getpid());
 
     fd = open(selinux_virtual_domain_context_path(), O_RDONLY);
     if (fd < 0) {
@@ -191,13 +189,13 @@ SELinuxGenSecurityLabel(virConnectPtr conn,
 
     vm->def->seclabel.label = SELinuxGenNewContext(default_domain_context, mcs);
     if (! vm->def->seclabel.label)  {
-        virSecurityReportError(conn, VIR_ERR_ERROR,
+        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
                                _("cannot generate selinux context for %s"), mcs);
         goto err;
     }
     vm->def->seclabel.imagelabel = SELinuxGenNewContext(default_image_context, mcs);
     if (! vm->def->seclabel.imagelabel)  {
-        virSecurityReportError(conn, VIR_ERR_ERROR,
+        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
                                _("cannot generate selinux context for %s"), mcs);
         goto err;
     }
@@ -287,15 +285,15 @@ SELinuxGetSecurityLabel(virConnectPtr conn,
     }
 
     if (strlen((char *) ctx) >= VIR_SECURITY_LABEL_BUFLEN) {
-        virSecurityReportError(conn, VIR_ERR_ERROR,
+        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
                                _("security label exceeds "
-                                 "maximum lenth: %d"),
+                                 "maximum length: %d"),
                                VIR_SECURITY_LABEL_BUFLEN - 1);
         return -1;
     }
 
     strcpy(sec->label, (char *) ctx);
-    free(ctx);
+    VIR_FREE(ctx);
 
     sec->enforcing = security_getenforce();
     if (sec->enforcing == -1) {
@@ -525,6 +523,7 @@ done:
     return ret;
 }
 
+
 static int
 SELinuxRestoreSecurityPCILabel(virConnectPtr conn,
                                pciDevice *dev ATTRIBUTE_UNUSED,
@@ -625,6 +624,26 @@ SELinuxRestoreSecurityLabel(virConnectPtr conn,
     return rc;
 }
 
+
+static int
+SELinuxSetSavedStateLabel(virConnectPtr conn,
+                          virDomainObjPtr vm,
+                          const char *savefile)
+{
+    const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
+
+    return SELinuxSetFilecon(conn, savefile, secdef->imagelabel);
+}
+
+
+static int
+SELinuxRestoreSavedStateLabel(virConnectPtr conn,
+                              const char *savefile)
+{
+    return SELinuxRestoreSecurityFileLabel(conn, savefile);
+}
+
+
 static int
 SELinuxSecurityVerify(virConnectPtr conn, virDomainDefPtr def)
 {
@@ -649,7 +668,7 @@ SELinuxSetSecurityLabel(virConnectPtr conn,
     int i;
 
     if (!STREQ(drv->name, secdef->model)) {
-        virSecurityReportError(conn, VIR_ERR_ERROR,
+        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
                                _("security label driver mismatch: "
                                  "'%s' model configured for domain, but "
                                  "hypervisor driver is '%s'."),
@@ -668,6 +687,9 @@ SELinuxSetSecurityLabel(virConnectPtr conn,
 
     if (secdef->imagelabel) {
         for (i = 0 ; i < vm->def->ndisks ; i++) {
+            /* XXX fixme - we need to recursively label the entriy tree :-( */
+            if (vm->def->disks[i]->type == VIR_DOMAIN_DISK_TYPE_DIR)
+                continue;
             if (SELinuxSetSecurityImageLabel(conn, vm, vm->def->disks[i]) < 0)
                 return -1;
         }
@@ -694,4 +716,6 @@ virSecurityDriver virSELinuxSecurityDriver = {
     .domainSetSecurityLabel     = SELinuxSetSecurityLabel,
     .domainSetSecurityHostdevLabel = SELinuxSetSecurityHostdevLabel,
     .domainRestoreSecurityHostdevLabel = SELinuxRestoreSecurityHostdevLabel,
+    .domainSetSavedStateLabel = SELinuxSetSavedStateLabel,
+    .domainRestoreSavedStateLabel = SELinuxRestoreSavedStateLabel,
 };

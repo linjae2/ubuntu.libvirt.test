@@ -160,7 +160,7 @@ def enum(type, name, value):
 
 functions_failed = []
 functions_skipped = [
-    "virConnectListDomains"
+    "virConnectListDomains",
 ]
 
 skipped_modules = {
@@ -255,17 +255,18 @@ foreign_encoding_args = (
 # Class methods which are written by hand in libvir.c but the Python-level
 # code is still automatically generated (so they are not in skip_function()).
 skip_impl = (
+    'virConnectGetLibVersion',
     'virConnectListDomainsID',
     'virConnectListDefinedDomains',
     'virConnectListNetworks',
     'virConnectListDefinedNetworks',
-    'virConnectListInterfaces',
-    'virConnectListDefinedInterfaces',
     'virConnectListSecrets',
+    'virConnectListInterfaces',
     'virConnectListStoragePools',
     'virConnectListDefinedStoragePools',
     'virConnectListStorageVols',
     'virConnectListDefinedStorageVols',
+    'virConnectListDefinedInterfaces',
     'virConnGetLastError',
     'virGetLastError',
     'virDomainGetInfo',
@@ -280,6 +281,7 @@ skip_impl = (
     'virNetworkGetAutostart',
     'virDomainBlockStats',
     'virDomainInterfaceStats',
+    'virDomainMemoryStats',
     'virNodeGetCellsFreeMemory',
     'virDomainGetSchedulerType',
     'virDomainGetSchedulerParameters',

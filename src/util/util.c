@@ -64,6 +64,7 @@
 #include <mntent.h>
 #endif
 
+#include "areadlink.h"
 #include "virterror_internal.h"
 #include "logging.h"
 #include "event.h"
@@ -936,7 +937,7 @@ saferead_lim (int fd, size_t max_len, size_t *length)
         }
     }
 
-    free (buf);
+    VIR_FREE(buf);
     errno = save_errno;
     return NULL;
 }
@@ -1059,10 +1060,7 @@ int virFileLinkPointsTo(const char *checkLink,
 int virFileResolveLink(const char *linkpath,
                        char **resultpath)
 {
-#ifdef HAVE_READLINK
     struct stat st;
-    char *buf;
-    int n;
 
     *resultpath = NULL;
 
@@ -1075,28 +1073,9 @@ int virFileResolveLink(const char *linkpath,
         return 0;
     }
 
-    /* Posix says that 'st_size' field from
-     * result of an lstat() call is filled with
-     * number of bytes in the destination
-     * filename.
-     */
-    if (VIR_ALLOC_N(buf, st.st_size + 1) < 0)
-        return -ENOMEM;
+    *resultpath = areadlink (linkpath);
 
-    if ((n = readlink(linkpath, buf, st.st_size)) < 0) {
-        VIR_FREE(buf);
-        return -errno;
-    }
-
-    buf[n] = '\0';
-
-    *resultpath = buf;
-    return 0;
-#else
-    if (!(*resultpath = strdup(linkpath)))
-        return -ENOMEM;
-    return 0;
-#endif
+    return *resultpath == NULL ? -1 : 0;
 }
 
 /*
@@ -1257,7 +1236,8 @@ int virFileOpenTtyAt(const char *ptmx ATTRIBUTE_UNUSED,
 char* virFilePid(const char *dir, const char* name)
 {
     char *pidfile;
-    virAsprintf(&pidfile, "%s/%s.pid", dir, name);
+    if (virAsprintf(&pidfile, "%s/%s.pid", dir, name) < 0)
+        return NULL;
     return pidfile;
 }
 
@@ -1788,7 +1768,7 @@ int virDiskNameToIndex(const char *name) {
         return -1;
 
     for (i = 0; *ptr; i++) {
-        idx = (idx + i) * 26;
+        idx = (idx + (i < 1 ? 0 : 1)) * 26;
 
         if (!c_islower(*ptr))
             return -1;
@@ -1800,34 +1780,76 @@ int virDiskNameToIndex(const char *name) {
     return idx;
 }
 
+char *virIndexToDiskName(int idx, const char *prefix)
+{
+    char *name = NULL;
+    int i, k, offset;
+
+    if (idx < 0) {
+        ReportError(NULL, VIR_ERR_INTERNAL_ERROR,
+                    _("Disk index %d is negative"), idx);
+        return NULL;
+    }
+
+    for (i = 0, k = idx; k >= 0; ++i, k = k / 26 - 1) { }
+
+    offset = strlen(prefix);
+
+    if (VIR_ALLOC_N(name, offset + i + 1)) {
+        virReportOOMError(NULL);
+        return NULL;
+    }
+
+    strcpy(name, prefix);
+    name[offset + i] = '\0';
+
+    for (i = i - 1, k = idx; k >= 0; --i, k = k / 26 - 1) {
+        name[offset + i] = 'a' + (k % 26);
+    }
+
+    return name;
+}
+
 #ifndef AI_CANONIDN
 #define AI_CANONIDN 0
 #endif
 
-char *virGetHostname(void)
+char *virGetHostname(virConnectPtr conn)
 {
     int r;
     char hostname[HOST_NAME_MAX+1], *result;
     struct addrinfo hints, *info;
 
     r = gethostname (hostname, sizeof(hostname));
-    if (r == -1)
+    if (r == -1) {
+        virReportSystemError (conn, errno,
+                              "%s", _("failed to determine host name"));
         return NULL;
+    }
     NUL_TERMINATE(hostname);
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_flags = AI_CANONNAME|AI_CANONIDN;
     hints.ai_family = AF_UNSPEC;
     r = getaddrinfo(hostname, NULL, &hints, &info);
-    if (r != 0)
+    if (r != 0) {
+        ReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                    _("getaddrinfo failed for '%s': %s"),
+                    hostname, gai_strerror(r));
         return NULL;
+    }
     if (info->ai_canonname == NULL) {
+        ReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                    "%s", _("could not determine canonical host name"));
         freeaddrinfo(info);
         return NULL;
     }
 
     /* Caller frees this string. */
     result = strdup (info->ai_canonname);
+    if (!result)
+        virReportOOMError(conn);
+
     freeaddrinfo(info);
     return result;
 }
@@ -2108,9 +2130,38 @@ void virFileWaitForDevices(virConnectPtr conn)
      * If this fails for any reason, we still have the backup of polling for
      * 5 seconds for device nodes.
      */
-    virRun(conn, settleprog, &exitstatus);
+    if (virRun(conn, settleprog, &exitstatus) < 0)
+    {}
 }
 #else
 void virFileWaitForDevices(virConnectPtr conn ATTRIBUTE_UNUSED) {}
 #endif
 #endif
+
+int virBuildPathInternal(char **path, ...)
+{
+    char *path_component = NULL;
+    virBuffer buf = VIR_BUFFER_INITIALIZER;
+    va_list ap;
+    int ret = 0;
+
+    va_start(ap, *path);
+
+    path_component = va_arg(ap, char *);
+    virBufferAdd(&buf, path_component, -1);
+
+    while ((path_component = va_arg(ap, char *)) != NULL)
+    {
+        virBufferAddChar(&buf, '/');
+        virBufferAdd(&buf, path_component, -1);
+    }
+
+    va_end(ap);
+
+    *path = virBufferContentAndReset(&buf);
+    if (*path == NULL) {
+        ret = -1;
+    }
+
+    return ret;
+}

@@ -198,6 +198,8 @@ cleanup:
     if (inputfd != -1)
         close(inputfd);
 
+    VIR_FREE(buf);
+
     return ret;
 }
 
@@ -445,8 +447,7 @@ cleanup:
             conn->secretDriver->undefine(secret);
         virSecretFree(secret);
     }
-    xml = virBufferContentAndReset(&buf);
-    VIR_FREE(xml);
+    virBufferFreeAndReset(&buf);
     virSecretDefFree(def);
     VIR_FREE(enc_secret);
     return ret;
@@ -568,7 +569,7 @@ virStorageBackendCreateQemuImg(virConnectPtr conn,
             return -1;
         }
         if (enc->nsecrets > 1) {
-            virStorageReportError(conn, VIR_ERR_INVALID_STORAGE_VOL,
+            virStorageReportError(conn, VIR_ERR_INVALID_STORAGE_VOL, "%s",
                                   _("too many secrets for qcow encryption"));
             return -1;
         }
@@ -1317,8 +1318,7 @@ virStorageBackendRunProgNul(virConnectPtr conn,
                 goto cleanup;
             n_tok = 0;
             for (i = 0; i < n_columns; i++) {
-                free (v[i]);
-                v[i] = NULL;
+                VIR_FREE(v[i]);
             }
         }
     }
@@ -1331,8 +1331,8 @@ virStorageBackendRunProgNul(virConnectPtr conn,
 
  cleanup:
     for (i = 0; i < n_columns; i++)
-        free (v[i]);
-    free (v);
+        VIR_FREE(v[i]);
+    VIR_FREE(v);
 
     if (fp)
         fclose (fp);

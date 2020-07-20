@@ -1,7 +1,7 @@
 /*
  * utils.c: test utils
  *
- * Copyright (C) 2005, 2008 Red Hat, Inc.
+ * Copyright (C) 2005, 2008-2009 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
@@ -12,6 +12,8 @@
 #define __VIT_TEST_UTILS_H__
 
 #include <stdio.h>
+
+#define EXIT_AM_SKIP 77 /* tell Automake we're skipping a test */
 
 double virtTestCountAverage(double *items,
                             int nitems);
@@ -34,6 +36,8 @@ int virtTestDifference(FILE *stream,
                        const char *expect,
                        const char *actual);
 
+unsigned int virtTestGetDebug(void);
+
 int virtTestMain(int argc,
                  char **argv,
                  int (*func)(int, char **));
@@ -42,7 +46,5 @@ int virtTestMain(int argc,
     int main(int argc, char **argv)  {          \
         return virtTestMain(argc,argv, func);   \
     }
-
-extern unsigned int testDebug;
 
 #endif /* __VIT_TEST_UTILS_H__ */

@@ -80,7 +80,8 @@ storageDriverAutostart(virStorageDriverStatePtr driver) {
                 backend->startPool(NULL, pool) < 0) {
                 virErrorPtr err = virGetLastError();
                 storageLog("Failed to autostart storage pool '%s': %s",
-                           pool->def->name, err ? err->message : NULL);
+                           pool->def->name, err ? err->message :
+                           "no error message found");
                 virStoragePoolObjUnlock(pool);
                 continue;
             }
@@ -90,7 +91,8 @@ storageDriverAutostart(virStorageDriverStatePtr driver) {
                 if (backend->stopPool)
                     backend->stopPool(NULL, pool);
                 storageLog("Failed to autostart storage pool '%s': %s",
-                           pool->def->name, err ? err->message : NULL);
+                           pool->def->name, err ? err->message :
+                           "no error message found");
                 virStoragePoolObjUnlock(pool);
                 continue;
             }
@@ -420,8 +422,7 @@ storageListDefinedPools(virConnectPtr conn,
  cleanup:
     storageDriverUnlock(driver);
     for (i = 0 ; i < got ; i++) {
-        free(names[i]);
-        names[i] = NULL;
+        VIR_FREE(names[i]);
     }
     memset(names, 0, nnames * sizeof(*names));
     return -1;
@@ -460,6 +461,49 @@ storageFindPoolSources(virConnectPtr conn,
     ret = backend->findPoolSources(conn, srcSpec, flags);
 
 cleanup:
+    return ret;
+}
+
+
+static int storagePoolIsActive(virStoragePoolPtr pool)
+{
+    virStorageDriverStatePtr driver = pool->conn->storagePrivateData;
+    virStoragePoolObjPtr obj;
+    int ret = -1;
+
+    storageDriverLock(driver);
+    obj = virStoragePoolObjFindByUUID(&driver->pools, pool->uuid);
+    storageDriverUnlock(driver);
+    if (!obj) {
+        virStorageReportError(pool->conn, VIR_ERR_NO_STORAGE_POOL, NULL);
+        goto cleanup;
+    }
+    ret = virStoragePoolObjIsActive(obj);
+
+cleanup:
+    if (obj)
+        virStoragePoolObjUnlock(obj);
+    return ret;
+}
+
+static int storagePoolIsPersistent(virStoragePoolPtr pool)
+{
+    virStorageDriverStatePtr driver = pool->conn->storagePrivateData;
+    virStoragePoolObjPtr obj;
+    int ret = -1;
+
+    storageDriverLock(driver);
+    obj = virStoragePoolObjFindByUUID(&driver->pools, pool->uuid);
+    storageDriverUnlock(driver);
+    if (!obj) {
+        virStorageReportError(pool->conn, VIR_ERR_NO_STORAGE_POOL, NULL);
+        goto cleanup;
+    }
+    ret = obj->configFile ? 1 : 0;
+
+cleanup:
+    if (obj)
+        virStoragePoolObjUnlock(obj);
     return ret;
 }
 
@@ -1740,10 +1784,14 @@ static virStorageDriver storageDriver = {
     .volGetInfo = storageVolumeGetInfo,
     .volGetXMLDesc = storageVolumeGetXMLDesc,
     .volGetPath = storageVolumeGetPath,
+
+    .poolIsActive = storagePoolIsActive,
+    .poolIsPersistent = storagePoolIsPersistent,
 };
 
 
 static virStateDriver stateDriver = {
+    .name = "Storage",
     .initialize = storageDriverStartup,
     .cleanup = storageDriverShutdown,
     .reload = storageDriverReload,

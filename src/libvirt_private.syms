@@ -1,5 +1,6 @@
 #
-# General private symbols. See Makefile.am.
+# General private symbols. Add symbols here, and see Makefile.am for
+# more details.
 #
 
 
@@ -11,6 +12,7 @@ virBufferAddChar;
 virBufferContentAndReset;
 virBufferError;
 virBufferURIEncodeString;
+virBufferFreeAndReset;
 
 
 # caps.h
@@ -33,6 +35,7 @@ virCapabilitiesSetEmulatorRequired;
 virCapabilitiesIsEmulatorRequired;
 virCapabilitiesAllocMachines;
 virCapabilitiesFreeMachines;
+virCapabilitiesSetHostCPU;
 
 
 # conf.h
@@ -66,6 +69,24 @@ virCgroupControllerTypeFromString;
 virCgroupGetCpuacctUsage;
 virCgroupGetFreezerState;
 virCgroupSetFreezerState;
+
+
+# cpu.h
+cpuCompare;
+cpuCompareXML;
+cpuDataFree;
+cpuDecode;
+cpuEncode;
+cpuGuestData;
+cpuNodeData;
+
+
+# cpu_conf.h
+virCPUDefFree;
+virCPUDefParseXML;
+virCPUDefFormat;
+virCPUDefFormatBuf;
+virCPUDefAddFeature;
 
 
 # datatypes.h
@@ -123,8 +144,6 @@ virDomainLifecycleTypeToString;
 virDomainLoadAllConfigs;
 virDomainNetDefFree;
 virDomainNetTypeToString;
-virDomainObjFree;
-virDomainObjListFree;
 virDomainRemoveInactive;
 virDomainSaveXML;
 virDomainSaveConfig;
@@ -132,6 +151,10 @@ virDomainSaveStatus;
 virDomainSoundDefFree;
 virDomainSoundModelTypeFromString;
 virDomainSoundModelTypeToString;
+virDomainWatchdogModelTypeFromString;
+virDomainWatchdogModelTypeToString;
+virDomainWatchdogActionTypeFromString;
+virDomainWatchdogActionTypeToString;
 virDomainVideoDefFree;
 virDomainVideoTypeToString;
 virDomainVideoTypeFromString;
@@ -143,6 +166,14 @@ virDomainObjLock;
 virDomainObjUnlock;
 virDomainStateTypeToString;
 virDomainStateTypeFromString;
+virDomainObjIsDuplicate;
+virDomainObjListGetInactiveNames;
+virDomainObjListGetActiveIDs;
+virDomainObjListNumOfDomains;
+virDomainObjListInit;
+virDomainObjListDeinit;
+virDomainObjRef;
+virDomainObjUnref;
 
 
 # domain_event.h
@@ -164,6 +195,13 @@ virDomainEventFree;
 virDomainEventDispatchDefaultFunc;
 virDomainEventDispatch;
 virDomainEventQueueDispatch;
+
+
+# ebtables.h
+ebtablesAddForwardAllowIn;
+ebtablesAddForwardPolicyReject;
+ebtablesContextNew;
+ebtablesRemoveForwardAllowIn;
 
 
 # event.h
@@ -205,6 +243,7 @@ virInterfaceObjListFree;
 # interface_driver.h
 interfaceRegister;
 
+
 # iptables.h
 iptablesAddForwardAllowCross;
 iptablesAddForwardAllowIn;
@@ -217,7 +256,6 @@ iptablesAddTcpInput;
 iptablesAddUdpInput;
 iptablesContextFree;
 iptablesContextNew;
-iptablesReloadRules;
 iptablesRemoveForwardAllowCross;
 iptablesRemoveForwardAllowIn;
 iptablesRemoveForwardAllowOut;
@@ -227,7 +265,6 @@ iptablesRemoveForwardRejectIn;
 iptablesRemoveForwardRejectOut;
 iptablesRemoveTcpInput;
 iptablesRemoveUdpInput;
-iptablesSaveRules;
 
 
 # libvirt_internal.h
@@ -249,6 +286,53 @@ virRegisterStateDriver;
 virRegisterStorageDriver;
 virRegisterDeviceMonitor;
 virRegisterSecretDriver;
+
+
+# json.h
+virJSONValueFree;
+virJSONValueNewString;
+virJSONValueNewStringLen;
+virJSONValueNewNumberInt;
+virJSONValueNewNumberUint;
+virJSONValueNewNumberLong;
+virJSONValueNewNumberUlong;
+virJSONValueNewNumberDouble;
+virJSONValueNewBoolean;
+virJSONValueNewNull;
+virJSONValueNewArray;
+virJSONValueNewObject;
+virJSONValueObjectAppend;
+virJSONValueObjectAppendString;
+virJSONValueObjectAppendNumberInt;
+virJSONValueObjectAppendNumberUint;
+virJSONValueObjectAppendNumberLong;
+virJSONValueObjectAppendNumberUlong;
+virJSONValueObjectAppendNumberDouble;
+virJSONValueObjectAppendBoolean;
+virJSONValueObjectAppendNull;
+virJSONValueArrayAppend;
+virJSONValueObjectHasKey;
+virJSONValueObjectGet;
+virJSONValueArraySize;
+virJSONValueArrayGet;
+virJSONValueGetString;
+virJSONValueGetNumberInt;
+virJSONValueGetNumberUint;
+virJSONValueGetNumberLong;
+virJSONValueGetNumberUlong;
+virJSONValueGetNumberDouble;
+virJSONValueGetBoolean;
+virJSONValueIsNull;
+virJSONValueObjectGetString;
+virJSONValueObjectGetNumberInt;
+virJSONValueObjectGetNumberUint;
+virJSONValueObjectGetNumberLong;
+virJSONValueObjectGetNumberUlong;
+virJSONValueObjectGetNumberDouble;
+virJSONValueObjectGetBoolean;
+virJSONValueObjectIsNull;
+virJSONValueFromString;
+virJSONValueToString;
 
 
 # logging.h
@@ -275,6 +359,18 @@ virAlloc;
 virAllocN;
 virReallocN;
 virFree;
+
+
+# network.h
+virSocketAddrIsNetmask;
+virSocketCheckNetmask;
+virSocketFormatAddr;
+virSocketGetPort;
+virSocketGetRange;
+virSocketParseAddr;
+virSocketParseIpv4Addr;
+virSocketParseIpv6Addr;
+virSocketSetPort;
 
 
 # network_conf.h
@@ -310,6 +406,7 @@ virNodeDeviceHasCap;
 virNodeDeviceObjRemove;
 virNodeDevCapTypeToString;
 virNodeDeviceFindByName;
+virNodeDeviceFindBySysfsPath;
 virNodeDeviceObjListFree;
 virNodeDeviceDefFree;
 virNodeDevCapsDefFree;
@@ -318,6 +415,8 @@ virNodeDeviceDefParseString;
 virNodeDeviceObjLock;
 virNodeDeviceObjUnlock;
 virNodeDeviceAssignDef;
+virNodeDeviceGetWWNs;
+virNodeDeviceGetParentHost;
 
 
 # pci.h
@@ -333,6 +432,14 @@ pciDeviceListFree;
 pciDeviceListAdd;
 pciDeviceListDel;
 pciDeviceFileIterate;
+pciDeviceListCount;
+pciDeviceListGet;
+pciDeviceListSteal;
+
+
+# processinfo.h
+virProcessInfoSetAffinity;
+virProcessInfoGetAffinity;
 
 
 # qparams.h
@@ -346,8 +453,6 @@ virSecretDefParseString;
 virSecretDefParseFile;
 virSecretDefFormat;
 
-# secret_driver.h
-secretRegister;
 
 # security.h
 virSecurityDriverVerify;
@@ -374,6 +479,8 @@ virStoragePoolObjListFree;
 virStoragePoolObjRemove;
 virStoragePoolObjSaveDef;
 virStoragePoolSourceFree;
+virStoragePoolDefParseSourceString;
+virStoragePoolSourceListNewSource;
 virStoragePoolSourceListFormat;
 virStorageVolDefFindByKey;
 virStorageVolDefFindByName;
@@ -393,7 +500,6 @@ virStoragePoolObjUnlock;
 
 # storage_encryption_conf.h
 virStorageEncryptionFree;
-virStorageEncryptionDropSecrets;
 virStorageEncryptionParseNode;
 virStorageEncryptionFormat;
 virStorageGenerateQcowPassphrase;
@@ -413,6 +519,7 @@ virMutexUnlock;
 virCondInit;
 virCondDestroy;
 virCondWait;
+virCondWaitUntil;
 virCondSignal;
 virCondBroadcast;
 
@@ -489,9 +596,16 @@ virStrerror;
 
 
 # xml.h
+virXPathBoolean;
 virXPathLong;
 virXPathNode;
 virXPathNodeSet;
 virXPathString;
 virXMLPropString;
 virXPathStringLimit;
+virXPathBoolean;
+virXPathNumber;
+virXPathULong;
+virXPathULongLong;
+virXPathLongHex;
+virXPathULongHex;

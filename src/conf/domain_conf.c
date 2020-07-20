@@ -40,6 +40,7 @@
 #include "buf.h"
 #include "c-ctype.h"
 #include "logging.h"
+#include "network.h"
 
 #define VIR_FROM_THIS VIR_FROM_DOMAIN
 
@@ -84,11 +85,13 @@ VIR_ENUM_IMPL(virDomainDevice, VIR_DOMAIN_DEVICE_LAST,
               "input",
               "sound",
               "video",
-              "hostdev")
+              "hostdev",
+              "watchdog")
 
 VIR_ENUM_IMPL(virDomainDisk, VIR_DOMAIN_DISK_TYPE_LAST,
               "block",
-              "file")
+              "file",
+              "dir")
 
 VIR_ENUM_IMPL(virDomainDiskDevice, VIR_DOMAIN_DISK_DEVICE_LAST,
               "disk",
@@ -102,7 +105,8 @@ VIR_ENUM_IMPL(virDomainDiskBus, VIR_DOMAIN_DISK_BUS_LAST,
               "virtio",
               "xen",
               "usb",
-              "uml")
+              "uml",
+              "sata")
 
 VIR_ENUM_IMPL(virDomainDiskCache, VIR_DOMAIN_DISK_CACHE_LAST,
               "default",
@@ -126,6 +130,14 @@ VIR_ENUM_IMPL(virDomainNet, VIR_DOMAIN_NET_TYPE_LAST,
               "bridge",
               "internal")
 
+VIR_ENUM_IMPL(virDomainChrTarget, VIR_DOMAIN_CHR_TARGET_TYPE_LAST,
+              "null",
+              "monitor",
+              "parallel",
+              "serial",
+              "console",
+              "guestfwd")
+
 VIR_ENUM_IMPL(virDomainChr, VIR_DOMAIN_CHR_TYPE_LAST,
               "null",
               "vc",
@@ -143,6 +155,17 @@ VIR_ENUM_IMPL(virDomainSoundModel, VIR_DOMAIN_SOUND_MODEL_LAST,
               "es1370",
               "pcspk",
               "ac97")
+
+VIR_ENUM_IMPL(virDomainWatchdogModel, VIR_DOMAIN_WATCHDOG_MODEL_LAST,
+              "i6300esb",
+              "ib700")
+
+VIR_ENUM_IMPL(virDomainWatchdogAction, VIR_DOMAIN_WATCHDOG_ACTION_LAST,
+              "reset",
+              "shutdown",
+              "poweroff",
+              "pause",
+              "none")
 
 VIR_ENUM_IMPL(virDomainVideo, VIR_DOMAIN_VIDEO_TYPE_LAST,
               "vga",
@@ -193,51 +216,95 @@ VIR_ENUM_IMPL(virDomainSeclabel, VIR_DOMAIN_SECLABEL_LAST,
 
 #ifndef PROXY
 
+int virDomainObjListInit(virDomainObjListPtr doms)
+{
+    doms->objs = virHashCreate(50);
+    if (!doms->objs) {
+        virReportOOMError(NULL);
+        return -1;
+    }
+    return 0;
+}
+
+
+static void virDomainObjListDeallocator(void *payload, const char *name ATTRIBUTE_UNUSED)
+{
+    virDomainObjPtr obj = payload;
+    virDomainObjLock(obj);
+    if (virDomainObjUnref(obj) > 0)
+        virDomainObjUnlock(obj);
+}
+
+void virDomainObjListDeinit(virDomainObjListPtr doms)
+{
+    if (doms->objs)
+        virHashFree(doms->objs, virDomainObjListDeallocator);
+}
+
+
+static int virDomainObjListSearchID(const void *payload,
+                                    const char *name ATTRIBUTE_UNUSED,
+                                    const void *data)
+{
+    virDomainObjPtr obj = (virDomainObjPtr)payload;
+    const int *id = data;
+    int want = 0;
+
+    virDomainObjLock(obj);
+    if (virDomainObjIsActive(obj) &&
+        obj->def->id == *id)
+        want = 1;
+    virDomainObjUnlock(obj);
+    return want;
+}
+
 virDomainObjPtr virDomainFindByID(const virDomainObjListPtr doms,
                                   int id)
 {
-    unsigned int i;
-
-    for (i = 0 ; i < doms->count ; i++) {
-        virDomainObjLock(doms->objs[i]);
-        if (virDomainIsActive(doms->objs[i]) &&
-            doms->objs[i]->def->id == id)
-            return doms->objs[i];
-        virDomainObjUnlock(doms->objs[i]);
-    }
-
-    return NULL;
+    virDomainObjPtr obj;
+    obj = virHashSearch(doms->objs, virDomainObjListSearchID, &id);
+    if (obj)
+        virDomainObjLock(obj);
+    return obj;
 }
 
 
 virDomainObjPtr virDomainFindByUUID(const virDomainObjListPtr doms,
                                     const unsigned char *uuid)
 {
-    unsigned int i;
+    char uuidstr[VIR_UUID_STRING_BUFLEN];
+    virDomainObjPtr obj;
 
-    for (i = 0 ; i < doms->count ; i++) {
-        virDomainObjLock(doms->objs[i]);
-        if (!memcmp(doms->objs[i]->def->uuid, uuid, VIR_UUID_BUFLEN))
-            return doms->objs[i];
-        virDomainObjUnlock(doms->objs[i]);
-    }
+    virUUIDFormat(uuid, uuidstr);
 
-    return NULL;
+    obj = virHashLookup(doms->objs, uuidstr);
+    if (obj)
+        virDomainObjLock(obj);
+    return obj;
+}
+
+static int virDomainObjListSearchName(const void *payload,
+                                      const char *name ATTRIBUTE_UNUSED,
+                                      const void *data)
+{
+    virDomainObjPtr obj = (virDomainObjPtr)payload;
+    int want = 0;
+
+    virDomainObjLock(obj);
+    if (STREQ(obj->def->name, (const char *)data))
+        want = 1;
+    virDomainObjUnlock(obj);
+    return want;
 }
 
 virDomainObjPtr virDomainFindByName(const virDomainObjListPtr doms,
                                     const char *name)
 {
-    unsigned int i;
-
-    for (i = 0 ; i < doms->count ; i++) {
-        virDomainObjLock(doms->objs[i]);
-        if (STREQ(doms->objs[i]->def->name, name))
-            return doms->objs[i];
-        virDomainObjUnlock(doms->objs[i]);
-    }
-
-    return NULL;
+    virDomainObjPtr obj;
+    obj = virHashSearch(doms->objs, virDomainObjListSearchName, name);
+    if (obj)
+        virDomainObjLock(obj);
+    return obj;
 }
 
 #endif /* !PROXY */
@@ -351,6 +418,12 @@ void virDomainChrDefFree(virDomainChrDefPtr def)
     if (!def)
         return;
 
+    switch (def->targetType) {
+    case VIR_DOMAIN_CHR_TARGET_TYPE_GUESTFWD:
+        VIR_FREE(def->target.addr);
+        break;
+    }
+
     switch (def->type) {
     case VIR_DOMAIN_CHR_TYPE_PTY:
     case VIR_DOMAIN_CHR_TYPE_DEV:
@@ -380,6 +453,14 @@ void virDomainChrDefFree(virDomainChrDefPtr def)
 }
 
 void virDomainSoundDefFree(virDomainSoundDefPtr def)
+{
+    if (!def)
+        return;
+
+    VIR_FREE(def);
+}
+
+void virDomainWatchdogDefFree(virDomainWatchdogDefPtr def)
 {
     if (!def)
         return;
@@ -429,6 +510,9 @@ void virDomainDeviceDefFree(virDomainDeviceDefPtr def)
     case VIR_DOMAIN_DEVICE_HOSTDEV:
         virDomainHostdevDefFree(def->data.hostdev);
         break;
+    case VIR_DOMAIN_DEVICE_WATCHDOG:
+        virDomainWatchdogDefFree(def->data.watchdog);
+        break;
     }
 
     VIR_FREE(def);
@@ -469,6 +553,7 @@ void virDomainDefFree(virDomainDefPtr def)
     for (i = 0 ; i < def->nnets ; i++)
         virDomainNetDefFree(def->nets[i]);
     VIR_FREE(def->nets);
+
     for (i = 0 ; i < def->nserials ; i++)
         virDomainChrDefFree(def->serials[i]);
     VIR_FREE(def->serials);
@@ -476,6 +561,10 @@ void virDomainDefFree(virDomainDefPtr def)
     for (i = 0 ; i < def->nparallels ; i++)
         virDomainChrDefFree(def->parallels[i]);
     VIR_FREE(def->parallels);
+
+    for (i = 0 ; i < def->nchannels ; i++)
+        virDomainChrDefFree(def->channels[i]);
+    VIR_FREE(def->channels);
 
     virDomainChrDefFree(def->console);
 
@@ -508,46 +597,55 @@ void virDomainDefFree(virDomainDefPtr def)
     VIR_FREE(def->emulator);
     VIR_FREE(def->description);
 
+    virDomainWatchdogDefFree(def->watchdog);
+
     virSecurityLabelDefFree(def);
+
+    virCPUDefFree(def->cpu);
 
     VIR_FREE(def);
 }
 
 #ifndef PROXY
 
-void virDomainObjFree(virDomainObjPtr dom)
+static void virDomainObjFree(virDomainObjPtr dom)
 {
     if (!dom)
         return;
 
+    VIR_DEBUG("obj=%p", dom);
     virDomainDefFree(dom->def);
     virDomainDefFree(dom->newDef);
 
-    virDomainChrDefFree(dom->monitor_chr);
-
-    VIR_FREE(dom->vcpupids);
+    if (dom->privateDataFreeFunc)
+        (dom->privateDataFreeFunc)(dom->privateData);
 
     virMutexDestroy(&dom->lock);
 
     VIR_FREE(dom);
 }
 
-void virDomainObjListFree(virDomainObjListPtr vms)
+void virDomainObjRef(virDomainObjPtr dom)
 {
-    unsigned int i;
-
-    if (!vms)
-        return;
-
-    for (i = 0 ; i < vms->count ; i++)
-        virDomainObjFree(vms->objs[i]);
-
-    VIR_FREE(vms->objs);
-    vms->count = 0;
+    dom->refs++;
+    VIR_DEBUG("obj=%p refs=%d", dom, dom->refs);
 }
 
 
-static virDomainObjPtr virDomainObjNew(virConnectPtr conn)
+int virDomainObjUnref(virDomainObjPtr dom)
+{
+    dom->refs--;
+    VIR_DEBUG("obj=%p refs=%d", dom, dom->refs);
+    if (dom->refs == 0) {
+        virDomainObjUnlock(dom);
+        virDomainObjFree(dom);
+        return 0;
+    }
+    return dom->refs;
+}
+
+static virDomainObjPtr virDomainObjNew(virConnectPtr conn,
+                                       virCapsPtr caps)
 {
     virDomainObjPtr domain;
 
@@ -556,29 +654,41 @@ static virDomainObjPtr virDomainObjNew(virConnectPtr conn)
         return NULL;
     }
 
+    if (caps->privateDataAllocFunc &&
+        !(domain->privateData = (caps->privateDataAllocFunc)())) {
+        virReportOOMError(conn);
+        VIR_FREE(domain);
+        return NULL;
+    }
+    domain->privateDataFreeFunc = caps->privateDataFreeFunc;
+
     if (virMutexInit(&domain->lock) < 0) {
         virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
                              "%s", _("cannot initialize mutex"));
+        if (domain->privateDataFreeFunc)
+            (domain->privateDataFreeFunc)(domain->privateData);
         VIR_FREE(domain);
         return NULL;
     }
 
     virDomainObjLock(domain);
     domain->state = VIR_DOMAIN_SHUTOFF;
-    domain->monitorWatch = -1;
-    domain->monitor = -1;
+    domain->refs = 1;
 
+    VIR_DEBUG("obj=%p", domain);
     return domain;
 }
 
 virDomainObjPtr virDomainAssignDef(virConnectPtr conn,
+                                   virCapsPtr caps,
                                    virDomainObjListPtr doms,
                                    const virDomainDefPtr def)
 {
     virDomainObjPtr domain;
+    char uuidstr[VIR_UUID_STRING_BUFLEN];
 
     if ((domain = virDomainFindByUUID(doms, def->uuid))) {
-        if (!virDomainIsActive(domain)) {
+        if (!virDomainObjIsActive(domain)) {
             virDomainDefFree(domain->def);
             domain->def = def;
         } else {
@@ -590,49 +700,34 @@ virDomainObjPtr virDomainAssignDef(virConnectPtr conn,
         return domain;
     }
 
-    if (VIR_REALLOC_N(doms->objs, doms->count + 1) < 0) {
+    if (!(domain = virDomainObjNew(conn, caps)))
+        return NULL;
+    domain->def = def;
+
+    virUUIDFormat(def->uuid, uuidstr);
+    if (virHashAddEntry(doms->objs, uuidstr, domain) < 0) {
+        VIR_FREE(domain);
         virReportOOMError(conn);
         return NULL;
     }
 
-    if (!(domain = virDomainObjNew(conn)))
-        return NULL;
-
-    domain->def = def;
-
-    doms->objs[doms->count] = domain;
-    doms->count++;
-
     return domain;
 }
 
+/*
+ * The caller must hold a lock  on the driver owning 'doms',
+ * and must also have locked 'dom', to ensure no one else
+ * is either waiting for 'dom' or still usingn it
+ */
 void virDomainRemoveInactive(virDomainObjListPtr doms,
                              virDomainObjPtr dom)
 {
-    unsigned int i;
+    char uuidstr[VIR_UUID_STRING_BUFLEN];
+    virUUIDFormat(dom->def->uuid, uuidstr);
 
     virDomainObjUnlock(dom);
 
-    for (i = 0 ; i < doms->count ; i++) {
-        virDomainObjLock(doms->objs[i]);
-        if (doms->objs[i] == dom) {
-            virDomainObjUnlock(doms->objs[i]);
-            virDomainObjFree(doms->objs[i]);
-
-            if (i < (doms->count - 1))
-                memmove(doms->objs + i, doms->objs + i + 1,
-                        sizeof(*(doms->objs)) * (doms->count - (i + 1)));
-
-            if (VIR_REALLOC_N(doms->objs, doms->count - 1) < 0) {
-                ; /* Failure to reduce memory allocation isn't fatal */
-            }
-            doms->count--;
-
-            break;
-        }
-        virDomainObjUnlock(doms->objs[i]);
-    }
-
+    virHashRemoveEntry(doms->objs, uuidstr, virDomainObjListDeallocator);
 }
 
 
@@ -679,10 +774,22 @@ virDomainDiskDefParseXML(virConnectPtr conn,
             if ((source == NULL) &&
                 (xmlStrEqual(cur->name, BAD_CAST "source"))) {
 
-                if (def->type == VIR_DOMAIN_DISK_TYPE_FILE)
+                switch (def->type) {
+                case VIR_DOMAIN_DISK_TYPE_FILE:
                     source = virXMLPropString(cur, "file");
-                else
+                    break;
+                case VIR_DOMAIN_DISK_TYPE_BLOCK:
                     source = virXMLPropString(cur, "dev");
+                    break;
+                case VIR_DOMAIN_DISK_TYPE_DIR:
+                    source = virXMLPropString(cur, "dir");
+                    break;
+                default:
+                    virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                         _("unexpected disk type %s"),
+                                         virDomainDiskTypeToString(def->type));
+                    goto error;
+                }
 
                 /* People sometimes pass a bogus '' source path
                    when they mean to omit the source element
@@ -1056,7 +1163,12 @@ virDomainNetDefParseXML(virConnectPtr conn,
     }
 
     if (macaddr) {
-        virParseMacAddr((const char *)macaddr, def->mac);
+        if (virParseMacAddr((const char *)macaddr, def->mac) < 0) {
+            virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                 _("unable to parse mac address '%s'"),
+                                 (const char *)macaddr);
+            goto error;
+        }
     } else {
         virCapabilitiesGenerateMac(caps, def->mac);
     }
@@ -1267,6 +1379,10 @@ virDomainChrDefParseXML(virConnectPtr conn,
     char *path = NULL;
     char *mode = NULL;
     char *protocol = NULL;
+    const char *nodeName;
+    const char *targetType = NULL;
+    const char *addrStr = NULL;
+    const char *portStr = NULL;
     virDomainChrDefPtr def;
 
     if (VIR_ALLOC(def) < 0) {
@@ -1279,6 +1395,18 @@ virDomainChrDefParseXML(virConnectPtr conn,
         def->type = VIR_DOMAIN_CHR_TYPE_PTY;
     else if ((def->type = virDomainChrTypeFromString(type)) < 0)
         def->type = VIR_DOMAIN_CHR_TYPE_NULL;
+
+    nodeName = (const char *) node->name;
+    if ((def->targetType = virDomainChrTargetTypeFromString(nodeName)) < 0) {
+        /* channel is handled below */
+        if (STRNEQ(nodeName, "channel")) {
+            virDomainReportError(conn, VIR_ERR_XML_ERROR,
+                              _("unknown target type for character device: %s"),
+                                 nodeName);
+            return NULL;
+        }
+        def->targetType = VIR_DOMAIN_CHR_TARGET_TYPE_NULL;
+    }
 
     cur = node->children;
     while (cur != NULL) {
@@ -1325,6 +1453,96 @@ virDomainChrDefParseXML(virConnectPtr conn,
             } else if (xmlStrEqual(cur->name, BAD_CAST "protocol")) {
                 if (protocol == NULL)
                     protocol = virXMLPropString(cur, "type");
+            } else if (xmlStrEqual(cur->name, BAD_CAST "target")) {
+                /* If target type isn't set yet, expect it to be set here */
+                if (def->targetType == VIR_DOMAIN_CHR_TARGET_TYPE_NULL) {
+                    targetType = virXMLPropString(cur, "type");
+                    if (targetType == NULL) {
+                        virDomainReportError(conn, VIR_ERR_XML_ERROR, "%s",
+                                             _("character device target does "
+                                               "not define a type"));
+                        goto error;
+                    }
+                    if ((def->targetType =
+                        virDomainChrTargetTypeFromString(targetType)) < 0)
+                    {
+                        virDomainReportError(conn, VIR_ERR_XML_ERROR,
+                                             _("unknown target type for "
+                                               "character device: %s"),
+                                             targetType);
+                        goto error;
+                    }
+                }
+
+                unsigned int port;
+                switch (def->targetType) {
+                case VIR_DOMAIN_CHR_TARGET_TYPE_PARALLEL:
+                case VIR_DOMAIN_CHR_TARGET_TYPE_SERIAL:
+                case VIR_DOMAIN_CHR_TARGET_TYPE_CONSOLE:
+                    portStr = virXMLPropString(cur, "port");
+                    if (portStr == NULL) {
+                        /* Not required. It will be assigned automatically
+                         * later */
+                        break;
+                    }
+
+                    if (virStrToLong_ui(portStr, NULL, 10, &port) < 0) {
+                        virDomainReportError(conn, VIR_ERR_XML_ERROR,
+                                             _("Invalid port number: %s"),
+                                             portStr);
+                        goto error;
+                    }
+                    break;
+
+                case VIR_DOMAIN_CHR_TARGET_TYPE_GUESTFWD:
+                    addrStr = virXMLPropString(cur, "address");
+                    portStr = virXMLPropString(cur, "port");
+
+                    if (addrStr == NULL) {
+                        virDomainReportError(conn, VIR_ERR_XML_ERROR, "%s",
+                                             _("guestfwd channel does not "
+                                               "define a target address"));
+                        goto error;
+                    }
+                    if (VIR_ALLOC(def->target.addr) < 0) {
+                        virReportOOMError(conn);
+                        goto error;
+                    }
+                    if (virSocketParseAddr(addrStr, def->target.addr, 0) < 0)
+                    {
+                        virDomainReportError(conn, VIR_ERR_XML_ERROR,
+                                             _("%s is not a valid address"),
+                                             addrStr);
+                        goto error;
+                    }
+
+                    if (def->target.addr->stor.ss_family != AF_INET) {
+                        virDomainReportError(conn, VIR_ERR_CONFIG_UNSUPPORTED,
+                                     "%s", _("guestfwd channel only supports "
+                                             "IPv4 addresses"));
+                        goto error;
+                    }
+
+                    if (portStr == NULL) {
+                        virDomainReportError(conn, VIR_ERR_XML_ERROR, "%s",
+                                             _("guestfwd channel does "
+                                               "not define a target port"));
+                        goto error;
+                    }
+                    if (virStrToLong_ui(portStr, NULL, 10, &port) < 0) {
+                        virDomainReportError(conn, VIR_ERR_XML_ERROR,
+                                             _("Invalid port number: %s"),
+                                             portStr);
+                        goto error;
+                    }
+                    virSocketSetPort(def->target.addr, port);
+                    break;
+
+                default:
+                    virDomainReportError(conn, VIR_ERR_XML_ERROR,
+                                         _("unexpected target type type %u"),
+                                         def->targetType);
+                }
             }
         }
         cur = cur->next;
@@ -1454,6 +1672,9 @@ cleanup:
     VIR_FREE(connectHost);
     VIR_FREE(connectService);
     VIR_FREE(path);
+    VIR_FREE(targetType);
+    VIR_FREE(addrStr);
+    VIR_FREE(portStr);
 
     return def;
 
@@ -1734,6 +1955,58 @@ cleanup:
 
 error:
     virDomainSoundDefFree(def);
+    def = NULL;
+    goto cleanup;
+}
+
+
+static virDomainWatchdogDefPtr
+virDomainWatchdogDefParseXML(virConnectPtr conn,
+                             const xmlNodePtr node,
+                             int flags ATTRIBUTE_UNUSED) {
+
+    char *model = NULL;
+    char *action = NULL;
+    virDomainWatchdogDefPtr def;
+
+    if (VIR_ALLOC (def) < 0) {
+        virReportOOMError (conn);
+        return NULL;
+    }
+
+    model = virXMLPropString (node, "model");
+    if (model == NULL) {
+        virDomainReportError (conn, VIR_ERR_INTERNAL_ERROR, "%s",
+                              _("watchdog must contain model name"));
+        goto error;
+    }
+    def->model = virDomainWatchdogModelTypeFromString (model);
+    if (def->model < 0) {
+        virDomainReportError (conn, VIR_ERR_INTERNAL_ERROR,
+                              _("unknown watchdog model '%s'"), model);
+        goto error;
+    }
+
+    action = virXMLPropString (node, "action");
+    if (action == NULL)
+        def->action = VIR_DOMAIN_WATCHDOG_ACTION_RESET;
+    else {
+        def->action = virDomainWatchdogActionTypeFromString (action);
+        if (def->action < 0) {
+            virDomainReportError (conn, VIR_ERR_INTERNAL_ERROR,
+                                  _("unknown watchdog action '%s'"), action);
+            goto error;
+        }
+    }
+
+cleanup:
+    VIR_FREE (action);
+    VIR_FREE (model);
+
+    return def;
+
+error:
+    virDomainWatchdogDefFree (def);
     def = NULL;
     goto cleanup;
 }
@@ -2365,6 +2638,11 @@ virDomainDeviceDefPtr virDomainDeviceDefParse(virConnectPtr conn,
         dev->type = VIR_DOMAIN_DEVICE_SOUND;
         if (!(dev->data.sound = virDomainSoundDefParseXML(conn, node, flags)))
             goto error;
+    } else if (xmlStrEqual(node->name, BAD_CAST "watchdog")) {
+        dev->type = VIR_DOMAIN_DEVICE_WATCHDOG;
+        if (!(dev->data.watchdog = virDomainWatchdogDefParseXML(conn, node,
+                                                                flags)))
+            goto error;
     } else if (xmlStrEqual(node->name, BAD_CAST "video")) {
         dev->type = VIR_DOMAIN_DEVICE_VIDEO;
         if (!(dev->data.video = virDomainVideoDefParseXML(conn, node, def, flags)))
@@ -2495,7 +2773,7 @@ static virDomainDefPtr virDomainDefParseXML(virConnectPtr conn,
     }
 
     if (!(flags & VIR_DOMAIN_XML_INACTIVE))
-        if((virXPathLong(conn, "string(./@id)", ctxt, &id)) < 0)
+        if ((virXPathLong(conn, "string(./@id)", ctxt, &id)) < 0)
             id = -1;
     def->id = (int)id;
 
@@ -2816,7 +3094,7 @@ static virDomainDefPtr virDomainDefParseXML(virConnectPtr conn,
         if (!chr)
             goto error;
 
-        chr->dstPort = i;
+        chr->target.port = i;
         def->parallels[def->nparallels++] = chr;
     }
     VIR_FREE(nodes);
@@ -2836,7 +3114,7 @@ static virDomainDefPtr virDomainDefParseXML(virConnectPtr conn,
         if (!chr)
             goto error;
 
-        chr->dstPort = i;
+        chr->target.port = i;
         def->serials[def->nserials++] = chr;
     }
     VIR_FREE(nodes);
@@ -2848,7 +3126,7 @@ static virDomainDefPtr virDomainDefParseXML(virConnectPtr conn,
         if (!chr)
             goto error;
 
-        chr->dstPort = 0;
+        chr->target.port = 0;
         /*
          * For HVM console actually created a serial device
          * while for non-HVM it was a parvirt console
@@ -2868,6 +3146,25 @@ static virDomainDefPtr virDomainDefParseXML(virConnectPtr conn,
             def->console = chr;
         }
     }
+
+    if ((n = virXPathNodeSet(conn, "./devices/channel", ctxt, &nodes)) < 0) {
+        virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                             "%s", _("cannot extract channel devices"));
+        goto error;
+    }
+    if (n && VIR_ALLOC_N(def->channels, n) < 0)
+        goto no_memory;
+
+    for (i = 0 ; i < n ; i++) {
+        virDomainChrDefPtr chr = virDomainChrDefParseXML(conn,
+                                                         nodes[i],
+                                                         flags);
+        if (!chr)
+            goto error;
+
+        def->channels[def->nchannels++] = chr;
+    }
+    VIR_FREE(nodes);
 
 
     /* analysis of the input devices */
@@ -3039,9 +3336,41 @@ static virDomainDefPtr virDomainDefParseXML(virConnectPtr conn,
     }
     VIR_FREE(nodes);
 
+    /* analysis of the watchdog devices */
+    def->watchdog = NULL;
+    if ((n = virXPathNodeSet(conn, "./devices/watchdog", ctxt, &nodes)) < 0) {
+        virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                             "%s", _("cannot extract watchdog devices"));
+        goto error;
+    }
+    if (n > 1) {
+        virDomainReportError (conn, VIR_ERR_INTERNAL_ERROR,
+                              "%s", _("only a single watchdog device is supported"));
+        goto error;
+    }
+    if (n > 0) {
+        virDomainWatchdogDefPtr watchdog =
+            virDomainWatchdogDefParseXML (conn, nodes[0], flags);
+        if (!watchdog)
+            goto error;
+
+        def->watchdog = watchdog;
+        VIR_FREE(nodes);
+    }
+
     /* analysis of security label */
     if (virSecurityLabelDefParseXML(conn, def, ctxt, flags) == -1)
         goto error;
+
+    if ((node = virXPathNode(conn, "./cpu[1]", ctxt)) != NULL) {
+        xmlNodePtr oldnode = ctxt->node;
+        ctxt->node = node;
+        def->cpu = virCPUDefParseXML(conn, node, ctxt, VIR_CPU_TYPE_GUEST);
+        ctxt->node = oldnode;
+
+        if (def->cpu == NULL)
+            goto error;
+    }
 
     return def;
 
@@ -3066,11 +3395,8 @@ static virDomainObjPtr virDomainObjParseXML(virConnectPtr conn,
     xmlNodePtr config;
     xmlNodePtr oldnode;
     virDomainObjPtr obj;
-    char *monitorpath;
-    xmlNodePtr *nodes = NULL;
-    int n, i;
 
-    if (!(obj = virDomainObjNew(conn)))
+    if (!(obj = virDomainObjNew(conn, caps)))
         return NULL;
 
     if (!(config = virXPathNode(conn, "./domain", ctxt))) {
@@ -3107,68 +3433,14 @@ static virDomainObjPtr virDomainObjParseXML(virConnectPtr conn,
     }
     obj->pid = (pid_t)val;
 
-    if (VIR_ALLOC(obj->monitor_chr) < 0) {
-        virReportOOMError(conn);
+    if (caps->privateDataXMLParse &&
+        ((caps->privateDataXMLParse)(ctxt, obj->privateData)) < 0)
         goto error;
-    }
-
-    if (!(monitorpath =
-          virXPathString(conn, "string(./monitor[1]/@path)", ctxt))) {
-        virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
-                             "%s", _("no monitor path"));
-        goto error;
-    }
-
-    tmp = virXPathString(conn, "string(./monitor[1]/@type)", ctxt);
-    if (tmp)
-        obj->monitor_chr->type = virDomainChrTypeFromString(tmp);
-    else
-        obj->monitor_chr->type = VIR_DOMAIN_CHR_TYPE_PTY;
-    VIR_FREE(tmp);
-
-    switch (obj->monitor_chr->type) {
-    case VIR_DOMAIN_CHR_TYPE_PTY:
-        obj->monitor_chr->data.file.path = monitorpath;
-        break;
-    case VIR_DOMAIN_CHR_TYPE_UNIX:
-        obj->monitor_chr->data.nix.path = monitorpath;
-        break;
-    default:
-        VIR_FREE(monitorpath);
-        virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
-                             _("unsupported monitor type '%s'"),
-                             virDomainChrTypeToString(obj->monitor_chr->type));
-        break;
-    }
-
-    n = virXPathNodeSet(conn, "./vcpus/vcpu", ctxt, &nodes);
-    if (n < 0)
-        goto error;
-    if (n) {
-        obj->nvcpupids = n;
-        if (VIR_REALLOC_N(obj->vcpupids, obj->nvcpupids) < 0)
-            goto error;
-
-        for (i = 0 ; i < n ; i++) {
-            char *pidstr = virXMLPropString(nodes[i], "pid");
-            if (!pidstr)
-                goto error;
-
-            if (virStrToLong_i(pidstr, NULL, 10, &(obj->vcpupids[i])) < 0) {
-                VIR_FREE(pidstr);
-                goto error;
-            }
-            VIR_FREE(pidstr);
-        }
-        VIR_FREE(nodes);
-    }
 
     return obj;
 
 error:
-    VIR_FREE(nodes);
-    virDomainChrDefFree(obj->monitor_chr);
-    virDomainObjFree(obj);
+    virDomainObjUnref(obj);
     return NULL;
 }
 
@@ -3463,6 +3735,7 @@ virDomainCpuSetFormat(virConnectPtr conn, char *cpuset, int maxcpu)
     }
 
     if (virBufferError(&buf)) {
+        virBufferFreeAndReset(&buf);
         virReportOOMError(conn);
         return NULL;
     }
@@ -3568,7 +3841,7 @@ virDomainCpuSetParse(virConnectPtr conn, const char **str, char sep,
     return (ret);
 
   parse_error:
-    virDomainReportError(conn, VIR_ERR_XEN_CALL,
+    virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
                          "%s", _("topology cpuset syntax error"));
     return (-1);
 }
@@ -3639,12 +3912,25 @@ virDomainDiskDefFormat(virConnectPtr conn,
     }
 
     if (def->src) {
-        if (def->type == VIR_DOMAIN_DISK_TYPE_FILE)
+        switch (def->type) {
+        case VIR_DOMAIN_DISK_TYPE_FILE:
             virBufferEscapeString(buf, "      <source file='%s'/>\n",
                                   def->src);
-        else
+            break;
+        case VIR_DOMAIN_DISK_TYPE_BLOCK:
             virBufferEscapeString(buf, "      <source dev='%s'/>\n",
                                   def->src);
+            break;
+        case VIR_DOMAIN_DISK_TYPE_DIR:
+            virBufferEscapeString(buf, "      <source dir='%s'/>\n",
+                                  def->src);
+            break;
+        default:
+            virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                 _("unexpected disk type %s"),
+                                 virDomainDiskTypeToString(def->type));
+            return -1;
+        }
     }
 
     virBufferVSprintf(buf, "      <target dev='%s' bus='%s'/>\n",
@@ -3828,21 +4114,36 @@ static int
 virDomainChrDefFormat(virConnectPtr conn,
                       virBufferPtr buf,
                       virDomainChrDefPtr def,
-                      const char *name,
                       int flags)
 {
     const char *type = virDomainChrTypeToString(def->type);
+    const char *targetName = virDomainChrTargetTypeToString(def->targetType);
+    const char *elementName;
+
+    const char *addr = NULL;
+    int ret = 0;
+
+    switch (def->targetType) {
+    /* channel types are in a common channel element */
+    case VIR_DOMAIN_CHR_TARGET_TYPE_GUESTFWD:
+        elementName = "channel";
+        break;
+
+    default:
+        elementName = targetName;
+    }
 
     if (!type) {
         virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
                              _("unexpected char type %d"), def->type);
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
     /* Compat with legacy  <console tty='/dev/pts/5'/> syntax */
     virBufferVSprintf(buf, "    <%s type='%s'",
-                      name, type);
-    if (STREQ(name, "console") &&
+                      elementName, type);
+    if (def->targetType == VIR_DOMAIN_CHR_TARGET_TYPE_CONSOLE &&
         def->type == VIR_DOMAIN_CHR_TYPE_PTY &&
         !(flags & VIR_DOMAIN_XML_INACTIVE) &&
         def->data.file.path) {
@@ -3917,13 +4218,47 @@ virDomainChrDefFormat(virConnectPtr conn,
         break;
     }
 
-    virBufferVSprintf(buf, "      <target port='%d'/>\n",
-                      def->dstPort);
+    switch (def->targetType) {
+    case VIR_DOMAIN_CHR_TARGET_TYPE_GUESTFWD:
+        addr = virSocketFormatAddr(def->target.addr);
+        if (addr == NULL) {
+            virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR, "%s",
+                                 _("Unable to format guestfwd address"));
+            ret = -1;
+            goto cleanup;
+        }
+        int port = virSocketGetPort(def->target.addr);
+        if (port < 0) {
+            virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR, "%s",
+                                 _("Unable to format guestfwd port"));
+            ret = -1;
+            goto cleanup;
+        }
+        virBufferVSprintf(buf, "      <target type='guestfwd' address='%s' port='%d'/>\n",
+                          addr, port);
+        break;
+
+    case VIR_DOMAIN_CHR_TARGET_TYPE_PARALLEL:
+    case VIR_DOMAIN_CHR_TARGET_TYPE_SERIAL:
+    case VIR_DOMAIN_CHR_TARGET_TYPE_CONSOLE:
+        virBufferVSprintf(buf, "      <target port='%d'/>\n",
+                          def->target.port);
+        break;
+
+    default:
+        virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                             _("unexpected character destination type %d"),
+                             def->targetType);
+        return -1;
+    }
 
     virBufferVSprintf(buf, "    </%s>\n",
-                      name);
+                      elementName);
 
-    return 0;
+cleanup:
+    VIR_FREE(addr);
+
+    return ret;
 }
 
 static int
@@ -3941,6 +4276,33 @@ virDomainSoundDefFormat(virConnectPtr conn,
 
     virBufferVSprintf(buf, "    <sound model='%s'/>\n",
                       model);
+
+    return 0;
+}
+
+
+static int
+virDomainWatchdogDefFormat(virConnectPtr conn,
+                           virBufferPtr buf,
+                           virDomainWatchdogDefPtr def)
+{
+    const char *model = virDomainWatchdogModelTypeToString (def->model);
+    const char *action = virDomainWatchdogActionTypeToString (def->action);
+
+    if (!model) {
+        virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                             _("unexpected watchdog model %d"), def->model);
+        return -1;
+    }
+
+    if (!action) {
+        virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                             _("unexpected watchdog action %d"), def->action);
+        return -1;
+    }
+
+    virBufferVSprintf(buf, "    <watchdog model='%s' action='%s'/>\n",
+                      model, action);
 
     return 0;
 }
@@ -4020,7 +4382,6 @@ virDomainInputDefFormat(virConnectPtr conn,
 static int
 virDomainGraphicsDefFormat(virConnectPtr conn,
                            virBufferPtr buf,
-                           virDomainDefPtr vm,
                            virDomainGraphicsDefPtr def,
                            int flags)
 {
@@ -4037,7 +4398,7 @@ virDomainGraphicsDefFormat(virConnectPtr conn,
     switch (def->type) {
     case VIR_DOMAIN_GRAPHICS_TYPE_VNC:
         if (def->data.vnc.port &&
-            (!def->data.vnc.autoport || vm->id != -1))
+            (!def->data.vnc.autoport || !(flags & VIR_DOMAIN_XML_INACTIVE)))
             virBufferVSprintf(buf, " port='%d'",
                               def->data.vnc.port);
         else if (def->data.vnc.autoport)
@@ -4183,7 +4544,7 @@ char *virDomainDefFormat(virConnectPtr conn,
     virBuffer buf = VIR_BUFFER_INITIALIZER;
     unsigned char *uuid;
     char uuidstr[VIR_UUID_STRING_BUFLEN];
-    const char *type = NULL, *tmp;
+    const char *type = NULL;
     int n, allones = 1;
 
     if (!(type = virDomainVirtTypeToString(def->virtType))) {
@@ -4192,7 +4553,10 @@ char *virDomainDefFormat(virConnectPtr conn,
         goto cleanup;
     }
 
-    if (def->id >= 0)
+    if (def->id == -1)
+        flags |= VIR_DOMAIN_XML_INACTIVE;
+
+    if (!(flags & VIR_DOMAIN_XML_INACTIVE))
         virBufferVSprintf(&buf, "<domain type='%s' id='%d'>\n", type, def->id);
     else
         virBufferVSprintf(&buf, "<domain type='%s'>\n", type);
@@ -4308,6 +4672,9 @@ char *virDomainDefFormat(virConnectPtr conn,
         virBufferAddLit(&buf, "  </features>\n");
     }
 
+    if (virCPUDefFormatBuf(conn, &buf, def->cpu, "  ", 0) < 0)
+        goto cleanup;
+
     virBufferVSprintf(&buf, "  <clock offset='%s'/>\n",
                       def->localtime ? "localtime" : "utc");
 
@@ -4341,23 +4708,30 @@ char *virDomainDefFormat(virConnectPtr conn,
             goto cleanup;
 
     for (n = 0 ; n < def->nserials ; n++)
-        if (virDomainChrDefFormat(conn, &buf, def->serials[n], "serial", flags) < 0)
+        if (virDomainChrDefFormat(conn, &buf, def->serials[n], flags) < 0)
             goto cleanup;
 
     for (n = 0 ; n < def->nparallels ; n++)
-        if (virDomainChrDefFormat(conn, &buf, def->parallels[n], "parallel", flags) < 0)
+        if (virDomainChrDefFormat(conn, &buf, def->parallels[n], flags) < 0)
             goto cleanup;
 
     /* If there's a PV console that's preferred.. */
     if (def->console) {
-        if (virDomainChrDefFormat(conn, &buf, def->console, "console", flags) < 0)
+        if (virDomainChrDefFormat(conn, &buf, def->console, flags) < 0)
             goto cleanup;
     } else if (def->nserials != 0) {
         /* ..else for legacy compat duplicate the first serial device as a
          * console */
-        if (virDomainChrDefFormat(conn, &buf, def->serials[0], "console", flags) < 0)
+        virDomainChrDef console;
+        memcpy(&console, def->serials[0], sizeof(console));
+        console.targetType = VIR_DOMAIN_CHR_TARGET_TYPE_CONSOLE;
+        if (virDomainChrDefFormat(conn, &buf, &console, flags) < 0)
             goto cleanup;
     }
+
+    for (n = 0 ; n < def->nchannels ; n++)
+        if (virDomainChrDefFormat(conn, &buf, def->channels[n], flags) < 0)
+            goto cleanup;
 
     for (n = 0 ; n < def->ninputs ; n++)
         if (def->inputs[n]->bus == VIR_DOMAIN_INPUT_BUS_USB &&
@@ -4376,7 +4750,7 @@ char *virDomainDefFormat(virConnectPtr conn,
             goto cleanup;
 
         for (n = 0 ; n < def->ngraphics ; n++)
-            if (virDomainGraphicsDefFormat(conn, &buf, def, def->graphics[n], flags) < 0)
+            if (virDomainGraphicsDefFormat(conn, &buf, def->graphics[n], flags) < 0)
                 goto cleanup;
     }
 
@@ -4391,6 +4765,9 @@ char *virDomainDefFormat(virConnectPtr conn,
     for (n = 0 ; n < def->nhostdevs ; n++)
         if (virDomainHostdevDefFormat(conn, &buf, def->hostdevs[n], flags) < 0)
             goto cleanup;
+
+    if (def->watchdog)
+        virDomainWatchdogDefFormat (conn, &buf, def->watchdog);
 
     virBufferAddLit(&buf, "  </devices>\n");
 
@@ -4426,49 +4803,25 @@ char *virDomainDefFormat(virConnectPtr conn,
  no_memory:
     virReportOOMError(conn);
  cleanup:
-    tmp = virBufferContentAndReset(&buf);
-    VIR_FREE(tmp);
+    virBufferFreeAndReset(&buf);
     return NULL;
 }
 
 char *virDomainObjFormat(virConnectPtr conn,
+                         virCapsPtr caps,
                          virDomainObjPtr obj,
                          int flags)
 {
-    char *config_xml = NULL, *xml = NULL;
+    char *config_xml = NULL;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
-    const char *monitorpath;
 
     virBufferVSprintf(&buf, "<domstatus state='%s' pid='%d'>\n",
                       virDomainStateTypeToString(obj->state),
                       obj->pid);
 
-    /* obj->monitor_chr is set only for qemu */
-    if (obj->monitor_chr) {
-        switch (obj->monitor_chr->type) {
-        case VIR_DOMAIN_CHR_TYPE_UNIX:
-            monitorpath = obj->monitor_chr->data.nix.path;
-            break;
-        default:
-        case VIR_DOMAIN_CHR_TYPE_PTY:
-            monitorpath = obj->monitor_chr->data.file.path;
-            break;
-        }
-
-        virBufferEscapeString(&buf, "  <monitor path='%s'", monitorpath);
-        virBufferVSprintf(&buf, " type='%s'/>\n",
-                          virDomainChrTypeToString(obj->monitor_chr->type));
-    }
-
-
-    if (obj->nvcpupids) {
-        int i;
-        virBufferAddLit(&buf, "  <vcpus>\n");
-        for (i = 0 ; i < obj->nvcpupids ; i++) {
-            virBufferVSprintf(&buf, "    <vcpu pid='%d'/>\n", obj->vcpupids[i]);
-        }
-        virBufferAddLit(&buf, "  </vcpus>\n");
-    }
+    if (caps->privateDataXMLFormat &&
+        ((caps->privateDataXMLFormat)(&buf, obj->privateData)) < 0)
+        goto error;
 
     if (!(config_xml = virDomainDefFormat(conn,
                                           obj->def,
@@ -4487,8 +4840,7 @@ char *virDomainObjFormat(virConnectPtr conn,
 no_memory:
     virReportOOMError(conn);
 error:
-    xml = virBufferContentAndReset(&buf);
-    VIR_FREE(xml);
+    virBufferFreeAndReset(&buf);
     return NULL;
 }
 
@@ -4568,6 +4920,7 @@ cleanup:
 }
 
 int virDomainSaveStatus(virConnectPtr conn,
+                        virCapsPtr caps,
                         const char *statusDir,
                         virDomainObjPtr obj)
 {
@@ -4575,7 +4928,7 @@ int virDomainSaveStatus(virConnectPtr conn,
     int ret = -1;
     char *xml;
 
-    if (!(xml = virDomainObjFormat(conn, obj, flags)))
+    if (!(xml = virDomainObjFormat(conn, caps, obj, flags)))
         goto cleanup;
 
     if (virDomainSaveXML(conn, statusDir, obj->def, xml))
@@ -4621,7 +4974,7 @@ virDomainObjPtr virDomainLoadConfig(virConnectPtr conn,
         newVM = 0;
     }
 
-    if (!(dom = virDomainAssignDef(conn, doms, def)))
+    if (!(dom = virDomainAssignDef(conn, caps, doms, def)))
         goto error;
 
     dom->autostart = autostart;
@@ -4650,7 +5003,7 @@ static virDomainObjPtr virDomainLoadStatus(virConnectPtr conn,
 {
     char *statusFile = NULL;
     virDomainObjPtr obj = NULL;
-    virDomainObjPtr tmp = NULL;
+    char uuidstr[VIR_UUID_STRING_BUFLEN];
 
     if ((statusFile = virDomainConfigFile(conn, statusDir, name)) == NULL)
         goto error;
@@ -4658,22 +5011,19 @@ static virDomainObjPtr virDomainLoadStatus(virConnectPtr conn,
     if (!(obj = virDomainObjParseFile(conn, caps, statusFile)))
         goto error;
 
-    tmp = virDomainFindByName(doms, obj->def->name);
-    if (tmp) {
-        virDomainObjUnlock(obj);
+    virUUIDFormat(obj->def->uuid, uuidstr);
+
+    if (virHashLookup(doms->objs, uuidstr) != NULL) {
         virDomainReportError(conn, VIR_ERR_INTERNAL_ERROR,
                              _("unexpected domain %s already exists"),
                              obj->def->name);
         goto error;
     }
 
-    if (VIR_REALLOC_N(doms->objs, doms->count + 1) < 0) {
+    if (virHashAddEntry(doms->objs, uuidstr, obj) < 0) {
         virReportOOMError(conn);
         goto error;
     }
-
-    doms->objs[doms->count] = obj;
-    doms->count++;
 
     if (notify)
         (*notify)(obj, 1, opaque);
@@ -4682,7 +5032,8 @@ static virDomainObjPtr virDomainLoadStatus(virConnectPtr conn,
     return obj;
 
 error:
-    virDomainObjFree(obj);
+    if (obj)
+        virDomainObjUnref(obj);
     VIR_FREE(statusFile);
     return NULL;
 }
@@ -4850,6 +5201,69 @@ virDomainFSDefPtr virDomainGetRootFilesystem(virDomainDefPtr def)
     return NULL;
 }
 
+/*
+ * virDomainObjIsDuplicate:
+ * @doms : virDomainObjListPtr to search
+ * @def  : virDomainDefPtr definition of domain to lookup
+ * @check_active: If true, ensure that domain is not active
+ *
+ * Returns: -1 on error
+ *          0 if domain is new
+ *          1 if domain is a duplicate
+ */
+int
+virDomainObjIsDuplicate(virDomainObjListPtr doms,
+                        virDomainDefPtr def,
+                        unsigned int check_active)
+{
+    int ret = -1;
+    int dupVM = 0;
+    virDomainObjPtr vm = NULL;
+
+    /* See if a VM with matching UUID already exists */
+    vm = virDomainFindByUUID(doms, def->uuid);
+    if (vm) {
+        /* UUID matches, but if names don't match, refuse it */
+        if (STRNEQ(vm->def->name, def->name)) {
+            char uuidstr[VIR_UUID_STRING_BUFLEN];
+            virUUIDFormat(vm->def->uuid, uuidstr);
+            virDomainReportError(NULL, VIR_ERR_OPERATION_FAILED,
+                            _("domain '%s' is already defined with uuid %s"),
+                            vm->def->name, uuidstr);
+            goto cleanup;
+        }
+
+        if (check_active) {
+            /* UUID & name match, but if VM is already active, refuse it */
+            if (virDomainObjIsActive(vm)) {
+                virDomainReportError(NULL, VIR_ERR_OPERATION_INVALID,
+                                     _("domain is already active as '%s'"),
+                                     vm->def->name);
+                goto cleanup;
+            }
+        }
+
+        dupVM = 1;
+    } else {
+        /* UUID does not match, but if a name matches, refuse it */
+        vm = virDomainFindByName(doms, def->name);
+        if (vm) {
+            char uuidstr[VIR_UUID_STRING_BUFLEN];
+            virUUIDFormat(vm->def->uuid, uuidstr);
+            virDomainReportError(NULL, VIR_ERR_OPERATION_FAILED,
+                                 _("domain '%s' already exists with uuid %s"),
+                                 def->name, uuidstr);
+            goto cleanup;
+        }
+    }
+
+    ret = dupVM;
+cleanup:
+    if (vm)
+        virDomainObjUnlock(vm);
+    return ret;
+}
+
 
 void virDomainObjLock(virDomainObjPtr obj)
 {
@@ -4859,6 +5273,108 @@ void virDomainObjLock(virDomainObjPtr obj)
 void virDomainObjUnlock(virDomainObjPtr obj)
 {
     virMutexUnlock(&obj->lock);
+}
+
+
+static void virDomainObjListCountActive(void *payload, const char *name ATTRIBUTE_UNUSED, void *data)
+{
+    virDomainObjPtr obj = payload;
+    int *count = data;
+    virDomainObjLock(obj);
+    if (virDomainObjIsActive(obj))
+        (*count)++;
+    virDomainObjUnlock(obj);
+}
+
+static void virDomainObjListCountInactive(void *payload, const char *name ATTRIBUTE_UNUSED, void *data)
+{
+    virDomainObjPtr obj = payload;
+    int *count = data;
+    virDomainObjLock(obj);
+    if (!virDomainObjIsActive(obj))
+        (*count)++;
+    virDomainObjUnlock(obj);
+}
+
+int virDomainObjListNumOfDomains(virDomainObjListPtr doms, int active)
+{
+    int count = 0;
+    if (active)
+        virHashForEach(doms->objs, virDomainObjListCountActive, &count);
+    else
+        virHashForEach(doms->objs, virDomainObjListCountInactive, &count);
+    return count;
+}
+
+struct virDomainIDData {
+    int numids;
+    int maxids;
+    int *ids;
+};
+
+static void virDomainObjListCopyActiveIDs(void *payload, const char *name ATTRIBUTE_UNUSED, void *opaque)
+{
+    virDomainObjPtr obj = payload;
+    struct virDomainIDData *data = opaque;
+    virDomainObjLock(obj);
+    if (virDomainObjIsActive(obj) && data->numids < data->maxids)
+        data->ids[data->numids++] = obj->def->id;
+    virDomainObjUnlock(obj);
+}
+
+int virDomainObjListGetActiveIDs(virDomainObjListPtr doms,
+                                 int *ids,
+                                 int maxids)
+{
+    struct virDomainIDData data = { 0, maxids, ids };
+    virHashForEach(doms->objs, virDomainObjListCopyActiveIDs, &data);
+    return data.numids;
+}
+
+struct virDomainNameData {
+    int oom;
+    int numnames;
+    int maxnames;
+    char **const names;
+};
+
+static void virDomainObjListCopyInactiveNames(void *payload, const char *name ATTRIBUTE_UNUSED, void *opaque)
+{
+    virDomainObjPtr obj = payload;
+    struct virDomainNameData *data = opaque;
+
+    if (data->oom)
+        return;
+
+    virDomainObjLock(obj);
+    if (!virDomainObjIsActive(obj) && data->numnames < data->maxnames) {
+        if (!(data->names[data->numnames] = strdup(obj->def->name)))
+            data->oom = 1;
+        else
+            data->numnames++;
+    }
+    virDomainObjUnlock(obj);
+}
+
+
+int virDomainObjListGetInactiveNames(virDomainObjListPtr doms,
+                                     char **const names,
+                                     int maxnames)
+{
+    struct virDomainNameData data = { 0, 0, maxnames, names };
+    int i;
+    virHashForEach(doms->objs, virDomainObjListCopyInactiveNames, &data);
+    if (data.oom) {
+        virReportOOMError(NULL);
+        goto cleanup;
+    }
+
+    return data.numnames;
+
+cleanup:
+    for (i = 0 ; i < data.numnames ; i++)
+        VIR_FREE(data.names[i]);
+    return -1;
 }
 
 #endif /* ! PROXY */

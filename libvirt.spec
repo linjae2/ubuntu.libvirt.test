@@ -53,12 +53,14 @@
 %define with_storage_mpath 0%{!?_without_storage_mpath:%{server_drivers}}
 %define with_numactl       0%{!?_without_numactl:%{server_drivers}}
 %define with_selinux       0%{!?_without_selinux:%{server_drivers}}
-%define with_hal           0%{!?_without_hal:%{server_drivers}}
 
 # A few optional bits off by default, we enable later
 %define with_polkit        0%{!?_without_polkit:0}
 %define with_capng         0%{!?_without_capng:0}
 %define with_netcf         0%{!?_without_netcf:0}
+%define with_udev          0%{!?_without_udev:0}
+%define with_hal           0%{!?_without_hal:0}
+%define with_yajl          0%{!?_without_yajl:0}
 
 # Non-server/HV driver defaults which are always enabled
 %define with_python        0%{!?_without_python:1}
@@ -72,6 +74,10 @@
 %define with_xen 0
 %endif
 
+# Numactl is not available on s390[x]
+%ifarch s390 s390x
+%define with_numactl 0
+%endif
 
 # RHEL doesn't ship OpenVZ, VBox, UML, OpenNebula, PowerHypervisor or ESX
 %if 0%{?rhel}
@@ -129,6 +135,18 @@
 %define with_netcf     0%{!?_without_netcf:%{server_drivers}}
 %endif
 
+# udev is used to manage host devices in Fedora 12 / RHEL-6 or newer
+%if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
+%define with_udev     0%{!?_without_udev:%{server_drivers}}
+%else
+%define with_hal       0%{!?_without_hal:%{server_drivers}}
+%endif
+
+# Enable yajl library for JSON mode with QEMU
+%if 0%{?fedora} >= 13 || 0%{?rhel} >= 6
+%define with_yajl     0%{!?_without_yajl:%{server_drivers}}
+%endif
+
 # Force QEMU to run as non-root
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 %define qemu_user  qemu
@@ -150,7 +168,7 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.7.2
+Version: 0.7.5
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -174,6 +192,9 @@ Requires: iptables
 # needed for device enumeration
 %if %{with_hal}
 Requires: hal
+%endif
+%if %{with_udev}
+Requires: udev >= 145
 %endif
 %if %{with_polkit}
 %if 0%{?fedora} >= 12 || 0%{?rhel} >=6
@@ -237,6 +258,13 @@ BuildRequires: gettext
 BuildRequires: gnutls-devel
 %if %{with_hal}
 BuildRequires: hal-devel
+%endif
+%if %{with_udev}
+BuildRequires: libudev-devel >= 145
+BuildRequires: libpciaccess-devel >= 0.10.9
+%endif
+%if %{with_yajl}
+BuildRequires: yajl-devel
 %endif
 %if %{with_avahi}
 BuildRequires: avahi-devel
@@ -308,7 +336,7 @@ BuildRequires: libcap-ng-devel >= 0.5.0
 BuildRequires: libssh2-devel
 %endif
 %if %{with_netcf}
-BuildRequires: netcf-devel
+BuildRequires: netcf-devel >= 0.1.4
 %endif
 
 # Fedora build root suckage
@@ -341,7 +369,7 @@ virtualization capabilities of recent versions of Linux (and other OSes).
 %package devel
 Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
-Requires: libvirt = %{version}-%{release}
+Requires: libvirt-client = %{version}-%{release}
 Requires: pkgconfig
 %if %{with_xen}
 Requires: xen-devel
@@ -472,6 +500,14 @@ of recent versions of Linux (and other OSes).
 %define _without_hal --without-hal
 %endif
 
+%if ! %{with_udev}
+%define _without_udev --without-udev
+%endif
+
+%if ! %{with_yajl}
+%define _without_yajl --without-yajl
+%endif
+
 %configure %{?_without_xen} \
            %{?_without_qemu} \
            %{?_without_openvz} \
@@ -498,6 +534,8 @@ of recent versions of Linux (and other OSes).
            %{?_without_netcf} \
            %{?_without_selinux} \
            %{?_without_hal} \
+           %{?_without_udev} \
+           %{?_without_yajl} \
            --with-qemu-user=%{qemu_user} \
            --with-qemu-group=%{qemu_group} \
            --with-init-script=redhat \
@@ -672,9 +710,6 @@ fi
 %if %{with_network}
 %dir %{_localstatedir}/run/libvirt/network/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/network/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/filter/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/nat/
 %endif
 
 %if %{with_qemu}
@@ -739,6 +774,8 @@ fi
 %{_datadir}/libvirt/schemas/secret.rng
 %{_datadir}/libvirt/schemas/storageencryption.rng
 
+%{_datadir}/libvirt/cpu_map.xml
+
 %if %{with_sasl}
 %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
 %endif
@@ -778,6 +815,21 @@ fi
 %endif
 
 %changelog
+* Wed Dec 23 2009 Daniel Veillard <veillard@redhat.com> - 0.7.5-1
+- Add new API virDomainMemoryStats
+- Public API and domain extension for CPU flags
+- vbox: Add support for version 3.1
+- Support QEMU's virtual FAT block device driver
+- a lot of fixes
+
+* Fri Nov 20 2009 Daniel Veillard <veillard@redhat.com> - 0.7.3-1
+- udev node device backend
+- API to check object properties
+- better QEmu monitor processing
+- MAC address based port filtering for qemu
+- support IPv6 and multiple addresses per interfaces
+- a lot of fixes
+
 * Tue Sep 15 2009 Daniel Veillard <veillard@redhat.com> - 0.7.1-1
 - ESX, VBox driver updates
 - mutipath support

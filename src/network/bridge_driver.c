@@ -96,6 +96,8 @@ static int networkShutdownNetworkDaemon(virConnectPtr conn,
                                       struct network_driver *driver,
                                       virNetworkObjPtr network);
 
+static void networkReloadIptablesRules(struct network_driver *driver);
+
 static struct network_driver *driverState = NULL;
 
 
@@ -149,7 +151,10 @@ networkFindActiveConfigs(struct network_driver *driver) {
 #ifdef __linux__
                 char *pidpath;
 
-                virAsprintf(&pidpath, "/proc/%d/exe", obj->dnsmasqPid);
+                if (virAsprintf(&pidpath, "/proc/%d/exe", obj->dnsmasqPid) < 0) {
+                    virReportOOMError(NULL);
+                    goto cleanup;
+                }
                 if (virFileLinkPointsTo(pidpath, DNSMASQ) == 0)
                     obj->dnsmasqPid = -1;
                 VIR_FREE(pidpath);
@@ -157,6 +162,7 @@ networkFindActiveConfigs(struct network_driver *driver) {
             }
         }
 
+    cleanup:
         virNetworkObjUnlock(obj);
     }
 }
@@ -169,7 +175,7 @@ networkAutostartConfigs(struct network_driver *driver) {
     for (i = 0 ; i < driver->networks.count ; i++) {
         virNetworkObjLock(driver->networks.objs[i]);
         if (driver->networks.objs[i]->autostart &&
-            !virNetworkIsActive(driver->networks.objs[i]) &&
+            !virNetworkObjIsActive(driver->networks.objs[i]) &&
             networkStartNetworkDaemon(NULL, driver, driver->networks.objs[i]) < 0) {
             /* failed to start but already logged */
         }
@@ -253,6 +259,7 @@ networkStartup(int privileged) {
         goto error;
 
     networkFindActiveConfigs(driverState);
+    networkReloadIptablesRules(driverState);
     networkAutostartConfigs(driverState);
 
     networkDriverUnlock(driverState);
@@ -287,12 +294,7 @@ networkReload(void) {
                              &driverState->networks,
                              driverState->networkConfigDir,
                              driverState->networkAutostartDir);
-
-     if (driverState->iptables) {
-        VIR_INFO0(_("Reloading iptables rules\n"));
-        iptablesReloadRules(driverState->iptables);
-    }
-
+    networkReloadIptablesRules(driverState);
     networkAutostartConfigs(driverState);
     networkDriverUnlock(driverState);
     return 0;
@@ -318,7 +320,7 @@ networkActive(void) {
     for (i = 0 ; i < driverState->networks.count ; i++) {
         virNetworkObjPtr net = driverState->networks.objs[i];
         virNetworkObjLock(net);
-        if (virNetworkIsActive(net))
+        if (virNetworkObjIsActive(net))
             active = 1;
         virNetworkObjUnlock(net);
     }
@@ -365,6 +367,7 @@ networkBuildDnsmasqArgv(virConnectPtr conn,
                         const char *pidfile,
                         const char ***argv) {
     int i, len, r;
+    int nbleases = 0;
     char *pidfileArg;
     char buf[1024];
 
@@ -398,11 +401,13 @@ networkBuildDnsmasqArgv(virConnectPtr conn,
         2 + /* --except-interface lo */
         2 + /* --listen-address 10.0.0.1 */
         (2 * network->def->nranges) + /* --dhcp-range 10.0.0.2,10.0.0.254 */
+        /* --dhcp-lease-max=xxx if needed */
+        (network->def->nranges ? 0 : 1) +
         /*  --dhcp-host 01:23:45:67:89:0a,hostname,10.0.0.3 */
         (2 * network->def->nhosts) +
         /* --enable-tftp --tftp-root /srv/tftp */
         (network->def->tftproot ? 3 : 0) +
-        /* --dhcp-boot pxeboot.img */
+        /* --dhcp-boot pxeboot.img[,,12.34.56.78] */
         (network->def->bootfile ? 2 : 0) +
         1;  /* NULL */
 
@@ -462,6 +467,12 @@ networkBuildDnsmasqArgv(virConnectPtr conn,
 
         APPEND_ARG(*argv, i++, "--dhcp-range");
         APPEND_ARG(*argv, i++, buf);
+        nbleases += network->def->ranges[r].size;
+    }
+
+    if (network->def->nranges > 0) {
+        snprintf(buf, sizeof(buf), "--dhcp-lease-max=%d", nbleases);
+        APPEND_ARG(*argv, i++, buf);
     }
 
     for (r = 0 ; r < network->def->nhosts ; r++) {
@@ -488,8 +499,13 @@ networkBuildDnsmasqArgv(virConnectPtr conn,
         APPEND_ARG(*argv, i++, network->def->tftproot);
     }
     if (network->def->bootfile) {
+        snprintf(buf, sizeof(buf), "%s%s%s",
+                 network->def->bootfile,
+                 network->def->bootserver ? ",," : "",
+                 network->def->bootserver ? network->def->bootserver : "");
+
         APPEND_ARG(*argv, i++, "--dhcp-boot");
-        APPEND_ARG(*argv, i++, network->def->bootfile);
+        APPEND_ARG(*argv, i++, buf);
     }
 
 #undef APPEND_ARG
@@ -736,8 +752,6 @@ networkAddIptablesRules(virConnectPtr conn,
              !networkAddRoutingIptablesRules(conn, driver, network))
         goto err8;
 
-    iptablesSaveRules(driver->iptables);
-
     return 1;
 
  err8:
@@ -765,16 +779,15 @@ static void
 networkRemoveIptablesRules(struct network_driver *driver,
                          virNetworkObjPtr network) {
     if (network->def->forwardType != VIR_NETWORK_FORWARD_NONE) {
-        iptablesRemoveForwardMasquerade(driver->iptables,
-                                        network->def->network,
-                                        network->def->forwardDev);
-
-        if (network->def->forwardType == VIR_NETWORK_FORWARD_NAT)
+        if (network->def->forwardType == VIR_NETWORK_FORWARD_NAT) {
+            iptablesRemoveForwardMasquerade(driver->iptables,
+                                                network->def->network,
+                                                network->def->forwardDev);
             iptablesRemoveForwardAllowRelatedIn(driver->iptables,
                                                 network->def->network,
                                                 network->def->bridge,
                                                 network->def->forwardDev);
-        else if (network->def->forwardType == VIR_NETWORK_FORWARD_ROUTE)
+        } else if (network->def->forwardType == VIR_NETWORK_FORWARD_ROUTE)
             iptablesRemoveForwardAllowIn(driver->iptables,
                                          network->def->network,
                                          network->def->bridge,
@@ -792,7 +805,27 @@ networkRemoveIptablesRules(struct network_driver *driver,
     iptablesRemoveTcpInput(driver->iptables, network->def->bridge, 53);
     iptablesRemoveUdpInput(driver->iptables, network->def->bridge, 67);
     iptablesRemoveTcpInput(driver->iptables, network->def->bridge, 67);
-    iptablesSaveRules(driver->iptables);
+}
+
+static void
+networkReloadIptablesRules(struct network_driver *driver)
+{
+    unsigned int i;
+
+    VIR_INFO0(_("Reloading iptables rules"));
+
+    for (i = 0 ; i < driver->networks.count ; i++) {
+        virNetworkObjLock(driver->networks.objs[i]);
+
+        if (virNetworkObjIsActive(driver->networks.objs[i])) {
+            networkRemoveIptablesRules(driver, driver->networks.objs[i]);
+            if (!networkAddIptablesRules(NULL, driver, driver->networks.objs[i])) {
+                /* failed to add but already logged */
+            }
+        }
+
+        virNetworkObjUnlock(driver->networks.objs[i]);
+    }
 }
 
 /* Enable IP Forwarding. Return 0 for success, -1 for failure. */
@@ -862,7 +895,7 @@ static int networkStartNetworkDaemon(virConnectPtr conn,
                                    virNetworkObjPtr network) {
     int err;
 
-    if (virNetworkIsActive(network)) {
+    if (virNetworkObjIsActive(network)) {
         networkReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
                          "%s", _("network is already active"));
         return -1;
@@ -967,7 +1000,7 @@ static int networkShutdownNetworkDaemon(virConnectPtr conn,
 
     VIR_INFO(_("Shutting down network '%s'\n"), network->def->name);
 
-    if (!virNetworkIsActive(network))
+    if (!virNetworkObjIsActive(network))
         return 0;
 
     stateFile = virNetworkConfigFile(conn, NETWORK_STATE_DIR, network->def->name);
@@ -1079,7 +1112,7 @@ static int networkNumNetworks(virConnectPtr conn) {
     networkDriverLock(driver);
     for (i = 0 ; i < driver->networks.count ; i++) {
         virNetworkObjLock(driver->networks.objs[i]);
-        if (virNetworkIsActive(driver->networks.objs[i]))
+        if (virNetworkObjIsActive(driver->networks.objs[i]))
             nactive++;
         virNetworkObjUnlock(driver->networks.objs[i]);
     }
@@ -1095,7 +1128,7 @@ static int networkListNetworks(virConnectPtr conn, char **const names, int nname
     networkDriverLock(driver);
     for (i = 0 ; i < driver->networks.count && got < nnames ; i++) {
         virNetworkObjLock(driver->networks.objs[i]);
-        if (virNetworkIsActive(driver->networks.objs[i])) {
+        if (virNetworkObjIsActive(driver->networks.objs[i])) {
             if (!(names[got] = strdup(driver->networks.objs[i]->def->name))) {
                 virNetworkObjUnlock(driver->networks.objs[i]);
                 virReportOOMError(conn);
@@ -1123,7 +1156,7 @@ static int networkNumDefinedNetworks(virConnectPtr conn) {
     networkDriverLock(driver);
     for (i = 0 ; i < driver->networks.count ; i++) {
         virNetworkObjLock(driver->networks.objs[i]);
-        if (!virNetworkIsActive(driver->networks.objs[i]))
+        if (!virNetworkObjIsActive(driver->networks.objs[i]))
             ninactive++;
         virNetworkObjUnlock(driver->networks.objs[i]);
     }
@@ -1139,7 +1172,7 @@ static int networkListDefinedNetworks(virConnectPtr conn, char **const names, in
     networkDriverLock(driver);
     for (i = 0 ; i < driver->networks.count && got < nnames ; i++) {
         virNetworkObjLock(driver->networks.objs[i]);
-        if (!virNetworkIsActive(driver->networks.objs[i])) {
+        if (!virNetworkObjIsActive(driver->networks.objs[i])) {
             if (!(names[got] = strdup(driver->networks.objs[i]->def->name))) {
                 virNetworkObjUnlock(driver->networks.objs[i]);
                 virReportOOMError(conn);
@@ -1158,6 +1191,50 @@ static int networkListDefinedNetworks(virConnectPtr conn, char **const names, in
         VIR_FREE(names[i]);
     return -1;
 }
+
+
+static int networkIsActive(virNetworkPtr net)
+{
+    struct network_driver *driver = net->conn->privateData;
+    virNetworkObjPtr obj;
+    int ret = -1;
+
+    networkDriverLock(driver);
+    obj = virNetworkFindByUUID(&driver->networks, net->uuid);
+    networkDriverUnlock(driver);
+    if (!obj) {
+        networkReportError(net->conn, NULL, NULL, VIR_ERR_NO_NETWORK, NULL);
+        goto cleanup;
+    }
+    ret = virNetworkObjIsActive(obj);
+
+cleanup:
+    if (obj)
+        virNetworkObjUnlock(obj);
+    return ret;
+}
+
+static int networkIsPersistent(virNetworkPtr net)
+{
+    struct network_driver *driver = net->conn->privateData;
+    virNetworkObjPtr obj;
+    int ret = -1;
+
+    networkDriverLock(driver);
+    obj = virNetworkFindByUUID(&driver->networks, net->uuid);
+    networkDriverUnlock(driver);
+    if (!obj) {
+        networkReportError(net->conn, NULL, NULL, VIR_ERR_NO_NETWORK, NULL);
+        goto cleanup;
+    }
+    ret = obj->persistent;
+
+cleanup:
+    if (obj)
+        virNetworkObjUnlock(obj);
+    return ret;
+}
+
 
 static virNetworkPtr networkCreate(virConnectPtr conn, const char *xml) {
     struct network_driver *driver = conn->networkPrivateData;
@@ -1246,12 +1323,12 @@ static int networkUndefine(virNetworkPtr net) {
 
     network = virNetworkFindByUUID(&driver->networks, net->uuid);
     if (!network) {
-        networkReportError(net->conn, NULL, net, VIR_ERR_INVALID_DOMAIN,
+        networkReportError(net->conn, NULL, net, VIR_ERR_INVALID_NETWORK,
                            "%s", _("no network with matching uuid"));
         goto cleanup;
     }
 
-    if (virNetworkIsActive(network)) {
+    if (virNetworkObjIsActive(network)) {
         networkReportError(net->conn, NULL, net, VIR_ERR_INTERNAL_ERROR,
                            "%s", _("network is still active"));
         goto cleanup;
@@ -1312,7 +1389,7 @@ static int networkDestroy(virNetworkPtr net) {
         goto cleanup;
     }
 
-    if (!virNetworkIsActive(network)) {
+    if (!virNetworkObjIsActive(network)) {
         networkReportError(net->conn, NULL, net, VIR_ERR_INTERNAL_ERROR,
                            "%s", _("network is not active"));
         goto cleanup;
@@ -1497,9 +1574,12 @@ static virNetworkDriver networkDriver = {
     networkGetBridgeName, /* networkGetBridgeName */
     networkGetAutostart, /* networkGetAutostart */
     networkSetAutostart, /* networkSetAutostart */
+    networkIsActive,
+    networkIsPersistent,
 };
 
 static virStateDriver networkStateDriver = {
+    "Network",
     networkStartup,
     networkShutdown,
     networkReload,

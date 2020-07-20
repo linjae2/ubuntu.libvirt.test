@@ -386,7 +386,7 @@ int virLogDefineFilter(const char *match, int priority,
     }
 
     mdup = strdup(match);
-    if (dup == NULL) {
+    if (mdup == NULL) {
         i = -1;
         goto cleanup;
     }
@@ -484,6 +484,7 @@ int virLogDefineOutput(virLogOutputFunc f, virLogCloseFunc c, void *data,
 
     virLogLock();
     if (VIR_REALLOC_N(virLogOutputs, virLogNbOutputs + 1)) {
+        VIR_FREE(ndup);
         goto cleanup;
     }
     ret = virLogNbOutputs++;
@@ -866,8 +867,10 @@ char *virLogGetFilters(void) {
     }
     virLogUnlock();
 
-    if (virBufferError(&filterbuf))
+    if (virBufferError(&filterbuf)) {
+        virBufferFreeAndReset(&filterbuf);
         return NULL;
+    }
 
     return virBufferContentAndReset(&filterbuf);
 }
@@ -904,8 +907,10 @@ char *virLogGetOutputs(void) {
     }
     virLogUnlock();
 
-    if (virBufferError(&outputbuf))
+    if (virBufferError(&outputbuf)) {
+        virBufferFreeAndReset(&outputbuf);
         return NULL;
+    }
 
     return virBufferContentAndReset(&outputbuf);
 }

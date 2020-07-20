@@ -31,8 +31,11 @@
 #include "internal.h"
 #include "capabilities.h"
 #include "storage_encryption_conf.h"
+#include "cpu_conf.h"
 #include "util.h"
 #include "threads.h"
+#include "hash.h"
+#include "network.h"
 
 /* Private component of virDomainXMLFlags */
 typedef enum {
@@ -65,6 +68,7 @@ enum virDomainVirtType {
 enum virDomainDiskType {
     VIR_DOMAIN_DISK_TYPE_BLOCK,
     VIR_DOMAIN_DISK_TYPE_FILE,
+    VIR_DOMAIN_DISK_TYPE_DIR,
 
     VIR_DOMAIN_DISK_TYPE_LAST
 };
@@ -86,6 +90,7 @@ enum virDomainDiskBus {
     VIR_DOMAIN_DISK_BUS_XEN,
     VIR_DOMAIN_DISK_BUS_USB,
     VIR_DOMAIN_DISK_BUS_UML,
+    VIR_DOMAIN_DISK_BUS_SATA,
 
     VIR_DOMAIN_DISK_BUS_LAST
 };
@@ -210,7 +215,18 @@ virNetHasValidPciAddr(virDomainNetDefPtr def)
     return def->pci_addr.domain || def->pci_addr.bus || def->pci_addr.slot;
 }
 
-enum virDomainChrSrcType {
+enum virDomainChrTargetType {
+    VIR_DOMAIN_CHR_TARGET_TYPE_NULL = 0,
+    VIR_DOMAIN_CHR_TARGET_TYPE_MONITOR,
+    VIR_DOMAIN_CHR_TARGET_TYPE_PARALLEL,
+    VIR_DOMAIN_CHR_TARGET_TYPE_SERIAL,
+    VIR_DOMAIN_CHR_TARGET_TYPE_CONSOLE,
+    VIR_DOMAIN_CHR_TARGET_TYPE_GUESTFWD,
+
+    VIR_DOMAIN_CHR_TARGET_TYPE_LAST
+};
+
+enum virDomainChrType {
     VIR_DOMAIN_CHR_TYPE_NULL,
     VIR_DOMAIN_CHR_TYPE_VC,
     VIR_DOMAIN_CHR_TYPE_PTY,
@@ -235,7 +251,11 @@ enum virDomainChrTcpProtocol {
 typedef struct _virDomainChrDef virDomainChrDef;
 typedef virDomainChrDef *virDomainChrDefPtr;
 struct _virDomainChrDef {
-    int dstPort;
+    int targetType;
+    union {
+        int port; /* parallel, serial, console */
+        virSocketAddrPtr addr; /* guestfwd */
+    } target;
 
     int type;
     union {
@@ -296,6 +316,30 @@ typedef struct _virDomainSoundDef virDomainSoundDef;
 typedef virDomainSoundDef *virDomainSoundDefPtr;
 struct _virDomainSoundDef {
     int model;
+};
+
+enum virDomainWatchdogModel {
+    VIR_DOMAIN_WATCHDOG_MODEL_I6300ESB,
+    VIR_DOMAIN_WATCHDOG_MODEL_IB700,
+
+    VIR_DOMAIN_WATCHDOG_MODEL_LAST
+};
+
+enum virDomainWatchdogAction {
+    VIR_DOMAIN_WATCHDOG_ACTION_RESET,
+    VIR_DOMAIN_WATCHDOG_ACTION_SHUTDOWN,
+    VIR_DOMAIN_WATCHDOG_ACTION_POWEROFF,
+    VIR_DOMAIN_WATCHDOG_ACTION_PAUSE,
+    VIR_DOMAIN_WATCHDOG_ACTION_NONE,
+
+    VIR_DOMAIN_WATCHDOG_ACTION_LAST
+};
+
+typedef struct _virDomainWatchdogDef virDomainWatchdogDef;
+typedef virDomainWatchdogDef *virDomainWatchdogDefPtr;
+struct _virDomainWatchdogDef {
+    int model;
+    int action;
 };
 
 
@@ -438,6 +482,7 @@ enum virDomainDeviceType {
     VIR_DOMAIN_DEVICE_SOUND,
     VIR_DOMAIN_DEVICE_VIDEO,
     VIR_DOMAIN_DEVICE_HOSTDEV,
+    VIR_DOMAIN_DEVICE_WATCHDOG,
 
     VIR_DOMAIN_DEVICE_LAST,
 };
@@ -454,6 +499,7 @@ struct _virDomainDeviceDef {
         virDomainSoundDefPtr sound;
         virDomainVideoDefPtr video;
         virDomainHostdevDefPtr hostdev;
+        virDomainWatchdogDefPtr watchdog;
     } data;
 };
 
@@ -583,9 +629,14 @@ struct _virDomainDef {
     int nparallels;
     virDomainChrDefPtr *parallels;
 
+    int nchannels;
+    virDomainChrDefPtr *channels;
+
     /* Only 1 */
     virDomainChrDefPtr console;
     virSecurityLabelDef seclabel;
+    virDomainWatchdogDefPtr watchdog;
+    virCPUDefPtr cpu;
 };
 
 /* Guest VM runtime state */
@@ -593,36 +644,37 @@ typedef struct _virDomainObj virDomainObj;
 typedef virDomainObj *virDomainObjPtr;
 struct _virDomainObj {
     virMutex lock;
+    int refs;
 
-    int monitor;
-    virDomainChrDefPtr monitor_chr;
-    int monitorWatch;
     int pid;
     int state;
-
-    int nvcpupids;
-    int *vcpupids;
 
     unsigned int autostart : 1;
     unsigned int persistent : 1;
 
     virDomainDefPtr def; /* The current definition */
     virDomainDefPtr newDef; /* New definition to activate at shutdown */
+
+    void *privateData;
+    void (*privateDataFreeFunc)(void *);
 };
 
 typedef struct _virDomainObjList virDomainObjList;
 typedef virDomainObjList *virDomainObjListPtr;
 struct _virDomainObjList {
-    unsigned int count;
-    virDomainObjPtr *objs;
+    /* uuid string -> virDomainObj  mapping
+     * for O(1), lockless lookup-by-uuid */
+    virHashTable *objs;
 };
 
 static inline int
-virDomainIsActive(virDomainObjPtr dom)
+virDomainObjIsActive(virDomainObjPtr dom)
 {
     return dom->def->id != -1;
 }
 
+int virDomainObjListInit(virDomainObjListPtr objs);
+void virDomainObjListDeinit(virDomainObjListPtr objs);
 
 virDomainObjPtr virDomainFindByID(const virDomainObjListPtr doms,
                                   int id);
@@ -639,14 +691,17 @@ void virDomainFSDefFree(virDomainFSDefPtr def);
 void virDomainNetDefFree(virDomainNetDefPtr def);
 void virDomainChrDefFree(virDomainChrDefPtr def);
 void virDomainSoundDefFree(virDomainSoundDefPtr def);
+void virDomainWatchdogDefFree(virDomainWatchdogDefPtr def);
 void virDomainVideoDefFree(virDomainVideoDefPtr def);
 void virDomainHostdevDefFree(virDomainHostdevDefPtr def);
 void virDomainDeviceDefFree(virDomainDeviceDefPtr def);
 void virDomainDefFree(virDomainDefPtr vm);
-void virDomainObjFree(virDomainObjPtr vm);
-void virDomainObjListFree(virDomainObjListPtr vms);
+void virDomainObjRef(virDomainObjPtr vm);
+/* Returns 1 if the object was freed, 0 if more refs exist */
+int virDomainObjUnref(virDomainObjPtr vm);
 
 virDomainObjPtr virDomainAssignDef(virConnectPtr conn,
+                                   virCapsPtr caps,
                                    virDomainObjListPtr doms,
                                    const virDomainDefPtr def);
 void virDomainRemoveInactive(virDomainObjListPtr doms,
@@ -685,6 +740,7 @@ char *virDomainDefFormat(virConnectPtr conn,
                          virDomainDefPtr def,
                          int flags);
 char *virDomainObjFormat(virConnectPtr conn,
+                         virCapsPtr caps,
                          virDomainObjPtr obj,
                          int flags);
 
@@ -711,6 +767,7 @@ int virDomainSaveConfig(virConnectPtr conn,
                         const char *configDir,
                         virDomainDefPtr def);
 int virDomainSaveStatus(virConnectPtr conn,
+                        virCapsPtr caps,
                         const char *statusDir,
                         virDomainObjPtr obj);
 
@@ -753,8 +810,22 @@ virDomainFSDefPtr virDomainGetRootFilesystem(virDomainDefPtr def);
 int virDomainVideoDefaultType(virDomainDefPtr def);
 int virDomainVideoDefaultRAM(virDomainDefPtr def, int type);
 
+int virDomainObjIsDuplicate(virDomainObjListPtr doms,
+                            virDomainDefPtr def,
+                            unsigned int check_active);
+
 void virDomainObjLock(virDomainObjPtr obj);
 void virDomainObjUnlock(virDomainObjPtr obj);
+
+int virDomainObjListNumOfDomains(virDomainObjListPtr doms, int active);
+
+int virDomainObjListGetActiveIDs(virDomainObjListPtr doms,
+                                 int *ids,
+                                 int maxids);
+int virDomainObjListGetInactiveNames(virDomainObjListPtr doms,
+                                     char **const names,
+                                     int maxnames);
+
 
 VIR_ENUM_DECL(virDomainVirt)
 VIR_ENUM_DECL(virDomainBoot)
@@ -767,8 +838,11 @@ VIR_ENUM_DECL(virDomainDiskBus)
 VIR_ENUM_DECL(virDomainDiskCache)
 VIR_ENUM_DECL(virDomainFS)
 VIR_ENUM_DECL(virDomainNet)
+VIR_ENUM_DECL(virDomainChrTarget)
 VIR_ENUM_DECL(virDomainChr)
 VIR_ENUM_DECL(virDomainSoundModel)
+VIR_ENUM_DECL(virDomainWatchdogModel)
+VIR_ENUM_DECL(virDomainWatchdogAction)
 VIR_ENUM_DECL(virDomainVideo)
 VIR_ENUM_DECL(virDomainHostdevMode)
 VIR_ENUM_DECL(virDomainHostdevSubsys)

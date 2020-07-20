@@ -35,13 +35,15 @@ struct _virBuffer {
 #endif
 
 char *virBufferContentAndReset(const virBufferPtr buf);
+void virBufferFreeAndReset(const virBufferPtr buf);
 int virBufferError(const virBufferPtr buf);
 unsigned int virBufferUse(const virBufferPtr buf);
 void virBufferAdd(const virBufferPtr buf, const char *str, int len);
 void virBufferAddChar(const virBufferPtr buf, char c);
 void virBufferVSprintf(const virBufferPtr buf, const char *format, ...)
   ATTRIBUTE_FMT_PRINTF(2, 3);
-void virBufferStrcat(const virBufferPtr buf, ...);
+void virBufferStrcat(const virBufferPtr buf, ...)
+  ATTRIBUTE_SENTINEL;
 void virBufferEscapeString(const virBufferPtr buf, const char *format, const char *str);
 void virBufferURIEncodeString (const virBufferPtr buf, const char *str);
 

@@ -40,6 +40,7 @@ typedef remote_nonnull_string *remote_string;
 #define REMOTE_NODE_MAX_CELLS 1024
 #define REMOTE_AUTH_SASL_DATA_MAX 65536
 #define REMOTE_AUTH_TYPE_LIST_MAX 20
+#define REMOTE_DOMAIN_MEMORY_STATS_MAX 1024
 #define REMOTE_DOMAIN_BLOCK_PEEK_BUFFER_MAX 65536
 #define REMOTE_DOMAIN_MEMORY_PEEK_BUFFER_MAX 65536
 #define REMOTE_SECURITY_MODEL_MAX VIR_SECURITY_MODEL_BUFLEN
@@ -179,6 +180,11 @@ struct remote_get_version_ret {
 };
 typedef struct remote_get_version_ret remote_get_version_ret;
 
+struct remote_get_lib_version_ret {
+        int64_t lib_ver;
+};
+typedef struct remote_get_lib_version_ret remote_get_lib_version_ret;
+
 struct remote_get_hostname_ret {
         remote_nonnull_string hostname;
 };
@@ -301,6 +307,27 @@ struct remote_domain_interface_stats_ret {
         int64_t tx_drop;
 };
 typedef struct remote_domain_interface_stats_ret remote_domain_interface_stats_ret;
+
+struct remote_domain_memory_stats_args {
+        remote_nonnull_domain dom;
+        u_int maxStats;
+        u_int flags;
+};
+typedef struct remote_domain_memory_stats_args remote_domain_memory_stats_args;
+
+struct remote_domain_memory_stat {
+        int tag;
+        uint64_t val;
+};
+typedef struct remote_domain_memory_stat remote_domain_memory_stat;
+
+struct remote_domain_memory_stats_ret {
+        struct {
+                u_int stats_len;
+                remote_domain_memory_stat *stats_val;
+        } stats;
+};
+typedef struct remote_domain_memory_stats_ret remote_domain_memory_stats_ret;
 
 struct remote_domain_block_peek_args {
         remote_nonnull_domain dom;
@@ -1537,6 +1564,91 @@ struct remote_domain_migrate_prepare_tunnel_args {
 };
 typedef struct remote_domain_migrate_prepare_tunnel_args remote_domain_migrate_prepare_tunnel_args;
 
+struct remote_is_secure_ret {
+        int secure;
+};
+typedef struct remote_is_secure_ret remote_is_secure_ret;
+
+struct remote_domain_is_active_args {
+        remote_nonnull_domain dom;
+};
+typedef struct remote_domain_is_active_args remote_domain_is_active_args;
+
+struct remote_domain_is_active_ret {
+        int active;
+};
+typedef struct remote_domain_is_active_ret remote_domain_is_active_ret;
+
+struct remote_domain_is_persistent_args {
+        remote_nonnull_domain dom;
+};
+typedef struct remote_domain_is_persistent_args remote_domain_is_persistent_args;
+
+struct remote_domain_is_persistent_ret {
+        int persistent;
+};
+typedef struct remote_domain_is_persistent_ret remote_domain_is_persistent_ret;
+
+struct remote_network_is_active_args {
+        remote_nonnull_network net;
+};
+typedef struct remote_network_is_active_args remote_network_is_active_args;
+
+struct remote_network_is_active_ret {
+        int active;
+};
+typedef struct remote_network_is_active_ret remote_network_is_active_ret;
+
+struct remote_network_is_persistent_args {
+        remote_nonnull_network net;
+};
+typedef struct remote_network_is_persistent_args remote_network_is_persistent_args;
+
+struct remote_network_is_persistent_ret {
+        int persistent;
+};
+typedef struct remote_network_is_persistent_ret remote_network_is_persistent_ret;
+
+struct remote_storage_pool_is_active_args {
+        remote_nonnull_storage_pool pool;
+};
+typedef struct remote_storage_pool_is_active_args remote_storage_pool_is_active_args;
+
+struct remote_storage_pool_is_active_ret {
+        int active;
+};
+typedef struct remote_storage_pool_is_active_ret remote_storage_pool_is_active_ret;
+
+struct remote_storage_pool_is_persistent_args {
+        remote_nonnull_storage_pool pool;
+};
+typedef struct remote_storage_pool_is_persistent_args remote_storage_pool_is_persistent_args;
+
+struct remote_storage_pool_is_persistent_ret {
+        int persistent;
+};
+typedef struct remote_storage_pool_is_persistent_ret remote_storage_pool_is_persistent_ret;
+
+struct remote_interface_is_active_args {
+        remote_nonnull_interface iface;
+};
+typedef struct remote_interface_is_active_args remote_interface_is_active_args;
+
+struct remote_interface_is_active_ret {
+        int active;
+};
+typedef struct remote_interface_is_active_ret remote_interface_is_active_ret;
+
+struct remote_cpu_compare_args {
+        remote_nonnull_string xml;
+        u_int flags;
+};
+typedef struct remote_cpu_compare_args remote_cpu_compare_args;
+
+struct remote_cpu_compare_ret {
+        int result;
+};
+typedef struct remote_cpu_compare_ret remote_cpu_compare_ret;
 #define REMOTE_PROGRAM 0x20008086
 #define REMOTE_PROTOCOL_VERSION 1
 
@@ -1689,6 +1801,17 @@ enum remote_procedure {
         REMOTE_PROC_SECRET_UNDEFINE = 146,
         REMOTE_PROC_SECRET_LOOKUP_BY_USAGE = 147,
         REMOTE_PROC_DOMAIN_MIGRATE_PREPARE_TUNNEL = 148,
+        REMOTE_PROC_IS_SECURE = 149,
+        REMOTE_PROC_DOMAIN_IS_ACTIVE = 150,
+        REMOTE_PROC_DOMAIN_IS_PERSISTENT = 151,
+        REMOTE_PROC_NETWORK_IS_ACTIVE = 152,
+        REMOTE_PROC_NETWORK_IS_PERSISTENT = 153,
+        REMOTE_PROC_STORAGE_POOL_IS_ACTIVE = 154,
+        REMOTE_PROC_STORAGE_POOL_IS_PERSISTENT = 155,
+        REMOTE_PROC_INTERFACE_IS_ACTIVE = 156,
+        REMOTE_PROC_GET_LIB_VERSION = 157,
+        REMOTE_PROC_CPU_COMPARE = 158,
+        REMOTE_PROC_DOMAIN_MEMORY_STATS = 159,
 };
 typedef enum remote_procedure remote_procedure;
 
@@ -1746,6 +1869,7 @@ extern  bool_t xdr_remote_supports_feature_args (XDR *, remote_supports_feature_
 extern  bool_t xdr_remote_supports_feature_ret (XDR *, remote_supports_feature_ret*);
 extern  bool_t xdr_remote_get_type_ret (XDR *, remote_get_type_ret*);
 extern  bool_t xdr_remote_get_version_ret (XDR *, remote_get_version_ret*);
+extern  bool_t xdr_remote_get_lib_version_ret (XDR *, remote_get_lib_version_ret*);
 extern  bool_t xdr_remote_get_hostname_ret (XDR *, remote_get_hostname_ret*);
 extern  bool_t xdr_remote_get_uri_ret (XDR *, remote_get_uri_ret*);
 extern  bool_t xdr_remote_get_max_vcpus_args (XDR *, remote_get_max_vcpus_args*);
@@ -1764,6 +1888,9 @@ extern  bool_t xdr_remote_domain_block_stats_args (XDR *, remote_domain_block_st
 extern  bool_t xdr_remote_domain_block_stats_ret (XDR *, remote_domain_block_stats_ret*);
 extern  bool_t xdr_remote_domain_interface_stats_args (XDR *, remote_domain_interface_stats_args*);
 extern  bool_t xdr_remote_domain_interface_stats_ret (XDR *, remote_domain_interface_stats_ret*);
+extern  bool_t xdr_remote_domain_memory_stats_args (XDR *, remote_domain_memory_stats_args*);
+extern  bool_t xdr_remote_domain_memory_stat (XDR *, remote_domain_memory_stat*);
+extern  bool_t xdr_remote_domain_memory_stats_ret (XDR *, remote_domain_memory_stats_ret*);
 extern  bool_t xdr_remote_domain_block_peek_args (XDR *, remote_domain_block_peek_args*);
 extern  bool_t xdr_remote_domain_block_peek_ret (XDR *, remote_domain_block_peek_ret*);
 extern  bool_t xdr_remote_domain_memory_peek_args (XDR *, remote_domain_memory_peek_args*);
@@ -1970,6 +2097,23 @@ extern  bool_t xdr_remote_secret_undefine_args (XDR *, remote_secret_undefine_ar
 extern  bool_t xdr_remote_secret_lookup_by_usage_args (XDR *, remote_secret_lookup_by_usage_args*);
 extern  bool_t xdr_remote_secret_lookup_by_usage_ret (XDR *, remote_secret_lookup_by_usage_ret*);
 extern  bool_t xdr_remote_domain_migrate_prepare_tunnel_args (XDR *, remote_domain_migrate_prepare_tunnel_args*);
+extern  bool_t xdr_remote_is_secure_ret (XDR *, remote_is_secure_ret*);
+extern  bool_t xdr_remote_domain_is_active_args (XDR *, remote_domain_is_active_args*);
+extern  bool_t xdr_remote_domain_is_active_ret (XDR *, remote_domain_is_active_ret*);
+extern  bool_t xdr_remote_domain_is_persistent_args (XDR *, remote_domain_is_persistent_args*);
+extern  bool_t xdr_remote_domain_is_persistent_ret (XDR *, remote_domain_is_persistent_ret*);
+extern  bool_t xdr_remote_network_is_active_args (XDR *, remote_network_is_active_args*);
+extern  bool_t xdr_remote_network_is_active_ret (XDR *, remote_network_is_active_ret*);
+extern  bool_t xdr_remote_network_is_persistent_args (XDR *, remote_network_is_persistent_args*);
+extern  bool_t xdr_remote_network_is_persistent_ret (XDR *, remote_network_is_persistent_ret*);
+extern  bool_t xdr_remote_storage_pool_is_active_args (XDR *, remote_storage_pool_is_active_args*);
+extern  bool_t xdr_remote_storage_pool_is_active_ret (XDR *, remote_storage_pool_is_active_ret*);
+extern  bool_t xdr_remote_storage_pool_is_persistent_args (XDR *, remote_storage_pool_is_persistent_args*);
+extern  bool_t xdr_remote_storage_pool_is_persistent_ret (XDR *, remote_storage_pool_is_persistent_ret*);
+extern  bool_t xdr_remote_interface_is_active_args (XDR *, remote_interface_is_active_args*);
+extern  bool_t xdr_remote_interface_is_active_ret (XDR *, remote_interface_is_active_ret*);
+extern  bool_t xdr_remote_cpu_compare_args (XDR *, remote_cpu_compare_args*);
+extern  bool_t xdr_remote_cpu_compare_ret (XDR *, remote_cpu_compare_ret*);
 extern  bool_t xdr_remote_procedure (XDR *, remote_procedure*);
 extern  bool_t xdr_remote_message_type (XDR *, remote_message_type*);
 extern  bool_t xdr_remote_message_status (XDR *, remote_message_status*);
@@ -2001,6 +2145,7 @@ extern bool_t xdr_remote_supports_feature_args ();
 extern bool_t xdr_remote_supports_feature_ret ();
 extern bool_t xdr_remote_get_type_ret ();
 extern bool_t xdr_remote_get_version_ret ();
+extern bool_t xdr_remote_get_lib_version_ret ();
 extern bool_t xdr_remote_get_hostname_ret ();
 extern bool_t xdr_remote_get_uri_ret ();
 extern bool_t xdr_remote_get_max_vcpus_args ();
@@ -2019,6 +2164,9 @@ extern bool_t xdr_remote_domain_block_stats_args ();
 extern bool_t xdr_remote_domain_block_stats_ret ();
 extern bool_t xdr_remote_domain_interface_stats_args ();
 extern bool_t xdr_remote_domain_interface_stats_ret ();
+extern bool_t xdr_remote_domain_memory_stats_args ();
+extern bool_t xdr_remote_domain_memory_stat ();
+extern bool_t xdr_remote_domain_memory_stats_ret ();
 extern bool_t xdr_remote_domain_block_peek_args ();
 extern bool_t xdr_remote_domain_block_peek_ret ();
 extern bool_t xdr_remote_domain_memory_peek_args ();
@@ -2225,6 +2373,23 @@ extern bool_t xdr_remote_secret_undefine_args ();
 extern bool_t xdr_remote_secret_lookup_by_usage_args ();
 extern bool_t xdr_remote_secret_lookup_by_usage_ret ();
 extern bool_t xdr_remote_domain_migrate_prepare_tunnel_args ();
+extern bool_t xdr_remote_is_secure_ret ();
+extern bool_t xdr_remote_domain_is_active_args ();
+extern bool_t xdr_remote_domain_is_active_ret ();
+extern bool_t xdr_remote_domain_is_persistent_args ();
+extern bool_t xdr_remote_domain_is_persistent_ret ();
+extern bool_t xdr_remote_network_is_active_args ();
+extern bool_t xdr_remote_network_is_active_ret ();
+extern bool_t xdr_remote_network_is_persistent_args ();
+extern bool_t xdr_remote_network_is_persistent_ret ();
+extern bool_t xdr_remote_storage_pool_is_active_args ();
+extern bool_t xdr_remote_storage_pool_is_active_ret ();
+extern bool_t xdr_remote_storage_pool_is_persistent_args ();
+extern bool_t xdr_remote_storage_pool_is_persistent_ret ();
+extern bool_t xdr_remote_interface_is_active_args ();
+extern bool_t xdr_remote_interface_is_active_ret ();
+extern bool_t xdr_remote_cpu_compare_args ();
+extern bool_t xdr_remote_cpu_compare_ret ();
 extern bool_t xdr_remote_procedure ();
 extern bool_t xdr_remote_message_type ();
 extern bool_t xdr_remote_message_status ();

@@ -167,6 +167,19 @@ virBufferContentAndReset(const virBufferPtr buf)
 }
 
 /**
+ * virBufferFreeAndReset:
+ * @buf: the buffer to free and reset
+ *
+ * Frees the buffer content and resets the buffer structure.
+ */
+void virBufferFreeAndReset(const virBufferPtr buf)
+{
+    char *str = virBufferContentAndReset(buf);
+
+    VIR_FREE(str);
+}
+
+/**
  * virBufferError:
  * @buf: the buffer
  *
@@ -317,6 +330,12 @@ virBufferEscapeString(const virBufferPtr buf, const char *format, const char *st
         cur++;
     }
     *out = 0;
+
+    if ((buf->use >= buf->size) &&
+        virBufferGrow(buf, 100) < 0) {
+        VIR_FREE(escaped);
+        return;
+    }
 
     size = buf->size - buf->use - 1;
     while (((count = snprintf(&buf->content[buf->use], size, format,

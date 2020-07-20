@@ -126,3 +126,12 @@
     remote_secret_undefine_args val_remote_secret_undefine_args;
     remote_secret_lookup_by_usage_args val_remote_secret_lookup_by_usage_args;
     remote_domain_migrate_prepare_tunnel_args val_remote_domain_migrate_prepare_tunnel_args;
+    remote_domain_is_active_args val_remote_domain_is_active_args;
+    remote_domain_is_persistent_args val_remote_domain_is_persistent_args;
+    remote_network_is_active_args val_remote_network_is_active_args;
+    remote_network_is_persistent_args val_remote_network_is_persistent_args;
+    remote_storage_pool_is_active_args val_remote_storage_pool_is_active_args;
+    remote_storage_pool_is_persistent_args val_remote_storage_pool_is_persistent_args;
+    remote_interface_is_active_args val_remote_interface_is_active_args;
+    remote_cpu_compare_args val_remote_cpu_compare_args;
+    remote_domain_memory_stats_args val_remote_domain_memory_stats_args;

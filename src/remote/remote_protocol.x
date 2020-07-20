@@ -115,6 +115,9 @@ const REMOTE_AUTH_SASL_DATA_MAX = 65536;
 /* Maximum number of auth types */
 const REMOTE_AUTH_TYPE_LIST_MAX = 20;
 
+/* Upper limit on list of memory stats */
+const REMOTE_DOMAIN_MEMORY_STATS_MAX = 1024;
+
 /* Maximum length of a block peek buffer message.
  * Note applications need to be aware of this limit and issue multiple
  * requests for large amounts of data.
@@ -302,6 +305,10 @@ struct remote_get_version_ret {
     hyper hv_ver;
 };
 
+struct remote_get_lib_version_ret {
+    hyper lib_ver;
+};
+
 struct remote_get_hostname_ret {
     remote_nonnull_string hostname;
 };
@@ -399,6 +406,21 @@ struct remote_domain_interface_stats_ret {
     hyper tx_packets;
     hyper tx_errs;
     hyper tx_drop;
+};
+
+struct remote_domain_memory_stats_args {
+        remote_nonnull_domain dom;
+        u_int maxStats;
+        u_int flags;
+};
+
+struct remote_domain_memory_stat {
+    int tag;
+    unsigned hyper val;
+};
+
+struct remote_domain_memory_stats_ret {
+    remote_domain_memory_stat stats<REMOTE_DOMAIN_MEMORY_STATS_MAX>;
 };
 
 struct remote_domain_block_peek_args {
@@ -1362,6 +1384,83 @@ struct remote_domain_migrate_prepare_tunnel_args {
     remote_nonnull_string dom_xml;
 };
 
+
+struct remote_is_secure_ret {
+    int secure;
+};
+
+
+struct remote_domain_is_active_args {
+    remote_nonnull_domain dom;
+};
+
+struct remote_domain_is_active_ret {
+    int active;
+};
+
+
+struct remote_domain_is_persistent_args {
+    remote_nonnull_domain dom;
+};
+
+struct remote_domain_is_persistent_ret {
+    int persistent;
+};
+
+
+struct remote_network_is_active_args {
+    remote_nonnull_network net;
+};
+
+struct remote_network_is_active_ret {
+    int active;
+};
+
+struct remote_network_is_persistent_args {
+    remote_nonnull_network net;
+};
+
+struct remote_network_is_persistent_ret {
+    int persistent;
+};
+
+
+struct remote_storage_pool_is_active_args {
+    remote_nonnull_storage_pool pool;
+};
+
+struct remote_storage_pool_is_active_ret {
+    int active;
+};
+
+struct remote_storage_pool_is_persistent_args {
+    remote_nonnull_storage_pool pool;
+};
+
+struct remote_storage_pool_is_persistent_ret {
+    int persistent;
+};
+
+
+struct remote_interface_is_active_args {
+    remote_nonnull_interface iface;
+};
+
+struct remote_interface_is_active_ret {
+    int active;
+};
+
+
+struct remote_cpu_compare_args {
+    remote_nonnull_string xml;
+    unsigned flags;
+};
+
+struct remote_cpu_compare_ret {
+    int result;
+};
+
+
 /*----- Protocol. -----*/
 
 /* Define the program number, protocol version and procedure numbers here. */
@@ -1518,12 +1617,11 @@ enum remote_procedure {
     REMOTE_PROC_INTERFACE_DESTROY = 134,
     REMOTE_PROC_DOMAIN_XML_FROM_NATIVE = 135,
     REMOTE_PROC_DOMAIN_XML_TO_NATIVE = 136,
-
     REMOTE_PROC_NUM_OF_DEFINED_INTERFACES = 137,
     REMOTE_PROC_LIST_DEFINED_INTERFACES = 138,
-
     REMOTE_PROC_NUM_OF_SECRETS = 139,
     REMOTE_PROC_LIST_SECRETS = 140,
+
     REMOTE_PROC_SECRET_LOOKUP_BY_UUID = 141,
     REMOTE_PROC_SECRET_DEFINE_XML = 142,
     REMOTE_PROC_SECRET_GET_XML_DESC = 143,
@@ -1531,10 +1629,25 @@ enum remote_procedure {
     REMOTE_PROC_SECRET_GET_VALUE = 145,
     REMOTE_PROC_SECRET_UNDEFINE = 146,
     REMOTE_PROC_SECRET_LOOKUP_BY_USAGE = 147,
+    REMOTE_PROC_DOMAIN_MIGRATE_PREPARE_TUNNEL = 148,
+    REMOTE_PROC_IS_SECURE = 149,
+    REMOTE_PROC_DOMAIN_IS_ACTIVE = 150,
 
-    REMOTE_PROC_DOMAIN_MIGRATE_PREPARE_TUNNEL = 148
+    REMOTE_PROC_DOMAIN_IS_PERSISTENT = 151,
+    REMOTE_PROC_NETWORK_IS_ACTIVE = 152,
+    REMOTE_PROC_NETWORK_IS_PERSISTENT = 153,
+    REMOTE_PROC_STORAGE_POOL_IS_ACTIVE = 154,
+    REMOTE_PROC_STORAGE_POOL_IS_PERSISTENT = 155,
+    REMOTE_PROC_INTERFACE_IS_ACTIVE = 156,
+    REMOTE_PROC_GET_LIB_VERSION = 157,
+    REMOTE_PROC_CPU_COMPARE = 158,
+    REMOTE_PROC_DOMAIN_MEMORY_STATS = 159
+
+    /*
+     * Notice how the entries are grouped in sets of 10 ?
+     * Nice isn't it. Please keep it this way when adding more.
+     */
 };
-
 
 /*
  * RPC wire format

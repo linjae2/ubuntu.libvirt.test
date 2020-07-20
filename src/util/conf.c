@@ -388,6 +388,10 @@ virConfParseString(virConfParserCtxtPtr ctxt)
             return(NULL);
         }
         ret = strndup(base, ctxt->cur - base);
+        if (ret == NULL) {
+            virReportOOMError(NULL);
+            return NULL;
+        }
         NEXT;
     } else if ((ctxt->cur + 6 < ctxt->end) && (ctxt->cur[0] == '"') &&
                (ctxt->cur[1] == '"') && (ctxt->cur[2] == '"')) {
@@ -404,6 +408,10 @@ virConfParseString(virConfParserCtxtPtr ctxt)
             return(NULL);
         }
         ret = strndup(base, ctxt->cur - base);
+        if (ret == NULL) {
+            virReportOOMError(NULL);
+            return NULL;
+        }
         ctxt->cur += 3;
     } else if (CUR == '"') {
         NEXT;
@@ -415,6 +423,10 @@ virConfParseString(virConfParserCtxtPtr ctxt)
             return(NULL);
         }
         ret = strndup(base, ctxt->cur - base);
+        if (ret == NULL) {
+            virReportOOMError(NULL);
+            return NULL;
+        }
         NEXT;
     }
     return(ret);
@@ -846,6 +858,9 @@ virConfSetValue (virConfPtr conf,
 {
     virConfEntryPtr cur, prev = NULL;
 
+    if (value && value->type == VIR_CONF_STRING && value->str == NULL)
+        return -1;
+
     cur = conf->entries;
     while (cur != NULL) {
         if ((cur->name != NULL) && (STREQ(cur->name, setting))) {
@@ -857,11 +872,13 @@ virConfSetValue (virConfPtr conf,
 
     if (!cur) {
         if (VIR_ALLOC(cur) < 0) {
+            virReportOOMError(NULL);
             virConfFreeValue(value);
             return (-1);
         }
         cur->comment = NULL;
         if (!(cur->name = strdup(setting))) {
+            virReportOOMError(NULL);
             virConfFreeValue(value);
             VIR_FREE(cur);
             return (-1);
@@ -913,15 +930,15 @@ virConfWriteFile(const char *filename, virConfPtr conf)
     }
 
     if (virBufferError(&buf)) {
+        virBufferFreeAndReset(&buf);
         virReportOOMError(NULL);
         return -1;
     }
 
     fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR );
     if (fd < 0) {
-        char *tmp = virBufferContentAndReset(&buf);
+        virBufferFreeAndReset(&buf);
         virConfError(NULL, VIR_ERR_WRITE_FAILED, _("failed to open file"));
-        VIR_FREE(tmp);
         return -1;
     }
 
@@ -969,6 +986,7 @@ virConfWriteMem(char *memory, int *len, virConfPtr conf)
     }
 
     if (virBufferError(&buf)) {
+        virBufferFreeAndReset(&buf);
         virReportOOMError(NULL);
         return -1;
     }
