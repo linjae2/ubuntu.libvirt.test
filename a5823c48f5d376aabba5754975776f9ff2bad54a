@@ -1,0 +1,5 @@
+  * d/p/u/virt-aa-helper-add-guest-agent-rule.patch: this actually solves
+    the qemu guest agent problem for rhel7 vms for me.  (LP: #1393842)
+    Also drop the mknod rule which isn't needed.
+  * d/apparmor/usr.lib.libvirt.virt-aa-helper: add permission to read under
+    /var/run.  This is needed for some openvswitch info. (LP: #1513367)
