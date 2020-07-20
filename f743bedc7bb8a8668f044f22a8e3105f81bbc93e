@@ -1,0 +1,30 @@
+  * Merge 1.3.4-1 from Debian unstable
+  * Drop upstream-applied patches:
+    - conf-also-mark-implicit-video-as-primary.patch
+    - libvirt-socket-fix-group
+  * Remaining changes
+    - keep libvirt-bin transitional package - until 18.10 (for lts-to-lts
+      upgrades)
+    - keep (redundant) libvirtd group if it existed on upgrade - until 18.10
+      (for lts-to-lts upgrades)
+    - keep ubuntu-specific patches
+    - ship apport and dnsmasq files
+    - enable virbr0
+    - ship apparmor from debian/*.  We should push changes upstrema, but
+      cannot sync with debian as apparmor profiles must be processed in
+      debian/rules for cloud archive.
+    - debian/control
+      - enable zfs
+      - disable libssh2 and sheepdog
+      - add libxml-libxml-perl and libcurl4-gnutls-dev
+      - enable libnuma-dev on ppc64el (pushed to Debian)
+      - update release for conflicts/replaces on libvirt-bin to << 1.3.3-2
+    - debian/libvirt-daemon-system.preinst: stop libvirt-bin on certain
+      upgrades.
+      - Multi-arch-ify.
+    - debian/rules: disable selinux and firewalld;  use 'kvm' group; disable
+      ssh2, enable zfs and esx;  process apparmor files for older releases;
+      copy dnsmasq configuration.
+    - debian/tests/control: add extra depends
+  * d/p/ubuntu/apibuild-skip-libvirt-common.h: libvirt-common.h is being
+    included twice leading to build failures - drop it temporarily.
