@@ -1,0 +1,2 @@
+  * d/p/u/apparmor-fix-other-seclabels.patch fixes an issue parsing non
+    apparmor security labels (LP: #1633207).
