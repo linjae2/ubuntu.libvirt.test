@@ -1,0 +1,2 @@
+  * debian/patches/add-ppc64le-support.patch: Added patches needed
+    for ppc64le support. (LP: #1396070) 
