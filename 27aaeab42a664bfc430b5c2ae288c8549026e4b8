@@ -1,0 +1,2 @@
+  * libvirt-qemu apparmor template: add /sys/firmware/devicetree/** r
+    (LP: #1374554)
