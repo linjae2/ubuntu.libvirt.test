@@ -1,0 +1,4 @@
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: add
+    /var/lib/nova/instances/snapshots/** r to allow virt-aa-helper to read
+    the snapshot directory to find images which VMs should be granted access
+    to.  (LP: #1244694)
