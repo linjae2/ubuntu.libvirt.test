@@ -1,0 +1,6 @@
+  * [8c5ba09] Rediff patches.
+    Dropped
+         allow-libxl-to-find-default-path-to-pygrub.patch: fixed upstram
+         CVE-2014-7823-dumpxml-security-....patch: fixed upstream
+         util-Prepare-URI-formatting-for-libxml2-2.9.2.patch: fixed upstream
+  * [bdb5692] Bump symbol versions
