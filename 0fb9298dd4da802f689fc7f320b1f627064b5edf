@@ -1,0 +1,33 @@
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + DebianMaintainerField
+      + Don't build-depend on QEmu.
+      + Add "XS-Original-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg, since
+        we used to ship them as such.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+  * upload to unstable
+  * [96c6727] add /var/cache/libvirt needed by qemuDriver for temporary
+    storage
+  * [794f95c] bump standards version to 3.8.0
+  * [05184af] add README.source
+  * [facb983] README.Debian explain "default" network startup
+  * [395a510] add /var/lib/libvirt needed for the dnsmasq lease file
+  * [9c588ac] promote bridge-utils & dnsmasq to Recommends: since
+    they're needed for the default NAT network
+  * [9ed2cd4] recommend iptables - needed for the default NAT network
+  * [0ff1e68] new upstream version
+  * [2098f96] rebase patches for 0.4.4
+  * [abbd15e] enable with-storage-disk now that we have parted1.8
+  * [3942b25] start libvirtd by default
