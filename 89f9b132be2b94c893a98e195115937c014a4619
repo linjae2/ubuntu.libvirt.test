@@ -1,0 +1,4 @@
+  [ David weber ]
+  * debian/patches/fix-block-migration.patch: Fix block-migration for large images.
+  [ Guilhem Lettron ]
+  * debian/apparmor/libvirt-qemu: add apparmor rule for mavtap  (LP: #921870)
