@@ -1,0 +1,5 @@
+  * SECURITY UPDATE: incorrect permission checks in the
+    virConnectDomainXMLToNative API
+    - debian/patches/CVE-2013-4401.patch: ensure proper permissions in
+      src/libvirt.c, src/remote/remote_protocol.x.
+    - CVE-2013-4401
