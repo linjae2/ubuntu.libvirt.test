@@ -1,0 +1,2 @@
+  * Remove smoser-ppc64le-is-ppc64.patch - the problem will be solved by the
+    qemu-system-ppcle symlink in qemu-system-ppc package.
