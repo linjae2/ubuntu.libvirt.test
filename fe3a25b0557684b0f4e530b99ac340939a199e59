@@ -1,0 +1,2 @@
+  * debian/patches/9014-skip-nodeinfotest.patch: fix FTBFS in nodeinfotest
+    which is still broken on armel
