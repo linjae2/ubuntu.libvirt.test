@@ -1,0 +1,3 @@
+  * d/p/u/aa-helper-Properly-link-with-storage-driver.patch (LP: #1704782)
+    Fix to be able to follow BackinStorage chains when creating per
+    guest apparmor rules.
