@@ -1,0 +1,10 @@
+  * SECURITY UPDATE: QEMU monitor DoS
+    - debian/patches/CVE-2018-1064.patch: add size limit to
+      src/qemu/qemu_agent.c.
+    - CVE-2018-1064
+  * SECURITY UPDATE: Speculative Store Bypass
+    - debian/patches/CVE-2018-3639-1.patch: define the 'ssbd' CPUID feature
+      bit in src/cpu/cpu_map.xml.
+    - debian/patches/CVE-2018-3639-2.patch: define the 'virt-ssbd' CPUID
+      feature bit in src/cpu/cpu_map.xml.
+    - CVE-2018-3639
