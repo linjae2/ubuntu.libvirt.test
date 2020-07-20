@@ -1,0 +1,3 @@
+  * apply all patches from v1.1.1-maint
+  * cherrypick xen-use-internal-interfaces-in-xendomainusedcpus from upstream
+    git.
