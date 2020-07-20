@@ -1,0 +1,5 @@
+  * masquerade-only-outbound-traffic.patch:
+    - Ensure masquerading rule only catches traffic leaving the virtual
+      network, and not traffic inside it.  (Backported from commit
+      d175caad25a4e80800d5e7e7d8c9d920a88b78e1 of
+      git://git.et.redhat.com/libvirt.git.) (LP: #227837).
