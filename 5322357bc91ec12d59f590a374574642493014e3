@@ -1,0 +1,27 @@
+  * SECURITY UPDATE: fix multiple issues with disk format for backing stores
+    which could allow a privileged guest user to access arbitrary files on
+    the host.
+    - debian/patches/9900-CVE-2010-2237-2238-2239.patch:
+      + update security drivers to honor the user defined disk format when
+        looking up disk backing stores
+      + update security drivers to honor the defined backing store disk format
+        when recursing into disk image backing stores
+      + explicitly set the user defined backing store format when creating a
+        new image
+    - migrate virtual machine definitions with non-raw disks and previously
+      unspecified disk format with a one time probe on upgrades:
+      + add debian/libvirt-migrate-qemu-disks
+      + add debian/libvirt-migrate-qemu-disks.1
+      + debian/libvirt-bin.postinst: updated to run
+        'libvirt-migrate-qemu-disks -a' on upgrades
+      + debian/rules: cp debian/libvirt-migrate-qemu-disks into place
+      + debian/libvirt-bin.manpages: install libvirt-migrate-qemu-disks.1
+      + debian/README.Debian: updated for libvirt-migrate-qemu-disks
+    - CVE-2010-2237
+    - CVE-2010-2238
+    - CVE-2010-2239
+  * SECURITY UPDATE: fix to disallow privileged users in guests from accessing
+    privileged resources, such as NFS
+    - debian/patches/9901-CVE-2010-2242.patch: set iptables masqerading rules
+      to use ports 1024-65535
+    - CVE-2010-2242
