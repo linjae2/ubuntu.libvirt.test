@@ -1,0 +1,2 @@
+  * debian/control: Demoted package ebtables from Recommends 
+    to Suggests for binary package, libvirt-bin. 
