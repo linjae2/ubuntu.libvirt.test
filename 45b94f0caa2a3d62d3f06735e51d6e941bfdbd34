@@ -1,0 +1,2 @@
+  * debian/libvirt-bin.apport: use new apport MAC function instead of
+    parsing and attaching AppArmor events here.
