@@ -1,0 +1,2 @@
+  * [51ba06c] Allow testsuite to output to stderr
+    since we run the script with -x.
