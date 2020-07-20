@@ -1,0 +1,5 @@
+  [ Guido Günther ]
+  * [4f04c2c] New upstream version 1.3.1
+  [ Simon McVittie ]
+  * [a0b3e59] Add a patch to make virt-aa-helper allow reading the new location of OVMF firmware
+    (Closes: #812069)
