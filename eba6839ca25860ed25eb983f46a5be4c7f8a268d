@@ -1,0 +1,3 @@
+  * SECURITY UPDATE: debian/patches/9902-CVE-2011-1146.patch: Add missing
+    checks for read only connections.
+    - CVE-2011-1146
