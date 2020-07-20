@@ -1,0 +1,7 @@
+  [ Guido Günther ]
+  * [b350683] Enable parallel build
+  * [b2a6aab] Enable NUMA support
+  * [13274cf] New patch 0007-Work-around-broken-linux-socket.h.patch
+    Work around broken linux/socket.h
+  [ Laurent Léonard ]
+  * [3c12caf] qemu: Fix USB by product with security enabled.
