@@ -1,0 +1,4 @@
+  [ Dann Frazier ]
+  * Enable NUMA for arm64 (LP: #1627926).
+  [ Stefan Bader ]
+  * Update Vcs lines to point to launchpad (LP: #1629210).
