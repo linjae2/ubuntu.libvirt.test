@@ -34,8 +34,9 @@ all-local: libvirt.py
 python_LTLIBRARIES = libvirtmod.la
 
 libvirtmod_la_SOURCES = libvir.c types.c libvirt-py.c libvirt-py.h
-# Python header files contain a redundant decl, hence:
-libvirtmod_la_CFLAGS = -Wno-redundant-decls
+# Python <= 2.4 header files contain a redundant decl, hence we
+# need extra flags here
+libvirtmod_la_CFLAGS = @WARN_PYTHON_CFLAGS@
 
 libvirtmod_la_LDFLAGS = -module -avoid-version -L$(top_builddir)/src/.libs \
 	@CYGWIN_EXTRA_LDFLAGS@
@@ -50,8 +51,11 @@ GENERATED= libvirt-export.c \
 	   libvirt-py.h \
 	   libvirtclass.py
 
-$(GENERATED): $(srcdir)/$(GENERATE) $(API_DESC)
+generated.stamp: $(srcdir)/$(GENERATE) $(API_DESC)
 	$(PYTHON) $(srcdir)/$(GENERATE) $(srcdir)
+	touch $@
+
+$(GENERATED): generated.stamp
 
 libvirt.py: $(srcdir)/libvir.py $(GENERATED) $(CLASSES_EXTRA)
 	cat $(srcdir)/libvir.py libvirtclass.py > $@-t
@@ -69,7 +73,7 @@ install-data-local:
 uninstall-local:
 	rm -f $(DESTDIR)$(pythondir)/libvirt.py
 
-CLEANFILES= $(GENERATED) libvirt.py
+CLEANFILES= $(GENERATED) generated.stamp libvirt.py
 
 else
 all:

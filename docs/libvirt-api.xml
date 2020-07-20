@@ -8,13 +8,16 @@
      <exports symbol='VIR_NODEINFO_MAXCPUS' type='macro'/>
      <exports symbol='LIBVIR_VERSION_NUMBER' type='macro'/>
      <exports symbol='VIR_USE_CPU' type='macro'/>
+     <exports symbol='VIR_SECURITY_DOI_BUFLEN' type='macro'/>
      <exports symbol='VIR_CPU_MAPLEN' type='macro'/>
-     <exports symbol='VIR_UUID_BUFLEN' type='macro'/>
+     <exports symbol='VIR_SECURITY_LABEL_BUFLEN' type='macro'/>
      <exports symbol='VIR_CPU_USABLE' type='macro'/>
      <exports symbol='VIR_COPY_CPUMAP' type='macro'/>
      <exports symbol='VIR_DOMAIN_SCHED_FIELD_LENGTH' type='macro'/>
+     <exports symbol='VIR_SECURITY_MODEL_BUFLEN' type='macro'/>
      <exports symbol='VIR_UUID_STRING_BUFLEN' type='macro'/>
      <exports symbol='VIR_GET_CPUMAP' type='macro'/>
+     <exports symbol='VIR_UUID_BUFLEN' type='macro'/>
      <exports symbol='VIR_UNUSE_CPU' type='macro'/>
      <exports symbol='VIR_DOMAIN_EVENT_DEFINED' type='enum'/>
      <exports symbol='VIR_CRED_EXTERNAL' type='enum'/>
@@ -107,6 +110,7 @@
      <exports symbol='virConnectAuthPtr' type='typedef'/>
      <exports symbol='virStorageVolInfo' type='typedef'/>
      <exports symbol='virSchedParameterType' type='typedef'/>
+     <exports symbol='virSecurityLabel' type='typedef'/>
      <exports symbol='virStorageVolInfoPtr' type='typedef'/>
      <exports symbol='virConnectCredentialPtr' type='typedef'/>
      <exports symbol='virStoragePoolPtr' type='typedef'/>
@@ -129,6 +133,7 @@
      <exports symbol='virSchedParameterPtr' type='typedef'/>
      <exports symbol='virConnectAuth' type='typedef'/>
      <exports symbol='virConnectCredential' type='typedef'/>
+     <exports symbol='virSecurityModelPtr' type='typedef'/>
      <exports symbol='virDomainEventSuspendedDetailType' type='typedef'/>
      <exports symbol='virVcpuInfoPtr' type='typedef'/>
      <exports symbol='virStoragePoolBuildFlags' type='typedef'/>
@@ -140,13 +145,17 @@
      <exports symbol='virStoragePoolState' type='typedef'/>
      <exports symbol='virStoragePoolInfoPtr' type='typedef'/>
      <exports symbol='virDomainCreateFlags' type='typedef'/>
+     <exports symbol='virSecurityLabelPtr' type='typedef'/>
+     <exports symbol='virSecurityModel' type='typedef'/>
      <exports symbol='_virDomainInfo' type='struct'/>
      <exports symbol='_virConnectAuth' type='struct'/>
      <exports symbol='_virVcpuInfo' type='struct'/>
      <exports symbol='_virDomainInterfaceStats' type='struct'/>
      <exports symbol='_virStoragePoolInfo' type='struct'/>
      <exports symbol='_virConnectCredential' type='struct'/>
+     <exports symbol='_virSecurityLabel' type='struct'/>
      <exports symbol='_virStorageVolInfo' type='struct'/>
+     <exports symbol='_virSecurityModel' type='struct'/>
      <exports symbol='_virDomainBlockStats' type='struct'/>
      <exports symbol='_virNodeInfo' type='struct'/>
      <exports symbol='_virSchedParameter' type='struct'/>
@@ -163,7 +172,8 @@
      <exports symbol='virInitialize' type='function'/>
      <exports symbol='virNodeDeviceGetName' type='function'/>
      <exports symbol='virStoragePoolSetAutostart' type='function'/>
-     <exports symbol='virStorageVolCreateXML' type='function'/>
+     <exports symbol='virNodeDeviceDettach' type='function'/>
+     <exports symbol='virDomainGetSecurityLabel' type='function'/>
      <exports symbol='virConnectDomainEventDeregister' type='function'/>
      <exports symbol='virDomainGetSchedulerParameters' type='function'/>
      <exports symbol='virDomainLookupByUUIDString' type='function'/>
@@ -173,17 +183,18 @@
      <exports symbol='virStoragePoolGetConnect' type='function'/>
      <exports symbol='virConnectGetVersion' type='function'/>
      <exports symbol='virDomainFree' type='function'/>
+     <exports symbol='virStorageVolRef' type='function'/>
      <exports symbol='virStoragePoolGetName' type='function'/>
      <exports symbol='virDomainSetAutostart' type='function'/>
      <exports symbol='virStoragePoolDefineXML' type='function'/>
      <exports symbol='virStorageVolLookupByPath' type='function'/>
      <exports symbol='virStorageVolLookupByName' type='function'/>
-     <exports symbol='virDomainCreateLinux' type='function'/>
+     <exports symbol='virNetworkCreate' type='function'/>
      <exports symbol='virDomainSetMaxMemory' type='function'/>
      <exports symbol='virEventRegisterImpl' type='function'/>
      <exports symbol='virDomainMigrate' type='function'/>
      <exports symbol='virDomainSuspend' type='function'/>
-     <exports symbol='virNetworkCreate' type='function'/>
+     <exports symbol='virDomainCreateLinux' type='function'/>
      <exports symbol='virNodeDeviceGetXMLDesc' type='function'/>
      <exports symbol='virEventUpdateHandleFunc' type='function'/>
      <exports symbol='virDomainDestroy' type='function'/>
@@ -202,6 +213,7 @@
      <exports symbol='virStorageVolGetXMLDesc' type='function'/>
      <exports symbol='virDomainSetSchedulerParameters' type='function'/>
      <exports symbol='virConnectGetType' type='function'/>
+     <exports symbol='virStorageVolCreateXML' type='function'/>
      <exports symbol='virDomainSave' type='function'/>
      <exports symbol='virDomainCreate' type='function'/>
      <exports symbol='virConnectListDomains' type='function'/>
@@ -226,6 +238,7 @@
      <exports symbol='virConnectGetHostname' type='function'/>
      <exports symbol='virEventRemoveTimeoutFunc' type='function'/>
      <exports symbol='virDomainGetName' type='function'/>
+     <exports symbol='virStoragePoolRef' type='function'/>
      <exports symbol='virNetworkGetXMLDesc' type='function'/>
      <exports symbol='virConnectNumOfStoragePools' type='function'/>
      <exports symbol='virNetworkGetName' type='function'/>
@@ -234,6 +247,7 @@
      <exports symbol='virDomainLookupByName' type='function'/>
      <exports symbol='virConnectFindStoragePoolSources' type='function'/>
      <exports symbol='virDomainPinVcpu' type='function'/>
+     <exports symbol='virNodeGetSecurityModel' type='function'/>
      <exports symbol='virDomainRestore' type='function'/>
      <exports symbol='virStorageVolGetPath' type='function'/>
      <exports symbol='virNetworkLookupByUUIDString' type='function'/>
@@ -244,6 +258,7 @@
      <exports symbol='virDomainMemoryPeek' type='function'/>
      <exports symbol='virNetworkLookupByUUID' type='function'/>
      <exports symbol='virConnectListDefinedNetworks' type='function'/>
+     <exports symbol='virConnectRef' type='function'/>
      <exports symbol='virDomainGetUUID' type='function'/>
      <exports symbol='virNetworkCreateXML' type='function'/>
      <exports symbol='virDomainGetVcpus' type='function'/>
@@ -251,6 +266,7 @@
      <exports symbol='virStoragePoolGetInfo' type='function'/>
      <exports symbol='virDomainResume' type='function'/>
      <exports symbol='virNodeListDevices' type='function'/>
+     <exports symbol='virNetworkRef' type='function'/>
      <exports symbol='virStoragePoolRefresh' type='function'/>
      <exports symbol='virConnectNumOfDefinedDomains' type='function'/>
      <exports symbol='virStorageVolLookupByKey' type='function'/>
@@ -261,9 +277,11 @@
      <exports symbol='virDomainGetMaxVcpus' type='function'/>
      <exports symbol='virEventHandleCallback' type='function'/>
      <exports symbol='virDomainGetSchedulerType' type='function'/>
+     <exports symbol='virNodeDeviceReset' type='function'/>
      <exports symbol='virDomainDetachDevice' type='function'/>
      <exports symbol='virStoragePoolNumOfVolumes' type='function'/>
      <exports symbol='virStoragePoolGetUUIDString' type='function'/>
+     <exports symbol='virNodeDeviceReAttach' type='function'/>
      <exports symbol='virStoragePoolUndefine' type='function'/>
      <exports symbol='virConnectAuthCallbackPtr' type='function'/>
      <exports symbol='virDomainAttachDevice' type='function'/>
@@ -292,7 +310,9 @@
      <exports symbol='virNodeDeviceGetParent' type='function'/>
      <exports symbol='virConnectOpen' type='function'/>
      <exports symbol='virDomainCreateXML' type='function'/>
+     <exports symbol='virNodeDeviceRef' type='function'/>
      <exports symbol='virDomainSetVcpus' type='function'/>
+     <exports symbol='virDomainRef' type='function'/>
      <exports symbol='virConnectDomainEventRegister' type='function'/>
      <exports symbol='virDomainGetID' type='function'/>
      <exports symbol='virDomainBlockPeek' type='function'/>
@@ -338,6 +358,7 @@
      <exports symbol='VIR_ERR_OPERATION_DENIED' type='enum'/>
      <exports symbol='VIR_FROM_STORAGE' type='enum'/>
      <exports symbol='VIR_ERR_NO_KERNEL' type='enum'/>
+     <exports symbol='VIR_WAR_NO_STORAGE' type='enum'/>
      <exports symbol='VIR_ERR_GNUTLS_ERROR' type='enum'/>
      <exports symbol='VIR_ERR_POST_FAILED' type='enum'/>
      <exports symbol='VIR_ERR_OS_TYPE' type='enum'/>
@@ -346,6 +367,7 @@
      <exports symbol='VIR_ERR_INVALID_CONN' type='enum'/>
      <exports symbol='VIR_ERR_NONE' type='enum'/>
      <exports symbol='VIR_ERR_OK' type='enum'/>
+     <exports symbol='VIR_FROM_NETWORK' type='enum'/>
      <exports symbol='VIR_ERR_XML_DETAIL' type='enum'/>
      <exports symbol='VIR_FROM_NET' type='enum'/>
      <exports symbol='VIR_FROM_XENXM' type='enum'/>
@@ -362,14 +384,14 @@
      <exports symbol='VIR_FROM_DOMAIN' type='enum'/>
      <exports symbol='VIR_ERR_NO_TARGET' type='enum'/>
      <exports symbol='VIR_ERR_NETWORK_EXIST' type='enum'/>
-     <exports symbol='VIR_WAR_NO_STORAGE' type='enum'/>
+     <exports symbol='VIR_FROM_SECURITY' type='enum'/>
      <exports symbol='VIR_ERR_WRITE_FAILED' type='enum'/>
      <exports symbol='VIR_ERR_INTERNAL_ERROR' type='enum'/>
      <exports symbol='VIR_ERR_CONF_SYNTAX' type='enum'/>
      <exports symbol='VIR_ERR_INVALID_STORAGE_POOL' type='enum'/>
      <exports symbol='VIR_FROM_REMOTE' type='enum'/>
      <exports symbol='VIR_ERR_NO_SUPPORT' type='enum'/>
-     <exports symbol='VIR_FROM_NETWORK' type='enum'/>
+     <exports symbol='VIR_ERR_NO_SECURITY_MODEL' type='enum'/>
      <exports symbol='VIR_FROM_QEMU' type='enum'/>
      <exports symbol='VIR_FROM_XEND' type='enum'/>
      <exports symbol='VIR_ERR_INVALID_STORAGE_VOL' type='enum'/>
@@ -391,6 +413,7 @@
      <exports symbol='virErrorNumber' type='typedef'/>
      <exports symbol='virError' type='typedef'/>
      <exports symbol='_virError' type='struct'/>
+     <exports symbol='virFreeError' type='function'/>
      <exports symbol='virCopyLastError' type='function'/>
      <exports symbol='virConnSetErrorFunc' type='function'/>
      <exports symbol='virResetLastError' type='function'/>
@@ -402,6 +425,7 @@
      <exports symbol='virSetErrorFunc' type='function'/>
      <exports symbol='virConnCopyLastError' type='function'/>
      <exports symbol='virConnResetLastError' type='function'/>
+     <exports symbol='virSaveLastError' type='function'/>
     </file>
   </files>
   <symbols>
@@ -438,6 +462,15 @@
     <macro name='VIR_NODEINFO_MAXCPUS' file='libvirt'>
       <info>This macro is to calculate the total number of CPUs supported but not necessary active in the host.</info>
       <arg name='nodeinfo' info='virNodeInfo instance'/>
+    </macro>
+    <macro name='VIR_SECURITY_DOI_BUFLEN' file='libvirt'>
+      <info>Macro providing the maximum length of the virSecurityModel doi string.</info>
+    </macro>
+    <macro name='VIR_SECURITY_LABEL_BUFLEN' file='libvirt'>
+      <info>Macro providing the maximum length of the virSecurityLabel label string. Note that this value is based on that used by Labeled NFS.</info>
+    </macro>
+    <macro name='VIR_SECURITY_MODEL_BUFLEN' file='libvirt'>
+      <info>Macro providing the maximum length of the virSecurityModel model string.</info>
     </macro>
     <macro name='VIR_UNUSE_CPU' file='libvirt'>
       <info>This macro is to be used in conjunction with virDomainPinVcpu() API. USE_CPU macro reset the bit (CPU not usable) of the related cpu in cpumap.</info>
@@ -530,9 +563,10 @@
     <enum name='VIR_ERR_NO_MEMORY' file='virterror' value='2' type='virErrorNumber' info='memory allocation failure'/>
     <enum name='VIR_ERR_NO_NAME' file='virterror' value='21' type='virErrorNumber' info='missing domain name information'/>
     <enum name='VIR_ERR_NO_NETWORK' file='virterror' value='43' type='virErrorNumber' info='network not found'/>
-    <enum name='VIR_ERR_NO_NODE_DEVICE' file='virterror' value='53' type='virErrorNumber' info=' node device not found'/>
+    <enum name='VIR_ERR_NO_NODE_DEVICE' file='virterror' value='53' type='virErrorNumber' info='node device not found'/>
     <enum name='VIR_ERR_NO_OS' file='virterror' value='22' type='virErrorNumber' info='missing domain OS information'/>
     <enum name='VIR_ERR_NO_ROOT' file='virterror' value='18' type='virErrorNumber' info='missing root device information'/>
+    <enum name='VIR_ERR_NO_SECURITY_MODEL' file='virterror' value='54' type='virErrorNumber' info=' security model not found'/>
     <enum name='VIR_ERR_NO_SOURCE' file='virterror' value='19' type='virErrorNumber' info='missing source device information'/>
     <enum name='VIR_ERR_NO_STORAGE_POOL' file='virterror' value='49' type='virErrorNumber' info='storage pool not found'/>
     <enum name='VIR_ERR_NO_STORAGE_VOL' file='virterror' value='50' type='virErrorNumber' info='storage pool not found'/>
@@ -574,6 +608,7 @@
     <enum name='VIR_FROM_QEMU' file='virterror' value='10' type='virErrorDomain' info='Error at the QEMU daemon'/>
     <enum name='VIR_FROM_REMOTE' file='virterror' value='13' type='virErrorDomain' info='Error from remote driver'/>
     <enum name='VIR_FROM_RPC' file='virterror' value='7' type='virErrorDomain' info='Error in the XML-RPC code'/>
+    <enum name='VIR_FROM_SECURITY' file='virterror' value='24' type='virErrorDomain' info=' Error from security framework'/>
     <enum name='VIR_FROM_SEXPR' file='virterror' value='4' type='virErrorDomain' info='Error in the S-Expression code'/>
     <enum name='VIR_FROM_STATS_LINUX' file='virterror' value='16' type='virErrorDomain' info='Error in the Linux Stats code'/>
     <enum name='VIR_FROM_STORAGE' file='virterror' value='18' type='virErrorDomain' info='Error from storage driver'/>
@@ -583,7 +618,7 @@
     <enum name='VIR_FROM_XEND' file='virterror' value='2' type='virErrorDomain' info='Error at connection with xend daemon'/>
     <enum name='VIR_FROM_XENSTORE' file='virterror' value='3' type='virErrorDomain' info='Error at connection with xen store'/>
     <enum name='VIR_FROM_XENXM' file='virterror' value='15' type='virErrorDomain' info='Error at Xen XM layer'/>
-    <enum name='VIR_FROM_XEN_INOTIFY' file='virterror' value='23' type='virErrorDomain' info=' Error from xen inotify layer'/>
+    <enum name='VIR_FROM_XEN_INOTIFY' file='virterror' value='23' type='virErrorDomain' info='Error from xen inotify layer'/>
     <enum name='VIR_FROM_XML' file='virterror' value='5' type='virErrorDomain' info='Error in the XML code'/>
     <enum name='VIR_MEMORY_VIRTUAL' file='libvirt' value='1' type='virDomainMemoryFlags' info=' addresses are virtual addresses'/>
     <enum name='VIR_MIGRATE_LIVE' file='libvirt' value='1' type='virDomainMigrateFlags' info=' live migration'/>
@@ -728,6 +763,14 @@ see note above'/>
       <info>a virSchedParameterPtr is a pointer to a virSchedParameter structure.</info>
     </typedef>
     <typedef name='virSchedParameterType' file='libvirt' type='enum'/>
+    <struct name='virSecurityLabel' file='libvirt' type='struct _virSecurityLabel'/>
+    <typedef name='virSecurityLabelPtr' file='libvirt' type='virSecurityLabel *'>
+      <info>a virSecurityLabelPtr is a pointer to a virSecurityLabel.</info>
+    </typedef>
+    <struct name='virSecurityModel' file='libvirt' type='struct _virSecurityModel'/>
+    <typedef name='virSecurityModelPtr' file='libvirt' type='virSecurityModel *'>
+      <info>a virSecurityModelPtr is a pointer to a virSecurityModel.</info>
+    </typedef>
     <struct name='virStoragePool' file='libvirt' type='struct _virStoragePool'/>
     <typedef name='virStoragePoolBuildFlags' file='libvirt' type='enum'/>
     <typedef name='virStoragePoolDeleteFlags' file='libvirt' type='enum'/>
@@ -764,18 +807,18 @@ see note above'/>
     <typedef name='virVcpuState' file='libvirt' type='enum'/>
     <variable name='virConnectAuthPtrDefault' file='libvirt' type='virConnectAuthPtr'/>
     <function name='virConnCopyLastError' file='virterror' module='virterror'>
-      <info>Copy the content of the last error caught on that connection One will need to free the result with virResetError()</info>
+      <info>Copy the content of the last error caught on that connection  This method is not protected against access from multiple threads. In a multi-threaded application, always use the global virGetLastError() API which is backed by thread local storage.  If the connection object was discovered to be invalid by an API call, then the error will be reported against the global error object.  Since 0.6.0, all errors reported in the per-connection object are also duplicated in the global error object. As such an application can always use virGetLastError(). This method remains for backwards compatability.  One will need to free the result with virResetError()</info>
       <return type='int' info='0 if no error was found and the error code otherwise and -1 in case of parameter error.'/>
       <arg name='conn' type='virConnectPtr' info='pointer to the hypervisor connection'/>
       <arg name='to' type='virErrorPtr' info='target to receive the copy'/>
     </function>
     <function name='virConnGetLastError' file='virterror' module='virterror'>
-      <info>Provide a pointer to the last error caught on that connection Simpler but may not be suitable for multithreaded accesses, in which case use virConnCopyLastError()</info>
+      <info>Provide a pointer to the last error caught on that connection  This method is not protected against access from multiple threads. In a multi-threaded application, always use the global virGetLastError() API which is backed by thread local storage.  If the connection object was discovered to be invalid by an API call, then the error will be reported against the global error object.  Since 0.6.0, all errors reported in the per-connection object are also duplicated in the global error object. As such an application can always use virGetLastError(). This method remains for backwards compatability.</info>
       <return type='virErrorPtr' info='a pointer to the last error or NULL if none occurred.'/>
       <arg name='conn' type='virConnectPtr' info='pointer to the hypervisor connection'/>
     </function>
     <function name='virConnResetLastError' file='virterror' module='virterror'>
-      <info>Reset the last error caught on that connection</info>
+      <info>The error object is kept in thread local storage, so separate threads can safely access this concurrently.  Reset the last error caught on that connection</info>
       <return type='void'/>
       <arg name='conn' type='virConnectPtr' info='pointer to the hypervisor connection'/>
     </function>
@@ -814,8 +857,8 @@ see note above'/>
       <arg name='cb' type='virConnectDomainEventCallback' info='callback to the function handling domain events'/>
     </function>
     <function name='virConnectDomainEventRegister' file='libvirt' module='libvirt'>
-      <info>Adds a Domain Event Callback. Registering for a domain callback will enable delivery of the events</info>
-      <return type='int' info='0 on success, -1 on failure'/>
+      <info>Adds a Domain Event Callback. Registering for a domain callback will enable delivery of the events  The virDomainPtr object handle passed into the callback upon delivery of an event is only valid for the duration of execution of the callback. If the callback wishes to keep the domain object after the callback</info>
+      <return type='int' info='it shall take a reference to it, by calling virDomainRef. The reference can be released once the object is no longer required by calling virDomainFree.  Returns 0 on success, -1 on failure'/>
       <arg name='conn' type='virConnectPtr' info='pointer to the connection'/>
       <arg name='cb' type='virConnectDomainEventCallback' info='callback to the function handling domain events'/>
       <arg name='opaque' type='void *' info='opaque data to pass on to the callback'/>
@@ -950,8 +993,13 @@ see note above'/>
       <return type='virConnectPtr' info='a pointer to the hypervisor connection or NULL in case of error  URIs are documented at http://libvirt.org/uri.html'/>
       <arg name='name' type='const char *' info='URI of the hypervisor'/>
     </function>
+    <function name='virConnectRef' file='libvirt' module='libvirt'>
+      <info>Increment the reference count on the connection. For each additional call to this method, there shall be a corresponding call to virConnectClose to release the reference count, once the caller no longer needs the reference to this object.  This method is typically useful for applications where multiple threads are using a connection, and it is required that the connection remain open until all threads have finished using it. ie, each new thread using a connection would increment the reference count.</info>
+      <return type='int' info=''/>
+      <arg name='conn' type='virConnectPtr' info='the connection to hold a reference on'/>
+    </function>
     <function name='virCopyLastError' file='virterror' module='virterror'>
-      <info>Copy the content of the last error caught at the library level One will need to free the result with virResetError()</info>
+      <info>Copy the content of the last error caught at the library level  The error object is kept in thread local storage, so separate threads can safely access this concurrently.  One will need to free the result with virResetError()</info>
       <return type='int' info='0 if no error was found and the error code otherwise and -1 in case of parameter error.'/>
       <arg name='to' type='virErrorPtr' info='target to receive the copy'/>
     </function>
@@ -1087,6 +1135,12 @@ see note above'/>
       <arg name='domain' type='virDomainPtr' info='pointer to domain object'/>
       <arg name='nparams' type='int *' info='number of scheduler parameters(return value)'/>
     </function>
+    <function name='virDomainGetSecurityLabel' file='libvirt' module='libvirt'>
+      <info>Extract security label of an active domain.</info>
+      <return type='int' info='0 in case of success, -1 in case of failure, and -2 if the operation is not supported (caller decides if that&apos;s an error).'/>
+      <arg name='domain' type='virDomainPtr' info='a domain object'/>
+      <arg name='seclabel' type='virSecurityLabelPtr' info='pointer to a virSecurityLabel structure'/>
+    </function>
     <function name='virDomainGetUUID' file='libvirt' module='libvirt'>
       <info>Get the UUID for a domain</info>
       <return type='int' info='-1 in case of error, 0 in case of success'/>
@@ -1178,6 +1232,11 @@ see note above'/>
       <return type='int' info='0 in case of success and -1 in case of failure.'/>
       <arg name='domain' type='virDomainPtr' info='a domain object'/>
       <arg name='flags' type='unsigned int' info='extra flags for the reboot operation, not used yet'/>
+    </function>
+    <function name='virDomainRef' file='libvirt' module='libvirt'>
+      <info>Increment the reference count on the domain. For each additional call to this method, there shall be a corresponding call to virDomainFree to release the reference count, once the caller no longer needs the reference to this object.  This method is typically useful for applications where multiple threads are using a connection, and it is required that the connection remain open until all threads have finished using it. ie, each new thread using a domain would increment the reference count.</info>
+      <return type='int' info=''/>
+      <arg name='domain' type='virDomainPtr' info=''/>
     </function>
     <function name='virDomainRestore' file='libvirt' module='libvirt'>
       <info>This method will restore a domain saved to disk by virDomainSave().</info>
@@ -1316,8 +1375,13 @@ see note above'/>
       <return type='void'/>
       <arg name='opaque' type='void *' info=''/>
     </functype>
+    <function name='virFreeError' file='virterror' module='virterror'>
+      <info>Resets and frees the given error.</info>
+      <return type='void'/>
+      <arg name='err' type='virErrorPtr' info='error to free'/>
+    </function>
     <function name='virGetLastError' file='virterror' module='virterror'>
-      <info>Provide a pointer to the last error caught at the library level Simpler but may not be suitable for multithreaded accesses, in which case use virCopyLastError()</info>
+      <info>Provide a pointer to the last error caught at the library level  The error object is kept in thread local storage, so separate threads can safely access this concurrently.</info>
       <return type='virErrorPtr' info='a pointer to the last error or NULL if none occurred.'/>
     </function>
     <function name='virGetVersion' file='libvirt' module='libvirt'>
@@ -1415,6 +1479,11 @@ see note above'/>
       <arg name='conn' type='virConnectPtr' info='pointer to the hypervisor connection'/>
       <arg name='uuidstr' type='const char *' info='the string UUID for the network'/>
     </function>
+    <function name='virNetworkRef' file='libvirt' module='libvirt'>
+      <info>Increment the reference count on the network. For each additional call to this method, there shall be a corresponding call to virNetworkFree to release the reference count, once the caller no longer needs the reference to this object.  This method is typically useful for applications where multiple threads are using a connection, and it is required that the connection remain open until all threads have finished using it. ie, each new thread using a network would increment the reference count.</info>
+      <return type='int' info=''/>
+      <arg name='network' type='virNetworkPtr' info=''/>
+    </function>
     <function name='virNetworkSetAutostart' file='libvirt' module='libvirt'>
       <info>Configure the network to be automatically started when the host machine boots.</info>
       <return type='int' info='-1 in case of error, 0 in case of success'/>
@@ -1425,6 +1494,11 @@ see note above'/>
       <info>Undefine a network but does not stop it if it is running</info>
       <return type='int' info='0 in case of success, -1 in case of error'/>
       <arg name='network' type='virNetworkPtr' info='pointer to a defined network'/>
+    </function>
+    <function name='virNodeDeviceDettach' file='libvirt' module='libvirt'>
+      <info></info>
+      <return type='int' info=''/>
+      <arg name='dev' type='virNodeDevicePtr' info=''/>
     </function>
     <function name='virNodeDeviceFree' file='libvirt' module='libvirt'>
       <info>Drops a reference to the node device, freeing it if this was the last reference.</info>
@@ -1465,6 +1539,21 @@ see note above'/>
       <return type='int' info='the number of capabilities supported by the device.'/>
       <arg name='dev' type='virNodeDevicePtr' info='the device'/>
     </function>
+    <function name='virNodeDeviceReAttach' file='libvirt' module='libvirt'>
+      <info>Re-attach a previously dettached node device to the node so that it may be used by the node again.  Depending on the hypervisor, this may involve operations such as resetting the device, unbinding it from a dummy device driver and binding it to its appropriate driver.  If the device is currently in use by a guest, this method may fail.</info>
+      <return type='int' info=''/>
+      <arg name='dev' type='virNodeDevicePtr' info='pointer to the node device'/>
+    </function>
+    <function name='virNodeDeviceRef' file='libvirt' module='libvirt'>
+      <info>Increment the reference count on the dev. For each additional call to this method, there shall be a corresponding call to virNodeDeviceFree to release the reference count, once the caller no longer needs the reference to this object.  This method is typically useful for applications where multiple threads are using a connection, and it is required that the connection remain open until all threads have finished using it. ie, each new thread using a dev would increment the reference count.</info>
+      <return type='int' info=''/>
+      <arg name='dev' type='virNodeDevicePtr' info=''/>
+    </function>
+    <function name='virNodeDeviceReset' file='libvirt' module='libvirt'>
+      <info>Reset a previously dettached node device to the node before or after assigning it to a guest.  The exact reset semantics depends on the hypervisor and device type but, for example, KVM will attempt to reset PCI devices with a Function Level Reset, Secondary Bus Reset or a Power Management D-State reset.  If the reset will affect other devices which are currently in use, this function may fail.</info>
+      <return type='int' info=''/>
+      <arg name='dev' type='virNodeDevicePtr' info='pointer to the node device'/>
+    </function>
     <function name='virNodeGetCellsFreeMemory' file='libvirt' module='libvirt'>
       <info>This call returns the amount of free memory in one or more NUMA cells. The @freeMems array must be allocated by the caller and will be filled with the amount of free memory in kilobytes for each cell requested, starting with startCell (in freeMems[0]), up to either (startCell + maxCells), or the number of additional cells in the node, whichever is smaller.</info>
       <return type='int' info='the number of entries filled in freeMems, or -1 in case of error.'/>
@@ -1483,6 +1572,12 @@ see note above'/>
       <return type='int' info='0 in case of success and -1 in case of failure.'/>
       <arg name='conn' type='virConnectPtr' info='pointer to the hypervisor connection'/>
       <arg name='info' type='virNodeInfoPtr' info='pointer to a virNodeInfo structure allocated by the user'/>
+    </function>
+    <function name='virNodeGetSecurityModel' file='libvirt' module='libvirt'>
+      <info>Extract the security model of a hypervisor.</info>
+      <return type='int' info='0 in case of success, -1 in case of failure, and -2 if the operation is not supported (caller decides if that&apos;s an error).'/>
+      <arg name='conn' type='virConnectPtr' info='a connection object'/>
+      <arg name='secmodel' type='virSecurityModelPtr' info='pointer to a virSecurityModel structure'/>
     </function>
     <function name='virNodeListDevices' file='libvirt' module='libvirt'>
       <info>Collect the list of node devices, and store their names in @names  If the optional &apos;cap&apos;  argument is non-NULL, then the count will be restricted to devices with the specified capability</info>
@@ -1506,8 +1601,12 @@ see note above'/>
       <arg name='err' type='virErrorPtr' info='pointer to the virError to clean up'/>
     </function>
     <function name='virResetLastError' file='virterror' module='virterror'>
-      <info>Reset the last error caught at the library level.</info>
+      <info>Reset the last error caught at the library level.  The error object is kept in thread local storage, so separate threads can safely access this concurrently, only resetting their own error object.</info>
       <return type='void'/>
+    </function>
+    <function name='virSaveLastError' file='virterror' module='virterror'>
+      <info>Save the last error into a new error object.</info>
+      <return type='virErrorPtr' info='a pointer to the copied error or NULL if allocation failed. It is the caller&apos;s responsibility to free the error with virFreeError().'/>
     </function>
     <function name='virSetErrorFunc' file='virterror' module='virterror'>
       <info>Set a library global error handling function, if @handler is NULL, it will reset to default printing on stderr. The error raised there are those for which no handler at the connection level could caught.</info>
@@ -1632,6 +1731,11 @@ see note above'/>
       <return type='int' info='the number of storage pools, or -1 on failure'/>
       <arg name='pool' type='virStoragePoolPtr' info='pointer to storage pool'/>
     </function>
+    <function name='virStoragePoolRef' file='libvirt' module='libvirt'>
+      <info>Increment the reference count on the pool. For each additional call to this method, there shall be a corresponding call to virStoragePoolFree to release the reference count, once the caller no longer needs the reference to this object.  This method is typically useful for applications where multiple threads are using a connection, and it is required that the connection remain open until all threads have finished using it. ie, each new thread using a pool would increment the reference count.</info>
+      <return type='int' info=''/>
+      <arg name='pool' type='virStoragePoolPtr' info=''/>
+    </function>
     <function name='virStoragePoolRefresh' file='libvirt' module='libvirt'>
       <info>Request that the pool refresh its list of volumes. This may involve communicating with a remote server, and/or initializing new devices at the OS layer</info>
       <return type='int' info='0 if the volume list was refreshed, -1 on failure'/>
@@ -1663,7 +1767,7 @@ see note above'/>
       <arg name='flags' type='unsigned int' info='future flags, use 0 for now'/>
     </function>
     <function name='virStorageVolFree' file='libvirt' module='libvirt'>
-      <info>Release the storage volume handle. The underlying storage volume contains to exist</info>
+      <info>Release the storage volume handle. The underlying storage volume continues to exist.</info>
       <return type='int' info='0 on success, or -1 on error'/>
       <arg name='vol' type='virStorageVolPtr' info='pointer to storage volume'/>
     </function>
@@ -1716,6 +1820,11 @@ see note above'/>
       <return type='virStorageVolPtr' info='a storage volume, or NULL if not found / error'/>
       <arg name='conn' type='virConnectPtr' info='pointer to hypervisor connection'/>
       <arg name='path' type='const char *' info='locally unique path'/>
+    </function>
+    <function name='virStorageVolRef' file='libvirt' module='libvirt'>
+      <info>Increment the reference count on the vol. For each additional call to this method, there shall be a corresponding call to virStorageVolFree to release the reference count, once the caller no longer needs the reference to this object.  This method is typically useful for applications where multiple threads are using a connection, and it is required that the connection remain open until all threads have finished using it. ie, each new thread using a vol would increment the reference count.</info>
+      <return type='int' info=''/>
+      <arg name='vol' type='virStorageVolPtr' info=''/>
     </function>
   </symbols>
 </api>

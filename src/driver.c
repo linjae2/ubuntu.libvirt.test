@@ -1,7 +1,7 @@
 /*
  * driver.c: Helpers for loading drivers
  *
- * Copyright (C) 2006-2008 Red Hat, Inc.
+ * Copyright (C) 2006-2009 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -27,6 +27,7 @@
 #include "driver.h"
 #include "memory.h"
 #include "logging.h"
+#include "util.h"
 
 #define DEFAULT_DRIVER_DIR LIBDIR "/libvirt/drivers"
 
@@ -49,7 +50,7 @@ virDriverLoadModule(const char *name)
 
     DEBUG("Module load %s", name);
 
-    if (asprintf(&modfile, "%s/libvirt_driver_%s.so", moddir, name) < 0)
+    if (virAsprintf(&modfile, "%s/libvirt_driver_%s.so", moddir, name) < 0)
         return NULL;
 
     if (access(modfile, R_OK) < 0) {
@@ -63,8 +64,7 @@ virDriverLoadModule(const char *name)
         goto cleanup;
     }
 
-    if (asprintf(&regfunc, "%sRegister", name) < 0) {
-        regfunc = NULL;
+    if (virAsprintf(&regfunc, "%sRegister", name) < 0) {
         goto cleanup;
     }
 
