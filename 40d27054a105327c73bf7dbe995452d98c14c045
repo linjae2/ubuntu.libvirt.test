@@ -1,0 +1,2 @@
+  * d/p/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch:
+    fix memory-leak from PCI-related structure. (LP: #1844455)
