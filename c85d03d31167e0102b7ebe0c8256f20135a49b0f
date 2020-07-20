@@ -1,0 +1,2 @@
+  * debian/patches/9002-better_default_uri_virsh.patch: Update to fix the
+    FTBFS.
