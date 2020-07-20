@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: unintended firewall port exposure
+    - debian/patches/CVE-2011-4600.patch: don't add iptables rules for
+      externally managed networks in src/network/bridge_driver.c.
+    - CVE-2011-4600
