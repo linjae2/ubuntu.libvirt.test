@@ -1,0 +1,2 @@
+  * libvirt-bin.postinst: check for confiles whichhave been removed rather
+    than fail package install (LP: #1375910)
