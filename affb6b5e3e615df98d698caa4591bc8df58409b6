@@ -1,0 +1,7 @@
+  * [178670a] Add $syslog to the list of Required-{Start,Stop} services also
+    drop $local_fs since we already have $remote_fs
+  * [4db7451] Don't hardcode netcat's -q option. (Closes: #573172) - thanks to
+    Marc Deslauriers for the patch
+  * [d4c46ee] Disable CHECKSUM rules not supported by Squeeze's iptables
+    (Closes: #598330)
+  * [dbc2609] Move new NEWS items to the top
