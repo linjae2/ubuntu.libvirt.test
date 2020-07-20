@@ -1,0 +1,4 @@
+  * [7adf6b4] New upstream version 1.0.2
+  * [1156772] Drop Don-t-fail-the-build-without-libcurl-and-esx.patch
+    applied upstream
+  * [5d66d5a] Rediff patches
