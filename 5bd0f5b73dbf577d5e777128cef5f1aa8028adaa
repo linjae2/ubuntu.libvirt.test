@@ -1,0 +1,2 @@
+  * ubuntu/skip-labelling-network-disks.patch: don't try to label network
+    drives with apparmor.  It fails.  (LP: #949428)
