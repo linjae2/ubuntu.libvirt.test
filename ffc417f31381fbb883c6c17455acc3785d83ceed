@@ -1,0 +1,9 @@
+  [ Guido Günther ]
+  * [6a174b7] Remove symbol versions that didn't introduce new public symbols
+    and mark those as missing.
+  [ Laurent Léonard ]
+  * [d9e4cad] Imported Upstream version 0.8.8
+  * [d5ae8aa] Drop patches
+    - build-let-xgettext-see-strings-in-libvirt-guests.patch - fixed upstream
+    - libvirt-guests-remove-bashisms.patch - fixed upstream
+  * [d5990df] Update libvirt0 symbols
