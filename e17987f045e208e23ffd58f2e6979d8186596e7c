@@ -1,0 +1,2 @@
+  * [9c99f46] CVE-2011-2511: Fix integer overflow in VirDomainGetVcpus. Patch
+    taken verbatim from upstream's git. (Closes: #633630)
