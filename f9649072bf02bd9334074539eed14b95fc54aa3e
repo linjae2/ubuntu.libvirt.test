@@ -1,0 +1,7 @@
+  * Warn user about bad pc-0.12 machine type, and help user transition.
+    (LP: #1001625)
+    - qemu-warn-on-pc-0.12.patch: When defining or starting a VM which uses the
+      pc-0.12 machine type, warn in libvirtd.log. 
+    - debian/libvirt-migrate-qemu-machinetype: automatically migrate QEMU VMs
+      to newest machine type.  This is not done automatically as there will
+      be some users who have good reason to stay with pc-0.12.
