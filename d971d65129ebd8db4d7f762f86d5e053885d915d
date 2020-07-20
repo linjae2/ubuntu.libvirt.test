@@ -1,0 +1,2 @@
+  * fix-crash-in-libvirtd-when-events: make sure to remove all event
+    callbacks when a client disconnects from libvirtd.
