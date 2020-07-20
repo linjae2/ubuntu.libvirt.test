@@ -1,0 +1,6 @@
+  * [22913a0] Skip tests on all architectures except for i386 and amd64 as we
+    did with cdbs
+  * [23a28f2] CVE-2013-4153: qemu: Fix double free of returned JSON array in
+    qemuAgentGetVCPUs() Thanks to Peter Krempa (Closes: #717354)
+  * [85b5fda] CVE-2013-4154: qemu: Prevent crash of libvirtd without guest
+    agent configuration.  Thanks to Alex Jia (Closes: #717355)
