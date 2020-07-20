@@ -1,0 +1,6 @@
+  * d/p/ubuntu-aa/0037-virt-aa-helper...: grant locking permission on append
+    files (LP: #1726804)
+  * d/p/ubuntu-aa/0038-virt-aa-helper-fix-paths-for-usb-hostdevs.patch:
+    fix path generation for USB host devices (LP: #1552241)
+  * d/p/ubuntu-aa/0039-virt-aa-helper-fix-libusb-access-to-udev-usb-data.patch:
+    generate valid rules on usb passthrough (LP: #1686324)
