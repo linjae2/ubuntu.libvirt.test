@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: denial of service via active pool without target path
+    - debian/patches/ubuntu/CVE-2020-10703.patch: fix daemon crash on
+      lookup storagepool by targetpath in src/storage/storage_driver.c.
+    - CVE-2020-10703
