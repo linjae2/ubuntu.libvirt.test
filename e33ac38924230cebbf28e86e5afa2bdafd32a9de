@@ -1,0 +1,5 @@
+  * SECURITY UPDATE: denial of service or information disclosure via
+    virDomainGetBlockIoTune
+    - debian/patches/CVE-2014-3633.patch: use correct definition when
+      looking up disk in src/qemu/qemu_driver.c.
+    - CVE-2014-3633
