@@ -1,0 +1,8 @@
+  [ Laurent Bigonville ]
+  * [76e2cb7] Don't recommend ebtables.
+    It's part of the iptables package now. (Closes: #918472)
+  [ Guido Günther ]
+  * [5814c89] New upstream version 5.1.0
+  * [55d063d] Rediff patches
+  * [1102dae] d/gbp.conf: Switch to experimental
+  * [cdf3787] d/rules: Adjust to now versioned wireshark module path
