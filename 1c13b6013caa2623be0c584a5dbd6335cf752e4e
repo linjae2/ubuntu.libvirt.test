@@ -1,0 +1,5 @@
+  * 9035-qemu-snapshot-save-persistent-domain-config: upstream fix for a
+    regression where persistent domain config was not saved after an external
+    snapshot.  (LP: #1403841)
+  * 9036-dont-fail-without-cpu-model.patch: fix virsh safe with cpu mode =
+    host-passthrough (LP: #1262641)
