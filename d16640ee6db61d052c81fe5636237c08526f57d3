@@ -1,0 +1,1 @@
+  * Fix build failure on ARM, working around a GCC issue. LP: #823711.
