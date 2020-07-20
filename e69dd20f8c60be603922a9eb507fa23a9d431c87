@@ -1,0 +1,5 @@
+  * [29e8714] Recommend ebtables used by nwfilter
+  * [e9eb650] New patch
+    0009-Don-t-fail-lxc-domain-start-when-memory-controller-s.patch - Don't
+    fail lxc domain start when memory controller support is missing (Closes:
+    #566180)
