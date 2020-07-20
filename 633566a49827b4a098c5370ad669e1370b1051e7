@@ -1,0 +1,3 @@
+  * [de68a4b] Bump Breaks/conflicts.
+    While there were conflicts/breaks for the driver split we moved
+    the augeas lenses in 6.0.0-1. (Closes: #954032, #953894)
