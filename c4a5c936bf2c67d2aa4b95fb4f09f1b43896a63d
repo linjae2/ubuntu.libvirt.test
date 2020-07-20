@@ -1,0 +1,133 @@
+  * Merge from Debian unstable.  Remaining changes:
+    - debian/apparmor/{libvirt-lxc,libvirt-qemu,local-usr.sbin.libvirtd,
+      TEMPLATE.lxc,TEMPLATE.qemu,usr.lib.libvirt.virt-aa-helper,
+      usr.sbin.libvirtd} Add apparmor profiles.
+    - Add debian/libvirt-bin.virtlockd.init based on the upstream version
+      src/locking/virtlockd.init.in. This does not seem to get processed
+      by the build.
+    - debian/control:
+      * Add libcurl4-gnutls-dev, libxml-libxml-perl, libcgmanager-dev
+      * Add ppc64el to libnuma-dev arches
+      * Remove libsanlock-dev, libselinux1-dev, systemtap-sdt-dev
+      * Remove python, sheepdog, librados-dev, libfuse-dev
+      * Remove libssh2-1-dev, qemu-system-common, augeas-tools
+      * Don't build libvirt-clients, libvirt-daemon, libvirt-sanlock packages
+      * Keep multiarch changes.
+    - Keep debian/{libvirt-bin.apport,libvirt-bin.cron.daily}
+    - Keep change d/libvirt0.install and d/libvirt-dev.install that
+      adds multi-arch wildcard.
+    - d/libvirt-daemon-system.libvirtd.default ->
+      d/libvirt-bin.libvirt-bin.default
+    - d/libvirt-daemon-system.dirs -> d/libvirt-bin.dirs
+      * Add /etc/apparmor.d/{abstractions,disable,force-complain,local}
+      * Add /etc/cron.daily
+      * Add /usr/share/apport/package-hooks
+      * Add /var/log/libvirt/libxl
+      * Add /etc/dnsmasq.d-available
+      * Remove /usr/share/polkit-1/rules.d/
+      * Remove /var/lib/polkit-1/localauthority/10-vendor.d/
+    - Keep debian/libvirt-bin.dnsmasq
+    - d/libvirt-daemon-system.examples -> d/libvirt-bin.examples
+      * Remove debian/build/daemon/libvirtd.policy
+      * Drop debian/libvirt-suspendonreboot
+    - d/libvirt-daemon-system.libvirtd.init -> d/libvirt-bin.libvirt-bin.init
+      * Add provides libvirt-bin
+      * Change /etc/default/libvirtd into /etc/default/libvirt-bin
+      * Add wait_on_sockfile() and call it during start
+    - d/libvirt-daemon-system.install -> d/libvirt-bin.install
+      * Add usr/bin/*
+      * Add usr/sbin/*
+      * Add etc/apparmor.d/*
+      * Replace etc/libvirt/{libvirtd,virtlockd,virtlogd}.conf -> etc/libvirt/*
+        (since with the clients included there are many more config files)
+      * Add usr/share/polkit-1
+      * Add usr/lib/libvirt/*
+      * Add usr/share/augeas/*
+      * Add usr/share/libvirt/*
+      * Add usr/share/man/man8/*
+      * Add usr/share/apport/package-hooks/source_libvirt.py
+      * Add etc/dnsmasq.d-available/libvirt-bin
+      * Add etc/profile.d/libvirt-uri.sh
+      * Add usr/lib/libvirt
+    - d/libvirt-daemon-system.links -> d/libvirt-bin.links
+      * Replace libvirt-daemon-system with libvirt-bin for libvirt0
+      * Remove libvirt-daemon line
+    - Remove d/libvirt-bin.maintscript
+    - d/libvirt-clients.manpages -> d/libvirt-bin.manpages
+      * Add debian/libvirt-migrate-qemu-disks.1
+      * Add debian/libvirt-migrate-qemu-machinetype.1
+      * Add debian/libvirt-migrate-xend-managed-domains.1
+    - Combined d/libvirt-daemon-system.NEWS and d/libvirt-daemon.NEWS into
+      d/libvirt-bin.NEWS
+    - Keep d/libvirt-bin.{postinst,postrm,preinst} though they probably could
+      be freshly derived from libvirt-daemon counterparts.
+      * Added removal of qemu capability cache (found in Debian) to postinst
+      * Added reload of virtlogd in postinst (following example of virtlockd)
+    - Replace d/libvirt-bin.preinst
+    - Add d/libvirt-bin.upstart
+    - d/libvirt-daemon-system.virtlogd.init -> d/libvirt-bin.virtlogd.init
+    - Remove d/libvirt-clients.install
+    - Remove d/libvirt-clients.links
+    - Remove d/libvirt-daemon.install
+    - Remove d/libvirt-daemon.links
+    - d/libvirt-daemon.README.Debian -> d/libvirt-bin.README.Debian
+      * Replaced access control section
+      * Appended apparmor profile section
+      * Appended disk migration section
+      * Appended qemu/kvm machine type migration section
+    - Remove d/libvirt-daemon-system.{maintscript,postinst,postrm,preinst}
+    - Keep libvirt-migrate-qemu-disks (and manpage)
+    - Keep libvirt-migrate-qemu-machinetype (and manpage)
+    - Keep libvirt-migrate-xend-managed-domains (and manpage)
+    - Remove d/libvirt-sanlock.{cron.weekly,links,install}
+    - Drop d/libvirt-stop-guests
+    - Drop d/libvirt-suspendonreboot (replaced by upstream libvirt-guests)
+    - Keep d/libvirt-uri.sh
+    - Remove d/polkit/60-libvirt.pkla (and polkit directory)
+    - d/tests/control
+      - Add build-essential and pkg-config dependencies to build-test
+    - debian/rules:
+      * Add autoconf stuff (not sure what still really gets used).
+      * Use qemu-group kvm instead of libvirt-qemu
+      * Add SHEEPDOGCLI environment variable to dh_auto_configure
+        override (instead of an DEB_DH_... make variable which no
+        longer takes effect).
+      * Drop --with-secdriver-apparmor --with-apparmor-profiles from
+        WITH_APPARMOR config.
+      * Change WITH_FIREWALLD and WITH_SELINUX settings to disabled.
+      * Change WITH_DTRACE setting to disabled.
+      * Drop DEB_DH_SYSTEMD_START_ARGS_libvirt-bin as it is no longer
+        needed after dropping cdbs.
+      * Add to override_dh_install section
+        - Install apparmor files (and post-processing)
+        - Install apport hooks.
+        - Install migration tools.
+        - Install profile script to autoset URI.
+        - Replace package name libvirt-daemon-system with libvirt-bin.
+        - Debian now copies libvirt-guests.{init,default} and
+          virtlogd.default from upstream source. Copy virtlockd.default
+          as well.
+        - Rename libvirtd.{socket,service} to libvirt-bin.{socket,service}
+        - Change dh_systemd_start to use virtlo{g,ck}d.socket only (the
+          services are supposed to be started by using the sockets.
+        - Move libs and pkgconfig under multiarch directory.
+      * Modify override_dh_auto_clean
+        - Replace package name libvirt-daemon-system with libvirt-bin
+        - Delete upstream files which were copied into debian/.
+      * Add override_dh_gencontrol section which conditionally adds
+        conflicts on apparmor.
+      * Add override_dh_makeshlibs section to pass version info for
+        libvirt0.
+  * Dropped patches:
+    - ubuntu/virt-aa-helper-handle-ovmf (upstream added ovmf paths to
+      restricted_rw)
+  * Refreshed patches:
+    - refreshed d/p/ubuntu/9034-complete-9p-support
+  * New patches
+    - d/ubuntu/libvirt-guests-exclude-dom0.patch
+    - d/ubuntu/libxl-no-dm-check.patch
+    - d/ubuntu/libxl-fix-test-data.patch
+    - d/ubuntu/Debianize-virtlogd-service.patch
+    - d/ubuntu/Debianize-virtlockd-init.patch
+    - d/ubuntu/switch-service-files-to-libvirt-bin.patch
+    - d/ubuntu/libvirt-socket-fix-group.patch
