@@ -1,0 +1,6 @@
+  * [b38846c] New upstream version 1.2.4
+  * [f8d48c5] Drop.
+        tests-Only-use-privileged-mode-if-Qemu-user-and-grou.patch
+    applied upstream
+  * [8388a28] Disable hal on all architectures (Closes: #710195)
+  * [726b0bb] LSN-2014-0003: Don't expand entities when parsing XML
