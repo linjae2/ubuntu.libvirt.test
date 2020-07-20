@@ -1,15 +1,9 @@
 # -*- rpm-spec -*-
 
-# This macro is used for the continuous automated builds. It just
-# allows an extra fragment based on the timestamp to be appended
-# to the release. This distinguishes automated builds, from formal
-# Fedora RPM builds
-%define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
-
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: @VERSION@
-Release: 1%{?_extra_release}
+Release: 1%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -19,13 +13,15 @@ BuildRequires: python python-devel
 Requires: libxml2
 Requires: readline
 Requires: ncurses
+Requires: dnsmasq
+Requires: bridge-utils
+Requires: iptables
 BuildRequires: xen-devel
 BuildRequires: libxml2-devel
 BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
-BuildRequires: libsysfs-devel
-BuildRequires: /sbin/iptables
+BuildRequires: gnutls-devel
 Obsoletes: libvir
 ExclusiveArch: i386 x86_64 ia64
 
@@ -60,14 +56,15 @@ of recent versions of Linux (and other OSes).
 %setup -q
 
 %build
-%configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid
+%configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
 make
 
 %install
 rm -fr %{buildroot}
 
 %makeinstall
-(cd docs/examples ; make clean ; rm -rf .deps)
+(cd docs/examples ; make clean ; rm -rf .deps Makefile Makefile.in)
+(cd docs/examples/python ; rm -f Makefile Makefile.in)
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.a
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
@@ -128,17 +125,15 @@ fi
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/autostart
 %{_sysconfdir}/rc.d/init.d/libvirtd
-%dir %{_sysconfdir}/libvirt
-%dir %{_sysconfdir}/libvirt/qemu
-%dir %{_sysconfdir}/libvirt/qemu/networks
-%dir %{_sysconfdir}/libvirt/qemu/networks/autostart
+%config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %dir %{_datadir}/libvirt/
 %dir %{_datadir}/libvirt/networks/
 %{_datadir}/libvirt/networks/default.xml
 %dir %{_localstatedir}/run/libvirt/
 %dir %{_localstatedir}/lib/libvirt/
+%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
-%attr(0755, root, root) %{_sbindir}/libvirt_qemud
+%attr(0755, root, root) %{_sbindir}/libvirtd
 %doc docs/libvirt.rng
 
 %files devel
@@ -169,6 +164,19 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Mon Jul  9 2007 Daniel Veillard <veillard@redhat.com> - 0.3.0-1
+- Release of 0.3.0
+- Secure remote access support
+- unification of daemons
+- lots of assorted bugfixes and cleanups
+- documentation and localization improvements
+
+* Fri Jun  8 2007 Daniel Veillard <veillard@redhat.com> - 0.2.3-1
+- Release of 0.2.3
+- lot of assorted bugfixes and cleanups
+- support for Xen-3.1
+- new scheduler API
+
 * Tue Apr 17 2007 Daniel Veillard <veillard@redhat.com> - 0.2.2-1
 - Release of 0.2.2
 - lot of assorted bugfixes and cleanups

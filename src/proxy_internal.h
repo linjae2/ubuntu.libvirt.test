@@ -36,7 +36,8 @@ typedef enum {
 	VIR_PROXY_MAX_MEMORY = 8,
 	VIR_PROXY_DOMAIN_INFO = 9,
 	VIR_PROXY_DOMAIN_XML = 10,
-	VIR_PROXY_DOMAIN_OSTYPE = 11
+	VIR_PROXY_DOMAIN_OSTYPE = 11,
+    VIR_PROXY_GET_CAPABILITIES = 12
 } virProxyCommand;
 
 /*
@@ -85,8 +86,15 @@ struct _virProxyFullPacket {
 typedef struct _virProxyFullPacket virProxyFullPacket;
 typedef  virProxyFullPacket *virProxyFullPacketPtr;
 
-extern virDriver xenProxyDriver;
-int xenProxyInit (void);
+/* xen_unified makes direct calls or indirect calls through here. */
+extern struct xenUnifiedDriver xenProxyDriver;
+extern int xenProxyInit (void);
+
+extern virDomainPtr xenProxyLookupByID(virConnectPtr conn, int id);
+extern virDomainPtr xenProxyLookupByUUID(virConnectPtr conn,
+                                         const unsigned char *uuid);
+extern virDomainPtr xenProxyLookupByName(virConnectPtr conn,
+                                         const char *domname);
 
 #ifdef __cplusplus
 }

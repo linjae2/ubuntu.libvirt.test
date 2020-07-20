@@ -28,12 +28,14 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <libxml/uri.h>
+#include <errno.h>
 
 #include "libvirt/libvirt.h"
 #include "driver.h"
 #include "internal.h"
 #include "sexpr.h"
 #include "xml.h"
+#include "buf.h"
 #include "xen_unified.h"
 #include "xend_internal.h"
 #include "xen_internal.h" /* for DOM0_INTERFACE_VERSION */
@@ -48,9 +50,6 @@ static int xenDaemonListDomains(virConnectPtr conn, int *ids, int maxids);
 static int xenDaemonNumOfDomains(virConnectPtr conn);
 static int xenDaemonListDefinedDomains(virConnectPtr conn, char **const names, int maxnames);
 static int xenDaemonNumOfDefinedDomains(virConnectPtr conn);
-static virDomainPtr xenDaemonLookupByID(virConnectPtr conn, int id);
-static virDomainPtr xenDaemonLookupByUUID(virConnectPtr conn,
-                                          const unsigned char *uuid);
 static virDomainPtr xenDaemonCreateLinux(virConnectPtr conn,
                                          const char *xmlDesc,
 					 unsigned int flags);
@@ -62,25 +61,18 @@ static int xenDaemonDomainCoreDump(virDomainPtr domain, const char *filename,
 #endif /* PROXY */
 
 #ifndef PROXY
-virDriver xenDaemonDriver = {
-    -1,
-    "XenDaemon",
-    (DOM0_INTERFACE_VERSION >> 24) * 1000000 +
-    ((DOM0_INTERFACE_VERSION >> 16) & 0xFF) * 1000 +
-    (DOM0_INTERFACE_VERSION & 0xFFFF),
+struct xenUnifiedDriver xenDaemonDriver = {
     xenDaemonOpen, /* open */
     xenDaemonClose, /* close */
     xenDaemonGetType, /* type */
     xenDaemonGetVersion, /* version */
-    NULL, /* getMaxVcpus */
+    NULL, /* hostname */
+    NULL, /* URI */
     xenDaemonNodeGetInfo, /* nodeGetInfo */
     NULL, /* getCapabilities */
     xenDaemonListDomains, /* listDomains */
     xenDaemonNumOfDomains, /* numOfDomains */
     xenDaemonCreateLinux, /* domainCreateLinux */
-    xenDaemonLookupByID, /* domainLookupByID */
-    xenDaemonLookupByUUID, /* domainLookupByUUID */
-    xenDaemonDomainLookupByName, /* domainLookupByName */
     xenDaemonDomainSuspend, /* domainSuspend */
     xenDaemonDomainResume, /* domainResume */
     xenDaemonDomainShutdown, /* domainShutdown */
@@ -108,6 +100,9 @@ virDriver xenDaemonDriver = {
     xenDaemonDetachDevice, /* domainDetachDevice */
     NULL, /* domainGetAutostart */
     NULL, /* domainSetAutostart */
+    NULL, /* domainGetSchedulerType */
+    NULL, /* domainGetSchedulerParameters */
+    NULL, /* domainSetSchedulerParameters */
 };
 
 /**
@@ -587,24 +582,35 @@ static int
 xend_op_ext2(virConnectPtr xend, const char *path, char *error,
              size_t n_error, const char *key, va_list ap)
 {
-    char ops[1024];
     const char *k = key, *v;
-    int offset = 0;
+    virBuffer buf;
+    int ret;
+
+    buf.content = malloc(1000);
+    if (buf.content == NULL) {
+	virXendError(xend, VIR_ERR_NO_MEMORY, _("allocate new buffer"));
+        return -1;
+    }
+    buf.size = 1000;
+    buf.use = 0;
 
     while (k) {
         v = va_arg(ap, const char *);
 
-        offset += snprintf(ops + offset, sizeof(ops) - offset, "%s", k);
-        offset += snprintf(ops + offset, sizeof(ops) - offset, "%s", "=");
-        offset += snprintf(ops + offset, sizeof(ops) - offset, "%s", v);
+        virBufferVSprintf(&buf, "%s", k);
+        virBufferVSprintf(&buf, "%s", "=");
+        virBufferVSprintf(&buf, "%s", v);
         k = va_arg(ap, const char *);
 
         if (k)
-            offset += snprintf(ops + offset,
-                               sizeof(ops) - offset, "%s", "&");
+            virBufferVSprintf(&buf, "%s", "&");
     }
 
-    return http2unix(xend, xend_post(xend, path, ops, error, n_error));
+    ret = http2unix(xend, xend_post(xend, path, buf.content, error, n_error));
+    if (buf.content != NULL)
+        free(buf.content);
+
+    return ret;
 }
 
 
@@ -635,7 +641,7 @@ xend_node_op(virConnectPtr xend, const char *path, const char *key, ...)
 
 
 /**
- * xend_node_op:
+ * xend_op_ext:
  * @xend: pointer to the Xen Daemon structure
  * @name: the domain name target of this operation
  * @error: buffer for the error output
@@ -797,8 +803,10 @@ urlencode(const char *string)
     char *ptr = buffer;
     size_t i;
 
-    if (buffer == NULL)
+    if (buffer == NULL) {
+	virXendError(NULL, VIR_ERR_NO_MEMORY, _("allocate new buffer"));
         return (NULL);
+    }
     for (i = 0; i < len; i++) {
         switch (string[i]) {
             case ' ':
@@ -881,7 +889,7 @@ xenDaemonOpen_tcp(virConnectPtr conn, const char *host, int port)
     pent = gethostbyname(host);
     if (pent == NULL) {
         if (inet_aton(host, &ip) == 0) {
-            virXendError(conn, VIR_ERR_UNKNOWN_HOST, host);
+            virXendError(NULL, VIR_ERR_UNKNOWN_HOST, host);
             errno = ESRCH;
             return (-1);
         }
@@ -1317,7 +1325,7 @@ xend_parse_sexp_desc_os(virConnectPtr xend, struct sexpr *node, virBufferPtr buf
            virBufferVSprintf(buf, "    <root>%s</root>\n", tmp);
         tmp = sexpr_node(node, "domain/image/linux/args");
         if ((tmp != NULL) && (tmp[0] != 0))
-           virBufferVSprintf(buf, "    <cmdline>%s</cmdline>\n", tmp);
+           virBufferEscapeString(buf, "    <cmdline>%s</cmdline>\n", tmp);
     }
 
     virBufferAdd(buf, "  </os>\n", 8);
@@ -1397,6 +1405,13 @@ xend_parse_sexp_desc(virConnectPtr conn, struct sexpr *root, int xendConfigVersi
     if (tmp != NULL) {
         bootloader = 1;
         virBufferVSprintf(&buf, "  <bootloader>%s</bootloader>\n", tmp);
+    }
+    tmp = sexpr_node(root, "domain/bootloader_args");
+    if (tmp != NULL && bootloader) {
+        /*
+         * Only insert bootloader_args if there is also a bootloader param
+         */
+        virBufferEscapeString(&buf, "  <bootloader_args>%s</bootloader_args>\n", tmp);
     }
 
     if (domid != 0) {
@@ -1548,7 +1563,7 @@ xend_parse_sexp_desc(virConnectPtr conn, struct sexpr *root, int xendConfigVersi
 
             /* New style disk config from Xen >= 3.0.3 */
             if (xendConfigVersion > 1) {
-                offset = rindex(dst, ':');
+                offset = strrchr(dst, ':');
                 if (offset) {
                     if (!strcmp(offset, ":cdrom")) {
                         cdrom = 1;
@@ -1676,35 +1691,38 @@ xend_parse_sexp_desc(virConnectPtr conn, struct sexpr *root, int xendConfigVersi
         }
     }
 
-    /* Graphics device (HVM <= 3.0.4, or PV <= 3.0.4) vnc config */
-    tmp = sexpr_fmt_node(root, "domain/image/%s/vnc", hvm ? "hvm" : "linux");
-    if (tmp != NULL) {
-        if (tmp[0] == '1') {
-            int port = xenStoreDomainGetVNCPort(conn, domid);
-            const char *listenAddr = sexpr_fmt_node(root, "domain/image/%s/vnclisten", hvm ? "hvm" : "linux");
-            const char *keymap = sexpr_fmt_node(root, "domain/image/%s/keymap", hvm ? "hvm" : "linux");
-            /* For Xen >= 3.0.3, don't generate a fixed port mapping
-             * because it will almost certainly be wrong ! Just leave
-             * it as -1 which lets caller see that the VNC server isn't
-             * present yet. Subsquent dumps of the XML will eventually
-             * find the port in XenStore once VNC server has started
-             */
-            if (port == -1 && xendConfigVersion < 2)
-                port = 5900 + domid;
-            virBufferVSprintf(&buf, "    <graphics type='vnc' port='%d'", port);
-            if (listenAddr)
-                virBufferVSprintf(&buf, " listen='%s'", listenAddr);
-            if (keymap)
-                virBufferVSprintf(&buf, " keymap='%s'", keymap);
-            virBufferAdd(&buf, "/>\n", 3);
+    /* Graphics device (HVM <= 3.0.4, or PV <= 3.0.3) vnc config */
+    if ((hvm && xendConfigVersion < 4) ||
+        (!hvm && xendConfigVersion < 3)) {
+        tmp = sexpr_fmt_node(root, "domain/image/%s/vnc", hvm ? "hvm" : "linux");
+        if (tmp != NULL) {
+            if (tmp[0] == '1') {
+                int port = xenStoreDomainGetVNCPort(conn, domid);
+                const char *listenAddr = sexpr_fmt_node(root, "domain/image/%s/vnclisten", hvm ? "hvm" : "linux");
+                const char *keymap = sexpr_fmt_node(root, "domain/image/%s/keymap", hvm ? "hvm" : "linux");
+                /* For Xen >= 3.0.3, don't generate a fixed port mapping
+                 * because it will almost certainly be wrong ! Just leave
+                 * it as -1 which lets caller see that the VNC server isn't
+                 * present yet. Subsquent dumps of the XML will eventually
+                 * find the port in XenStore once VNC server has started
+                 */
+                if (port == -1 && xendConfigVersion < 2)
+                    port = 5900 + domid;
+                virBufferVSprintf(&buf, "    <graphics type='vnc' port='%d'", port);
+                if (listenAddr)
+                    virBufferVSprintf(&buf, " listen='%s'", listenAddr);
+                if (keymap)
+                    virBufferVSprintf(&buf, " keymap='%s'", keymap);
+                virBufferAdd(&buf, "/>\n", 3);
+            }
         }
-    }
 
-    /* Graphics device (HVM, or old (pre-3.0.4) style PV sdl config) */
-    tmp = sexpr_fmt_node(root, "domain/image/%s/sdl", hvm ? "hvm" : "linux");
-    if (tmp != NULL) {
-        if (tmp[0] == '1')
-            virBufferAdd(&buf, "    <graphics type='sdl'/>\n", 27 );
+        /* Graphics device (HVM, or old (pre-3.0.4) style PV sdl config) */
+        tmp = sexpr_fmt_node(root, "domain/image/%s/sdl", hvm ? "hvm" : "linux");
+        if (tmp != NULL) {
+            if (tmp[0] == '1')
+                virBufferAdd(&buf, "    <graphics type='sdl'/>\n", 27 );
+        }
     }
 
     tty = xenStoreDomainGetConsolePath(conn, domid);
@@ -1859,10 +1877,8 @@ sexpr_to_domain(virConnectPtr conn, struct sexpr *root)
         goto error;
 
     ret = virGetDomain(conn, name, (const unsigned char *) &uuid[0]);
-    if (ret == NULL) {
-        virXendError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
-        return(NULL);
-    }
+    if (ret == NULL) return NULL;
+
     tmp = sexpr_node(root, "domain/domid");
     /* New 3.0.4 XenD will not report a domid for inactive domains,
      * so only error out for old XenD
@@ -1910,16 +1926,18 @@ error:
  * Returns 0 in case of success, -1 in case of error.
  */
 int
-xenDaemonOpen(virConnectPtr conn, const char *name, int flags)
+xenDaemonOpen(virConnectPtr conn, const char *name,
+              int flags ATTRIBUTE_UNUSED)
 {
     xmlURIPtr uri = NULL;
     int ret;
 
-    /* If the name is just "xen" (it might originally have been NULL, see
-     * xenUnifiedOpen) then try default paths and methods to get to the
-     * xend socket.
+    /* If the name is just "xen" (it might originally have been NULL,
+     * see xenUnifiedOpen) or any URI beginning with "xen:///" then
+     * try default paths and methods to get to the xend socket.
      */
-    if (strcasecmp (name, "xen") == 0) {
+    if (strcasecmp (name, "xen") == 0 ||
+        strncasecmp (name, "xen:///", 7) == 0) {
         /*
          * try first to open the unix socket
          */
@@ -1946,16 +1964,14 @@ xenDaemonOpen(virConnectPtr conn, const char *name, int flags)
          */
         uri = xmlParseURI(name);
         if (uri == NULL) {
-            if (!(flags & VIR_DRV_OPEN_QUIET))
-                virXendError(conn, VIR_ERR_NO_SUPPORT, name);
+            virXendError(NULL, VIR_ERR_NO_CONNECT, name);
             goto failed;
         }
 
         if (uri->scheme == NULL) {
             /* It should be a file access */
             if (uri->path == NULL) {
-                if (!(flags & VIR_DRV_OPEN_QUIET))
-                    virXendError(conn, VIR_ERR_NO_SUPPORT, name);
+                virXendError(NULL, VIR_ERR_NO_CONNECT, name);
                 goto failed;
             }
             ret = xenDaemonOpen_unix(conn, uri->path);
@@ -1973,8 +1989,7 @@ xenDaemonOpen(virConnectPtr conn, const char *name, int flags)
             if (ret == -1)
                 goto failed;
         } else {
-            if (!(flags & VIR_DRV_OPEN_QUIET))
-                virXendError(conn, VIR_ERR_NO_SUPPORT, name);
+            virXendError(NULL, VIR_ERR_NO_CONNECT, name);
             goto failed;
         }
     }
@@ -2184,13 +2199,18 @@ int
 xenDaemonDomainSave(virDomainPtr domain, const char *filename)
 {
     if ((domain == NULL) || (domain->conn == NULL) || (domain->name == NULL) ||
-        (filename == NULL)) {
+        (filename == NULL) || (domain->id < 0)) {
         virXendError((domain ? domain->conn : NULL), VIR_ERR_INVALID_ARG,
 	             __FUNCTION__);
         return(-1);
     }
-    if (domain->id < 0)
+    
+
+    /* We can't save the state of Domain-0, that would mean stopping it too */
+    if (domain->id == 0) {
         return(-1);
+    }
+
     return xend_op(domain->conn, domain->name, "op", "save", "file", filename, NULL);
 }
 
@@ -2367,8 +2387,11 @@ xenDaemonDomainDumpXMLByID(virConnectPtr conn, int domid)
     xenUnifiedPrivatePtr priv;
 
     root = sexpr_get(conn, "/xend/domain/%d?detail=1", domid);
-    if (root == NULL)
+    if (root == NULL) {
+        virXendError (conn, VIR_ERR_XEN_CALL,
+                      "xenDaemonDomainDumpXMLByID failed to find this domain");
         return (NULL);
+    }
 
     priv = (xenUnifiedPrivatePtr) conn->privateData;
 
@@ -2386,8 +2409,11 @@ xenDaemonDomainDumpXMLByName(virConnectPtr conn, const char *name)
     xenUnifiedPrivatePtr priv;
 
     root = sexpr_get(conn, "/xend/domain/%s?detail=1", name);
-    if (root == NULL)
+    if (root == NULL) {
+        virXendError (conn, VIR_ERR_XEN_CALL,
+                      "xenDaemonDomainDumpXMLByName failed to find this domain");
         return (NULL);
+    }
 
     priv = (xenUnifiedPrivatePtr) conn->privateData;
 
@@ -2420,8 +2446,12 @@ xenDaemonDomainDumpXML(virDomainPtr domain, int flags ATTRIBUTE_UNUSED)
     }
     priv = (xenUnifiedPrivatePtr) domain->conn->privateData;
 
-    if (domain->id < 0 && priv->xendConfigVersion < 3)
+    if (domain->id < 0 && priv->xendConfigVersion < 3) {
+        virXendError (domain->conn, VIR_ERR_XEN_CALL,
+                      "xenDaemonDomainDumpXML domain ID < 0 and xendConfigVersion < 3");
         return(NULL);
+    }
+
     if (domain->id < 0)
         return xenDaemonDomainDumpXMLByName(domain->conn, domain->name);
     else
@@ -2469,7 +2499,7 @@ xenDaemonDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
 
 #ifndef PROXY
 /**
- * xenDaemonDomainLookupByName:
+ * xenDaemonLookupByName:
  * @conn: A xend instance
  * @name: The name of the domain
  *
@@ -2480,7 +2510,7 @@ xenDaemonDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
  * Returns domain info on success; NULL (with errno) on error
  */
 virDomainPtr
-xenDaemonDomainLookupByName(virConnectPtr conn, const char *domname)
+xenDaemonLookupByName(virConnectPtr conn, const char *domname)
 {
     struct sexpr *root;
     virDomainPtr ret = NULL;
@@ -2571,8 +2601,7 @@ int
 xenDaemonGetVersion(virConnectPtr conn, unsigned long *hvVer)
 {
     struct sexpr *root;
-    const char *extra;
-    int major, minor, release = 0;
+    int major, minor;
     unsigned long version;
     
     if (!VIR_IS_CONNECT(conn)) {
@@ -2589,16 +2618,8 @@ xenDaemonGetVersion(virConnectPtr conn, unsigned long *hvVer)
 
     major = sexpr_int(root, "node/xen_major");
     minor = sexpr_int(root, "node/xen_minor");
-    extra = sexpr_node(root, "node/xen_extra");
-    if (extra != NULL) {
-	while (*extra != 0) {
-	    if ((*extra >= '0') && (*extra <= '9'))
-		release = release * 10 + (*extra - '0');
-	    extra++;
-	}
-    }
     sexpr_free(root);
-    version = major * 1000000 + minor * 1000 + release;
+    version = major * 1000000 + minor * 1000;
     *hvVer = version;
     return(0);
 }
@@ -2694,7 +2715,7 @@ error:
  *
  * Returns a new domain object or NULL in case of failure
  */
-static virDomainPtr
+virDomainPtr
 xenDaemonLookupByID(virConnectPtr conn, int id) {
     char *name = NULL;
     unsigned char uuid[VIR_UUID_BUFLEN];
@@ -2705,10 +2726,8 @@ xenDaemonLookupByID(virConnectPtr conn, int id) {
     }
 
     ret = virGetDomain(conn, name, uuid);
-    if (ret == NULL) {
-        virXendError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
-        goto error;
-    }
+    if (ret == NULL) return NULL;
+
     ret->id = id;
     free(name);
     return (ret);
@@ -2895,7 +2914,7 @@ xenDaemonDomainGetVcpus(virDomainPtr domain, virVcpuInfoPtr info, int maxinfo,
  *
  * Returns a new domain object or NULL in case of failure
  */
-static virDomainPtr
+virDomainPtr
 xenDaemonLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
 {
     virDomainPtr ret;
@@ -2954,11 +2973,8 @@ xenDaemonLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
         return (NULL);
 
     ret = virGetDomain(conn, name, uuid);
-    if (ret == NULL) {
-        virXendError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
-        free(name);
-        return (NULL);
-    }
+    if (ret == NULL) return NULL;
+
     ret->id = id;
     free(name);
     return (ret);
@@ -3053,7 +3069,7 @@ xenDaemonCreateLinux(virConnectPtr conn, const char *xmlDesc,
 static int
 xenDaemonAttachDevice(virDomainPtr domain, char *xml)
 {
-    char *sexpr, *conf;
+    char *sexpr, *conf, *str;
     int hvm = 0, ret;
     xenUnifiedPrivatePtr priv;
 
@@ -3065,8 +3081,11 @@ xenDaemonAttachDevice(virDomainPtr domain, char *xml)
 
     priv = (xenUnifiedPrivatePtr) domain->conn->privateData;
 
-    if (strcmp(virDomainGetOSType(domain), "linux"))
+    str = virDomainGetOSType(domain);
+    if (strcmp(str, "linux"))
         hvm = 1;
+    if (str)
+        free(str);
     sexpr = virParseXMLDevice(domain->conn, xml, hvm, priv->xendConfigVersion);
     if (sexpr == NULL)
         return (-1);

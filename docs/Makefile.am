@@ -4,7 +4,7 @@ SUBDIRS= . examples devhelp
 # The directory containing the source code (if it contains documentation).
 DOC_SOURCE_DIR=../src
 
-PAGES= index.html bugs.html FAQ.html
+PAGES= index.html bugs.html FAQ.html remote.html
 APIPAGES=APIconstructors.html APIfiles.html APIfunctions.html \
     APIsymbols.html APIchunk0.html
 EXTRA_DIST=							\
@@ -16,6 +16,9 @@ EXTRA_DIST=							\
 man_MANS=
 
 all: web $(top_builddir)/NEWS $(man_MANS)
+
+virsh.1: virsh.pod
+	pod2man -c "Virtualization Support" virsh.pod > virsh.1 && cp virsh.1 $(top_builddir)
 
 api: libvirt-api.xml libvirt-refs.xml $(APIPAGES) $(srcdir)/html/index.html
 

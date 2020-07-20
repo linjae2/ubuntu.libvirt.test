@@ -181,13 +181,13 @@ PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
 QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
+REMOTE_PID_FILE = @REMOTE_PID_FILE@
 RM = @RM@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
-SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
@@ -274,14 +274,13 @@ libvirtmod_la_LDFLAGS = -module -avoid-version -L$(top_builddir)/src/.libs
 @WITH_PYTHON_TRUE@libvirtmod_la_CFLAGS = -Wno-redundant-decls
 @WITH_PYTHON_TRUE@GENERATE = generator.py
 @WITH_PYTHON_TRUE@API_DESC = $(top_srcdir)/docs/libvirt-api.xml $(srcdir)/libvirt-python-api.xml
-@WITH_PYTHON_TRUE@GENERATED = libvirt.py \
-@WITH_PYTHON_TRUE@           libvirt-export.c \
+@WITH_PYTHON_TRUE@GENERATED = libvirt-export.c \
 @WITH_PYTHON_TRUE@           libvirtclass.txt \
 @WITH_PYTHON_TRUE@	   libvirt-py.c \
 @WITH_PYTHON_TRUE@	   libvirt-py.h \
 @WITH_PYTHON_TRUE@	   libvirtclass.py
 
-@WITH_PYTHON_TRUE@CLEANFILES = $(GENERATED) gen_prog libvirt.py
+@WITH_PYTHON_TRUE@CLEANFILES = $(GENERATED) libvirt.py
 all: all-recursive
 
 .SUFFIXES:
@@ -689,8 +688,13 @@ uninstall-info: uninstall-info-recursive
 
 @WITH_PYTHON_TRUE@all-local: libvirt.py
 
+@WITH_PYTHON_TRUE@$(GENERATED): $(srcdir)/$(GENERATE) $(API_DESC)
+@WITH_PYTHON_TRUE@	$(PYTHON) $(srcdir)/$(GENERATE) $(srcdir)
+
 @WITH_PYTHON_TRUE@libvirt.py: $(srcdir)/libvir.py libvirtclass.py
 @WITH_PYTHON_TRUE@	cat $(srcdir)/libvir.py libvirtclass.py > libvirt.py
+
+@WITH_PYTHON_TRUE@$(libvirtmod_la_OBJECTS): $(GENERATED)
 
 @WITH_PYTHON_TRUE@install-data-local:
 @WITH_PYTHON_TRUE@	$(mkinstalldirs) $(DESTDIR)$(pythondir)
@@ -698,14 +702,6 @@ uninstall-info: uninstall-info-recursive
 @WITH_PYTHON_TRUE@	$(mkinstalldirs) $(DESTDIR)$(DOCS_DIR)
 @WITH_PYTHON_TRUE@	@(for doc in $(DOCS) ; \
 @WITH_PYTHON_TRUE@	   do @INSTALL@ -m 0644 $$doc $(DESTDIR)$(DOCS_DIR) ; done)
-
-@WITH_PYTHON_TRUE@$(GENERATED): gen_prog
-
-@WITH_PYTHON_TRUE@gen_prog: $(srcdir)/$(GENERATE) $(API_DESC)
-@WITH_PYTHON_TRUE@	$(PYTHON) $(srcdir)/$(GENERATE) $(srcdir)
-@WITH_PYTHON_TRUE@	touch gen_prog
-
-@WITH_PYTHON_TRUE@$(libvirtmod_la_OBJECTS): $(GENERATED)
 
 @WITH_PYTHON_FALSE@all: 
 

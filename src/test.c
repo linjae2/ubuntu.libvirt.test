@@ -22,9 +22,13 @@
  */
 
 #ifdef WITH_TEST
+
+#define _GNU_SOURCE /* for asprintf */
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include <errno.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
@@ -35,6 +39,7 @@
 #include "internal.h"
 #include "test.h"
 #include "xml.h"
+#include "buf.h"
 
 int testOpen(virConnectPtr conn,
              const char *name,
@@ -42,6 +47,8 @@ int testOpen(virConnectPtr conn,
 int testClose  (virConnectPtr conn);
 int testGetVersion(virConnectPtr conn,
                    unsigned long *hvVer);
+char *testGetHostname (virConnectPtr conn);
+char *testGetURI (virConnectPtr conn);
 int testNodeGetInfo(virConnectPtr conn,
                     virNodeInfoPtr info);
 char *testGetCapabilities (virConnectPtr conn);
@@ -96,6 +103,8 @@ static virDriver testDriver = {
     testClose, /* close */
     NULL, /* type */
     testGetVersion, /* version */
+    testGetHostname, /* hostname */
+    testGetURI, /* URI */
     NULL, /* getMaxVcpus */
     testNodeGetInfo, /* nodeGetInfo */
     testGetCapabilities, /* getCapabilities */
@@ -132,11 +141,15 @@ static virDriver testDriver = {
     NULL, /* domainDetachDevice */
     NULL, /* domainGetAutostart */
     NULL, /* domainSetAutostart */
+    NULL, /* domainGetSchedulerType */
+    NULL, /* domainGetSchedulerParameters */
+    NULL, /* domainSetSchedulerParameters */
 };
 
 /* Per-connection private data. */
 struct _testPrivate {
     int handle;
+    char *path;
 };
 typedef struct _testPrivate *testPrivatePtr;
 
@@ -152,7 +165,6 @@ typedef struct _testDom {
     int id;
     char name[20];
     unsigned char uuid[VIR_UUID_BUFLEN];
-    virDomainKernel kernel;
     virDomainInfo info;
     unsigned int maxVCPUs;
     virDomainRestart onRestart; /* What to do at end of current shutdown procedure */
@@ -213,7 +225,7 @@ testError(virConnectPtr con,
         return;
 
     errmsg = __virErrorMsg(error, info);
-    __virRaiseError(con, dom, NULL, VIR_FROM_XEN, error, VIR_ERR_ERROR,
+    __virRaiseError(con, dom, NULL, VIR_FROM_TEST, error, VIR_ERR_ERROR,
                     errmsg, info, NULL, 0, 0, errmsg, info, 0);
 }
 
@@ -501,7 +513,7 @@ static char *testBuildFilename(const char *relativeTo,
     if (filename[0] == '/')
         return strdup(filename);
 
-    offset = rindex(relativeTo, '/');
+    offset = strrchr(relativeTo, '/');
     if ((baseLen = (offset-relativeTo+1))) {
         char *absFile = malloc(baseLen + strlen(filename) + 1);
         strncpy(absFile, relativeTo, baseLen);
@@ -562,7 +574,7 @@ static int testOpenFromFile(virConnectPtr conn,
     if (ret == 0) {
         nodeInfo->nodes = l;
     } else if (ret == -2) {
-	testError(conn, NULL, VIR_ERR_XML_ERROR, _("node cpu numa nodes"));
+	testError(NULL, NULL, VIR_ERR_XML_ERROR, _("node cpu numa nodes"));
 	goto error;
     }
 
@@ -570,7 +582,7 @@ static int testOpenFromFile(virConnectPtr conn,
     if (ret == 0) {
         nodeInfo->sockets = l;
     } else if (ret == -2) {
-	testError(conn, NULL, VIR_ERR_XML_ERROR, _("node cpu sockets"));
+	testError(NULL, NULL, VIR_ERR_XML_ERROR, _("node cpu sockets"));
 	goto error;
     }
 
@@ -578,7 +590,7 @@ static int testOpenFromFile(virConnectPtr conn,
     if (ret == 0) {
         nodeInfo->cores = l;
     } else if (ret == -2) {
-	testError(conn, NULL, VIR_ERR_XML_ERROR, _("node cpu cores"));
+	testError(NULL, NULL, VIR_ERR_XML_ERROR, _("node cpu cores"));
 	goto error;
     }
 
@@ -586,7 +598,7 @@ static int testOpenFromFile(virConnectPtr conn,
     if (ret == 0) {
         nodeInfo->threads = l;
     } else if (ret == -2) {
-	testError(conn, NULL, VIR_ERR_XML_ERROR, _("node cpu threads"));
+	testError(NULL, NULL, VIR_ERR_XML_ERROR, _("node cpu threads"));
 	goto error;
     }
 
@@ -597,14 +609,14 @@ static int testOpenFromFile(virConnectPtr conn,
 	    nodeInfo->cpus = l;
 	}
     } else if (ret == -2) {
-	testError(conn, NULL, VIR_ERR_XML_ERROR, _("node active cpu"));
+	testError(NULL, NULL, VIR_ERR_XML_ERROR, _("node active cpu"));
 	goto error;
     }
     ret = virXPathLong("string(/node/cpu/mhz[1])", ctxt, &l);
     if (ret == 0) {
         nodeInfo->mhz = l;
     } else if (ret == -2) {
-        testError(conn, NULL, VIR_ERR_XML_ERROR, _("node cpu mhz"));
+        testError(NULL, NULL, VIR_ERR_XML_ERROR, _("node cpu mhz"));
 	goto error;
     }
 
@@ -619,7 +631,7 @@ static int testOpenFromFile(virConnectPtr conn,
     if (ret == 0) {
         nodeInfo->memory = l;
     } else if (ret == -2) {
-        testError(conn, NULL, VIR_ERR_XML_ERROR, _("node memory"));
+        testError(NULL, NULL, VIR_ERR_XML_ERROR, _("node memory"));
 	goto error;
     }
 
@@ -706,7 +718,7 @@ static int getDomainIndex(virDomainPtr domain) {
 
 int testOpen(virConnectPtr conn,
              const char *name,
-             int flags)
+             int flags ATTRIBUTE_UNUSED)
 {
     xmlURIPtr uri;
     int ret, connid;
@@ -717,18 +729,33 @@ int testOpen(virConnectPtr conn,
 
     uri = xmlParseURI(name);
     if (uri == NULL) {
-        if (!(flags & VIR_DRV_OPEN_QUIET))
-            testError(conn, NULL, VIR_ERR_NO_SUPPORT, name);
         return VIR_DRV_OPEN_DECLINED;
     }
 
-    if (!uri->scheme ||
-        strcmp(uri->scheme, "test") ||
-        !uri->path) {
+    if (!uri->scheme || strcmp(uri->scheme, "test") != 0) {
         xmlFreeURI(uri);
         return VIR_DRV_OPEN_DECLINED;
     }
 
+    /* Remote driver should handle these. */
+    if (uri->server) {
+        xmlFreeURI(uri);
+        return VIR_DRV_OPEN_DECLINED;
+    }
+
+    if (uri->server) {
+        xmlFreeURI(uri);
+        return VIR_DRV_OPEN_DECLINED;
+    }
+
+    /* From this point on, the connection is for us. */
+    if (!uri->path
+        || uri->path[0] == '\0'
+        || (uri->path[0] == '/' && uri->path[1] == '\0')) {
+        testError (NULL, NULL, VIR_ERR_INVALID_ARG,
+                   _("testOpen: supply a path or use test:///default"));
+        return VIR_DRV_OPEN_ERROR;
+    }
 
     if ((connid = getNextConnection()) < 0) {
         testError(NULL, NULL, VIR_ERR_INTERNAL_ERROR, _("too many connections"));
@@ -736,14 +763,19 @@ int testOpen(virConnectPtr conn,
     }
 
     /* Allocate per-connection private data. */
-    priv = conn->privateData = malloc (sizeof (struct _testPrivate));
+    priv = conn->privateData = calloc (1, sizeof (struct _testPrivate));
     if (!priv) {
-        testError(NULL, NULL, VIR_ERR_NO_MEMORY, "allocating private data");
+        testError(NULL, NULL, VIR_ERR_NO_MEMORY, _("allocating private data"));
         return VIR_DRV_OPEN_ERROR;
     }
     priv->handle = -1;
+    priv->path = strdup (uri->path);
+    if (!priv->path) {
+        testError (NULL, NULL, VIR_ERR_NO_MEMORY, _("allocating path"));
+        return VIR_DRV_OPEN_ERROR;
+    }
 
-    if (!strcmp(uri->path, "/default")) {
+    if (strcmp(uri->path, "/default") == 0) {
         ret = testOpenDefault(conn,
                               connid);
     } else {
@@ -780,6 +812,7 @@ int testClose(virConnectPtr conn)
         memset (con, 0, sizeof *con); // RWMJ - why?
     }
 
+    free (priv->path);
     free (priv);
     return 0;
 }
@@ -789,6 +822,38 @@ int testGetVersion(virConnectPtr conn ATTRIBUTE_UNUSED,
 {
     *hvVer = 2;
     return (0);
+}
+
+char *
+testGetHostname (virConnectPtr conn)
+{
+    int r;
+    char hostname [HOST_NAME_MAX+1], *str;
+
+    r = gethostname (hostname, HOST_NAME_MAX+1);
+    if (r == -1) {
+        testError (conn, NULL, VIR_ERR_SYSTEM_ERROR, strerror (errno));
+        return NULL;
+    }
+    str = strdup (hostname);
+    if (str == NULL) {
+        testError (conn, NULL, VIR_ERR_SYSTEM_ERROR, strerror (errno));
+        return NULL;
+    }
+    return str;
+}
+
+char *
+testGetURI (virConnectPtr conn)
+{
+    testPrivatePtr priv = (testPrivatePtr) conn->privateData;
+    char *uri;
+
+    if (asprintf (&uri, "test://%s", priv->path) == -1) {
+        testError (conn, NULL, VIR_ERR_SYSTEM_ERROR, strerror (errno));
+        return NULL;
+    }
+    return uri;
 }
 
 int testNodeGetInfo(virConnectPtr conn,
@@ -892,10 +957,7 @@ testDomainCreateLinux(virConnectPtr conn, const char *xmlDesc,
         }
     }
     dom = virGetDomain(conn, con->domains[handle].name, con->domains[handle].uuid);
-    if (dom == NULL) {
-        testError(conn, NULL, VIR_ERR_NO_MEMORY, _("allocating domain"));
-        return (NULL);
-    }
+    if (dom == NULL) return NULL;
     con->numDomains++;
     return (dom);
 }
@@ -918,14 +980,12 @@ virDomainPtr testLookupDomainByID(virConnectPtr conn,
     }
 
     if (idx < 0) {
+        testError (conn, NULL, VIR_ERR_NO_DOMAIN, NULL);
         return(NULL);
     }
 
     dom = virGetDomain(conn, con->domains[idx].name, con->domains[idx].uuid);
-    if (dom == NULL) {
-        testError(conn, NULL, VIR_ERR_NO_MEMORY, _("allocating domain"));
-        return(NULL);
-    }
+    if (dom == NULL) return NULL;
     dom->id = id;
     return (dom);
 }
@@ -935,8 +995,9 @@ virDomainPtr testLookupDomainByUUID(virConnectPtr conn,
 {
     testPrivatePtr priv = (testPrivatePtr) conn->privateData;
     testCon *con = &node->connections[priv->handle];
-    virDomainPtr dom = NULL;
+    virDomainPtr dom;
     int i, idx = -1;
+
     for (i = 0 ; i < MAX_DOMAINS ; i++) {
         if (con->domains[i].active &&
             memcmp(uuid, con->domains[i].uuid, VIR_UUID_BUFLEN) == 0) {
@@ -944,15 +1005,17 @@ virDomainPtr testLookupDomainByUUID(virConnectPtr conn,
             break;
         }
     }
-    if (idx >= 0) {
-        dom = virGetDomain(conn, con->domains[idx].name, con->domains[idx].uuid);
-        if (dom == NULL) {
-            testError(conn, NULL, VIR_ERR_NO_MEMORY, _("allocating domain"));
-            return(NULL);
-        }
-        dom->id = con->domains[idx].id;
+
+    if (idx < 0) {
+        testError (conn, NULL, VIR_ERR_NO_DOMAIN, NULL);
+        return NULL;
     }
-    return (dom);
+
+    dom = virGetDomain(conn, con->domains[idx].name, con->domains[idx].uuid);
+    if (dom == NULL) return NULL;
+    dom->id = con->domains[idx].id;
+
+    return dom;
 }
 
 virDomainPtr testLookupDomainByName(virConnectPtr conn,
@@ -960,8 +1023,9 @@ virDomainPtr testLookupDomainByName(virConnectPtr conn,
 {
     testPrivatePtr priv = (testPrivatePtr) conn->privateData;
     testCon *con = &node->connections[priv->handle];
-    virDomainPtr dom = NULL;
+    virDomainPtr dom;
     int i, idx = -1;
+
     for (i = 0 ; i < MAX_DOMAINS ; i++) {
         if (con->domains[i].active &&
             strcmp(name, con->domains[i].name) == 0) {
@@ -969,15 +1033,17 @@ virDomainPtr testLookupDomainByName(virConnectPtr conn,
             break;
         }
     }
-    if (idx >= 0) {
-        dom = virGetDomain(conn, con->domains[idx].name, con->domains[idx].uuid);
-        if (dom == NULL) {
-            testError(conn, NULL, VIR_ERR_NO_MEMORY, _("allocating domain"));
-            return(NULL);
-        }
-        dom->id = con->domains[idx].id;
+
+    if (idx < 0) {
+        testError (conn, NULL, VIR_ERR_NO_DOMAIN, NULL);
+        return NULL;
     }
-    return (dom);
+
+    dom = virGetDomain(conn, con->domains[idx].name, con->domains[idx].uuid);
+    if (dom == NULL) return NULL;
+    dom->id = con->domains[idx].id;
+
+    return dom;
 }
 
 int testListDomains (virConnectPtr conn,
@@ -1324,6 +1390,7 @@ char * testDomainDumpXML(virDomainPtr domain, int flags ATTRIBUTE_UNUSED)
     con = &node->connections[priv->handle];
 
     if (!(buf = virBufferNew(4000))) {
+        testError(domain->conn, domain, VIR_ERR_NO_MEMORY, __FUNCTION__);
         return (NULL);
     }
 

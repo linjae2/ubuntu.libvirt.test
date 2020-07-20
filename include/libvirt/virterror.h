@@ -49,6 +49,8 @@ typedef enum {
     VIR_FROM_CONF,	/* Error in the configuration file handling */
     VIR_FROM_QEMU,      /* Error at the QEMU daemon */
     VIR_FROM_NET,       /* Error when operating on a network */
+    VIR_FROM_TEST,	/* Error from test driver */
+    VIR_FROM_REMOTE,	/* Error from remote driver */
 } virErrorDomain;
 
 
@@ -84,7 +86,7 @@ typedef enum {
     VIR_ERR_OK = 0,
     VIR_ERR_INTERNAL_ERROR, /* internal error */
     VIR_ERR_NO_MEMORY,  /* memory allocation failure */
-    VIR_ERR_NO_SUPPORT, /* no support for this connection */
+    VIR_ERR_NO_SUPPORT, /* no support for this function */
     VIR_ERR_UNKNOWN_HOST,/* could not resolve hostname */
     VIR_ERR_NO_CONNECT, /* can't connect to hypervisor */
     VIR_ERR_INVALID_CONN,/* invalid connection object */
@@ -107,7 +109,7 @@ typedef enum {
     VIR_ERR_NO_DEVICE, /* missing domain devices information */
     VIR_ERR_NO_XENSTORE,/* could not open Xen Store control */
     VIR_ERR_DRIVER_FULL, /* too many drivers registered */
-    VIR_ERR_CALL_FAILED, /* not supported by the drivers */
+    VIR_ERR_CALL_FAILED, /* not supported by the drivers (DEPRECATED) */
     VIR_ERR_XML_ERROR, /* an XML description is not well formed or broken */
     VIR_ERR_DOM_EXIST,/* the domain already exist */
     VIR_ERR_OPERATION_DENIED, /* operation forbidden on read-only connections */
@@ -120,6 +122,11 @@ typedef enum {
     VIR_ERR_INVALID_NETWORK, /* invalid network object */
     VIR_ERR_NETWORK_EXIST, /* the network already exist */
     VIR_ERR_SYSTEM_ERROR, /* general system call failure */
+    VIR_ERR_RPC, /* some sort of RPC error */
+    VIR_ERR_GNUTLS_ERROR, /* error from a GNUTLS call */
+    VIR_WAR_NO_NETWORK, /* failed to start network */
+    VIR_ERR_NO_DOMAIN, /* domain not found or unexpectedly disappeared */
+    VIR_ERR_NO_NETWORK, /* network not found */
 } virErrorNumber;
 
 /**

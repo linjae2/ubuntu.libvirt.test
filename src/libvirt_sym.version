@@ -1,13 +1,16 @@
 {
     global:
         virInitialize;
+        virConnectOpen;
+        virConnectOpenReadOnly;
 	virConnectClose;
 	virConnectGetType;
 	virConnectGetVersion;
+	virConnectGetHostname;
+	virConnectGetURI;
+	virDomainGetConnect;
 	virConnectListDomains;
 	virConnectNumOfDomains;
-        virConnectOpen;
-        virConnectOpenReadOnly;
         virDomainCreate;
 	virDomainCreateLinux;
         virDomainDefineXML;
@@ -59,10 +62,14 @@
 	virDomainPinVcpu;
 	virDomainGetVcpus;
 	virDomainGetMaxVcpus;
+	virDomainGetSchedulerType;
+	virDomainGetSchedulerParameters;
+	virDomainSetSchedulerParameters;
 
 	virDomainAttachDevice;
 	virDomainDetachDevice;
 
+	virNetworkGetConnect;
 	virConnectNumOfNetworks;
 	virConnectListNetworks;
 	virConnectNumOfDefinedNetworks;
@@ -84,6 +91,12 @@
 	virNetworkGetAutostart;
 	virNetworkSetAutostart;
 
+        /* Symbols with __ are private only
+           for use by the libvirtd daemon.
+           They are not part of stable ABI
+           guarentee provided for the public
+           symbols above */
+
 	__virConfNew;
 	__virConfReadFile;
 	__virConfReadMem;
@@ -92,6 +105,16 @@
 	__virConfSetValue;
 	__virConfWriteFile;
 	__virConfWriteMem;
+
+	__virGetDomain;
+	__virGetNetwork;
+
+	__virEventRegisterImpl;
+
+ 	__virStateInitialize;
+ 	__virStateCleanup;
+ 	__virStateReload;
+ 	__virStateActive;
 
     local: *;
 };

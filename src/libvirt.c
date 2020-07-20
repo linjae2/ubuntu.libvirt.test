@@ -27,7 +27,8 @@
 #include "xml.h"
 #include "test.h"
 #include "xen_unified.h"
-#include "qemu_internal.h"
+#include "remote_internal.h"
+#include "qemu_driver.h"
 
 /*
  * TODO:
@@ -39,6 +40,8 @@ static virDriverPtr virDriverTab[MAX_DRIVERS];
 static int virDriverTabCount = 0;
 static virNetworkDriverPtr virNetworkDriverTab[MAX_DRIVERS];
 static int virNetworkDriverTabCount = 0;
+static virStateDriverPtr virStateDriverTab[MAX_DRIVERS];
+static int virStateDriverTabCount = 0;
 static int initialized = 0;
 
 /**
@@ -64,14 +67,17 @@ virInitialize(void)
      * Note that the order is important: the first ones have a higher
      * priority when calling virConnectOpen.
      */
-#ifdef WITH_XEN
-    if (xenUnifiedRegister () == -1) return -1;
-#endif
 #ifdef WITH_TEST
     if (testRegister() == -1) return -1;
 #endif
 #ifdef WITH_QEMU
-    if (qemuRegister() == -1) return -1;
+    if (qemudRegister() == -1) return -1;
+#endif
+#ifdef WITH_XEN
+    if (xenUnifiedRegister () == -1) return -1;
+#endif
+#ifdef WITH_REMOTE
+    if (remoteRegister () == -1) return -1;
 #endif
 
     return(0);
@@ -82,7 +88,7 @@ virInitialize(void)
 /**
  * virLibConnError:
  * @conn: the connection if available
- * @error: the error noumber
+ * @error: the error number
  * @info: extra information string
  *
  * Handle an error at the connection level
@@ -101,9 +107,30 @@ virLibConnError(virConnectPtr conn, virErrorNumber error, const char *info)
 }
 
 /**
- * virLibConnError:
+ * virLibConnWarning:
  * @conn: the connection if available
- * @error: the error noumber
+ * @error: the error number
+ * @info: extra information string
+ *
+ * Handle an error at the connection level
+ */
+static void
+virLibConnWarning(virConnectPtr conn, virErrorNumber error, const char *info)
+{
+    const char *errmsg;
+
+    if (error == VIR_ERR_OK)
+        return;
+
+    errmsg = __virErrorMsg(error, info);
+    __virRaiseError(conn, NULL, NULL, VIR_FROM_NONE, error, VIR_ERR_WARNING,
+                    errmsg, info, NULL, 0, 0, errmsg, info);
+}
+
+/**
+ * virLibDomainError:
+ * @domain: the domain if available
+ * @error: the error number
  * @info: extra information string
  *
  * Handle an error at the connection level
@@ -216,6 +243,82 @@ virRegisterDriver(virDriverPtr driver)
 }
 
 /**
+ * virRegisterStateDriver:
+ * @driver: pointer to a driver block
+ *
+ * Register a virtualization driver
+ *
+ * Returns the driver priority or -1 in case of error.
+ */
+int
+virRegisterStateDriver(virStateDriverPtr driver)
+{
+    if (virInitialize() < 0)
+      return -1;
+
+    if (driver == NULL) {
+        virLibConnError(NULL, VIR_ERR_INVALID_ARG, __FUNCTION__);
+        return(-1);
+    }
+
+    if (virStateDriverTabCount >= MAX_DRIVERS) {
+    	virLibConnError(NULL, VIR_ERR_INVALID_ARG, __FUNCTION__);
+        return(-1);
+    }
+
+    virStateDriverTab[virStateDriverTabCount] = driver;
+    return virStateDriverTabCount++;
+}
+
+int __virStateInitialize(void) {
+    int i, ret = 0;
+
+    if (virInitialize() < 0)
+        return -1;
+
+    if (virInitialize() < 0)
+        return -1;
+
+    for (i = 0 ; i < virStateDriverTabCount ; i++) {
+        if (virStateDriverTab[i]->initialize() < 0)
+            ret = -1;
+    }
+    return ret;
+}
+
+int __virStateCleanup(void) {
+    int i, ret = 0;
+
+    for (i = 0 ; i < virStateDriverTabCount ; i++) {
+        if (virStateDriverTab[i]->cleanup() < 0)
+            ret = -1;
+    }
+    return ret;
+}
+
+int __virStateReload(void) {
+    int i, ret = 0;
+
+    for (i = 0 ; i < virStateDriverTabCount ; i++) {
+        if (virStateDriverTab[i]->reload() < 0)
+            ret = -1;
+    }
+    return ret;
+}
+
+int __virStateActive(void) {
+    int i, ret = 0;
+
+    for (i = 0 ; i < virStateDriverTabCount ; i++) {
+        if (virStateDriverTab[i]->active())
+            ret = 1;
+    }
+    return ret;
+}
+
+
+
+/**
  * virGetVersion:
  * @libVer: return value for the library version (OUT)
  * @type: the type of connection/driver looked at
@@ -249,7 +352,7 @@ virGetVersion(unsigned long *libVer, const char *type,
 	    type = "Xen";
 	for (i = 0;i < virDriverTabCount;i++) {
 	    if ((virDriverTab[i] != NULL) &&
-	        (!strcmp(virDriverTab[i]->name, type))) {
+	        (!strcasecmp(virDriverTab[i]->name, type))) {
 		*typeVer = virDriverTab[i]->ver;
 		break;
 	    }
@@ -268,6 +371,14 @@ do_open (const char *name, int flags)
 {
     int i, res;
     virConnectPtr ret = NULL;
+
+    /* Convert NULL or "" to xen:/// for back compat */
+    if (!name || name[0] == '\0')
+        name = "xen:///";
+
+    /* Convert xen -> xen:/// for back compat */
+    if (!strcasecmp(name, "xen"))
+        name = "xen:///";
 
     if (!initialized)
         if (virInitialize() < 0)
@@ -289,14 +400,18 @@ do_open (const char *name, int flags)
     }
 
     if (!ret->driver) {
-        virLibConnError (NULL, VIR_ERR_NO_SUPPORT, name);
+        /* If we reach here, then all drivers declined the connection. */
+        virLibConnError (NULL, VIR_ERR_NO_CONNECT, name);
         goto failed;
     }
 
     for (i = 0; i < virNetworkDriverTabCount; i++) {
         res = virNetworkDriverTab[i]->open (ret, name, flags);
-        if (res == -1) goto failed;
-        else if (res == 0) {
+        if (res == VIR_DRV_OPEN_ERROR) {
+	    virLibConnWarning (NULL, VIR_WAR_NO_NETWORK, 
+	                       "Is the daemon running ?");
+            break;
+        } else if (res == VIR_DRV_OPEN_SUCCESS) {
             ret->networkDriver = virNetworkDriverTab[i];
             break;
         }
@@ -316,33 +431,37 @@ failed:
 
 /**
  * virConnectOpen:
- * @name: optional argument currently unused, pass NULL
+ * @name: URI of the hypervisor
  *
  * This function should be called first to get a connection to the 
  * Hypervisor and xen store
  *
  * Returns a pointer to the hypervisor connection or NULL in case of error
+ *
+ * URIs are documented at http://libvirt.org/uri.html
  */
 virConnectPtr
 virConnectOpen (const char *name)
 {
-    return do_open (name, VIR_DRV_OPEN_QUIET);
+    return do_open (name, 0);
 }
 
 /**
  * virConnectOpenReadOnly:
- * @name: optional argument currently unused, pass NULL
+ * @name: URI of the hypervisor
  *
  * This function should be called first to get a restricted connection to the 
  * libbrary functionalities. The set of APIs usable are then restricted
  * on the available methods to control the domains.
  *
  * Returns a pointer to the hypervisor connection or NULL in case of error
+ *
+ * URIs are documented at http://libvirt.org/uri.html
  */
 virConnectPtr
 virConnectOpenReadOnly(const char *name)
 {
-    return do_open (name, VIR_DRV_OPEN_QUIET | VIR_DRV_OPEN_RO);
+    return do_open (name, VIR_DRV_OPEN_RO);
 }
 
 /**
@@ -362,9 +481,9 @@ virConnectClose(virConnectPtr conn)
     if (!VIR_IS_CONNECT(conn))
         return (-1);
 
-    conn->driver->close (conn);
     if (conn->networkDriver)
         conn->networkDriver->close (conn);
+    conn->driver->close (conn);
 
     if (virFreeConnect(conn) < 0)
         return (-1);
@@ -378,6 +497,9 @@ virConnectClose(virConnectPtr conn)
  * Get the name of the Hypervisor software used.
  *
  * Returns NULL in case of error, a static zero terminated string otherwise.
+ *
+ * See also:
+ * http://www.redhat.com/archives/libvir-list/2007-February/msg00096.html
  */
 const char *
 virConnectGetType(virConnectPtr conn)
@@ -430,6 +552,63 @@ virConnectGetVersion(virConnectPtr conn, unsigned long *hvVer)
 }
 
 /**
+ * virConnectGetHostname:
+ * @conn: pointer to a hypervisor connection
+ *
+ * This returns the system hostname on which the hypervisor is
+ * running (the result of the gethostname(2) system call).  If
+ * we are connected to a remote system, then this returns the
+ * hostname of the remote system.
+ *
+ * Returns the hostname which must be freed by the caller, or
+ * NULL if there was an error.
+ */
+char *
+virConnectGetHostname (virConnectPtr conn)
+{
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(conn, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return NULL;
+    }
+
+    if (conn->driver->getHostname)
+        return conn->driver->getHostname (conn);
+
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return NULL;
+}
+
+/**
+ * virConnectGetURI:
+ * @conn: pointer to a hypervisor connection
+ *
+ * This returns the URI (name) of the hypervisor connection.
+ * Normally this is the same as or similar to the string passed
+ * to the virConnectOpen/virConnectOpenReadOnly call, but
+ * the driver may make the URI canonical.  If name == NULL
+ * was passed to virConnectOpen, then the driver will return
+ * a non-NULL URI which can be used to connect to the same
+ * hypervisor later.
+ *
+ * Returns the URI string which must be freed by the caller, or
+ * NULL if there was an error.
+ */
+char *
+virConnectGetURI (virConnectPtr conn)
+{
+    if (!VIR_IS_CONNECT(conn)) {
+        virLibConnError(conn, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return NULL;
+    }
+
+    if (conn->driver->getURI)
+        return conn->driver->getURI (conn);
+
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return NULL;
+}
+
+/**
  * virConnectGetMaxVcpus:
  * @conn: pointer to the hypervisor connection
  * @type: value of the 'type' attribute in the <domain> element
@@ -474,7 +653,7 @@ virConnectListDomains(virConnectPtr conn, int *ids, int maxids)
         return (-1);
     }
 
-    if ((ids == NULL) || (maxids <= 0)) {
+    if ((ids == NULL) || (maxids < 0)) {
         virLibConnError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return (-1);
     }
@@ -507,6 +686,26 @@ virConnectNumOfDomains(virConnectPtr conn)
 
     virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
+}
+
+/**
+ * virDomainGetConnect:
+ * @dom: pointer to a domain
+ *
+ * Provides the connection pointer associated with a domain.  The
+ * reference counter on the connection is not increased by this
+ * call.
+ *
+ * Returns the virConnectPtr or NULL in case of failure.
+ */
+virConnectPtr
+virDomainGetConnect (virDomainPtr dom)
+{
+    if (!VIR_IS_DOMAIN (dom)) {
+        virLibDomainError (dom, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        return NULL;
+    }
+    return dom->conn;
 }
 
 /**
@@ -553,7 +752,8 @@ virDomainCreateLinux(virConnectPtr conn, const char *xmlDesc,
  *
  * Try to find a domain based on the hypervisor ID number
  *
- * Returns a new domain object or NULL in case of failure
+ * Returns a new domain object or NULL in case of failure.  If the
+ * domain cannot be found, then VIR_ERR_NO_DOMAIN error is raised.
  */
 virDomainPtr
 virDomainLookupByID(virConnectPtr conn, int id)
@@ -581,7 +781,8 @@ virDomainLookupByID(virConnectPtr conn, int id)
  *
  * Try to lookup a domain on the given hypervisor based on its UUID.
  *
- * Returns a new domain object or NULL in case of failure
+ * Returns a new domain object or NULL in case of failure.  If the
+ * domain cannot be found, then VIR_ERR_NO_DOMAIN error is raised.
  */
 virDomainPtr
 virDomainLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
@@ -609,7 +810,8 @@ virDomainLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
  *
  * Try to lookup a domain on the given hypervisor based on its UUID.
  *
- * Returns a new domain object or NULL in case of failure
+ * Returns a new domain object or NULL in case of failure.  If the
+ * domain cannot be found, then VIR_ERR_NO_DOMAIN error is raised.
  */
 virDomainPtr
 virDomainLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
@@ -658,7 +860,8 @@ virDomainLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
  *
  * Try to lookup a domain on the given hypervisor based on its name.
  *
- * Returns a new domain object or NULL in case of failure
+ * Returns a new domain object or NULL in case of failure.  If the
+ * domain cannot be found, then VIR_ERR_NO_DOMAIN error is raised.
  */
 virDomainPtr
 virDomainLookupByName(virConnectPtr conn, const char *name)
@@ -858,7 +1061,7 @@ virDomainSave(virDomainPtr domain, const char *to)
     if (conn->driver->domainSave)
         return conn->driver->domainSave (domain, to);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -911,7 +1114,7 @@ virDomainRestore(virConnectPtr conn, const char *from)
     if (conn->driver->domainRestore)
         return conn->driver->domainRestore (conn, from);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -970,7 +1173,7 @@ virDomainCoreDump(virDomainPtr domain, const char *to, int flags)
     if (conn->driver->domainCoreDump)
         return conn->driver->domainCoreDump (domain, to, flags);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1006,7 +1209,7 @@ virDomainShutdown(virDomainPtr domain)
     if (conn->driver->domainShutdown)
         return conn->driver->domainShutdown (domain);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1040,7 +1243,7 @@ virDomainReboot(virDomainPtr domain, unsigned int flags)
     if (conn->driver->domainReboot)
         return conn->driver->domainReboot (domain, flags);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1186,7 +1389,7 @@ virDomainGetOSType(virDomainPtr domain)
     if (conn->driver->domainGetOSType)
         return conn->driver->domainGetOSType (domain);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -1215,7 +1418,7 @@ virDomainGetMaxMemory(virDomainPtr domain)
     if (conn->driver->domainGetMaxMemory)
         return conn->driver->domainGetMaxMemory (domain);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return 0;
 }
 
@@ -1257,7 +1460,7 @@ virDomainSetMaxMemory(virDomainPtr domain, unsigned long memory)
     if (conn->driver->domainSetMaxMemory)
         return conn->driver->domainSetMaxMemory (domain, memory);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1300,7 +1503,7 @@ virDomainSetMemory(virDomainPtr domain, unsigned long memory)
     if (conn->driver->domainSetMemory)
         return conn->driver->domainSetMemory (domain, memory);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1336,7 +1539,7 @@ virDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
     if (conn->driver->domainGetInfo)
         return conn->driver->domainGetInfo (domain, info);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1370,7 +1573,7 @@ virDomainGetXMLDesc(virDomainPtr domain, int flags)
     if (conn->driver->domainDumpXML)
         return conn->driver->domainDumpXML (domain, flags);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -1398,7 +1601,7 @@ virNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info)
     if (conn->driver->nodeGetInfo)
         return conn->driver->nodeGetInfo (conn, info);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1423,9 +1626,121 @@ virConnectGetCapabilities (virConnectPtr conn)
     if (conn->driver->getCapabilities)
         return conn->driver->getCapabilities (conn);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
+
+/**
+ * virDomainGetSchedulerType:
+ * @domain: pointer to domain object
+ * @nparams: number of scheduler parameters(return value)
+ *
+ * Get the scheduler type.
+ *
+ * Returns NULL in case of error. The caller must free the returned string.
+ */
+char *
+virDomainGetSchedulerType(virDomainPtr domain, int *nparams)
+{
+    virConnectPtr conn;
+    char *schedtype;
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(domain, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        return NULL;
+    }
+    conn = domain->conn;
+
+    if (!VIR_IS_CONNECT (conn)) {
+        virLibConnError (conn, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return NULL;
+    }
+
+    if (conn->driver->domainGetSchedulerType){
+        schedtype = conn->driver->domainGetSchedulerType (domain, nparams);
+        return schedtype;
+    }
+
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return NULL;
+}
+
+
+/**
+ * virDomainGetSchedulerParameters:
+ * @domain: pointer to domain object
+ * @params: pointer to scheduler parameter object
+ *          (return value)
+ * @nparams: pointer to number of scheduler parameter
+ *          (this value should be same than the returned value
+ *           nparams of virDomainGetSchedulerType)
+ *
+ * Get the scheduler parameters, the @params array will be filled with the
+ * values.
+ *
+ * Returns -1 in case of error, 0 in case of success.
+ */
+int
+virDomainGetSchedulerParameters(virDomainPtr domain,
+				virSchedParameterPtr params, int *nparams)
+{
+    virConnectPtr conn;
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(domain, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        return -1;
+    }
+    conn = domain->conn;
+
+    if (!VIR_IS_CONNECT (conn)) {
+        virLibConnError (conn, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return -1;
+    }
+
+    if (conn->driver->domainGetSchedulerParameters)
+        return conn->driver->domainGetSchedulerParameters (domain, params, nparams);
+
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return -1;
+}
+
+/**
+ * virDomainSetSchedulerParameters:
+ * @domain: pointer to domain object
+ * @params: pointer to scheduler parameter objects
+ * @nparams: number of scheduler parameter
+ *          (this value should be same or less than the returned value
+ *           nparams of virDomainGetSchedulerType)
+ *
+ * Change the scheduler parameters
+ *
+ * Returns -1 in case of error, 0 in case of success.
+ */
+int
+virDomainSetSchedulerParameters(virDomainPtr domain, 
+				virSchedParameterPtr params, int nparams)
+{
+    virConnectPtr conn;
+
+    if (!VIR_IS_CONNECTED_DOMAIN(domain)) {
+        virLibDomainError(domain, VIR_ERR_INVALID_DOMAIN, __FUNCTION__);
+        return -1;
+    }
+    conn = domain->conn;
+
+    if (!VIR_IS_CONNECT (conn)) {
+        virLibConnError (conn, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return -1;
+    }
+
+    if (conn->driver->domainSetSchedulerParameters)
+        return conn->driver->domainSetSchedulerParameters (domain, params, nparams);
+
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
+    return -1;
+}
+
+
 
 /************************************************************************
  *									*
@@ -1460,7 +1775,7 @@ virDomainDefineXML(virConnectPtr conn, const char *xml) {
     if (conn->driver->domainDefineXML)
         return conn->driver->domainDefineXML (conn, xml);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -1489,7 +1804,7 @@ virDomainUndefine(virDomainPtr domain) {
     if (conn->driver->domainUndefine)
         return conn->driver->domainUndefine (domain);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1497,7 +1812,7 @@ virDomainUndefine(virDomainPtr domain) {
  * virConnectNumOfDefinedDomains:
  * @conn: pointer to the hypervisor connection
  *
- * Provides the number of active domains.
+ * Provides the number of inactive domains.
  *
  * Returns the number of domain found or -1 in case of error
  */
@@ -1512,7 +1827,7 @@ virConnectNumOfDefinedDomains(virConnectPtr conn)
     if (conn->driver->numOfDefinedDomains)
         return conn->driver->numOfDefinedDomains (conn);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1534,7 +1849,7 @@ virConnectListDefinedDomains(virConnectPtr conn, char **const names,
         return (-1);
     }
 
-    if ((names == NULL) || (maxnames <= 0)) {
+    if ((names == NULL) || (maxnames < 0)) {
         virLibConnError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return (-1);
     }
@@ -1542,7 +1857,7 @@ virConnectListDefinedDomains(virConnectPtr conn, char **const names,
     if (conn->driver->listDefinedDomains)
         return conn->driver->listDefinedDomains (conn, names, maxnames);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1576,7 +1891,7 @@ virDomainCreate(virDomainPtr domain) {
     if (conn->driver->domainCreate)
         return conn->driver->domainCreate (domain);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1611,7 +1926,7 @@ virDomainGetAutostart(virDomainPtr domain,
     if (conn->driver->domainGetAutostart)
         return conn->driver->domainGetAutostart (domain, autostart);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1641,7 +1956,7 @@ virDomainSetAutostart(virDomainPtr domain,
     if (conn->driver->domainSetAutostart)
         return conn->driver->domainSetAutostart (domain, autostart);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1685,7 +2000,7 @@ virDomainSetVcpus(virDomainPtr domain, unsigned int nvcpus)
     if (conn->driver->domainSetVcpus)
         return conn->driver->domainSetVcpus (domain, nvcpus);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1736,7 +2051,7 @@ virDomainPinVcpu(virDomainPtr domain, unsigned int vcpu,
     if (conn->driver->domainPinVcpu)
         return conn->driver->domainPinVcpu (domain, vcpu, cpumap, maplen);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1790,7 +2105,7 @@ virDomainGetVcpus(virDomainPtr domain, virVcpuInfoPtr info, int maxinfo,
         return conn->driver->domainGetVcpus (domain, info, maxinfo,
                                              cpumaps, maplen);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1821,7 +2136,7 @@ virDomainGetMaxVcpus(virDomainPtr domain)
     if (conn->driver->domainGetMaxVcpus)
         return conn->driver->domainGetMaxVcpus (domain);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1853,7 +2168,7 @@ virDomainAttachDevice(virDomainPtr domain, char *xml)
     if (conn->driver->domainAttachDevice)
         return conn->driver->domainAttachDevice (domain, xml);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1884,8 +2199,28 @@ virDomainDetachDevice(virDomainPtr domain, char *xml)
     if (conn->driver->domainDetachDevice)
         return conn->driver->domainDetachDevice (domain, xml);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
+}
+
+/**
+ * virNetworkGetConnect:
+ * @net: pointer to a network
+ *
+ * Provides the connection pointer associated with a network.  The
+ * reference counter on the connection is not increased by this
+ * call.
+ *
+ * Returns the virConnectPtr or NULL in case of failure.
+ */
+virConnectPtr
+virNetworkGetConnect (virNetworkPtr net)
+{
+    if (!VIR_IS_NETWORK (net)) {
+        virLibNetworkError (net, VIR_ERR_INVALID_NETWORK, __FUNCTION__);
+        return NULL;
+    }
+    return net->conn;
 }
 
 /**
@@ -1907,7 +2242,7 @@ virConnectNumOfNetworks(virConnectPtr conn)
     if (conn->networkDriver && conn->networkDriver->numOfNetworks)
         return conn->networkDriver->numOfNetworks (conn);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1929,7 +2264,7 @@ virConnectListNetworks(virConnectPtr conn, char **const names, int maxnames)
         return (-1);
     }
 
-    if ((names == NULL) || (maxnames <= 0)) {
+    if ((names == NULL) || (maxnames < 0)) {
         virLibConnError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return (-1);
     }
@@ -1937,7 +2272,7 @@ virConnectListNetworks(virConnectPtr conn, char **const names, int maxnames)
     if (conn->networkDriver && conn->networkDriver->listNetworks)
         return conn->networkDriver->listNetworks (conn, names, maxnames);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1960,7 +2295,7 @@ virConnectNumOfDefinedNetworks(virConnectPtr conn)
     if (conn->networkDriver && conn->networkDriver->numOfDefinedNetworks)
         return conn->networkDriver->numOfDefinedNetworks (conn);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -1983,7 +2318,7 @@ virConnectListDefinedNetworks(virConnectPtr conn, char **const names,
         return (-1);
     }
 
-    if ((names == NULL) || (maxnames <= 0)) {
+    if ((names == NULL) || (maxnames < 0)) {
         virLibConnError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return (-1);
     }
@@ -1992,7 +2327,7 @@ virConnectListDefinedNetworks(virConnectPtr conn, char **const names,
         return conn->networkDriver->listDefinedNetworks (conn,
                                                          names, maxnames);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -2003,7 +2338,8 @@ virConnectListDefinedNetworks(virConnectPtr conn, char **const names,
  *
  * Try to lookup a network on the given hypervisor based on its name.
  *
- * Returns a new network object or NULL in case of failure
+ * Returns a new network object or NULL in case of failure.  If the
+ * network cannot be found, then VIR_ERR_NO_NETWORK error is raised.
  */
 virNetworkPtr
 virNetworkLookupByName(virConnectPtr conn, const char *name)
@@ -2020,7 +2356,7 @@ virNetworkLookupByName(virConnectPtr conn, const char *name)
     if (conn->networkDriver && conn->networkDriver->networkLookupByName)
         return conn->networkDriver->networkLookupByName (conn, name);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -2031,7 +2367,8 @@ virNetworkLookupByName(virConnectPtr conn, const char *name)
  *
  * Try to lookup a network on the given hypervisor based on its UUID.
  *
- * Returns a new network object or NULL in case of failure
+ * Returns a new network object or NULL in case of failure.  If the
+ * network cannot be found, then VIR_ERR_NO_NETWORK error is raised.
  */
 virNetworkPtr
 virNetworkLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
@@ -2048,7 +2385,7 @@ virNetworkLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     if (conn->networkDriver && conn->networkDriver->networkLookupByUUID)
         return conn->networkDriver->networkLookupByUUID (conn, uuid);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -2059,7 +2396,8 @@ virNetworkLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
  *
  * Try to lookup a network on the given hypervisor based on its UUID.
  *
- * Returns a new network object or NULL in case of failure
+ * Returns a new network object or NULL in case of failure.  If the
+ * network cannot be found, then VIR_ERR_NO_NETWORK error is raised.
  */
 virNetworkPtr
 virNetworkLookupByUUIDString(virConnectPtr conn, const char *uuidstr)
@@ -2130,7 +2468,7 @@ virNetworkCreateXML(virConnectPtr conn, const char *xmlDesc)
     if (conn->networkDriver && conn->networkDriver->networkCreateXML)
         return conn->networkDriver->networkCreateXML (conn, xmlDesc);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -2162,7 +2500,7 @@ virNetworkDefineXML(virConnectPtr conn, const char *xml)
     if (conn->networkDriver && conn->networkDriver->networkDefineXML)
         return conn->networkDriver->networkDefineXML (conn, xml);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -2191,7 +2529,7 @@ virNetworkUndefine(virNetworkPtr network) {
     if (conn->networkDriver && conn->networkDriver->networkUndefine)
         return conn->networkDriver->networkUndefine (network);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -2225,7 +2563,7 @@ virNetworkCreate(virNetworkPtr network)
     if (conn->networkDriver && conn->networkDriver->networkCreate)
         return conn->networkDriver->networkCreate (network);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -2260,7 +2598,7 @@ virNetworkDestroy(virNetworkPtr network)
     if (conn->networkDriver && conn->networkDriver->networkDestroy)
         return conn->networkDriver->networkDestroy (network);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -2396,7 +2734,7 @@ virNetworkGetXMLDesc(virNetworkPtr network, int flags)
     if (conn->networkDriver && conn->networkDriver->networkDumpXML)
         return conn->networkDriver->networkDumpXML (network, flags);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -2425,7 +2763,7 @@ virNetworkGetBridgeName(virNetworkPtr network)
     if (conn->networkDriver && conn->networkDriver->networkGetBridgeName)
         return conn->networkDriver->networkGetBridgeName (network);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
 }
 
@@ -2460,7 +2798,7 @@ virNetworkGetAutostart(virNetworkPtr network,
     if (conn->networkDriver && conn->networkDriver->networkGetAutostart)
         return conn->networkDriver->networkGetAutostart (network, autostart);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 
@@ -2490,7 +2828,7 @@ virNetworkSetAutostart(virNetworkPtr network,
     if (conn->networkDriver && conn->networkDriver->networkSetAutostart)
         return conn->networkDriver->networkSetAutostart (network, autostart);
 
-    virLibConnError (conn, VIR_ERR_CALL_FAILED, __FUNCTION__);
+    virLibConnError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return -1;
 }
 

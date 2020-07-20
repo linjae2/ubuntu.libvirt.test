@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+#include <string.h>
 #include "internal.h"
 #include "driver.h"
 #include "proxy_internal.h"
@@ -31,35 +32,26 @@ static int xenProxyClose(virConnectPtr conn);
 static int xenProxyOpen(virConnectPtr conn, const char *name, int flags);
 static int xenProxyGetVersion(virConnectPtr conn, unsigned long *hvVer);
 static int xenProxyNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info);
+static char *xenProxyGetCapabilities(virConnectPtr conn);
 static int xenProxyListDomains(virConnectPtr conn, int *ids, int maxids);
 static int xenProxyNumOfDomains(virConnectPtr conn);
-static virDomainPtr xenProxyLookupByID(virConnectPtr conn, int id);
-static virDomainPtr xenProxyLookupByUUID(virConnectPtr conn,
-					 const unsigned char *uuid);
-static virDomainPtr xenProxyDomainLookupByName(virConnectPtr conn,
-					       const char *domname);
 static unsigned long xenProxyDomainGetMaxMemory(virDomainPtr domain);
 static int xenProxyDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info);
 static char *xenProxyDomainDumpXML(virDomainPtr domain, int flags);
 static char *xenProxyDomainGetOSType(virDomainPtr domain);
 
-virDriver xenProxyDriver = {
-    -1,
-    "XenProxy",
-    0,
+struct xenUnifiedDriver xenProxyDriver = {
     xenProxyOpen, /* open */
     xenProxyClose, /* close */
     NULL, /* type */
     xenProxyGetVersion, /* version */
-    NULL, /* getMaxVcpus */
+    NULL, /* hostname */
+    NULL, /* URI */
     xenProxyNodeGetInfo, /* nodeGetInfo */
-    NULL, /* getCapabilities */
+    xenProxyGetCapabilities, /* getCapabilities */
     xenProxyListDomains, /* listDomains */
     xenProxyNumOfDomains, /* numOfDomains */
     NULL, /* domainCreateLinux */
-    xenProxyLookupByID, /* domainLookupByID */
-    xenProxyLookupByUUID, /* domainLookupByUUID */
-    xenProxyDomainLookupByName, /* domainLookupByName */
     NULL, /* domainSuspend */
     NULL, /* domainResume */
     NULL, /* domainShutdown */
@@ -87,6 +79,9 @@ virDriver xenProxyDriver = {
     NULL, /* domainDetachDevice */
     NULL, /* domainGetAutostart */
     NULL, /* domainSetAutostart */
+    NULL, /* domainGetSchedulerType */
+    NULL, /* domainGetSchedulerParameters */
+    NULL, /* domainSetSchedulerParameters */
 };
 
 /**
@@ -543,8 +538,7 @@ xenProxyOpen(virConnectPtr conn, const char *name ATTRIBUTE_UNUSED, int flags)
 
     fd = virProxyOpenClientSocket(PROXY_SOCKET_PATH);
     if (fd < 0) {
-        if (!(flags & VIR_DRV_OPEN_QUIET))
-	    virProxyError(conn, VIR_ERR_NO_XEN, PROXY_SOCKET_PATH);
+	    virProxyError(NULL, VIR_ERR_NO_XEN, PROXY_SOCKET_PATH);
         return(-1);
     }
     priv->proxy = fd;
@@ -554,8 +548,7 @@ xenProxyOpen(virConnectPtr conn, const char *name ATTRIBUTE_UNUSED, int flags)
     req.len = sizeof(req);
     ret = xenProxyCommand(conn, &req, NULL, 1);
     if ((ret < 0) || (req.command != VIR_PROXY_NONE)) {
-        if (!(flags & VIR_DRV_OPEN_QUIET))
-	    virProxyError(conn, VIR_ERR_OPERATION_FAILED, __FUNCTION__);
+	    virProxyError(NULL, VIR_ERR_OPERATION_FAILED, __FUNCTION__);
         xenProxyClose(conn);
 	return(-1);
     }
@@ -794,7 +787,7 @@ xenProxyDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
  *
  * Returns a new domain object or NULL in case of failure
  */
-static virDomainPtr
+virDomainPtr
 xenProxyLookupByID(virConnectPtr conn, int id)
 {
     virProxyPacket req;
@@ -827,12 +820,7 @@ xenProxyLookupByID(virConnectPtr conn, int id)
     memcpy(uuid, &ans.extra.str[0], VIR_UUID_BUFLEN);
     name = &ans.extra.str[VIR_UUID_BUFLEN];
     res = virGetDomain(conn, name, uuid);
-
-    if (res == NULL)
-        virProxyError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
-    else
-	res->id = id;
-    
+	if (res) res->id = id;
     return(res);
 }
 
@@ -845,7 +833,7 @@ xenProxyLookupByID(virConnectPtr conn, int id)
  *
  * Returns a new domain object or NULL in case of failure
  */
-static virDomainPtr
+virDomainPtr
 xenProxyLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
 {
     virProxyFullPacket req;
@@ -874,17 +862,12 @@ xenProxyLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     }
     name = &req.extra.str[0];
     res = virGetDomain(conn, name, uuid);
-
-    if (res == NULL)
-        virProxyError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
-    else
-	res->id = req.data.arg;
-    
+	if (res) res->id = req.data.arg;
     return(res);
 }
 
 /**
- * xenProxyDomainLookupByName:
+ * xenProxyLookupByName:
  * @conn: A xend instance
  * @name: The name of the domain
  *
@@ -892,8 +875,8 @@ xenProxyLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
  *
  * Returns a new domain object or NULL in case of failure
  */
-static virDomainPtr
-xenProxyDomainLookupByName(virConnectPtr conn, const char *name)
+virDomainPtr
+xenProxyLookupByName(virConnectPtr conn, const char *name)
 {
     virProxyFullPacket req;
     int ret, len;
@@ -925,12 +908,7 @@ xenProxyDomainLookupByName(virConnectPtr conn, const char *name)
 	return(NULL);
     }
     res = virGetDomain(conn, name, (const unsigned char *)&req.extra.str[0]);
-
-    if (res == NULL)
-        virProxyError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
-    else
-	res->id = req.data.arg;
-    
+	if (res) res->id = req.data.arg;
     return(res);
 }
 
@@ -974,6 +952,55 @@ xenProxyNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info) {
     }
     memcpy(info, &ans.extra.ninfo, sizeof(virNodeInfo));
     return(0);
+}
+
+/**
+ * xenProxyGetCapabilities:
+ * @conn: pointer to the Xen Daemon block
+ * 
+ * Extract capabilities of the hypervisor.
+ *
+ * Returns capabilities in case of success (freed by caller)
+ * and NULL in case of failure.
+ */
+static char *
+xenProxyGetCapabilities (virConnectPtr conn)
+{
+    virProxyPacket req;
+    virProxyFullPacket ans;
+    int ret, xmllen;
+    char *xml;
+
+    if (!VIR_IS_CONNECT(conn)) {
+        virProxyError(conn, VIR_ERR_INVALID_CONN, __FUNCTION__);
+        return NULL;
+    }
+    memset(&req, 0, sizeof(req));
+    req.command = VIR_PROXY_GET_CAPABILITIES;
+    req.data.arg = 0;
+    req.len = sizeof(req);
+    ret = xenProxyCommand(conn, &req, &ans, 0);
+    if (ret < 0) {
+        xenProxyClose(conn);
+        return NULL;
+    }
+    if (ans.data.arg == -1)
+        return NULL;
+    if (ans.len <= sizeof(virProxyPacket)) {
+        virProxyError(conn, VIR_ERR_OPERATION_FAILED, __FUNCTION__);
+        return NULL;
+    }
+
+    xmllen = ans.len - sizeof (virProxyPacket);
+    xml = malloc (xmllen+1);
+    if (!xml) {
+        virProxyError (conn, VIR_ERR_NO_MEMORY, __FUNCTION__);
+        return NULL;
+    }
+    memmove (xml, ans.extra.str, xmllen);
+    xml[xmllen] = '\0';
+
+    return xml;
 }
 
 /**

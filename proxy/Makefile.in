@@ -57,7 +57,7 @@ PROGRAMS = $(libexec_PROGRAMS)
 am_libvirt_proxy_OBJECTS = libvirt_proxy.$(OBJEXT) \
 	xend_internal.$(OBJEXT) xen_internal.$(OBJEXT) \
 	virterror.$(OBJEXT) sexpr.$(OBJEXT) xml.$(OBJEXT) \
-	xs_internal.$(OBJEXT)
+	xs_internal.$(OBJEXT) buf.$(OBJEXT)
 libvirt_proxy_OBJECTS = $(am_libvirt_proxy_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -163,13 +163,13 @@ PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
 QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
+REMOTE_PID_FILE = @REMOTE_PID_FILE@
 RM = @RM@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
-SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
@@ -235,9 +235,9 @@ INCLUDES = -I$(top_builddir)/include -I@top_srcdir@/include \
 libvirt_proxy_SOURCES = libvirt_proxy.c @top_srcdir@/src/xend_internal.c \
 	    @top_srcdir@/src/xen_internal.c @top_srcdir@/src/virterror.c \
 	    @top_srcdir@/src/sexpr.c @top_srcdir@/src/xml.c \
-            @top_srcdir@/src/xs_internal.c
+            @top_srcdir@/src/xs_internal.c @top_srcdir@/src/buf.c
 
-libvirt_proxy_LDFLAGS = 
+libvirt_proxy_LDFLAGS = $(WARN_CFLAGS)
 libvirt_proxy_DEPENDENCIES = 
 libvirt_proxy_LDADD = 
 all: all-am
@@ -311,6 +311,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/buf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_proxy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sexpr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/virterror.Po@am__quote@
@@ -423,6 +424,20 @@ xs_internal.obj: @top_srcdir@/src/xs_internal.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='@top_srcdir@/src/xs_internal.c' object='xs_internal.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o xs_internal.obj `if test -f '@top_srcdir@/src/xs_internal.c'; then $(CYGPATH_W) '@top_srcdir@/src/xs_internal.c'; else $(CYGPATH_W) '$(srcdir)/@top_srcdir@/src/xs_internal.c'; fi`
+
+buf.o: @top_srcdir@/src/buf.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT buf.o -MD -MP -MF "$(DEPDIR)/buf.Tpo" -c -o buf.o `test -f '@top_srcdir@/src/buf.c' || echo '$(srcdir)/'`@top_srcdir@/src/buf.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/buf.Tpo" "$(DEPDIR)/buf.Po"; else rm -f "$(DEPDIR)/buf.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='@top_srcdir@/src/buf.c' object='buf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o buf.o `test -f '@top_srcdir@/src/buf.c' || echo '$(srcdir)/'`@top_srcdir@/src/buf.c
+
+buf.obj: @top_srcdir@/src/buf.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT buf.obj -MD -MP -MF "$(DEPDIR)/buf.Tpo" -c -o buf.obj `if test -f '@top_srcdir@/src/buf.c'; then $(CYGPATH_W) '@top_srcdir@/src/buf.c'; else $(CYGPATH_W) '$(srcdir)/@top_srcdir@/src/buf.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/buf.Tpo" "$(DEPDIR)/buf.Po"; else rm -f "$(DEPDIR)/buf.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='@top_srcdir@/src/buf.c' object='buf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o buf.obj `if test -f '@top_srcdir@/src/buf.c'; then $(CYGPATH_W) '@top_srcdir@/src/buf.c'; else $(CYGPATH_W) '$(srcdir)/@top_srcdir@/src/buf.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

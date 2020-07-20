@@ -2,7 +2,7 @@
 SUBDIRS=python
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include -I@srcdir@/include
 DEPS = $(top_builddir)/src/libvirt.la
-LDADDS = @STATIC_BINARIES@ $(top_builddir)/src/libvirt.la 
+LDADDS = @STATIC_BINARIES@ $(WARN_CFLAGS) $(top_builddir)/src/libvirt.la 
 
 rebuild: examples.xml index.html
 
@@ -18,24 +18,24 @@ install-data-local:
 
 EXTRA_DIST=examples.xsl index.py examples.xml 
 
-noinst_PROGRAMS=info1 suspend 
-
-info1_SOURCES=info1.c
-info1_LDFLAGS=
-info1_DEPENDENCIES= $(DEPS)
-info1_LDADD= $(LDADDS)
+noinst_PROGRAMS=suspend info1 
 
 suspend_SOURCES=suspend.c
 suspend_LDFLAGS=
 suspend_DEPENDENCIES= $(DEPS)
 suspend_LDADD= $(LDADDS)
 
+info1_SOURCES=info1.c
+info1_LDFLAGS=
+info1_DEPENDENCIES= $(DEPS)
+info1_LDADD= $(LDADDS)
+
 valgrind: 
 	$(MAKE) CHECKER='valgrind' tests
 
 tests: $(noinst_PROGRAMS)
 	@(echo '## examples regression tests')
-	@($(CHECKER) ./info1)
 	@($(CHECKER) ./suspend)
+	@($(CHECKER) ./info1)
 
 

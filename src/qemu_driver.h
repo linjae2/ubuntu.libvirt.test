@@ -1,5 +1,5 @@
 /*
- * dispatch.h: (De-)marshall wire messages to driver functions.
+ * driver.h: core driver methods for managing qemu guests
  *
  * Copyright (C) 2006, 2007 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
@@ -22,16 +22,15 @@
  */
 
 
-#ifndef QEMUD_DISPATCH_H
-#define QEMUD_DISPATCH_H
+#ifndef QEMUD_DRIVER_H
+#define QEMUD_DRIVER_H
 
 #include "internal.h"
 
-
-int qemudDispatch(struct qemud_server *server, struct qemud_client *client,
-                  struct qemud_packet *in, struct qemud_packet *out);
+int qemudRegister(void);
 
 #endif
+
 
 /*
  * Local variables:

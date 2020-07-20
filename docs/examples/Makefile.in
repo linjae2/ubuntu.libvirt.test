@@ -36,7 +36,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = info1$(EXEEXT) suspend$(EXEEXT)
+noinst_PROGRAMS = suspend$(EXEEXT) info1$(EXEEXT)
 subdir = docs/examples
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -54,7 +54,9 @@ CONFIG_CLEAN_FILES =
 PROGRAMS = $(noinst_PROGRAMS)
 am_info1_OBJECTS = info1.$(OBJEXT)
 info1_OBJECTS = $(am_info1_OBJECTS)
-am__DEPENDENCIES_1 = $(top_builddir)/src/libvirt.la
+am__DEPENDENCIES_1 =
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1) \
+	$(top_builddir)/src/libvirt.la
 am_suspend_OBJECTS = suspend.$(OBJEXT)
 suspend_OBJECTS = $(am_suspend_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
@@ -168,13 +170,13 @@ PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
 QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
+REMOTE_PID_FILE = @REMOTE_PID_FILE@
 RM = @RM@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
-SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
@@ -237,16 +239,16 @@ target_alias = @target_alias@
 SUBDIRS = python
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include -I@srcdir@/include
 DEPS = $(top_builddir)/src/libvirt.la
-LDADDS = @STATIC_BINARIES@ $(top_builddir)/src/libvirt.la 
+LDADDS = @STATIC_BINARIES@ $(WARN_CFLAGS) $(top_builddir)/src/libvirt.la 
 EXTRA_DIST = examples.xsl index.py examples.xml 
-info1_SOURCES = info1.c
-info1_LDFLAGS = 
-info1_DEPENDENCIES = $(DEPS)
-info1_LDADD = $(LDADDS)
 suspend_SOURCES = suspend.c
 suspend_LDFLAGS = 
 suspend_DEPENDENCIES = $(DEPS)
 suspend_LDADD = $(LDADDS)
+info1_SOURCES = info1.c
+info1_LDFLAGS = 
+info1_DEPENDENCIES = $(DEPS)
+info1_LDADD = $(LDADDS)
 all: all-recursive
 
 .SUFFIXES:
@@ -623,8 +625,8 @@ valgrind:
 
 tests: $(noinst_PROGRAMS)
 	@(echo '## examples regression tests')
-	@($(CHECKER) ./info1)
 	@($(CHECKER) ./suspend)
+	@($(CHECKER) ./info1)
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

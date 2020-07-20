@@ -149,13 +149,13 @@ PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
 QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
+REMOTE_PID_FILE = @REMOTE_PID_FILE@
 RM = @RM@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
-SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
@@ -217,7 +217,7 @@ SUBDIRS = . examples devhelp
 
 # The directory containing the source code (if it contains documentation).
 DOC_SOURCE_DIR = ../src
-PAGES = index.html bugs.html FAQ.html
+PAGES = index.html bugs.html FAQ.html remote.html
 APIPAGES = APIconstructors.html APIfiles.html APIfunctions.html \
     APIsymbols.html APIchunk0.html
 
@@ -540,6 +540,9 @@ uninstall-info: uninstall-info-recursive
 
 
 all: web $(top_builddir)/NEWS $(man_MANS)
+
+virsh.1: virsh.pod
+	pod2man -c "Virtualization Support" virsh.pod > virsh.1 && cp virsh.1 $(top_builddir)
 
 api: libvirt-api.xml libvirt-refs.xml $(APIPAGES) $(srcdir)/html/index.html
 

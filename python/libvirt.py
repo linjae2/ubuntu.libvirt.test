@@ -83,6 +83,29 @@ def registerErrorHandler(f, ctx):
        Returns 1 in case of success."""
     return libvirtmod.virRegisterErrorHandler(f,ctx)
 
+#
+# Return library version.
+#
+def getVersion (name = None):
+    """If no name parameter is passed (or name is None) then the
+    version of the libvirt library is returned as an integer.
+
+    If a name is passed and it refers to a driver linked to the
+    libvirt library, then this returns a tuple of (library version,
+    driver version).
+
+    If the name passed refers to a non-existent driver, then you
+    will get the exception 'no support for hypervisor'.
+
+    Versions numbers are integers: 1000000*major + 1000*minor + release."""
+    if name is None:
+        ret = libvirtmod.virGetVersion ();
+    else:
+        ret = libvirtmod.virGetVersion (name);
+    if ret is None: raise libvirtError ("virGetVersion() failed")
+    return ret
+
+
 # WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
 #
 # Everything before this line comes from libvir.py
@@ -178,6 +201,15 @@ class virDomain:
         ret = libvirtmod.virDomainAttachDevice(self._o, xml)
         if ret == -1: raise libvirtError ('virDomainAttachDevice() failed', dom=self)
         return ret
+
+    def connect(self):
+        """Provides the connection pointer associated with a domain. 
+           The reference counter on the connection is not increased
+           by this call. """
+        ret = libvirtmod.virDomainGetConnect(self._o)
+        if ret is None:raise libvirtError('virDomainGetConnect() failed', dom=self)
+        __tmp = virConnect(_obj=ret)
+        return __tmp
 
     def coreDump(self, to, flags):
         """This method will dump the core of a domain on a given file
@@ -394,6 +426,15 @@ class virNetwork:
         if ret is None: raise libvirtError ('virNetworkGetBridgeName() failed', net=self)
         return ret
 
+    def connect(self):
+        """Provides the connection pointer associated with a network. 
+           The reference counter on the connection is not increased
+           by this call. """
+        ret = libvirtmod.virNetworkGetConnect(self._o)
+        if ret is None:raise libvirtError('virNetworkGetConnect() failed', net=self)
+        __tmp = virConnect(_obj=ret)
+        return __tmp
+
     def create(self):
         """Create and start a defined network. If the call succeed the
            network moves from the defined to the running networks
@@ -503,6 +544,15 @@ class virConnect:
         if ret is None: raise libvirtError ('virConnectGetCapabilities() failed', conn=self)
         return ret
 
+    def getHostname(self):
+        """This returns the system hostname on which the hypervisor is
+           running (the result of the gethostname(2) system call). 
+           If we are connected to a remote system, then this returns
+           the hostname of the remote system. """
+        ret = libvirtmod.virConnectGetHostname(self._o)
+        if ret is None: raise libvirtError ('virConnectGetHostname() failed', conn=self)
+        return ret
+
     def getMaxVcpus(self, type):
         """Provides the maximum number of virtual CPUs supported for a
            guest VM of a specific type. The 'type' parameter here
@@ -516,6 +566,18 @@ class virConnect:
         """Get the name of the Hypervisor software used. """
         ret = libvirtmod.virConnectGetType(self._o)
         if ret is None: raise libvirtError ('virConnectGetType() failed', conn=self)
+        return ret
+
+    def getURI(self):
+        """This returns the URI (name) of the hypervisor connection.
+           Normally this is the same as or similar to the string
+           passed to the virConnectOpen/virConnectOpenReadOnly call,
+           but the driver may make the URI canonical.  If name ==
+           None was passed to virConnectOpen, then the driver will
+           return a non-None URI which can be used to connect to the
+           same hypervisor later. """
+        ret = libvirtmod.virConnectGetURI(self._o)
+        if ret is None: raise libvirtError ('virConnectGetURI() failed', conn=self)
         return ret
 
     def lookupByID(self, id):
@@ -565,7 +627,7 @@ class virConnect:
         return __tmp
 
     def numOfDefinedDomains(self):
-        """Provides the number of active domains. """
+        """Provides the number of inactive domains. """
         ret = libvirtmod.virConnectNumOfDefinedDomains(self._o)
         if ret == -1: raise libvirtError ('virConnectNumOfDefinedDomains() failed', conn=self)
         return ret
@@ -689,6 +751,8 @@ VIR_FROM_PROXY = 8
 VIR_FROM_CONF = 9
 VIR_FROM_QEMU = 10
 VIR_FROM_NET = 11
+VIR_FROM_TEST = 12
+VIR_FROM_REMOTE = 13
 
 # virDomainRestart
 VIR_DOMAIN_DESTROY = 1
@@ -736,9 +800,22 @@ VIR_ERR_XML_DETAIL = 35
 VIR_ERR_INVALID_NETWORK = 36
 VIR_ERR_NETWORK_EXIST = 37
 VIR_ERR_SYSTEM_ERROR = 38
+VIR_ERR_RPC = 39
+VIR_ERR_GNUTLS_ERROR = 40
+VIR_WAR_NO_NETWORK = 41
+VIR_ERR_NO_DOMAIN = 42
+VIR_ERR_NO_NETWORK = 43
 
 # virDomainCreateFlags
 VIR_DOMAIN_NONE = 0
+
+# virSchedParameterType
+VIR_DOMAIN_SCHED_FIELD_INT = 1
+VIR_DOMAIN_SCHED_FIELD_UINT = 2
+VIR_DOMAIN_SCHED_FIELD_LLONG = 3
+VIR_DOMAIN_SCHED_FIELD_ULLONG = 4
+VIR_DOMAIN_SCHED_FIELD_DOUBLE = 5
+VIR_DOMAIN_SCHED_FIELD_BOOLEAN = 6
 
 # virVcpuState
 VIR_VCPU_OFFLINE = 0

@@ -62,13 +62,18 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libvirt_la_DEPENDENCIES =
-am_libvirt_la_OBJECTS = libvirt_la-libvirt.lo libvirt_la-hash.lo \
-	libvirt_la-test.lo libvirt_la-xml.lo libvirt_la-xen_unified.lo \
+am__objects_1 = libvirt_la-libvirt.lo libvirt_la-hash.lo \
+	libvirt_la-test.lo libvirt_la-buf.lo libvirt_la-xml.lo \
+	libvirt_la-event.lo libvirt_la-xen_unified.lo \
 	libvirt_la-xen_internal.lo libvirt_la-xs_internal.lo \
 	libvirt_la-xend_internal.lo libvirt_la-sexpr.lo \
 	libvirt_la-virterror.lo libvirt_la-proxy_internal.lo \
 	libvirt_la-conf.lo libvirt_la-xm_internal.lo \
-	libvirt_la-qemu_internal.lo
+	libvirt_la-remote_internal.lo libvirt_la-bridge.lo \
+	libvirt_la-iptables.lo libvirt_la-uuid.lo \
+	libvirt_la-qemu_driver.lo libvirt_la-qemu_conf.lo
+am__objects_2 = libvirt_la-protocol.lo libvirt_la-remote_protocol.lo
+am_libvirt_la_OBJECTS = $(am__objects_1) $(am__objects_2)
 libvirt_la_OBJECTS = $(am_libvirt_la_OBJECTS)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
@@ -180,13 +185,13 @@ PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
 QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
+REMOTE_PID_FILE = @REMOTE_PID_FILE@
 RM = @RM@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
-SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
@@ -244,10 +249,18 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-INCLUDES = -I$(top_builddir)/include -I@top_srcdir@/include @LIBXML_CFLAGS@ -I@top_srcdir@/qemud \
-	   -DBINDIR=\""$(libexecdir)"\" -DSBINDIR=\""$(sbindir)"\" -DLOCALEBASEDIR=\""$(datadir)/locale"\" \
+INCLUDES = -I$(top_builddir)/include \
+	   -I@top_srcdir@/include \
+	   -I@top_srcdir@/qemud \
+	   @LIBXML_CFLAGS@ \
+	   -DBINDIR=\""$(libexecdir)"\" \
+	   -DSBINDIR=\""$(sbindir)"\" \
+	   -DSYSCONF_DIR="\"$(sysconfdir)\"" \
+	   -DLOCALEBASEDIR=\""$(datadir)/locale"\" \
            -DLOCAL_STATE_DIR=\""$(localstatedir)"\" \
-           -DGETTEXT_PACKAGE=\"$(PACKAGE)\" $(WARN_CFLAGS) $(LIBVIRT_FEATURES)
+           -DGETTEXT_PACKAGE=\"$(PACKAGE)\" \
+	   $(WARN_CFLAGS) \
+	   $(LIBVIRT_FEATURES)
 
 DEPS = libvirt.la
 LDADDS = @STATIC_BINARIES@ libvirt.la
@@ -259,11 +272,13 @@ libvirt_la_LDFLAGS = -Wl,--version-script=$(srcdir)/libvirt_sym.version \
                     $(COVERAGE_CFLAGS:-f%=-Wc,-f%)
 
 libvirt_la_CFLAGS = $(COVERAGE_CFLAGS)
-libvirt_la_SOURCES = \
+CLIENT_SOURCES = \
 		libvirt.c internal.h				\
 		hash.c hash.h					\
 		test.c test.h                                   \
+                buf.c buf.h					\
 		xml.c xml.h					\
+		event.c event.h					\
 		xen_unified.c xen_unified.h			\
 		xen_internal.c xen_internal.h			\
 		xs_internal.c xs_internal.h			\
@@ -274,14 +289,24 @@ libvirt_la_SOURCES = \
 		proxy_internal.c proxy_internal.h		\
 		conf.c conf.h                                   \
 		xm_internal.c xm_internal.h                     \
-		qemu_internal.c qemu_internal.h
+		remote_internal.c remote_internal.h		\
+		bridge.c bridge.h 				\
+		iptables.c iptables.h 				\
+		uuid.c uuid.h 					\
+		qemu_driver.c qemu_driver.h 			\
+		qemu_conf.c qemu_conf.h
 
+SERVER_SOURCES = \
+		../qemud/protocol.h ../qemud/protocol.c		\
+		../qemud/remote_protocol.c ../qemud/remote_protocol.h
+
+libvirt_la_SOURCES = $(CLIENT_SOURCES) $(SERVER_SOURCES)
 virsh_SOURCES = virsh.c console.c console.h
-virsh_LDFLAGS = $(COVERAGE_LDFLAGS)
+virsh_LDFLAGS = $(WARN_CFLAGS) $(COVERAGE_LDFLAGS)
 virsh_DEPENDENCIES = $(DEPS)
 virsh_LDADD = $(LDADDS) $(VIRSH_LIBS)
 virsh_CFLAGS = $(COVERAGE_CFLAGS)
-COVERAGE_FILES = $(libvirt_la_SOURCES:%.c=libvirt_la-%.cov)
+COVERAGE_FILES = $(CLIENT_SOURCES:%.c=libvirt_la-%.cov)
 CLEANFILES = *.cov *.gcov .libs/*.gcda .libs/*.gcno *.gcno *.gcda
 all: all-am
 
@@ -383,13 +408,22 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-bridge.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-buf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-conf.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-event.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-hash.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-iptables.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-libvirt.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-protocol.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-proxy_internal.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-qemu_internal.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-qemu_conf.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-qemu_driver.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-remote_internal.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-remote_protocol.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-sexpr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-test.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-uuid.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-virterror.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-xen_internal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt_la-xen_unified.Plo@am__quote@
@@ -442,12 +476,26 @@ libvirt_la-test.lo: test.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-test.lo `test -f 'test.c' || echo '$(srcdir)/'`test.c
 
+libvirt_la-buf.lo: buf.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-buf.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-buf.Tpo" -c -o libvirt_la-buf.lo `test -f 'buf.c' || echo '$(srcdir)/'`buf.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-buf.Tpo" "$(DEPDIR)/libvirt_la-buf.Plo"; else rm -f "$(DEPDIR)/libvirt_la-buf.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='buf.c' object='libvirt_la-buf.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-buf.lo `test -f 'buf.c' || echo '$(srcdir)/'`buf.c
+
 libvirt_la-xml.lo: xml.c
 @am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-xml.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-xml.Tpo" -c -o libvirt_la-xml.lo `test -f 'xml.c' || echo '$(srcdir)/'`xml.c; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-xml.Tpo" "$(DEPDIR)/libvirt_la-xml.Plo"; else rm -f "$(DEPDIR)/libvirt_la-xml.Tpo"; exit 1; fi
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='xml.c' object='libvirt_la-xml.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-xml.lo `test -f 'xml.c' || echo '$(srcdir)/'`xml.c
+
+libvirt_la-event.lo: event.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-event.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-event.Tpo" -c -o libvirt_la-event.lo `test -f 'event.c' || echo '$(srcdir)/'`event.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-event.Tpo" "$(DEPDIR)/libvirt_la-event.Plo"; else rm -f "$(DEPDIR)/libvirt_la-event.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='event.c' object='libvirt_la-event.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-event.lo `test -f 'event.c' || echo '$(srcdir)/'`event.c
 
 libvirt_la-xen_unified.lo: xen_unified.c
 @am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-xen_unified.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-xen_unified.Tpo" -c -o libvirt_la-xen_unified.lo `test -f 'xen_unified.c' || echo '$(srcdir)/'`xen_unified.c; \
@@ -512,12 +560,61 @@ libvirt_la-xm_internal.lo: xm_internal.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-xm_internal.lo `test -f 'xm_internal.c' || echo '$(srcdir)/'`xm_internal.c
 
-libvirt_la-qemu_internal.lo: qemu_internal.c
-@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-qemu_internal.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-qemu_internal.Tpo" -c -o libvirt_la-qemu_internal.lo `test -f 'qemu_internal.c' || echo '$(srcdir)/'`qemu_internal.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-qemu_internal.Tpo" "$(DEPDIR)/libvirt_la-qemu_internal.Plo"; else rm -f "$(DEPDIR)/libvirt_la-qemu_internal.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qemu_internal.c' object='libvirt_la-qemu_internal.lo' libtool=yes @AMDEPBACKSLASH@
+libvirt_la-remote_internal.lo: remote_internal.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-remote_internal.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-remote_internal.Tpo" -c -o libvirt_la-remote_internal.lo `test -f 'remote_internal.c' || echo '$(srcdir)/'`remote_internal.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-remote_internal.Tpo" "$(DEPDIR)/libvirt_la-remote_internal.Plo"; else rm -f "$(DEPDIR)/libvirt_la-remote_internal.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='remote_internal.c' object='libvirt_la-remote_internal.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-qemu_internal.lo `test -f 'qemu_internal.c' || echo '$(srcdir)/'`qemu_internal.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-remote_internal.lo `test -f 'remote_internal.c' || echo '$(srcdir)/'`remote_internal.c
+
+libvirt_la-bridge.lo: bridge.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-bridge.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-bridge.Tpo" -c -o libvirt_la-bridge.lo `test -f 'bridge.c' || echo '$(srcdir)/'`bridge.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-bridge.Tpo" "$(DEPDIR)/libvirt_la-bridge.Plo"; else rm -f "$(DEPDIR)/libvirt_la-bridge.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bridge.c' object='libvirt_la-bridge.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-bridge.lo `test -f 'bridge.c' || echo '$(srcdir)/'`bridge.c
+
+libvirt_la-iptables.lo: iptables.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-iptables.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-iptables.Tpo" -c -o libvirt_la-iptables.lo `test -f 'iptables.c' || echo '$(srcdir)/'`iptables.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-iptables.Tpo" "$(DEPDIR)/libvirt_la-iptables.Plo"; else rm -f "$(DEPDIR)/libvirt_la-iptables.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='iptables.c' object='libvirt_la-iptables.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-iptables.lo `test -f 'iptables.c' || echo '$(srcdir)/'`iptables.c
+
+libvirt_la-uuid.lo: uuid.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-uuid.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-uuid.Tpo" -c -o libvirt_la-uuid.lo `test -f 'uuid.c' || echo '$(srcdir)/'`uuid.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-uuid.Tpo" "$(DEPDIR)/libvirt_la-uuid.Plo"; else rm -f "$(DEPDIR)/libvirt_la-uuid.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='uuid.c' object='libvirt_la-uuid.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-uuid.lo `test -f 'uuid.c' || echo '$(srcdir)/'`uuid.c
+
+libvirt_la-qemu_driver.lo: qemu_driver.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-qemu_driver.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-qemu_driver.Tpo" -c -o libvirt_la-qemu_driver.lo `test -f 'qemu_driver.c' || echo '$(srcdir)/'`qemu_driver.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-qemu_driver.Tpo" "$(DEPDIR)/libvirt_la-qemu_driver.Plo"; else rm -f "$(DEPDIR)/libvirt_la-qemu_driver.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qemu_driver.c' object='libvirt_la-qemu_driver.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-qemu_driver.lo `test -f 'qemu_driver.c' || echo '$(srcdir)/'`qemu_driver.c
+
+libvirt_la-qemu_conf.lo: qemu_conf.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-qemu_conf.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-qemu_conf.Tpo" -c -o libvirt_la-qemu_conf.lo `test -f 'qemu_conf.c' || echo '$(srcdir)/'`qemu_conf.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-qemu_conf.Tpo" "$(DEPDIR)/libvirt_la-qemu_conf.Plo"; else rm -f "$(DEPDIR)/libvirt_la-qemu_conf.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qemu_conf.c' object='libvirt_la-qemu_conf.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-qemu_conf.lo `test -f 'qemu_conf.c' || echo '$(srcdir)/'`qemu_conf.c
+
+libvirt_la-protocol.lo: ../qemud/protocol.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-protocol.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-protocol.Tpo" -c -o libvirt_la-protocol.lo `test -f '../qemud/protocol.c' || echo '$(srcdir)/'`../qemud/protocol.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-protocol.Tpo" "$(DEPDIR)/libvirt_la-protocol.Plo"; else rm -f "$(DEPDIR)/libvirt_la-protocol.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../qemud/protocol.c' object='libvirt_la-protocol.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-protocol.lo `test -f '../qemud/protocol.c' || echo '$(srcdir)/'`../qemud/protocol.c
+
+libvirt_la-remote_protocol.lo: ../qemud/remote_protocol.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -MT libvirt_la-remote_protocol.lo -MD -MP -MF "$(DEPDIR)/libvirt_la-remote_protocol.Tpo" -c -o libvirt_la-remote_protocol.lo `test -f '../qemud/remote_protocol.c' || echo '$(srcdir)/'`../qemud/remote_protocol.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirt_la-remote_protocol.Tpo" "$(DEPDIR)/libvirt_la-remote_protocol.Plo"; else rm -f "$(DEPDIR)/libvirt_la-remote_protocol.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../qemud/remote_protocol.c' object='libvirt_la-remote_protocol.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirt_la_CFLAGS) $(CFLAGS) -c -o libvirt_la-remote_protocol.lo `test -f '../qemud/remote_protocol.c' || echo '$(srcdir)/'`../qemud/remote_protocol.c
 
 virsh-virsh.o: virsh.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(virsh_CFLAGS) $(CFLAGS) -MT virsh-virsh.o -MD -MP -MF "$(DEPDIR)/virsh-virsh.Tpo" -c -o virsh-virsh.o `test -f 'virsh.c' || echo '$(srcdir)/'`virsh.c; \

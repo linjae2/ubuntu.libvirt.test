@@ -26,6 +26,9 @@
 #include <dirent.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <limits.h>
+#include <string.h>
+#include <errno.h>
 
 #include <unistd.h>
 #include <stdint.h>
@@ -35,6 +38,9 @@
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
 
+#ifndef NAME_MAX
+#define	NAME_MAX	255
+#endif
 
 #include "xen_unified.h"
 #include "xm_internal.h"
@@ -43,6 +49,7 @@
 #include "hash.h"
 #include "internal.h"
 #include "xml.h"
+#include "buf.h"
 
 typedef struct xenXMConfCache *xenXMConfCachePtr;
 typedef struct xenXMConfCache {
@@ -67,25 +74,18 @@ static time_t lastRefresh = 0;
 #define XEND_PCI_CONFIG_PREFIX "xend-pci-"
 #define QEMU_IF_SCRIPT "qemu-ifup"
 
-virDriver xenXMDriver = {
-    -1,
-    "XenXM",
-    (DOM0_INTERFACE_VERSION >> 24) * 1000000 +
-    ((DOM0_INTERFACE_VERSION >> 16) & 0xFF) * 1000 +
-    (DOM0_INTERFACE_VERSION & 0xFFFF),
+struct xenUnifiedDriver xenXMDriver = {
     xenXMOpen, /* open */
     xenXMClose, /* close */
     xenXMGetType, /* type */
     NULL, /* version */
-    NULL, /* getMaxVcpus */
+    NULL, /* hostname */
+    NULL, /* URI */
     NULL, /* nodeGetInfo */
     NULL, /* getCapabilities */
     NULL, /* listDomains */
     NULL, /* numOfDomains */
     NULL, /* domainCreateLinux */
-    NULL, /* domainLookupByID */
-    xenXMDomainLookupByUUID, /* domainLookupByUUID */
-    xenXMDomainLookupByName, /* domainLookupByName */
     NULL, /* domainSuspend */
     NULL, /* domainResume */
     NULL, /* domainShutdown */
@@ -113,6 +113,9 @@ virDriver xenXMDriver = {
     NULL, /* domainDetachDevice */
     NULL, /* domainGetAutostart */
     NULL, /* domainSetAutostart */
+    NULL, /* domainGetSchedulerType */
+    NULL, /* domainGetSchedulerParameters */
+    NULL, /* domainSetSchedulerParameters */
 };
 
 static void
@@ -316,13 +319,14 @@ static int xenXMConfigReaper(const void *payload, const char *key ATTRIBUTE_UNUS
    environment variable) and process any domain configs. It
    has rate-limited so never rescans more frequently than
    once every X seconds */
-static int xenXMConfigCacheRefresh(void) {
+static int xenXMConfigCacheRefresh (virConnectPtr conn) {
     DIR *dh;
     struct dirent *ent;
     time_t now = time(NULL);
     int ret = -1;
 
     if (now == ((time_t)-1)) {
+        xenXMError (conn, VIR_ERR_SYSTEM_ERROR, strerror (errno));
         return (-1);
     }
 
@@ -334,6 +338,7 @@ static int xenXMConfigCacheRefresh(void) {
 
     /* Process the files in the config dir */
     if (!(dh = opendir(configDir))) {
+        xenXMError (conn, VIR_ERR_SYSTEM_ERROR, strerror (errno));
         return (-1);
     }
 
@@ -408,6 +413,7 @@ static int xenXMConfigCacheRefresh(void) {
         } else { /* Completely new entry */
             newborn = 1;
             if (!(entry = malloc(sizeof(xenXMConfCache)))) {
+                xenXMError (conn, VIR_ERR_NO_MEMORY, strerror (errno));
                 goto cleanup;
             }
             memcpy(entry->filename, path, PATH_MAX);
@@ -429,6 +435,7 @@ static int xenXMConfigCacheRefresh(void) {
                 virHashRemoveEntry(configCache, path, NULL);
             }
             free(entry);
+            xenXMError (conn, VIR_ERR_INTERNAL_ERROR, "xenXMConfigCacheRefresh: name");
             goto cleanup;
         }
 
@@ -438,6 +445,7 @@ static int xenXMConfigCacheRefresh(void) {
             if (virHashAddEntry(configCache, entry->filename, entry) < 0) {
                 virConfFree(entry->conf);
                 free(entry);
+                xenXMError (conn, VIR_ERR_INTERNAL_ERROR, "xenXMConfigCacheRefresh: virHashAddEntry");
                 goto cleanup;
             }
         }
@@ -479,7 +487,7 @@ int
 xenXMOpen (virConnectPtr conn ATTRIBUTE_UNUSED,
            const char *name ATTRIBUTE_UNUSED, int flags ATTRIBUTE_UNUSED)
 {
-    if (nconnections == 0) {
+    if (configCache == NULL) {
         configCache = virHashCreate(50);
         if (!configCache)
             return (-1);
@@ -489,6 +497,10 @@ xenXMOpen (virConnectPtr conn ATTRIBUTE_UNUSED,
             configCache = NULL;
             return (-1);
         }
+        /* Force the cache to be reloaded next time that
+         * xenXMConfigCacheRefresh is called.
+         */
+        lastRefresh = 0;
     }
     nconnections++;
 
@@ -500,7 +512,8 @@ xenXMOpen (virConnectPtr conn ATTRIBUTE_UNUSED,
  * last connection
  */
 int xenXMClose(virConnectPtr conn ATTRIBUTE_UNUSED) {
-    if (!nconnections--) {
+    nconnections--;
+    if (nconnections <= 0) {
         virHashFree(nameConfigMap, NULL);
         nameConfigMap = NULL;
         virHashFree(configCache, xenXMConfigFree);
@@ -631,7 +644,7 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
                 dev = "hd";
                 break;
             }
-            virBufferVSprintf(buf, "    <boot>%s</boot>\n", dev);
+            virBufferVSprintf(buf, "    <boot dev='%s'/>\n", dev);
             boot++;
         }
 
@@ -640,6 +653,8 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
 
         if (xenXMConfigGetString(conf, "bootloader", &str) == 0)
             virBufferVSprintf(buf, "  <bootloader>%s</bootloader>\n", str);
+        if (xenXMConfigGetString(conf, "bootargs", &str) == 0)
+            virBufferEscapeString(buf, "  <bootloader_args>%s</bootloader_args>\n", str);
         if (xenXMConfigGetString(conf, "kernel", &str) == 0) {
             virBufferAdd(buf, "  <os>\n", -1);
             virBufferAdd(buf, "    <type>linux</type>\n", -1);
@@ -647,7 +662,7 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
             if (xenXMConfigGetString(conf, "ramdisk", &str) == 0)
                 virBufferVSprintf(buf, "    <initrd>%s</initrd>\n", str);
             if (xenXMConfigGetString(conf, "extra", &str) == 0)
-                virBufferVSprintf(buf, "    <cmdline>%s</cmdline>\n", str);
+                virBufferEscapeString(buf, "    <cmdline>%s</cmdline>\n", str);
             virBufferAdd(buf, "  </os>\n", -1);
         }
     }
@@ -729,7 +744,7 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
              */
 
             /* Extract the source */
-            if (!(offset = index(head, ',')) || offset[0] == '\0')
+            if (!(offset = strchr(head, ',')) || offset[0] == '\0')
                 goto skipdisk;
             if ((offset - head) >= (PATH_MAX-1))
                 goto skipdisk;
@@ -738,7 +753,7 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
             head = offset + 1;
 
             /* Extract the dest */
-            if (!(offset = index(head, ',')) || offset[0] == '\0')
+            if (!(offset = strchr(head, ',')) || offset[0] == '\0')
                 goto skipdisk;
             if ((offset - head) >= (PATH_MAX-1))
                 goto skipdisk;
@@ -748,14 +763,14 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
 
 
             /* Extract source driver type */
-            if (!(tmp = index(src, ':')) || !tmp[0])
+            if (!(tmp = strchr(src, ':')) || !tmp[0])
                 goto skipdisk;
             strncpy(drvName, src, (tmp-src));
             drvName[tmp-src] = '\0';
 
             /* And the source driver sub-type */
             if (!strncmp(drvName, "tap", 3)) {
-                if (!(tmp1 = index(tmp+1, ':')) || !tmp1[0])
+                if (!(tmp1 = strchr(tmp+1, ':')) || !tmp1[0])
                     goto skipdisk;
                 strncpy(drvType, tmp+1, (tmp1-(tmp+1)));
                 memmove(src, src+(tmp1-src)+1, strlen(src)-(tmp1-src));
@@ -775,7 +790,7 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
             }
 
             /* Check for a :cdrom/:disk postfix */
-            if ((tmp = index(dev, ':')) != NULL) {
+            if ((tmp = strchr(dev, ':')) != NULL) {
                 if (!strcmp(tmp, ":cdrom"))
                     cdrom = 1;
                 tmp[0] = '\0';
@@ -819,8 +834,10 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
             char script[PATH_MAX];
             char ip[16];
             char mac[18];
+            char bridge[50];
             char *key;
 
+            bridge[0] = '\0';
             mac[0] = '\0';
             script[0] = '\0';
             ip[0] = '\0';
@@ -831,9 +848,9 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
             key = list->str;
             while (key) {
                 char *data;
-                char *nextkey = index(key, ',');
+                char *nextkey = strchr(key, ',');
 
-                if (!(data = index(key, '=')) || (data[0] == '\0'))
+                if (!(data = strchr(key, '=')) || (data[0] == '\0'))
                     goto skipnic;
                 data++;
 
@@ -844,7 +861,12 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
                     strncpy(mac, data, len);
                     mac[len] = '\0';
                 } else if (!strncmp(key, "bridge=", 7)) {
+                    int len = nextkey ? (nextkey - data) : sizeof(bridge)-1;
                     type = 1;
+                    if (len > (sizeof(bridge)-1))
+                        len = sizeof(bridge)-1;
+                    strncpy(bridge, data, len);
+                    bridge[len] = '\0';
                 } else if (!strncmp(key, "script=", 7)) {
                     int len = nextkey ? (nextkey - data) : PATH_MAX-1;
                     if (len > (PATH_MAX-1))
@@ -874,6 +896,8 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
             virBufferAdd(buf, "    <interface type='bridge'>\n", -1);
             if (mac[0])
                 virBufferVSprintf(buf, "      <mac address='%s'/>\n", mac);
+            if (type == 1 && bridge[0])
+                virBufferVSprintf(buf, "      <source bridge='%s'/>\n", bridge);
             if (script[0])
                 virBufferVSprintf(buf, "      <script path='%s'/>\n", script);
             if (ip[0])
@@ -914,14 +938,14 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
 
             while (key) {
                 char *data;
-                char *nextkey = index(key, ',');
+                char *nextkey = strchr(key, ',');
                 char *end = nextkey;
                 if (nextkey) {
                     *end = '\0';
                     nextkey++;
                 }
 
-                if (!(data = index(key, '=')) || (data[0] == '\0'))
+                if (!(data = strchr(key, '=')) || (data[0] == '\0'))
                     break;
                 data++;
 
@@ -1190,7 +1214,7 @@ virDomainPtr xenXMDomainLookupByName(virConnectPtr conn, const char *domname) {
         return (NULL);
     }
 
-    if (xenXMConfigCacheRefresh() < 0)
+    if (xenXMConfigCacheRefresh (conn) < 0)
         return (NULL);
 
     if (!(filename = virHashLookup(nameConfigMap, domname)))
@@ -1253,7 +1277,7 @@ virDomainPtr xenXMDomainLookupByUUID(virConnectPtr conn,
         return (NULL);
     }
 
-    if (xenXMConfigCacheRefresh() < 0)
+    if (xenXMConfigCacheRefresh (conn) < 0)
         return (NULL);
 
     if (!(entry = virHashSearch(configCache, xenXMDomainSearchForUUID, (const void *)uuid))) {
@@ -1795,7 +1819,7 @@ virConfPtr xenXMParseXMLToConfig(virConnectPtr conn, const char *xml) {
                                           "cannot set the os loader parameter") < 0)
             goto error;
 
-        obj = xmlXPathEval(BAD_CAST "string(/domain/os/boot)", ctxt);
+        obj = xmlXPathEval(BAD_CAST "string(/domain/os/boot/@dev)", ctxt);
         if ((obj != NULL) && (obj->type == XPATH_STRING) &&
             (obj->stringval != NULL)) {
             if (!strcmp((const char*)obj->stringval, "fd"))
@@ -1829,6 +1853,9 @@ virConfPtr xenXMParseXMLToConfig(virConnectPtr conn, const char *xml) {
     } else {
         if (xenXMConfigSetStringFromXPath(conn, conf, ctxt, "bootloader", "string(/domain/bootloader)", 1,
                                           "cannot set the bootloader parameter") < 0)
+            goto error;
+        if (xenXMConfigSetStringFromXPath(conn, conf, ctxt, "bootargs", "string(/domain/bootloader_args)", 1,
+                                          "cannot set the bootloader_args parameter") < 0)
             goto error;
         if (xenXMConfigSetStringFromXPath(conn, conf, ctxt, "kernel", "string(/domain/os/kernel)", 1,
                                           "cannot set the kernel parameter") < 0)
@@ -2072,7 +2099,9 @@ virConfPtr xenXMParseXMLToConfig(virConnectPtr conn, const char *xml) {
  */
 virDomainPtr xenXMDomainDefineXML(virConnectPtr conn, const char *xml) {
     virDomainPtr ret;
+    virDomainPtr olddomain;
     char filename[PATH_MAX];
+    const char * oldfilename;
     unsigned char uuid[VIR_UUID_BUFLEN];
     virConfPtr conf = NULL;
     xenXMConfCachePtr entry = NULL;
@@ -2089,7 +2118,7 @@ virDomainPtr xenXMDomainDefineXML(virConnectPtr conn, const char *xml) {
     if (conn->flags & VIR_CONNECT_RO)
         return (NULL);
 
-    if (xenXMConfigCacheRefresh() < 0)
+    if (xenXMConfigCacheRefresh (conn) < 0)
         return (NULL);
 
     if (!(conf = xenXMParseXMLToConfig(conn, xml)))
@@ -2103,8 +2132,39 @@ virDomainPtr xenXMDomainDefineXML(virConnectPtr conn, const char *xml) {
     }
 
     if (virHashLookup(nameConfigMap, value->str)) {
-        xenXMError(conn, VIR_ERR_INTERNAL_ERROR, "domain with name already exists");
-        goto error;
+        /* domain exists, we will overwrite it */
+
+        if (!(oldfilename = (char *)virHashLookup(nameConfigMap, value->str))) {
+            xenXMError(conn, VIR_ERR_INTERNAL_ERROR, "can't retrieve config filename for domain to overwrite");
+            goto error;
+        }
+
+        if (!(entry = virHashLookup(configCache, oldfilename))) {
+            xenXMError(conn, VIR_ERR_INTERNAL_ERROR, "can't retrieve config entry for domain to overwrite");
+            goto error;
+        }
+
+        if (xenXMConfigGetUUID(entry->conf, "uuid", uuid) < 0) {
+            xenXMError(conn, VIR_ERR_INTERNAL_ERROR, "uuid config parameter is missing");
+            goto error;
+        }
+        
+        if (!(olddomain = virGetDomain(conn, value->str, uuid)))
+            goto error;
+
+        /* Remove the name -> filename mapping */
+        if (virHashRemoveEntry(nameConfigMap, value->str, NULL) < 0) {
+            xenXMError(conn, VIR_ERR_INTERNAL_ERROR, "failed to remove old domain from config map");
+            goto error;
+        }
+
+        /* Remove the config record itself */
+        if (virHashRemoveEntry(configCache, oldfilename, xenXMConfigFree) < 0) {
+            xenXMError(conn, VIR_ERR_INTERNAL_ERROR, "failed to remove old domain from config map");
+            goto error;
+        }
+
+        entry = NULL;
     }
 
     if ((strlen(configDir) + 1 + strlen(value->str) + 1) > PATH_MAX) {
@@ -2217,7 +2277,7 @@ static void xenXMListIterator(const void *payload ATTRIBUTE_UNUSED, const char *
     if (ctx->count == ctx->max)
         return;
 
-    dom = xenDaemonDomainLookupByName(ctx->conn, name);
+    dom = xenDaemonLookupByName(ctx->conn, name);
     if (!dom) {
         ctx->names[ctx->count] = strdup(name);
         ctx->count++;
@@ -2239,7 +2299,7 @@ int xenXMListDefinedDomains(virConnectPtr conn, char **const names, int maxnames
         return (-1);
     }
 
-    if (xenXMConfigCacheRefresh() < 0)
+    if (xenXMConfigCacheRefresh (conn) < 0)
         return (-1);
 
     if (maxnames > virHashSize(configCache))
@@ -2264,7 +2324,7 @@ int xenXMNumOfDefinedDomains(virConnectPtr conn) {
         return (-1);
     }
 
-    if (xenXMConfigCacheRefresh() < 0)
+    if (xenXMConfigCacheRefresh (conn) < 0)
         return (-1);
 
     return virHashSize(nameConfigMap);

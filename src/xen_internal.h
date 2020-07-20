@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-extern virDriver xenHypervisorDriver;
+extern struct xenUnifiedDriver xenHypervisorDriver;
 int	xenHypervisorInit		(void);
 
 /* The following calls are made directly by the Xen proxy: */
@@ -65,6 +65,17 @@ int	xenHypervisorGetVcpus		(virDomainPtr domain,
 					 unsigned char *cpumaps,
 					 int maplen);
 int	xenHypervisorGetVcpuMax		(virDomainPtr domain);
+
+char *	xenHypervisorGetSchedulerType	(virDomainPtr domain,
+					 int *nparams);
+
+int	xenHypervisorGetSchedulerParameters		(virDomainPtr domain,
+					 virSchedParameterPtr params,
+					 int *nparams);
+
+int	xenHypervisorSetSchedulerParameters		(virDomainPtr domain,
+					 virSchedParameterPtr params,
+					 int nparams);
 
 #ifdef __cplusplus
 }

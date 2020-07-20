@@ -1,7 +1,7 @@
-/*
- * qemu_internal.h: A backend for managing QEMU machines
+/* -*- c -*-
+ * protocol_xdr.x: wire protocol message format & data structures
  *
- * Copyright (C) 2006-2007 Red Hat, Inc.
+ * Copyright (C) 2006, 2007 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -21,28 +21,20 @@
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
 
-#ifndef __VIR_QEMU_INTERNAL_H__
-#define __VIR_QEMU_INTERNAL_H__
 
-#include <libvirt/virterror.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-int qemuRegister(void);
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* __VIR_QEMU_INTERNAL_H__ */
-
-
-/*
- * Local variables:
- *  indent-tabs-mode: nil
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 4
- * End:
+/* The first two words in the messages are length and program number
+ * (previously called "magic").  This makes the protocol compatible
+ * with the remote protocol, although beyond the first two words
+ * the protocols are completely different.
+ *
+ * Note the length is the total number of bytes in the message
+ * _including_ the length and program number.
  */
+
+const QEMUD_PROGRAM = 0x20001A64;
+const QEMUD_PKT_HEADER_XDR_LEN = 8;
+
+struct qemud_packet_header {
+  uint32_t length;
+  uint32_t prog;
+};

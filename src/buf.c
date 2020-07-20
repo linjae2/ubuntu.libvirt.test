@@ -1,7 +1,7 @@
 /*
- * buf.c: buffers for qemud
+ * buf.c: buffers for libvirt
  *
- * Copyright (C) 2005 Red Hat, Inc.
+ * Copyright (C) 2005-2007 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
@@ -17,7 +17,7 @@
 #include "buf.h"
 
 /**
- * bufferGrow:
+ * virBufferGrow:
  * @buf:  the buffer
  * @len:  the minimum free size to allocate on top of existing used space
  *
@@ -26,7 +26,7 @@
  * Returns the new available space or -1 in case of error
  */
 static int
-bufferGrow(bufferPtr buf, unsigned int len)
+virBufferGrow(virBufferPtr buf, unsigned int len)
 {
     int size;
     char *newbuf;
@@ -46,7 +46,7 @@ bufferGrow(bufferPtr buf, unsigned int len)
 }
 
 /**
- * bufferAdd:
+ * virBufferAdd:
  * @buf:  the buffer to dump
  * @str:  the string
  * @len:  the number of bytes to add
@@ -57,7 +57,7 @@ bufferGrow(bufferPtr buf, unsigned int len)
  * Returns 0 successful, -1 in case of internal or API error.
  */
 int
-bufferAdd(bufferPtr buf, const char *str, int len)
+virBufferAdd(virBufferPtr buf, const char *str, int len)
 {
     unsigned int needSize;
 
@@ -72,7 +72,7 @@ bufferAdd(bufferPtr buf, const char *str, int len)
 
     needSize = buf->use + len + 2;
     if (needSize > buf->size) {
-        if (!bufferGrow(buf, needSize - buf->use)) {
+        if (!virBufferGrow(buf, needSize - buf->use)) {
             return (-1);
         }
     }
@@ -83,10 +83,18 @@ bufferAdd(bufferPtr buf, const char *str, int len)
     return (0);
 }
 
-bufferPtr
-bufferNew(unsigned int size)
+/**
+ * virBufferNew:
+ * @size:  creation size in bytes
+ *
+ * Creates a new buffer
+ *
+ * Returns a pointer to the buffer or NULL in case of error
+ */
+virBufferPtr
+virBufferNew(unsigned int size)
 {
-    bufferPtr buf;
+    virBufferPtr buf;
 
     if (!(buf = malloc(sizeof(*buf)))) return NULL;
     if (size && (buf->content = malloc(size))==NULL) {
@@ -99,8 +107,15 @@ bufferNew(unsigned int size)
     return buf;
 }
 
+/**
+ * virBufferFree:
+ * @buf: the buffer to deallocate
+ *
+ * Free the set of resources used by a buffer.
+ */
+
 void
-bufferFree(bufferPtr buf)
+virBufferFree(virBufferPtr buf)
 {
     if (buf) {
         if (buf->content)
@@ -110,32 +125,39 @@ bufferFree(bufferPtr buf)
 }
 
 /**
- * bufferContentAndFree:
+ * virBufferContentAndFree:
  * @buf: Buffer
  *
- * Return the content from the buffer and free (only) the buffer structure.
+ * Get the content from the buffer and free (only) the buffer structure.
+ *
+ * Returns the buffer content or NULL in case of error.
  */
 char *
-bufferContentAndFree (bufferPtr buf)
+virBufferContentAndFree (virBufferPtr buf)
 {
-    char *content = buf->content;
+    char *content;
+    
+    if (buf == NULL)
+        return(NULL);
+
+    content = buf->content;
 
     free (buf);
     return content;
 }
 
 /**
- * bufferVSprintf:
+ * virBufferVSprintf:
  * @buf:  the buffer to dump
  * @format:  the format
- * @argptr:  the variable list of arguments
+ * @...:  the variable list of arguments
  *
  * Do a formatted print to an XML buffer.
  *
  * Returns 0 successful, -1 in case of internal or API error.
  */
 int
-bufferVSprintf(bufferPtr buf, const char *format, ...)
+virBufferVSprintf(virBufferPtr buf, const char *format, ...)
 {
     int size, count;
     va_list locarg, argptr;
@@ -150,7 +172,7 @@ bufferVSprintf(bufferPtr buf, const char *format, ...)
                                locarg)) < 0) || (count >= size - 1)) {
         buf->content[buf->use] = 0;
         va_end(locarg);
-        if (bufferGrow(buf, 1000) < 0) {
+        if (virBufferGrow(buf, 1000) < 0) {
             return (-1);
         }
         size = buf->size - buf->use - 1;
@@ -163,16 +185,92 @@ bufferVSprintf(bufferPtr buf, const char *format, ...)
 }
 
 /**
- * bufferStrcat:
+ * virBufferEscapeString:
  * @buf:  the buffer to dump
- * @argptr:  the variable list of strings, the last argument must be NULL
+ * @format: a printf like format string but with only one %s parameter
+ * @str:  the string argument which need to be escaped
+ *
+ * Do a formatted print with a single string to an XML buffer. The string
+ * is escaped to avoid generating a not well-formed XML instance.
+ *
+ * Returns 0 successful, -1 in case of internal or API error.
+ */
+int
+virBufferEscapeString(virBufferPtr buf, const char *format, const char *str)
+{
+    int size, count, len;
+    char *escaped, *out;
+    const char *cur;
+
+    if ((format == NULL) || (buf == NULL) || (str == NULL)) {
+        return (-1);
+    }
+
+    len = strlen(str);
+    escaped = malloc(5 * len + 1);
+    if (escaped == NULL) {
+        return (-1);
+    }
+    cur = str;
+    out = escaped;
+    while (*cur != 0) {
+        if (*cur == '<') {
+	    *out++ = '&';
+	    *out++ = 'l';
+	    *out++ = 'l';
+	    *out++ = ';';
+	} else if (*cur == '>') {
+	    *out++ = '&';
+	    *out++ = 'g';
+	    *out++ = 't';
+	    *out++ = ';';
+	} else if (*cur == '&') {
+	    *out++ = '&';
+	    *out++ = 'a';
+	    *out++ = 'm';
+	    *out++ = 'p';
+	    *out++ = ';';
+	} else if ((*cur >= 0x20) || (*cur == '\n') || (*cur == '\t') ||
+	           (*cur == '\r')) {
+	    /*
+	     * default case, just copy !
+	     * Note that character over 0x80 are likely to give problem
+	     * with UTF-8 XML, but since our string don't have an encoding
+	     * it's hard to handle properly we have to assume it's UTF-8 too
+	     */
+	    *out++ = *cur;
+	}
+	cur++;
+    }
+    *out = 0;
+
+    size = buf->size - buf->use - 1;
+    while (((count = snprintf(&buf->content[buf->use], size, format,
+                              (char *)escaped)) < 0) || (count >= size - 1)) {
+        buf->content[buf->use] = 0;
+        if (virBufferGrow(buf, 1000) < 0) {
+	    free(escaped);
+            return (-1);
+        }
+        size = buf->size - buf->use - 1;
+    }
+    buf->use += count;
+    buf->content[buf->use] = 0;
+    free(escaped);
+    return (0);
+}
+
+/**
+ * virBufferStrcat:
+ * @buf:  the buffer to dump
+ * @...:  the variable list of strings, the last argument must be NULL
  *
  * Concatenate strings to an XML buffer.
  *
  * Returns 0 successful, -1 in case of internal or API error.
  */
 int
-bufferStrcat(bufferPtr buf, ...)
+virBufferStrcat(virBufferPtr buf, ...)
 {
     va_list ap;
     char *str;
@@ -184,7 +282,7 @@ bufferStrcat(bufferPtr buf, ...)
         unsigned int needSize = buf->use + len + 2;
 
         if (needSize > buf->size) {
-            if (!bufferGrow(buf, needSize - buf->use))
+            if (!virBufferGrow(buf, needSize - buf->use))
                 return -1;
         }
         memcpy(&buf->content[buf->use], str, len);
