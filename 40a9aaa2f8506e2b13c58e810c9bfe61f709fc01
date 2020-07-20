@@ -1,0 +1,4 @@
+  * debian/rules, debian/libvirt-bin.upstart: migrate libvirt to upstart
+    (LP: #446036)
+  * debian/control: depend on open-iscsi-utils, rather than open-iscsi,
+    fixed again, grrr (LP: #414986)
