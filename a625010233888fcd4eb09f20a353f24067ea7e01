@@ -1,0 +1,18 @@
+  [ Leonidas S. Barbosa ]
+  * SECURITY UPDATE: resource exhaustion resulting in DoS
+    - debian/patches/CVE-2018-5748.patch: avoid DoS reading from
+      QEMU monitor in src/qemu/qemu_monitor.c.
+    - CVE-2018-5748
+  * SECURITY UPDATE: Failure to validate SSL/TLS certificates
+    - debian/patches/CVE-2017-1000256.patch: ensure TLS clients always verify
+      the server certificate in src/qemu/qemu_command.c.
+    - CVE-2017-1000256
+  [ Marc Deslauriers ]
+  * SECURITY UPDATE: code injection via libnss_dns.so
+    - debian/patches/CVE-2018-6764-1.patch: determine the hostname on
+      startup in src/util/virlog.c.
+    - debian/patches/CVE-2018-6764-2.patch: fix syntax-check in
+      src/util/virlog.c.
+    - debian/patches/CVE-2018-6764-3.patch: fix deadlock obtaining hostname
+      in cfg.mk, src/util/virlog.c.
+    - CVE-2018-6764
