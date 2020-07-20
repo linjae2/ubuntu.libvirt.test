@@ -1,0 +1,3 @@
+  * d/p/{storage-allow-zero-capacity-with-non-backing-file-to.patch,
+    tests-add-vol-qcow2-zerocapacity-test-to-storagevolx.patch} added to address
+    (LP: #1459748). Allow zero capacity storage creation with non-backing file.
