@@ -1,0 +1,2 @@
+  * debian/patches/fix-virterror-namechange: Include virterror otherwise
+    python-libvirt wont be able to find any error codes. 
