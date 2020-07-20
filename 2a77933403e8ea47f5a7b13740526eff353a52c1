@@ -1,0 +1,11 @@
+  [ Riku Voipio ]
+  * [439afb5] Run testsuite on arm architectures
+    (Closes: #837995)
+  [ Guido Günther ]
+  * [6858d33] New upstream version 2.3.0~rc1
+    (Closes: #835563)
+  * [6c294c5] Bump symbol versions
+  * [d7e6337] Rediff patches
+  * [f9ce70a] Build with numctl on arm64.
+    Thanks to dann frazier (Closes: #838949)
+  * [4ab7ff4] build-test: add missing dep on pkg-config
