@@ -1,0 +1,3 @@
+  * d/libvirt-stop-guests: Skip Domain-0 on guest shutdown. Newer
+    versions of libvirt will include dom0 in the list of running domains
+    (with libxl). This special domain must be ignored.
