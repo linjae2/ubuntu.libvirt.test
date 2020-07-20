@@ -1,0 +1,2 @@
+  * debian/patches/ubuntu/apparmor-ppcwrapper.patch: update to add missing
+    colon (LP: #1686621).
