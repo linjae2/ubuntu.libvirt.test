@@ -1,0 +1,2 @@
+  * debian/control: change apparmor dependency into an inverse conflicts,
+    so that libvirt can continue to be used without apparmor.  (LP: #1304167)
