@@ -1,0 +1,6 @@
+  * debian/apparmor/libvirt-qemu:
+    - explicitly deny setpcap to silence denials. See LP: 522845 for details
+    - allow read access to /proc/*/status
+  * debian/patches/9014-apparmor-remove-unloaded-profile-is-not-fatal.patch:
+    Don't exit with error if the user unloaded the profile outside of libvirt
+    (LP: #530400)
