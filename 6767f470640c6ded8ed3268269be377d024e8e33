@@ -1,0 +1,5 @@
+  * [8730a15] New upstream version 4.3.0
+  * [1272efc] Drop patches due to upstream code removal.
+     Allow-xen-toolstack-to-find-it-s-binaries.patch
+     debian/fix-Debian-specific-path-to-hvm-loader.patch
+  * [20eb594] Bump symbol versions
