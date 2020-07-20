@@ -1,0 +1,14 @@
+  * New upstream release:
+    - Rediffed patches:
+      - debian/patches/Allow-libvirt-group-to-access-the-socket.patch
+      - debian/patches/9004-libvirtd-group-name.patch
+      - debian/patches/dnsmasq-as-priv-user
+    - Dropped patches:
+      - debian/patches/9005-increase-unix-socket-timeout.patch: No longer
+        needed.
+      - debian/patches/rbd-storage-format.patch: No longer needed.
+      - debian/patches/9022-qemu-enable-host-passthrough-mode-for-aarch64:
+        No longer needed.
+      - debian/patches/9023-xen-fix-parsing-xend-http-response.patch:
+        No longer needed.
+      - debian/patches/
