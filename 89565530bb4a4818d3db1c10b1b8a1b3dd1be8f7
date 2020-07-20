@@ -1,0 +1,2 @@
+  * cherrypick d/p/add-a-mutex-to-serialize-updates-to-firewall from
+    upstream to complete the concurrency issue fix (LP: #1228977)
