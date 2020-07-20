@@ -1,0 +1,3 @@
+  [ Mauricio Faria de Oliveira ]
+  * Use a fixed uid/gid for libvirt-qemu user to avoid permission
+    issues on network filesystems like NFS (backport) (LP: #1637601).
