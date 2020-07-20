@@ -1,0 +1,5 @@
+  * SECURITY UPDATE: denial of service via invalid free in
+    virFileNBDDeviceAssociate.
+    - debian/patches/CVE-2013-4297.patch: properly initialize qemunbd in
+      src/util/virfile.c.
+    - CVE-2013-4297
