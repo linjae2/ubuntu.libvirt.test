@@ -1,0 +1,3 @@
+  * debian/rules, libvirt-bin.dirs and libvirt-bin.install: put
+    /etc/apparmor.d/local/usr.sbin.libvirtd into place.  (fixes break since
+    0.9.7-2ubuntu4)  (LP: #900857)
