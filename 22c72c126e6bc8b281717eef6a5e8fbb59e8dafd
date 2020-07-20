@@ -1,0 +1,16 @@
+  [ Guido Günther ]
+  * Upload to unstable
+  * [14eee94] Make debconf template translatable
+  * [13afd29] Adjust doc-base due to new upstream doc layouer
+  * [fd7c2bb] Skip any debconf prompting if user and group are already there
+    to not interfere with existing intallations
+  * [1afd876] Depend on iptables of firewalld (Closes: #846321)
+  * autopkgtests cleanups. Thanks to Christian Ehrhardt
+    (Closes: #848247)
+  [ intrigeri ]
+  * [d64731a] Apparmor fixes for merged /usr
+  [ Mauricio Faria de Oliveira ]
+  * [f4b33d0] Use a fixed uid/gid for libvirt-qemu usr to avoid permission
+    issues on network filesystems like NFS. On new installations warn via
+    debconf if uid/gid are already taken.
+    (Closes: #844339)
