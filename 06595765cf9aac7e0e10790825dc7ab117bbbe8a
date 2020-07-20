@@ -1,0 +1,2 @@
+  * 9025-Pass-virSecurityManagerPtr-to-virSecurityDAC-Set-Res.patch: Fix
+    ownership setting of chardevs.
