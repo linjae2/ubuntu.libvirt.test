@@ -1,0 +1,2 @@
+  * Cherry pick patches from upstream to enable detection and automatic
+    usage of host-supported GIC versions. (LP: #1566564)
