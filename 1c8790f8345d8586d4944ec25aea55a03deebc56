@@ -1,0 +1,8 @@
+  * d/libvirt-bin.init, d/libvirt-bin.upstart: fix waiting for the libvirt
+    socket (LP: #1571209)
+    - avoid timing out on slow systems (only stop when service is stopped)
+    - fix whitespace damage formerly added to d/libvirt-bin.init
+    - no more long sleep without announcing to log
+    - check socket and service status more often for lower latency on changes
+    - fix check if unix_sock_dir path is set in /etc/libvirt/libvirtd.conf
+    - fix the upstart service name that is checked
