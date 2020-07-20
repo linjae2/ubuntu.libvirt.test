@@ -1,0 +1,4 @@
+  * debian/patches/9015-autodetect-nc-params.patch: autodetect if the
+    remote nc command supports the -q option. (LP: #517478)
+  * debian/patches/0006-Terminate-nc-on-EOF.patch: disabled
+    as the previous patch replaces it.
