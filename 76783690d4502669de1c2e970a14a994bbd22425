@@ -1,0 +1,21 @@
+  * [3be7341] Imported Upstream version 0.6.1
+  * [38fde15] rediff Debian specific patches
+  * [9b59a19] drop patches applied upstream:
+        * 0004-Don-t-hardcode-ssh-port.patch
+        * 0005-minimal-workaround-for-qemu-startup-race.patch
+  * [95d4b7f] drop patches backported from upstream
+        * 0009-libvirt_proxy-Fix-use-of-uninitalized-memory.patch
+  * [8171d83] build-dep on module-init-tools so configure can figure out
+    the path to modprobe
+  * [30be86d] Imported Upstream version 0.6.0
+  * [179781c] drop patches
+          * fixed upstream:
+                0006-Fix-missing-read-only-access-checks-CVE-2008-5086.patch
+          * applied upstream:
+                0004-Open-qemu-monitor-log-O_APPEND-instead-of-O_TRUNC.patch
+                0005-qemu-fix-parallel-serial-mode-tcp-and-unix.patch
+                0007-don-t-fail-on-missing-locales.patch
+  * [d80a176] adjust remaining patches to new upstream version
+  * [208c924] add minimal workaround for qemu startup race
+  * [6e8caa0] restart libvirt daemon on upgrades if possible 
+    (Closes: #492694, #499008)
