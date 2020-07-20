@@ -1,0 +1,4 @@
+  * dont_clobber_existing_bridges.patch:
+    - Change bridge name from virbr0 to virbr%d, to ensure we never clobber
+      existing bridges.
+  * Add iptables dependency
