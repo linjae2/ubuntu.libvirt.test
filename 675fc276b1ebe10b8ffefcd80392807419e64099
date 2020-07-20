@@ -1,0 +1,10 @@
+  * Implement further apparmor rules for usage of gl enabled
+    graphics (LP: #1815452)
+    - d/p/ubuntu-aa/lp-1815452-more-gl-rules.patch
+    - d/p/ubuntu-aa/lp-1815452-virt-aa-helper-rule.patch
+  * Implement further apparmor rules for usage of gl enabled
+    graphics with nvidia cards (LP: #1817943)
+    - d/p/ubuntu-aa/lp-1817943-nvidia-gl-rules.patch
+    - d/p/ubuntu-aa/lp-1817943-devices-in-sysfs.patch
+  * d/p/ubuntu-aa/lp-1804766-*: updated to the upstream accepted
+    version (no functional change, LP: 1804766)
