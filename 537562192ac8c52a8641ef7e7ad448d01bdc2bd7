@@ -1,0 +1,6 @@
+  [ Stefan Bader ]
+  * xen_hypervisor: libvirtd can be started before xenfs has been loaded
+    as a module. A missing privcmd file is not necessarily a permanent
+    error. (LP: #922486)
+  [ Serge Hallyn ]
+  * debian/libvirt-bin.upstart: start on just 'runlevel [2345]'
