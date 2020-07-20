@@ -1,0 +1,5 @@
+  * enable netcf support (LP: #520386)
+    - debian/control: build-dep on libnetcf-dev
+    - debian/rules: add --with-netcf to configure args
+  * add patch netcf-daemon-fix-wrong-macro-name from upstream so netcf support
+    can actually work.
