@@ -1,0 +1,3 @@
+  * d/p/ubuntu-aa/lp1775777-vfio-usage-without-initial-hostdev.patch: fix
+    hotplug use cases where the initial guest had no hostdev at all and
+    therefore vrit-aa-helper did not allow /dev/vfio/vfio (LP: #1775777)
