@@ -1,0 +1,3 @@
+  * apply fix-cve-2012-4423 from upstream to prevent potential daemon
+    segfaults with newer virsh.
+    - Fixes: CVE-2012-4423.
