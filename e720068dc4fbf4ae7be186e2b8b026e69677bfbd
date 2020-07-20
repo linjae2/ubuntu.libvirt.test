@@ -1,0 +1,3 @@
+  * debian/control: Build-Depends on qemu-kvm, not qemu
+  * debian/patches/9007-default-config-test-case.patch: revert last change
+    which caused a different failure on buildd
