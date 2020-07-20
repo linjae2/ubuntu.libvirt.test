@@ -1,0 +1,1 @@
+  * debian/apparmor/usr.sbin.libvirtd: allow read access to '/' (LP: #727286)
