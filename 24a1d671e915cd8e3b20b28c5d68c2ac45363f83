@@ -1,0 +1,4 @@
+  * Apply upstream patch to switch default storage pool dir perms from 0700
+    to 0755.  Then push our own patch to change that to 0711.  We'll get the
+    upstream patch on 0.9.14 merge, but we'll want to keep our patch on top
+    of that.
