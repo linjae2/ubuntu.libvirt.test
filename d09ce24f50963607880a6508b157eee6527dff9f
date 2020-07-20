@@ -1,0 +1,13 @@
+  * [0ee351f] [CVE-2011-1146] Add missing checks for read only connections.
+    Some API forgot to check the read-only status of the connection for
+    entry point which modify the state of the system or may lead to a remote
+    execution using user data.
+    The entry points concerned are:
+      - virConnectDomainXMLToNative
+      - virNodeDeviceDettach
+      - virNodeDeviceReAttach
+      - virNodeDeviceReset
+      - virDomainRevertToSnapshot
+      - virDomainSnapshotDelete
+    src/libvirt.c: fix the above set of entry points to error on read-only
+    (Closes: #617773)
