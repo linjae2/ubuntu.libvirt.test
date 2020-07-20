@@ -1,0 +1,15 @@
+  * d/p/libxl-Create-log-directory-earlier.patch:
+    Move creation of log directory inside function that tries to create
+    a log file inside of it. Fixes startup when the libxl log directory
+    has not been created, yet.
+  * d/p/libxl-do-not-use-virdomain-id.patch:
+    Replace usage of dom->id with vm->def-id inside the driver (as that
+    is not getting stale). Fixes guest creation and reboot through
+    virt-manager (apart from possibly other things).
+  * d/p/libxl-set-disk-format-for-cdrom.patch:
+    Set disk format, otherwise an empty virtual CDROM makes the guest
+    unstartable.
+  * d/p/libxl-set-vfb0-data-in-build-config.patch:
+    Actually set video and display data in the domain build info. Beside
+    of preventing disagreement about VNC ports, this allows to select
+    standard VGA graphics and more VRAM trhough libvirt.
