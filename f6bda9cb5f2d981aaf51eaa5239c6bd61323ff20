@@ -1,0 +1,3 @@
+  * debian/patches/fix-ubuntu-xen-qemu-dm-path.patch:
+    Fix qemu-dm paths so Xen can be used with libvirt.
+    (LP: #914788)
