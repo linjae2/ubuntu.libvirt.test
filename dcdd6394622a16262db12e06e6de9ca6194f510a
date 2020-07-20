@@ -1,0 +1,3 @@
+  * d/p/ubuntu/0004-apparmor-apply-ubuntu-delta.patch: Allow access to base
+    images stored in nova-hypervisor snap's $SNAP_COMMON directory, enabling
+    use of the libvirt deb from the nova-hypervisor snap (LP: #1644507).
