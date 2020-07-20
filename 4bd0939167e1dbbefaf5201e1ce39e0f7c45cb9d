@@ -1,0 +1,5 @@
+  * Don't override local removal of default network autostart on upgrades
+    (LP: #372001)
+    - re-enable debian/Don-t-enable-default-network-on-boot.patch
+    - debian/libvirt-bin.postinst: create default network autostart symlink
+      for new installs only.
