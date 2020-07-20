@@ -1,0 +1,10 @@
+  * Upload to experimental
+  * [23e28a0] New upstream version 3.9.0~rc1
+  * [b19f9f8] Bump symbol versions
+  * [83a3ff3] Drop patches applied upstream
+    apparmor-add-dnsmasq-ptrace-rule-to-libvirtd-profile.patch
+    virt-host-validate-require-fuse-for-LXC-if-compiled-in.patch
+    qemu-ensure-TLS-clients-always-verify-the-server-certific.patch
+  * [e834771] AppArmor: add rules needed with additional mediation features
+    brought by Linux 4.14. Thanks: intrigeri
+    (Closes: #879772)
