@@ -1,0 +1,2 @@
+  * Really refresh debian/patches/fix-ubuntu-xen-qemu-dm-path.patch and
+    not only claim to and disable it.
