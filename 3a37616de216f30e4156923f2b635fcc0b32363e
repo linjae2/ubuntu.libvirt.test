@@ -1,0 +1,2 @@
+  * debian/control: switch ebtables from Recommends to Depends or default
+    configuration network doesn't get created. (LP: #1505576)
