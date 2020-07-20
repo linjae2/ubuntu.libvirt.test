@@ -1,0 +1,3 @@
+  * [6cf501c] New upstream version 0.9.13
+  * [8ff7077] Fix CVE-2012-3445 with upstream commit
+    6039a2cb49c8af4c68460d2faf365a7e1c686c7b. (Closes: #683483)
