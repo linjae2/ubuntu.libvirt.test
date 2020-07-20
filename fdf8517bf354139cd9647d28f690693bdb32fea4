@@ -1,0 +1,1 @@
+  * Add qemu-block-extra libraries to libvirt apparmor profile (LP: #1495895)
