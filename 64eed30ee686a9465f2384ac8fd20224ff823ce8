@@ -1,0 +1,2 @@
+  * debian/patches/arm-startup-fies.patch: Fix typo in patch. 
+    (LP: #845764) 
