@@ -1,0 +1,8 @@
+  * SECURITY UPDATE: possible privilege escalation via pkcheck race.
+    - debian/patches/CVE-2013-4311.patch: add uid to pkcheck call in
+      configure.in, daemon/libvirtd.*, daemon/remote.c, src/Makefile.am,
+      src/util/virprocess.*, src/util/virstring.*, src/util/memory.h.
+    - debian/control: specify version of policykit-1 security update, add
+      libpolkit-gobject-1-dev to Build-Depends
+    - debian/patched/CVE-2013-4311-autotools.patch: run autoreconf.
+    - CVE-2013-4311
