@@ -1,0 +1,4 @@
+  * debian/apparmor/usr.sbin.libvirtd: update for abstract socket mediation
+    (LP: #1362199)
+  * debian/apparmor/libvirt-qemu: allow 'r' on @{PROC}/sys/kernel/cap_last_cap
+  * debian/control: Suggests apparmor >= 2.8.96~2541-0ubuntu4~
