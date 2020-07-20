@@ -26,7 +26,6 @@
 
 #include <config.h>
 
-#include "ebtables.h"
 #include "internal.h"
 #include "bridge.h"
 #include "capabilities.h"
@@ -72,8 +71,6 @@ enum qemud_cmd_flags {
     QEMUD_CMD_FLAG_DRIVE_SERIAL  = (1 << 19), /* -driver serial=  available */
     QEMUD_CMD_FLAG_XEN_DOMID     = (1 << 20), /* -xen-domid (new style xen integration) */
     QEMUD_CMD_FLAG_MIGRATE_QEMU_UNIX = (1 << 21), /* Does qemu support unix domain sockets for migration? */
-    QEMUD_CMD_FLAG_CHARDEV       = (1 << 22), /* Is the new -chardev arg available */
-    QEMUD_CMD_FLAG_ENABLE_KVM    = (1 << 23), /* Is the -enable-kvm flag available to "enable KVM full virtualization support" */
 };
 
 /* Main driver state */
@@ -114,9 +111,6 @@ struct qemud_driver {
     char *vncSASLdir;
     char *hugetlbfs_mount;
     char *hugepage_path;
-
-    unsigned int macFilter : 1;
-    ebtablesContext *ebtables;
 
     virCapsPtr caps;
 

@@ -31,7 +31,6 @@
 #include "nodeinfo.h"
 #include "virterror_internal.h"
 #include "conf.h"
-#include "memory.h"
 #include "logging.h"
 
 
@@ -103,19 +102,16 @@ int lxcLoadDriverConfig(lxc_driver_t *driver)
         goto no_memory;
     if ((driver->logDir = strdup(LXC_LOG_DIR)) == NULL)
         goto no_memory;
-    if ((driver->autostartDir = strdup(LXC_AUTOSTART_DIR)) == NULL)
-        goto no_memory;
-
 
     if ((filename = strdup(SYSCONF_DIR "/libvirt/lxc.conf")) == NULL)
         goto no_memory;
 
     /* Avoid error from non-existant or unreadable file. */
     if (access (filename, R_OK) == -1)
-        goto done;
+        return 0;
     conf = virConfReadFile(filename, 0);
     if (!conf)
-        goto done;
+        return 0;
 
     p = virConfGetValue(conf, "log_with_libvirtd");
     if (p) {
@@ -126,9 +122,6 @@ int lxcLoadDriverConfig(lxc_driver_t *driver)
     }
 
     virConfFree(conf);
-
-done:
-    VIR_FREE(filename);
     return 0;
 
 no_memory:

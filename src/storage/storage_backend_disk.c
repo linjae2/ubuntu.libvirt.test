@@ -82,10 +82,12 @@ virStorageBackendDiskMakeDataVol(virConnectPtr conn,
          * dir every time its run. Should figure out a more efficient
          * way of doing this...
          */
-        vol->target.path = virStorageBackendStablePath(conn, pool, devpath);
-        VIR_FREE(devpath);
-        if (vol->target.path == NULL)
+        if ((vol->target.path = virStorageBackendStablePath(conn,
+                                                            pool,
+                                                            devpath)) == NULL)
             return -1;
+
+        VIR_FREE(devpath);
     }
 
     if (vol->key == NULL) {
@@ -644,7 +646,7 @@ virStorageBackendDiskDeleteVol(virConnectPtr conn,
 
     part_num = devname + strlen(srcname);
 
-    if (*part_num == 0) {
+    if (!part_num) {
         virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
                               _("cannot parse partition number from target "
                                 "'%s'"), devname);

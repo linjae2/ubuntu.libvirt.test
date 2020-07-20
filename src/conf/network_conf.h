@@ -45,7 +45,6 @@ typedef virNetworkDHCPRangeDef *virNetworkDHCPRangeDefPtr;
 struct _virNetworkDHCPRangeDef {
     char *start;
     char *end;
-    int size;
 };
 
 typedef struct _virNetworkDHCPHostDef virNetworkDHCPHostDef;
@@ -82,7 +81,6 @@ struct _virNetworkDef {
 
     char *tftproot;
     char *bootfile;
-    char *bootserver;
 };
 
 typedef struct _virNetworkObj virNetworkObj;
@@ -107,7 +105,7 @@ struct _virNetworkObjList {
 };
 
 static inline int
-virNetworkObjIsActive(const virNetworkObjPtr net)
+virNetworkIsActive(const virNetworkObjPtr net)
 {
     return net->active;
 }

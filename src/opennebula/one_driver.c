@@ -90,21 +90,6 @@ static int oneClose(virConnectPtr conn)
     return 0;
 }
 
-
-static int oneIsEncrypted(virConnectPtr conn ATTRIBUTE_UNUSED)
-{
-    /* Not encrypted because it uses HTTP, not HTTPs */
-    return 0;
-}
-
-
-static int oneIsSecure(virConnectPtr conn ATTRIBUTE_UNUSED)
-{
-    /* Not secure because it uses HTTP, not HTTPs */
-    return 0;
-}
-
-
 static virDomainPtr oneDomainLookupByID(virConnectPtr conn,
                                         int id)
 {
@@ -193,22 +178,32 @@ return_point:
 static int oneListDomains(virConnectPtr conn, int *ids, int nids)
 {
     one_driver_t *driver = (one_driver_t *)conn->privateData;
-    int n;
+    int got = 0, i;
 
     oneDriverLock(driver);
-    n = virDomainObjListGetActiveIDs(&driver->domains, ids, nids);
+    for (i = 0 ; i < driver->domains.count && got < nids ; i++){
+        virDomainObjLock(driver->domains.objs[i]);
+        if (virDomainIsActive(driver->domains.objs[i]))
+            ids[got++] = driver->domains.objs[i]->def->id;
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     oneDriverUnlock(driver);
 
-    return n;
+    return got;
 }
 
 static int oneNumDomains(virConnectPtr conn)
 {
     one_driver_t *driver = (one_driver_t *)conn->privateData;
-    int n;
+    int n = 0, i;
 
     oneDriverLock(driver);
-    n = virDomainObjListNumOfDomains(&driver->domains, 1);
+    for (i = 0 ; i < driver->domains.count ; i++){
+        virDomainObjLock(driver->domains.objs[i]);
+        if (virDomainIsActive(driver->domains.objs[i]))
+            n++;
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     oneDriverUnlock(driver);
 
     return n;
@@ -217,22 +212,44 @@ static int oneNumDomains(virConnectPtr conn)
 static int oneListDefinedDomains(virConnectPtr conn,
                                  char **const names, int nnames) {
     one_driver_t *driver = (one_driver_t *)conn->privateData;
-    int n;
+    int got = 0, i;
 
     oneDriverLock(driver);
-    n = virDomainObjListGetInactiveNames(&driver->domains, names, nnames);
+    for (i = 0 ; i < driver->domains.count && got < nnames ; i++) {
+        virDomainObjLock(driver->domains.objs[i]);
+        if (!virDomainIsActive(driver->domains.objs[i])) {
+            if (!(names[got++] = strdup(driver->domains.objs[i]->def->name))) {
+                virReportOOMError(conn);
+                virDomainObjUnlock(driver->domains.objs[i]);
+                goto cleanup;
+            }
+        }
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     oneDriverUnlock(driver);
 
-    return n;
+    return got;
+
+cleanup:
+    for (i = 0 ; i < got ; i++)
+        VIR_FREE(names[i]);
+    oneDriverUnlock(driver);
+
+    return -1;
 }
 
 static int oneNumDefinedDomains(virConnectPtr conn)
 {
     one_driver_t *driver = (one_driver_t *)conn->privateData;
-    int n;
+    int n = 0, i;
 
     oneDriverLock(driver);
-    n = virDomainObjListNumOfDomains(&driver->domains, 0);
+    for (i = 0 ; i < driver->domains.count ; i++){
+        virDomainObjLock(driver->domains.objs[i]);
+        if (!virDomainIsActive(driver->domains.objs[i]))
+            n++;
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     oneDriverUnlock(driver);
 
     return n;
@@ -250,8 +267,7 @@ static virDomainPtr oneDomainDefine(virConnectPtr conn, const char *xml)
                                         VIR_DOMAIN_XML_INACTIVE)))
         goto return_point;
 
-    if (!(vm = virDomainAssignDef(conn, driver->caps,
-                                  &driver->domains, def))) {
+    if (!(vm = virDomainAssignDef(conn, &driver->domains, def))) {
         virDomainDefFree(def);
         goto return_point;
     }
@@ -322,7 +338,7 @@ static int oneDomainGetInfo(virDomainPtr dom,
         return -1;
     }
 
-    if (!virDomainObjIsActive(vm)) {
+    if (!virDomainIsActive(vm)) {
         info->cpuTime = 0;
     } else {
         char vm_info[257];
@@ -455,8 +471,7 @@ oneDomainCreateAndStart(virConnectPtr conn,
         goto return_point;
     }
 
-    if (!(vm = virDomainAssignDef(conn, driver->caps,
-                                  &driver->domains, def))) {
+    if (!(vm = virDomainAssignDef(conn, &driver->domains, def))) {
         virDomainDefFree(def);
         goto return_point;
     }
@@ -634,24 +649,15 @@ static int oneStartup(int privileged ATTRIBUTE_UNUSED){
 
     c_oneStart();
     oneDriverLock(one_driver);
-
-    if (virDomainObjListInit(&one_driver->domains) < 0) {
-        goto error;
-    }
-
     one_driver->nextid=1;
     if ((one_driver->caps = oneCapsInit()) == NULL) {
-        virReportOOMError(NULL);
-        goto error;
+        oneDriverUnlock(one_driver);
+        VIR_FREE(one_driver);
+        return -1;
     }
     oneDriverUnlock(one_driver);
 
     return 0;
-
-error:
-    oneDriverUnlock(one_driver);
-    oneShutdown();
-    return -1;
 }
 
 static int oneShutdown(void){
@@ -659,7 +665,7 @@ static int oneShutdown(void){
         return(-1);
 
     oneDriverLock(one_driver);
-    virDomainObjListDeinit(&one_driver->domains);
+    virDomainObjListFree(&one_driver->domains);
 
     virCapabilitiesFree(one_driver->caps);
     oneDriverUnlock(one_driver);
@@ -671,13 +677,19 @@ static int oneShutdown(void){
 }
 
 static int oneActive(void){
+    unsigned int i;
     int active = 0;
 
     if (one_driver == NULL)
         return(0);
 
     oneDriverLock(one_driver);
-    active = virDomainObjListNumOfDomains(&one_driver->domains, 1);
+    for (i = 0 ; i < one_driver->domains.count ; i++) {
+        virDomainObjLock(one_driver->domains.objs[i]);
+        if (virDomainIsActive(one_driver->domains.objs[i]))
+            active = 1;
+        virDomainObjUnlock(one_driver->domains.objs[i]);
+    }
     oneDriverUnlock(one_driver);
 
     return active;
@@ -715,7 +727,6 @@ static virDriver oneDriver = {
     NULL, /* supports_feature */
     NULL, /* type */
     oneVersion, /* version */
-    NULL, /* libvirtVersion (impl. in libvirt.c) */
     NULL, /* getHostname */
     NULL, /* getMaxVcpus */
     NULL, /* nodeGetInfo */
@@ -777,14 +788,9 @@ static virDriver oneDriver = {
     NULL, /* nodeDeviceReAttach; */
     NULL, /* nodeDeviceReset; */
     NULL, /* domainMigratePrepareTunnel */
-    oneIsEncrypted,
-    oneIsSecure,
-    NULL, /* domainIsActive */
-    NULL, /* domainIsPersistent */
 };
 
 static virStateDriver oneStateDriver = {
-    .name = "OpenNebula",
     .initialize = oneStartup,
     .cleanup    = oneShutdown,
     .active     = oneActive,

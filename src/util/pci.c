@@ -66,12 +66,6 @@ struct _pciDevice {
     unsigned      managed : 1;
 };
 
-struct _pciDeviceList {
-    unsigned count;
-    pciDevice **devs;
-};
-
-
 /* For virReportOOMError()  and virReportSystemError() */
 #define VIR_FROM_THIS VIR_FROM_NONE
 
@@ -986,30 +980,11 @@ pciDeviceListAdd(virConnectPtr conn,
     return 0;
 }
 
-pciDevice *
-pciDeviceListGet(pciDeviceList *list,
-                 int idx)
+void
+pciDeviceListDel(virConnectPtr conn ATTRIBUTE_UNUSED,
+                 pciDeviceList *list,
+                 pciDevice *dev)
 {
-    if (idx >= list->count)
-        return NULL;
-    if (idx < 0)
-        return NULL;
-
-    return list->devs[idx];
-}
-
-int
-pciDeviceListCount(pciDeviceList *list)
-{
-    return list->count;
-}
-
-pciDevice *
-pciDeviceListSteal(virConnectPtr conn ATTRIBUTE_UNUSED,
-                   pciDeviceList *list,
-                   pciDevice *dev)
-{
-    pciDevice *ret = NULL;
     int i;
 
     for (i = 0; i < list->count; i++) {
@@ -1019,7 +994,7 @@ pciDeviceListSteal(virConnectPtr conn ATTRIBUTE_UNUSED,
             list->devs[i]->function != dev->function)
             continue;
 
-        ret = list->devs[i];
+        pciFreeDevice(conn, list->devs[i]);
 
         if (i != --list->count)
             memmove(&list->devs[i],
@@ -1032,17 +1007,6 @@ pciDeviceListSteal(virConnectPtr conn ATTRIBUTE_UNUSED,
 
         break;
     }
-    return ret;
-}
-
-void
-pciDeviceListDel(virConnectPtr conn,
-                 pciDeviceList *list,
-                 pciDevice *dev)
-{
-    pciDevice *ret = pciDeviceListSteal(conn, list, dev);
-    if (ret)
-        pciFreeDevice(conn, ret);
 }
 
 pciDevice *

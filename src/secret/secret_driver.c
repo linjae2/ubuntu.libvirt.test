@@ -449,10 +449,8 @@ secretLoad(virConnectPtr conn, virSecretDriverStatePtr driver,
     if (secretLoadValidateUUID(conn, def, xml_basename) < 0)
         goto cleanup;
 
-    if (VIR_ALLOC(secret) < 0) {
-        virReportOOMError(conn);
+    if (VIR_ALLOC(secret) < 0)
         goto cleanup;
-    }
     secret->def = def;
     def = NULL;
 
@@ -580,10 +578,8 @@ secretListSecrets(virConnectPtr conn, char **uuids, int maxuuids)
         char *uuidstr;
         if (i == maxuuids)
             break;
-        if (VIR_ALLOC_N(uuidstr, VIR_UUID_STRING_BUFLEN) < 0) {
-            virReportOOMError(conn);
+        if (VIR_ALLOC_N(uuidstr, VIR_UUID_STRING_BUFLEN) < 0)
             goto cleanup;
-        }
         virUUIDFormat(secret->def->uuid, uuidstr);
         uuids[i] = uuidstr;
         i++;
@@ -1078,7 +1074,6 @@ static virSecretDriver secretDriver = {
 };
 
 static virStateDriver stateDriver = {
-    .name = "Secret",
     .initialize = secretDriverStartup,
     .cleanup = secretDriverCleanup,
     .reload = secretDriverReload,

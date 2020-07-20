@@ -309,10 +309,6 @@ static int virCgroupGetValueStr(virCgroupPtr group,
         DEBUG("Failed to read %s: %m\n", keypath);
         rc = -errno;
     } else {
-        /* Terminated with '\n' has sometimes harmful effects to the caller */
-        char *p = strchr(*value, '\n');
-        if (p) *p = '\0';
-
         rc = 0;
     }
 
@@ -442,7 +438,7 @@ static int virCgroupCpuSetInherit(virCgroupPtr parent, virCgroupPtr group)
     return rc;
 }
 
-static int virCgroupMakeGroup(virCgroupPtr parent, virCgroupPtr group, int create)
+static int virCgroupMakeGroup(virCgroupPtr parent, virCgroupPtr group)
 {
     int i;
     int rc = 0;
@@ -461,8 +457,7 @@ static int virCgroupMakeGroup(virCgroupPtr parent, virCgroupPtr group, int creat
 
         VIR_DEBUG("Make controller %s", path);
         if (access(path, F_OK) != 0) {
-            if (!create ||
-                mkdir(path, 0755) < 0) {
+            if (mkdir(path, 0755) < 0) {
                 rc = -errno;
                 VIR_FREE(path);
                 break;
@@ -549,7 +544,7 @@ static int virCgroupAppRoot(int privileged,
     if (rc != 0)
         goto cleanup;
 
-    rc = virCgroupMakeGroup(rootgrp, *group, 1);
+    rc = virCgroupMakeGroup(rootgrp, *group);
 
 cleanup:
     virCgroupFree(&rootgrp);
@@ -648,8 +643,9 @@ int virCgroupForDriver(const char *name,
     rc = virCgroupNew(path, group);
     VIR_FREE(path);
 
-    if (rc == 0) {
-        rc = virCgroupMakeGroup(rootgrp, *group, create);
+    if (rc == 0 &&
+        create) {
+        rc = virCgroupMakeGroup(rootgrp, *group);
         if (rc != 0)
             virCgroupFree(group);
     }
@@ -695,8 +691,9 @@ int virCgroupForDomain(virCgroupPtr driver,
     rc = virCgroupNew(path, group);
     VIR_FREE(path);
 
-    if (rc == 0) {
-        rc = virCgroupMakeGroup(driver, *group, create);
+    if (rc == 0 &&
+        create) {
+        rc = virCgroupMakeGroup(driver, *group);
         if (rc != 0)
             virCgroupFree(group);
     }
@@ -972,7 +969,13 @@ int virCgroupSetFreezerState(virCgroupPtr group, const char *state)
 
 int virCgroupGetFreezerState(virCgroupPtr group, char **state)
 {
-    return virCgroupGetValueStr(group,
+    int ret;
+    ret = virCgroupGetValueStr(group,
                                 VIR_CGROUP_CONTROLLER_CPU,
                                 "freezer.state", state);
+    if (ret == 0) {
+        char *p = strchr(*state, '\n');
+        if (p) *p = '\0';
+    }
+    return ret;
 }

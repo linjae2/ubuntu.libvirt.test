@@ -1,4 +1,5 @@
 ^examples/
 ^gnulib/lib/dummy\.c$
 ^gnulib/tests/dummy\.c$
+^daemon/remote_protocol\.c$
 ^ChangeLog$

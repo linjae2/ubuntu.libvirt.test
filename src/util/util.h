@@ -41,8 +41,8 @@ enum {
     VIR_EXEC_CLEAR_CAPS = (1 << 2),
 };
 
-int virSetNonBlock(int fd) ATTRIBUTE_RETURN_CHECK;
-int virSetCloseExec(int fd) ATTRIBUTE_RETURN_CHECK;
+int virSetNonBlock(int fd);
+int virSetCloseExec(int fd);
 
 /* This will execute in the context of the first child
  * after fork() but before execve() */
@@ -57,7 +57,7 @@ int virExecDaemonize(virConnectPtr conn,
                      int flags,
                      virExecHook hook,
                      void *data,
-                     char *pidfile) ATTRIBUTE_RETURN_CHECK;
+                     char *pidfile);
 int virExecWithHook(virConnectPtr conn,
                     const char *const*argv,
                     const char *const*envp,
@@ -69,7 +69,7 @@ int virExecWithHook(virConnectPtr conn,
                     int flags,
                     virExecHook hook,
                     void *data,
-                    char *pidfile) ATTRIBUTE_RETURN_CHECK;
+                    char *pidfile);
 int virExec(virConnectPtr conn,
             const char *const*argv,
             const char *const*envp,
@@ -78,14 +78,14 @@ int virExec(virConnectPtr conn,
             int infd,
             int *outfd,
             int *errfd,
-            int flags) ATTRIBUTE_RETURN_CHECK;
-int virRun(virConnectPtr conn, const char *const*argv, int *status) ATTRIBUTE_RETURN_CHECK;
+            int flags);
+int virRun(virConnectPtr conn, const char *const*argv, int *status);
 
-int virFileReadLimFD(int fd, int maxlen, char **buf) ATTRIBUTE_RETURN_CHECK;
+int virFileReadLimFD(int fd, int maxlen, char **buf);
 
-int virFileReadAll(const char *path, int maxlen, char **buf) ATTRIBUTE_RETURN_CHECK;
+int virFileReadAll(const char *path, int maxlen, char **buf);
 
-int virFileWriteStr(const char *path, const char *str) ATTRIBUTE_RETURN_CHECK;
+int virFileWriteStr(const char *path, const char *str);
 
 int virFileMatchesNameSuffix(const char *file,
                              const char *name,
@@ -95,28 +95,28 @@ int virFileHasSuffix(const char *str,
                      const char *suffix);
 
 int virFileStripSuffix(char *str,
-                       const char *suffix) ATTRIBUTE_RETURN_CHECK;
+                       const char *suffix);
 
 int virFileLinkPointsTo(const char *checkLink,
                         const char *checkDest);
 
 int virFileResolveLink(const char *linkpath,
-                       char **resultpath) ATTRIBUTE_RETURN_CHECK;
+                       char **resultpath);
 
 char *virFindFileInPath(const char *file);
 
 int virFileExists(const char *path);
 
-int virFileMakePath(const char *path) ATTRIBUTE_RETURN_CHECK;
+int virFileMakePath(const char *path);
 
 int virFileBuildPath(const char *dir,
                      const char *name,
                      const char *ext,
                      char *buf,
-                     unsigned int buflen) ATTRIBUTE_RETURN_CHECK;
+                     unsigned int buflen);
 
 int virFileAbsPath(const char *path,
-                   char **abspath) ATTRIBUTE_RETURN_CHECK;
+                   char **abspath);
 
 int virFileOpenTty(int *ttymaster,
                    char **ttyName,
@@ -129,13 +129,13 @@ int virFileOpenTtyAt(const char *ptmx,
 char* virFilePid(const char *dir,
                  const char *name);
 int virFileWritePidPath(const char *path,
-                        pid_t pid) ATTRIBUTE_RETURN_CHECK;
+                        pid_t pid);
 int virFileWritePid(const char *dir,
                     const char *name,
-                    pid_t pid) ATTRIBUTE_RETURN_CHECK;
+                    pid_t pid);
 int virFileReadPid(const char *dir,
                    const char *name,
-                   pid_t *pid) ATTRIBUTE_RETURN_CHECK;
+                   pid_t *pid);
 int virFileDeletePid(const char *dir,
                      const char *name);
 
@@ -167,7 +167,7 @@ int virMacAddrCompare (const char *mac1, const char *mac2);
 void virSkipSpaces(const char **str);
 int virParseNumber(const char **str);
 int virAsprintf(char **strp, const char *fmt, ...)
-    ATTRIBUTE_FMT_PRINTF(2, 3) ATTRIBUTE_RETURN_CHECK;
+    ATTRIBUTE_FMT_PRINTF(2, 3);
 char *virStrncpy(char *dest, const char *src, size_t n, size_t destbytes)
     ATTRIBUTE_RETURN_CHECK;
 char *virStrcpy(char *dest, const char *src, size_t destbytes)
@@ -179,7 +179,7 @@ char *virStrcpy(char *dest, const char *src, size_t destbytes)
 #define VIR_MAC_STRING_BUFLEN VIR_MAC_BUFLEN * 3
 
 int virParseMacAddr(const char* str,
-                    unsigned char *addr) ATTRIBUTE_RETURN_CHECK;
+                    unsigned char *addr);
 void virFormatMacAddr(const unsigned char *addr,
                       char *str);
 void virGenerateMacAddr(const unsigned char *prefix,
@@ -222,7 +222,7 @@ static inline int getuid (void) { return 0; }
 static inline int getgid (void) { return 0; }
 #endif
 
-char *virGetHostname(virConnectPtr conn);
+char *virGetHostname(void);
 
 int virKillProcess(pid_t pid, int sig);
 
@@ -233,13 +233,13 @@ char *virGetUserName(virConnectPtr conn,
                      uid_t uid);
 int virGetUserID(virConnectPtr conn,
                  const char *name,
-                 uid_t *uid) ATTRIBUTE_RETURN_CHECK;
+                 uid_t *uid);
 int virGetGroupID(virConnectPtr conn,
                   const char *name,
-                  gid_t *gid) ATTRIBUTE_RETURN_CHECK;
+                  gid_t *gid);
 #endif
 
-int virRandomInitialize(unsigned int seed) ATTRIBUTE_RETURN_CHECK;
+int virRandomInitialize(unsigned int seed);
 int virRandom(int max);
 
 #ifdef HAVE_MNTENT_H
@@ -247,8 +247,5 @@ char *virFileFindMountPoint(const char *type);
 #endif
 
 void virFileWaitForDevices(virConnectPtr conn);
-
-#define virBuildPath(path, ...) virBuildPathInternal(path, __VA_ARGS__, NULL)
-int virBuildPathInternal(char **path, ...) ATTRIBUTE_SENTINEL;
 
 #endif /* __VIR_UTIL_H__ */

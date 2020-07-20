@@ -45,7 +45,7 @@
     ((((int) ((T)->tv_sec - (U)->tv_sec)) * 1000000.0 +	\
       ((int) ((T)->tv_usec - (U)->tv_usec))) / 1000.0)
 
-static unsigned int testDebug = -1;
+unsigned int testDebug = 0;
 
 static unsigned int testOOM = 0;
 static unsigned int testCounter = 0;
@@ -255,10 +255,10 @@ int virtTestDifference(FILE *stream,
     const char *actualStart = actual;
     const char *actualEnd = actual + (strlen(actual)-1);
 
-    if (!virtTestGetDebug())
+    if (!testDebug)
         return 0;
 
-    if (virtTestGetDebug() < 2) {
+    if (testDebug < 2) {
         /* Skip to first character where they differ */
         while (*expectStart && *actualStart &&
                *actualStart == *expectStart) {
@@ -322,30 +322,12 @@ virtTestErrorHook(int n, void *data ATTRIBUTE_UNUSED)
 }
 #endif
 
-unsigned int
-virtTestGetDebug() {
-    char *debugStr;
-    unsigned int debug;
-
-    if (testDebug != -1)
-        return testDebug;
-
-    testDebug = 0;
-
-    if ((debugStr = getenv("VIR_TEST_DEBUG")) == NULL)
-        return 0;
-
-    if (virStrToLong_ui(debugStr, NULL, 10, &debug) < 0)
-        return 0;
-
-    testDebug = debug;
-    return testDebug;
-}
 
 int virtTestMain(int argc,
                  char **argv,
                  int (*func)(int, char **))
 {
+    char *debugStr;
     int ret;
 #if TEST_OOM
     int approxAlloc = 0;
@@ -358,10 +340,13 @@ int virtTestMain(int argc,
 #endif
 
     if (virThreadInitialize() < 0 ||
-        virErrorInitialize() < 0 ||
-        virRandomInitialize(time(NULL) ^ getpid()))
+        virErrorInitialize() < 0)
         return 1;
 
+    if ((debugStr = getenv("VIR_TEST_DEBUG")) != NULL) {
+        if (virStrToLong_ui(debugStr, NULL, 10, &testDebug) < 0)
+            testDebug = 0;
+    }
 
 #if TEST_OOM
     if ((oomStr = getenv("VIR_TEST_OOM")) != NULL) {
@@ -389,7 +374,7 @@ int virtTestMain(int argc,
         goto cleanup;
 
 #if TEST_OOM_TRACE
-    if (virtTestGetDebug())
+    if (testDebug)
         virAllocTestHook(virtTestErrorHook, NULL);
 #endif
 
@@ -407,7 +392,7 @@ int virtTestMain(int argc,
 
         approxAlloc = virAllocTestCount();
         testCounter++;
-        if (virtTestGetDebug())
+        if (testDebug)
             fprintf(stderr, "%d) OOM...\n", testCounter);
         else
             fprintf(stderr, "%d) OOM of %d allocs ", testCounter, approxAlloc);
@@ -429,7 +414,7 @@ int virtTestMain(int argc,
             if (mp &&
                 (n % mp) != (worker - 1))
                 continue;
-            if (!virtTestGetDebug()) {
+            if (!testDebug) {
                 if (mp)
                     fprintf(stderr, "%d", worker);
                 else
@@ -458,7 +443,7 @@ int virtTestMain(int argc,
             }
         }
 
-        if (virtTestGetDebug())
+        if (testDebug)
             fprintf(stderr, " ... OOM of %d allocs", approxAlloc);
 
         if (ret == EXIT_SUCCESS)

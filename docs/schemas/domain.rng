@@ -275,13 +275,13 @@
         </element>
       </optional>
       <optional>
-        <element name="memoryBacking">
-          <optional>
-            <element name="hugepages">
-              <empty/>
-            </element>
-          </optional>
-        </element>
+	<element name="memoryBacking">
+	  <optional>
+	    <element name="hugepages">
+	      <empty/>
+	    </element>
+	  </optional>
+	</element>
       </optional>
       <optional>
         <element name="vcpu">
@@ -842,7 +842,7 @@
   <define name="video">
     <element name="video">
       <optional>
-        <element name="model">
+	<element name="model">
           <attribute name="type">
             <choice>
               <value>vga</value>
@@ -882,7 +882,7 @@
               </optional>
             </element>
           </optional>
-        </element>
+	</element>
       </optional>
     </element>
   </define>
@@ -930,24 +930,6 @@
       definition doesn't fully specify the constraints on this node.
     -->
   <define name="qemucdev">
-    <ref name="qemucdevSrcType"/>
-    <optional>
-      <attribute name="tty">
-        <ref name="devicePath"/>
-      </attribute>
-    </optional>
-    <interleave>
-      <ref name="qemucdevSrcDef"/>
-      <optional>
-        <element name="target">
-          <optional>
-            <attribute name="port"/>
-          </optional>
-        </element>
-      </optional>
-    </interleave>
-  </define>
-  <define name="qemucdevSrcType">
     <attribute name="type">
       <choice>
         <value>dev</value>
@@ -962,36 +944,43 @@
         <value>pty</value>
       </choice>
     </attribute>
-  </define>
-  <define name="qemucdevSrcDef">
-    <optional>
-      <oneOrMore>
-        <element name="source">
+    <interleave>
+      <optional>
+        <oneOrMore>
+          <element name="source">
+            <optional>
+              <attribute name="mode"/>
+            </optional>
+            <optional>
+              <attribute name="path"/>
+            </optional>
+            <optional>
+              <attribute name="host"/>
+            </optional>
+            <optional>
+              <attribute name="service"/>
+            </optional>
+            <optional>
+              <attribute name="wiremode"/>
+            </optional>
+          </element>
+        </oneOrMore>
+      </optional>
+      <optional>
+        <element name="protocol">
           <optional>
-            <attribute name="mode"/>
-          </optional>
-          <optional>
-            <attribute name="path"/>
-          </optional>
-          <optional>
-            <attribute name="host"/>
-          </optional>
-          <optional>
-            <attribute name="service"/>
-          </optional>
-          <optional>
-            <attribute name="wiremode"/>
+            <attribute name="type"/>
           </optional>
         </element>
-      </oneOrMore>
-    </optional>
-    <optional>
-      <element name="protocol">
-        <optional>
-          <attribute name="type"/>
-        </optional>
-      </element>
-    </optional>
+      </optional>
+      <optional>
+        <element name="target">
+          <optional>
+            <attribute name="port"/>
+          </optional>
+        </element>
+      </optional>
+    </interleave>
   </define>
   <!--
       The description for a console
@@ -1024,27 +1013,6 @@
       </attribute>
     </element>
   </define>
-  <define name="watchdog">
-    <element name="watchdog">
-      <attribute name="model">
-        <choice>
-          <value>i6300esb</value>
-          <value>ib700</value>
-        </choice>
-      </attribute>
-      <optional>
-        <attribute name="action">
-          <choice>
-            <value>reset</value>
-            <value>shutdown</value>
-            <value>poweroff</value>
-            <value>pause</value>
-            <value>none</value>
-          </choice>
-        </attribute>
-      </optional>
-    </element>
-  </define>
   <define name="parallel">
     <element name="parallel">
       <ref name="qemucdev"/>
@@ -1053,24 +1021,6 @@
   <define name="serial">
     <element name="serial">
       <ref name="qemucdev"/>
-    </element>
-  </define>
-  <define name="guestfwdTarget">
-    <element name="target">
-      <attribute name="type">
-        <value>guestfwd</value>
-      </attribute>
-      <attribute name="address"/>
-      <attribute name="port"/>
-    </element>
-  </define>
-  <define name="channel">
-    <element name="channel">
-      <ref name="qemucdevSrcType"/>
-      <interleave>
-        <ref name="qemucdevSrcDef"/>
-        <ref name="guestfwdTarget"/>
-      </interleave>
     </element>
   </define>
   <define name="input">
@@ -1187,12 +1137,8 @@
             <ref name="console"/>
             <ref name="parallel"/>
             <ref name="serial"/>
-            <ref name="channel"/>
           </choice>
         </zeroOrMore>
-        <optional>
-          <ref name="watchdog"/>
-        </optional>
       </interleave>
     </element>
   </define>

@@ -36,7 +36,6 @@
 #include "virterror_internal.h"
 #include "datatypes.h"
 #include "network_conf.h"
-#include "network.h"
 #include "memory.h"
 #include "xml.h"
 #include "uuid.h"
@@ -118,7 +117,6 @@ void virNetworkDefFree(virNetworkDefPtr def)
 
     VIR_FREE(def->tftproot);
     VIR_FREE(def->bootfile);
-    VIR_FREE(def->bootserver);
 
     VIR_FREE(def);
 }
@@ -154,7 +152,7 @@ virNetworkObjPtr virNetworkAssignDef(virConnectPtr conn,
     virNetworkObjPtr network;
 
     if ((network = virNetworkFindByName(nets, def->name))) {
-        if (!virNetworkObjIsActive(network)) {
+        if (!virNetworkIsActive(network)) {
             virNetworkDefFree(network->def);
             network->def = def;
         } else {
@@ -231,47 +229,15 @@ virNetworkDHCPRangeDefParseXML(virConnectPtr conn,
     while (cur != NULL) {
         if (cur->type == XML_ELEMENT_NODE &&
             xmlStrEqual(cur->name, BAD_CAST "range")) {
-            char *start, *end;
-            virSocketAddr saddr, eaddr;
-            int range;
+            xmlChar *start, *end;
 
-            if (!(start = (char *) xmlGetProp(cur, BAD_CAST "start"))) {
+            if (!(start = xmlGetProp(cur, BAD_CAST "start"))) {
                 cur = cur->next;
                 continue;
             }
-            if (!(end = (char *) xmlGetProp(cur, BAD_CAST "end"))) {
-                xmlFree(start);
+            if (!(end = xmlGetProp(cur, BAD_CAST "end"))) {
                 cur = cur->next;
-                continue;
-            }
-
-            if (virSocketParseAddr(start, &saddr, 0) < 0) {
-                virNetworkReportError(conn, VIR_ERR_XML_ERROR,
-                                      _("cannot parse dhcp start address '%s'"),
-                                      start);
                 xmlFree(start);
-                xmlFree(end);
-                cur = cur->next;
-                continue;
-            }
-            if (virSocketParseAddr(end, &eaddr, 0) < 0) {
-                virNetworkReportError(conn, VIR_ERR_XML_ERROR,
-                                      _("cannot parse dhcp end address '%s'"),
-                                      end);
-                xmlFree(start);
-                xmlFree(end);
-                cur = cur->next;
-                continue;
-            }
-
-            range = virSocketGetRange(&saddr, &eaddr);
-            if (range < 0) {
-                virNetworkReportError(conn, VIR_ERR_XML_ERROR,
-                                      _("dhcp range '%s' to '%s' invalid"),
-                                      start, end);
-                xmlFree(start);
-                xmlFree(end);
-                cur = cur->next;
                 continue;
             }
 
@@ -283,7 +249,6 @@ virNetworkDHCPRangeDefParseXML(virConnectPtr conn,
             }
             def->ranges[def->nranges].start = (char *)start;
             def->ranges[def->nranges].end = (char *)end;
-            def->ranges[def->nranges].size = range;
             def->nranges++;
         } else if (cur->type == XML_ELEMENT_NODE &&
             xmlStrEqual(cur->name, BAD_CAST "host")) {
@@ -348,7 +313,6 @@ virNetworkDHCPRangeDefParseXML(virConnectPtr conn,
             }
 
             def->bootfile = (char *)file;
-            def->bootserver = (char *) xmlGetProp(cur, BAD_CAST "server");
         }
 
         cur = cur->next;
@@ -707,13 +671,8 @@ char *virNetworkDefFormat(virConnectPtr conn,
                 virBufferAddLit(&buf, "/>\n");
             }
             if (def->bootfile) {
-                virBufferEscapeString(&buf, "      <bootp file='%s' ",
+                virBufferEscapeString(&buf, "      <bootp file='%s' />\n",
                                       def->bootfile);
-                if (def->bootserver) {
-                    virBufferEscapeString(&buf, "server='%s' ",
-                                          def->bootserver);
-                }
-                virBufferAddLit(&buf, "/>\n");
             }
 
             virBufferAddLit(&buf, "    </dhcp>\n");

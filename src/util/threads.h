@@ -49,7 +49,6 @@ int virCondInit(virCondPtr c) ATTRIBUTE_RETURN_CHECK;
 int virCondDestroy(virCondPtr c) ATTRIBUTE_RETURN_CHECK;
 
 int virCondWait(virCondPtr c, virMutexPtr m) ATTRIBUTE_RETURN_CHECK;
-int virCondWaitUntil(virCondPtr c, virMutexPtr m, unsigned long long whenms) ATTRIBUTE_RETURN_CHECK;
 void virCondSignal(virCondPtr c);
 void virCondBroadcast(virCondPtr c);
 

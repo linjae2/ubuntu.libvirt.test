@@ -48,8 +48,7 @@ VIR_ENUM_DECL(virInterface)
 /* types of start mode */
 
 enum virInterfaceStartMode {
-    VIR_INTERFACE_START_UNSPECIFIED = 0, /* not given in config */
-    VIR_INTERFACE_START_NONE,     /* specified as not defined */
+    VIR_INTERFACE_START_NONE = 0, /* not defined */
     VIR_INTERFACE_START_ONBOOT,   /* startup at boot */
     VIR_INTERFACE_START_HOTPLUG,  /* on hotplug */
 };
@@ -124,23 +123,14 @@ struct _virInterfaceVlanDef {
     char *devname;   /* device name for vlan */
 };
 
-typedef struct _virInterfaceIpDef virInterfaceIpDef;
-typedef virInterfaceIpDef *virInterfaceIpDefPtr;
-struct _virInterfaceIpDef {
-    char *address;   /* ip address */
-    int prefix;      /* ip prefix */
-};
-
-
 typedef struct _virInterfaceProtocolDef virInterfaceProtocolDef;
 typedef virInterfaceProtocolDef *virInterfaceProtocolDefPtr;
 struct _virInterfaceProtocolDef {
-    char *family;    /* ipv4 or ipv6 */
+    char *family;    /* ipv4 only right now */
     int dhcp;        /* use dhcp */
     int peerdns;     /* dhcp peerdns ? */
-    int autoconf;    /* only useful if family is ipv6 */
-    int nips;
-    virInterfaceIpDefPtr *ips; /* ptr to array of ips[nips] */
+    char *address;   /* ip address */
+    int prefix;      /* ip prefix */
     char *gateway;   /* route gateway */
 };
 
@@ -161,8 +151,8 @@ struct _virInterfaceDef {
         virInterfaceBondDef bond;
     } data;
 
-    int nprotos;
-    virInterfaceProtocolDefPtr *protos; /* ptr to array of protos[nprotos] */
+    /* separated as we may allow multiple of those in the future */
+    virInterfaceProtocolDef proto;
 };
 
 typedef struct _virInterfaceObj virInterfaceObj;
@@ -182,7 +172,7 @@ struct _virInterfaceObjList {
 };
 
 static inline int
-virInterfaceObjIsActive(const virInterfaceObjPtr iface)
+virInterfaceIsActive(const virInterfaceObjPtr iface)
 {
     return iface->active;
 }

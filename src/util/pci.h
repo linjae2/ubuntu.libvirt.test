@@ -25,7 +25,11 @@
 #include "internal.h"
 
 typedef struct _pciDevice pciDevice;
-typedef struct _pciDeviceList pciDeviceList;
+
+typedef struct {
+    unsigned count;
+    pciDevice **devs;
+} pciDeviceList;
 
 pciDevice *pciGetDevice      (virConnectPtr  conn,
                               unsigned       domain,
@@ -51,12 +55,6 @@ void           pciDeviceListFree (virConnectPtr conn,
 int            pciDeviceListAdd  (virConnectPtr conn,
                                   pciDeviceList *list,
                                   pciDevice *dev);
-pciDevice *    pciDeviceListGet (pciDeviceList *list,
-                                 int idx);
-int            pciDeviceListCount (pciDeviceList *list);
-pciDevice *    pciDeviceListSteal (virConnectPtr conn,
-                                   pciDeviceList *list,
-                                   pciDevice *dev);
 void           pciDeviceListDel  (virConnectPtr conn,
                                   pciDeviceList *list,
                                   pciDevice *dev);

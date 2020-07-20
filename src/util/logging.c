@@ -386,7 +386,7 @@ int virLogDefineFilter(const char *match, int priority,
     }
 
     mdup = strdup(match);
-    if (mdup == NULL) {
+    if (dup == NULL) {
         i = -1;
         goto cleanup;
     }
@@ -484,7 +484,6 @@ int virLogDefineOutput(virLogOutputFunc f, virLogCloseFunc c, void *data,
 
     virLogLock();
     if (VIR_REALLOC_N(virLogOutputs, virLogNbOutputs + 1)) {
-        VIR_FREE(ndup);
         goto cleanup;
     }
     ret = virLogNbOutputs++;

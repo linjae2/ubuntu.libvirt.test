@@ -121,8 +121,7 @@ mymain(int argc, char **argv)
             QEMUD_CMD_FLAG_DRIVE_FORMAT |
             QEMUD_CMD_FLAG_DRIVE_SERIAL |
             QEMUD_CMD_FLAG_VGA |
-            QEMUD_CMD_FLAG_0_10 |
-            QEMUD_CMD_FLAG_ENABLE_KVM,
+            QEMUD_CMD_FLAG_0_10,
             10005, 0,  0);
     DO_TEST("qemu-kvm-0.10.5",
             QEMUD_CMD_FLAG_VNC_COLON |
@@ -178,8 +177,7 @@ mymain(int argc, char **argv)
             QEMUD_CMD_FLAG_VGA |
             QEMUD_CMD_FLAG_0_10 |
             QEMUD_CMD_FLAG_PCIDEVICE |
-            QEMUD_CMD_FLAG_MEM_PATH |
-            QEMUD_CMD_FLAG_ENABLE_KVM,
+            QEMUD_CMD_FLAG_MEM_PATH,
             10092, 1,  0);
 
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

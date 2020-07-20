@@ -35,9 +35,8 @@ void virThreadOnExit(void)
 
 int virMutexInit(virMutexPtr m)
 {
-    int ret;
-    if ((ret = pthread_mutex_init(&m->lock, NULL)) != 0) {
-        errno = ret;
+    if (pthread_mutex_init(&m->lock, NULL) != 0) {
+        errno = EINVAL;
         return -1;
     }
     return 0;
@@ -58,11 +57,11 @@ void virMutexUnlock(virMutexPtr m)
 }
 
 
+
 int virCondInit(virCondPtr c)
 {
-    int ret;
-    if ((ret = pthread_cond_init(&c->cond, NULL)) != 0) {
-        errno = ret;
+    if (pthread_cond_init(&c->cond, NULL) != 0) {
+        errno = EINVAL;
         return -1;
     }
     return 0;
@@ -70,9 +69,8 @@ int virCondInit(virCondPtr c)
 
 int virCondDestroy(virCondPtr c)
 {
-    int ret;
-    if ((ret = pthread_cond_destroy(&c->cond)) != 0) {
-        errno = ret;
+    if (pthread_cond_destroy(&c->cond) != 0) {
+        errno = EINVAL;
         return -1;
     }
     return 0;
@@ -80,24 +78,8 @@ int virCondDestroy(virCondPtr c)
 
 int virCondWait(virCondPtr c, virMutexPtr m)
 {
-    int ret;
-    if ((ret = pthread_cond_wait(&c->cond, &m->lock)) != 0) {
-        errno = ret;
-        return -1;
-    }
-    return 0;
-}
-
-int virCondWaitUntil(virCondPtr c, virMutexPtr m, unsigned long long whenms)
-{
-    int ret;
-    struct timespec ts;
-
-    ts.tv_sec = whenms / 1000;
-    ts.tv_nsec = (whenms % 1000) * 1000;
-
-    if ((ret = pthread_cond_timedwait(&c->cond, &m->lock, &ts)) != 0) {
-        errno = ret;
+    if (pthread_cond_wait(&c->cond, &m->lock) != 0) {
+        errno = EINVAL;
         return -1;
     }
     return 0;
@@ -117,9 +99,8 @@ void virCondBroadcast(virCondPtr c)
 int virThreadLocalInit(virThreadLocalPtr l,
                        virThreadLocalCleanup c)
 {
-    int ret;
-    if ((ret = pthread_key_create(&l->key, c)) != 0) {
-        errno = ret;
+    if (pthread_key_create(&l->key, c) != 0) {
+        errno = EINVAL;
         return -1;
     }
     return 0;

@@ -339,8 +339,6 @@ typedef enum {
     VIR_MIGRATE_LIVE              = (1 << 0), /* live migration */
     VIR_MIGRATE_PEER2PEER         = (1 << 1), /* direct source -> dest host control channel */
     VIR_MIGRATE_TUNNELLED         = (1 << 2), /* tunnel migration data over libvirtd connection */
-    VIR_MIGRATE_PERSIST_DEST      = (1 << 3), /* persist the VM on the destination */
-    VIR_MIGRATE_UNDEFINE_SOURCE   = (1 << 4), /* undefine the VM on the source */
 } virDomainMigrateFlags;
 
 /* Domain migration. */
@@ -468,7 +466,7 @@ extern virConnectAuthPtr virConnectAuthPtrDefault;
  * version * 1,000,000 + minor * 1000 + micro
  */
 
-#define LIBVIR_VERSION_NUMBER 7004
+#define LIBVIR_VERSION_NUMBER 7002
 
 int                     virGetVersion           (unsigned long *libVer,
                                                  const char *type,
@@ -489,8 +487,6 @@ int                     virConnectClose         (virConnectPtr conn);
 const char *            virConnectGetType       (virConnectPtr conn);
 int                     virConnectGetVersion    (virConnectPtr conn,
                                                  unsigned long *hvVer);
-int                     virConnectGetLibVersion (virConnectPtr conn,
-                                                 unsigned long *libVer);
 char *                  virConnectGetHostname   (virConnectPtr conn);
 char *                  virConnectGetURI        (virConnectPtr conn);
 
@@ -931,10 +927,6 @@ virInterfacePtr         virInterfaceLookupByMACString (virConnectPtr conn,
 
 const char*             virInterfaceGetName       (virInterfacePtr iface);
 const char*             virInterfaceGetMACString  (virInterfacePtr iface);
-
-typedef enum {
-    VIR_INTERFACE_XML_INACTIVE = 1 /* dump inactive interface information */
-} virInterfaceXMLFlags;
 
 char *                  virInterfaceGetXMLDesc    (virInterfacePtr iface,
                                                    unsigned int flags);
@@ -1653,22 +1645,6 @@ int virStreamFinish(virStreamPtr st);
 int virStreamAbort(virStreamPtr st);
 
 int virStreamFree(virStreamPtr st);
-
-
-int virDomainIsActive(virDomainPtr dom);
-int virDomainIsPersistent(virDomainPtr dom);
-
-int virNetworkIsActive(virNetworkPtr net);
-int virNetworkIsPersistent(virNetworkPtr net);
-
-int virStoragePoolIsActive(virStoragePoolPtr pool);
-int virStoragePoolIsPersistent(virStoragePoolPtr pool);
-
-int virInterfaceIsActive(virInterfacePtr iface);
-
-int virConnectIsEncrypted(virConnectPtr conn);
-int virConnectIsSecure(virConnectPtr conn);
-
 
 
 #ifdef __cplusplus

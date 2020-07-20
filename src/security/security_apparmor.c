@@ -56,16 +56,13 @@ profile_status(const char *str, const int check_enforcing)
     int rc = -1;
 
     /* create string that is '<str> \0' for accurate matching */
-    if (virAsprintf(&tmp, "%s ", str) == -1) {
-        virReportOOMError(NULL);
+    if (virAsprintf(&tmp, "%s ", str) == -1)
         return rc;
-    }
 
     if (check_enforcing != 0) {
         /* create string that is '<str> (enforce)\0' for accurate matching */
         if (virAsprintf(&etmp, "%s (enforce)", str) == -1) {
             VIR_FREE(tmp);
-            virReportOOMError(NULL);
             return rc;
         }
     }
@@ -74,6 +71,8 @@ profile_status(const char *str, const int check_enforcing)
         virReportSystemError(NULL, errno,
                              _("Failed to read AppArmor profiles list "
                              "\'%s\'"), APPARMOR_PROFILES_PATH);
+        if (check_enforcing != 0)
+            VIR_FREE(etmp);
         goto clean;
     }
 
@@ -82,12 +81,12 @@ profile_status(const char *str, const int check_enforcing)
     if (check_enforcing != 0) {
         if (rc == 0 && strstr(content, etmp) != NULL)
             rc = 1;                 /* return '1' if loaded and enforcing */
+        VIR_FREE(etmp);
     }
 
     VIR_FREE(content);
   clean:
     VIR_FREE(tmp);
-    VIR_FREE(etmp);
 
     return rc;
 }
@@ -105,30 +104,32 @@ profile_loaded(const char *str)
 static int
 profile_status_file(const char *str)
 {
-    char *profile = NULL;
+    char profile[PATH_MAX];
     char *content = NULL;
     char *tmp = NULL;
     int rc = -1;
     int len;
 
-    if (virAsprintf(&profile, "%s/%s", APPARMOR_DIR "/libvirt", str) == -1) {
-        virReportOOMError(NULL);
-        return rc;
+    if (snprintf(profile, PATH_MAX, "%s/%s", APPARMOR_DIR "/libvirt", str)
+       > PATH_MAX - 1) {
+        virSecurityReportError(NULL, VIR_ERR_ERROR,
+                               "%s", _("profile name exceeds maximum length"));
     }
 
-    if (!virFileExists(profile))
-        goto failed;
+    if (!virFileExists(profile)) {
+        return rc;
+    }
 
     if ((len = virFileReadAll(profile, MAX_FILE_LEN, &content)) < 0) {
         virReportSystemError(NULL, errno,
                              _("Failed to read \'%s\'"), profile);
-        goto failed;
+        return rc;
     }
 
     /* create string that is ' <str> flags=(complain)\0' */
     if (virAsprintf(&tmp, " %s flags=(complain)", str) == -1) {
         virReportOOMError(NULL);
-        goto failed;
+        goto clean;
     }
 
     if (strstr(content, tmp) != NULL)
@@ -136,9 +137,8 @@ profile_status_file(const char *str)
     else
         rc = 1;
 
-  failed:
     VIR_FREE(tmp);
-    VIR_FREE(profile);
+  clean:
     VIR_FREE(content);
 
     return rc;
@@ -164,7 +164,7 @@ load_profile(virConnectPtr conn, const char *profile, virDomainObjPtr vm,
 
     xml = virDomainDefFormat(conn, vm->def, VIR_DOMAIN_XML_SECURE);
     if (!xml)
-        goto clean;
+        goto failed;
 
     if (profile_status_file(profile) >= 0)
         create = false;
@@ -204,7 +204,7 @@ load_profile(virConnectPtr conn, const char *profile, virDomainObjPtr vm,
         if (errno == EINTR)
             goto rewait;
 
-        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(conn, VIR_ERR_ERROR,
                                _("Unexpected exit status from virt-aa-helper "
                                "%d pid %lu"),
                                WEXITSTATUS(status), (unsigned long)child);
@@ -214,6 +214,7 @@ load_profile(virConnectPtr conn, const char *profile, virDomainObjPtr vm,
   clean:
     VIR_FREE(xml);
 
+  failed:
     if (pipefd[0] > 0)
         close(pipefd[0]);
     if (pipefd[1] > 0)
@@ -264,7 +265,7 @@ use_apparmor(void)
 
     if ((len = readlink("/proc/self/exe", libvirt_daemon,
                         PATH_MAX - 1)) < 0) {
-        virSecurityReportError(NULL, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(NULL, VIR_ERR_ERROR,
                                "%s", _("could not find libvirtd"));
         return rc;
     }
@@ -280,30 +281,26 @@ use_apparmor(void)
 static int
 AppArmorSecurityDriverProbe(void)
 {
-    char *template = NULL;
-    int rc = SECURITY_DRIVER_DISABLE;
+    char template[PATH_MAX];
 
     if (use_apparmor() < 0)
-        return rc;
+        return SECURITY_DRIVER_DISABLE;
 
     /* see if template file exists */
-    if (virAsprintf(&template, "%s/TEMPLATE",
-                               APPARMOR_DIR "/libvirt") == -1) {
-        virReportOOMError(NULL);
-        return rc;
+    if (snprintf(template, PATH_MAX, "%s/TEMPLATE",
+                 APPARMOR_DIR "/libvirt") > PATH_MAX - 1) {
+        virSecurityReportError(NULL, VIR_ERR_ERROR,
+                               "%s", _("template too large"));
+        return SECURITY_DRIVER_DISABLE;
     }
 
     if (!virFileExists(template)) {
-        virSecurityReportError(NULL, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(NULL, VIR_ERR_ERROR,
                                _("template \'%s\' does not exist"), template);
-        goto clean;
+        return SECURITY_DRIVER_DISABLE;
     }
-    rc = SECURITY_DRIVER_ENABLE;
 
-  clean:
-    VIR_FREE(template);
-
-    return rc;
+    return SECURITY_DRIVER_ENABLE;
 }
 
 /* Security driver initialization. DOI is for 'Domain of Interpretation' and is
@@ -329,7 +326,7 @@ AppArmorGenSecurityLabel(virConnectPtr conn, virDomainObjPtr vm)
 
     if ((vm->def->seclabel.label) ||
         (vm->def->seclabel.model) || (vm->def->seclabel.imagelabel)) {
-        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(conn, VIR_ERR_ERROR,
                                "%s",
                                _("security label already defined for VM"));
         return rc;
@@ -341,7 +338,7 @@ AppArmorGenSecurityLabel(virConnectPtr conn, virDomainObjPtr vm)
     /* if the profile is not already loaded, then load one */
     if (profile_loaded(profile_name) < 0) {
         if (load_profile(conn, profile_name, vm, NULL) < 0) {
-            virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+            virSecurityReportError(conn, VIR_ERR_ERROR,
                                    _("cannot generate AppArmor profile "
                                    "\'%s\'"), profile_name);
             goto clean;
@@ -398,13 +395,13 @@ AppArmorGetSecurityLabel(virConnectPtr conn,
 
     if (virStrcpy(sec->label, profile_name,
         VIR_SECURITY_LABEL_BUFLEN) == NULL) {
-        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(conn, VIR_ERR_ERROR,
                                "%s", _("error copying profile name"));
         goto clean;
     }
 
     if ((sec->enforcing = profile_status(profile_name, 1)) < 0) {
-        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(conn, VIR_ERR_ERROR,
                                "%s", _("error calling profile_status()"));
         goto clean;
     }
@@ -427,7 +424,7 @@ AppArmorRestoreSecurityLabel(virConnectPtr conn, virDomainObjPtr vm)
 
     if (secdef->imagelabel) {
         if ((rc = remove_profile(secdef->label)) != 0) {
-            virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+            virSecurityReportError(conn, VIR_ERR_ERROR,
                                    _("could not remove profile for \'%s\'"),
                                    secdef->label);
         }
@@ -453,7 +450,7 @@ AppArmorSetSecurityLabel(virConnectPtr conn,
         return rc;
 
     if (STRNEQ(drv->name, secdef->model)) {
-        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(conn, VIR_ERR_ERROR,
                                _("security label driver mismatch: "
                                "\'%s\' model configured for domain, but "
                                "hypervisor driver is \'%s\'."),
@@ -463,7 +460,7 @@ AppArmorSetSecurityLabel(virConnectPtr conn,
     }
 
     if (aa_change_profile(profile_name) < 0) {
-        virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+        virSecurityReportError(conn, VIR_ERR_ERROR,
                                _("error calling aa_change_profile()"));
         goto clean;
     }
@@ -493,7 +490,7 @@ AppArmorRestoreSecurityImageLabel(virConnectPtr conn,
         /* Update the profile only if it is loaded */
         if (profile_loaded(secdef->imagelabel) >= 0) {
             if (load_profile(conn, secdef->imagelabel, vm, NULL) < 0) {
-                virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                virSecurityReportError(conn, VIR_ERR_ERROR,
                                        _("cannot update AppArmor profile "
                                        "\'%s\'"),
                                        secdef->imagelabel);
@@ -523,7 +520,7 @@ AppArmorSetSecurityImageLabel(virConnectPtr conn,
     if (secdef->imagelabel) {
         /* if the device doesn't exist, error out */
         if (!virFileExists(disk->src)) {
-            virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+            virSecurityReportError(conn, VIR_ERR_ERROR,
                                    _("\'%s\' does not exist"), disk->src);
             return rc;
         }
@@ -534,7 +531,7 @@ AppArmorSetSecurityImageLabel(virConnectPtr conn,
         /* update the profile only if it is loaded */
         if (profile_loaded(secdef->imagelabel) >= 0) {
             if (load_profile(conn, secdef->imagelabel, vm, disk) < 0) {
-                virSecurityReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                virSecurityReportError(conn, VIR_ERR_ERROR,
                                      _("cannot update AppArmor profile "
                                      "\'%s\'"),
                                      secdef->imagelabel);

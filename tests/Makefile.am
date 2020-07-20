@@ -52,21 +52,17 @@ EXTRA_DIST =		\
 	test-lib.sh	\
 	qemuxml2argvdata \
 	nodeinfodata     \
-	schematestutils.sh \
 	capabilityschematest \
 	capabilityschemadata \
 	networkschematest \
-	networkxml2xmlout \
-	networkxml2xmlin \
+	networkschemadata \
 	domainschematest \
 	domainschemadata \
 	interfaceschemadata \
 	storagepoolschematest \
-	storagepoolxml2xmlout \
-	storagepoolxml2xmlin \
+	storagepoolschemadata \
 	storagevolschematest \
-	storagevolxml2xmlout \
-	storagevolxml2xmlin \
+	storagevolschemadata \
 	nodedevschematest \
 	nodedevschemadata \
 	$(patsubst %,qemuhelpdata/%,$(qemuhelpdata))
@@ -97,10 +93,6 @@ endif
 if WITH_CIL
 noinst_PROGRAMS += object-locking
 endif
-
-noinst_PROGRAMS += networkxml2xmltest
-
-noinst_PROGRAMS += storagevolxml2xmltest storagepoolxml2xmltest
 
 noinst_PROGRAMS += nodedevxml2xmltest
 
@@ -174,10 +166,6 @@ if WITH_LIBVIRTD
 noinst_PROGRAMS += eventtest
 TESTS += eventtest
 endif
-
-TESTS += networkxml2xmltest
-
-TESTS += storagevolxml2xmltest storagepoolxml2xmltest
 
 TESTS += nodedevxml2xmltest
 
@@ -274,21 +262,6 @@ xml2vmxtest_LDADD = ../src/libvirt_driver_esx.la $(LDADDS)
 else
 EXTRA_DIST += esxutilstest.c vmx2xmltest.c xml2vmxtest.c
 endif
-
-networkxml2xmltest_SOURCES = \
-	networkxml2xmltest.c \
-	testutils.c testutils.h
-networkxml2xmltest_LDADD = $(LDADDS)
-
-storagevolxml2xmltest_SOURCES = \
-	storagevolxml2xmltest.c \
-	testutils.c testutils.h
-storagevolxml2xmltest_LDADD = $(LDADDS)
-
-storagepoolxml2xmltest_SOURCES = \
-	storagepoolxml2xmltest.c \
-	testutils.c testutils.h
-storagepoolxml2xmltest_LDADD = $(LDADDS)
 
 nodedevxml2xmltest_SOURCES = \
 	nodedevxml2xmltest.c \

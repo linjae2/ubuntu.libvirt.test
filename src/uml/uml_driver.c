@@ -114,32 +114,10 @@ static int umlMonitorCommand (virConnectPtr conn,
 
 static struct uml_driver *uml_driver = NULL;
 
-struct umlAutostartData {
-    struct uml_driver *driver;
-    virConnectPtr conn;
-};
-
-static void
-umlAutostartDomain(void *payload, const char *name ATTRIBUTE_UNUSED, void *opaque)
-{
-    virDomainObjPtr vm = payload;
-    const struct umlAutostartData *data = opaque;
-
-    virDomainObjLock(vm);
-    if (vm->autostart &&
-        !virDomainObjIsActive(vm)) {
-        virResetLastError();
-        if (umlStartVMDaemon(data->conn, data->driver, vm) < 0) {
-            virErrorPtr err = virGetLastError();
-            VIR_ERROR(_("Failed to autostart VM '%s': %s"),
-                      vm->def->name, err->message);
-        }
-    }
-    virDomainObjUnlock(vm);
-}
 
 static void
 umlAutostartConfigs(struct uml_driver *driver) {
+    unsigned int i;
     /* XXX: Figure out a better way todo this. The domain
      * startup code needs a connection handle in order
      * to lookup the bridge associated with a virtual
@@ -150,9 +128,15 @@ umlAutostartConfigs(struct uml_driver *driver) {
                                         "uml:///session");
     /* Ignoring NULL conn which is mostly harmless here */
 
-    struct umlAutostartData data = { driver, conn };
-
-    virHashForEach(driver->domains.objs, umlAutostartDomain, &data);
+    for (i = 0 ; i < driver->domains.count ; i++) {
+        if (driver->domains.objs[i]->autostart &&
+            !virDomainIsActive(driver->domains.objs[i]) &&
+            umlStartVMDaemon(conn, driver, driver->domains.objs[i]) < 0) {
+            virErrorPtr err = virGetLastError();
+            VIR_ERROR(_("Failed to autostart VM '%s': %s"),
+                     driver->domains.objs[i]->def->name, err->message);
+        }
+    }
 
     if (conn)
         virConnectClose(conn);
@@ -169,7 +153,7 @@ umlIdentifyOneChrPTY(virConnectPtr conn,
     char *cmd;
     char *res = NULL;
     int retries = 0;
-    if (virAsprintf(&cmd, "config %s%d", dev, def->target.port) < 0) {
+    if (virAsprintf(&cmd, "config %s%d", dev, def->dstPort) < 0) {
         virReportOOMError(conn);
         return -1;
     }
@@ -273,7 +257,7 @@ reread:
 
         if (e->mask & IN_DELETE) {
             VIR_DEBUG("Got inotify domain shutdown '%s'", name);
-            if (!virDomainObjIsActive(dom)) {
+            if (!virDomainIsActive(dom)) {
                 virDomainObjUnlock(dom);
                 continue;
             }
@@ -281,7 +265,7 @@ reread:
             umlShutdownVMDaemon(NULL, driver, dom);
         } else if (e->mask & (IN_CREATE | IN_MODIFY)) {
             VIR_DEBUG("Got inotify domain startup '%s'", name);
-            if (virDomainObjIsActive(dom)) {
+            if (virDomainIsActive(dom)) {
                 virDomainObjUnlock(dom);
                 continue;
             }
@@ -335,9 +319,6 @@ umlStartup(int privileged) {
     /* Don't have a dom0 so start from 1 */
     uml_driver->nextvmid = 1;
     uml_driver->inotifyWatch = -1;
-
-    if (virDomainObjListInit(&uml_driver->domains) < 0)
-        goto error;
 
     userdir = virGetUserDirectory(NULL, uid);
     if (!userdir)
@@ -468,28 +449,22 @@ umlReload(void) {
  */
 static int
 umlActive(void) {
+    unsigned int i;
     int active = 0;
 
     if (!uml_driver)
         return 0;
 
     umlDriverLock(uml_driver);
-    active = virDomainObjListNumOfDomains(&uml_driver->domains, 1);
+    for (i = 0 ; i < uml_driver->domains.count ; i++) {
+        virDomainObjLock(uml_driver->domains.objs[i]);
+        if (virDomainIsActive(uml_driver->domains.objs[i]))
+            active = 1;
+        virDomainObjUnlock(uml_driver->domains.objs[i]);
+    }
     umlDriverUnlock(uml_driver);
 
     return active;
-}
-
-static void
-umlShutdownOneVM(void *payload, const char *name ATTRIBUTE_UNUSED, void *opaque)
-{
-    virDomainObjPtr dom = payload;
-    struct uml_driver *driver = opaque;
-
-    virDomainObjLock(dom);
-    if (virDomainObjIsActive(dom))
-        umlShutdownVMDaemon(NULL, driver, dom);
-    virDomainObjUnlock(dom);
 }
 
 /**
@@ -499,6 +474,8 @@ umlShutdownOneVM(void *payload, const char *name ATTRIBUTE_UNUSED, void *opaque)
  */
 static int
 umlShutdown(void) {
+    unsigned int i;
+
     if (!uml_driver)
         return -1;
 
@@ -508,11 +485,16 @@ umlShutdown(void) {
     close(uml_driver->inotifyFD);
     virCapabilitiesFree(uml_driver->caps);
 
-    /* shutdown active VMs
-     * XXX allow them to stay around & reconnect */
-    virHashForEach(uml_driver->domains.objs, umlShutdownOneVM, uml_driver);
+    /* shutdown active VMs */
+    for (i = 0 ; i < uml_driver->domains.count ; i++) {
+        virDomainObjPtr dom = uml_driver->domains.objs[i];
+        virDomainObjLock(dom);
+        if (virDomainIsActive(dom))
+            umlShutdownVMDaemon(NULL, uml_driver, dom);
+        virDomainObjUnlock(dom);
+    }
 
-    virDomainObjListDeinit(&uml_driver->domains);
+    virDomainObjListFree(&uml_driver->domains);
 
     VIR_FREE(uml_driver->logDir);
     VIR_FREE(uml_driver->configDir);
@@ -784,7 +766,7 @@ static int umlStartVMDaemon(virConnectPtr conn,
 
     FD_ZERO(&keepfd);
 
-    if (virDomainObjIsActive(vm)) {
+    if (virDomainIsActive(vm)) {
         umlReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
                          "%s", _("VM is already active"));
         return -1;
@@ -900,7 +882,7 @@ static void umlShutdownVMDaemon(virConnectPtr conn ATTRIBUTE_UNUSED,
                                 virDomainObjPtr vm)
 {
     int ret;
-    if (!virDomainObjIsActive(vm))
+    if (!virDomainIsActive(vm))
         return;
 
     virKillProcess(vm->pid, SIGTERM);
@@ -996,20 +978,6 @@ static int umlClose(virConnectPtr conn) {
 
 static const char *umlGetType(virConnectPtr conn ATTRIBUTE_UNUSED) {
     return "UML";
-}
-
-
-static int umlIsSecure(virConnectPtr conn ATTRIBUTE_UNUSED)
-{
-    /* Trivially secure, since always inside the daemon */
-    return 1;
-}
-
-
-static int umlIsEncrypted(virConnectPtr conn ATTRIBUTE_UNUSED)
-{
-    /* Not encrypted, but remote driver takes care of that */
-    return 0;
 }
 
 
@@ -1136,51 +1104,6 @@ cleanup:
     return dom;
 }
 
-
-static int umlDomainIsActive(virDomainPtr dom)
-{
-    struct uml_driver *driver = dom->conn->privateData;
-    virDomainObjPtr obj;
-    int ret = -1;
-
-    umlDriverLock(driver);
-    obj = virDomainFindByUUID(&driver->domains, dom->uuid);
-    umlDriverUnlock(driver);
-    if (!obj) {
-        umlReportError(dom->conn, NULL, NULL, VIR_ERR_NO_DOMAIN, NULL);
-        goto cleanup;
-    }
-    ret = virDomainObjIsActive(obj);
-
-cleanup:
-    if (obj)
-        virDomainObjUnlock(obj);
-    return ret;
-}
-
-
-static int umlDomainIsPersistent(virDomainPtr dom)
-{
-    struct uml_driver *driver = dom->conn->privateData;
-    virDomainObjPtr obj;
-    int ret = -1;
-
-    umlDriverLock(driver);
-    obj = virDomainFindByUUID(&driver->domains, dom->uuid);
-    umlDriverUnlock(driver);
-    if (!obj) {
-        umlReportError(dom->conn, NULL, NULL, VIR_ERR_NO_DOMAIN, NULL);
-        goto cleanup;
-    }
-    ret = obj->persistent;
-
-cleanup:
-    if (obj)
-        virDomainObjUnlock(obj);
-    return ret;
-}
-
-
 static int umlGetVersion(virConnectPtr conn, unsigned long *version) {
     struct uml_driver *driver = conn->privateData;
     struct utsname ut;
@@ -1205,22 +1128,47 @@ cleanup:
     return ret;
 }
 
+static char *
+umlGetHostname (virConnectPtr conn)
+{
+    char *result;
+
+    result = virGetHostname();
+    if (result == NULL) {
+        virReportSystemError(conn, errno,
+                             "%s", _("cannot lookup hostname"));
+        return NULL;
+    }
+    /* Caller frees this string. */
+    return result;
+}
+
 static int umlListDomains(virConnectPtr conn, int *ids, int nids) {
     struct uml_driver *driver = conn->privateData;
-    int n;
+    int got = 0, i;
 
     umlDriverLock(driver);
-    n = virDomainObjListGetActiveIDs(&driver->domains, ids, nids);
+    for (i = 0 ; i < driver->domains.count && got < nids ; i++) {
+        virDomainObjLock(driver->domains.objs[i]);
+        if (virDomainIsActive(driver->domains.objs[i]))
+            ids[got++] = driver->domains.objs[i]->def->id;
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     umlDriverUnlock(driver);
 
-    return n;
+    return got;
 }
 static int umlNumDomains(virConnectPtr conn) {
     struct uml_driver *driver = conn->privateData;
-    int n;
+    int n = 0, i;
 
     umlDriverLock(driver);
-    n = virDomainObjListNumOfDomains(&driver->domains, 1);
+    for (i = 0 ; i < driver->domains.count ; i++) {
+        virDomainObjLock(driver->domains.objs[i]);
+        if (virDomainIsActive(driver->domains.objs[i]))
+            n++;
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     umlDriverUnlock(driver);
 
     return n;
@@ -1237,11 +1185,25 @@ static virDomainPtr umlDomainCreate(virConnectPtr conn, const char *xml,
                                         VIR_DOMAIN_XML_INACTIVE)))
         goto cleanup;
 
-    if (virDomainObjIsDuplicate(&driver->domains, def, 1) < 0)
+    vm = virDomainFindByName(&driver->domains, def->name);
+    if (vm) {
+        umlReportError(conn, NULL, NULL, VIR_ERR_OPERATION_FAILED,
+                         _("domain '%s' is already defined"),
+                         def->name);
         goto cleanup;
+    }
+    vm = virDomainFindByUUID(&driver->domains, def->uuid);
+    if (vm) {
+        char uuidstr[VIR_UUID_STRING_BUFLEN];
+
+        virUUIDFormat(def->uuid, uuidstr);
+        umlReportError(conn, NULL, NULL, VIR_ERR_OPERATION_FAILED,
+                         _("domain with uuid '%s' is already defined"),
+                         uuidstr);
+        goto cleanup;
+    }
 
     if (!(vm = virDomainAssignDef(conn,
-                                  driver->caps,
                                   &driver->domains,
                                   def)))
         goto cleanup;
@@ -1427,7 +1389,7 @@ static int umlDomainSetMemory(virDomainPtr dom, unsigned long newmem) {
         goto cleanup;
     }
 
-    if (virDomainObjIsActive(vm)) {
+    if (virDomainIsActive(vm)) {
         umlReportError(dom->conn, dom, NULL, VIR_ERR_NO_SUPPORT,
                          "%s", _("cannot set memory of an active domain"));
         goto cleanup;
@@ -1466,7 +1428,7 @@ static int umlDomainGetInfo(virDomainPtr dom,
 
     info->state = vm->state;
 
-    if (!virDomainObjIsActive(vm)) {
+    if (!virDomainIsActive(vm)) {
         info->cpuTime = 0;
     } else {
         if (umlGetProcessInfo(&(info->cpuTime), vm->pid) < 0) {
@@ -1519,21 +1481,42 @@ cleanup:
 static int umlListDefinedDomains(virConnectPtr conn,
                             char **const names, int nnames) {
     struct uml_driver *driver = conn->privateData;
-    int n;
+    int got = 0, i;
 
     umlDriverLock(driver);
-    n = virDomainObjListGetInactiveNames(&driver->domains, names, nnames);
+    for (i = 0 ; i < driver->domains.count && got < nnames ; i++) {
+        virDomainObjLock(driver->domains.objs[i]);
+        if (!virDomainIsActive(driver->domains.objs[i])) {
+            if (!(names[got++] = strdup(driver->domains.objs[i]->def->name))) {
+                virReportOOMError(conn);
+                virDomainObjUnlock(driver->domains.objs[i]);
+                goto cleanup;
+            }
+        }
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     umlDriverUnlock(driver);
 
-    return n;
+    return got;
+
+ cleanup:
+    for (i = 0 ; i < got ; i++)
+        VIR_FREE(names[i]);
+    umlDriverUnlock(driver);
+    return -1;
 }
 
 static int umlNumDefinedDomains(virConnectPtr conn) {
     struct uml_driver *driver = conn->privateData;
-    int n;
+    int n = 0, i;
 
     umlDriverLock(driver);
-    n = virDomainObjListNumOfDomains(&driver->domains, 0);
+    for (i = 0 ; i < driver->domains.count ; i++) {
+        virDomainObjLock(driver->domains.objs[i]);
+        if (!virDomainIsActive(driver->domains.objs[i]))
+            n++;
+        virDomainObjUnlock(driver->domains.objs[i]);
+    }
     umlDriverUnlock(driver);
 
     return n;
@@ -1575,11 +1558,7 @@ static virDomainPtr umlDomainDefine(virConnectPtr conn, const char *xml) {
                                         VIR_DOMAIN_XML_INACTIVE)))
         goto cleanup;
 
-    if (virDomainObjIsDuplicate(&driver->domains, def, 0) < 0)
-        goto cleanup;
-
     if (!(vm = virDomainAssignDef(conn,
-                                  driver->caps,
                                   &driver->domains,
                                   def)))
         goto cleanup;
@@ -1619,7 +1598,7 @@ static int umlDomainUndefine(virDomainPtr dom) {
         goto cleanup;
     }
 
-    if (virDomainObjIsActive(vm)) {
+    if (virDomainIsActive(vm)) {
         umlReportError(dom->conn, dom, NULL, VIR_ERR_INTERNAL_ERROR,
                          "%s", _("cannot delete active domain"));
         goto cleanup;
@@ -1822,8 +1801,7 @@ static virDriver umlDriver = {
     NULL, /* supports_feature */
     umlGetType, /* type */
     umlGetVersion, /* version */
-    NULL, /* libvirtVersion (impl. in libvirt.c) */
-    virGetHostname, /* getHostname */
+    umlGetHostname, /* getHostname */
     NULL, /* getMaxVcpus */
     nodeGetInfo, /* nodeGetInfo */
     umlGetCapabilities, /* getCapabilities */
@@ -1884,15 +1862,10 @@ static virDriver umlDriver = {
     NULL, /* nodeDeviceReAttach */
     NULL, /* nodeDeviceReset */
     NULL, /* domainMigratePrepareTunnel */
-    umlIsEncrypted,
-    umlIsSecure,
-    umlDomainIsActive,
-    umlDomainIsPersistent,
 };
 
 
 static virStateDriver umlStateDriver = {
-    .name = "UML",
     .initialize = umlStartup,
     .cleanup = umlShutdown,
     .reload = umlReload,

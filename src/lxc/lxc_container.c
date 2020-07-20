@@ -91,7 +91,7 @@ struct __lxc_child_argv {
 
 /**
  * lxcContainerExecInit:
- * @vmDef: pointer to vm definition structure
+ * @vmDef: Ptr to vm definition structure
  *
  * Exec the container init string. The container init will replace then
  * be running in the current process
@@ -110,8 +110,8 @@ static int lxcContainerExecInit(virDomainDefPtr vmDef)
 
 /**
  * lxcContainerSetStdio:
- * @control: control FD from parent
- * @ttyfd: FD of tty to set as the container console
+ * @control: the conrol FD
+ * @ttyPath: Name of tty to set as the container console
  *
  * Sets the given tty as the primary conosole for the container as well as
  * stdout, stdin and stderr.
@@ -168,7 +168,7 @@ cleanup:
 
 /**
  * lxcContainerSendContinue:
- * @control: control FD to child
+ * @monitor: control FD to child
  *
  * Sends the continue message via the socket pair stored in the vm
  * structure.
@@ -184,7 +184,7 @@ int lxcContainerSendContinue(int control)
     writeCount = safewrite(control, &msg, sizeof(msg));
     if (writeCount != sizeof(msg)) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Unable to send container continue message"));
+                             _("unable to send container continue message"));
         goto error_out;
     }
 
@@ -196,7 +196,7 @@ error_out:
 
 /**
  * lxcContainerWaitForContinue:
- * @control: Control FD from parent
+ * @control: control FD from parent
  *
  * This function will wait for the container continue message from the
  * parent process.  It will send this message on the socket pair stored in
@@ -225,38 +225,25 @@ static int lxcContainerWaitForContinue(int control)
 
 
 /**
- * lxcContainerRenameAndEnableInterfaces:
- * @nveths: number of interfaces
- * @veths: interface names
+ * lxcEnableInterfaces:
+ * @vm: Pointer to vm structure
  *
- * This function will rename the interfaces to ethN
- * with id ascending order from zero and enable the
- * renamed interfaces for this container.
+ * This function will enable the interfaces for this container.
  *
  * Returns 0 on success or nonzero in case of error
  */
-static int lxcContainerRenameAndEnableInterfaces(unsigned int nveths,
-                                                 char **veths)
+static int lxcContainerEnableInterfaces(unsigned int nveths,
+                                        char **veths)
 {
     int rc = 0;
     unsigned int i;
-    char *newname = NULL;
 
     for (i = 0 ; i < nveths ; i++) {
-        rc = virAsprintf(&newname, "eth%d", i);
-        if (rc < 0)
+        DEBUG("Enabling %s", veths[i]);
+        rc =  vethInterfaceUpOrDown(veths[i], 1);
+        if (0 != rc) {
             goto error_out;
-
-        DEBUG("Renaming %s to %s", veths[i], newname);
-        rc = setInterfaceName(veths[i], newname);
-        if (0 != rc)
-            goto error_out;
-
-        DEBUG("Enabling %s", newname);
-        rc =  vethInterfaceUpOrDown(newname, 1);
-        if (0 != rc)
-            goto error_out;
-        VIR_FREE(newname);
+        }
     }
 
     /* enable lo device only if there were other net devices */
@@ -264,7 +251,6 @@ static int lxcContainerRenameAndEnableInterfaces(unsigned int nveths,
         rc = vethInterfaceUpOrDown("lo", 1);
 
 error_out:
-    VIR_FREE(newname);
     return rc;
 }
 
@@ -308,7 +294,7 @@ static int lxcContainerPivotRoot(virDomainFSDefPtr root)
     /* root->parent must be private, so make / private. */
     if (mount("", "/", NULL, MS_PRIVATE|MS_REC, NULL) < 0) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Failed to make root private"));
+                             _("failed to make root private"));
         goto err;
     }
 
@@ -319,7 +305,7 @@ static int lxcContainerPivotRoot(virDomainFSDefPtr root)
 
     if ((rc = virFileMakePath(oldroot)) < 0) {
         virReportSystemError(NULL, rc,
-                             _("Failed to create %s"),
+                             _("failed to create %s"),
                              oldroot);
         goto err;
     }
@@ -328,7 +314,7 @@ static int lxcContainerPivotRoot(virDomainFSDefPtr root)
      * on separate filesystems */
     if (mount("tmprootfs", oldroot, "tmpfs", 0, NULL) < 0) {
         virReportSystemError(NULL, errno,
-                             _("Failed to mount empty tmpfs at %s"),
+                             _("failed to mount empty tmpfs at %s"),
                              oldroot);
         goto err;
     }
@@ -341,7 +327,7 @@ static int lxcContainerPivotRoot(virDomainFSDefPtr root)
 
     if ((rc = virFileMakePath(newroot)) < 0) {
         virReportSystemError(NULL, rc,
-                             _("Failed to create %s"),
+                             _("failed to create %s"),
                              newroot);
         goto err;
     }
@@ -349,7 +335,7 @@ static int lxcContainerPivotRoot(virDomainFSDefPtr root)
     /* ... and mount our root onto it */
     if (mount(root->src, newroot, NULL, MS_BIND|MS_REC, NULL) < 0) {
         virReportSystemError(NULL, errno,
-                             _("Failed to bind new root %s into tmpfs"),
+                             _("failed to bind new root %s into tmpfs"),
                              root->src);
         goto err;
     }
@@ -358,7 +344,7 @@ static int lxcContainerPivotRoot(virDomainFSDefPtr root)
      * root->src bind-mounted onto '/new' */
     if (chdir(newroot) < 0) {
         virReportSystemError(NULL, errno,
-                             _("Failed to chroot into %s"), newroot);
+                             _("failed to chroot into %s"), newroot);
         goto err;
     }
 
@@ -366,7 +352,7 @@ static int lxcContainerPivotRoot(virDomainFSDefPtr root)
      * this and will soon be unmounted completely */
     if (pivot_root(".", ".oldroot") < 0) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Failed to pivot root"));
+                             _("failed to pivot root"));
         goto err;
     }
 
@@ -409,13 +395,13 @@ static int lxcContainerMountBasicFS(virDomainFSDefPtr root)
     for (i = 0 ; i < ARRAY_CARDINALITY(mnts) ; i++) {
         if (virFileMakePath(mnts[i].dst) < 0) {
             virReportSystemError(NULL, errno,
-                                 _("Failed to mkdir %s"),
+                                 _("failed to mkdir %s"),
                                  mnts[i].src);
             goto cleanup;
         }
         if (mount(mnts[i].src, mnts[i].dst, mnts[i].type, 0, NULL) < 0) {
             virReportSystemError(NULL, errno,
-                                 _("Failed to mount %s on %s"),
+                                 _("failed to mount %s on %s"),
                                  mnts[i].type, mnts[i].type);
             goto cleanup;
         }
@@ -423,14 +409,14 @@ static int lxcContainerMountBasicFS(virDomainFSDefPtr root)
 
     if ((rc = virFileMakePath("/dev/pts") < 0)) {
         virReportSystemError(NULL, rc, "%s",
-                             _("Cannot create /dev/pts"));
+                             _("cannot create /dev/pts"));
         goto cleanup;
     }
 
     VIR_DEBUG("Trying to move %s to %s", devpts, "/dev/pts");
     if ((rc = mount(devpts, "/dev/pts", NULL, MS_MOVE, NULL)) < 0) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Failed to mount /dev/pts in container"));
+                             _("failed to mount /dev/pts in container"));
         goto cleanup;
     }
 
@@ -465,7 +451,7 @@ static int lxcContainerPopulateDevices(void)
         if (mknod(devs[i].path, S_IFCHR, dev) < 0 ||
             chmod(devs[i].path, devs[i].mode)) {
             virReportSystemError(NULL, errno,
-                                 _("Failed to make device %s"),
+                                 _("failed to make device %s"),
                                  devs[i].path);
             return -1;
         }
@@ -474,7 +460,7 @@ static int lxcContainerPopulateDevices(void)
     if (access("/dev/pts/ptmx", W_OK) == 0) {
         if (symlink("/dev/pts/ptmx", "/dev/ptmx") < 0) {
             virReportSystemError(NULL, errno, "%s",
-                                 _("Failed to create symlink /dev/ptmx to /dev/pts/ptmx"));
+                                 _("failed to create symlink /dev/ptmx to /dev/pts/ptmx"));
             return -1;
         }
     } else {
@@ -482,7 +468,7 @@ static int lxcContainerPopulateDevices(void)
         if (mknod("/dev/ptmx", S_IFCHR, dev) < 0 ||
             chmod("/dev/ptmx", 0666)) {
             virReportSystemError(NULL, errno, "%s",
-                                 _("Failed to make device /dev/ptmx"));
+                                 _("failed to make device /dev/ptmx"));
             return -1;
         }
     }
@@ -512,16 +498,17 @@ static int lxcContainerMountNewFS(virDomainDefPtr vmDef)
 
         if (virFileMakePath(vmDef->fss[i]->dst) < 0) {
             virReportSystemError(NULL, errno,
-                                 _("Failed to create %s"),
+                                 _("failed to create %s"),
                                  vmDef->fss[i]->dst);
             VIR_FREE(src);
             return -1;
         }
         if (mount(src, vmDef->fss[i]->dst, NULL, MS_BIND, NULL) < 0) {
-            virReportSystemError(NULL, errno,
-                                 _("Failed to mount %s at %s"),
-                                 src, vmDef->fss[i]->dst);
             VIR_FREE(src);
+            virReportSystemError(NULL, errno,
+                                 _("failed to mount %s at %s"),
+                                 vmDef->fss[i]->src,
+                                 vmDef->fss[i]->dst);
             return -1;
         }
         VIR_FREE(src);
@@ -542,7 +529,7 @@ static int lxcContainerUnmountOldFS(void)
 
     if (!(procmnt = setmntent("/proc/mounts", "r"))) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Failed to read /proc/mounts"));
+                             _("failed to read /proc/mounts"));
         return -1;
     }
     while (getmntent_r(procmnt, &mntent, mntbuf, sizeof(mntbuf)) != NULL) {
@@ -571,7 +558,7 @@ static int lxcContainerUnmountOldFS(void)
         VIR_DEBUG("Umount %s", mounts[i]);
         if (umount(mounts[i]) < 0) {
             virReportSystemError(NULL, errno,
-                                 _("Failed to unmount '%s'"),
+                                 _("failed to unmount '%s'"),
                                  mounts[i]);
             return -1;
         }
@@ -621,7 +608,7 @@ static int lxcContainerSetupExtraMounts(virDomainDefPtr vmDef)
 
     if (mount("", "/", NULL, MS_SLAVE|MS_REC, NULL) < 0) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Failed to make / slave"));
+                             _("failed to make / slave"));
         return -1;
     }
     for (i = 0 ; i < vmDef->nfss ; i++) {
@@ -635,7 +622,7 @@ static int lxcContainerSetupExtraMounts(virDomainDefPtr vmDef)
                   MS_BIND,
                   NULL) < 0) {
             virReportSystemError(NULL, errno,
-                                 _("Failed to mount %s at %s"),
+                                 _("failed to mount %s at %s"),
                                  vmDef->fss[i]->src,
                                  vmDef->fss[i]->dst);
             return -1;
@@ -645,7 +632,7 @@ static int lxcContainerSetupExtraMounts(virDomainDefPtr vmDef)
     /* mount /proc */
     if (mount("lxcproc", "/proc", "proc", 0, NULL) < 0) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Failed to mount /proc"));
+                             _("failed to mount /proc"));
         return -1;
     }
 
@@ -684,21 +671,22 @@ static int lxcContainerDropCapabilities(void)
                              CAP_MAC_ADMIN, /* No messing with LSM config */
                              -1 /* sentinal */)) < 0) {
         lxcError(NULL, NULL, VIR_ERR_INTERNAL_ERROR,
-                 _("Failed to remove capabilities: %d"), ret);
+                 _("failed to remove capabilities %d"), ret);
         return -1;
     }
 
     if ((ret = capng_apply(CAPNG_SELECT_BOTH)) < 0) {
         lxcError(NULL, NULL, VIR_ERR_INTERNAL_ERROR,
-                 _("Failed to apply capabilities: %d"), ret);
+                 _("failed to apply capabilities: %d"), ret);
         return -1;
     }
 
-    /* We do not need to call capng_lock() in this case. The bounding
-     * set restriction will prevent them reacquiring sys_boot/module/time,
-     * etc which is all that matters for the container. Once inside the
-     * container it is fine for SECURE_NOROOT / SECURE_NO_SETUID_FIXUP to
-     * be unmasked  - they can never escape the bounding set. */
+    /* Need to prevent them regaining any caps on exec */
+    if ((ret = capng_lock()) < 0) {
+        lxcError(NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+                 _("failed to lock capabilities: %d"), ret);
+        return -1;
+    }
 
 #else
     VIR_WARN0(_("libcap-ng support not compiled in, unable to clear capabilities"));
@@ -708,8 +696,8 @@ static int lxcContainerDropCapabilities(void)
 
 
 /**
- * lxcContainerChild:
- * @data: pointer to container arguments
+ * lxcChild:
+ * @argv: Pointer to container arguments
  *
  * This function is run in the process clone()'d in lxcStartContainer.
  * Perform a number of container setup tasks:
@@ -750,9 +738,8 @@ static int lxcContainerChild( void *data )
     ttyfd = open(ttyPath, O_RDWR|O_NOCTTY);
     if (ttyfd < 0) {
         virReportSystemError(NULL, errno,
-                             _("Failed to open tty %s"),
+                             _("failed to open tty %s"),
                              ttyPath);
-        VIR_FREE(ttyPath);
         return -1;
     }
     VIR_FREE(ttyPath);
@@ -770,9 +757,8 @@ static int lxcContainerChild( void *data )
     if (lxcContainerWaitForContinue(argv->monitor) < 0)
         return -1;
 
-    /* rename and enable interfaces */
-    if (lxcContainerRenameAndEnableInterfaces(argv->nveths,
-                                              argv->veths) < 0)
+    /* enable interfaces */
+    if (lxcContainerEnableInterfaces(argv->nveths, argv->veths) < 0)
         return -1;
 
     /* drop a set of root capabilities */
@@ -790,11 +776,8 @@ static int userns_supported(void)
 
 /**
  * lxcContainerStart:
- * @def: pointer to virtual machine structure
- * @nveths: number of interfaces
- * @veths: interface names
- * @control: control FD to the container
- * @ttyPath: path of tty to set as the container console
+ * @driver: pointer to driver structure
+ * @vm: pointer to virtual machine structure
  *
  * Starts a container process by calling clone() with the namespace flags
  *
@@ -833,7 +816,7 @@ int lxcContainerStart(virDomainDefPtr def,
 
     if (pid < 0) {
         virReportSystemError(NULL, errno, "%s",
-                             _("Failed to run clone container"));
+                             _("failed to run clone container"));
         return -1;
     }
 

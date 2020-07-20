@@ -90,10 +90,9 @@ esxSupportsLongMode(virConnectPtr conn)
 
     if (esxVI_String_AppendValueToList(conn, &propertyNameList,
                                        "hardware.cpuFeature") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host,
-                                        priv->host->hostFolder,
-                                        "HostSystem", propertyNameList,
-                                        esxVI_Boolean_True, &hostSystem) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->hostFolder,
+                               "HostSystem", propertyNameList,
+                               esxVI_Boolean_True, &hostSystem) < 0) {
         goto failure;
     }
 
@@ -247,7 +246,7 @@ esxCapsInit(virConnectPtr conn)
  * If no port is specified the default port is set dependent on the scheme and
  * transport parameter:
  * - esx+http  80
- * - esx+https 443
+ * - esx+https 433
  * - gsx+http  8222
  * - gsx+https 8333
  *
@@ -504,30 +503,6 @@ esxClose(virConnectPtr conn)
 }
 
 
-static int
-esxIsSecure(virConnectPtr conn)
-{
-    esxPrivate *priv = (esxPrivate *)conn->privateData;
-
-    if (STRCASEEQ(priv->transport, "https")) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-
-static int
-esxIsEncrypted(virConnectPtr conn)
-{
-    esxPrivate *priv = (esxPrivate *)conn->privateData;
-
-    if (STRCASEEQ(priv->transport, "https")) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
 
 static esxVI_Boolean
 esxSupportsVMotion(virConnectPtr conn)
@@ -547,10 +522,9 @@ esxSupportsVMotion(virConnectPtr conn)
 
     if (esxVI_String_AppendValueToList(conn, &propertyNameList,
                                        "capability.vmotionSupported") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host,
-                                        priv->host->hostFolder,
-                                        "HostSystem", propertyNameList,
-                                        esxVI_Boolean_True, &hostSystem) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->hostFolder,
+                               "HostSystem", propertyNameList,
+                               esxVI_Boolean_True, &hostSystem) < 0) {
         goto failure;
     }
 
@@ -679,10 +653,9 @@ esxGetHostname(virConnectPtr conn)
           (conn, &propertyNameList,
            "config.network.dnsConfig.hostName\0"
            "config.network.dnsConfig.domainName\0") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host,
-                                        priv->host->hostFolder,
-                                        "HostSystem", propertyNameList,
-                                        esxVI_Boolean_True, &hostSystem) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->hostFolder,
+                               "HostSystem", propertyNameList,
+                               esxVI_Boolean_True, &hostSystem) < 0) {
         goto failure;
     }
 
@@ -777,10 +750,9 @@ esxNodeGetInfo(virConnectPtr conn, virNodeInfoPtr nodeinfo)
                                            "hardware.memorySize\0"
                                            "hardware.numaInfo.numNodes\0"
                                            "summary.hardware.cpuModel\0") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host,
-                                        priv->host->hostFolder,
-                                        "HostSystem", propertyNameList,
-                                        esxVI_Boolean_True, &hostSystem) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->hostFolder,
+                               "HostSystem", propertyNameList,
+                               esxVI_Boolean_True, &hostSystem) < 0) {
         goto failure;
     }
 
@@ -878,7 +850,7 @@ esxNodeGetInfo(virConnectPtr conn, virNodeInfoPtr nodeinfo)
 
     nodeinfo->memory = memorySize / 1024; /* Scale from bytes to kilobytes */
     nodeinfo->cpus = cpuInfo_numCpuCores;
-    nodeinfo->mhz = cpuInfo_hz / (1000 * 1000); /* Scale from hz to mhz */
+    nodeinfo->mhz = cpuInfo_hz / (1024 * 1024); /* Scale from hz to mhz */
     nodeinfo->nodes = numaInfo_numNodes;
     nodeinfo->sockets = cpuInfo_numCpuPackages;
     nodeinfo->cores = cpuInfo_numCpuPackages > 0
@@ -942,10 +914,9 @@ esxListDomains(virConnectPtr conn, int *ids, int maxids)
 
     if (esxVI_String_AppendValueToList(conn, &propertyNameList,
                                        "runtime.powerState") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host, priv->host->vmFolder,
-                                        "VirtualMachine", propertyNameList,
-                                        esxVI_Boolean_True,
-                                        &virtualMachineList) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->vmFolder,
+                               "VirtualMachine", propertyNameList,
+                               esxVI_Boolean_True, &virtualMachineList) < 0) {
         goto failure;
     }
 
@@ -999,7 +970,7 @@ esxNumberOfDomains(virConnectPtr conn)
         return -1;
     }
 
-    return esxVI_LookupNumberOfDomainsByPowerState
+    return esxVI_GetNumberOfDomainsByPowerState
              (conn, priv->host, esxVI_VirtualMachinePowerState_PoweredOn,
               esxVI_Boolean_False);
 }
@@ -1028,10 +999,9 @@ esxDomainLookupByID(virConnectPtr conn, int id)
                                            "name\0"
                                            "runtime.powerState\0"
                                            "config.uuid\0") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host, priv->host->vmFolder,
-                                        "VirtualMachine", propertyNameList,
-                                        esxVI_Boolean_True,
-                                        &virtualMachineList) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->vmFolder,
+                               "VirtualMachine", propertyNameList,
+                               esxVI_Boolean_True, &virtualMachineList) < 0) {
         goto failure;
     }
 
@@ -1112,10 +1082,9 @@ esxDomainLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
                                            "name\0"
                                            "runtime.powerState\0"
                                            "config.uuid\0") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host, priv->host->vmFolder,
-                                        "VirtualMachine", propertyNameList,
-                                        esxVI_Boolean_True,
-                                        &virtualMachineList) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->vmFolder,
+                               "VirtualMachine", propertyNameList,
+                               esxVI_Boolean_True, &virtualMachineList) < 0) {
         goto failure;
     }
 
@@ -1199,10 +1168,9 @@ esxDomainLookupByName(virConnectPtr conn, const char *name)
                                            "name\0"
                                            "runtime.powerState\0"
                                            "config.uuid\0") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host, priv->host->vmFolder,
-                                        "VirtualMachine", propertyNameList,
-                                        esxVI_Boolean_True,
-                                        &virtualMachineList) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->vmFolder,
+                               "VirtualMachine", propertyNameList,
+                               esxVI_Boolean_True, &virtualMachineList) < 0) {
         goto failure;
     }
 
@@ -1259,89 +1227,6 @@ esxDomainLookupByName(virConnectPtr conn, const char *name)
 }
 
 
-static int
-esxDomainIsActive(virDomainPtr dom)
-{
-    esxPrivate *priv = (esxPrivate *)dom->conn->privateData;
-    esxVI_String *propertyNameList = NULL;
-    esxVI_ObjectContent *virtualMachineList = NULL;
-    esxVI_ObjectContent *virtualMachine = NULL;
-    esxVI_VirtualMachinePowerState powerState;
-    int id_candidate = -1;
-    char *name_candidate = NULL;
-    unsigned char uuid_candidate[VIR_UUID_BUFLEN];
-    char uuid_string[VIR_UUID_STRING_BUFLEN];
-    int ret = -1;
-
-    if (esxVI_EnsureSession(dom->conn, priv->host) < 0) {
-        goto cleanup;
-    }
-
-    if (esxVI_String_AppendValueListToList(dom->conn, &propertyNameList,
-                                           "configStatus\0"
-                                           "name\0"
-                                           "runtime.powerState\0"
-                                           "config.uuid\0") < 0 ||
-        esxVI_LookupObjectContentByType(dom->conn, priv->host, priv->host->vmFolder,
-                                        "VirtualMachine", propertyNameList,
-                                        esxVI_Boolean_True,
-                                        &virtualMachineList) < 0) {
-        goto cleanup;
-    }
-
-    for (virtualMachine = virtualMachineList; virtualMachine != NULL;
-         virtualMachine = virtualMachine->_next) {
-        VIR_FREE(name_candidate);
-
-        if (esxVI_GetVirtualMachineIdentity(dom->conn, virtualMachine,
-                                            &id_candidate, &name_candidate,
-                                            uuid_candidate) < 0) {
-            goto cleanup;
-        }
-
-        if (memcmp(dom->uuid, uuid_candidate,
-                   VIR_UUID_BUFLEN * sizeof(unsigned char)) != 0) {
-            continue;
-        }
-
-        if (esxVI_GetVirtualMachinePowerState(dom->conn, virtualMachine,
-                                              &powerState) < 0) {
-            goto cleanup;
-        }
-
-        /* Only running/suspended virtual machines have an ID != -1 */
-        if (powerState != esxVI_VirtualMachinePowerState_PoweredOff) {
-            ret = 1;
-        } else {
-            ret = 0;
-        }
-
-        break;
-    }
-
-    if (ret == -1) {
-        virUUIDFormat(dom->uuid, uuid_string);
-
-        ESX_ERROR(dom->conn, VIR_ERR_NO_DOMAIN, "No domain with UUID '%s'",
-                  uuid_string);
-    }
-
-  cleanup:
-    esxVI_String_Free(&propertyNameList);
-    esxVI_ObjectContent_Free(&virtualMachineList);
-    VIR_FREE(name_candidate);
-
-    return ret;
-}
-
-
-static int
-esxDomainIsPersistent(virDomainPtr dom ATTRIBUTE_UNUSED)
-{
-    /* ESX has no concept of transient domains, so
-     * all of them are persistent */
-    return 1;
-}
 
 static int
 esxDomainSuspend(virDomainPtr domain)
@@ -2157,10 +2042,10 @@ esxDomainGetMaxVcpus(virDomainPtr domain)
 
     if (esxVI_String_AppendValueToList(domain->conn, &propertyNameList,
                                        "capability.maxSupportedVcpus") < 0 ||
-        esxVI_LookupObjectContentByType(domain->conn, priv->host,
-                                        priv->host->hostFolder, "HostSystem",
-                                        propertyNameList, esxVI_Boolean_True,
-                                        &hostSystem) < 0) {
+        esxVI_GetObjectContent(domain->conn, priv->host,
+                               priv->host->hostFolder, "HostSystem",
+                               propertyNameList, esxVI_Boolean_True,
+                               &hostSystem) < 0) {
         goto failure;
     }
 
@@ -2369,7 +2254,6 @@ esxListDefinedDomains(virConnectPtr conn, char **const names, int maxnames)
     esxVI_DynamicProperty *dynamicProperty = NULL;
     esxVI_VirtualMachinePowerState powerState;
     int count = 0;
-    int i;
 
     if (names == NULL || maxnames < 0) {
         goto failure;
@@ -2386,10 +2270,9 @@ esxListDefinedDomains(virConnectPtr conn, char **const names, int maxnames)
     if (esxVI_String_AppendValueListToList(conn, &propertyNameList,
                                            "name\0"
                                            "runtime.powerState\0") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host, priv->host->vmFolder,
-                                        "VirtualMachine", propertyNameList,
-                                        esxVI_Boolean_True,
-                                        &virtualMachineList) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, priv->host->vmFolder,
+                               "VirtualMachine", propertyNameList,
+                               esxVI_Boolean_True, &virtualMachineList) < 0) {
         goto failure;
     }
 
@@ -2437,10 +2320,6 @@ esxListDefinedDomains(virConnectPtr conn, char **const names, int maxnames)
     return count;
 
   failure:
-    for (i = 0; i < count; ++i) {
-        VIR_FREE(names[i]);
-    }
-
     count = -1;
 
     goto cleanup;
@@ -2458,7 +2337,7 @@ esxNumberOfDefinedDomains(virConnectPtr conn)
         return -1;
     }
 
-    return esxVI_LookupNumberOfDomainsByPowerState
+    return esxVI_GetNumberOfDomainsByPowerState
              (conn, priv->host, esxVI_VirtualMachinePowerState_PoweredOn,
               esxVI_Boolean_True);
 }
@@ -2531,8 +2410,6 @@ esxDomainDefineXML(virConnectPtr conn, const char *xml ATTRIBUTE_UNUSED)
     esxPrivate *priv = (esxPrivate *)conn->privateData;
     virDomainDefPtr def = NULL;
     char *vmx = NULL;
-    int i;
-    virDomainDiskDefPtr disk = NULL;
     esxVI_ObjectContent *virtualMachine = NULL;
     char *datastoreName = NULL;
     char *directoryName = NULL;
@@ -2581,51 +2458,31 @@ esxDomainDefineXML(virConnectPtr conn, const char *xml ATTRIBUTE_UNUSED)
         goto failure;
     }
 
-    /*
-     * Build VMX datastore URL. Use the source of the first file-based harddisk
-     * to deduce the datastore and path for the VMX file. Don't just use the
-     * first disk, because it may be CDROM disk and ISO images are normaly not
-     * located in the virtual machine's directory. This approach to deduce the
-     * datastore isn't perfect but should work in the majority of cases.
-     */
+    /* Build VMX datastore URL */
     if (def->ndisks < 1) {
         ESX_ERROR(conn, VIR_ERR_INTERNAL_ERROR,
-                  "Domain XML doesn't contain any disks, cannot deduce "
-                  "datastore and path for VMX file");
+                  "Domain XML doesn't contain a disk, cannot deduce datastore "
+                  "and path for VMX file");
         goto failure;
     }
 
-    for (i = 0; i < def->ndisks; ++i) {
-        if (def->disks[i]->device == VIR_DOMAIN_DISK_DEVICE_DISK &&
-            def->disks[i]->type == VIR_DOMAIN_DISK_TYPE_FILE) {
-            disk = def->disks[i];
-            break;
-        }
-    }
-
-    if (disk == NULL) {
+    if (def->disks[0]->src == NULL) {
         ESX_ERROR(conn, VIR_ERR_INTERNAL_ERROR,
-                  "Domain XML doesn't contain any file-based harddisks, "
-                  "cannot deduce datastore and path for VMX file");
+                  "First disk has no source, cannot deduce datastore and path "
+                  "for VMX file");
         goto failure;
     }
 
-    if (disk->src == NULL) {
-        ESX_ERROR(conn, VIR_ERR_INTERNAL_ERROR,
-                  "First file-based harddisk has no source, cannot deduce "
-                  "datastore and path for VMX file");
-        goto failure;
-    }
-
-    if (esxUtil_ParseDatastoreRelatedPath(conn, disk->src, &datastoreName,
-                                          &directoryName, &fileName) < 0) {
+    if (esxUtil_ParseDatastoreRelatedPath(conn, def->disks[0]->src,
+                                          &datastoreName, &directoryName,
+                                          &fileName) < 0) {
         goto failure;
     }
 
     if (! virFileHasSuffix(fileName, ".vmdk")) {
         ESX_ERROR(conn, VIR_ERR_INTERNAL_ERROR,
-                  "Expecting source '%s' of first file-based harddisk to be a "
-                  "VMDK image", disk->src);
+                  "Expecting source of first disk '%s' to be a VMDK image",
+                  def->disks[0]->src);
         goto failure;
     }
 
@@ -2671,8 +2528,8 @@ esxDomainDefineXML(virConnectPtr conn, const char *xml ATTRIBUTE_UNUSED)
         goto failure;
     }
 
-    if (esxVI_LookupResourcePoolByHostSystem(conn, priv->host, hostSystem,
-                                             &resourcePool) < 0) {
+    if (esxVI_GetResourcePool(conn, priv->host, hostSystem,
+                              &resourcePool) < 0) {
         goto failure;
     }
 
@@ -2791,13 +2648,13 @@ esxDomainUndefine(virDomainPtr domain)
  *
  * - reservation (VIR_DOMAIN_SCHED_FIELD_LLONG >= 0, in megaherz)
  *
- *   The amount of CPU resource that is guaranteed to be available to the domain.
+ *   Amount of CPU resource that is guaranteed available to the domain.
  *
  *
  * - limit (VIR_DOMAIN_SCHED_FIELD_LLONG >= 0, or -1, in megaherz)
  *
- *   The CPU utilization of the domain will be limited to this value, even if
- *   more CPU resources are available. If the limit is set to -1, the CPU
+ *   The CPU utilization of the domain will not exceed this limit, even if
+ *   there are available CPU resources. If the limit is set to -1, the CPU
  *   utilization of the domain is unlimited. If the limit is not set to -1, it
  *   must be greater than or equal to the reservation.
  *
@@ -3192,8 +3049,8 @@ esxDomainMigratePerform(virDomainPtr domain,
         goto failure;
     }
 
-    if (esxVI_LookupResourcePoolByHostSystem(domain->conn, priv->vCenter,
-                                             hostSystem, &resourcePool) < 0) {
+    if (esxVI_GetResourcePool(domain->conn, priv->vCenter, hostSystem,
+                              &resourcePool) < 0) {
         goto failure;
     }
 
@@ -3293,8 +3150,8 @@ esxNodeGetFreeMemory(virConnectPtr conn)
         goto failure;
     }
 
-    if (esxVI_LookupResourcePoolByHostSystem(conn, priv->host, hostSystem,
-                                             &managedObjectReference) < 0) {
+    if (esxVI_GetResourcePool(conn, priv->host, hostSystem,
+                              &managedObjectReference) < 0) {
         goto failure;
     }
 
@@ -3303,11 +3160,9 @@ esxNodeGetFreeMemory(virConnectPtr conn)
     /* Get memory usage of resource pool */
     if (esxVI_String_AppendValueToList(conn, &propertyNameList,
                                        "runtime.memory") < 0 ||
-        esxVI_LookupObjectContentByType(conn, priv->host,
-                                        managedObjectReference,
-                                        "ResourcePool", propertyNameList,
-                                        esxVI_Boolean_False,
-                                        &resourcePool) < 0) {
+        esxVI_GetObjectContent(conn, priv->host, managedObjectReference,
+                               "ResourcePool", propertyNameList,
+                               esxVI_Boolean_False, &resourcePool) < 0) {
         goto failure;
     }
 
@@ -3359,7 +3214,6 @@ static virDriver esxDriver = {
     esxSupportsFeature,              /* supports_feature */
     esxGetType,                      /* type */
     esxGetVersion,                   /* version */
-    NULL,                            /* libvirtVersion (impl. in libvirt.c) */
     esxGetHostname,                  /* hostname */
     NULL,                            /* getMaxVcpus */
     esxNodeGetInfo,                  /* nodeGetInfo */
@@ -3421,10 +3275,6 @@ static virDriver esxDriver = {
     NULL,                            /* nodeDeviceReAttach */
     NULL,                            /* nodeDeviceReset */
     NULL,                            /* domainMigratePrepareTunnel */
-    esxIsEncrypted,                  /* isEncrypted */
-    esxIsSecure,                     /* isSecure */
-    esxDomainIsActive,               /* domainIsActive */
-    esxDomainIsPersistent,           /* domainIsPersistent */
 };
 
 
