@@ -1,0 +1,83 @@
+  * Merge from debian testing. Remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin
+      + Recommends qemu-kvm (>= 0.11.0-0ubuntu6)
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such
+      + We call libxen-dev libxen3-dev, so change all references
+      + Build-Depends on libxml2-utils
+      + Build-Depends on open-iscsi-utils instead of open-iscsi due to
+        LP: #414986
+    - debian/postinst:
+      + rename the libvirt group to libvirtd
+      + add each admin user to the libvirtd group
+    - debian/libvirt-bin.postrm: rename the libvirt group to libvirtd
+    - debian/rules: add DEB_MAKE_CHECK_TARGET := check
+    - debian/patches/900[0-7]: updated/refreshed for new paths in 0.7.2
+    - debian/patches/series: don't apply 0002-qemu-disable-network.diff.patch
+    - AppArmor integration:
+      + debian/control: Build-Depends on libapparmor-dev and Suggests
+        apparmor (>= 2.3+1289-0ubuntu14)
+      + debian/libvirt-bin.dirs: add /etc/apparmor.d/abstractions,
+        /etc/apparmor.d/force-complain, /etc/apparmor.d/libvirt,
+        /etc/cron.daily and /usr/share/apport/package-hooks
+      + add debian/libvirt-bin.cron.daily (LP: #438165)
+      + add debian/libvirt-bin.apport
+      + debian/libvirt-bin.install: install apparmor profiles, abstractions
+        and apport hook
+      + debian/postinst: reload apparmor profiles
+      + debian/libvirt-bin.postrm: remove apparmor symlinks on purge
+      + debian/libvirt-bin.preinst: added to force complain on certain
+        upgrades
+      + debian/README.Debian: add AppArmor section based on the upstream
+        documentation
+      + debian/rules: use --with-apparmor and copy apparmor and apport hook to
+        debian/tmp
+    - Dropped the following patches now included upstream:
+      + 0005-Close-logfile-fd-after-spawning-qemu.patch
+      + 9090-reenable-nonfile-labels.patch
+      + 9091-apparmor.patch
+      + 9092-apparmor-autoreconf.patch
+  * AppArmor integration updates:
+    - debian/apparmor/usr.sbin.libvirtd: allow libvirtd access to
+      /usr/lib/libvirt/* (LP: #480478)
+    - debian/apparmor/libvirt-qemu: allow guests access to
+      /etc/pki/libvirt-vnc/** (LP: #484562)
+    - debian/libvirt-bin.postinst: 0.7.2 moved /usr/bin/virt-aa-helper to
+      /usr/lib/libvirt, so the profile changed from usr.bin.virt-aa-helper
+      to usr.lib.libvirt.virt-aa-helper and needs to be migrated. If the user
+      made no changes to the old profile, remove it, otherwise, update the
+      paths, preserving the shipped usr.lib.libvirt.virt-aa-helper
+    - update to 0.7.4 version of the sVirt AppArmor driver (can be dropped in
+      0.7.4):
+      + debian/patches/9008-apparmor-caps-mockup.patch
+      + debian/patches/9009-apparmor-lp453335.patch
+      + debian/patches/9010-apparmor-lp460271.patch
+      + debian/patches/9011-apparmor-code-cleanups.patch
+    - add virt-aa-helper-test and examples/apparmor that were omitted from the
+      upstream tarball (can be dropped in 0.7.5):
+      + debian/patches/9012-apparmor-add-virt-aa-helper-test.patch
+      + debian/patches/9013-apparmor-examples.patch
+      + debian/rules: add post-patches target to make virt-aa-helper-test
+        executable
+  * debian/patches/0005-Fix-SELinux-linking-issues.patch: updated to work
+    when both apparmor and selinux are available. This patch should be
+    dropped in 0.7.4.
+  * debian/patches/9007-default-config-test-case.patch: updated to not fail
+    if building in a deep directory
+  * debian/patches/9014-event-fuzz.patch: add a little fuzz to not be quite
+    so precise with expected expiry time. Fixes FTBFS with HZ=100 kernels.
+    Can be dropped in 0.7.5.
+  * debian/patches/9015-hal-startup-failure-is-nonfatal.patch: disable hal
+    driver if hald is not running instead of dying. Can be dropped in
+    0.7.4.
+  * debian/control: temporarily remove Build-Depends on libcap-ng-dev, which
+    isn't available in Ubuntu main yet
+  * revert change to new source format 3.0 (quilt) since Launchpad can't
+    handle it yet (see LP: #293106)
+  * [213ca47] switch to new source format 3.0 (quilt)
+  * [f5a10e9] Depend on hal (Closes: #556730)
+  * [7d1422d] Drop build-dep on libpolkit-dbus-dev (Closes: #549500)
+  * [95ad85c] Depend on libcap-ng-dev for lxc driver.
