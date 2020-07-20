@@ -1,0 +1,17 @@
+  * Team upload
+  [ Guido Günther ]
+  * Upload to experimental
+  * [1b6982f] New upstream version 6.2.0
+    Contains fix for CVE-2020-10701. (Closes: #955841)
+      Thanks to Carnil for the triage
+    Contains fix for CVE-2020-12430. (Closes: #959447)
+  [ Andrea Bolognani ]
+  * [ba77756] patches: Drop all gnulib-related patches
+    Specifically:
+      openpty-Skip-test-if-no-pty-is-available.patch
+      Disable-gnulib-s-test-nonplocking-pipe.sh.patch
+      test-posix_openpt-don-t-fail-on-EACCESS.patch
+  * [2e0b5f1] patches: Add tests-Mock-[...]-for-qemuhotplug.patch
+    Replaces:
+      skip-qemuhotplugtest.patch
+  * [7c1e182] debhelper: Use debhelper-compat package
