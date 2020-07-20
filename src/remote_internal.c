@@ -23,6 +23,8 @@
 
 #define _GNU_SOURCE /* for asprintf */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -43,6 +45,7 @@
 #include <rpc/xdr.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+#include "gnutls_1_0_compat.h"
 #include <libxml/uri.h>
 
 #include "internal.h"
@@ -59,6 +62,7 @@
 struct private_data {
     int magic;                  /* Should be MAGIC or DEAD. */
     int sock;                   /* Socket. */
+    pid_t pid;                  /* PID of tunnel process */
     int uses_tls;               /* TLS enabled on socket? */
     gnutls_session_t session;   /* GnuTLS session (if uses_tls != 0). */
     char *type;                 /* Cached return from remoteType. */
@@ -227,12 +231,12 @@ remoteForkDaemon(virConnectPtr conn)
 
 
 /* Must not overlap with virDrvOpenFlags */
-enum {
+enum virDrvOpenRemoteFlags {
     VIR_DRV_OPEN_REMOTE_RO = (1 << 0),
     VIR_DRV_OPEN_REMOTE_UNIX = (1 << 1),
     VIR_DRV_OPEN_REMOTE_USER = (1 << 2),
     VIR_DRV_OPEN_REMOTE_AUTOSTART = (1 << 3),
-} virDrvOpenRemoteFlags;
+};
 
 static int
 doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str, int flags)
@@ -287,7 +291,7 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
      */
     char *name = 0, *command = 0, *sockname = 0, *netcat = 0, *username = 0;
     char *server = 0, *port = 0;
-    int no_verify = 0;
+    int no_verify = 0, no_tty = 0;
     char **cmd_argv = 0;
 
     /* Return code from this function, and the private data. */
@@ -311,12 +315,13 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
     } else if (transport == trans_ssh) {
         port = strdup ("22");
         if (!port) goto out_of_memory;
-        if (uri->user) {
-            username = strdup (uri->user);
-            if (!username) goto out_of_memory;
-        }
     } else
         port = NULL;           /* Port not used for unix, ext. */
+
+    if (uri->user) {
+        username = strdup (uri->user);
+        if (!username) goto out_of_memory;
+    }
 
     /* Get the variables from the query string.
      * Then we need to reconstruct the query string (because
@@ -325,7 +330,7 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
      */
     struct query_fields *vars, *var;
     char *query;
-#if HAVE_XMLURI_QUERY_RAW
+#ifdef HAVE_XMLURI_QUERY_RAW
     query = uri->query_raw;
 #else
     query = uri->query;
@@ -352,6 +357,9 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
         } else if (strcasecmp (var->name, "no_verify") == 0) {
             no_verify = atoi (var->value);
             var->ignore = 1;
+        } else if (strcasecmp (var->name, "no_tty") == 0) {
+            no_tty = atoi (var->value);
+            var->ignore = 1;
         }
 #if DEBUG
         else
@@ -362,14 +370,14 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
 #endif
     }
 
-#if HAVE_XMLURI_QUERY_RAW
+#ifdef HAVE_XMLURI_QUERY_RAW
     if (uri->query_raw) xmlFree (uri->query_raw);
 #else
     if (uri->query) xmlFree (uri->query);
 #endif
 
     if (query_create (vars, NULL,
-#if HAVE_XMLURI_QUERY_RAW
+#ifdef HAVE_XMLURI_QUERY_RAW
                       &uri->query_raw
 #else
                       &uri->query
@@ -550,7 +558,10 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
     }
 
     case trans_ssh: {
-        int j, nr_args = username ? 10 : 8;
+        int j, nr_args = 8;
+
+        if (username) nr_args += 2; /* For -l username */
+        if (no_tty) nr_args += 5;   /* For -T -o BatchMode=yes -e none */
 
         command = command ? : strdup ("ssh");
 
@@ -565,6 +576,13 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
             cmd_argv[j++] = strdup ("-l");
             cmd_argv[j++] = strdup (username);
         }
+        if (no_tty) {
+            cmd_argv[j++] = strdup ("-T");
+            cmd_argv[j++] = strdup ("-o");
+            cmd_argv[j++] = strdup ("BatchMode=yes");
+            cmd_argv[j++] = strdup ("-e");
+            cmd_argv[j++] = strdup ("none");
+        }
         cmd_argv[j++] = strdup (server);
         cmd_argv[j++] = strdup (netcat ? netcat : "nc");
         cmd_argv[j++] = strdup ("-U");
@@ -575,7 +593,7 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
 
         /*FALLTHROUGH*/
     case trans_ext: {
-        int pid;
+        pid_t pid;
         int sv[2];
 
         /* Fork off the external process.  Use socketpair to create a private
@@ -614,6 +632,7 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
         /* Parent continues here. */
         close (sv[1]);
         priv->sock = sv[0];
+        priv->pid = pid;
     }
     } /* switch (transport) */
 
@@ -642,6 +661,14 @@ doRemoteOpen (virConnectPtr conn, struct private_data *priv, const char *uri_str
         if (priv->uses_tls && priv->session)
             gnutls_bye (priv->session, GNUTLS_SHUT_RDWR);
         close (priv->sock);
+        if (priv->pid > 0) {
+            pid_t reap;
+            do {
+                reap = waitpid(priv->pid, NULL, 0);
+                if (reap == -1 && errno == EINTR)
+                    continue;
+            } while (reap != -1 && reap != priv->pid);
+        }
     }
 
     /* Free up the URL and strings. */
@@ -680,9 +707,9 @@ remoteOpen (virConnectPtr conn, const char *uri_str, int flags)
         rflags |= VIR_DRV_OPEN_REMOTE_RO;
 
     if (uri_str) {
-        if (!strcmp(uri_str, "qemu:///system")) {
+        if (STREQ (uri_str, "qemu:///system")) {
             rflags |= VIR_DRV_OPEN_REMOTE_UNIX;
-        } else if (!strcmp(uri_str, "qemu:///session")) {
+        } else if (STREQ (uri_str, "qemu:///session")) {
             rflags |= VIR_DRV_OPEN_REMOTE_UNIX;
             if (getuid() > 0) {
                 rflags |= VIR_DRV_OPEN_REMOTE_USER;
@@ -890,6 +917,22 @@ query_free (struct query_fields *fields)
 /* GnuTLS functions used by remoteOpen. */
 static gnutls_certificate_credentials_t x509_cred;
 
+
+static int
+check_cert_file (const char *type, const char *file)
+{
+    struct stat sb;
+    if (stat(file, &sb) < 0) {
+        __virRaiseError (NULL, NULL, NULL, VIR_FROM_REMOTE, VIR_ERR_RPC,
+                         VIR_ERR_ERROR, LIBVIRT_CACERT, NULL, NULL, 0, 0,
+                         "Cannot access %s '%s': %s (%d)",
+                         type, file, strerror(errno), errno);
+        return -1;
+    }
+    return 0;
+}
+
+
 static int
 initialise_gnutls (virConnectPtr conn ATTRIBUTE_UNUSED)
 {
@@ -906,6 +949,14 @@ initialise_gnutls (virConnectPtr conn ATTRIBUTE_UNUSED)
         error (NULL, VIR_ERR_GNUTLS_ERROR, gnutls_strerror (err));
         return -1;
     }
+
+
+    if (check_cert_file("CA certificate", LIBVIRT_CACERT) < 0)
+        return -1;
+    if (check_cert_file("client key", LIBVIRT_CLIENTKEY) < 0)
+        return -1;
+    if (check_cert_file("client certificate", LIBVIRT_CLIENTCERT) < 0)
+        return -1;
 
     /* Set the trusted CA cert. */
 #if DEBUG
@@ -1061,9 +1112,11 @@ verify_certificate (virConnectPtr conn ATTRIBUTE_UNUSED,
     
         if (status & GNUTLS_CERT_REVOKED)
             reason = "The certificate has been revoked.";
-    
+
+#ifndef GNUTLS_1_0_COMPAT
         if (status & GNUTLS_CERT_INSECURE_ALGORITHM)
             reason = "The certificate uses an insecure algorithm";
+#endif
     
         error (NULL, VIR_ERR_RPC, reason);
         return -1;
@@ -1141,6 +1194,15 @@ doRemoteClose (virConnectPtr conn, struct private_data *priv)
         gnutls_bye (priv->session, GNUTLS_SHUT_RDWR);
     close (priv->sock);
 
+    if (priv->pid > 0) {
+        pid_t reap;
+        do {
+            reap = waitpid(priv->pid, NULL, 0);
+            if (reap == -1 && errno == EINTR)
+                continue;
+        } while (reap != -1 && reap != priv->pid);
+    }
+
     /* See comment for remoteType. */
     if (priv->type) free (priv->type);
 
@@ -1164,6 +1226,27 @@ remoteClose (virConnectPtr conn)
     conn->privateData = NULL;
 
     return ret;
+}
+
+static int
+remoteSupportsFeature (virConnectPtr conn, int feature)
+{
+    remote_supports_feature_args args;
+    remote_supports_feature_ret ret;
+    GET_PRIVATE (conn, -1);
+
+    /* VIR_DRV_FEATURE_REMOTE* features are handled directly. */
+    if (feature == VIR_DRV_FEATURE_REMOTE) return 1;
+
+    args.feature = feature;
+
+    memset (&ret, 0, sizeof ret);
+    if (call (conn, priv, 0, REMOTE_PROC_SUPPORTS_FEATURE,
+              (xdrproc_t) xdr_remote_supports_feature_args, (char *) &args,
+              (xdrproc_t) xdr_remote_supports_feature_ret, (char *) &ret) == -1)
+        return -1;
+
+    return ret.supported;
 }
 
 /* Unfortunately this function is defined to return a static string.
@@ -1807,6 +1890,97 @@ remoteDomainDumpXML (virDomainPtr domain, int flags)
 }
 
 static int
+remoteDomainMigratePrepare (virConnectPtr dconn,
+                            char **cookie, int *cookielen,
+                            const char *uri_in, char **uri_out,
+                            unsigned long flags, const char *dname,
+                            unsigned long resource)
+{
+    remote_domain_migrate_prepare_args args;
+    remote_domain_migrate_prepare_ret ret;
+    GET_PRIVATE (dconn, -1);
+
+    args.uri_in = uri_in == NULL ? NULL : (char **) &uri_in;
+    args.flags = flags;
+    args.dname = dname == NULL ? NULL : (char **) &dname;
+    args.resource = resource;
+
+    memset (&ret, 0, sizeof ret);
+    if (call (dconn, priv, 0, REMOTE_PROC_DOMAIN_MIGRATE_PREPARE,
+              (xdrproc_t) xdr_remote_domain_migrate_prepare_args, (char *) &args,
+              (xdrproc_t) xdr_remote_domain_migrate_prepare_ret, (char *) &ret) == -1)
+        return -1;
+
+    if (ret.cookie.cookie_len > 0) {
+        *cookie = ret.cookie.cookie_val; /* Caller frees. */
+        *cookielen = ret.cookie.cookie_len;
+    }
+    if (ret.uri_out)
+        *uri_out = *ret.uri_out; /* Caller frees. */
+
+    return 0;
+}
+
+static int
+remoteDomainMigratePerform (virDomainPtr domain,
+                            const char *cookie,
+                            int cookielen,
+                            const char *uri,
+                            unsigned long flags,
+                            const char *dname,
+                            unsigned long resource)
+{
+    remote_domain_migrate_perform_args args;
+    GET_PRIVATE (domain->conn, -1);
+
+    make_nonnull_domain (&args.dom, domain);
+    args.cookie.cookie_len = cookielen;
+    args.cookie.cookie_val = (char *) cookie;
+    args.uri = (char *) uri;
+    args.flags = flags;
+    args.dname = dname == NULL ? NULL : (char **) &dname;
+    args.resource = resource;
+
+    if (call (domain->conn, priv, 0, REMOTE_PROC_DOMAIN_MIGRATE_PERFORM,
+              (xdrproc_t) xdr_remote_domain_migrate_perform_args, (char *) &args,
+              (xdrproc_t) xdr_void, (char *) NULL) == -1)
+        return -1;
+
+    return 0;
+}
+
+static virDomainPtr
+remoteDomainMigrateFinish (virConnectPtr dconn,
+                           const char *dname,
+                           const char *cookie,
+                           int cookielen,
+                           const char *uri,
+                           unsigned long flags)
+{
+    virDomainPtr ddom;
+    remote_domain_migrate_finish_args args;
+    remote_domain_migrate_finish_ret ret;
+    GET_PRIVATE (dconn, NULL);
+
+    args.dname = (char *) dname;
+    args.cookie.cookie_len = cookielen;
+    args.cookie.cookie_val = (char *) cookie;
+    args.uri = (char *) uri;
+    args.flags = flags;
+
+    memset (&ret, 0, sizeof ret);
+    if (call (dconn, priv, 0, REMOTE_PROC_DOMAIN_MIGRATE_FINISH,
+              (xdrproc_t) xdr_remote_domain_migrate_finish_args, (char *) &args,
+              (xdrproc_t) xdr_remote_domain_migrate_finish_ret, (char *) &ret) == -1)
+        return NULL;
+
+    ddom = get_nonnull_domain (dconn, ret.ddom);
+    xdr_free ((xdrproc_t) &xdr_remote_domain_migrate_finish_ret, (char *) &ret);
+
+    return ddom;
+}
+
+static int
 remoteListDefinedDomains (virConnectPtr conn, char **const names, int maxnames)
 {
     int i;
@@ -2122,6 +2296,64 @@ remoteDomainSetSchedulerParameters (virDomainPtr domain,
     return 0;
 }
 
+static int
+remoteDomainBlockStats (virDomainPtr domain, const char *path,
+                        struct _virDomainBlockStats *stats)
+{
+    remote_domain_block_stats_args args;
+    remote_domain_block_stats_ret ret;
+    GET_PRIVATE (domain->conn, -1);
+
+    make_nonnull_domain (&args.dom, domain);
+    args.path = (char *) path;
+
+    memset (&ret, 0, sizeof ret);
+    if (call (domain->conn, priv, 0, REMOTE_PROC_DOMAIN_BLOCK_STATS,
+              (xdrproc_t) xdr_remote_domain_block_stats_args, (char *) &args,
+              (xdrproc_t) xdr_remote_domain_block_stats_ret, (char *) &ret)
+        == -1)
+        return -1;
+
+    stats->rd_req = ret.rd_req;
+    stats->rd_bytes = ret.rd_bytes;
+    stats->wr_req = ret.wr_req;
+    stats->wr_bytes = ret.wr_bytes;
+    stats->errs = ret.errs;
+
+    return 0;
+}
+
+static int
+remoteDomainInterfaceStats (virDomainPtr domain, const char *path,
+                            struct _virDomainInterfaceStats *stats)
+{
+    remote_domain_interface_stats_args args;
+    remote_domain_interface_stats_ret ret;
+    GET_PRIVATE (domain->conn, -1);
+
+    make_nonnull_domain (&args.dom, domain);
+    args.path = (char *) path;
+
+    memset (&ret, 0, sizeof ret);
+    if (call (domain->conn, priv, 0, REMOTE_PROC_DOMAIN_INTERFACE_STATS,
+              (xdrproc_t) xdr_remote_domain_interface_stats_args,
+                (char *) &args,
+              (xdrproc_t) xdr_remote_domain_interface_stats_ret,
+                (char *) &ret) == -1)
+        return -1;
+
+    stats->rx_bytes = ret.rx_bytes;
+    stats->rx_packets = ret.rx_packets;
+    stats->rx_errs = ret.rx_errs;
+    stats->rx_drop = ret.rx_drop;
+    stats->tx_bytes = ret.tx_bytes;
+    stats->tx_packets = ret.tx_packets;
+    stats->tx_errs = ret.tx_errs;
+    stats->tx_drop = ret.tx_drop;
+
+    return 0;
+}
+
 /*----------------------------------------------------------------------*/
 
 static int
@@ -2141,9 +2373,8 @@ remoteNetworkOpen (virConnectPtr conn,
     } else {
         /* Using a non-remote driver, so we need to open a
          * new connection for network APIs, forcing it to
-         * use the UNIX transport. This handles Xen / Test
-         * drivers which don't have their own impl of the
-         * network APIs.
+         * use the UNIX transport. This handles Xen driver
+         * which doesn't have its own impl of the network APIs.
          */
         struct private_data *priv = malloc (sizeof(struct private_data));
         int ret, rflags = 0;
@@ -2153,17 +2384,7 @@ remoteNetworkOpen (virConnectPtr conn,
         }
         if (flags & VIR_DRV_OPEN_RO)
             rflags |= VIR_DRV_OPEN_REMOTE_RO;
-        /* Xen driver is a single system-wide driver, so
-         * we need the main daemon. Test driver is per
-         * user, so use the per-user daemon, potentially
-         * autostarting
-         */
         rflags |= VIR_DRV_OPEN_REMOTE_UNIX;
-        if (getuid() > 0 &&
-            !strcmp(conn->driver->name, "test")) {
-            rflags |= VIR_DRV_OPEN_REMOTE_USER;
-            rflags |= VIR_DRV_OPEN_REMOTE_AUTOSTART;
-        }
 
         memset(priv, 0, sizeof(struct private_data));
         priv->magic = DEAD;
@@ -2880,6 +3101,7 @@ static virDriver driver = {
     .ver = REMOTE_PROTOCOL_VERSION,
     .open = remoteOpen,
     .close = remoteClose,
+    .supports_feature = remoteSupportsFeature,
 	.type = remoteType,
 	.version = remoteVersion,
     .getHostname = remoteGetHostname,
@@ -2923,9 +3145,16 @@ static virDriver driver = {
     .domainGetSchedulerType = remoteDomainGetSchedulerType,
     .domainGetSchedulerParameters = remoteDomainGetSchedulerParameters,
     .domainSetSchedulerParameters = remoteDomainSetSchedulerParameters,
+    .domainMigratePrepare = remoteDomainMigratePrepare,
+    .domainMigratePerform = remoteDomainMigratePerform,
+    .domainMigrateFinish = remoteDomainMigrateFinish,
+    .domainBlockStats = remoteDomainBlockStats,
+    .domainInterfaceStats = remoteDomainInterfaceStats,
+    .nodeGetCellsFreeMemory = NULL,
 };
 
 static virNetworkDriver network_driver = {
+    .name = "remote",
     .open = remoteNetworkOpen,
     .close = remoteNetworkClose,
     .numOfNetworks = remoteNumOfNetworks,

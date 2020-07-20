@@ -2,7 +2,80 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" /><link rel="stylesheet" type="text/css" href="libvirt.css" /><link rel="SHORTCUT ICON" href="/32favicon.png" /><title>Releases</title></head><body><div id="container"><div id="intro"><div id="adjustments"></div><div id="pageHeader"></div><div id="content2"><h1 class="style1">Releases</h1><p>Here is the list of official releases, however since it is early on in the
 development of libvirt, it is preferable when possible to just use the <a href="downloads.html">CVS version or snapshot</a>, contact the mailing list
-and check the <a href="ChangeLog.html">ChangeLog</a> to gauge progresses.</p><h3>0.3.0: Jul 9 2007</h3><ul><li>Secure Remote support (Richard Jones).
+and check the <a href="ChangeLog.html">ChangeLog</a> to gauge progresses.</p><h3>0.3.3: Sep 30 2007</h3><ul><li>New features: Avahi mDNS daemon export (Daniel Berrange),
+      NUMA support (Beth Kan) </li>
+  <li>Documentation: cleanups (Toth Istvan), typos (Eduardo Pereira), </li>
+  <li>Bug fixes: memory corruption on large dumps (Masayuki Sunou), fix
+      virsh vncdisplay command exit (Masayuki Sunou), Fix network stats
+      TX/RX result (Richard Jones), warning on Xen 3.0.3 (Richard Jones),
+      missing buffer check in virDomainXMLDevID (Hugh Brock), avoid zombies
+      when using remote (Daniel Berrange), xend connection error message
+      (Richard Jones), avoid ssh tty prompt (Daniel Berrange), username
+      handling for remote URIs (Fabian Deutsch), fix potential crash 
+      on multiple input XML tags (Daniel Berrange), Solaris Xen hypercalls
+      fixup (Mark Johnson)</li>
+  <li>Improvements: OpenVZ support (Shuveb Hussain and Anoop Cyriac),
+      CD-Rom reload on XEn (Hugh Brock), PXE boot got QEmu/KVM (Daniel
+      Berrange), QEmu socket permissions customization (Daniel Berrange),
+      more QEmu support (Richard Jones), better path detection for qemu and
+      dnsmasq (Richard Jones), QEmu flags are per-Domain (Daniel Berrange),
+      virsh freecell command, Solaris portability fixes (Mark Johnson),
+      default bootloader support (Daniel Berrange), new virNodeGetFreeMemory
+      API, vncpasswd extraction in configuration files if secure (Mark
+      Johnson and Daniel Berrange), Python bindings for block and interface
+      statistics</li>
+  <li>Code cleanups: virDrvOpenRemoteFlags definition (Richard Jones),
+      configure tests and output (Daniel Berrange)</li>
+</ul><h3>0.3.2: Aug 21 2007</h3><ul><li>New features: KVM migration and save/restore (Jim Paris), 
+      added API for migration (Richard Jones), added APIs for block device and
+      interface statistic (Richard Jones).</li>
+  <li>Documentation: examples for XML network APIs,
+      fix typo and schedinfo synopsis in man page (Atsushi SAKAI),
+      hypervisor support page update (Richard Jones).</li>
+  <li>Bug fixes: remove a couple of leaks in QEmu/KVM backend(Daniel berrange),
+      fix GnuTLS 1.0 compatibility (Richard Jones), --config/-f option
+      mistake for libvirtd (Richard Jones), remove leak in QEmu backend
+      (Jim Paris), fix some QEmu communication bugs (Jim Paris), UUID
+      lookup though proxy fix, setvcpus checking bugs (with Atsushi SAKAI),
+      int checking in virsh parameters (with Masayuki Sunou), deny devices
+      attach/detach for &lt; Xen 3.0.4 (Masayuki Sunou), XenStore query
+      memory leak (Masayuki Sunou), virsh schedinfo cleanup (Saori Fukuta).</li>
+  <li>Improvement: virsh new ttyconsole command, networking API implementation
+      for test driver (Daniel berrange), qemu/kvm feature reporting of
+      ACPI/APIC (David Lutterkort), checking of QEmu architectures (Daniel
+      berrange), improve devices XML errors reporting (Masayuki Sunou),
+      speedup of domain queries on Xen (Daniel berrange), augment XML dumps
+      with interface devices names (Richard Jones), internal API to query
+      drivers for features (Richard Jones).
+      </li>
+  <li>Cleanups: Improve virNodeGetInfo implentation (Daniel berrange),
+      general UUID code cleanup (Daniel berrange), fix API generator
+      file selection. </li>
+</ul><h3>0.3.1: Jul 24 2007</h3><ul><li>Documentation: index to remote page, script to test certificates,
+      IPv6 remote support docs (Daniel Berrange), document
+      VIRSH_DEFAULT_CONNECT_URI in virsh man page (David Lutterkort),
+      Relax-NG early grammar for the network XML (David Lutterkort)</li>
+  <li>Bug fixes: leaks in disk XML parsing (Masayuki Sunou), hypervisor
+      alignment call problems on PPC64 (Christian Ehrhardt), dead client
+      registration in daemon event loop (Daniel Berrange), double free
+      in error handling (Daniel Berrange), close on exec for log file
+      descriptors in the daemon (Daniel Berrange), avoid caching problem
+      in remote daemon (Daniel Berrange), avoid crash after QEmu domain
+      failure (Daniel Berrange)</li>
+  <li>Improvements: checks of x509 certificates and keys (Daniel Berrange),
+      error reports in the daemon (Daniel Berrange), checking of Ethernet MAC
+      addresses in XML configs (Masayuki Sunou), support for a new
+      clock switch between UTC and localtime (Daniel Berrange), early
+      version of OpenVZ support (Shuveb Hussain), support for input devices
+      on PS/2 and USB buses (Daniel Berrange), more tests especially
+      the QEmu support (Daniel Berrange), range check in credit scheduler
+      (with Saori Fukuta and Atsushi Sakai), add support for listen VNC
+      parameter un QEmu and fix command line arg (Daniel Berrange)</li>
+  <li>Cleanups: debug tracing (Richard Jones), removal of --with-qemud-pid-file
+      (Richard Jones), remove unused virDeviceMode, new util module for
+      code shared between drivers (Shuveb Hussain), xen header location
+      detection (Richard Jones)</li>
+</ul><h3>0.3.0: Jul 9 2007</h3><ul><li>Secure Remote support (Richard Jones).
       See <a href="http://libvirt.org/remote.html">the remote page</a>
       of the documentation
   </li><li>Documentation: remote support (Richard Jones), description of

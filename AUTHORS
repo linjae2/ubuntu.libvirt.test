@@ -12,6 +12,7 @@ are:
   Karel Zak            <kzak@redhat.com>       (virsh tool)
   Daniel Berrange      <berrange@redhat.com>   (test & qemu drivers)
   Mark McLoughlin      <markmc@redhat.com>     (network driver)
+  Richard W.M. Jones   <rjones@redhat.com>     (remote driver)
 
 Patches have also been contributed by:
 
@@ -25,7 +26,6 @@ Patches have also been contributed by:
   Michel Ponceau       <michel.ponceau@bull.net>
   Jeremy Katz          <katzj@redhat.com>
   Pete Vetere          <pvetere@redhat.com>
-  Richard W.M. Jones   <rjones@redhat.com>
   Atsushi SAKAI        <sakaia@jp.fujitsu.com>
   Kazuki Mizushima     <mizushima.kazuk@jp.fujitsu.com>
   Saori Fukuta         <fukuta.saori@jp.fujitsu.com>
@@ -34,6 +34,9 @@ Patches have also been contributed by:
   Nobuhiro Itou        <fj0873gn@aa.jp.fujitsu.com>
   Masayuki Sunou       <fj1826dm@aa.jp.fujitsu.com>
   Mark Johnson         <johnson.nh@gmail.com>
+  Christian Ehrhardt   <ehrhardt@linux.vnet.ibm.com>
+  Shuveb Hussain       <shuveb@binarykarma.com>
+  Jim Paris            <jim@jtan.com>
 
   [....send patches to get your name here....]
 

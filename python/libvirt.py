@@ -205,7 +205,9 @@ class virDomain:
     def connect(self):
         """Provides the connection pointer associated with a domain. 
            The reference counter on the connection is not increased
-           by this call. """
+           by this call.  WARNING: When writing libvirt bindings in
+           other languages, do not use this function.  Instead, store
+           the connection and the domain object together. """
         ret = libvirtmod.virDomainGetConnect(self._o)
         if ret is None:raise libvirtError('virDomainGetConnect() failed', dom=self)
         __tmp = virConnect(_obj=ret)
@@ -261,6 +263,44 @@ class virDomain:
         ret = libvirtmod.virDomainGetMaxVcpus(self._o)
         if ret == -1: raise libvirtError ('virDomainGetMaxVcpus() failed', dom=self)
         return ret
+
+    def migrate(self, dconn, flags, dname, uri, bandwidth):
+        """Migrate the domain object from its current host to the
+           destination host given by dconn (a connection to the
+           destination host).  Flags may be one of more of the
+           following: VIR_MIGRATE_LIVE   Attempt a live migration. 
+           If a hypervisor supports renaming domains during
+           migration, then you may set the dname parameter to the new
+           name (otherwise it keeps the same name).  If this is not
+           supported by the hypervisor, dname must be None or else
+           you will get an error.  Since typically the two
+           hypervisors connect directly to each other in order to
+           perform the migration, you may need to specify a path from
+           the source to the destination.  This is the purpose of the
+           uri parameter.  If uri is None, then libvirt will try to
+           find the best method.  Uri may specify the hostname or IP
+           address of the destination host as seen from the source. 
+           Or uri may be a URI giving transport, hostname, user,
+           port, etc. in the usual form.  Refer to driver
+           documentation for the particular URIs supported.  The
+           maximum bandwidth (in Mbps) that will be used to do
+           migration can be specified with the bandwidth parameter. 
+           If set to 0, libvirt will choose a suitable default.  Some
+           hypervisors do not support this feature and will return an
+           error if bandwidth is not 0.  To see which features are
+           supported by the current hypervisor, see
+           virConnectGetCapabilities,
+           /capabilities/host/migration_features.  There are many
+           limitations on migration imposed by the underlying
+           technology - for example it may not be possible to migrate
+           between different processors even with the same
+           architecture, or between different types of hypervisor. """
+        if dconn is None: dconn__o = None
+        else: dconn__o = dconn._o
+        ret = libvirtmod.virDomainMigrate(self._o, dconn__o, flags, dname, uri, bandwidth)
+        if ret is None:raise libvirtError('virDomainMigrate() failed', dom=self)
+        __tmp = virDomain(self,_obj=ret)
+        return __tmp
 
     def name(self):
         """Get the public name for that domain """
@@ -381,12 +421,22 @@ class virDomain:
         if ret == -1: raise libvirtError ('virDomainGetAutostart() failed', dom=self)
         return ret
 
+    def blockStats(self, path):
+        """Extracts block device statistics for a domain """
+        ret = libvirtmod.virDomainBlockStats(self._o, path)
+        return ret
+
     def info(self):
         """Extract informations about a domain. Note that if the
            connection used to get the domain is limited only a
            partial set of the informations can be extracted. """
         ret = libvirtmod.virDomainGetInfo(self._o)
         if ret is None: raise libvirtError ('virDomainGetInfo() failed', dom=self)
+        return ret
+
+    def interfaceStats(self, path):
+        """Extracts interface device statistics for a domain """
+        ret = libvirtmod.virDomainInterfaceStats(self._o, path)
         return ret
 
 class virNetwork:
@@ -429,7 +479,9 @@ class virNetwork:
     def connect(self):
         """Provides the connection pointer associated with a network. 
            The reference counter on the connection is not increased
-           by this call. """
+           by this call.  WARNING: When writing libvirt bindings in
+           other languages, do not use this function.  Instead, store
+           the connection and the network object together. """
         ret = libvirtmod.virNetworkGetConnect(self._o)
         if ret is None:raise libvirtError('virNetworkGetConnect() failed', net=self)
         __tmp = virConnect(_obj=ret)
@@ -603,6 +655,44 @@ class virConnect:
         __tmp = virDomain(self,_obj=ret)
         return __tmp
 
+    def migrate(self, domain, flags, dname, uri, bandwidth):
+        """Migrate the domain object from its current host to the
+           destination host given by dconn (a connection to the
+           destination host).  Flags may be one of more of the
+           following: VIR_MIGRATE_LIVE   Attempt a live migration. 
+           If a hypervisor supports renaming domains during
+           migration, then you may set the dname parameter to the new
+           name (otherwise it keeps the same name).  If this is not
+           supported by the hypervisor, dname must be None or else
+           you will get an error.  Since typically the two
+           hypervisors connect directly to each other in order to
+           perform the migration, you may need to specify a path from
+           the source to the destination.  This is the purpose of the
+           uri parameter.  If uri is None, then libvirt will try to
+           find the best method.  Uri may specify the hostname or IP
+           address of the destination host as seen from the source. 
+           Or uri may be a URI giving transport, hostname, user,
+           port, etc. in the usual form.  Refer to driver
+           documentation for the particular URIs supported.  The
+           maximum bandwidth (in Mbps) that will be used to do
+           migration can be specified with the bandwidth parameter. 
+           If set to 0, libvirt will choose a suitable default.  Some
+           hypervisors do not support this feature and will return an
+           error if bandwidth is not 0.  To see which features are
+           supported by the current hypervisor, see
+           virConnectGetCapabilities,
+           /capabilities/host/migration_features.  There are many
+           limitations on migration imposed by the underlying
+           technology - for example it may not be possible to migrate
+           between different processors even with the same
+           architecture, or between different types of hypervisor. """
+        if domain is None: domain__o = None
+        else: domain__o = domain._o
+        ret = libvirtmod.virDomainMigrate(domain__o, self._o, flags, dname, uri, bandwidth)
+        if ret is None:raise libvirtError('virDomainMigrate() failed', conn=self)
+        __tmp = virDomain(self,_obj=ret)
+        return __tmp
+
     def networkDefineXML(self, xml):
         """Define a network, but does not create it """
         ret = libvirtmod.virNetworkDefineXML(self._o, xml)
@@ -718,10 +808,12 @@ class virConnect:
         """Reset the last error caught on that connection """
         libvirtmod.virConnResetLastError(self._o)
 
-# virErrorLevel
-VIR_ERR_NONE = 0
-VIR_ERR_WARNING = 1
-VIR_ERR_ERROR = 2
+# virDomainMigrateFlags
+VIR_MIGRATE_LIVE = 1
+
+# virDomainXMLFlags
+VIR_DOMAIN_XML_SECURE = 1
+VIR_DOMAIN_XML_INACTIVE = 2
 
 # virDomainState
 VIR_DOMAIN_NOSTATE = 0
@@ -731,12 +823,6 @@ VIR_DOMAIN_PAUSED = 3
 VIR_DOMAIN_SHUTDOWN = 4
 VIR_DOMAIN_SHUTOFF = 5
 VIR_DOMAIN_CRASHED = 6
-
-# virDeviceMode
-VIR_DEVICE_DEFAULT = 0
-VIR_DEVICE_RO = 1
-VIR_DEVICE_RW = 2
-VIR_DEVICE_RW_FORCE = 3
 
 # virErrorDomain
 VIR_FROM_NONE = 0
@@ -753,6 +839,7 @@ VIR_FROM_QEMU = 10
 VIR_FROM_NET = 11
 VIR_FROM_TEST = 12
 VIR_FROM_REMOTE = 13
+VIR_FROM_OPENVZ = 14
 
 # virDomainRestart
 VIR_DOMAIN_DESTROY = 1
@@ -805,6 +892,7 @@ VIR_ERR_GNUTLS_ERROR = 40
 VIR_WAR_NO_NETWORK = 41
 VIR_ERR_NO_DOMAIN = 42
 VIR_ERR_NO_NETWORK = 43
+VIR_ERR_INVALID_MAC = 44
 
 # virDomainCreateFlags
 VIR_DOMAIN_NONE = 0
@@ -821,4 +909,9 @@ VIR_DOMAIN_SCHED_FIELD_BOOLEAN = 6
 VIR_VCPU_OFFLINE = 0
 VIR_VCPU_RUNNING = 1
 VIR_VCPU_BLOCKED = 2
+
+# virErrorLevel
+VIR_ERR_NONE = 0
+VIR_ERR_WARNING = 1
+VIR_ERR_ERROR = 2
 

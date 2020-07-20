@@ -45,7 +45,6 @@
 
 #define MAX_BRIDGE_ID 256
 
-#define BRCTL_PATH "/usr/sbin/brctl"
 #define JIFFIES_TO_MS(j) (((j)*1000)/HZ)
 #define MS_TO_JIFFIES(ms) (((ms)*HZ)/1000)
 
@@ -124,6 +123,7 @@ brShutdown(brControl *ctl)
  *
  * Returns 0 in case of success or an errno code in case of failure.
  */
+#ifdef SIOCBRADDBR
 int
 brAddBridge(brControl *ctl,
             const char *nameOrFmt,
@@ -170,6 +170,15 @@ brAddBridge(brControl *ctl,
 
     return errno;
 }
+#else
+int brAddBridge (brControl *ctl ATTRIBUTE_UNUSED,
+                 const char *nameOrFmt ATTRIBUTE_UNUSED,
+                 char *name ATTRIBUTE_UNUSED,
+                 int maxlen ATTRIBUTE_UNUSED)
+{
+    return EINVAL;
+}
+#endif
 
 /**
  * brDeleteBridge:
@@ -180,6 +189,7 @@ brAddBridge(brControl *ctl,
  *
  * Returns 0 in case of success or an errno code in case of failure.
  */
+#ifdef SIOCBRDELBR
 int
 brDeleteBridge(brControl *ctl,
                const char *name)
@@ -189,7 +199,16 @@ brDeleteBridge(brControl *ctl,
 
     return ioctl(ctl->fd, SIOCBRDELBR, name) == 0 ? 0 : errno;
 }
+#else
+int
+brDeleteBridge(brControl *ctl ATTRIBUTE_UNUSED,
+               const char *name ATTRIBUTE_UNUSED)
+{
+    return EINVAL;
+}
+#endif
 
+#if defined(SIOCBRADDIF) && defined(SIOCBRDELIF)
 static int
 brAddDelInterface(brControl *ctl,
                   int cmd,
@@ -215,6 +234,7 @@ brAddDelInterface(brControl *ctl,
 
     return ioctl(ctl->fd, cmd, &ifr) == 0 ? 0 : errno;
 }
+#endif
 
 /**
  * brAddInterface:
@@ -226,6 +246,7 @@ brAddDelInterface(brControl *ctl,
  *
  * Returns 0 in case of success or an errno code in case of failure.
  */
+#ifdef SIOCBRADDIF
 int
 brAddInterface(brControl *ctl,
                const char *bridge,
@@ -233,6 +254,15 @@ brAddInterface(brControl *ctl,
 {
     return brAddDelInterface(ctl, SIOCBRADDIF, bridge, iface);
 }
+#else
+int
+brAddInterface(brControl *ctl ATTRIBUTE_UNUSED,
+               const char *bridge ATTRIBUTE_UNUSED,
+               const char *iface ATTRIBUTE_UNUSED)
+{
+    return EINVAL;
+}
+#endif
 
 /**
  * brDeleteInterface:
@@ -244,6 +274,7 @@ brAddInterface(brControl *ctl,
  *
  * Returns 0 in case of success or an errno code in case of failure.
  */
+#ifdef SIOCBRDELIF
 int
 brDeleteInterface(brControl *ctl,
                   const char *bridge,
@@ -251,7 +282,15 @@ brDeleteInterface(brControl *ctl,
 {
     return brAddDelInterface(ctl, SIOCBRDELIF, bridge, iface);
 }
-
+#else
+int
+brDeleteInterface(brControl *ctl ATTRIBUTE_UNUSED,
+                  const char *bridge ATTRIBUTE_UNUSED,
+                  const char *iface ATTRIBUTE_UNUSED)
+{
+    return EINVAL;
+}
+#endif
 
 /**
  * brAddTap:
@@ -644,7 +683,7 @@ brSetForwardDelay(brControl *ctl ATTRIBUTE_UNUSED,
 
     n = 0;
 
-    if (!(argv[n++] = strdup(BRCTL_PATH)))
+    if (!(argv[n++] = strdup(BRCTL)))
         goto error;
 
     if (!(argv[n++] = strdup("setfd")))
@@ -701,7 +740,7 @@ brSetEnableSTP(brControl *ctl ATTRIBUTE_UNUSED,
 
     n = 0;
 
-    if (!(argv[n++] = strdup(BRCTL_PATH)))
+    if (!(argv[n++] = strdup(BRCTL)))
         goto error;
 
     if (!(argv[n++] = strdup("stp")))

@@ -50,6 +50,7 @@
 #include "internal.h"
 #include "xml.h"
 #include "buf.h"
+#include "uuid.h"
 
 typedef struct xenXMConfCache *xenXMConfCachePtr;
 typedef struct xenXMConfCache {
@@ -200,7 +201,6 @@ static int xenXMConfigGetString(virConfPtr conf, const char *name, const char **
 /* Convenience method to grab a string UUID from the config file object */
 static int xenXMConfigGetUUID(virConfPtr conf, const char *name, unsigned char *uuid) {
     virConfValuePtr val;
-    char *rawuuid = (char *)uuid;
     if (!uuid || !name || !conf)
         return (-1);
     if (!(val = virConfGetValue(conf, name))) {
@@ -212,20 +212,12 @@ static int xenXMConfigGetUUID(virConfPtr conf, const char *name, unsigned char *
     if (!val->str)
         return (-1);
 
-    if (!virParseUUID(&rawuuid, val->str))
+    if (virUUIDParse(val->str, uuid) < 0)
         return (-1);
 
     return (0);
 }
 
-/* Generate a rnadom UUID - used if domain doesn't already
-   have one in its config */
-static void xenXMConfigGenerateUUID(unsigned char *uuid) {
-    int i;
-    for (i = 0 ; i < VIR_UUID_BUFLEN ; i++) {
-        uuid[i] = (unsigned char)(1 + (int) (256.0 * (rand() / (RAND_MAX + 1.0))));
-    }
-}
 
 /* Ensure that a config object has a valid UUID in it,
    if it doesn't then (re-)generate one */
@@ -263,14 +255,8 @@ static int xenXMConfigEnsureIdentity(virConfPtr conf, const char *filename) {
         }
 
         /* ... then generate one */
-        xenXMConfigGenerateUUID(uuid);
-        snprintf(uuidstr, VIR_UUID_STRING_BUFLEN,
-                 "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x</uuid>\n",
-                 uuid[0], uuid[1], uuid[2], uuid[3],
-                 uuid[4], uuid[5], uuid[6], uuid[7],
-                 uuid[8], uuid[9], uuid[10], uuid[11],
-                 uuid[12], uuid[13], uuid[14], uuid[15]);
-        uuidstr[VIR_UUID_STRING_BUFLEN-1] = '\0';
+        virUUIDGenerate(uuid);
+        virUUIDFormat(uuid, uuidstr);
 
         value->type = VIR_CONF_STRING;
         value->str = strdup(uuidstr);
@@ -587,6 +573,7 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
     char *xml;
     const char *name;
     unsigned char uuid[VIR_UUID_BUFLEN];
+    char uuidstr[VIR_UUID_STRING_BUFLEN];
     const char *str;
     int hvm = 0;
     long val;
@@ -609,12 +596,8 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
 
     virBufferAdd(buf, "<domain type='xen'>\n", -1);
     virBufferVSprintf(buf, "  <name>%s</name>\n", name);
-    virBufferVSprintf(buf,
-                      "  <uuid>%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x</uuid>\n",
-                      uuid[0], uuid[1], uuid[2], uuid[3],
-                      uuid[4], uuid[5], uuid[6], uuid[7],
-                      uuid[8], uuid[9], uuid[10], uuid[11],
-                      uuid[12], uuid[13], uuid[14], uuid[15]);
+    virUUIDFormat(uuid, uuidstr);
+    virBufferVSprintf(buf, "  <uuid>%s</uuid>\n", uuidstr);
 
     if ((xenXMConfigGetString(conf, "builder", &str) == 0) &&
         !strcmp(str, "hvm"))
@@ -708,6 +691,10 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
             val)
             virBufferAdd(buf, "    <apic/>\n", -1);
         virBufferAdd(buf, "  </features>\n", -1);
+
+        if (xenXMConfigGetInt(conf, "localtime", &val) < 0)
+            val = 0;
+        virBufferVSprintf(buf, "  <clock offset='%s'/>\n", val ? "localtime" : "utc");
     }
 
     virBufferAdd(buf, "  <devices>\n", -1);
@@ -909,6 +896,17 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
         }
     }
 
+    if (hvm) {
+        if (xenXMConfigGetString(conf, "usbdevice", &str) == 0 && str) {
+            if (!strcmp(str, "tablet"))
+                virBufferAdd(buf, "    <input type='tablet' bus='usb'/>\n", 37);
+            else if (!strcmp(str, "mouse"))
+                virBufferAdd(buf, "    <input type='mouse' bus='usb'/>\n", 36);
+            /* Ignore else branch - probably some other non-input device we don't
+               support in libvirt yet */
+        }
+    }
+
     /* HVM guests, or old PV guests use this config format */
     if (hvm || priv->xendConfigVersion < 3) {
         if (xenXMConfigGetInt(conf, "vnc", &val) == 0 && val) {
@@ -976,6 +974,9 @@ char *xenXMDomainFormatXML(virConnectPtr conn, virConfPtr conf) {
         }
     }
 
+    if (vnc || sdl) {
+        virBufferVSprintf(buf, "    <input type='mouse' bus='%s'/>\n", hvm ? "ps2":"xen");
+    }
     if (vnc) {
         virBufferVSprintf(buf,
                           "    <graphics type='vnc' port='%ld'",
@@ -1812,6 +1813,7 @@ virConfPtr xenXMParseXMLToConfig(virConnectPtr conn, const char *xml) {
 
     if (hvm) {
         const char *boot = "c";
+        int clockLocal = 0;
         if (xenXMConfigSetString(conf, "builder", "hvm") < 0)
             goto error;
 
@@ -1843,6 +1845,16 @@ virConfPtr xenXMParseXMLToConfig(virConnectPtr conn, const char *xml) {
 
         if (xenXMConfigSetIntFromXPath(conn, conf, ctxt, "apic", "string(count(/domain/features/apic))", 0, 0,
                                        "cannot set the apic parameter") < 0)
+            goto error;
+
+        obj = xmlXPathEval(BAD_CAST "string(/domain/clock/@offset)", ctxt);
+        if ((obj != NULL) && (obj->type == XPATH_STRING) &&
+            (obj->stringval != NULL)) {
+            if (!strcmp((const char*)obj->stringval, "localtime"))
+                clockLocal = 1;
+        }
+        xmlXPathFreeObject(obj);
+        if (xenXMConfigSetInt(conf, "localtime", clockLocal) < 0)
             goto error;
 
         if (priv->xendConfigVersion == 1) {
@@ -1887,6 +1899,9 @@ virConfPtr xenXMParseXMLToConfig(virConnectPtr conn, const char *xml) {
                                           "cannot set the device_model parameter") < 0)
             goto error;
 
+        if (xenXMConfigSetStringFromXPath(conn, conf, ctxt, "usbdevice", "string(/domain/devices/input[@bus='usb' or (not(@bus) and @type='tablet')]/@type)", 1,
+                                          "cannot set the usbdevice parameter") < 0)
+            goto error;
     }
 
     if (hvm || priv->xendConfigVersion < 3) {

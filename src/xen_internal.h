@@ -20,6 +20,15 @@ int	xenHypervisorInit		(void);
 
 /* The following calls are made directly by the Xen proxy: */
 
+virDomainPtr
+        xenHypervisorLookupDomainByID   (virConnectPtr conn,
+					 int id);
+virDomainPtr
+xenHypervisorLookupDomainByUUID(virConnectPtr conn,
+                                const unsigned char *uuid);
+char *
+        xenHypervisorDomainGetOSType (virDomainPtr dom);
+
 int	xenHypervisorOpen		(virConnectPtr conn,
 					 const char *name,
 					 int flags);
@@ -77,6 +86,17 @@ int	xenHypervisorSetSchedulerParameters		(virDomainPtr domain,
 					 virSchedParameterPtr params,
 					 int nparams);
 
+int     xenHypervisorDomainBlockStats   (virDomainPtr domain,
+					 const char *path,
+					 struct _virDomainBlockStats *stats);
+int     xenHypervisorDomainInterfaceStats (virDomainPtr domain,
+					 const char *path,
+					 struct _virDomainInterfaceStats *stats);
+
+int	xenHypervisorNodeGetCellsFreeMemory(virConnectPtr conn,
+					  unsigned long long *freeMems,
+					  int startCell,
+					  int maxCells);
 #ifdef __cplusplus
 }
 #endif

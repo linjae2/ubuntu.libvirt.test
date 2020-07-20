@@ -14,6 +14,8 @@
 #ifndef __VIR_VIRLIB_H__
 #define __VIR_VIRLIB_H__
 
+#include <sys/types.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,18 +77,6 @@ typedef enum {
      VIR_DOMAIN_PRESERVE= 3, /* keep as is, need manual destroy, for debug */
      VIR_DOMAIN_RENAME_RESTART= 4/* restart under an new unique name */
 } virDomainRestart;
-
-/**
- * virDeviceMode:
- *
- * Flags that determine permission to expose a device to the guest
- */
-typedef enum {
-     VIR_DEVICE_DEFAULT	= 0, /* Default mode */
-     VIR_DEVICE_RO	= 1, /* Access read-only */
-     VIR_DEVICE_RW	= 2, /* Access read-write */
-     VIR_DEVICE_RW_FORCE= 3  /* Forced read-write even if already used */
-} virDeviceMode;
 
 /**
  * virDomainInfoPtr:
@@ -210,6 +200,74 @@ int	virDomainSetSchedulerParameters	(virDomainPtr domain,
 					 int nparams);
 
 /**
+ * virDomainBlockStats:
+ *
+ * Block device stats for virDomainBlockStats.
+ *
+ * Hypervisors may return a field set to ((long long)-1) which indicates
+ * that the hypervisor does not support that statistic.
+ *
+ * NB. Here 'long long' means 64 bit integer.
+ */
+typedef struct _virDomainBlockStats virDomainBlockStatsStruct;
+
+struct _virDomainBlockStats {
+  long long rd_req;
+  long long rd_bytes;
+  long long wr_req;
+  long long wr_bytes;
+  long long errs;   /* In Xen this returns the mysterious 'oo_req'. */
+};
+
+/**
+ * virDomainBlockStatsPtr:
+ *
+ * A pointer to a virDomainBlockStats structure
+ */
+typedef virDomainBlockStatsStruct *virDomainBlockStatsPtr;
+
+/**
+ * virDomainInterfaceStats:
+ *
+ * Network interface stats for virDomainInterfaceStats.
+ *
+ * Hypervisors may return a field set to ((long long)-1) which indicates
+ * that the hypervisor does not support that statistic.
+ *
+ * NB. Here 'long long' means 64 bit integer.
+ */
+typedef struct _virDomainInterfaceStats virDomainInterfaceStatsStruct;
+
+struct _virDomainInterfaceStats {
+  long long rx_bytes;
+  long long rx_packets;
+  long long rx_errs;
+  long long rx_drop;
+  long long tx_bytes;
+  long long tx_packets;
+  long long tx_errs;
+  long long tx_drop;
+};
+
+/**
+ * virDomainInterfaceStatsPtr:
+ *
+ * A pointe to a virDomainInterfaceStats structure
+ */
+typedef virDomainInterfaceStatsStruct *virDomainInterfaceStatsPtr;
+
+
+/* Domain migration flags. */
+typedef enum {
+  VIR_MIGRATE_LIVE              = 1, /* live migration */
+} virDomainMigrateFlags;
+
+/* Domain migration. */
+virDomainPtr virDomainMigrate (virDomainPtr domain, virConnectPtr dconn,
+			       unsigned long flags, const char *dname,
+			       const char *uri, unsigned long bandwidth);
+
+/**
  * VIR_NODEINFO_MAXCPUS:
  * @nodeinfo: virNodeInfo instance
  *
@@ -255,7 +313,7 @@ typedef virNodeInfo *virNodeInfoPtr;
  * version * 1,000,000 + minor * 1000 + micro
  */
 
-#define LIBVIR_VERSION_NUMBER 3000
+#define LIBVIR_VERSION_NUMBER 3003
 
 int			virGetVersion		(unsigned long *libVer,
 						 const char *type,
@@ -285,6 +343,8 @@ int                     virConnectGetMaxVcpus   (virConnectPtr conn,
 int			virNodeGetInfo		(virConnectPtr conn,
 						 virNodeInfoPtr info);
 char *                  virConnectGetCapabilities (virConnectPtr conn);
+
+unsigned long long	virNodeGetFreeMemory	(virConnectPtr conn);
 
 /*
  * Gather list of running domains
@@ -378,8 +438,29 @@ int			virDomainGetMaxVcpus	(virDomainPtr domain);
 /*
  * XML domain description
  */
+/**
+ * virDomainXMLFlags:
+ *
+ * Flags available for virDomainGetXMLDesc
+ */
+
+typedef enum {
+    VIR_DOMAIN_XML_SECURE = 1, /* dump security sensitive informations too */
+    VIR_DOMAIN_XML_INACTIVE = 2/* dump inactive domain informations */
+} virDomainXMLFlags;
+
 char *			virDomainGetXMLDesc	(virDomainPtr domain,
 						 int flags);
+
+int                     virDomainBlockStats     (virDomainPtr dom,
+						 const char *path,
+						 virDomainBlockStatsPtr stats,
+						 size_t size);
+int                     virDomainInterfaceStats (virDomainPtr dom,
+						 const char *path,
+						 virDomainInterfaceStatsPtr stats,
+						 size_t size);
+
 
 /*
  * defined but not running domains
@@ -512,6 +593,15 @@ int			virDomainGetVcpus	(virDomainPtr domain,
 
 int virDomainAttachDevice(virDomainPtr domain, char *xml);
 int virDomainDetachDevice(virDomainPtr domain, char *xml);
+
+/*
+ * NUMA support
+ */
+
+int			 virNodeGetCellsFreeMemory(virConnectPtr conn,
+						   unsigned long long *freeMems,
+						   int startCell,
+						   int maxCells);
 
 /*
  * Virtual Networks API

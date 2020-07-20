@@ -10,7 +10,7 @@
  * Daniel P. Berrange <berrange@redhat.com>
  *
  *
- * $Id: virsh.c,v 1.92 2007/07/06 15:05:19 veillard Exp $
+ * $Id: virsh.c,v 1.104 2007/09/30 13:22:16 veillard Exp $
  */
 
 #include "libvirt/libvirt.h"
@@ -31,6 +31,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <inttypes.h>
+#include <test.h>
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -658,6 +660,129 @@ cmdDomstate(vshControl * ctl, vshCmd * cmd)
     return ret;
 }
 
+/* "domblkstat" command
+ */
+static vshCmdInfo info_domblkstat[] = {
+    {"syntax", "domblkstat <domain> <dev>"},
+    {"help", gettext_noop("get device block stats for a domain")},
+    {"desc", gettext_noop("Get device block stats for a running domain.")},
+    {NULL,NULL}
+};
+
+static vshCmdOptDef opts_domblkstat[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"device", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("block device")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdDomblkstat (vshControl *ctl, vshCmd *cmd)
+{
+    virDomainPtr dom;
+    char *name, *device;
+    struct _virDomainBlockStats stats;
+
+    if (!vshConnectionUsability (ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    if (!(dom = vshCommandOptDomain (ctl, cmd, "domain", &name)))
+        return FALSE;
+
+    if (!(device = vshCommandOptString (cmd, "device", NULL)))
+        return FALSE;
+
+    if (virDomainBlockStats (dom, device, &stats, sizeof stats) == -1) {
+        vshError (ctl, FALSE, _("Failed to get block stats %s %s"),
+                  name, device);
+        virDomainFree(dom);
+        return FALSE;
+    }
+
+    if (stats.rd_req >= 0)
+        vshPrint (ctl, "%s rd_req %lld\n", device, stats.rd_req);
+
+    if (stats.rd_bytes >= 0)
+        vshPrint (ctl, "%s rd_bytes %lld\n", device, stats.rd_bytes);
+
+    if (stats.wr_req >= 0)
+        vshPrint (ctl, "%s wr_req %lld\n", device, stats.wr_req);
+
+    if (stats.wr_bytes >= 0)
+        vshPrint (ctl, "%s wr_bytes %lld\n", device, stats.wr_bytes);
+
+    if (stats.errs >= 0)
+        vshPrint (ctl, "%s errs %lld\n", device, stats.errs);
+
+    virDomainFree(dom);
+    return TRUE;
+}
+
+/* "domifstat" command
+ */
+static vshCmdInfo info_domifstat[] = {
+    {"syntax", "domifstat <domain> <dev>"},
+    {"help", gettext_noop("get network interface stats for a domain")},
+    {"desc", gettext_noop("Get network interface stats for a running domain.")},
+    {NULL,NULL}
+};
+
+static vshCmdOptDef opts_domifstat[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"interface", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("interface device")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdDomIfstat (vshControl *ctl, vshCmd *cmd)
+{
+    virDomainPtr dom;
+    char *name, *device;
+    struct _virDomainInterfaceStats stats;
+
+    if (!vshConnectionUsability (ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    if (!(dom = vshCommandOptDomain (ctl, cmd, "domain", &name)))
+        return FALSE;
+
+    if (!(device = vshCommandOptString (cmd, "interface", NULL)))
+        return FALSE;
+
+    if (virDomainInterfaceStats (dom, device, &stats, sizeof stats) == -1) {
+        vshError (ctl, FALSE, _("Failed to get interface stats %s %s"),
+                  name, device);
+        virDomainFree(dom);
+        return FALSE;
+    }
+
+    if (stats.rx_bytes >= 0)
+        vshPrint (ctl, "%s rx_bytes %lld\n", device, stats.rx_bytes);
+
+    if (stats.rx_packets >= 0)
+        vshPrint (ctl, "%s rx_packets %lld\n", device, stats.rx_packets);
+
+    if (stats.rx_errs >= 0)
+        vshPrint (ctl, "%s rx_errs %lld\n", device, stats.rx_errs);
+
+    if (stats.rx_drop >= 0)
+        vshPrint (ctl, "%s rx_drop %lld\n", device, stats.rx_drop);
+
+    if (stats.tx_bytes >= 0)
+        vshPrint (ctl, "%s tx_bytes %lld\n", device, stats.tx_bytes);
+
+    if (stats.tx_packets >= 0)
+        vshPrint (ctl, "%s tx_packets %lld\n", device, stats.tx_packets);
+
+    if (stats.tx_errs >= 0)
+        vshPrint (ctl, "%s tx_errs %lld\n", device, stats.tx_errs);
+
+    if (stats.tx_drop >= 0)
+        vshPrint (ctl, "%s tx_drop %lld\n", device, stats.tx_drop);
+
+    virDomainFree(dom);
+    return TRUE;
+}
+
 /*
  * "suspend" command
  */
@@ -986,7 +1111,7 @@ cmdSave(vshControl * ctl, vshCmd * cmd)
  * "schedinfo" command
  */
 static vshCmdInfo info_schedinfo[] = {
-    {"syntax", "sched <domain>"},
+    {"syntax", "schedinfo <domain>"},
     {"help", gettext_noop("show/set scheduler parameters")},
     {"desc", gettext_noop("Show/Set scheduler parameters.")},
     {NULL, NULL}
@@ -1004,7 +1129,7 @@ cmdSchedinfo(vshControl * ctl, vshCmd * cmd)
 {
     char *schedulertype;
     virDomainPtr dom;
-    virSchedParameterPtr params;
+    virSchedParameterPtr params = NULL;
     int i, ret;
     int nparams = 0;
     int nr_inputparams = 0;
@@ -1015,6 +1140,7 @@ cmdSchedinfo(vshControl * ctl, vshCmd * cmd)
     int cap;
     char str_weight[] = "weight";
     char str_cap[]    = "cap";
+    int ret_val = FALSE;
 
     if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
         return FALSE;
@@ -1031,8 +1157,7 @@ cmdSchedinfo(vshControl * ctl, vshCmd * cmd)
 
     params = vshMalloc(ctl, sizeof (virSchedParameter) * nr_inputparams);
     if (params == NULL) {
-	virDomainFree(dom);
-        return FALSE;
+        goto cleanup;
     }
 
     if (weightfound) {
@@ -1056,11 +1181,11 @@ cmdSchedinfo(vshControl * ctl, vshCmd * cmd)
     if (inputparams > 0) {
         ret = virDomainSetSchedulerParameters(dom, params, inputparams);
         if (ret == -1) {
-	    virDomainFree(dom);
-	    return FALSE;
+            goto cleanup;
 	}
     }
     free(params);
+    params = NULL;
 
     /* Print SchedulerType */
     schedulertype = virDomainGetSchedulerType(dom, &nparams);
@@ -1070,21 +1195,23 @@ cmdSchedinfo(vshControl * ctl, vshCmd * cmd)
         free(schedulertype);
     } else {
         vshPrint(ctl, "%-15s: %s\n", _("Scheduler"), _("Unknown"));
-	virDomainFree(dom);
-        return FALSE;
+        goto cleanup;
     }
 
     /* Get SchedulerParameters */
     params = vshMalloc(ctl, sizeof(virSchedParameter)* nparams);
+    if (params == NULL) {
+        goto cleanup;
+    }
     for (i = 0; i < nparams; i++){
         params[i].type = 0;
         memset (params[i].field, 0, sizeof params[i].field);
     }
     ret = virDomainGetSchedulerParameters(dom, params, &nparams);
     if (ret == -1) {
-        virDomainFree(dom);
-        return FALSE;
+        goto cleanup;
     }
+    ret_val = TRUE;
     if(nparams){
         for (i = 0; i < nparams; i++){
             switch (params[i].type) {
@@ -1111,9 +1238,11 @@ cmdSchedinfo(vshControl * ctl, vshCmd * cmd)
             }
         }
     }
-    free(params);
+ cleanup:
+    if (params)
+        free(params);
     virDomainFree(dom);
-    return TRUE;
+    return ret_val;
 }
 
 /*
@@ -1433,6 +1562,48 @@ cmdDominfo(vshControl * ctl, vshCmd * cmd)
 }
 
 /*
+ * "freecell" command
+ */
+static vshCmdInfo info_freecell[] = {
+    {"syntax", "freecell [<cellno>]"},
+    {"help", gettext_noop("NUMA free memory")},
+    {"desc", gettext_noop("display available free memory for the NUMA cell.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_freecell[] = {
+    {"cellno", VSH_OT_DATA, 0, gettext_noop("NUMA cell number")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdFreecell(vshControl * ctl, vshCmd * cmd)
+{
+    int ret;
+    int cell, cell_given;
+    unsigned long long memory;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    cell = vshCommandOptInt(cmd, "cellno", &cell_given);
+    if (!cell_given) {
+        memory = virNodeGetFreeMemory(ctl->conn);
+    } else {
+	ret = virNodeGetCellsFreeMemory(ctl->conn, &memory, cell, 1);
+	if (ret != 1)
+	    return FALSE;
+    }
+
+    if (cell == -1)
+	vshPrint(ctl, "%s: %llu kB\n", _("Total"), memory);
+    else
+	vshPrint(ctl, "%d: %llu kB\n", cell, memory);
+
+    return TRUE;
+}
+
+/*
  * "vcpuinfo" command
  */
 static vshCmdInfo info_vcpuinfo[] = {
@@ -1678,14 +1849,14 @@ cmdSetvcpus(vshControl * ctl, vshCmd * cmd)
         return FALSE;
 
     count = vshCommandOptInt(cmd, "count", &count);
-    if (!count) {
+    if (count <= 0) {
         vshError(ctl, FALSE, _("Invalid number of virtual CPUs."));
         virDomainFree(dom);
         return FALSE;
     }
 
     maxcpu = virDomainGetMaxVcpus(dom);
-    if (!maxcpu) {
+    if (maxcpu <= 0) {
         virDomainFree(dom);
         return FALSE;
     }
@@ -2019,6 +2190,69 @@ cmdDomuuid(vshControl * ctl, vshCmd * cmd)
         vshError(ctl, FALSE, _("failed to get domain UUID"));
 
     return TRUE;
+}
+
+/*
+ * "migrate" command
+ */
+static vshCmdInfo info_migrate[] = {
+    {"syntax", "migrate [--live] <domain> <desturi> [<migrateuri>]"},
+    {"help", gettext_noop("migrate domain to another host")},
+    {"desc", gettext_noop("Migrate domain to another host.  Add --live for live migration.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_migrate[] = {
+    {"live", VSH_OT_BOOL, 0, gettext_noop("live migration")},
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {"desturi", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("connection URI of the destination host")},
+    {"migrateuri", VSH_OT_DATA, 0, gettext_noop("migration URI, usually can be omitted")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdMigrate (vshControl *ctl, vshCmd *cmd)
+{
+    virDomainPtr dom = NULL;
+    const char *desturi;
+    const char *migrateuri;
+    int flags = 0, found, ret = FALSE;
+    virConnectPtr dconn = NULL;
+    virDomainPtr ddom = NULL;
+
+    if (!vshConnectionUsability (ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    if (!(dom = vshCommandOptDomain (ctl, cmd, "domain", NULL)))
+        return FALSE;
+
+    desturi = vshCommandOptString (cmd, "desturi", &found);
+    if (!found) {
+        vshError (ctl, FALSE, _("migrate: Missing desturi"));
+        goto done;
+    }
+
+    migrateuri = vshCommandOptString (cmd, "migrateuri", &found);
+    if (!found) migrateuri = NULL;
+
+    if (vshCommandOptBool (cmd, "live"))
+        flags |= VIR_MIGRATE_LIVE;
+
+    /* Temporarily connect to the destination host. */
+    dconn = virConnectOpen (desturi);
+    if (!dconn) goto done;
+
+    /* Migrate. */
+    ddom = virDomainMigrate (dom, dconn, flags, NULL, migrateuri, 0);
+    if (!ddom) goto done;
+
+    ret = TRUE;
+
+ done:
+    if (dom) virDomainFree (dom);
+    if (ddom) virDomainFree (ddom);
+    if (dconn) virConnectClose (dconn);
+    return ret;
 }
 
 /*
@@ -2727,6 +2961,70 @@ cmdVNCDisplay(vshControl * ctl, vshCmd * cmd)
     }
     xmlXPathFreeObject(obj);
     obj = NULL;
+    ret = TRUE;
+
+ cleanup:
+    if (obj)
+        xmlXPathFreeObject(obj);
+    if (ctxt)
+        xmlXPathFreeContext(ctxt);
+    if (xml)
+        xmlFreeDoc(xml);
+    virDomainFree(dom);
+    return ret;
+}
+
+/*
+ * "ttyconsole" command
+ */
+static vshCmdInfo info_ttyconsole[] = {
+    {"syntax", "ttyconsole <domain>"},
+    {"help", gettext_noop("tty console")},
+    {"desc", gettext_noop("Output the device for the TTY console.")},
+    {NULL, NULL}
+};
+
+static vshCmdOptDef opts_ttyconsole[] = {
+    {"domain", VSH_OT_DATA, VSH_OFLAG_REQ, gettext_noop("domain name, id or uuid")},
+    {NULL, 0, 0, NULL}
+};
+
+static int
+cmdTTYConsole(vshControl * ctl, vshCmd * cmd)
+{
+    xmlDocPtr xml = NULL;
+    xmlXPathObjectPtr obj = NULL;
+    xmlXPathContextPtr ctxt = NULL;
+    virDomainPtr dom;
+    int ret = FALSE;
+    char *doc;
+
+    if (!vshConnectionUsability(ctl, ctl->conn, TRUE))
+        return FALSE;
+
+    if (!(dom = vshCommandOptDomain(ctl, cmd, "domain", NULL)))
+        return FALSE;
+
+    doc = virDomainGetXMLDesc(dom, 0);
+    if (!doc)
+        goto cleanup;
+
+    xml = xmlReadDoc((const xmlChar *) doc, "domain.xml", NULL,
+                     XML_PARSE_NOENT | XML_PARSE_NONET |
+                     XML_PARSE_NOWARNING);
+    free(doc);
+    if (!xml)
+        goto cleanup;
+    ctxt = xmlXPathNewContext(xml);
+    if (!ctxt)
+        goto cleanup;
+
+    obj = xmlXPathEval(BAD_CAST "string(/domain/devices/console/@tty)", ctxt);
+    if ((obj == NULL) || (obj->type != XPATH_STRING) ||
+        (obj->stringval == NULL) || (obj->stringval[0] == 0)) {
+        goto cleanup;
+    }
+    vshPrint(ctl, "%s\n", (const char *)obj->stringval);
 
  cleanup:
     if (obj)
@@ -3402,9 +3700,13 @@ static vshCmdDef commands[] = {
     {"dominfo", cmdDominfo, opts_dominfo, info_dominfo},
     {"domname", cmdDomname, opts_domname, info_domname},
     {"domstate", cmdDomstate, opts_domstate, info_domstate},
+    {"domblkstat", cmdDomblkstat, opts_domblkstat, info_domblkstat},
+    {"domifstat", cmdDomIfstat, opts_domifstat, info_domifstat},
     {"dumpxml", cmdDumpXML, opts_dumpxml, info_dumpxml},
+    {"freecell", cmdFreecell, opts_freecell, info_freecell},
     {"hostname", cmdHostname, NULL, info_hostname},
     {"list", cmdList, opts_list, info_list},
+    {"migrate", cmdMigrate, opts_migrate, info_migrate},
     {"net-autostart", cmdNetworkAutostart, opts_network_autostart, info_network_autostart},
     {"net-create", cmdNetworkCreate, opts_network_create, info_network_create},
     {"net-define", cmdNetworkDefine, opts_network_define, info_network_define},
@@ -3428,6 +3730,7 @@ static vshCmdDef commands[] = {
     {"setmaxmem", cmdSetmaxmem, opts_setmaxmem, info_setmaxmem},
     {"setvcpus", cmdSetvcpus, opts_setvcpus, info_setvcpus},
     {"suspend", cmdSuspend, opts_suspend, info_suspend},
+    {"ttyconsole", cmdTTYConsole, opts_ttyconsole, info_ttyconsole},
     {"undefine", cmdUndefine, opts_undefine, info_undefine},
     {"uri", cmdURI, NULL, info_uri},
     {"vcpuinfo", cmdVcpuinfo, opts_vcpuinfo, info_vcpuinfo},
@@ -3634,12 +3937,18 @@ static int
 vshCommandOptInt(vshCmd * cmd, const char *name, int *found)
 {
     vshCmdOpt *arg = vshCommandOpt(cmd, name);
-    int res = 0;
+    int res = 0, num_found = FALSE;
+    char *end_p = NULL;
 
-    if (arg)
-        res = atoi(arg->data);
+    if ((arg != NULL) && (arg->data != NULL)) {
+        res = strtol(arg->data, &end_p, 10);
+	if ((arg->data == end_p) || (*end_p!= 0))
+	    num_found = FALSE;
+	else
+	    num_found = TRUE;
+    }
     if (found)
-        *found = arg ? TRUE : FALSE;
+        *found = num_found;
     return res;
 }
 
@@ -4029,9 +4338,9 @@ vshDomainStateToString(int state)
     case VIR_DOMAIN_CRASHED:
         return gettext_noop("crashed");
     default:
-        return gettext_noop("no state");  /* = dom0 state */
+        ;/*FALLTHROUGH*/
     }
-    return NULL;
+    return gettext_noop("no state");  /* = dom0 state */
 }
 
 static const char *
@@ -4045,9 +4354,9 @@ vshDomainVcpuStateToString(int state)
     case VIR_VCPU_RUNNING:
         return gettext_noop("running");
     default:
-        return gettext_noop("no state");
+        ;/*FALLTHROUGH*/
     }
-    return NULL;
+    return gettext_noop("no state");
 }
 
 static int
@@ -4559,7 +4868,7 @@ vshParseArgv(vshControl * ctl, int argc, char **argv)
         }
         last = argv[i];
     }
-    end = end ? : argc;
+    end = end ? end : argc;
 
     /* standard (non-command) options */
     while ((arg = getopt_long(end, argv, "d:hqtc:vrl:", opt, &idx)) != -1) {

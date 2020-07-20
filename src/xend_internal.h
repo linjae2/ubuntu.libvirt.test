@@ -19,6 +19,7 @@
 #include <stdbool.h>
 
 #include "libvirt/libvirt.h"
+#include "buf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -108,10 +109,12 @@ int xenDaemonDomainLookupByID(virConnectPtr xend,
 
 
 char *xenDaemonDomainDumpXMLByID(virConnectPtr xend,
-				 int domid);
+				 int domid,
+				 int flags);
 
 char *xenDaemonDomainDumpXMLByName(virConnectPtr xend,
-				   const char *name);
+				   const char *name,
+				   int flags);
 
 /**
  * \brief Lookup information about the host machine
@@ -182,6 +185,7 @@ int xenDaemonOpen(virConnectPtr conn, const char *name, int flags);
 int xenDaemonClose(virConnectPtr conn);
 int xenDaemonGetVersion(virConnectPtr conn, unsigned long *hvVer);
 int xenDaemonNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info);
+int xenDaemonNodeGetTopology(virConnectPtr conn, virBufferPtr xml);
 int xenDaemonDomainSuspend(virDomainPtr domain);
 int xenDaemonDomainResume(virDomainPtr domain);
 int xenDaemonDomainShutdown(virDomainPtr domain);
@@ -219,6 +223,8 @@ int xenDaemonInit (void);
 virDomainPtr xenDaemonLookupByID(virConnectPtr conn, int id);
 virDomainPtr xenDaemonLookupByUUID(virConnectPtr conn, const unsigned char *uuid);
 virDomainPtr xenDaemonLookupByName(virConnectPtr conn, const char *domname);
+int xenDaemonDomainMigratePrepare (virConnectPtr dconn, char **cookie, int *cookielen, const char *uri_in, char **uri_out, unsigned long flags, const char *dname, unsigned long resource);
+int xenDaemonDomainMigratePerform (virDomainPtr domain, const char *cookie, int cookielen, const char *uri, unsigned long flags, const char *dname, unsigned long resource);
 
 #ifdef __cplusplus
 }

@@ -3,7 +3,8 @@
 INCLUDES = -I$(top_builddir)/include \
 	   -I@top_srcdir@/include \
 	   -I@top_srcdir@/qemud \
-	   @LIBXML_CFLAGS@ \
+	   $(LIBXML_CFLAGS) \
+	   $(GNUTLS_CFLAGS) \
 	   -DBINDIR=\""$(libexecdir)"\" \
 	   -DSBINDIR=\""$(sbindir)"\" \
 	   -DSYSCONF_DIR="\"$(sysconfdir)\"" \
@@ -13,13 +14,13 @@ INCLUDES = -I$(top_builddir)/include \
 	   $(WARN_CFLAGS) \
 	   $(LIBVIRT_FEATURES)
 DEPS = libvirt.la
-LDADDS = @STATIC_BINARIES@ libvirt.la
+LDADDS = @STATIC_BINARIES@ $(WARN_CFLAGS) libvirt.la
 VIRSH_LIBS = @VIRSH_LIBS@
 
 EXTRA_DIST = libvirt_sym.version
 
 lib_LTLIBRARIES = libvirt.la
-libvirt_la_LIBADD = @LIBXML_LIBS@
+libvirt_la_LIBADD = $(LIBXML_LIBS) $(GNUTLS_LIBS)
 libvirt_la_LDFLAGS = -Wl,--version-script=$(srcdir)/libvirt_sym.version \
                     -version-info @LIBVIRT_VERSION_INFO@ \
                     $(COVERAGE_CFLAGS:-f%=-Wc,-f%)
@@ -27,6 +28,7 @@ libvirt_la_CFLAGS = $(COVERAGE_CFLAGS)
 
 CLIENT_SOURCES =						\
 		libvirt.c internal.h				\
+		gnutls_1_0_compat.h				\
 		hash.c hash.h					\
 		test.c test.h                                   \
                 buf.c buf.h					\
@@ -47,7 +49,11 @@ CLIENT_SOURCES =						\
 		iptables.c iptables.h 				\
 		uuid.c uuid.h 					\
 		qemu_driver.c qemu_driver.h 			\
-		qemu_conf.c qemu_conf.h
+		qemu_conf.c qemu_conf.h					\
+		openvz_conf.c openvz_conf.h				\
+		openvz_driver.c openvz_driver.h 		\
+                nodeinfo.h nodeinfo.c                           \
+		util.c util.h
 
 SERVER_SOURCES = 						\
 		../qemud/protocol.h ../qemud/protocol.c		\

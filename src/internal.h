@@ -26,16 +26,22 @@ extern "C" {
 #define N_(str) dgettext(GETTEXT_PACKAGE, (str))
 #define gettext_noop(str) (str)
 
-#ifdef __GNUC__
-#ifdef HAVE_ANSIDECL_H
-#include <ansidecl.h>
-#endif
-
 /* String equality tests, suggested by Jim Meyering. */
 #define STREQ(a,b) (strcmp((a),(b)) == 0)
 #define STRCASEEQ(a,b) (strcasecmp((a),(b)) == 0)
 #define STRNEQ(a,b) (strcmp((a),(b)) != 0)
 #define STRCASENEQ(a,b) (strcasecmp((a),(b)) != 0)
+#define STREQLEN(a,b,n) (strncmp((a),(b),(n)) == 0)
+#define STRNEQLEN(a,b,n) (strncmp((a),(b),(n)) != 0)
+
+#ifndef __GNUC__
+#define	__FUNCTION__	__func__
+#endif
+
+#ifdef __GNUC__
+#ifdef HAVE_ANSIDECL_H
+#include <ansidecl.h>
+#endif
 
 /**
  * ATTRIBUTE_UNUSED:
@@ -59,7 +65,7 @@ extern "C" {
 #else
 #define ATTRIBUTE_UNUSED
 #define ATTRIBUTE_FORMAT(...)
-#endif
+#endif				/* __GNUC__ */
 
 /**
  * TODO:
@@ -226,6 +232,12 @@ int __virStateActive(void);
 #define virStateCleanup() __virStateCleanup()
 #define virStateReload() __virStateReload()
 #define virStateActive() __virStateActive()
+
+int __virDrvSupportsFeature (virConnectPtr conn, int feature);
+
+int __virDomainMigratePrepare (virConnectPtr dconn, char **cookie, int *cookielen, const char *uri_in, char **uri_out, unsigned long flags, const char *dname, unsigned long bandwidth);
+int __virDomainMigratePerform (virDomainPtr domain, const char *cookie, int cookielen, const char *uri, unsigned long flags, const char *dname, unsigned long bandwidth);
+virDomainPtr __virDomainMigrateFinish (virConnectPtr dconn, const char *dname, const char *cookie, int cookielen, const char *uri, unsigned long flags);
 
 #ifdef __cplusplus
 }

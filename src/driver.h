@@ -21,6 +21,7 @@ typedef enum {
     VIR_DRV_TEST = 2,
     VIR_DRV_QEMU = 3,
     VIR_DRV_REMOTE = 4,
+    VIR_DRV_OPENVZ = 5,
 } virDrvNo;
 
 
@@ -43,12 +44,42 @@ typedef enum {
     VIR_DRV_OPEN_ERROR = -2,
 } virDrvOpenStatus;
 
+/* Feature detection.  This is a libvirt-private interface for determining
+ * what features are supported by the driver.
+ *
+ * The remote driver passes features through to the real driver at the
+ * remote end unmodified, except if you query a VIR_DRV_FEATURE_REMOTE*
+ * feature.
+ */
+    /* Driver supports V1-style virDomainMigrate, ie. domainMigratePrepare/
+     * domainMigratePerform/domainMigrateFinish.
+     */
+#define VIR_DRV_FEATURE_MIGRATION_V1 1
+
+    /* Driver is not local. */
+#define VIR_DRV_FEATURE_REMOTE 2
+
+/* Internal feature-detection macro.  Don't call drv->supports_feature
+ * directly, because it may be NULL, use this macro instead.
+ *
+ * Note that you must check for errors.
+ *
+ * Returns:
+ *   >= 1  Feature is supported.
+ *   0     Feature is not supported.
+ *   -1    Error.
+ */
+#define VIR_DRV_SUPPORTS_FEATURE(drv,conn,feature)                      \
+    ((drv)->supports_feature ? (drv)->supports_feature((conn),(feature)) : 0)
+
 typedef virDrvOpenStatus
 	(*virDrvOpen)			(virConnectPtr conn,
 					 const char *name,
 					 int flags);
 typedef int
 	(*virDrvClose)			(virConnectPtr conn);
+typedef int
+    (*virDrvSupportsFeature) (virConnectPtr conn, int feature);
 typedef const char *
 	(*virDrvGetType)		(virConnectPtr conn);
 typedef int
@@ -180,8 +211,60 @@ typedef int
 					 virSchedParameterPtr params,
 					 int nparams);
 
+typedef int
+    (*virDrvDomainBlockStats)
+                    (virDomainPtr domain,
+                     const char *path,
+                     struct _virDomainBlockStats *stats);
+typedef int
+    (*virDrvDomainInterfaceStats)
+                    (virDomainPtr domain,
+                     const char *path,
+                     struct _virDomainInterfaceStats *stats);
+
+typedef int
+    (*virDrvDomainMigratePrepare)
+                    (virConnectPtr dconn,
+                     char **cookie,
+                     int *cookielen,
+                     const char *uri_in,
+                     char **uri_out,
+                     unsigned long flags,
+                     const char *dname,
+                     unsigned long resource);
+
+typedef int
+    (*virDrvDomainMigratePerform)
+                    (virDomainPtr domain,
+                     const char *cookie,
+                     int cookielen,
+                     const char *uri,
+                     unsigned long flags,
+                     const char *dname,
+                     unsigned long resource);
+
+typedef virDomainPtr
+    (*virDrvDomainMigrateFinish)
+                    (virConnectPtr dconn,
+                     const char *dname,
+                     const char *cookie,
+                     int cookielen,
+                     const char *uri,
+                     unsigned long flags);
+
 typedef struct _virDriver virDriver;
 typedef virDriver *virDriverPtr;
+
+typedef int
+    (*virDrvNodeGetCellsFreeMemory)
+                    (virConnectPtr conn,
+                     unsigned long long *freeMems,
+                     int startCell,
+                     int maxCells);
+
+typedef unsigned long long
+    (*virDrvNodeGetFreeMemory)
+		    (virConnectPtr conn);
 
 /**
  * _virDriver:
@@ -201,6 +284,7 @@ struct _virDriver {
 	unsigned long ver;	/* the version of the backend */
 	virDrvOpen			open;
 	virDrvClose			close;
+    virDrvSupportsFeature   supports_feature;
 	virDrvGetType			type;
 	virDrvGetVersion		version;
     virDrvGetHostname       getHostname;
@@ -244,6 +328,13 @@ struct _virDriver {
 	virDrvDomainGetSchedulerType	domainGetSchedulerType;
 	virDrvDomainGetSchedulerParameters domainGetSchedulerParameters;
 	virDrvDomainSetSchedulerParameters domainSetSchedulerParameters;
+    virDrvDomainMigratePrepare	domainMigratePrepare;
+    virDrvDomainMigratePerform	domainMigratePerform;
+    virDrvDomainMigrateFinish	domainMigrateFinish;
+    virDrvDomainBlockStats      domainBlockStats;
+    virDrvDomainInterfaceStats  domainInterfaceStats;
+	virDrvNodeGetCellsFreeMemory	nodeGetCellsFreeMemory;
+	virDrvNodeGetFreeMemory		getFreeMemory;
 };
 
 typedef int
@@ -303,6 +394,7 @@ typedef virNetworkDriver *virNetworkDriverPtr;
  *  - close
  */
 struct _virNetworkDriver {
+	const char * name;	/* the name of the driver */
 	virDrvOpen			open;
 	virDrvClose			close;
 	virDrvNumOfNetworks		numOfNetworks;

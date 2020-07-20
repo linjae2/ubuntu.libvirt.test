@@ -22,6 +22,9 @@ BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
 BuildRequires: gnutls-devel
+BuildRequires: avahi-devel
+BuildRequires: dnsmasq
+BuildRequires: bridge-utils
 Obsoletes: libvir
 ExclusiveArch: i386 x86_64 ia64
 
@@ -134,7 +137,8 @@ fi
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
 %attr(0755, root, root) %{_sbindir}/libvirtd
-%doc docs/libvirt.rng
+%doc docs/*.rng
+%doc docs/*.xml
 
 %files devel
 %defattr(-, root, root)
@@ -164,6 +168,27 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Sun Sep 30 2007 Daniel Veillard <veillard@redhat.com> - 0.3.3-1
+- Release of 0.3.3
+- Avahi support
+- NUMA support
+- lots of assorted improvements, bugfixes and cleanups
+- documentation and localization improvements
+
+* Tue Aug 21 2007 Daniel Veillard <veillard@redhat.com> - 0.3.2-1
+- Release of 0.3.2
+- API for domains migration
+- APIs for collecting statistics on disks and interfaces
+- lots of assorted bugfixes and cleanups
+- documentation and localization improvements
+
+* Tue Jul 24 2007 Daniel Veillard <veillard@redhat.com> - 0.3.1-1
+- Release of 0.3.1
+- localtime clock support
+- PS/2 and USB input devices
+- lots of assorted bugfixes and cleanups
+- documentation and localization improvements
+
 * Mon Jul  9 2007 Daniel Veillard <veillard@redhat.com> - 0.3.0-1
 - Release of 0.3.0
 - Secure remote access support
