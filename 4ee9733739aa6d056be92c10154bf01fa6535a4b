@@ -1,0 +1,6 @@
+  * d/p/libxl-support-sexpr-in-native-to-XML-conversion.patch:
+    Allow to use libvirt to convert xend guest configurations into
+    xml format.
+  * Add libvirt-migrate-xend-managed-domains migration script.
+    (LP: #1303886)
+  * Added breaks for xen-utils-4.(1|3) to ensure postinst order.
