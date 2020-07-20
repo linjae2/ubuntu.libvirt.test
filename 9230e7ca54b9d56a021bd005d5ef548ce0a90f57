@@ -1,0 +1,6 @@
+  [ Guido Günther ]
+  * [421e865] systemd: Don't restart libvirt-guests on upgrade
+    (Closes: #955216)
+  [ Laurent Bigonville ]
+  * [5f72035] Only run qemu test on amd64
+    (Closes: #955278)
