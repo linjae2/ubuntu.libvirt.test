@@ -1,0 +1,2 @@
+  * fix badly applied patch
+    0001-qemu-hotplug-only-label-hostdev-after-checking-device-conflicts
