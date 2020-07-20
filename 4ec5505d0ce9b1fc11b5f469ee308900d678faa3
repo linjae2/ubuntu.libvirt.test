@@ -1,0 +1,3 @@
+  * [2b79e3d] New upstream version 1.0.0~rc2
+  * [79d2200] Add empty systemtap dir so dh_install doesn't fail on kFreeBSD
+  * [e68850a] Create temporary dir for socket to avoid ENAMETOOLONG
