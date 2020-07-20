@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: integer overflow in virDomainGetVcpus()
+    - debian/patches/9909-CVE-2011-2511.patch: use INT_MULTIPLY_OVERFLOW() to
+      verify maxinfo * maplen < REMOTE_CPUMAPS_MAX
+    - CVE-2011-2511
