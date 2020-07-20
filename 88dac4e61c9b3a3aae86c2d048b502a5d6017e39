@@ -1,0 +1,8 @@
+  * d/apparmor/libvirt-qemu: silence denial to shm/lttng file since shm
+    mountpoint has moved (LP: #1529319)
+  * d/apparmor/libvirt-qemu: add r access to max_mem_regions vhost module
+    paramater (LP: #1531564)
+  * 9041-virt-aa-helper-fix-permission-for-vhost.patch - Fix inability to
+    create snapshots due to qemu-ga's socket (LP: #1517539)
+  * 9042-virt-aa-helper-add-nvram.patch - Fix error creating VM with OVMF
+    (LP: #1483071)
