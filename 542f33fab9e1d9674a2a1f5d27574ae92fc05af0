@@ -1,0 +1,3 @@
+  * debian/apparmor/libvirt-qemu: workaround eucalyptus serial console,
+    kernel and initrd location. This should be removed after virt-aa-helper is
+    able to get these from XML. (LP: #431090)
