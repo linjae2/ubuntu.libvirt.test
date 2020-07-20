@@ -1,0 +1,4 @@
+  * debian/patches/9022-dont-leak-log-fd.path.patch: Fix FD leak in
+    qemudStartVMDaemon (LP: #567392)
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: update paths for LVM
+    volumes and searching /sys/bus/usb/devices/ (LP: #565691)
