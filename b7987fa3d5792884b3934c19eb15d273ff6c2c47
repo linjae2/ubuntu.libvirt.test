@@ -1,0 +1,3 @@
+  * debian/patches/0005-Close-logfile-fd-after-spawning-qemu.patch: fix
+    egregious file descriptor leak with cherry-pick from upstream git,
+    LP: #438815
