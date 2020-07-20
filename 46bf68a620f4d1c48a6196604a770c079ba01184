@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: allow setgid and setuid so qemu can drop
+    privileges (LP: #579584)
