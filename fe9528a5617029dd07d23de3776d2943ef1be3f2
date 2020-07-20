@@ -1,0 +1,5 @@
+  * [828e4e3] New upstream version 0.9.6
+  * [59404f4] Use versioned X-Python-Version
+  * [0b43f12] Update symbols file
+  * [744aaeb] Drop Readd-LFS-support.patch - fixed upstream
+  * [f759960] Rediff remaining patches
