@@ -509,7 +509,7 @@ xenParseCPUFeatures(virConfPtr conf, virDomainDefPtr def)
     if (xenConfigGetString(conf, "cpus", &str, NULL) < 0)
         return -1;
 
-    if (str && (virBitmapParse(str, 0, &def->cpumask, 4096) < 0))
+    if (str && (virBitmapParse(str, &def->cpumask, 4096) < 0))
         return -1;
 
     if (def->os.type == VIR_DOMAIN_OSTYPE_HVM) {
@@ -935,7 +935,7 @@ xenParseVif(virConfPtr conf, virDomainDefPtr def, const char *vif_typename)
                 if (bridge[0] && VIR_STRDUP(net->data.bridge.brname, bridge) < 0)
                     goto cleanup;
             }
-            if (ip[0] && virDomainNetAppendIpAddress(net, ip, AF_INET, 0) < 0)
+            if (ip[0] && virDomainNetAppendIPAddress(net, ip, AF_INET, 0) < 0)
                 goto cleanup;
 
             if (script && script[0] &&
@@ -1153,11 +1153,11 @@ xenFormatNet(virConnectPtr conn,
     switch (net->type) {
     case VIR_DOMAIN_NET_TYPE_BRIDGE:
         virBufferAsprintf(&buf, ",bridge=%s", net->data.bridge.brname);
-        if (net->nips == 1) {
-            char *ipStr = virSocketAddrFormat(&net->ips[0]->address);
+        if (net->guestIP.nips == 1) {
+            char *ipStr = virSocketAddrFormat(&net->guestIP.ips[0]->address);
             virBufferAsprintf(&buf, ",ip=%s", ipStr);
             VIR_FREE(ipStr);
-        } else if (net->nips > 1) {
+        } else if (net->guestIP.nips > 1) {
             virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                            _("Driver does not support setting multiple IP addresses"));
             goto cleanup;
@@ -1168,11 +1168,11 @@ xenFormatNet(virConnectPtr conn,
     case VIR_DOMAIN_NET_TYPE_ETHERNET:
         if (net->script)
             virBufferAsprintf(&buf, ",script=%s", net->script);
-        if (net->nips == 1) {
-            char *ipStr = virSocketAddrFormat(&net->ips[0]->address);
+        if (net->guestIP.nips == 1) {
+            char *ipStr = virSocketAddrFormat(&net->guestIP.ips[0]->address);
             virBufferAsprintf(&buf, ",ip=%s", ipStr);
             VIR_FREE(ipStr);
-        } else if (net->nips > 1) {
+        } else if (net->guestIP.nips > 1) {
             virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                            _("Driver does not support setting multiple IP addresses"));
             goto cleanup;
@@ -1339,7 +1339,7 @@ static int
 xenFormatMem(virConfPtr conf, virDomainDefPtr def)
 {
     if (xenConfigSetInt(conf, "maxmem",
-                        VIR_DIV_UP(virDomainDefGetMemoryActual(def), 1024)) < 0)
+                        VIR_DIV_UP(virDomainDefGetMemoryTotal(def), 1024)) < 0)
         return -1;
 
     if (xenConfigSetInt(conf, "memory",

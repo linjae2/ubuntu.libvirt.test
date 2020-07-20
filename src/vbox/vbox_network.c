@@ -37,49 +37,6 @@
 
 VIR_LOG_INIT("vbox.vbox_network");
 
-#define RC_SUCCEEDED(rc) NS_SUCCEEDED(rc.resultCode)
-#define RC_FAILED(rc) NS_FAILED(rc.resultCode)
-
-#define VBOX_UTF16_FREE(arg)                                            \
-    do {                                                                \
-        if (arg) {                                                      \
-            gVBoxAPI.UPFN.Utf16Free(data->pFuncs, arg);                 \
-            (arg) = NULL;                                               \
-        }                                                               \
-    } while (0)
-
-#define VBOX_UTF8_FREE(arg)                                             \
-    do {                                                                \
-        if (arg) {                                                      \
-            gVBoxAPI.UPFN.Utf8Free(data->pFuncs, arg);                  \
-            (arg) = NULL;                                               \
-        }                                                               \
-    } while (0)
-
-#define VBOX_UTF16_TO_UTF8(arg1, arg2)  gVBoxAPI.UPFN.Utf16ToUtf8(data->pFuncs, arg1, arg2)
-#define VBOX_UTF8_TO_UTF16(arg1, arg2)  gVBoxAPI.UPFN.Utf8ToUtf16(data->pFuncs, arg1, arg2)
-
-#define VBOX_RELEASE(arg)                                                     \
-    do {                                                                      \
-        if (arg) {                                                            \
-            gVBoxAPI.nsUISupports.Release((void *)arg);                       \
-            (arg) = NULL;                                                     \
-        }                                                                     \
-    } while (0)
-
-#define vboxIIDUnalloc(iid)                     gVBoxAPI.UIID.vboxIIDUnalloc(data, iid)
-#define vboxIIDToUUID(iid, uuid)                gVBoxAPI.UIID.vboxIIDToUUID(data, iid, uuid)
-#define vboxIIDFromUUID(iid, uuid)              gVBoxAPI.UIID.vboxIIDFromUUID(data, iid, uuid)
-#define vboxIIDIsEqual(iid1, iid2)              gVBoxAPI.UIID.vboxIIDIsEqual(data, iid1, iid2)
-#define DEBUGIID(msg, iid)                      gVBoxAPI.UIID.DEBUGIID(msg, iid)
-#define vboxIIDFromArrayItem(iid, array, idx) \
-    gVBoxAPI.UIID.vboxIIDFromArrayItem(data, iid, array, idx)
-
-#define VBOX_IID_INITIALIZE(iid)                gVBoxAPI.UIID.vboxIIDInitialize(iid)
-
-#define ARRAY_GET_MACHINES \
-    (gVBoxAPI.UArray.handleGetMachines(data->vboxObj))
-
 static vboxUniformedAPI gVBoxAPI;
 
 /**
@@ -419,7 +376,7 @@ vboxNetworkDefineCreateXML(virConnectPtr conn, const char *xml, bool start)
     char *networkNameUtf8 = NULL;
     IHostNetworkInterface *networkInterface = NULL;
     virNetworkDefPtr def = virNetworkDefParseString(xml);
-    virNetworkIpDefPtr ipdef = NULL;
+    virNetworkIPDefPtr ipdef = NULL;
     unsigned char uuid[VIR_UUID_BUFLEN];
     vboxIIDUnion vboxnetiid;
     virSocketAddr netmask;
@@ -445,11 +402,11 @@ vboxNetworkDefineCreateXML(virConnectPtr conn, const char *xml, bool start)
      * If there weren't any IPv4 addresses, ignore the network (since it's
      * required below to have an IPv4 address)
     */
-    ipdef = virNetworkDefGetIpByIndex(def, AF_INET, 0);
+    ipdef = virNetworkDefGetIPByIndex(def, AF_INET, 0);
     if (!ipdef)
         goto cleanup;
 
-    if (virNetworkIpDefNetmask(ipdef, &netmask) < 0)
+    if (virNetworkIPDefNetmask(ipdef, &netmask) < 0)
         goto cleanup;
 
     /* the current limitation of hostonly network is that you can't
@@ -805,7 +762,7 @@ static char *vboxNetworkGetXMLDesc(virNetworkPtr network, unsigned int flags)
 {
     vboxGlobalData *data = network->conn->privateData;
     virNetworkDefPtr def = NULL;
-    virNetworkIpDefPtr ipdef = NULL;
+    virNetworkIPDefPtr ipdef = NULL;
     char *networkNameUtf8 = NULL;
     PRUnichar *networkInterfaceNameUtf16 = NULL;
     IHostNetworkInterface *networkInterface = NULL;
