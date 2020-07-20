@@ -1,0 +1,6 @@
+  * virObjectUnref() libvirtd killed by SIGSEGV (LP: #1464175)
+    - upstream, util: identity: Harden virIdentitySetCurrent()
+    - upstream, daemon: Clear fake domain def object that is used to check 
+      ACL prior to use
+    - upstream, rpc: Don't unref identity object while callbacks still can 
+      be executed
