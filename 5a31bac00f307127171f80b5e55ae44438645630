@@ -1,0 +1,3 @@
+  * [20830ab] Mark sheepdog as linux-any since it's not available on kFreeBSD
+  * [be7423c] Allow xen toolstack to find it's binaries. 
+    Thanks to George Dunlap for the patch. (Closes: #685749)
