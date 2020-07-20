@@ -1,0 +1,3 @@
+  * debian/patch/9028-lp628055.patch: include sys/stat.h to fix compiler
+    warning and stat() failure on 32bit architectures when calling stat() on
+    large files. This can be dropped in 0.8.5. (LP: #628055)
