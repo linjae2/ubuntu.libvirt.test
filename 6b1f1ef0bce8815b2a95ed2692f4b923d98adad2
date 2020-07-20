@@ -1,0 +1,4 @@
+  * d/p/ubuntu/lp-1811198-utils-Remove-arbitrary-limit-on-socket_id-core_id
+    .patch: fix arm servers with high core_id (LP: #1811198)
+  * d/p/ubuntu/lp-1771662-*: fix assumption that all VFs have PFs assigned
+    (LP: #1771662)
