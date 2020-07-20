@@ -1,0 +1,20 @@
+  [ Chuck Short ]
+  * New upstream version:
+    + Rediffed:
+      - d/p/ubuntu-xend-probe.patch
+    + Dropped:
+      - d/p/libxl-Check-for-control_d-string-to-decide-about-dom.patch
+      - d/p/libxl-do-not-use-virdomain-id.patch
+      - d/p/libxl-set-disk-format-for-cdrom.patch
+      - d/p/libxl-set-vfb0-data-in-build-config.patch
+      - d/p/libxl-support-sexpr-in-native-to-XML-conversion.patch
+      - d/p/patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
+      - d/p/accomodate-new-qemu-migration-status-setup.patch
+      - d/p/9025-apparmor-allow-access-to-filesystem-mounts
+      - d/p/add-a-mutex-to-serialize-updates-to-fw.patch
+      - d/p/arm-cpu-baseline.patch
+    + debian/control: Add ebtables, iptables, and qemu-utils as a build dependency.
+  [ Serge Hallyn ]
+  * d/p/ubuntu-skip-virstoragetest: skip a test that hangs in buildds.
+  * d/apparmor/TEMPLATE: replace libvirt-qemu with libvirt-driver to match
+    upstream commit 43c030f.
