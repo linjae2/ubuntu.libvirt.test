@@ -1,0 +1,1 @@
+  * debian/control: add libgcrypt11-dev to build-depends (LP: #932889)
