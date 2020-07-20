@@ -1,0 +1,19 @@
+  [ Chuck Short ]
+  * New upstream release: 
+    + Dropped patches:
+      - debian/patches/Add_RESUME_event_listener_to_qemu_monitor.patch
+      - debian/patches/build-work-around-broken-kernel-header.patch
+      - debian/patches/bridge-fix-persistent-networks.patch
+      - debian/patches/CVE-2013-0170.patch
+      - debian/patches/qemu-relax-hard-rss-limit.patch
+      - debian/patches/9003-better-default-arch.patch
+    + Refreshed patches:
+      - debian/patches/fix-ubuntu-xen-qemu-dm-path.patch
+      - debian/patches/Reduce-udevadm-settle-timeout-to-10-seconds.patch
+      - debian/patches/9021-fix-uint64_t.patch
+      - debian/patches/9020-lp545795.patch
+      - debian/patches/Don-t-fail-if-we-can-t-setup-avahi.patch
+    + debian/libvirt0.install: Add libvirt-lxc.so.*
+  [ Serge Hallyn ]
+  * debian/patches/fix-virterror-namechange: fix unfinished name change
+    causing errors in generated libvirt.py.
