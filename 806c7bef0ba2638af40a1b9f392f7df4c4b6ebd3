@@ -1,0 +1,14 @@
+  * d/p/ubuntu-xend-probe.patch:
+    Update patch correctly and re-enable it. It seems like it only was
+    half updated and then disabled without reasons.
+  * d/p/ubuntu-libxl-Implement-basic-video-device-selection.patch:
+    Re-activate adapted patch. Some pieces made it into upstream as a
+    bug fix. The rest is still needed to allow selecing an alternate
+    graphics device for Xen HVM guests.
+  * d/p/ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch:
+    Re-activate unchanged patch (for some reason dropped when moving
+    to 1.2.6).
+    This one is a bit of a work-around mainly for virt-manager which sets
+    gfx memory to values below the minimum requirement for Xen. And the
+    UI does not allow to change that. This patch just goes for the minimum
+    in that case.
