@@ -1,0 +1,6 @@
+  * Revert d/p/virt-aa-helper-add-nvram-store-file.patch: nvram does not
+    exist as a sub-element of loader. This breaks the build in 14.04/Trusty.
+  * d/apparmor/usr.sbin.libvirtd: Allow execution of qemu-dm from
+    libvirtd (LP: #1546978).
+  * d/p/virt-aa-helper-add-guest-agent-rule.patch: Fix qemu-guest-channel
+    permissions (LP: #1393842).
