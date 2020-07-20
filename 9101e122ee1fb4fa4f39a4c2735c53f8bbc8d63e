@@ -1,0 +1,5 @@
+  * apparmor-allow-tunnelled-migration.patch: adjust virt-aa-helper to
+    allow tunnelled migration (LP: #869553)
+    (Thanks to Simon Deziel <simon.deziel@gmail.com>)
+  * fix break in last upload: *really* don't apply patch
+    debian/Don-t-enable-default-network-on-boot.patch
