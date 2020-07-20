@@ -1,0 +1,9 @@
+  * New upstream release:
+    - Refreshed patches:
+      + debian/patches/storage-default-permission-mode-to-0711
+    - Dropped patches:
+      + debian/patches/util_use_w_flag_when_calling_iptables.patch
+   * debian/control, debian/rules, debian/python.mk,
+     debian/python-libvirt.install: python libvirt bindings have been
+     split out into its own source called libvirt-python.
+   * debian/libvirt-dev.install: Install API files into dev package
