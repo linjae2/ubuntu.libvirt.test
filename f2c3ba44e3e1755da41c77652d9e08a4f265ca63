@@ -1,0 +1,82 @@
+  * Merge from debian unstable with security fixes
+  * Fixes:
+    - LP: #588369
+    - LP: #585964
+  * Remaining changes:
+    - debian/control:
+      + Build-Depends on qemu-kvm, not qemu
+      + Build-Depends on open-iscsi-utils, not open-iscsi
+      + Build-Depends on libxml2-utils
+      + Build-Depends on libapparmor-dev and Suggests apparmor
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin
+      + Drop lvm2, qemu-kvm and qemu to Suggests
+      + We call libxen-dev libxen3-dev, so change all references
+      + Rename Vcs-* to XS-Debian-Vcs-*
+    - debian/libvirt-bin.postinst:
+      + rename the libvirt group to libvirtd
+      + add each admin user to the libvirtd group
+      + reload apparmor profiles
+    - debian/libvirt-bin.postrm:
+      + rename the libvirt group to libvirtd
+      + remove apparmor symlinks on purge
+    - debian/README.Debian: add AppArmor section based on the upstream
+      documentation
+    - debian/rules:
+      + update DEB_DH_INSTALLINIT_ARGS for upstart
+      + add DEB_MAKE_CHECK_TARGET := check
+      + use --with-apparmor
+      + copy apparmor and apport hook to debian/tmp
+    - add debian/libvirt-bin.upstart
+    - debian/libvirt-bin.dirs: add /etc/apparmor.d/abstractions,
+      /etc/apparmor.d/disable, /etc/apparmor.d/force-complain,
+      /etc/apparmor.d/libvirt, /etc/cron.daily and
+      /usr/share/apport/package-hooks
+    - add debian/libvirt-bin.cron.daily
+    - add debian/libvirt-bin.apport
+    - debian/libvirt-bin.install: install apparmor profiles, abstractions
+      and apport hook
+    - debian/apparmor:
+      - add TEMPLATE
+      - add libvirt-qemu abstraction
+      - add usr.lib.libvirt.virt-aa-helper
+      - add usr.sbin.libvirtd
+    - debian/patches/series:
+      + don't apply 0002-qemu-disable-network.diff.patch
+      + don't apply 0005-Terminate-nc-on-EOF.patch. Use
+        9009-autodetect-nc-params.patch instead
+      + 9000-delayed_iff_up_bridge.patch (refreshed)
+      + 9001-dont_clobber_existing_bridges.patch
+      + 9002-better_default_uri_virsh.patch (refreshed)
+      + 9003-better-default-arch.patch (refreshsed)
+      + 9004-libvirtd-group-name.patch
+      + 9005-increase-unix-socket-timeout.patch (refreshed)
+      + 9006-default-config-test-case.patch
+      + 9007-fix-daemon-conf-ftbfs.patch (updated)
+      + 9008-run-as-root-by-default.patch (refreshed)
+      + 9009-autodetect-nc-params.patch (refreshed)
+      + 9010-dont-disable-ipv6.patch (refreshsed)
+      + 9011-move-ebtables-script.patch (refreshed)
+  * Dropped the following patches included/fixed upstream:
+    - 9012-fix-nodeinfotest-ftbfs.patch
+    - 9013-apparmor-lp457716.patch
+  * Disable virtualbox support since virtualbox-ose is not in main
+    - debian/control: remove virtualbox-ose build dependency
+    - debian/rules: use --without-vbox
+  * debian/patches/9012-apparmor-dont-ignore-open.patch: fix logic when
+    using virDomainDiskDefForeachPath() and add tests. This can be removed
+    in 0.8.4.
+  * debian/apparmor/usr.sbin.libvirtd: add capability fsetid (LP: #613549)
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: allow access to
+    @{PROC}/[0-9]*/net/psched
+  * debian/patches/9013-apparmor-chardev.patch: update for serial, parallel
+    and channels. This can be removed in 0.8.4. (LP: #609055, LP: #578527)
+  * migrate virtual machine definitions with non-raw disks and previously
+    unspecified disk format with a one time probe:
+    - add debian/libvirt-migrate-qemu-disks
+    - add debian/libvirt-migrate-qemu-disks.1
+    - debian/libvirt-bin.postinst: updated to run 'libvirt-migrate-qemu-disks
+      -a' on upgrades
+    - debian/rules: cp debian/libvirt-migrate-qemu-disks into place
+    - debian/libvirt-bin.manpages: install debian/libvirt-migrate-qemu-disks.1
+    - debian/README.Debian: updated for libvirt-migrate-qemu-disks
