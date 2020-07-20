@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: remote denial of service via file descriptor leak
+    - debian/patches/CVE-2013-1962.patch: properly free pool in
+      daemon/remote.c.
+    - CVE-2013-1962
