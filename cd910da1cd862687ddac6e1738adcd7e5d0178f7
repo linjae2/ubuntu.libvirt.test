@@ -1,0 +1,6 @@
+  * debian/patches/9012-apparmor-dont-ignore-open.patch: don't bother with
+    updated logic. After review, upstream's code is sufficient and simpler.
+    Keep new tests and rename to 9012-apparmor-extra-tests.patch. This can be
+    removed in 0.8.4.
+  * debian/patches/9013-apparmor-lp457716.patch: updated based on upstream
+    feedback. This can be removed in 0.8.4.
