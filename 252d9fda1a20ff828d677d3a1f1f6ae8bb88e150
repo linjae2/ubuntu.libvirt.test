@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu, examples/apparmor/libvirt-qemu:
+    allow seabios in the apparmor profile, LP: #545302
