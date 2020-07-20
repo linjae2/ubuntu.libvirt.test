@@ -1,0 +1,3 @@
+  * Fix previous patch to ignore any abstract unix domain sockets
+  * Update the cgmanager patch so that container start and stop work under
+    systemd.  (LP: #1438730)  In 15.10 we will drop the cgmanager patch(es).
