@@ -1,0 +1,17 @@
+  * New upstream release.
+  * Don't change the default URI. It appears that too many applications
+    still depend on this broken behaviour.
+  * Change maintainer to ubuntu-core-dev.
+  * Merge from debian unstable, remaining changes:
+    - Add libvirt0-dbg package.
+    - Start libvirtd by default.
+    - Create libvirtd group, and have libvirtd's sockets have group ownership
+      "libvirtd".
+    - Add libxen as a build-dependency to enable libvirt's Xen features.
+  * don't include precompiled examples in the doc package (Closes: #456825)
+  * remove RHism from manpage (Closes: #455859)
+  * bump standards version
+  * make libs match overrides
+  * move to team maintenance
+  * suggest dnsmasq and bridge-utils for qemu networking
+  * remove stale PID files
