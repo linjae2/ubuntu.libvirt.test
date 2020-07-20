@@ -1,0 +1,7 @@
+  * Refresh/fix detection of xm/xl toolstack in use. The previous port
+    had two glitches, one of them causing the daemon to segfault.
+  * Cherry-pick "libxl: Fix initialization of nictype in libxl_device_nic"
+    from upstream to have the same default NIC choice with the libxl driver
+    as we had with the xen(d) driver (HVM guest uses a emulated rtl8139).
+  * Cherry-pick "libxl: Fix devid init in libxlMakeNicList" from upstream
+    to allow HVM guests to be brought up from the libxl driver.
