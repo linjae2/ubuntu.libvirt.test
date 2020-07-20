@@ -1,0 +1,8 @@
+  * SECURITY UPDATE: denial of service via virConnectListAllDomains
+    - debian/patches/CVE-2014-3633.patch: fix domain deadlock in
+      src/conf/domain_conf.c.
+    - CVE-2014-3633
+  * SECURITY UPDATE: xml information leak with read-only connections
+    - debian/patches/CVE-2014-7823.patch: check for migratable flag in
+      src/libvirt.c, src/remote/remote_protocol.x.
+    - CVE-2014-3657
