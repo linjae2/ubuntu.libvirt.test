@@ -1,0 +1,3 @@
+  * Change default URI to qemu:///session
+  * Add libvirt0-dbg package, which is just like libvirt0, but built
+    with --enable-debug=yes.
