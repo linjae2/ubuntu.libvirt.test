@@ -1,0 +1,2 @@
+  * debian/patches/lp1039678.patch: fix segfault in 'snapshot-list'
+    - LP: #1039678
