@@ -1,0 +1,6 @@
+  * d/p/u/apparmor-fix-name-resolution.patch rework the fix to base
+    on the apparmor nameservice abstraction to be future proof (LP: #1546674).
+  * d/p/ubuntu/apparmor-fix-new-devicetypes.patch add new block device types to
+    virt-aa-helpers profile (LP: #1641618)
+  * d/p/u/apparmor-fix-other-seclabels.patch refresh to the now upstream
+    accepted solution (LP: #1633207).
