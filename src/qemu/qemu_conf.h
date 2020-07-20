@@ -1,7 +1,7 @@
 /*
  * qemu_conf.h: QEMU configuration management
  *
- * Copyright (C) 2006-2007, 2009-2011 Red Hat, Inc.
+ * Copyright (C) 2006-2007, 2009-2012 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -36,6 +36,7 @@
 # include "security/security_manager.h"
 # include "cgroup.h"
 # include "pci.h"
+# include "hostusb.h"
 # include "cpu_conf.h"
 # include "driver.h"
 # include "bitmap.h"
@@ -105,6 +106,7 @@ struct qemud_driver {
     unsigned int setProcessName : 1;
 
     int maxProcesses;
+    int maxFiles;
 
     int max_queued;
 
@@ -113,6 +115,8 @@ struct qemud_driver {
     virDomainEventStatePtr domainEventState;
 
     char *securityDriverName;
+    bool securityDefaultConfined;
+    bool securityRequireConfined;
     virSecurityManagerPtr securityManager;
 
     char *saveImageFormat;
@@ -124,6 +128,10 @@ struct qemud_driver {
     bool autoStartBypassCache;
 
     pciDeviceList *activePciHostdevs;
+    usbDeviceList *activeUsbHostdevs;
+
+    /* The devices which is are not in use by the host or any guest. */
+    pciDeviceList *inactivePciHostdevs;
 
     virBitmapPtr reservedVNCPorts;
 
@@ -169,6 +177,7 @@ struct qemuDomainDiskInfo {
     bool removable;
     bool locked;
     bool tray_open;
+    int io_status;
 };
 
 #endif /* __QEMUD_CONF_H */

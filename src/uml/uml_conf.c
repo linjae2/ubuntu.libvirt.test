@@ -122,6 +122,7 @@ virCapsPtr umlCapsInit(void) {
 
 static int
 umlConnectTapDevice(virConnectPtr conn,
+                    virDomainDefPtr vm,
                     virDomainNetDefPtr net,
                     const char *bridge)
 {
@@ -148,7 +149,7 @@ umlConnectTapDevice(virConnectPtr conn,
     }
 
     if (net->filter) {
-        if (virDomainConfNWFilterInstantiate(conn, net)) {
+        if (virDomainConfNWFilterInstantiate(conn, vm->uuid, net) < 0) {
             if (template_ifname)
                 VIR_FREE(net->ifname);
             goto error;
@@ -165,6 +166,7 @@ error:
 
 static char *
 umlBuildCommandLineNet(virConnectPtr conn,
+                       virDomainDefPtr vm,
                        virDomainNetDefPtr def,
                        int idx)
 {
@@ -189,11 +191,6 @@ umlBuildCommandLineNet(virConnectPtr conn,
         if (def->data.ethernet.ipaddr) {
             umlReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("IP address not supported for ethernet interface"));
-            goto error;
-        }
-        if (def->data.ethernet.script) {
-            umlReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                           _("script execution not supported for ethernet interface"));
             goto error;
         }
         break;
@@ -230,7 +227,7 @@ umlBuildCommandLineNet(virConnectPtr conn,
             goto error;
         }
 
-        if (umlConnectTapDevice(conn, def, bridge) < 0) {
+        if (umlConnectTapDevice(conn, vm, def, bridge) < 0) {
             VIR_FREE(bridge);
             goto error;
         }
@@ -241,7 +238,8 @@ umlBuildCommandLineNet(virConnectPtr conn,
     }
 
     case VIR_DOMAIN_NET_TYPE_BRIDGE:
-        if (umlConnectTapDevice(conn, def, def->data.bridge.brname) < 0)
+        if (umlConnectTapDevice(conn, vm, def,
+                                def->data.bridge.brname) < 0)
             goto error;
 
         /* ethNNN=tuntap,tapname,macaddr,gateway */
@@ -260,6 +258,12 @@ umlBuildCommandLineNet(virConnectPtr conn,
 
     case VIR_DOMAIN_NET_TYPE_LAST:
         break;
+    }
+
+    if (def->script) {
+        umlReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("interface script execution not supported by this driver"));
+        goto error;
     }
 
     virBufferAsprintf(&buf, ",%02x:%02x:%02x:%02x:%02x:%02x",
@@ -434,7 +438,7 @@ virCommandPtr umlBuildCommandLine(virConnectPtr conn,
     }
 
     for (i = 0 ; i < vm->def->nnets ; i++) {
-        char *ret = umlBuildCommandLineNet(conn, vm->def->nets[i], i);
+        char *ret = umlBuildCommandLineNet(conn, vm->def, vm->def->nets[i], i);
         if (!ret)
             goto error;
         virCommandAddArg(cmd, ret);

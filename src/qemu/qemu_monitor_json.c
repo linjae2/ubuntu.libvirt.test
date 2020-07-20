@@ -1,7 +1,7 @@
 /*
  * qemu_monitor_json.c: interaction with QEMU monitor console
  *
- * Copyright (C) 2006-2011 Red Hat, Inc.
+ * Copyright (C) 2006-2012 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -59,7 +59,7 @@ static void qemuMonitorJSONHandleVNCInitialize(qemuMonitorPtr mon, virJSONValueP
 static void qemuMonitorJSONHandleVNCDisconnect(qemuMonitorPtr mon, virJSONValuePtr data);
 static void qemuMonitorJSONHandleBlockJob(qemuMonitorPtr mon, virJSONValuePtr data);
 
-struct {
+static struct {
     const char *type;
     void (*handler)(qemuMonitorPtr mon, virJSONValuePtr data);
 } eventHandlers[] = {
@@ -554,7 +554,7 @@ static void qemuMonitorJSONHandleRTCChange(qemuMonitorPtr mon, virJSONValuePtr d
 }
 
 VIR_ENUM_DECL(qemuMonitorWatchdogAction)
-VIR_ENUM_IMPL(qemuMonitorWatchdogAction, VIR_DOMAIN_EVENT_WATCHDOG_DEBUG + 1,
+VIR_ENUM_IMPL(qemuMonitorWatchdogAction, VIR_DOMAIN_EVENT_WATCHDOG_LAST,
               "none", "pause", "reset", "poweroff", "shutdown", "debug");
 
 static void qemuMonitorJSONHandleWatchdog(qemuMonitorPtr mon, virJSONValuePtr data)
@@ -576,7 +576,7 @@ static void qemuMonitorJSONHandleWatchdog(qemuMonitorPtr mon, virJSONValuePtr da
 }
 
 VIR_ENUM_DECL(qemuMonitorIOErrorAction)
-VIR_ENUM_IMPL(qemuMonitorIOErrorAction, VIR_DOMAIN_EVENT_IO_ERROR_REPORT + 1,
+VIR_ENUM_IMPL(qemuMonitorIOErrorAction, VIR_DOMAIN_EVENT_IO_ERROR_LAST,
               "ignore", "stop", "report");
 
 
@@ -619,7 +619,8 @@ static void qemuMonitorJSONHandleIOError(qemuMonitorPtr mon, virJSONValuePtr dat
 
 
 VIR_ENUM_DECL(qemuMonitorGraphicsAddressFamily)
-VIR_ENUM_IMPL(qemuMonitorGraphicsAddressFamily, VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_UNIX + 1,
+VIR_ENUM_IMPL(qemuMonitorGraphicsAddressFamily,
+              VIR_DOMAIN_EVENT_GRAPHICS_ADDRESS_LAST,
               "ipv4", "ipv6", "unix");
 
 static void qemuMonitorJSONHandleVNC(qemuMonitorPtr mon, virJSONValuePtr data, int phase)
@@ -1356,11 +1357,9 @@ cleanup:
 
 
 int qemuMonitorJSONGetBlockInfo(qemuMonitorPtr mon,
-                                const char *devname,
-                                struct qemuDomainDiskInfo *info)
+                                virHashTablePtr table)
 {
-    int ret = 0;
-    bool found = false;
+    int ret;
     int i;
 
     virJSONValuePtr cmd = qemuMonitorJSONMakeCommand("query-block",
@@ -1388,7 +1387,9 @@ int qemuMonitorJSONGetBlockInfo(qemuMonitorPtr mon,
 
     for (i = 0; i < virJSONValueArraySize(devices); i++) {
         virJSONValuePtr dev = virJSONValueArrayGet(devices, i);
+        struct qemuDomainDiskInfo *info;
         const char *thisdev;
+        const char *status;
 
         if (!dev || dev->type != VIR_JSON_TYPE_OBJECT) {
             qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
@@ -1405,10 +1406,16 @@ int qemuMonitorJSONGetBlockInfo(qemuMonitorPtr mon,
         if (STRPREFIX(thisdev, QEMU_DRIVE_HOST_PREFIX))
             thisdev += strlen(QEMU_DRIVE_HOST_PREFIX);
 
-        if (STRNEQ(thisdev, devname))
-            continue;
+        if (VIR_ALLOC(info) < 0) {
+            virReportOOMError();
+            goto cleanup;
+        }
 
-        found = true;
+        if (virHashAddEntry(table, thisdev, info) < 0) {
+            VIR_FREE(info);
+            goto cleanup;
+        }
+
         if (virJSONValueObjectGetBoolean(dev, "removable", &info->removable) < 0) {
             qemuReportError(VIR_ERR_INTERNAL_ERROR,
                             _("cannot read %s value"),
@@ -1429,14 +1436,12 @@ int qemuMonitorJSONGetBlockInfo(qemuMonitorPtr mon,
         ignore_value(virJSONValueObjectGetBoolean(dev, "tray-open",
                                                   &info->tray_open));
 
-        break;
-    }
-
-    if (!found) {
-        qemuReportError(VIR_ERR_INTERNAL_ERROR,
-                        _("cannot find info for device '%s'"),
-                        devname);
-        goto cleanup;
+        /* Missing io-status indicates no error */
+        if ((status = virJSONValueObjectGetString(dev, "io-status"))) {
+            info->io_status = qemuMonitorBlockIOStatusToError(status);
+            if (info->io_status < 0)
+                goto cleanup;
+        }
     }
 
     ret = 0;
@@ -2338,7 +2343,7 @@ int qemuMonitorJSONAddUSBDisk(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                               const char *path ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("usb_add not suppported in JSON mode"));
+                    _("usb_add not supported in JSON mode"));
     return -1;
 }
 
@@ -2348,7 +2353,7 @@ int qemuMonitorJSONAddUSBDeviceExact(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                      int dev ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("usb_add not suppported in JSON mode"));
+                    _("usb_add not supported in JSON mode"));
     return -1;
 }
 
@@ -2358,7 +2363,7 @@ int qemuMonitorJSONAddUSBDeviceMatch(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                      int product ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("usb_add not suppported in JSON mode"));
+                    _("usb_add not supported in JSON mode"));
     return -1;
 }
 
@@ -2368,7 +2373,7 @@ int qemuMonitorJSONAddPCIHostDevice(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                     virDomainDevicePCIAddress *guestAddr ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("pci_add not suppported in JSON mode"));
+                    _("pci_add not supported in JSON mode"));
     return -1;
 }
 
@@ -2379,7 +2384,7 @@ int qemuMonitorJSONAddPCIDisk(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                               virDomainDevicePCIAddress *guestAddr ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("pci_add not suppported in JSON mode"));
+                    _("pci_add not supported in JSON mode"));
     return -1;
 }
 
@@ -2389,7 +2394,7 @@ int qemuMonitorJSONAddPCINetwork(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                  virDomainDevicePCIAddress *guestAddr ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("pci_add not suppported in JSON mode"));
+                    _("pci_add not supported in JSON mode"));
     return -1;
 }
 
@@ -2398,7 +2403,7 @@ int qemuMonitorJSONRemovePCIDevice(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                    virDomainDevicePCIAddress *guestAddr ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("pci_del not suppported in JSON mode"));
+                    _("pci_del not supported in JSON mode"));
     return -1;
 }
 
@@ -2655,7 +2660,7 @@ int qemuMonitorJSONAttachPCIDiskController(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                            virDomainDevicePCIAddress *guestAddr ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("pci_add not suppported in JSON mode"));
+                    _("pci_add not supported in JSON mode"));
     return -1;
 }
 
@@ -2732,7 +2737,7 @@ int qemuMonitorJSONGetAllPCIAddresses(qemuMonitorPtr mon ATTRIBUTE_UNUSED,
                                       qemuMonitorPCIAddress **addrs ATTRIBUTE_UNUSED)
 {
     qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                    _("query-pci not suppported in JSON mode"));
+                    _("query-pci not supported in JSON mode"));
     return -1;
 }
 
@@ -3196,7 +3201,7 @@ static int qemuMonitorJSONGetBlockJobInfo(virJSONValuePtr reply,
 
     if (data->type != VIR_JSON_TYPE_ARRAY) {
         qemuReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                        _("urecognized format of block job information"));
+                        _("unrecognized format of block job information"));
         return -1;
     }
 

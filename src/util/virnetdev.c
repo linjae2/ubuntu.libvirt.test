@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2011 Red Hat, Inc.
+ * Copyright (C) 2007-2012 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,7 @@
 #include <config.h>
 
 #include "virnetdev.h"
+#include "virmacaddr.h"
 #include "virfile.h"
 #include "virterror_internal.h"
 #include "command.h"
@@ -264,7 +265,7 @@ virNetDevReplaceMacAddress(const char *linkdev,
         virReportOOMError();
         return -1;
     }
-    virFormatMacAddr(oldmac, macstr);
+    virMacAddrFormat(oldmac, macstr);
     if (virFileWriteStr(path, macstr, O_CREAT|O_TRUNC|O_WRONLY) < 0) {
         virReportSystemError(errno, _("Unable to preserve mac for %s"),
                              linkdev);
@@ -305,7 +306,7 @@ virNetDevRestoreMacAddress(const char *linkdev,
     if (virFileReadAll(path, VIR_MAC_STRING_BUFLEN, &macstr) < 0)
         return -1;
 
-    if (virParseMacAddr(macstr, &oldmac[0]) != 0) {
+    if (virMacAddrParse(macstr, &oldmac[0]) != 0) {
         virNetDevError(VIR_ERR_INTERNAL_ERROR,
                        _("Cannot parse MAC address from '%s'"),
                        oldmacname);
@@ -900,7 +901,7 @@ int virNetDevValidateConfig(const char *ifname,
                 goto cleanup;
             }
             virReportSystemError(errno,
-                                 _("coud not get MAC address of interface %s"),
+                                 _("could not get MAC address of interface %s"),
                                  ifname);
             goto cleanup;
         }
@@ -967,6 +968,77 @@ virNetDevSysfsDeviceFile(char **pf_sysfs_device_link, const char *ifname,
     }
 
     return 0;
+}
+
+/**
+ * virNetDevGetVirtualFunctions:
+ *
+ * @pfname : name of the physical function interface name
+ * @vfname: array that will hold the interface names of the virtual_functions
+ * @n_vfname: pointer to the number of virtual functions
+ *
+ * Returns 0 on success and -1 on failure
+ */
+
+int
+virNetDevGetVirtualFunctions(const char *pfname,
+                             char ***vfname,
+                             unsigned int *n_vfname)
+{
+    int ret = -1, i;
+    char *pf_sysfs_device_link = NULL;
+    char *pci_sysfs_device_link = NULL;
+    struct pci_config_address **virt_fns;
+    char *pciConfigAddr;
+
+    if (virNetDevSysfsFile(&pf_sysfs_device_link, pfname, "device") < 0)
+        return ret;
+
+    if (pciGetVirtualFunctions(pf_sysfs_device_link, &virt_fns,
+                               n_vfname) < 0)
+        goto cleanup;
+
+    if (VIR_ALLOC_N(*vfname, *n_vfname) < 0) {
+        virReportOOMError();
+        goto cleanup;
+    }
+
+    for (i = 0; i < *n_vfname; i++)
+    {
+        if (pciGetDeviceAddrString(virt_fns[i]->domain,
+                                   virt_fns[i]->bus,
+                                   virt_fns[i]->slot,
+                                   virt_fns[i]->function,
+                                   &pciConfigAddr) < 0) {
+            virReportSystemError(ENOSYS, "%s",
+                                 _("Failed to get PCI Config Address String"));
+            goto cleanup;
+        }
+        if (pciSysfsFile(pciConfigAddr, &pci_sysfs_device_link) < 0) {
+            virReportSystemError(ENOSYS, "%s",
+                                 _("Failed to get PCI SYSFS file"));
+            goto cleanup;
+        }
+
+        if (pciDeviceNetName(pci_sysfs_device_link, &((*vfname)[i])) < 0) {
+            virReportSystemError(ENOSYS, "%s",
+                                 _("Failed to get interface name of the VF"));
+            goto cleanup;
+        }
+    }
+
+    ret = 0;
+
+cleanup:
+    if (ret < 0)
+        VIR_FREE(*vfname);
+    for (i = 0; i < *n_vfname; i++)
+        VIR_FREE(virt_fns[i]);
+    VIR_FREE(virt_fns);
+    VIR_FREE(pf_sysfs_device_link);
+    VIR_FREE(pci_sysfs_device_link);
+    VIR_FREE(pciConfigAddr);
+    return ret;
 }
 
 /**
@@ -1056,11 +1128,22 @@ virNetDevGetPhysicalFunction(const char *ifname, char **pfname)
     return ret;
 }
 #else /* !__linux__ */
+
+int
+virNetDevGetVirtualFunctions(const char *pfname ATTRIBUTE_UNUSED,
+                             char ***vfname ATTRIBUTE_UNUSED,
+                             unsigned int *n_vfname ATTRIBUTE_UNUSED)
+{
+    virReportSystemError(ENOSYS, "%s",
+                         _("Unable to get virtual functions on this platfornm"));
+    return -1;
+}
+
 int
 virNetDevIsVirtualFunction(const char *ifname ATTRIBUTE_UNUSED)
 {
     virReportSystemError(ENOSYS, "%s",
-                         _("Unable to check virtual function status on this platfornm"));
+                         _("Unable to check virtual function status on this platform"));
     return -1;
 }
 
@@ -1070,7 +1153,7 @@ virNetDevGetVirtualFunctionIndex(const char *pfname ATTRIBUTE_UNUSED,
                              int *vf_index ATTRIBUTE_UNUSED)
 {
     virReportSystemError(ENOSYS, "%s",
-                         _("Unable to get virtual function index on this platfornm"));
+                         _("Unable to get virtual function index on this platform"));
     return -1;
 }
 
@@ -1079,7 +1162,7 @@ virNetDevGetPhysicalFunction(const char *ifname ATTRIBUTE_UNUSED,
                              char **pfname ATTRIBUTE_UNUSED)
 {
     virReportSystemError(ENOSYS, "%s",
-                         _("Unable to get physical function status on this platfornm"));
+                         _("Unable to get physical function status on this platform"));
     return -1;
 }
 #endif /* !__linux__ */

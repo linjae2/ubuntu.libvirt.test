@@ -88,7 +88,7 @@ int qemuDomainChangeEjectableMedia(struct qemud_driver *driver,
         return -1;
 
     if (virSecurityManagerSetImageLabel(driver->securityManager,
-                                        vm, disk) < 0) {
+                                        vm->def, disk) < 0) {
         if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
             VIR_WARN("Unable to release lock on %s", disk->src);
         return -1;
@@ -120,7 +120,7 @@ int qemuDomainChangeEjectableMedia(struct qemud_driver *driver,
         goto error;
 
     if (virSecurityManagerRestoreImageLabel(driver->securityManager,
-                                            vm, origdisk) < 0)
+                                            vm->def, origdisk) < 0)
         VIR_WARN("Unable to restore security label on ejected image %s", origdisk->src);
 
     if (virDomainLockDiskDetach(driver->lockManager, vm, origdisk) < 0)
@@ -141,7 +141,7 @@ error:
     VIR_FREE(driveAlias);
 
     if (virSecurityManagerRestoreImageLabel(driver->securityManager,
-                                            vm, disk) < 0)
+                                            vm->def, disk) < 0)
         VIR_WARN("Unable to restore security label on new media %s", disk->src);
 
     if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
@@ -155,32 +155,38 @@ qemuDomainCheckEjectableMedia(struct qemud_driver *driver,
                              virDomainObjPtr vm)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    virHashTablePtr table;
     int ret = -1;
     int i;
 
+    qemuDomainObjEnterMonitor(driver, vm);
+    table = qemuMonitorGetBlockInfo(priv->mon);
+    qemuDomainObjExitMonitor(driver, vm);
+
+    if (!table)
+        goto cleanup;
+
     for (i = 0; i < vm->def->ndisks; i++) {
         virDomainDiskDefPtr disk = vm->def->disks[i];
-        struct qemuDomainDiskInfo info;
+        struct qemuDomainDiskInfo *info;
 
-        if (disk->device == VIR_DOMAIN_DISK_DEVICE_DISK)
+        if (disk->device == VIR_DOMAIN_DISK_DEVICE_DISK ||
+            disk->device == VIR_DOMAIN_DISK_DEVICE_LUN) {
                  continue;
-
-        memset(&info, 0, sizeof(info));
-
-        qemuDomainObjEnterMonitor(driver, vm);
-        if (qemuMonitorGetBlockInfo(priv->mon, disk->info.alias, &info) < 0) {
-            qemuDomainObjExitMonitor(driver, vm);
-            goto cleanup;
         }
-        qemuDomainObjExitMonitor(driver, vm);
 
-        if (info.tray_open && disk->src)
+        info = qemuMonitorBlockInfoLookup(table, disk->info.alias);
+        if (!info)
+            goto cleanup;
+
+        if (info->tray_open && disk->src)
             VIR_FREE(disk->src);
     }
 
     ret = 0;
 
 cleanup:
+    virHashFree(table);
     return ret;
 }
 
@@ -209,7 +215,7 @@ int qemuDomainAttachPciDiskDevice(virConnectPtr conn,
         return -1;
 
     if (virSecurityManagerSetImageLabel(driver->securityManager,
-                                        vm, disk) < 0) {
+                                        vm->def, disk) < 0) {
         if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
             VIR_WARN("Unable to release lock on %s", disk->src);
         return -1;
@@ -283,7 +289,7 @@ error:
         VIR_WARN("Unable to release PCI address on %s", disk->src);
 
     if (virSecurityManagerRestoreImageLabel(driver->securityManager,
-                                            vm, disk) < 0)
+                                            vm->def, disk) < 0)
         VIR_WARN("Unable to restore security label on %s", disk->src);
 
     if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
@@ -329,7 +335,7 @@ int qemuDomainAttachPciControllerDevice(struct qemud_driver *driver,
             goto cleanup;
         }
 
-        if (!(devstr = qemuBuildControllerDevStr(controller, priv->qemuCaps, NULL))) {
+        if (!(devstr = qemuBuildControllerDevStr(vm->def, controller, priv->qemuCaps, NULL))) {
             goto cleanup;
         }
     }
@@ -439,7 +445,7 @@ int qemuDomainAttachSCSIDisk(virConnectPtr conn,
         return -1;
 
     if (virSecurityManagerSetImageLabel(driver->securityManager,
-                                        vm, disk) < 0) {
+                                        vm->def, disk) < 0) {
         if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
             VIR_WARN("Unable to release lock on %s", disk->src);
         return -1;
@@ -530,7 +536,7 @@ error:
     VIR_FREE(drivestr);
 
     if (virSecurityManagerRestoreImageLabel(driver->securityManager,
-                                            vm, disk) < 0)
+                                            vm->def, disk) < 0)
         VIR_WARN("Unable to restore security label on %s", disk->src);
 
     if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
@@ -562,7 +568,7 @@ int qemuDomainAttachUsbMassstorageDevice(virConnectPtr conn,
         return -1;
 
     if (virSecurityManagerSetImageLabel(driver->securityManager,
-                                        vm, disk) < 0) {
+                                        vm->def, disk) < 0) {
         if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
             VIR_WARN("Unable to release lock on %s", disk->src);
         return -1;
@@ -623,7 +629,7 @@ error:
     VIR_FREE(drivestr);
 
     if (virSecurityManagerRestoreImageLabel(driver->securityManager,
-                                            vm, disk) < 0)
+                                            vm->def, disk) < 0)
         VIR_WARN("Unable to restore security label on %s", disk->src);
 
     if (virDomainLockDiskDetach(driver->lockManager, vm, disk) < 0)
@@ -1097,6 +1103,9 @@ int qemuDomainAttachHostDevice(struct qemud_driver *driver,
     /* Resolve USB product/vendor to bus/device */
     if (hostdev->source.subsys.type == VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB &&
         hostdev->source.subsys.u.usb.vendor) {
+        if (qemuPrepareHostdevUSBDevices(driver, vm->def->name, &hostdev, 1) < 0)
+            goto error;
+
         usbDevice *usb
             = usbFindDevice(hostdev->source.subsys.u.usb.vendor,
                             hostdev->source.subsys.u.usb.product);
@@ -1112,7 +1121,7 @@ int qemuDomainAttachHostDevice(struct qemud_driver *driver,
 
 
     if (virSecurityManagerSetHostdevLabel(driver->securityManager,
-                                          vm, hostdev) < 0)
+                                          vm->def, hostdev) < 0)
         return -1;
 
     switch (hostdev->source.subsys.type) {
@@ -1139,7 +1148,7 @@ int qemuDomainAttachHostDevice(struct qemud_driver *driver,
 
 error:
     if (virSecurityManagerRestoreHostdevLabel(driver->securityManager,
-                                              vm, hostdev) < 0)
+                                              vm->def, hostdev) < 0)
         VIR_WARN("Unable to restore host device labelling on hotplug fail");
 
     return -1;
@@ -1216,7 +1225,7 @@ int qemuDomainChangeNet(struct qemud_driver *driver,
 
     case VIR_DOMAIN_NET_TYPE_ETHERNET:
         if (STRNEQ_NULLABLE(olddev->data.ethernet.dev, dev->data.ethernet.dev) ||
-            STRNEQ_NULLABLE(olddev->data.ethernet.script, dev->data.ethernet.script) ||
+            STRNEQ_NULLABLE(olddev->script, dev->script) ||
             STRNEQ_NULLABLE(olddev->data.ethernet.ipaddr, dev->data.ethernet.ipaddr)) {
             qemuReportError(VIR_ERR_NO_SUPPORT,
                             _("cannot modify ethernet network device configuration"));
@@ -1572,7 +1581,7 @@ int qemuDomainDetachPciDiskDevice(struct qemud_driver *driver,
     virDomainDiskDefFree(detach);
 
     if (virSecurityManagerRestoreImageLabel(driver->securityManager,
-                                            vm, dev->data.disk) < 0)
+                                            vm->def, dev->data.disk) < 0)
         VIR_WARN("Unable to restore security label on %s", dev->data.disk->src);
 
     if (cgroup != NULL) {
@@ -1654,7 +1663,7 @@ int qemuDomainDetachDiskDevice(struct qemud_driver *driver,
     virDomainDiskDefFree(detach);
 
     if (virSecurityManagerRestoreImageLabel(driver->securityManager,
-                                            vm, dev->data.disk) < 0)
+                                            vm->def, dev->data.disk) < 0)
         VIR_WARN("Unable to restore security label on %s", dev->data.disk->src);
 
     if (cgroup != NULL) {
@@ -1952,14 +1961,17 @@ cleanup:
     return ret;
 }
 
-int qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
-                                  virDomainObjPtr vm,
-                                  virDomainDeviceDefPtr dev)
+static int
+qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
+                              virDomainObjPtr vm,
+                              virDomainDeviceDefPtr dev,
+                              virDomainHostdevDefPtr *detach_ret)
 {
     virDomainHostdevDefPtr detach = NULL;
     qemuDomainObjPrivatePtr priv = vm->privateData;
     int i, ret;
     pciDevice *pci;
+    pciDevice *activePci;
 
     for (i = 0 ; i < vm->def->nhostdevs ; i++) {
         if (vm->def->hostdevs[i]->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS ||
@@ -2019,16 +2031,17 @@ int qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
                        detach->source.subsys.u.pci.bus,
                        detach->source.subsys.u.pci.slot,
                        detach->source.subsys.u.pci.function);
-    if (!pci)
-        ret = -1;
-    else {
-        pciDeviceSetManaged(pci, detach->managed);
-        pciDeviceListDel(driver->activePciHostdevs, pci);
-        if (pciResetDevice(pci, driver->activePciHostdevs, NULL) < 0)
+    if (pci) {
+        activePci = pciDeviceListSteal(driver->activePciHostdevs, pci);
+        if (pciResetDevice(activePci, driver->activePciHostdevs,
+                           driver->inactivePciHostdevs) == 0)
+            qemuReattachPciDevice(activePci, driver);
+        else
             ret = -1;
-        pciDeviceReAttachInit(pci);
-        qemuReattachPciDevice(pci, driver);
         pciFreeDevice(pci);
+        pciFreeDevice(activePci);
+    } else {
+        ret = -1;
     }
 
     if (qemuCapsGet(priv->qemuCaps, QEMU_CAPS_DEVICE) &&
@@ -2049,17 +2062,23 @@ int qemuDomainDetachHostPciDevice(struct qemud_driver *driver,
         VIR_FREE(vm->def->hostdevs);
         vm->def->nhostdevs = 0;
     }
-    virDomainHostdevDefFree(detach);
+    if (detach_ret)
+        *detach_ret = detach;
+    else
+        virDomainHostdevDefFree(detach);
 
     return ret;
 }
 
-int qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
-                                  virDomainObjPtr vm,
-                                  virDomainDeviceDefPtr dev)
+static int
+qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
+                              virDomainObjPtr vm,
+                              virDomainDeviceDefPtr dev,
+                              virDomainHostdevDefPtr *detach_ret)
 {
     virDomainHostdevDefPtr detach = NULL;
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    usbDevice *usb;
     int i, ret;
 
     for (i = 0 ; i < vm->def->nhostdevs ; i++) {
@@ -2115,6 +2134,17 @@ int qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
     if (ret < 0)
         return -1;
 
+    usb = usbGetDevice(detach->source.subsys.u.usb.bus,
+                       detach->source.subsys.u.usb.device);
+    if (usb) {
+        usbDeviceListDel(driver->activeUsbHostdevs, usb);
+        usbFreeDevice(usb);
+    } else {
+        VIR_WARN("Unable to find device %03d.%03d in list of used USB devices",
+                 detach->source.subsys.u.usb.bus,
+                 detach->source.subsys.u.usb.device);
+    }
+
     if (vm->def->nhostdevs > 1) {
         memmove(vm->def->hostdevs + i,
                 vm->def->hostdevs + i + 1,
@@ -2128,7 +2158,10 @@ int qemuDomainDetachHostUsbDevice(struct qemud_driver *driver,
         VIR_FREE(vm->def->hostdevs);
         vm->def->nhostdevs = 0;
     }
-    virDomainHostdevDefFree(detach);
+    if (detach_ret)
+        *detach_ret = detach;
+    else
+        virDomainHostdevDefFree(detach);
 
     return ret;
 }
@@ -2138,6 +2171,7 @@ int qemuDomainDetachHostDevice(struct qemud_driver *driver,
                                virDomainDeviceDefPtr dev)
 {
     virDomainHostdevDefPtr hostdev = dev->data.hostdev;
+    virDomainHostdevDefPtr detach = NULL;
     int ret;
 
     if (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS) {
@@ -2149,10 +2183,10 @@ int qemuDomainDetachHostDevice(struct qemud_driver *driver,
 
     switch (hostdev->source.subsys.type) {
     case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI:
-        ret = qemuDomainDetachHostPciDevice(driver, vm, dev);
-        break;
+        ret = qemuDomainDetachHostPciDevice(driver, vm, dev, &detach);
+       break;
     case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB:
-        ret = qemuDomainDetachHostUsbDevice(driver, vm, dev);
+        ret = qemuDomainDetachHostUsbDevice(driver, vm, dev, &detach);
         break;
     default:
         qemuReportError(VIR_ERR_CONFIG_UNSUPPORTED,
@@ -2161,9 +2195,12 @@ int qemuDomainDetachHostDevice(struct qemud_driver *driver,
         return -1;
     }
 
-    if (virSecurityManagerRestoreHostdevLabel(driver->securityManager,
-                                              vm, dev->data.hostdev) < 0)
+    if (ret == 0 &&
+        virSecurityManagerRestoreHostdevLabel(driver->securityManager,
+                                              vm->def, detach) < 0)
         VIR_WARN("Failed to restore host device labelling");
+
+    virDomainHostdevDefFree(detach);
 
     return ret;
 }

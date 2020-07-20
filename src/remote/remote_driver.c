@@ -2,7 +2,7 @@
  * remote_driver.c: driver to provide access to libvirtd running
  *   on a remote machine
  *
- * Copyright (C) 2007-2011 Red Hat, Inc.
+ * Copyright (C) 2007-2012 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -46,6 +46,7 @@
 #include "virfile.h"
 #include "command.h"
 #include "intprops.h"
+#include "virtypedparam.h"
 
 #define VIR_FROM_THIS VIR_FROM_REMOTE
 
@@ -145,7 +146,6 @@ static void make_nonnull_storage_vol (remote_nonnull_storage_vol *vol_dst, virSt
 static void make_nonnull_secret (remote_nonnull_secret *secret_dst, virSecretPtr secret_src);
 static void make_nonnull_nwfilter (remote_nonnull_nwfilter *nwfilter_dst, virNWFilterPtr nwfilter_src);
 static void make_nonnull_domain_snapshot (remote_nonnull_domain_snapshot *snapshot_dst, virDomainSnapshotPtr snapshot_src);
-static void remoteDomainEventQueueFlush(int timer, void *opaque);
 static void remoteDomainEventQueue(struct private_data *priv, virDomainEventPtr event);
 /*----------------------------------------------------------------------*/
 
@@ -727,10 +727,7 @@ doRemoteOpen (virConnectPtr conn,
         }
     }
 
-    if (!(priv->domainEventState = virDomainEventStateNew(remoteDomainEventQueueFlush,
-                                                          conn,
-                                                          NULL,
-                                                          false)))
+    if (!(priv->domainEventState = virDomainEventStateNew()))
         goto failed;
 
     /* Successful. */
@@ -1421,13 +1418,42 @@ remoteDeserializeTypedParameters(remote_typed_param *ret_params_val,
     rv = 0;
 
 cleanup:
-    if (rv < 0) {
-        int j;
-        for (j = 0; j < i; j++)
-            if (params[j].type == VIR_TYPED_PARAM_STRING)
-                VIR_FREE(params[j].value.s);
-    }
+    if (rv < 0)
+        virTypedParameterArrayClear(params, i);
     return rv;
+}
+
+static int
+remoteDeserializeDomainDiskErrors(remote_domain_disk_error *ret_errors_val,
+                                  u_int ret_errors_len,
+                                  int limit,
+                                  virDomainDiskErrorPtr errors,
+                                  int maxerrors)
+{
+    int i = 0;
+    int j;
+
+    if (ret_errors_len > limit || ret_errors_len > maxerrors) {
+        remoteError(VIR_ERR_RPC, "%s",
+                    _("returned number of disk errors exceeds limit"));
+        goto error;
+    }
+
+    for (i = 0; i < ret_errors_len; i++) {
+        if (!(errors[i].disk = strdup(ret_errors_val[i].disk))) {
+            virReportOOMError();
+            goto error;
+        }
+        errors[i].error = ret_errors_val[i].error;
+    }
+
+    return 0;
+
+error:
+    for (j = 0; j < i; j++)
+        VIR_FREE(errors[i].disk);
+
+    return -1;
 }
 
 static int
@@ -1535,6 +1561,54 @@ remoteDomainGetMemoryParameters (virDomainPtr domain,
 
 cleanup:
     xdr_free ((xdrproc_t) xdr_remote_domain_get_memory_parameters_ret,
+              (char *) &ret);
+done:
+    remoteDriverUnlock(priv);
+    return rv;
+}
+
+static int
+remoteDomainGetNumaParameters (virDomainPtr domain,
+                               virTypedParameterPtr params, int *nparams,
+                               unsigned int flags)
+{
+    int rv = -1;
+    remote_domain_get_numa_parameters_args args;
+    remote_domain_get_numa_parameters_ret ret;
+    struct private_data *priv = domain->conn->privateData;
+
+    remoteDriverLock(priv);
+
+    make_nonnull_domain (&args.dom, domain);
+    args.nparams = *nparams;
+    args.flags = flags;
+
+    memset (&ret, 0, sizeof ret);
+    if (call (domain->conn, priv, 0, REMOTE_PROC_DOMAIN_GET_NUMA_PARAMETERS,
+              (xdrproc_t) xdr_remote_domain_get_numa_parameters_args, (char *) &args,
+              (xdrproc_t) xdr_remote_domain_get_numa_parameters_ret, (char *) &ret) == -1)
+        goto done;
+
+    /* Handle the case when the caller does not know the number of parameters
+     * and is asking for the number of parameters supported
+     */
+    if (*nparams == 0) {
+        *nparams = ret.nparams;
+        rv = 0;
+        goto cleanup;
+    }
+
+    if (remoteDeserializeTypedParameters(ret.params.params_val,
+                                         ret.params.params_len,
+                                         REMOTE_DOMAIN_NUMA_PARAMETERS_MAX,
+                                         params,
+                                         nparams) < 0)
+        goto cleanup;
+
+    rv = 0;
+
+cleanup:
+    xdr_free ((xdrproc_t) xdr_remote_domain_get_numa_parameters_ret,
               (char *) &ret);
 done:
     remoteDriverUnlock(priv);
@@ -2260,6 +2334,96 @@ done:
     remoteDriverUnlock(priv);
     return rv;
 }
+
+static int remoteDomainGetCPUStats(virDomainPtr domain,
+                                   virTypedParameterPtr params,
+                                   unsigned int nparams,
+                                   int start_cpu,
+                                   unsigned int ncpus,
+                                   unsigned int flags)
+{
+    struct private_data *priv = domain->conn->privateData;
+    remote_domain_get_cpu_stats_args args;
+    remote_domain_get_cpu_stats_ret ret;
+    int rv = -1;
+    int cpu;
+
+    remoteDriverLock(priv);
+
+    if (nparams > REMOTE_NODE_CPU_STATS_MAX) {
+        remoteError(VIR_ERR_RPC,
+                    _("nparams count exceeds maximum: %u > %u"),
+                    nparams, REMOTE_NODE_CPU_STATS_MAX);
+        goto done;
+    }
+    if (ncpus > REMOTE_DOMAIN_GET_CPU_STATS_NCPUS_MAX) {
+        remoteError(VIR_ERR_RPC,
+                    _("ncpus count exceeds maximum: %u > %u"),
+                    ncpus, REMOTE_DOMAIN_GET_CPU_STATS_NCPUS_MAX);
+        goto done;
+    }
+
+    make_nonnull_domain(&args.dom, domain);
+    args.nparams = nparams;
+    args.start_cpu = start_cpu;
+    args.ncpus = ncpus;
+    args.flags = flags;
+
+    memset(&ret, 0, sizeof(ret));
+
+    if (call(domain->conn, priv, 0, REMOTE_PROC_DOMAIN_GET_CPU_STATS,
+             (xdrproc_t) xdr_remote_domain_get_cpu_stats_args,
+             (char *) &args,
+             (xdrproc_t) xdr_remote_domain_get_cpu_stats_ret,
+             (char *) &ret) == -1)
+        goto done;
+
+    /* Check the length of the returned list carefully. */
+    if (ret.params.params_len > nparams * ncpus ||
+        (ret.params.params_len &&
+         ret.nparams * ncpus != ret.params.params_len)) {
+        remoteError(VIR_ERR_RPC, "%s",
+                    _("remoteDomainGetCPUStats: "
+                      "returned number of stats exceeds limit"));
+        memset(params, 0, sizeof(*params) * nparams * ncpus);
+        goto cleanup;
+    }
+
+    /* Handle the case when the caller does not know the number of stats
+     * and is asking for the number of stats supported
+     */
+    if (nparams == 0) {
+        rv = ret.nparams;
+        goto cleanup;
+    }
+
+    /* The remote side did not send back any zero entries, so we have
+     * to expand things back into a possibly sparse array.
+     */
+    memset(params, 0, sizeof(*params) * nparams * ncpus);
+    for (cpu = 0; cpu < ncpus; cpu++) {
+        int tmp = nparams;
+        remote_typed_param *stride = &ret.params.params_val[cpu * ret.nparams];
+
+        if (remoteDeserializeTypedParameters(stride, ret.nparams,
+                                             REMOTE_NODE_CPU_STATS_MAX,
+                                             &params[cpu * nparams],
+                                             &tmp) < 0)
+            goto cleanup;
+    }
+
+    rv = ret.nparams;
+cleanup:
+    if (rv < 0)
+        virTypedParameterArrayClear(params, nparams * ncpus);
+
+    xdr_free ((xdrproc_t) xdr_remote_domain_get_cpu_stats_ret,
+              (char *) &ret);
+done:
+    remoteDriverUnlock(priv);
+    return rv;
+}
+
 
 /*----------------------------------------------------------------------*/
 
@@ -3077,6 +3241,14 @@ remoteAuthPolkit (virConnectPtr conn, struct private_data *priv,
     };
     VIR_DEBUG("Client initialize PolicyKit-0 authentication");
 
+    /* Check auth first and if it succeeds we are done. */
+    memset (&ret, 0, sizeof ret);
+    if (call (conn, priv, 0, REMOTE_PROC_AUTH_POLKIT,
+              (xdrproc_t) xdr_void, (char *)NULL,
+              (xdrproc_t) xdr_remote_auth_polkit_ret, (char *) &ret) == 0)
+        goto out;
+
+    /* Auth failed.  Ask client to obtain it and check again. */
     if (auth && auth->cb) {
         /* Check if the necessary credential type for PolicyKit is supported */
         for (i = 0 ; i < auth->ncredtype ; i++) {
@@ -3094,9 +3266,11 @@ remoteAuthPolkit (virConnectPtr conn, struct private_data *priv,
             }
         } else {
             VIR_DEBUG("Client auth callback does not support PolicyKit");
+            return -1;
         }
     } else {
         VIR_DEBUG("No auth callback provided");
+        return -1;
     }
 
     memset (&ret, 0, sizeof ret);
@@ -3106,6 +3280,7 @@ remoteAuthPolkit (virConnectPtr conn, struct private_data *priv,
         return -1; /* virError already set by call */
     }
 
+out:
     VIR_DEBUG("PolicyKit-0 authentication complete");
     return 0;
 }
@@ -3120,23 +3295,17 @@ static int remoteDomainEventRegister(virConnectPtr conn,
 {
     int rv = -1;
     struct private_data *priv = conn->privateData;
+    int count;
 
     remoteDriverLock(priv);
 
-    if (priv->domainEventState->timer < 0) {
-         remoteError(VIR_ERR_NO_SUPPORT, "%s", _("no event support"));
-         goto done;
-    }
-
-    if (virDomainEventCallbackListAdd(conn, priv->domainEventState->callbacks,
-                                      callback, opaque, freecb) < 0) {
+    if ((count = virDomainEventStateRegister(conn, priv->domainEventState,
+                                             callback, opaque, freecb)) < 0) {
          remoteError(VIR_ERR_RPC, "%s", _("adding cb to list"));
          goto done;
     }
 
-    if (virDomainEventCallbackListCountID(conn,
-                                          priv->domainEventState->callbacks,
-                                          VIR_DOMAIN_EVENT_ID_LIFECYCLE) == 1) {
+    if (count == 1) {
         /* Tell the server when we are the first callback deregistering */
         if (call (conn, priv, 0, REMOTE_PROC_DOMAIN_EVENTS_REGISTER,
                 (xdrproc_t) xdr_void, (char *) NULL,
@@ -3156,17 +3325,16 @@ static int remoteDomainEventDeregister(virConnectPtr conn,
 {
     struct private_data *priv = conn->privateData;
     int rv = -1;
+    int count;
 
     remoteDriverLock(priv);
 
-    if (virDomainEventStateDeregister(conn,
-                                      priv->domainEventState,
-                                      callback) < 0)
+    if ((count = virDomainEventStateDeregister(conn,
+                                               priv->domainEventState,
+                                               callback)) < 0)
         goto done;
 
-    if (virDomainEventCallbackListCountID(conn,
-                                          priv->domainEventState->callbacks,
-                                          VIR_DOMAIN_EVENT_ID_LIFECYCLE) == 0) {
+    if (count == 0) {
         /* Tell the server when we are the last callback deregistering */
         if (call (conn, priv, 0, REMOTE_PROC_DOMAIN_EVENTS_DEREGISTER,
                   (xdrproc_t) xdr_void, (char *) NULL,
@@ -3760,35 +3928,30 @@ static int remoteDomainEventRegisterAny(virConnectPtr conn,
     struct private_data *priv = conn->privateData;
     remote_domain_events_register_any_args args;
     int callbackID;
+    int count;
 
     remoteDriverLock(priv);
 
-    if (priv->domainEventState->timer < 0) {
-         remoteError(VIR_ERR_NO_SUPPORT, "%s", _("no event support"));
-         goto done;
-    }
-
-    if ((callbackID = virDomainEventCallbackListAddID(conn,
-                                                      priv->domainEventState->callbacks,
-                                                      dom, eventID,
-                                                      callback, opaque, freecb)) < 0) {
-         remoteError(VIR_ERR_RPC, "%s", _("adding cb to list"));
-         goto done;
+    if ((count = virDomainEventStateRegisterID(conn,
+                                               priv->domainEventState,
+                                               dom, eventID,
+                                               callback, opaque, freecb,
+                                               &callbackID)) < 0) {
+        remoteError(VIR_ERR_RPC, "%s", _("adding cb to list"));
+        goto done;
     }
 
     /* If this is the first callback for this eventID, we need to enable
      * events on the server */
-    if (virDomainEventCallbackListCountID(conn,
-                                          priv->domainEventState->callbacks,
-                                          eventID) == 1) {
+    if (count == 1) {
         args.eventID = eventID;
 
         if (call (conn, priv, 0, REMOTE_PROC_DOMAIN_EVENTS_REGISTER_ANY,
                   (xdrproc_t) xdr_remote_domain_events_register_any_args, (char *) &args,
                   (xdrproc_t) xdr_void, (char *)NULL) == -1) {
-            virDomainEventCallbackListRemoveID(conn,
-                                               priv->domainEventState->callbacks,
-                                               callbackID);
+            virDomainEventStateDeregisterID(conn,
+                                            priv->domainEventState,
+                                            callbackID);
             goto done;
         }
     }
@@ -3808,27 +3971,28 @@ static int remoteDomainEventDeregisterAny(virConnectPtr conn,
     int rv = -1;
     remote_domain_events_deregister_any_args args;
     int eventID;
+    int count;
 
     remoteDriverLock(priv);
 
-    if ((eventID = virDomainEventCallbackListEventID(conn,
-                                                     priv->domainEventState->callbacks,
-                                                     callbackID)) < 0) {
+    if ((eventID = virDomainEventStateEventID(conn,
+                                              priv->domainEventState,
+                                              callbackID)) < 0) {
         remoteError(VIR_ERR_RPC, _("unable to find callback ID %d"), callbackID);
         goto done;
     }
 
-    if (virDomainEventStateDeregisterAny(conn,
-                                         priv->domainEventState,
-                                         callbackID) < 0)
+    if ((count = virDomainEventStateDeregisterID(conn,
+                                                 priv->domainEventState,
+                                                 callbackID)) < 0) {
+        remoteError(VIR_ERR_RPC, _("unable to find callback ID %d"), callbackID);
         goto done;
+    }
 
     /* If that was the last callback for this eventID, we need to disable
      * events on the server */
-    if (virDomainEventCallbackListCountID(conn,
-                                          priv->domainEventState->callbacks,
-                                          eventID) == 0) {
-        args.eventID = eventID;
+    if (count == 0) {
+        args.eventID = callbackID;
 
         if (call (conn, priv, 0, REMOTE_PROC_DOMAIN_EVENTS_DEREGISTER_ANY,
                   (xdrproc_t) xdr_remote_domain_events_deregister_any_args, (char *) &args,
@@ -4307,6 +4471,49 @@ remoteIsAlive(virConnectPtr conn)
 }
 
 
+static int
+remoteDomainGetDiskErrors(virDomainPtr dom,
+                          virDomainDiskErrorPtr errors,
+                          unsigned int maxerrors,
+                          unsigned int flags)
+{
+    int rv = -1;
+    struct private_data *priv = dom->conn->privateData;
+    remote_domain_get_disk_errors_args args;
+    remote_domain_get_disk_errors_ret ret;
+
+    remoteDriverLock(priv);
+
+    make_nonnull_domain(&args.dom, dom);
+    args.maxerrors = maxerrors;
+    args.flags = flags;
+
+    memset(&ret, 0, sizeof ret);
+
+    if (call(dom->conn, priv, 0, REMOTE_PROC_DOMAIN_GET_DISK_ERRORS,
+             (xdrproc_t) xdr_remote_domain_get_disk_errors_args,
+             (char *) &args,
+             (xdrproc_t) xdr_remote_domain_get_disk_errors_ret,
+             (char *) &ret) == -1)
+        goto done;
+
+    if (remoteDeserializeDomainDiskErrors(ret.errors.errors_val,
+                                          ret.errors.errors_len,
+                                          REMOTE_DOMAIN_DISK_ERRORS_MAX,
+                                          errors,
+                                          maxerrors) < 0)
+        goto cleanup;
+
+    rv = ret.nerrors;
+
+cleanup:
+    xdr_free((xdrproc_t) xdr_remote_domain_get_disk_errors_ret, (char *) &ret);
+
+done:
+    remoteDriverUnlock(priv);
+    return rv;
+}
+
 #include "remote_client_bodies.h"
 #include "qemu_client_bodies.h"
 
@@ -4363,35 +4570,54 @@ call (virConnectPtr conn,
 }
 
 
-static void remoteDomainEventDispatchFunc(virConnectPtr conn,
-                                          virDomainEventPtr event,
-                                          virConnectDomainEventGenericCallback cb,
-                                          void *cbopaque,
-                                          void *opaque)
+static int
+remoteDomainGetInterfaceParameters (virDomainPtr domain,
+                                    const char *device,
+                                    virTypedParameterPtr params, int *nparams,
+                                    unsigned int flags)
 {
-    struct private_data *priv = opaque;
-
-    /* Drop the lock whle dispatching, for sake of re-entrancy */
-    remoteDriverUnlock(priv);
-    VIR_DEBUG("Dispatch event %p %p", event, conn);
-    virDomainEventDispatchDefaultFunc(conn, event, cb, cbopaque, NULL);
-    remoteDriverLock(priv);
-}
-
-static void
-remoteDomainEventQueueFlush(int timer ATTRIBUTE_UNUSED, void *opaque)
-{
-    virConnectPtr conn = opaque;
-    struct private_data *priv = conn->privateData;
-
+    int rv = -1;
+    remote_domain_get_interface_parameters_args args;
+    remote_domain_get_interface_parameters_ret ret;
+    struct private_data *priv = domain->conn->privateData;
 
     remoteDriverLock(priv);
-    VIR_DEBUG("Event queue flush %p", conn);
 
-    virDomainEventStateFlush(priv->domainEventState,
-                             remoteDomainEventDispatchFunc,
-                             priv);
+    make_nonnull_domain (&args.dom, domain);
+    args.device = (char *)device;
+    args.nparams = *nparams;
+    args.flags = flags;
+
+    memset (&ret, 0, sizeof ret);
+    if (call (domain->conn, priv, 0, REMOTE_PROC_DOMAIN_GET_INTERFACE_PARAMETERS,
+              (xdrproc_t) xdr_remote_domain_get_interface_parameters_args, (char *) &args,
+              (xdrproc_t) xdr_remote_domain_get_interface_parameters_ret, (char *) &ret) == -1)
+        goto done;
+
+    /* Handle the case when the caller does not know the number of parameters
+     * and is asking for the number of parameters supported
+     */
+    if (*nparams == 0) {
+        *nparams = ret.nparams;
+        rv = 0;
+        goto cleanup;
+    }
+
+    if (remoteDeserializeTypedParameters(ret.params.params_val,
+                                         ret.params.params_len,
+                                         REMOTE_DOMAIN_INTERFACE_PARAMETERS_MAX,
+                                         params,
+                                         nparams) < 0)
+        goto cleanup;
+
+    rv = 0;
+
+cleanup:
+    xdr_free ((xdrproc_t) xdr_remote_domain_get_interface_parameters_ret,
+              (char *) &ret);
+done:
     remoteDriverUnlock(priv);
+    return rv;
 }
 
 static void
@@ -4553,7 +4779,9 @@ static virDriver remote_driver = {
     .domainLookupByName = remoteDomainLookupByName, /* 0.3.0 */
     .domainSuspend = remoteDomainSuspend, /* 0.3.0 */
     .domainResume = remoteDomainResume, /* 0.3.0 */
+    .domainPMSuspendForDuration = remoteDomainPMSuspendForDuration, /* 0.9.10 */
     .domainShutdown = remoteDomainShutdown, /* 0.3.0 */
+    .domainShutdownFlags = remoteDomainShutdownFlags, /* 0.9.10 */
     .domainReboot = remoteDomainReboot, /* 0.3.0 */
     .domainReset = remoteDomainReset, /* 0.9.7 */
     .domainDestroy = remoteDomainDestroy, /* 0.3.0 */
@@ -4617,6 +4845,8 @@ static virDriver remote_driver = {
     .domainBlockStats = remoteDomainBlockStats, /* 0.3.2 */
     .domainBlockStatsFlags = remoteDomainBlockStatsFlags, /* 0.9.5 */
     .domainInterfaceStats = remoteDomainInterfaceStats, /* 0.3.2 */
+    .domainSetInterfaceParameters = remoteDomainSetInterfaceParameters, /* 0.9.9 */
+    .domainGetInterfaceParameters = remoteDomainGetInterfaceParameters, /* 0.9.9 */
     .domainMemoryStats = remoteDomainMemoryStats, /* 0.7.5 */
     .domainBlockPeek = remoteDomainBlockPeek, /* 0.4.2 */
     .domainMemoryPeek = remoteDomainMemoryPeek, /* 0.4.2 */
@@ -4678,11 +4908,18 @@ static virDriver remote_driver = {
     .domainGetBlockJobInfo = remoteDomainGetBlockJobInfo, /* 0.9.4 */
     .domainBlockJobSetSpeed = remoteDomainBlockJobSetSpeed, /* 0.9.4 */
     .domainBlockPull = remoteDomainBlockPull, /* 0.9.4 */
+    .domainBlockRebase = remoteDomainBlockRebase, /* 0.9.10 */
     .setKeepAlive = remoteSetKeepAlive, /* 0.9.8 */
     .isAlive = remoteIsAlive, /* 0.9.8 */
     .nodeSuspendForDuration = remoteNodeSuspendForDuration, /* 0.9.8 */
     .domainSetBlockIoTune = remoteDomainSetBlockIoTune, /* 0.9.8 */
     .domainGetBlockIoTune = remoteDomainGetBlockIoTune, /* 0.9.8 */
+    .domainSetNumaParameters = remoteDomainSetNumaParameters, /* 0.9.9 */
+    .domainGetNumaParameters = remoteDomainGetNumaParameters, /* 0.9.9 */
+    .domainGetCPUStats = remoteDomainGetCPUStats, /* 0.9.10 */
+    .domainGetDiskErrors = remoteDomainGetDiskErrors, /* 0.9.10 */
+    .domainSetMetadata = remoteDomainSetMetadata, /* 0.9.10 */
+    .domainGetMetadata = remoteDomainGetMetadata, /* 0.9.10 */
 };
 
 static virNetworkDriver network_driver = {
@@ -4765,9 +5002,11 @@ static virStorageDriver storage_driver = {
     .volUpload = remoteStorageVolUpload, /* 0.9.0 */
     .volDelete = remoteStorageVolDelete, /* 0.4.1 */
     .volWipe = remoteStorageVolWipe, /* 0.8.0 */
+    .volWipePattern = remoteStorageVolWipePattern, /* 0.9.10 */
     .volGetInfo = remoteStorageVolGetInfo, /* 0.4.1 */
     .volGetXMLDesc = remoteStorageVolGetXMLDesc, /* 0.4.1 */
     .volGetPath = remoteStorageVolGetPath, /* 0.4.1 */
+    .volResize = remoteStorageVolResize, /* 0.9.10 */
     .poolIsActive = remoteStoragePoolIsActive, /* 0.7.3 */
     .poolIsPersistent = remoteStoragePoolIsPersistent, /* 0.7.3 */
 };

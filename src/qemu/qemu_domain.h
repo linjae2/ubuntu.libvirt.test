@@ -27,6 +27,7 @@
 # include "threads.h"
 # include "domain_conf.h"
 # include "qemu_monitor.h"
+# include "qemu_agent.h"
 # include "qemu_conf.h"
 # include "bitmap.h"
 
@@ -36,14 +37,7 @@
      (1 << VIR_DOMAIN_VIRT_KVM) |      \
      (1 << VIR_DOMAIN_VIRT_XEN))
 
-# define QEMU_DOMAIN_DEFAULT_MIG_BANDWIDTH_MAX (32 << 20)
-# if ULONG_MAX == 4294967295
-/* Qemu has a 64-bit limit, but we are limited by our historical choice of
- * representing bandwidth in a long instead of a 64-bit int.  */
-#  define QEMU_DOMAIN_FILE_MIG_BANDWIDTH_MAX    ULONG_MAX
-# else
-#  define QEMU_DOMAIN_FILE_MIG_BANDWIDTH_MAX    (INT64_MAX / (1024 * 1024))
-# endif
+# define QEMU_DOMAIN_DEFAULT_MIG_BANDWIDTH_MAX 32
 
 # define JOB_MASK(job)                  (1 << (job - 1))
 # define DEFAULT_JOB_MASK               \
@@ -109,7 +103,13 @@ struct _qemuDomainObjPrivate {
     int monJSON;
     bool monError;
     unsigned long long monStart;
+
+    qemuAgentPtr agent;
+    bool agentError;
+    unsigned long long agentStart;
+
     bool gotShutdown;
+    bool beingDestroyed;
     char *pidfile;
 
     int nvcpupids;
@@ -198,6 +198,22 @@ int qemuDomainObjEnterMonitorAsync(struct qemud_driver *driver,
 void qemuDomainObjExitMonitorWithDriver(struct qemud_driver *driver,
                                         virDomainObjPtr obj)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+
+
+void qemuDomainObjEnterAgent(struct qemud_driver *driver,
+                             virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+void qemuDomainObjExitAgent(struct qemud_driver *driver,
+                            virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+void qemuDomainObjEnterAgentWithDriver(struct qemud_driver *driver,
+                                       virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+void qemuDomainObjExitAgentWithDriver(struct qemud_driver *driver,
+                                      virDomainObjPtr obj)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+
+
 void qemuDomainObjEnterRemoteWithDriver(struct qemud_driver *driver,
                                         virDomainObjPtr obj)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
