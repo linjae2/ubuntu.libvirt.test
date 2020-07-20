@@ -1,0 +1,21 @@
+  * SECURITY UPDATE: virDomainSaveImageGetXMLDesc does not check for
+    read-only connection
+    - debian/patches/CVE-2019-10161.patch: add check to
+      src/libvirt-domain.c, src/qemu/qemu_driver.c,
+      src/remote/remote_protocol.x.
+    - CVE-2019-10161
+  * SECURITY UPDATE: virDomainManagedSaveDefineXML does not check for
+    read-only connection
+    - debian/patches/CVE-2019-10166.patch: add check to
+      src/libvirt-domain.c.
+    - CVE-2019-10166
+  * SECURITY UPDATE: virConnectGetDomainCapabilities does not check for
+    read-only connection
+    - debian/patches/CVE-2019-10167.patch: add check to
+      src/libvirt-domain.c.
+    - CVE-2019-10167
+  * SECURITY UPDATE: virConnect*HypervisorCPU do not check for read-only
+    connection
+    - debian/patches/CVE-2019-10168.patch: add checks to
+      src/libvirt-host.c.
+    - CVE-2019-10168
