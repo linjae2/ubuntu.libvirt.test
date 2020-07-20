@@ -1,0 +1,3 @@
+  * [f5f3818] virFileNBDDeviceAssociate: Avoid use of uninitialized variable.
+    This fixes CVE-2013-4297.
+    Thanks to Michal Privoznik
