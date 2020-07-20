@@ -1,0 +1,4 @@
+  * [18520c0] Same description of supported virt techs in all binary packages
+    (Closes: #564909) - thanks to Loïc Minier
+  * [49c357c] Implement path lookup for USB by vendor:product (Closes:
+    #563502) - thanks to Cole Robinson
