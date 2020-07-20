@@ -1,0 +1,3 @@
+  * [ac464fb] Link to the compressed README.Debian (Closes: #822581)
+  * [8ad2900] Enable numactl ppc64el suggested by Serge Hallyn
+  * [6e52231] New upstream version 1.3.4~rc2
