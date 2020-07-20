@@ -1,0 +1,12 @@
+  * 9029-ovs-delete-port-if-it-exists-when-adding-new-one:  cherrypick commit
+    33445ce from upstream (LP: #1343262)
+  * fix migration failure with ssh password authentication (LP: #1365947)
+    - 9030-virsh-add-keepalive-in-new-vshconnect-fn
+    - 9031-cmdmigrate-move-vshconnect-before-vshwatchjob
+    - 9032-virsh-initialize-vsh-data-in-cmdmigrate
+  * libvirt-bin.postinst: check for confiles whichhave been removed rather
+    than fail package install (LP: #1375910)
+  * Support incoming migration from 12.04 hosts (LP: #1374622)
+    - debian/patches/support-incoming-qemu-kvm: add a flag to
+      /etc/libvirt/qemu.conf to specify whether pc-1.0 came from a 12.04 host
+    - Add a note in README.Debian.
