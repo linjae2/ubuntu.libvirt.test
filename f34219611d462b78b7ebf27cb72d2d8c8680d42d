@@ -1,0 +1,4 @@
+  [ Stefan Bader ]
+  * Never use type=ioemu for NIC definitions. It is not needed
+    and actually breaks the paravirt interface which always gets
+    created in parallel.
