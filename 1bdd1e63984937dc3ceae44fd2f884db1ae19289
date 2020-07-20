@@ -1,0 +1,2 @@
+  * Pull patch from mailing list (merged with separate patch posted to the
+    bug) to fix 9p mounts. (LP: #1285995)
