@@ -1,0 +1,10 @@
+  * [9deae39] New upstream version 0.9.13~rc1
+  * [487acd7] Drop Include-stdint.h-for-uint32_t.patch fixed upstream
+  * [ab7be10] Drop Only-check-for-cluster-fs-if-we-re-using-a-filesyste.patch
+    applied upstream
+  * [385bac4] Rebase remaining patches
+  * [cb0d1f7] Update symbol versions
+  * [c2bd465] Remove *.la files generated for dynamically loaded modules
+  * [e4714b7] Add sanlock support.
+    Thanks to David Weber (Closes: #676345)
+  * [5f715ed] Install systemd init scripts on Linux
