@@ -1,0 +1,12 @@
+  * Backport from recent upstream to stabilize libvirt (LP: #1756915)
+    - d/p/stable/0033-qemu-Fix-comparison-assignment-in-qemuDomainUpdateDe.patch
+    - d/p/stable/0034-qemu-Fix-memory-leak-in-qemuConnectGetAllDomainStats.patch
+    - d/p/stable/0035-libvirtd-fix-potential-deadlock-when-reloading.patch
+    - d/p/stable/0036-qemu-Use-correct-bus-type-for-input-devices.patch
+    - d/p/stable/0037-qemu-hostdev-Fix-the-error-on-VM-start-with-an-mdev-.patch
+    - d/p/stable/0038-conf-Fix-crash-in-virDomainDefCompatibleDevice.patch
+  * d/p/ubuntu/lp1688508-tools-fix-variable-scope-in-in-check_guests_shutdown:
+    avoid issues shutting down more guests than configured for parallel
+    shutdown (LP: #1688508)
+  * d/p/ubuntu-aa/lp1756394-virt-aa-helper-resolve-file-symlinks.patch: fix
+    using devices that are symlinks (LP: #1756394)
