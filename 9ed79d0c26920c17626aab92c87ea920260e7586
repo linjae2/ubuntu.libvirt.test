@@ -1,0 +1,10 @@
+  * [d88536d] Introduce libvirt-daemon-system-{systemd,sysv} Move init scripts
+    to separate package that allows people to experiment with alternative init
+    systems while avoiding the problems that mixed init scripts and systemd
+    units have in the current packaging.
+    Thanks to Christian Ehrhardt for all the input regarding upgrade
+    problems seen in Ubuntu and possible solutions.
+    (Closes: #887911, #905772)
+  * [c19d230] autopkg tests: Use isolation-machine.
+    This avoids running under debian ci since libvirt-lxc in lxc
+    doesn't work there. (Closes: #947006)
