@@ -1,0 +1,2 @@
+  * Don't apply ubuntu/conf-dont-drop-console-def-ondomain-restart.patch:
+    it breaks virt-manager.
