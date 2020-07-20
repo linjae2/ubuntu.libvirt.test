@@ -1,0 +1,9 @@
+  * Upload to experimental
+  * [1dad4b5] New upstream version 1.3.4~rc1
+  * [2caeb97] Rediff patches.
+    Dropped
+      Link-xen-driver-against-libxl.patch: Applied upstream
+      qemu-support-virt-2.6-machine-type-on-arm.patch: Fixed upstream
+  * [b683ac4] Bump symbol versions
+  * [d33c384] Use https vcs-git URL
+  * [a2be7db] Bump standards version, no source changes
