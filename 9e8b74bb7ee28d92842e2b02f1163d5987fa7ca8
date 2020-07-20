@@ -1,0 +1,4 @@
+  * 9026-fix-apparmor-profile-for-vfio-pci-passthrough - allow VFIO passthrough
+    (LP: #1276719)
+  * 9027-virt-aa-helper-allow-access-to-vhost-net - allow access to
+    /dev/vhost-net if domain needs it (LP: #1322568)
