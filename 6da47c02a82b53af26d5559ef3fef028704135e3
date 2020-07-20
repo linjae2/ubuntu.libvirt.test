@@ -1,0 +1,8 @@
+  [ Guido Günther ]
+  * [d8e60e8] Add css to docs
+  * [f6e41ae] New patch 0008-qemu-Use-log-output-for-pty-assignment-if-
+    info-chard.patch qemu: Use log output for pty assignment if 'info
+    chardev' is unavailable - thanks to Matthias Bolte
+  [ Laurent Léonard ]
+  * [0905f82] Fix QEMU driver custom domain status XML extensions. -
+    thanks to Daniel P. Berrange
