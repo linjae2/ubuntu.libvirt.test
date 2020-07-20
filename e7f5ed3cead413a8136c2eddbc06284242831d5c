@@ -1,0 +1,3 @@
+  [ Laurent Léonard ]
+  * [6f95d48] Fix exit status codes in libvirt init script to comply with LSB
+    (Closes: #612305)
