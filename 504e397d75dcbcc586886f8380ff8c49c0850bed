@@ -1,0 +1,17 @@
+  * New upstream version: 
+  * debian/rules: Remove .la files
+  * debian/control: Dropped debian vcs info.
+  * Dropped:
+    - debian/paches/9022-pass-the-virt-driver-name-into-security-drivers:
+      Already applied upstream.
+    - debian/patches/9023-dont-enable-apparmor-driver-with-lxc
+      Already applied upstream.
+    - debian/patches/9024-initialize-random-generator-in-lxc:
+      Already applied upstream.
+  * Re-diffed:
+    - debian/patches/9002-better_default_uri_virsh.patch
+  * Added:
+    - debian/patches/add-libvirt-highbank-support.patch: Add highbank 
+      CPU detection support.
+    - debian/patches/fix-lxc-container-unmounting.patch: Fix container
+      mounting.
