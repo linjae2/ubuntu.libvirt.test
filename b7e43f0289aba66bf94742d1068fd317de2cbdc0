@@ -1,0 +1,3 @@
+  * debian/patches/lp832507.patch: update virt-aa-helper to use the correct
+    paths for character devices that are pipes. This can be removed in
+    0.9.7. (LP: #832507)
