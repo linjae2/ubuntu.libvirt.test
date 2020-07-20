@@ -1,0 +1,4 @@
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: eek, the /dev change from
+    the last upload was a wee bit too aggressive. Revert that and allow access
+    to .img, .qcow{,2}, and .vmdk (file extensions that actually support
+    backingstore) and .[iI][sS][oO] since it is so common (LP: #517714)
