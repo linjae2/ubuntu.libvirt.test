@@ -1,0 +1,4 @@
+  * fix guest channel support (LP: #1393842).
+    - d/p/virt-aa-helper-add-trusty-guest-agent-rule.patch: add apparmor rule
+      for channels within guest namespace.
+    - d/libvirt-bin.postinst: create channel directories if needed.
