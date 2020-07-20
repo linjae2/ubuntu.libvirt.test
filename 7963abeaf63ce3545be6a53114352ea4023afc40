@@ -1,0 +1,2 @@
+  * [e523120] New patch Disable-gnulib-s-test-nonplocking-pipe.sh.patch.
+    Disable gnulib's test-nonplocking-pipe.sh.
