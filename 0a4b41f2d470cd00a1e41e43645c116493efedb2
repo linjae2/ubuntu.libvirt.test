@@ -1,0 +1,36 @@
+  * New upstream release
+    - Drop nic-model, disk-bus, and ancient_parted.patch. They're all
+      upstream now (in some form).
+    - Add new libdevmapper-dev build-dependency.
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + DebianMaintainerField
+      + Don't build-depend on QEmu.
+      + Add "XS-Original-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+    - debian/libvirt-bin.default
+      + Make libvirtd start by default
+    - Add /var/lib/libvirt to libvirt-bin package. (dnsmasq needs it to store
+      its state info.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Rename libvirt group to libvirtd.
+    - Build iscsi and disk storage support.
+    - delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - nic-model.patch: Add support for <model type='foo'/> NIC configuration.
+    - disk-bus.patch:  Add support for bus='foo' attributes for disk targets.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - ancient_parted.patch: Fix builds against libparted1.7
+    - We call libxen-dev libxen3-dev, so change all references.
+  * reenable open-iscsi support  - thanks to to the open-iscsi
+    maintainers for fixing this up
+  * build a libvirt0-dbg package
+  * register documentation with doc-base  (Closes: #480294) - thanks to
+    Tzafrir Cohen for the patch
+  * control: fix typo
+  * README.Debian: explain debugging
