@@ -1,0 +1,3 @@
+  * d/p/storage-Don-t-pass-iso-format-to-qemu-img.patch: fix issues in virt
+    clone and other users of storage_utils functions by not passing
+    iso to qemu-img (LP: #1729858).
