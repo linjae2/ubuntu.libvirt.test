@@ -1,0 +1,22 @@
+  * run dnsmasq as libvirt-dnsmasq (LP: #1743718)
+    - d/libvirt-daemon-system.postinst: add libvirt-dnsmasq user and group
+    - d/libvirt-daemon-system.postrm: remove libvirt-dnsmasq user and group on
+      purge
+    - d/p/ubuntu/dnsmasq-as-priv-user: write dnsmas config with user
+      libvirt-dnsmasq and adapt the self tests to expect that config
+    - d/libvirt-daemon-system.postinst: fix old libvirt-dnsmasq users
+  * Backport from recent upstream to stabilize libvirt (LP: #1754352)
+    - d/p/stable/0024-qemu-blockcopy-Add-check-for-bandwidth.patch
+    - d/p/stable/0025-conf-move-generated-member-from-virMacAddr-to-virDom.patch
+    - d/p/stable/0026-lxc-Drop-useless-check-in-live-device-update.patch
+    - d/p/stable/0027-Pass-oldDev-to-virDomainDefCompatibleDevice-on-devic.patch
+    - d/p/stable/0028-qemu-Fix-updating-device-with-boot-order.patch
+    - d/p/stable/0030-daemon-fix-rpc-event-leak-on-error-path-in-remoteDis.patch
+    - d/p/stable/0029-lxc-fix-rpc-event-leak-on-error-path-in-virLXCContro.patch
+    - d/p/stable/0031-qemu-fix-memory-leak-of-vporttype-during-migration.patch
+    - d/p/stable/0032-virsh-fixing-segfault-by-pool-autocompleter-function.patch
+  * d/p/ubuntu-aa/0041-apparmor-add-ro-rule-for-sasl-GSSAPI-
+    plugin-on-etc-g.patch fix issues if sasl is configured (LP: #1696471)
+  * d/p/ubuntu-aa/0042-virt-aa-helper-resolve-yet-to-be-created-paths.patch
+    ensure symlinks are resolved to get valid rules if interim parts of a path
+    are a symlink (LP: #1752361)
