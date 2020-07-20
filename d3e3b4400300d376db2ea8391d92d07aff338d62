@@ -1,0 +1,2 @@
+  * Cherrypick upstream patch (LP: #1219435)
+    - conf-fix-a-failure-when-detaching-a-usb-device
