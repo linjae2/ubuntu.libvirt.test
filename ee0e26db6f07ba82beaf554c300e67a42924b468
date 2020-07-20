@@ -1,0 +1,2 @@
+  * Build against libxen-3.2 instead of 3.1.
+  * Bump bridge-utils from Suggests: to Depends:.
