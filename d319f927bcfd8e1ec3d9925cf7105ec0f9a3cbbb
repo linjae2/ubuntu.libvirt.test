@@ -1,0 +1,4 @@
+  * [3b7b682] Imported Upstream version 0.8.6
+  * [5b081c3] Drop patch
+    - 0008-Move-MAX_VIRT_CPUS-so-all-xen-code-can-see-it.patch - fixed upstream
+  * [38589e6] Update libvirt0 symbols
