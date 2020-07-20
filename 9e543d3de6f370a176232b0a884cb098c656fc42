@@ -1,0 +1,7 @@
+  * debian/libvirt-bin.postinst: ensure that the convenience feature
+    of adding users to the libvirtd group does cause package setup
+    failure, LP: #565380
+  * debian/patches/9023-virt-pki-validate_fixes.patch: fix a bashism,
+    a missing autoconf substitution, and an insufficient sed call, in
+    order to get this working on Ubuntu, LP: #562266; patch submitted
+    upstream
