@@ -1,0 +1,8 @@
+  * [540f826] New upstream version 1.2.16~rc2
+  * [d17b3cb] Add libxl configuration files
+  * [24520fd] Update gbp.conf for experimental
+  * [29c488b] New upstream version 1.2.16~rc1
+  * [281585c] Rediff patches.
+    Dropped patches fixed upstream:
+        caps-Fix-regression-defaulting-to-host-arch.patch
+  * [5e4d9b7] Bump symbol versions
