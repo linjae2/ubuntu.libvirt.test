@@ -1,0 +1,4 @@
+  * [628a05a] Add empty systemd dir on kFreeBSD to make dh_install pass
+  * [e5b4fbf] Remove -d from libvirtd_opts
+    so we can use the same options in the systemd unit file without having
+    to fork there too.
