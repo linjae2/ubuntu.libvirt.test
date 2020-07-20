@@ -1,0 +1,5 @@
+  * Imported Upstream version 0.8.2
+  * Drop patches.
+  * Update libvirt0 symbols.
+  * Bump Standards-Version to 3.9.0.
+  * Add virtualbox-ose and libnl-dev build dependencies.
