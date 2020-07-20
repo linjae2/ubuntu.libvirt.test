@@ -1,0 +1,6 @@
+  * New upstream release:
+    - Dropped patches:
+     + debian/patches/0001-libxl-Fix-devid-init-in-libxlMakeNicList.patch:
+       No longer needed
+     + debian/patches/0001-libxl-Fix-initialization-of-nictype-in-libxl_device_.patch:
+       No longer needed.
