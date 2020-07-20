@@ -1,7 +1,7 @@
 /*
  * test_driver.c: A "mock" hypervisor for use by application unit tests
  *
- * Copyright (C) 2006-2014 Red Hat, Inc.
+ * Copyright (C) 2006-2015 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -5673,7 +5673,9 @@ testNodeDeviceLookupByName(virConnectPtr conn, const char *name)
     testDriverUnlock(driver);
 
     if (!obj) {
-        virReportError(VIR_ERR_NO_NODE_DEVICE, NULL);
+        virReportError(VIR_ERR_NO_NODE_DEVICE,
+                       _("no node device with matching name '%s'"),
+                       name);
         goto cleanup;
     }
 
@@ -5798,7 +5800,7 @@ testNodeDeviceListCaps(virNodeDevicePtr dev, char **const names, int maxnames)
     }
 
     for (caps = obj->def->caps; caps && ncaps < maxnames; caps = caps->next) {
-        if (VIR_STRDUP(names[ncaps++], virNodeDevCapTypeToString(caps->type)) < 0)
+        if (VIR_STRDUP(names[ncaps++], virNodeDevCapTypeToString(caps->data.type)) < 0)
             goto cleanup;
     }
     ret = ncaps;
@@ -5856,7 +5858,7 @@ testNodeDeviceCreateXML(virConnectPtr conn,
      * since this would also come from the backend */
     caps = def->caps;
     while (caps) {
-        if (caps->type != VIR_NODE_DEV_CAP_SCSI_HOST)
+        if (caps->data.type != VIR_NODE_DEV_CAP_SCSI_HOST)
             continue;
 
         caps->data.scsi_host.host = virRandomBits(10);
@@ -5893,7 +5895,9 @@ testNodeDeviceDestroy(virNodeDevicePtr dev)
     testDriverUnlock(driver);
 
     if (!obj) {
-        virReportError(VIR_ERR_NO_NODE_DEVICE, NULL);
+        virReportError(VIR_ERR_NO_NODE_DEVICE,
+                       _("no node device with matching name '%s'"),
+                       dev->name);
         goto out;
     }
 
