@@ -1,0 +1,3 @@
+  * 9008-fix-daemon-conf-ftbfs.patch: fix for FTBFS on Ubuntu buildds by
+    disabling running libvirtd with a valid config file in the daemon-conf
+    test. This patch used to be 9008-warn-on-daemon-conf-test-wait.patch
