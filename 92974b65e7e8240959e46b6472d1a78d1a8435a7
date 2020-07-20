@@ -1,0 +1,3 @@
+  * Fix clean shut down of guests on system shutdown (LP: #1764668)
+    - d/p/ubuntu/lp-1764668-do-not-report-unknown-guests.patch
+    - d/p/ubuntu/lp-1764668-fix-check_guests_shutdown-loop.patch
