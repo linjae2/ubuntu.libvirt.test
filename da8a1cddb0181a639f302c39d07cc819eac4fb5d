@@ -1,0 +1,2 @@
+  * Add a udev hook and script to enable multicast_querier when a
+    virbr* is brought up (LP: #1218959)
