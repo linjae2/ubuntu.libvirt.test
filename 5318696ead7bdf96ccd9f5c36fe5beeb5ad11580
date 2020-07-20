@@ -1,0 +1,2 @@
+  * add-bounds-checking-on-virdomainmigrate: upstream patch for CVE-2013-4292
+  * security-provide-supplemental-groups: upstream patch for CVE-2013-4291
