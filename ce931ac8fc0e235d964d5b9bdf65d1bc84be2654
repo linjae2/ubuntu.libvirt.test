@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: add /**.qed r so qed
+    drives in non-standard locations can be used.  (LP: #981571)
