@@ -1,0 +1,9 @@
+  * [70fbcb6] New patch 0007-nwfilter-Don-t-crash-if-driverState- NULL.patch
+    nwfilter: Don't crash if driverState == NULL (Closes: #577728)
+  * [d7d1abd] New patch 0008-Ignore-empty-type-statement-in-disk-
+    element.patch Ignore empty type statement in disk element
+    (Closes: #578347)
+  * Imported Upstream version 0.8.0
+  * Drop patches.
+  * Update libvirt0 symbols.
+  * Switch to new source format 3.0 (quilt).
