@@ -1,0 +1,5 @@
+  * Add missing apparmor profile entries (LP: #1680384)
+    - debian/patches/ubuntu/apparmor-vfio.patch: apparmor: add /dev/vfio
+      for vf (hot) attach
+    - debian/patches/ubuntu/apparmor-shutdown.patch: apparmor: allow to
+      parse cmdline of the pid that send the shutdown signal
