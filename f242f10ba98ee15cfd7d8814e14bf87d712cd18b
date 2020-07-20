@@ -1,0 +1,3 @@
+  * [c0292f7] Skip socket test if we exceed UNIX_PATH_MAX.
+  * [764a29c] Fix storage pool source comparison to avoid comparing with self
+    Thanks to Daniel P. Berrange
