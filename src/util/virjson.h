@@ -81,6 +81,7 @@ struct _virJSONValue {
 };
 
 void virJSONValueFree(virJSONValuePtr value);
+void virJSONValueHashFree(void *opaque, const void *name);
 
 int virJSONValueObjectCreate(virJSONValuePtr *obj, ...)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_SENTINEL;
@@ -180,5 +181,7 @@ int virJSONValueObjectForeachKeyValue(virJSONValuePtr object,
                                       void *opaque);
 
 virJSONValuePtr virJSONValueCopy(const virJSONValue *in);
+
+char *virJSONStringReformat(const char *jsonstr, bool pretty);
 
 #endif /* __VIR_JSON_H_ */

@@ -74,7 +74,7 @@ testCompareXMLToArgvFiles(const char *xmlfile,
         }
     }
 
-    if (vmdef && !virDomainDefCheckABIStability(vmdef, vmdef)) {
+    if (vmdef && !virDomainDefCheckABIStability(vmdef, vmdef, driver.xmlopt)) {
         VIR_TEST_DEBUG("ABI stability check failed on %s", xmlfile);
         goto fail;
     }
@@ -130,7 +130,8 @@ mymain(void)
     if ((driver.caps = virBhyveCapsBuild()) == NULL)
         return EXIT_FAILURE;
 
-    if ((driver.xmlopt = virDomainXMLOptionNew(NULL, NULL, NULL)) == NULL)
+    if ((driver.xmlopt = virDomainXMLOptionNew(NULL, NULL,
+                                               NULL, NULL, NULL)) == NULL)
         return EXIT_FAILURE;
 
 # define DO_TEST_FULL(name, flags)                            \
@@ -175,6 +176,7 @@ mymain(void)
     DO_TEST("ahci-hd");
     DO_TEST("virtio-blk");
     DO_TEST("virtio-net");
+    DO_TEST("e1000");
     DO_TEST_WARN("virtio-net2");
     DO_TEST_WARN("virtio-net3");
     DO_TEST_WARN("virtio-net4");
@@ -202,7 +204,7 @@ mymain(void)
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN_PRELOAD(mymain, abs_builddir "/.libs/bhyveargv2xmlmock.so")
+VIR_TEST_MAIN_PRELOAD(mymain, abs_builddir "/.libs/bhyveargv2xmlmock.so")
 
 #else
 

@@ -37,7 +37,8 @@ static struct testDiskName diskNamesPart[] = {
 };
 
 static const char* diskNamesInvalid[] = {
-    "sda00", "sda01", "sdb-1"
+    "sda00", "sda01", "sdb-1",
+    "vd2"
 };
 
 static int
@@ -283,4 +284,4 @@ mymain(void)
     return result == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN(mymain)
+VIR_TEST_MAIN(mymain)

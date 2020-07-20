@@ -1251,6 +1251,19 @@ typedef int
                              int state,
                              unsigned int flags);
 
+typedef int
+(*virDrvDomainSetVcpu)(virDomainPtr domain,
+                       const char *cpumap,
+                       int state,
+                       unsigned int flags);
+
+typedef int
+(*virDrvDomainSetBlockThreshold)(virDomainPtr domain,
+                                 const char *dev,
+                                 unsigned long long threshold,
+                                 unsigned int flags);
+
+
 typedef struct _virHypervisorDriver virHypervisorDriver;
 typedef virHypervisorDriver *virHypervisorDriverPtr;
 
@@ -1489,6 +1502,8 @@ struct _virHypervisorDriver {
     virDrvDomainMigrateStartPostCopy domainMigrateStartPostCopy;
     virDrvDomainGetGuestVcpus domainGetGuestVcpus;
     virDrvDomainSetGuestVcpus domainSetGuestVcpus;
+    virDrvDomainSetVcpu domainSetVcpu;
+    virDrvDomainSetBlockThreshold domainSetBlockThreshold;
 };
 
 

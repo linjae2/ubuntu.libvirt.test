@@ -308,14 +308,14 @@ With I<--pretty> the online CPUs are printed as a range instead of a list.
 =item B<nodecpustats> [I<cpu>] [I<--percent>]
 
 Returns cpu stats of the node.
-If I<cpu> is specified, this will prints specified cpu statistics only.
-If I<--percent> is specified, this will prints percentage of each kind of cpu
-statistics during 1 second.
+If I<cpu> is specified, this will print the specified cpu statistics only.
+If I<--percent> is specified, this will print the percentage of each kind
+of cpu statistics during 1 second.
 
 =item B<nodememstats> [I<cell>]
 
 Returns memory stats of the node.
-If I<cell> is specified, this will prints specified cell statistics only.
+If I<cell> is specified, this will print the specified cell statistics only.
 
 =item B<nodesuspend> [I<target>] [I<duration>]
 
@@ -418,8 +418,9 @@ State is the run state (see below).
 
 B<STATES>
 
-The State field lists 8 states for a domain, and which ones the
-current domain is in.
+The State field lists what state each domain is currently in. A domain
+can be in one of the following possible states:
+
 
 =over 4
 
@@ -841,12 +842,13 @@ B<domstate> command says that a domain was paused due to I/O error.
 The B<domblkerror> command lists all block devices in error state and
 the error seen on each of them.
 
-=item B<domblkinfo> I<domain> I<block-device>
+=item B<domblkinfo> I<domain> I<block-device> [I<--human>]
 
 Get block device size info for a domain.  A I<block-device> corresponds
 to a unique target name (<target dev='name'/>) or source file (<source
 file='name'/>) for one of the disk devices attached to I<domain> (see
-also B<domblklist> for listing these names).
+also B<domblklist> for listing these names). If I<--human> is set, the
+output will have a human readable output.
 
 =item B<domblklist> I<domain> [I<--inactive>] [I<--details>]
 
@@ -885,67 +887,94 @@ Note that - depending on the hypervisor type and version or the domain state
 - not all of the following statistics may be returned.
 
 When selecting the I<--state> group the following fields are returned:
-"state.state" - state of the VM, returned as number from virDomainState enum,
-"state.reason" - reason for entering given state, returned as int from
-virDomain*Reason enum corresponding to given state.
+
+ "state.state" - state of the VM, returned as number from
+                 virDomainState enum
+ "state.reason" - reason for entering given state, returned
+                  as int from virDomain*Reason enum corresponding
+                  to given state
 
 I<--cpu-total> returns:
-"cpu.time" - total cpu time spent for this domain in nanoseconds,
-"cpu.user" - user cpu time spent in nanoseconds,
-"cpu.system" - system cpu time spent in nanoseconds
+
+ "cpu.time" - total cpu time spent for this domain in nanoseconds
+ "cpu.user" - user cpu time spent in nanoseconds
+ "cpu.system" - system cpu time spent in nanoseconds
 
 I<--balloon> returns:
-"balloon.current" - the memory in kiB currently used,
-"balloon.maximum" - the maximum memory in kiB allowed,
-"balloon.swap_in" - the amount of data read from swap space (in kB),
-"balloon.swap_out" - the amount of memory written out to swap space (in kB),
-"balloon.major_fault" - the number of page faults then disk IO was required,
-"balloon.minor_fault" - the number of other page faults,
-"balloon.unused" - the amount of memory left unused by the system (in kB),
-"balloon.available" - the amount of usable memory as seen by the domain (in kB),
-"balloon.rss" - Resident Set Size of running domain's process (in kB),
-"balloon.usable" - the amount of memory which can be reclaimed by balloon
-without causing host swapping (in KB),
-"balloon.last-update" - timestamp of the last update of statistics (in seconds)
+
+ "balloon.current" - the memory in kiB currently used
+ "balloon.maximum" - the maximum memory in kiB allowed
+ "balloon.swap_in" - the amount of data read from swap space (in kB)
+ "balloon.swap_out" - the amount of memory written out to swap
+                      space (in kB)
+ "balloon.major_fault" - the number of page faults then disk IO
+                         was required
+ "balloon.minor_fault" - the number of other page faults
+ "balloon.unused" - the amount of memory left unused by the
+                    system (in kB)
+ "balloon.available" - the amount of usable memory as seen by
+                       the domain (in kB)
+ "balloon.rss" - Resident Set Size of running domain's process
+                 (in kB)
+ "balloon.usable" - the amount of memory which can be reclaimed by
+                    balloon without causing host swapping (in KB)
+ "balloon.last-update" - timestamp of the last update of statistics
+                         (in seconds)
 
 I<--vcpu> returns:
-"vcpu.current" - current number of online virtual CPUs,
-"vcpu.maximum" - maximum number of online virtual CPUs,
-"vcpu.<num>.state" - state of the virtual CPU <num>, as number
-from virVcpuState enum,
-"vcpu.<num>.time" - virtual cpu time spent by virtual CPU <num>
- (in microseconds),
-"vcpu.<num>.wait" - virtual cpu time spent by virtual CPU <num>
-waiting on I/O (in microseconds),
-"vcpu.<num>.halted" - virtual CPU <num> is halted: yes or no (may indicate
-the processor is idle or even disabled, depending on the architecture)
+
+ "vcpu.current" - current number of online virtual CPUs
+ "vcpu.maximum" - maximum number of online virtual CPUs
+ "vcpu.<num>.state" - state of the virtual CPU <num>, as
+                      number from virVcpuState enum
+ "vcpu.<num>.time" - virtual cpu time spent by virtual
+                     CPU <num> (in microseconds)
+ "vcpu.<num>.wait" - virtual cpu time spent by virtual
+                     CPU <num> waiting on I/O (in microseconds)
+ "vcpu.<num>.halted" - virtual CPU <num> is halted: yes or
+                       no (may indicate the processor is idle
+                       or even disabled, depending on the
+                       architecture)
 
 I<--interface> returns:
-"net.count" - number of network interfaces on this domain,
-"net.<num>.name" - name of the interface <num>,
-"net.<num>.rx.bytes" - number of bytes received,
-"net.<num>.rx.pkts" - number of packets received,
-"net.<num>.rx.errs" - number of receive errors,
-"net.<num>.rx.drop" - number of receive packets dropped,
-"net.<num>.tx.bytes" - number of bytes transmitted,
-"net.<num>.tx.pkts" - number of packets transmitted,
-"net.<num>.tx.errs" - number of transmission errors,
-"net.<num>.tx.drop" - number of transmit packets dropped
+
+ "net.count" - number of network interfaces on this domain
+ "net.<num>.name" - name of the interface <num>
+ "net.<num>.rx.bytes" - number of bytes received
+ "net.<num>.rx.pkts" - number of packets received
+ "net.<num>.rx.errs" - number of receive errors
+ "net.<num>.rx.drop" - number of receive packets dropped
+ "net.<num>.tx.bytes" - number of bytes transmitted
+ "net.<num>.tx.pkts" - number of packets transmitted
+ "net.<num>.tx.errs" - number of transmission errors
+ "net.<num>.tx.drop" - number of transmit packets dropped
 
 I<--perf> returns the statistics of all enabled perf events:
-"perf.cmt" - the cache usage in Byte currently used,
-"perf.mbmt" - total system bandwidth from one level of cache,
-"perf.mbml" - bandwidth of memory traffic for a memory controller,
-"perf.cpu_cycles" - the count of cpu cycles (total/elapsed),
-"perf.instructions" - the count of instructions,
-"perf.cache_references" - the count of cache hits,
-"perf.cache_misses" - the count of caches misses,
-"perf.branch_instructions" - the count of branch instructions,
-"perf.branch_misses" - the count of branch misses,
-"perf.bus_cycles" - the count of bus cycles,
-"perf.stalled_cycles_frontend" - the count of stalled frontend cpu cycles,
-"perf.stalled_cycles_backend" - the count of stalled backend cpu cycles,
-"perf.ref_cpu_cycles" - the count of ref cpu cycles
+
+ "perf.cmt" - the cache usage in Byte currently used
+ "perf.mbmt" - total system bandwidth from one level of cache
+ "perf.mbml" - bandwidth of memory traffic for a memory controller
+ "perf.cpu_cycles" - the count of cpu cycles (total/elapsed)
+ "perf.instructions" - the count of instructions
+ "perf.cache_references" - the count of cache hits
+ "perf.cache_misses" - the count of caches misses
+ "perf.branch_instructions" - the count of branch instructions
+ "perf.branch_misses" - the count of branch misses
+ "perf.bus_cycles" - the count of bus cycles
+ "perf.stalled_cycles_frontend" - the count of stalled frontend
+                                  cpu cycles
+ "perf.stalled_cycles_backend" - the count of stalled backend
+                                 cpu cycles
+ "perf.ref_cpu_cycles" - the count of ref cpu cycles
+ "perf.cpu_clock" - the count of cpu clock time
+ "perf.task_clock" - the count of task clock time
+ "perf.page_faults" - the count of page faults
+ "perf.context_switches" - the count of context switches
+ "perf.cpu_migrations" - the count of cpu migrations
+ "perf.page_faults_min" - the count of minor page faults
+ "perf.page_faults_maj" - the count of major page faults
+ "perf.alignment_faults" - the count of alignment faults
+ "perf.emulation_faults" - the count of emulation faults
 
 See the B<perf> command for more details about each event.
 
@@ -954,25 +983,33 @@ domain.  Using the I<--backing> flag extends this information to
 cover all resources in the backing chain, rather than the default
 of limiting information to the active layer for each guest disk.
 Information listed includes:
-"block.count" - number of block devices being listed,
-"block.<num>.name" - name of the target of the block device <num> (the
-same name for multiple entries if I<--backing> is present),
-"block.<num>.backingIndex" - when I<--backing> is present, matches up
-with the <backingStore> index listed in domain XML for backing files,
-"block.<num>.path" - file source of block device <num>, if it is a
-local file or block device,
-"block.<num>.rd.reqs" - number of read requests,
-"block.<num>.rd.bytes" - number of read bytes,
-"block.<num>.rd.times" - total time (ns) spent on reads,
-"block.<num>.wr.reqs" - number of write requests,
-"block.<num>.wr.bytes" - number of written bytes,
-"block.<num>.wr.times" - total time (ns) spent on writes,
-"block.<num>.fl.reqs" - total flush requests,
-"block.<num>.fl.times" - total time (ns) spent on cache flushing,
-"block.<num>.errors" - Xen only: the 'oo_req' value,
-"block.<num>.allocation" - offset of highest written sector in bytes,
-"block.<num>.capacity" - logical size of source file in bytes,
-"block.<num>.physical" - physical size of source file in bytes
+
+ "block.count" - number of block devices being listed
+ "block.<num>.name" - name of the target of the block
+                      device <num> (the same name for
+                      multiple entries if I<--backing>
+                      is present)
+ "block.<num>.backingIndex" - when I<--backing> is present,
+                              matches up with the <backingStore>
+                              index listed in domain XML for
+                              backing files
+ "block.<num>.path" - file source of block device <num>, if
+                      it is a local file or block device
+ "block.<num>.rd.reqs" - number of read requests
+ "block.<num>.rd.bytes" - number of read bytes
+ "block.<num>.rd.times" - total time (ns) spent on reads
+ "block.<num>.wr.reqs" - number of write requests
+ "block.<num>.wr.bytes" - number of written bytes
+ "block.<num>.wr.times" - total time (ns) spent on writes
+ "block.<num>.fl.reqs" - total flush requests
+ "block.<num>.fl.times" - total time (ns) spent on cache flushing
+ "block.<num>.errors" - Xen only: the 'oo_req' value
+ "block.<num>.allocation" - offset of highest written sector in bytes
+ "block.<num>.capacity" - logical size of source file in bytes
+ "block.<num>.physical" - physical size of source file in bytes
+ "block.<num>.threshold" - threshold (in bytes) for delivering the
+                           VIR_DOMAIN_EVENT_ID_BLOCK_THRESHOLD event
+                           See domblkthreshold.
 
 Selecting a specific statistics groups doesn't guarantee that the
 daemon supports the selected group of stats. Flag I<--enforce>
@@ -1042,6 +1079,7 @@ command.
 | I<--xml> B<file> } [I<--shallow>] [I<--reuse-external>] [I<bandwidth>]
 [I<--wait> [I<--async>] [I<--verbose>]] [{I<--pivot> | I<--finish>}]
 [I<--timeout> B<seconds>] [I<granularity>] [I<buf-size>] [I<--bytes>]
+[I<--transient-job>]
 
 Copy a disk backing image chain to a destination.  Either I<dest> as
 the destination file name, or I<--xml> with the name of an XML file containing
@@ -1096,6 +1134,11 @@ within a certain range. Specifying I<buf-size> will control how much data can
 be simultaneously in-flight during the copy; larger values use more memory but
 may allow faster completion (the default value is usually correct).
 
+I<--transient-job> allows to specify that the user does not require the job to
+be recovered if the VM crashes or is turned off before the job completes. This
+flag removes the restriction of copy jobs to transient domains if that
+restriction is applied by the hypervisor.
+
 =item B<blockpull> I<domain> I<path> [I<bandwidth>] [I<--bytes>] [I<base>]
 [I<--wait> [I<--verbose>] [I<--timeout> B<seconds>] [I<--async>]]
 [I<--keep-relative>]
@@ -1139,7 +1182,7 @@ command.
 [I<read-bytes-sec-max-length>] [I<write-bytes-sec-max-length>]]
 [[I<total-iops-sec-max-length>] |
 [I<read-iops-sec-max-length>] [I<write-iops-sec-max-length>]]
-[I<size-iops-sec>] [I<group_name>]
+[I<size-iops-sec>] [I<group-name>]
 
 Set or query the block disk io parameters for a block device of I<domain>.
 I<device> specifies a unique target name (<target dev='name'/>) or source
@@ -1179,7 +1222,7 @@ read I/O operations limit.
 I<--write-iops-sec-max-length> specifies duration in seconds to allow maximum
 write I/O operations limit.
 I<--size-iops-sec> specifies size I/O operations limit per second.
-I<--group_name> specifies group name to share I/O quota between multiple drives.
+I<--group-name> specifies group name to share I/O quota between multiple drives.
 For a qemu domain, if no name is provided, then the default is to have a single
 group for each I<device>.
 
@@ -1241,6 +1284,14 @@ scaled positive number may be used as bandwidth (see B<NOTES> above). Using
 I<--bytes> with a scaled value allows to use finer granularity. A scaled value
 used without I<--bytes> will be rounded down to MiB/s. Note that the
 I<--bytes> may be unsupported by the hypervisor.
+
+
+=item B<domblkthreshold> I<domain> I<dev> I<threshold>
+
+Set the threshold value for delivering the block-threshold event. I<dev>
+specifies the disk device target or backing chain element of given device using
+the 'target[1]' syntax. I<threshold> is a scaled value of the offset. If the
+block device should write beyond that offset the event will be delivered.
 
 =item B<blockresize> I<domain> I<path> I<size>
 
@@ -1389,13 +1440,19 @@ the I<format> argument must be B<qemu-argv>. For Xen hypervisor, the
 I<format> argument may be B<xen-xm>, B<xen-xl>, or B<xen-sxpr>. For
 LXC hypervisor, the I<format> argument must be B<lxc-tools>.
 
-=item B<domxml-to-native> I<format> I<xml>
+=item B<domxml-to-native> I<format>
+{ [I<--xml>] I<xml> | I<--domain> I<domain-name-or-id-or-uuid> }
 
-Convert the file I<xml> in domain XML format to the native guest
-configuration format named by I<format>. For QEMU/KVM hypervisor,
-the I<format> argument must be B<qemu-argv>. For Xen hypervisor, the
-I<format> argument may be B<xen-xm>, B<xen-xl>, or B<xen-sxpr>. For
-LXC hypervisor, the I<format> argument must be B<lxc-tools>.
+Convert the file I<xml> into domain XML format or convert an existing
+I<--domain> to the native guest configuration format named by I<format>.
+The I<xml> and I<--domain> arguments are mutually exclusive.
+
+For the QEMU/KVM hypervisor, the I<format> argument must be B<qemu-argv>.
+
+For the Xen hypervisor, the I<format> argument may be B<xen-xm>, B<xen-xl>,
+or B<xen-sxpr>.
+
+For the LXC hypervisor, the I<format> argument must be B<lxc-tools>.
 
 =item B<dump> I<domain> I<corefilepath> [I<--bypass-cache>]
 { [I<--live>] | [I<--crash>] | [I<--reset>] } [I<--verbose>] [I<--memory-only>]
@@ -1628,7 +1685,7 @@ I<domain> I<desturi> [I<migrateuri>] [I<graphicsuri>] [I<listen-address>] [I<dna
 [I<--compressed>] [I<--comp-methods> B<method-list>]
 [I<--comp-mt-level>] [I<--comp-mt-threads>] [I<--comp-mt-dthreads>]
 [I<--comp-xbzrle-cache>] [I<--auto-converge>] [I<auto-converge-initial>]
-[I<auto-converge-increment>] [I<--persistent-xml> B<file>]
+[I<auto-converge-increment>] [I<--persistent-xml> B<file>] [I<--tls>]
 
 Migrate domain to another host.  Add I<--live> for live migration; <--p2p>
 for peer-2-peer migration; I<--direct> for direct migration; or I<--tunnelled>
@@ -1708,6 +1765,11 @@ Values are in range from 0 to 9, where 1 is maximum speed and 9 is maximum
 compression. I<--comp-mt-threads> and I<--comp-mt-dthreads> set the number
 of compress threads on source and the number of decompress threads on target
 respectively. I<--comp-xbzrle-cache> sets size of page cache in bytes.
+
+Providing I<--tls> causes the migration to use the host configured TLS setup
+(see migrate_tls_x509_cert_dir in /etc/libvirt/qemu.conf) in order to perform
+the migration of the domain. Usage requires proper TLS setup for both source
+and target.
 
 Running migration can be canceled by interrupting virsh (usually using
 C<Ctrl-C>) or by B<domjobabort> command sent from another virsh instance.
@@ -2039,10 +2101,14 @@ The numeric values are those defined by the Linux generic input
 event subsystem. The symbolic names match the corresponding
 Linux key constant macro names.
 
+See L<virkeycode-linux(7)> and L<virkeyname-linux(7)>
+
 =item B<xt>
 
 The numeric values are those defined by the original XT keyboard
 controller. No symbolic names are provided
+
+See L<virkeycode-xt(7)>
 
 =item B<atset1>
 
@@ -2051,21 +2117,29 @@ set 1 (aka XT compatible set). Extended keycoes from B<atset1>
 may differ from extended keycodes in the B<xt> codeset. No symbolic
 names are provided
 
+See L<virkeycode-atset1(7)>
+
 =item B<atset2>
 
 The numeric values are those defined by the AT keyboard controller,
 set 2. No symbolic names are provided
+
+See L<virkeycode-atset2(7)>
 
 =item B<atset3>
 
 The numeric values are those defined by the AT keyboard controller,
 set 3 (aka PS/2 compatible set). No symbolic names are provided
 
+See L<virkeycode-atset3(7)>
+
 =item B<os_x>
 
 The numeric values are those defined by the OS-X keyboard input
 subsystem. The symbolic names match the corresponding OS-X key
 constant macro names
+
+See L<virkeycode-osx(7)> and L<virkeyname-osx(7)>
 
 =item B<xt_kbd>
 
@@ -2074,16 +2148,22 @@ These are a variant on the original XT codeset, but often with
 different encoding for extended keycodes. No symbolic names are
 provided.
 
+See L<virkeycode-xtkbd(7)>
+
 =item B<win32>
 
 The numeric values are those defined by the Win32 keyboard input
 subsystem. The symbolic names match the corresponding Win32 key
 constant macro names
 
+See L<virkeycode-win32(7)> and L<virkeyname-win32(7)>
+
 =item B<usb>
 
 The numeric values are those defined by the USB HID specification
 for keyboard input. No symbolic names are provided
+
+See L<virkeycode-usb(7)>
 
 =item B<rfb>
 
@@ -2091,6 +2171,8 @@ The numeric values are those defined by the RFB extension for sending
 raw keycodes. These are a variant on the XT codeset, but extended
 keycodes have the low bit of the second byte set, instead of the high
 bit of the first byte. No symbolic names are provided.
+
+See L<virkeycode-rfb(7)>
 
 =back
 
@@ -2310,6 +2392,24 @@ B<Valid perf event names>
   ref_cpu_cycles   -  Provides the count of total cpu cycles
                       not affected by CPU frequency scaling by
                       applications running on the platform.
+  cpu_clock - Provides the cpu clock time consumed by
+              applications running on the platform.
+  task_clock - Provides the task clock time consumed by
+               applications running on the platform.
+  page_faults - Provides the count of page faults by
+                applications running on the platform.
+  context_switches - Provides the count of context switches
+                     by applications running on the platform.
+  cpu_migrations - Provides the count cpu migrations by
+                   applications running on the platform.
+  page_faults_min - Provides the count minor page faults
+                    by applications running on the platform.
+  page_faults_maj - Provides the count major page faults
+                    by applications running on the platform.
+  alignment_faults - Provides the count alignment faults
+                     by applications running on the platform.
+  emulation_faults - Provides the count emulation faults
+                     by applications running on the platform.
 
 B<Note>: The statistics can be retrieved using the B<domstats> command using
 the I<--perf> flag.
@@ -2416,7 +2516,27 @@ marked as hotpluggable.
 The I<--maximum> flag controls the maximum number of virtual cpus that can
 be hot-plugged the next time the domain is booted.  As such, it must only be
 used with the I<--config> flag, and not with the I<--live> or the I<--current>
-flag.
+flag. Note that it may not be possible to change the maximum vcpu count if
+the processor topology is specified for the guest.
+
+=item B<setvcpu> I<domain> I<vcpulist> [I<--enable>] | [I<--disable>]
+[[I<--live>] [I<--config>] | [I<--current>]]
+
+Change state of individual vCPUs using hot(un)plug mechanism.
+
+See B<vcpupin> for information on format of I<vcpulist>. Hypervisor drivers may
+require that I<vcpulist> contains exactly vCPUs belonging to one hotpluggable
+entity. This is usually just a single vCPU but certain architectures such as
+ppc64 require a full core to be specified at once.
+
+Note that hypervisors may refuse to disable certain vcpus such as vcpu 0 or
+others.
+
+If I<--live> is specified, affect a running domain.
+If I<--config> is specified, affect the next startup of a persistent domain.
+If I<--current> is specified, affect the current domain state. This is the
+default. Both I<--live> and I<--config> flags may be given, but I<--current> is
+exclusive.
 
 =item B<shutdown> I<domain> [I<--mode MODE-LIST>]
 
@@ -2731,7 +2851,7 @@ expected.
 =item B<attach-disk> I<domain> I<source> I<target> [[[I<--live>] [I<--config>]
 | [I<--current>]] | [I<--persistent>]] [I<--targetbus bus>] [I<--driver
 driver>] [I<--subdriver subdriver>] [I<--iothread iothread>]
-[I<--cache cache>] [I<--type type>]
+[I<--cache cache>] [I<--io io>] [I<--type type>]
 [I<--mode mode>] [I<--sourcetype sourcetype>] [I<--serial serial>] [I<--wwn
 wwn>] [I<--rawio>] [I<--address address>] [I<--multifunction>] [I<--print-xml>]
 
@@ -2758,6 +2878,7 @@ I<mode> can specify the two specific mode I<readonly> or I<shareable>.
 I<sourcetype> can indicate the type of source (block|file)
 I<cache> can be one of "default", "none", "writethrough", "writeback",
 "directsync" or "unsafe".
+I<io> controls specific policies on I/O; QEMU guests support "threads" and "native".
 I<iothread> is the number within the range of domain IOThreads to which
 this disk may be attached (QEMU only).
 I<serial> is the serial of disk device. I<wwn> is the wwn of disk device.
@@ -3070,11 +3191,12 @@ for HBA).
 
 List all of the devices available on the node that are known by libvirt.
 I<cap> is used to filter the list by capability types, the types must be
-separated by comma, e.g. --cap pci,scsi, valid capability types include
+separated by comma, e.g. --cap pci,scsi. Valid capability types include
 'system', 'pci', 'usb_device', 'usb', 'net', 'scsi_host', 'scsi_target',
-'scsi', 'storage', 'fc_host', 'vports', 'scsi_generic'. If I<--tree> is
-used, the output is formatted in a tree representing parents of each node.
-I<cap> and I<--tree> are mutually exclusive.
+'scsi', 'storage', 'fc_host', 'vports', 'scsi_generic', 'drm', 'mdev',
+'mdev_types', 'ccw'.
+If I<--tree> is used, the output is formatted in a tree representing parents of each
+node.  I<cap> and I<--tree> are mutually exclusive.
 
 =item B<nodedev-reattach> I<nodedev>
 
@@ -3503,13 +3625,13 @@ follow-up command to build the pool. The I<--overwrite> and
 I<--no-overwrite> flags follow the same rules as B<pool-build>. If
 just I<--build> is provided, then B<pool-build> is called with no flags.
 
-=item B<pool-create-as> I<name> I<type> [I<--print-xml>]
+=item B<pool-create-as> I<name> I<type>
 [I<--source-host hostname>] [I<--source-path path>] [I<--source-dev path>]
 [I<--source-name name>] [I<--target path>] [I<--source-format format>]
 [I<--auth-type authtype> I<--auth-username username> I<--secret-usage usage>]
 [[I<--adapter-name name>] | [I<--adapter-wwnn> I<--adapter-wwpn>]
 [I<--adapter-parent parent>]]
-[I<--build>] [[I<--overwrite>] | [I<--no-overwrite>]]
+[I<--build>] [[I<--overwrite>] | [I<--no-overwrite>]] [I<--print-xml>]
 
 
 Create and start a pool object I<name> from the raw parameters.  If
@@ -3559,17 +3681,23 @@ follow-up command to build the pool. The I<--overwrite> and
 I<--no-overwrite> flags follow the same rules as B<pool-build>. If
 just I<--build> is provided, then B<pool-build> is called with no flags.
 
+For a "logical" pool only [I<--name>] needs to be provided. The
+[I<--source-name>] if provided must match the Volume Group name.
+If not provided, one will be generated using the [I<--name>]. If
+provided the [I<--target>] is ignored and a target source is generated
+using the [I<--source-name>] (or as generated from the [I<--name>]).
+
 =item B<pool-define> I<file>
 
 Define an inactive persistent storage pool or modify an existing persistent one
 from the XML I<file>.
 
-=item B<pool-define-as> I<name> I<type> [I<--print-xml>]
+=item B<pool-define-as> I<name> I<type>
 [I<--source-host hostname>] [I<--source-path path>] [I<--source-dev path>]
 [I<--source-name name>] [I<--target path>] [I<--source-format format>]
 [I<--auth-type authtype> I<--auth-username username> I<--secret-usage usage>]
 [[I<--adapter-name name>] | [I<--adapter-wwnn> I<--adapter-wwpn>]
-[I<--adapter-parent parent>]]
+[I<--adapter-parent parent>]] [I<--print-xml>]
 
 Create, but do not start, a pool object I<name> from the raw parameters.  If
 I<--print-xml> is specified, then print the XML of the pool object
@@ -3621,7 +3749,8 @@ of basic info are not converted to human friendly units.
 =item B<pool-list> [I<--inactive>] [I<--all>]
                    [I<--persistent>] [I<--transient>]
                    [I<--autostart>] [I<--no-autostart>]
-                   [[I<--details>] [<type>]
+                   [[I<--details>] [I<--uuid>]
+                   [I<--name>] [<type>]
 
 List pool objects known to libvirt.  By default, only active pools
 are listed; I<--inactive> lists just the inactive pools, and I<--all>
@@ -3630,7 +3759,11 @@ lists all pools.
 In addition, there are several sets of filtering flags. I<--persistent> is to
 list the persistent pools, I<--transient> is to list the transient pools.
 I<--autostart> lists the autostarting pools, I<--no-autostart> lists the pools
-with autostarting disabled.
+with autostarting disabled. If I<--uuid> is specified only pool's UUIDs are printed.
+If I<--name> is specified only pool's names are printed. If both I<--name>
+and I<--uuid> are specified, pool's UUID and names are printed side by side
+without any header. Option I<--details> is mutually exclusive with options
+I<--uuid> and I<--name>.
 
 You may also want to list pools with specified types using I<type>, the
 pool types must be separated by comma, e.g. --type dir,disk. The valid pool
@@ -3806,13 +3939,14 @@ the storage volume should be deleted as well. Not all storage drivers
 support this option, presently only rbd.
 
 =item B<vol-upload> [I<--pool> I<pool-or-uuid>] [I<--offset> I<bytes>]
-[I<--length> I<bytes>] I<vol-name-or-key-or-path> I<local-file>
+[I<--length> I<bytes>] [I<--sparse>] I<vol-name-or-key-or-path> I<local-file>
 
 Upload the contents of I<local-file> to a storage volume.
 I<--pool> I<pool-or-uuid> is the name or UUID of the storage pool the volume
 is in.
 I<vol-name-or-key-or-path> is the name or key or path of the volume where the
 file will be uploaded.
+If I<--sparse> is specified, this command will preserve volume sparseness.
 I<--offset> is the position in the storage volume at which to start writing
 the data. The value must be 0 or larger. I<--length> is an upper bound
 of the amount of data to be uploaded. A negative value is interpreted
@@ -3824,12 +3958,13 @@ regarding possible target volume and pool changes as a result of the
 pool refresh when the upload is attempted.
 
 =item B<vol-download> [I<--pool> I<pool-or-uuid>] [I<--offset> I<bytes>]
-[I<--length> I<bytes>] I<vol-name-or-key-or-path> I<local-file>
+[I<--length> I<bytes>] [I<--sparse>] I<vol-name-or-key-or-path> I<local-file>
 
 Download the contents of a storage volume to I<local-file>.
 I<--pool> I<pool-or-uuid> is the name or UUID of the storage pool the volume
 is in.
 I<vol-name-or-key-or-path> is the name or key or path of the volume to download.
+If I<--sparse> is specified, this command will preserve volume sparseness.
 I<--offset> is the position in the storage volume at which to start reading
 the data. The value must be 0 or larger. I<--length> is an upper bound of
 the amount of data to be downloaded. A negative value is interpreted as
@@ -3933,8 +4068,8 @@ I<--pool> I<pool-or-uuid> is the name or UUID of the storage pool the volume
 is in. I<vol-name-or-path> is the name or path of the volume to return the
 volume key for.
 
-=item B<vol-resize> [I<--pool> I<pool-or-uuid>] I<vol-name-or-path>
-I<pool-or-uuid> I<capacity> [I<--allocate>] [I<--delta>] [I<--shrink>]
+=item B<vol-resize> I<vol-name-or-path> I<capacity> [I<--pool> I<pool-or-uuid>]
+[I<--allocate>] [I<--delta>] [I<--shrink>]
 
 Resize the capacity of the given volume, in bytes.
 I<--pool> I<pool-or-uuid> is the name or UUID of the storage pool the volume
@@ -4559,7 +4694,7 @@ Messages at level WARNING or above
 
 =item * LIBVIRT_DEBUG=4
 
-Messages at level ERROR or above
+Messages at level ERROR
 
 =back
 

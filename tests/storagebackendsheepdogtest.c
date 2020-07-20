@@ -32,7 +32,7 @@
 
 #include "internal.h"
 #include "testutils.h"
-#include "storage/storage_backend_sheepdog.h"
+#include "storage/storage_backend_sheepdog_priv.h"
 #include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_NONE
@@ -227,4 +227,4 @@ mymain(void)
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-VIRT_TEST_MAIN(mymain)
+VIR_TEST_MAIN(mymain)

@@ -49,7 +49,7 @@
 #endif
 
 #if WITH_BLKID
-# include <blkid/blkid.h>
+# include <blkid.h>
 #endif
 
 #if WITH_SELINUX
@@ -1143,8 +1143,8 @@ static int lxcContainerSetupDevices(char **ttyPaths, size_t nttyPaths)
             return -1;
 
         if (virFileBindMountDevice(ttyPaths[i], tty) < 0) {
-            return -1;
             VIR_FREE(tty);
+            return -1;
         }
 
         VIR_FREE(tty);
@@ -2042,7 +2042,7 @@ static int lxcContainerDropCapabilities(virDomainDefPtr def,
             default: /* User specified capabilities to drop */
                 toDrop = (state == VIR_TRISTATE_SWITCH_OFF);
             }
-            /* Fallthrough */
+            ATTRIBUTE_FALLTHROUGH;
 
         case VIR_DOMAIN_CAPABILITIES_POLICY_ALLOW:
             if (policy == VIR_DOMAIN_CAPABILITIES_POLICY_ALLOW)
@@ -2285,6 +2285,8 @@ virArch lxcContainerGetAlt32bitArch(virArch arch)
         return VIR_ARCH_MIPS;
     if (arch == VIR_ARCH_MIPS64EL)
         return VIR_ARCH_MIPSEL;
+    if (arch == VIR_ARCH_AARCH64)
+        return VIR_ARCH_ARMV7L;
 
     return VIR_ARCH_NONE;
 }

@@ -25,6 +25,9 @@ module Test_libvirtd_qemu =
 { "chardev_tls_x509_cert_dir" = "/etc/pki/libvirt-chardev" }
 { "chardev_tls_x509_verify" = "1" }
 { "chardev_tls_x509_secret_uuid" = "00000000-0000-0000-0000-000000000000" }
+{ "migrate_tls_x509_cert_dir" = "/etc/pki/libvirt-migrate" }
+{ "migrate_tls_x509_verify" = "1" }
+{ "migrate_tls_x509_secret_uuid" = "00000000-0000-0000-0000-000000000000" }
 { "nographics_allow_host_audio" = "1" }
 { "remote_display_port_min" = "5900" }
 { "remote_display_port_max" = "65535" }
@@ -55,7 +58,6 @@ module Test_libvirtd_qemu =
     { "8" = "/dev/kqemu" }
     { "9" = "/dev/rtc" }
     { "10" = "/dev/hpet" }
-    { "11" = "/dev/vfio/vfio" }
 }
 { "save_image_format" = "raw" }
 { "dump_image_format" = "raw" }
@@ -94,3 +96,4 @@ module Test_libvirtd_qemu =
 { "namespaces"
     { "1" = "mount" }
 }
+{ "memory_backing_dir" = "/var/lib/libvirt/qemu/ram" }

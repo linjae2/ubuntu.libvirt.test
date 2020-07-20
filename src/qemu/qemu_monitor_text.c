@@ -552,12 +552,6 @@ qemuMonitorTextQueryCPUs(qemuMonitorPtr mon,
         cpu.qemu_id = cpuid;
         cpu.tid = tid;
 
-        /* Extract halted indicator */
-        if ((offset = strstr(line, "(halted)")) != NULL)
-            cpu.halted = true;
-        else
-            cpu.halted = false;
-
         if (VIR_APPEND_ELEMENT_COPY(cpus, ncpus, cpu) < 0) {
             ret = -1;
             goto cleanup;
@@ -1956,6 +1950,22 @@ int qemuMonitorTextAddDrive(qemuMonitorPtr mon,
     if (strstr(reply, "could not open disk image")) {
         virReportError(VIR_ERR_OPERATION_FAILED, "%s",
                        _("open disk image file failed"));
+        goto cleanup;
+    }
+
+    if (strstr(reply, "Could not open")) {
+        size_t len = strlen(reply);
+        if (reply[len - 1] == '\n')
+            reply[len - 1] = '\0';
+
+        virReportError(VIR_ERR_OPERATION_FAILED, "%s",
+                       reply);
+        goto cleanup;
+    }
+
+    if (strstr(reply, "Image is not in")) {
+        virReportError(VIR_ERR_OPERATION_FAILED, "%s",
+                       _("Incorrect disk format"));
         goto cleanup;
     }
 

@@ -63,11 +63,11 @@ static const char storagePoolDef[] =
 
 static const char nodeDeviceDef[] =
 "<device>\n"
-"  <parent>test-scsi-host-vport</parent>\n"
+"  <parent>scsi_host1</parent>\n"
 "  <capability type='scsi_host'>\n"
 "    <capability type='fc_host'>\n"
-"      <wwpn>1111222233334444</wwpn>\n"
-"      <wwnn>5555666677778888</wwnn>\n"
+"      <wwpn>1000000023452345</wwpn>\n"
+"      <wwnn>2000000023452345</wwnn>\n"
 "    </capability>\n"
 "  </capability>\n"
 "</device>\n";
@@ -849,4 +849,4 @@ mymain(void)
     return ret;
 }
 
-VIRT_TEST_MAIN(mymain)
+VIR_TEST_MAIN(mymain)

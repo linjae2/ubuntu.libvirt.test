@@ -2270,8 +2270,8 @@ xdr_remote_domain_get_security_label_list_ret (XDR *xdrs, remote_domain_get_secu
 bool_t
 xdr_remote_node_get_security_model_ret (XDR *xdrs, remote_node_get_security_model_ret *objp)
 {
-        char **objp_cpp1 = (char **) (void *) &objp->doi.doi_val;
         char **objp_cpp0 = (char **) (void *) &objp->model.model_val;
+        char **objp_cpp1 = (char **) (void *) &objp->doi.doi_val;
 
          if (!xdr_array (xdrs, objp_cpp0, (u_int *) &objp->model.model_len, REMOTE_SECURITY_MODEL_MAX,
                 sizeof (char), (xdrproc_t) xdr_char))
@@ -6412,6 +6412,25 @@ xdr_remote_domain_event_block_job_2_msg (XDR *xdrs, remote_domain_event_block_jo
 }
 
 bool_t
+xdr_remote_domain_event_block_threshold_msg (XDR *xdrs, remote_domain_event_block_threshold_msg *objp)
+{
+
+         if (!xdr_int (xdrs, &objp->callbackID))
+                 return FALSE;
+         if (!xdr_remote_nonnull_domain (xdrs, &objp->dom))
+                 return FALSE;
+         if (!xdr_remote_nonnull_string (xdrs, &objp->dev))
+                 return FALSE;
+         if (!xdr_remote_string (xdrs, &objp->path))
+                 return FALSE;
+         if (!xdr_uint64_t (xdrs, &objp->threshold))
+                 return FALSE;
+         if (!xdr_uint64_t (xdrs, &objp->excess))
+                 return FALSE;
+        return TRUE;
+}
+
+bool_t
 xdr_remote_domain_event_callback_tunable_msg (XDR *xdrs, remote_domain_event_callback_tunable_msg *objp)
 {
         char **objp_cpp0 = (char **) (void *) &objp->params.params_val;
@@ -7061,6 +7080,21 @@ xdr_remote_domain_set_guest_vcpus_args (XDR *xdrs, remote_domain_set_guest_vcpus
 }
 
 bool_t
+xdr_remote_domain_set_vcpu_args (XDR *xdrs, remote_domain_set_vcpu_args *objp)
+{
+
+         if (!xdr_remote_nonnull_domain (xdrs, &objp->dom))
+                 return FALSE;
+         if (!xdr_remote_nonnull_string (xdrs, &objp->cpumap))
+                 return FALSE;
+         if (!xdr_int (xdrs, &objp->state))
+                 return FALSE;
+         if (!xdr_u_int (xdrs, &objp->flags))
+                 return FALSE;
+        return TRUE;
+}
+
+bool_t
 xdr_remote_domain_event_callback_metadata_change_msg (XDR *xdrs, remote_domain_event_callback_metadata_change_msg *objp)
 {
 
@@ -7126,6 +7160,21 @@ xdr_remote_secret_event_value_changed_msg (XDR *xdrs, remote_secret_event_value_
          if (!xdr_int (xdrs, &objp->callbackID))
                  return FALSE;
          if (!xdr_remote_nonnull_secret (xdrs, &objp->secret))
+                 return FALSE;
+        return TRUE;
+}
+
+bool_t
+xdr_remote_domain_set_block_threshold_args (XDR *xdrs, remote_domain_set_block_threshold_args *objp)
+{
+
+         if (!xdr_remote_nonnull_domain (xdrs, &objp->dom))
+                 return FALSE;
+         if (!xdr_remote_nonnull_string (xdrs, &objp->dev))
+                 return FALSE;
+         if (!xdr_uint64_t (xdrs, &objp->threshold))
+                 return FALSE;
+         if (!xdr_u_int (xdrs, &objp->flags))
                  return FALSE;
         return TRUE;
 }
