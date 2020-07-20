@@ -1,0 +1,2 @@
+  * Add code to postinst to fix any double-migration of /etc/dnsmasq.
+    (LP: #1157332)
