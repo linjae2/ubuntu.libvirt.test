@@ -1,0 +1,8 @@
+  * SECURITY UPDATE: denial of service via active pool without target path
+    - debian/patches/ubuntu/CVE-2020-10703.patch: fix daemon crash on
+      lookup storagepool by targetpath in src/storage/storage_driver.c.
+    - CVE-2020-10703
+  * SECURITY UPDATE: memory leak in virDomainListGetStats
+    - debian/patches/ubuntu/CVE-2020-12430.patch: don't leak array with 0
+      iothreads in src/qemu/qemu_driver.c.
+    - CVE-2020-12430
