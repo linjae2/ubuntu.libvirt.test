@@ -1,0 +1,2 @@
+  * d/p/u/gnulib-getopt-posix-Fix-build-failure-when-using-ac_cv_head.patch:
+    fix FTBFS with glibc 2.26 (LP: #1718668)
