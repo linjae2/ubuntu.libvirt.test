@@ -1,0 +1,3 @@
+  * Re-enable the upstart job by renaming the file.
+  * Include patchby @guessi to continally wait for libvirtd to start when
+    using sysvinit or upstart.  (LP: #1571209)
