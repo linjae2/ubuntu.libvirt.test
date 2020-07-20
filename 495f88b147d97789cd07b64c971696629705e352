@@ -1,0 +1,4 @@
+  * apparmor libvirt-qemu template: allow reading charm-specific ceph config
+    and allow reading under /tmp and /var/tmp (for SRU only)  (LP: #1403648)
+  * mutex cgmanager actions (Thanks to Don Bowman for finding the cause)
+    (LP: #1397130) (LP: #1367702)
