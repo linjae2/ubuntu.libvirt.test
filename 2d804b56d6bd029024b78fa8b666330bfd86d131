@@ -1,0 +1,9 @@
+  [ Guido Günther ]
+  * [5c47e64] Pre-Depend on init-system-helpers.
+    Thanks to intrigeri and Bastien ROUCARIES (Closes: #769551, #766362)
+  * [9aa75f7] util: Prepare URI formatting for libxml2 >= 2.9.2
+    (Closes: #769653)
+  [ Ian Campbell ]
+  * [bfe835f] Specify "pygrub" by default for libxl backend guests.
+    Using an absolute path prevents libxl from providing the correct
+    default. (Closes: #770485)
