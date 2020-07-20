@@ -1,0 +1,2 @@
+  * [ebfec9b] Don't try to install lxc.conf on kFreeBSD.
+    Another kFreeBSD build fix
