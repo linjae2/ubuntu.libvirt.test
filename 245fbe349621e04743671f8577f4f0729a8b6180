@@ -1,0 +1,5 @@
+  * Update Readme.Debian
+    - we use libvirtd, not libvirt group (LP: #1095140)
+    - we add users from sudo, not admin group, to libvirtd.
+  * libvirt-bin.postinst: put users from sudo, not admin group, into group
+    libvirtd. (LP: #1124127)
