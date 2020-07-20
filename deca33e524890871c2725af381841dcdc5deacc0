@@ -1,0 +1,2 @@
+  * d/apparmor/usr.lib.libvirt.virt-aa-helper: add missing rules for name
+    resolution to virt-aa-helper Apparmor profile (LP: #1546674).
