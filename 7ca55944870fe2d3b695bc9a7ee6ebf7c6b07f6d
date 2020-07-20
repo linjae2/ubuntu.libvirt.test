@@ -1,0 +1,2 @@
+  * [11f91ea] Make sure we build against sid's libaudit since libaudit0 and
+    libaudit1 aren't coinstallable (see #697459).
