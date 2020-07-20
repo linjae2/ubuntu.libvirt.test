@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.lib.libvirt.virt-aa-helper: also allow /opt but deny
+    access to /dev to suppress confusing, non-fatal profile denials.
