@@ -1,0 +1,2 @@
+  * Add two more upon which powerpc-make-qemu-system-ppc64-the-default
+    depends to fix ftbfs.
