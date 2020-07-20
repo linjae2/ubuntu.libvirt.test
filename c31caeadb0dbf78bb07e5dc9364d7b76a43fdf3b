@@ -1,0 +1,2 @@
+  * Add upstream patches implementing a '--migrate-disks' option to virsh
+    migrate to specify block devices to migrate.  (LP: #1398999)
