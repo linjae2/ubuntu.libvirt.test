@@ -1,0 +1,2 @@
+  * Add "Provides: libvirt0" to libvirt0-dbg.
+  * Make virsh understand that the default URI is not xen:///.
