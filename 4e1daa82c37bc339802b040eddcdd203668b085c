@@ -1,0 +1,18 @@
+  [ Adam Conrad ]
+  * libvirt-bin.postinst: also put admin group members into the libvirtd
+    group, to support systems installed before precise.  (LP: #1124127)
+  * libvirt-bin.postinst: use getent group instead of grep /etc/group
+  [ Serge Hallyn ]
+  * Update README.Debian:
+    - we use libvirtd, not libvirt group (LP: #1095140)
+    - we add users from sudo, not admin group, to libvirtd.
+  * Handle two usb devices with same vendor/id (LP: #1082213)
+    - ubuntu/qemu-Keep-list-of-USB-devices-attached-to-domains
+    - ubuntu/usb-create-functions-to-search-usb-device
+    - ubuntu/qemu-call-usb-search-function-for-hostdev
+  [ Andres Lagar-Cavilla ]
+  * Add RESUME event listener to qemu monitor (LP: #1097824)
+    - ubuntu/handle_resume.patch
+  [ Kirill Zaborsky ]
+  * Add proper handling for EINTR signal (LP: #1092826)
+    - ubuntu/fix-poll.patch
