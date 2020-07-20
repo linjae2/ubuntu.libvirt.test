@@ -1,0 +1,7 @@
+  * debian/control: move (cgroup-lite | cgroup-bin) from Suggests to Depends.
+    Libvirt-lxc is broken without it.
+  * apparmor/usr.lib.libvirt.virt-aa-helper: add 'deny /dev/dm-*' to silence
+    warnings about lvm backing stores (LP: #912007)
+  [ Peter Silva ]
+  * apparmor/libvirt-qemu: add rules to enable spice audio
+    (LP: #913023)
