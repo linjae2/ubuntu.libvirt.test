@@ -1,0 +1,3 @@
+  * d/p/bug-1708305-qemu-Fix-memory-locking-limit-calculation.patch:
+    Remove memlock limit when using <memoryBacking><locked/>.
+    (LP: #1708305).
