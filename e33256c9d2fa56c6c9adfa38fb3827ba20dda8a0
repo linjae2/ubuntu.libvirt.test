@@ -1,0 +1,2 @@
+  * Also rename the libvirt group to libvirtd in postinst/postrm.
+    (LP: #392696)
