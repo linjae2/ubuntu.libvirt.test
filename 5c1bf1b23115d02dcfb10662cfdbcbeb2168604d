@@ -1,0 +1,10 @@
+  * [51182d6] New upstream version 1.0.0~rc1
+  * [a8b162b] Refresh patches.
+    Fixed upstream:
+        * Properly-parse-unsigned-long-long.patch
+        * storage-lvm-Don-t-overwrite-lvcreate-errors.patch
+        * storage-lvm-lvcreate-fails-with-allocation-0-don-t-d.patch
+  * [418be04] Update symbols
+  * [f3fdef3] Install systemtap tapsets on Linux
+  * [e18098f] Build require a netcf linked against libnl-3-dev
+  * [8acbd16] Adjust to changed policy file names
