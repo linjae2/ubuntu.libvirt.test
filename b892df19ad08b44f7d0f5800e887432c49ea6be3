@@ -1,0 +1,2 @@
+  * debian/rules: fix paths when removing files which should not end up
+    in libvirt-daemon package.
