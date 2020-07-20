@@ -1,0 +1,4 @@
+  * Pass-GPG_TTY-env-var-to-the-ssh-binary.patch: sanitize commit message
+  * apparmor: add attach_disconnected (Closes: #876071)
+  * apparmor: cater for new AAVMF image location
+  * apparmor: delete profile on VM shutdown
