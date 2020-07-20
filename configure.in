@@ -1,0 +1,267 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(src/libvirt.c)
+AM_CONFIG_HEADER(config.h)
+AC_CANONICAL_HOST
+
+LIBVIRT_MAJOR_VERSION=0
+LIBVIRT_MINOR_VERSION=1
+LIBVIRT_MICRO_VERSION=8
+LIBVIRT_MICRO_VERSION_SUFFIX=
+LIBVIRT_VERSION=$LIBVIRT_MAJOR_VERSION.$LIBVIRT_MINOR_VERSION.$LIBVIRT_MICRO_VERSION$LIBVIRT_MICRO_VERSION_SUFFIX
+LIBVIRT_VERSION_INFO=`expr $LIBVIRT_MAJOR_VERSION + $LIBVIRT_MINOR_VERSION`:$LIBVIRT_MICRO_VERSION:$LIBVIRT_MINOR_VERSION
+
+LIBVIRT_VERSION_NUMBER=`expr $LIBVIRT_MAJOR_VERSION \* 1000000 + $LIBVIRT_MINOR_VERSION \* 1000 + $LIBVIRT_MICRO_VERSION`
+
+if test -f CVS/Entries; then
+  extra=`grep ChangeLog CVS/Entries | grep -v LIBVIR | sed -e s\%/ChangeLog/1\.%% -e s\%/.*$%%`
+  echo extra=$extra
+  if test "$extra" != ""
+  then
+      LIBVIRT_VERSION_EXTRA="-CVS$extra"
+  fi
+fi
+
+AC_SUBST(LIBVIRT_MAJOR_VERSION)
+AC_SUBST(LIBVIRT_MINOR_VERSION)
+AC_SUBST(LIBVIRT_MICRO_VERSION)
+AC_SUBST(LIBVIRT_VERSION)
+AC_SUBST(LIBVIRT_VERSION_INFO)
+AC_SUBST(LIBVIRT_VERSION_NUMBER)
+AC_SUBST(LIBVIRT_VERSION_EXTRA)
+
+VERSION=${LIBVIRT_VERSION}
+
+AM_INIT_AUTOMAKE(libvirt, $VERSION)
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_CPP
+AC_PATH_PROG(RM, rm, /bin/rm)
+AC_PATH_PROG(MV, mv, /bin/mv)
+AC_PATH_PROG(TAR, tar, /bin/tar)
+AC_PATH_PROG(XMLLINT, xmllint, /usr/bin/xmllint)
+AC_PATH_PROG(XSLTPROC, xsltproc, /usr/bin/xsltproc)
+
+
+dnl Make sure we have an ANSI compiler
+AM_C_PROTOTYPES
+test "x$U" != "x" && AC_MSG_ERROR(Compiler not ANSI compliant)
+
+AM_PROG_LIBTOOL
+
+dnl Specific dir for HTML output ?
+AC_ARG_WITH(html-dir, AC_HELP_STRING([--with-html-dir=path],
+            [path to base html directory, default $datadir/doc/html]),
+            [HTML_DIR=$withval], [HTML_DIR='$(datadir)/doc'])
+
+AC_ARG_WITH(html-subdir, AC_HELP_STRING([--with-html-subdir=path],
+            [directory used under html-dir, default $PACKAGE-$VERSION/html]),
+            [test "x$withval" != "x" && HTML_DIR="$HTML_DIR/$withval"],
+            [HTML_DIR="$HTML_DIR/\$(PACKAGE)-\$(VERSION)/html"])
+AC_SUBST(HTML_DIR)
+
+dnl
+dnl specific tests to setup DV devel environments with debug etc ...
+dnl
+if [[ "${LOGNAME}" = "veillard" -a "`pwd`" = "/u/veillard/libvirt" ]] ; then
+    STATIC_BINARIES="-static"
+else
+    STATIC_BINARIES=
+fi
+AC_SUBST(STATIC_BINARIES)
+
+dnl
+dnl make CFLAGS very pedantic at least during the devel phase for everybody
+dnl
+    if test "${GCC}" = "yes" ; then
+	CFLAGS="-g -O -W -Wformat -Wunused -Wimplicit -Wreturn-type -Wswitch -Wcomment -Wtrigraphs -Wformat -Wchar-subscripts -Wuninitialized -Wparentheses -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs -Winline -Wredundant-decls -Wall"
+    fi
+
+dnl
+dnl Specify the xen-distribution directory to be able to compile on a
+dnl non-xenified host
+dnl
+AC_ARG_WITH(xen-distdir, AC_HELP_STRING([--with-xen-distdir=path],
+            [distribution directory of Xen, default /usr]))
+if test "x$with_xen_distdir" != "x"
+then
+CPPFLAGS="$CPPFLAGS -I$withval/install/usr/include"
+LDFLAGS="$LDFLAGS -L$withval/install/usr/lib"
+fi
+
+dnl
+dnl To be able to make dist on a non-xenified host
+dnl
+AC_ARG_WITH(depends,
+	[  --with-depends          check for dependancies (on)])
+
+if test "$with_depends" != "no"
+then
+
+dnl search for the Xen store library
+AC_SEARCH_LIBS(xs_read, [xenstore], [], [AC_MSG_ERROR([Xen store library not found])])
+
+dnl ==========================================================================
+dnl find libxml2 library, borrowed from xmlsec
+dnl ==========================================================================
+LIBXML_MIN_VERSION="2.5.0"
+LIBXML_CONFIG="xml2-config"
+LIBXML_CFLAGS=""
+LIBXML_LIBS=""
+LIBXML_FOUND="no"
+AC_ARG_WITH(libxml, [  --with-libxml=[PFX]       libxml2 location])
+if test "z$with_libxml" = "zno" ; then 
+    AC_MSG_CHECKING(for libxml2 libraries >= $LIBXML_MIN_VERSION) 
+    AC_MSG_ERROR(libxml2 >= $LIBXML_MIN_VERSION is required for $XMLSEC_PACKAGE)
+elif test "z$with_libxml" = "z" -a "z$PKG_CONFIG_ENABLED" = "zyes" ; then
+    PKG_CHECK_MODULES(LIBXML, libxml-2.0 >= $LIBXML_MIN_VERSION,
+	[LIBXML_FOUND=yes],
+	[LIBXML_FOUND=no])
+fi
+AC_MSG_CHECKING(libxml2 $with_libxml  $LIBXML_FOUND  )
+if test "z$LIBXML_FOUND" = "zno" ; then
+    AC_MSG_CHECKING(for libxml2 libraries >= $LIBXML_MIN_VERSION) 
+    if test "z$with_libxml" != "z" ; then 
+	LIBXML_CONFIG=$with_libxml/bin/$LIBXML_CONFIG
+    fi
+    AC_MSG_CHECKING(libxml2 $with_libxml  $LIBXML_CONFIG  )
+    if ! $LIBXML_CONFIG --version > /dev/null 2>&1 ; then
+	AC_MSG_ERROR(Could not find libxml2 anywhere (see config.log for details).)
+    fi
+    vers=`$LIBXML_CONFIG --version | awk -F. '{ printf "%d", ($1 * 1000 + $2) * 1000 + $3;}'`
+    minvers=`echo $LIBXML_MIN_VERSION | awk -F. '{ printf "%d", ($1 * 1000 + $2) * 1000 + $3;}'`
+    if test "$vers" -ge "$minvers" ; then
+        LIBXML_LIBS="`$LIBXML_CONFIG --libs`"
+        LIBXML_CFLAGS="`$LIBXML_CONFIG --cflags`"
+	LIBXML_FOUND="yes"
+        AC_MSG_RESULT(yes ('$LIBXML_VERSION'))
+    else
+        AC_MSG_ERROR(You need at least libxml2 $LIBXML_MIN_VERSION for this version of $XMLSEC_PACKAGE)
+    fi
+fi
+
+AC_SUBST(LIBXML_CFLAGS)
+AC_SUBST(LIBXML_LIBS)
+AC_SUBST(LIBXML_CONFIG)
+AC_SUBST(LIBXML_MIN_VERSION)
+
+dnl virsh libraries
+AC_CHECK_LIB(curses, initscr, 
+	[VIRSH_LIBS="$VIRSH_LIBS -lcurses"],
+	[AC_CHECK_LIB(ncurses, initscr,
+	        [VIRSH_LIBS="$VIRSH_LIBS -lncurses"],
+		[AC_MSG_ERROR([curses/ncurses library not found])],
+		[$VIRSH_LIBS])],
+	[$VIRSH_LIBS])
+AC_CHECK_LIB(readline, main, 
+	[VIRSH_LIBS="$VIRSH_LIBS -lreadline"], 
+	[AC_MSG_ERROR([readline library not found])],
+	[$VIRSH_LIBS])
+AC_SUBST(VIRSH_LIBS)
+
+# end of if with_depends
+fi
+
+dnl
+dnl check for python
+dnl
+
+PYTHON_VERSION=
+PYTHON_INCLUDES=
+PYTHON_SITE_PACKAGES=
+PYTHON_TESTS=
+pythondir=
+if test "$with_python" != "no" ; then
+    if test -x "$with_python/bin/python"
+    then
+        echo Found python in $with_python/bin/python
+        PYTHON="$with_python/bin/python"
+    else
+	if test -x "$with_python"
+	then
+	    echo Found python in $with_python
+	    PYTHON="$with_python"
+	else
+	    if test -x "$PYTHON"
+	    then
+	        echo Found python in environment PYTHON=$PYTHON
+		with_python=`$PYTHON -c "import sys; print sys.exec_prefix"`
+	    else
+		AC_PATH_PROG(PYTHON, python python2.6 python2.5 python2.4 python2.3 python2.2 python2.1 python2.0 python1.6 python1.5)
+	    fi
+	fi
+    fi
+    if test "$PYTHON" != ""
+    then
+        PYTHON_VERSION=`$PYTHON -c "import sys; print sys.version[[0:3]]"`
+	echo Found Python version $PYTHON_VERSION
+    fi
+    if test "$PYTHON_VERSION" != ""
+    then
+	if test -r $with_python/include/python$PYTHON_VERSION/Python.h -a \
+	   -d $with_python/lib/python$PYTHON_VERSION/site-packages
+	then
+	    PYTHON_INCLUDES=$with_python/include/python$PYTHON_VERSION
+	    PYTHON_SITE_PACKAGES=$libdir/python$PYTHON_VERSION/site-packages
+	else
+	    if test -r $prefix/include/python$PYTHON_VERSION/Python.h
+	    then
+	        PYTHON_INCLUDES=$prefix/include/python$PYTHON_VERSION
+	        PYTHON_SITE_PACKAGES=$libdir/python$PYTHON_VERSION/site-packages
+	    else
+		if test -r /usr/include/python$PYTHON_VERSION/Python.h
+		then
+		    PYTHON_INCLUDES=/usr/include/python$PYTHON_VERSION
+	            PYTHON_SITE_PACKAGES=$libdir/python$PYTHON_VERSION/site-packages
+		else
+		    echo could not find python$PYTHON_VERSION/Python.h
+		fi
+	    fi
+	    if test ! -d "$PYTHON_SITE_PACKAGES"
+	    then
+		    PYTHON_SITE_PACKAGES=`$PYTHON -c "from distutils import sysconfig; print sysconfig.get_python_lib()"`
+	    fi
+	fi
+    fi
+    if test "$with_python" != ""
+    then
+        pythondir='$(PYTHON_SITE_PACKAGES)'
+    else
+        pythondir='$(libdir)/python$(PYTHON_VERSION)/site-packages'
+    fi
+else
+    PYTHON=
+fi
+AM_CONDITIONAL(WITH_PYTHON, test "$PYTHON_INCLUDES" != "")
+if test "$PYTHON_INCLUDES" != ""
+then
+    PYTHON_SUBDIR=python
+else
+    PYTHON_SUBDIR=
+fi
+AC_SUBST(pythondir)
+AC_SUBST(PYTHON_SUBDIR)
+AC_SUBST(PYTHON_VERSION)
+AC_SUBST(PYTHON_INCLUDES)
+AC_SUBST(PYTHON_SITE_PACKAGES)
+
+AM_GNU_GETTEXT_VERSION([0.14.1])
+AM_GNU_GETTEXT([external])
+ALL_LINGUAS=en_GB
+
+# very annoying
+rm -f COPYING
+cp COPYING.LIB COPYING
+
+AC_OUTPUT(Makefile src/Makefile include/Makefile docs/Makefile \
+          docs/examples/Makefile docs/devhelp/Makefile \
+	  docs/examples/python/Makefile \
+          libvirt.pc libvirt.spec \
+          po/Makefile.in \
+	  include/libvirt/Makefile include/libvirt/libvirt.h \
+	  python/Makefile python/tests/Makefile \
+          tests/Makefile proxy/Makefile \
+          tests/xml2sexprdata/Makefile \
+          tests/sexpr2xmldata/Makefile \
+          tests/virshdata/Makefile tests/confdata/Makefile)

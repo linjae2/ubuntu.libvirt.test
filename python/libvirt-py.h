@@ -1,0 +1,34 @@
+/* Generated */
+
+PyObject * libvirt_virDomainUndefine(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainDefineXML(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainShutdown(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainLookupByName(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainPinVcpu(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainRestore(PyObject *self, PyObject *args);
+PyObject * libvirt_virConnectGetType(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainSave(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainCreate(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainLookupByUUIDString(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainLookupByID(PyObject *self, PyObject *args);
+PyObject * libvirt_virResetLastError(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainGetOSType(PyObject *self, PyObject *args);
+PyObject * libvirt_virConnectNumOfDomains(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainGetUUIDString(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainGetMaxMemory(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainSetMaxMemory(PyObject *self, PyObject *args);
+PyObject * libvirt_virConnectOpen(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainSuspend(PyObject *self, PyObject *args);
+PyObject * libvirt_virConnectNumOfDefinedDomains(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainReboot(PyObject *self, PyObject *args);
+PyObject * libvirt_virInitialize(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainSetVcpus(PyObject *self, PyObject *args);
+PyObject * libvirt_virConnResetLastError(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainGetID(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainResume(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainCreateLinux(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainSetMemory(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainDestroy(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainGetXMLDesc(PyObject *self, PyObject *args);
+PyObject * libvirt_virDomainGetName(PyObject *self, PyObject *args);
+PyObject * libvirt_virConnectOpenReadOnly(PyObject *self, PyObject *args);

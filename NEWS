@@ -1,0 +1,150 @@
+
+        NEWS file for libvirt
+
+  Note that this is automatically generated from the news webpage at:
+       http://libvirt.org/news.html
+
+Releases
+0.1.7: Sep 29 2006:
+   -  fix a memory bug on getting vcpu informations from xend (Daniel Berrange)
+   -  fix another problem in the hypercalls change in Xen changeset
+       86d26e6ec89b when getting domain informations (Daniel Berrange)
+
+
+0.1.6: Sep 22 2006:
+   - Support for localization of strings using gettext (Daniel Berrange)
+   - Support for new Xen-3.0.3 cdrom and disk configuration (Daniel Berrange)
+   - Support for setting VNC port when creating domains with new
+      xend config files (Daniel Berrange) 
+   - Fix bug when running against xen-3.0.2 hypercalls (Jim Fehlig)
+   - Fix reconnection problem when talking directly to http xend
+
+
+0.1.5: Sep 5 2006:
+   - Support for new hypercalls change in Xen changeset 86d26e6ec89b
+   - bug fixes: virParseUUID() was wrong, netwoking for paravirt guestsi
+      (Daniel Berrange), virsh on non-existent domains (Daniel Berrange),
+      string cast bug when handling error in python (Pete Vetere), HTTP
+      500 xend error code handling (Pete Vetere and Daniel Berrange)
+   - improvements: test suite for SEXPR <-> XML format conversions (Daniel
+      Berrange), virsh output regression suite (Daniel Berrange), new environ
+      variable VIRSH_DEFAULT_CONNECT_URI for the default URI when connecting
+      (Daniel Berrange), graphical console support for paravirt guests
+      (Jeremy Katz), parsing of simple Xen config files (with Daniel Berrange),
+      early work on defined (not running) domains (Daniel Berrange),
+      virsh output improvement (Daniel Berrange
+
+
+0.1.4: Aug 16 2006:
+   - bug fixes: spec file fix (Mark McLoughlin), error report problem (with
+    Hugh Brock), long integer in Python bindings (with Daniel Berrange), XML
+    generation bug for CDRom (Daniel Berrange), bug whem using number() XPath
+    function (Mark McLoughlin), fix python detection code, remove duplicate
+    initialization errors (Daniel Berrange)
+   - improvements: UUID in XML description (Peter Vetere), proxy code
+    cleanup, virtual CPU and affinity support + virsh support (Michel
+    Ponceau, Philippe Berthault, Daniel Berrange), port and tty informations
+    for console in XML (Daniel Berrange), added XML dump to driver and proxy
+    support (Daniel Berrange), extention of boot options with support for
+    floppy and cdrom (Daniel Berrange), features block in XML to report/ask
+    PAE, ACPI, APIC for HVM domains (Daniel Berrange), fail saide-effect
+    operations when using read-only connection, large improvements to test
+    driver (Daniel Berrange) 
+   - documentation: spelling (Daniel Berrange), test driver examples.
+
+
+0.1.3: Jul 11 2006:
+   - bugfixes: build as non-root, fix xend access when root, handling of
+    empty XML elements (Mark McLoughlin), XML serialization and parsing fixes
+    (Mark McLoughlin), allow to create domains without disk (Mark
+  McLoughlin),
+   - improvement: xenDaemonLookupByID from O(n^2) to O(n) (Daniel Berrange),
+    support for fully virtualized guest (Jim Fehlig, DV, Mark McLoughlin)
+   - documentation: augmented to cover hvm domains
+
+
+0.1.2: Jul 3 2006:
+   - headers include paths fixup
+   - proxy mechanism for unpriviledged read-only access by httpu
+
+
+0.1.1: Jun 21 2006:
+   - building fixes: ncurses fallback (Jim Fehlig), VPATH builds (Daniel P.
+    Berrange)
+   - driver cleanups: new entry points, cleanup of libvirt.c (with Daniel P.
+    Berrange)
+   - Cope with API change introduced in Xen changeset 10277
+   - new test driver for regression checks (Daniel P. Berrange)
+   - improvements: added UUID to XML serialization, buffer usage (Karel
+    Zak), --connect argument to virsh (Daniel P. Berrange),
+   - bug fixes: uninitialized memory access in error reporting, S-Expr
+    parsing (Jim Fehlig, Jeremy Katz), virConnectOpen bug, remove a TODO in
+    xs_internal.c
+   - documentation: Python examples (David Lutterkort), new Perl binding
+    URL, man page update (Karel Zak)
+
+
+0.1.0: Apr 10 2006:
+   - building fixes: --with-xen-distdir option (Ronald Aigner), out of tree
+    build and pkginfo cflag fix (Daniel Berrange)
+   - enhancement and fixes of the XML description format (David Lutterkort
+    and Jim Fehlig)
+   - new APIs: for Node information and Reboot
+   - internal code cleanup: refactoring internals into a driver model, more
+    error handling, structure sharing, thread safety and ref counting
+   - bug fixes: error message (Jim Meyering), error allocation in virsh (Jim
+    Meyering), virDomainLookupByID (Jim Fehlig),
+   - documentation: updates on architecture, and format, typo fix (Jim
+    Meyering)
+   - bindings: exception handling in examples (Jim Meyering), perl ones out
+    of tree (Daniel Berrange)
+   - virsh: more options, create, nodeinfo (Karel Zak), renaming of some
+    options (Karel Zak), use stderr only for errors (Karel Zak), man page
+    (Andrew Puch)
+
+
+0.0.6: Feb 28 2006:
+   - add UUID lookup and extract API
+   - add error handling APIs both synchronous and asynchronous
+   - added minimal hook for error handling at the python level, improved the
+    python bindings
+   - augment the documentation and tests to cover error handling
+
+
+0.0.5: Feb 23 2006:
+   - Added XML description parsing, dependance to libxml2, implemented the
+    creation API virDomainCreateLinux()
+   - new APIs to lookup and name domain by UUID
+   - fixed the XML dump when using the Xend access
+   - Fixed a few more problem related to the name change
+   - Adding regression tests in python and examples in C
+   - web site improvement, extended the documentation to cover the XML
+    format and Python API
+   - Added devhelp help for Gnome/Gtk programmers
+
+
+0.0.4: Feb 10 2006:
+   - Fix various bugs introduced in the name change
+
+
+0.0.3: Feb 9 2006:
+   - Switch name from from 'libvir' to libvirt
+   - Starting infrastructure to add code examples
+   - Update of python bindings for completeness
+
+
+0.0.2: Jan 29 2006:
+   - Update of the documentation, web site redesign (Diana Fong)
+   - integration of HTTP xend RPC based on libxend by Anthony Liquori for
+    most operations
+   - Adding Save and Restore APIs
+   - extended the virsh command line tool (Karel Zak)
+   - remove xenstore transactions (Anthony Liguori)
+   - fix the Python bindings bug when domain and connections where freed
+
+
+0.0.1: Dec 19 2005:
+   - First release
+   - Basic management of existing Xen domains
+   - Minimal autogenerated Python bindings
+
