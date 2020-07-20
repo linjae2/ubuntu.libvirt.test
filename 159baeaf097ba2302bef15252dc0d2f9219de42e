@@ -1,0 +1,2 @@
+  * Build-Depend on libnl-3-dev. (LP: #908581)
+  * Update libnl3 patch to also pass LIBNL_CFLAGS in the LXC target.
