@@ -1,0 +1,5 @@
+  * debian/control: - add radvd to build-depends (LP: #862136)
+  * debian/control: remove moved relations from original:
+    - libvirt-bin Depends: move netcat-openbsd, bridge-utils, dnsmasq-base
+      (>= 2.46-1), and iptables from Recommends to Depends
+    - libvirt-bin Recommends: move qemu to Suggests
