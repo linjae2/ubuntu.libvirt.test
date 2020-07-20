@@ -1,0 +1,2 @@
+  * d/apparmor/libvirt-qemu: add r access to max_mem_regions vhost module
+    paramater (LP: #1531564)
