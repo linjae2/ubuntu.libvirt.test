@@ -1,0 +1,21 @@
+  * [0a01d0a] New upstream version 0.9.12.3
+    Fixes CVE-2013-6458 and CVE-2014-1447
+    (Closes: #734556)
+  * [43817d5] Don't fail chmod/chdir if a file doesn't exist.
+  * [753faf6] Check correct dirs for existence (Closes: #729331)
+  * [3ed9278] Update symbols
+  * [77a7135] Adjust gbp.conf for Wheezy point releases
+  * [b457e3f] New upstream version 0.9.12.1
+  * [ae6e265] New upstream version 0.9.12.2
+  * [2d07b5c] Drop patches fixed upstream.
+        Include-stdint.h-for-uint32_t.patch
+        Revert-rpc-Discard-non-blocking-calls-only-when-nece.patch
+        fix-leak-virStorageBackendLogicalMakeVol.patch
+        qemu-Add-support-for-no-user-config.patch
+        qemu-Fix-off-by-one-error-while-unescaping-monitor-s.patch
+        rpc-Fix-crash-on-error-paths-of-message-dispatching.patch
+        security/CVE-2012-3445.patch
+        security/Fix-crash-in-remoteDispatchDomainMemoryStats.patch
+        security/security-Fix-libvirtd-crash-possibility.patch
+        upstream/Fix-libvirtd-crash-when-destroying-a-domain-with-att.patch
+        upstream/Fix-race-condition-when-destroying-guests.patch
