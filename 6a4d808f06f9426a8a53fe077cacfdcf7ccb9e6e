@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: add ceph.conf (LP: #1026404)
+  * debian/patches: re-add 9002-better_default_uri_virsh.patch (LP: #1026515)
