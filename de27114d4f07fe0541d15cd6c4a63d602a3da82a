@@ -1,0 +1,23 @@
+  [ Chuck Short ]
+  * New upstream release:  (LP: #1367422)
+    + Dropped:
+      - debian/patches/ovs-delete-port-if-exists-while-adding-new-one
+    + Refreshed:
+      - debian/patches/add-cgmanager-support.patch
+      - debian/patches/storage-default-permission-mode-to-0711
+  [ Serge Hallyn ]
+  * d/apparmor
+    - install TEMPLATE.qemu and TEMPLATE.lxc
+    - add libvirt-lxc abstraction, add permissions to it needed for
+      a ubuntu container to start.
+    - libvirt-qemu - add qemu-bridge-helper policy from upstream
+    - libvirt-qemu - add qemu-microblaze allows from upstream
+    - edit lxc.conf to enable apparmor by default  (LP: #914716)
+      (LP: #1008393) (LP: #1088295)
+  * d/apparmor/libvirt-qemu: add /dev/shm as path to spice.* nodes
+    for systemd case.  (LP: #1365163)
+  * d/p/9030-create-socket-dir - create session socket dir if
+    needed  (Should be replaced eventually by the upstream fix)
+  * d/p/9032-lxc-allow-no-security-driver: don't fail if apparmor
+    driver is not available (else the qa-regression-tests fail with
+    skip_apparmor)
