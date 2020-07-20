@@ -1,0 +1,7 @@
+  [ Seyeong Kim ]
+  * d/p/fix_libvirtd_killed_by_sigsegv.patch: fix incorrect backport
+    (LP: #1464175)
+  [ Edward Hope-Morley ]
+  * Add post-start to upstart (/etc/init/libvirt-bin.conf) and
+    sysv (/etc/init.d/libvirt-bin) to ensure libvirt-sock
+    created before up (LP: #1455608)
