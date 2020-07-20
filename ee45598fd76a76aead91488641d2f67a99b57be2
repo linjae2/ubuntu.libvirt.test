@@ -1,0 +1,7 @@
+  * debian/apparmor/usr.sbin.libvirtd: switch to enforcing by default. Please
+    note that this was only in complain mode temporarily to work around kernel
+    bugs in the 2.6.31-9 kernel. Confinement of virtual machines (controlled
+    by /etc/apparmor.d/libvirt/TEMPLATE) was already in enforcing mode.
+    (LP: #427338)
+  * debian/README.Debian: update AppArmor section based on the upstream
+    documentation
