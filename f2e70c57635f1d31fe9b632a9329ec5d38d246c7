@@ -1,0 +1,2 @@
+  * debian/patches/9009-autodetect-nc-params.patch: updated to fix
+    connecting to a remote server when using zsh or tcsh. (LP: #605172)
