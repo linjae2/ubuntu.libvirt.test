@@ -1,0 +1,25 @@
+  [ Chuck Short ]
+  * New upstream version: 
+    + droppped:
+      - debian/patches/CVE-2012-3445.patch
+      - debian/patches/fix-cve-2012-4423
+      - debian/patches/lp1039678.patch
+      - debian/patches/add-libvirt-highbank-support.patch
+      - debian/patches/add-armhf-cpuinfo-parser.patch
+      - debian/patches/fix-lxc-container-unmounting.patch
+      - debian/patches/libnl3-build-fix.patch
+      - debian/patches/Don-t-require-gawk-for-a-simple-print-expression.patch
+      - debian/patches/virsh-Initialize-library-before-calling-virResetLast.patch
+      - debian/patches/qemu-warn-on-pc-0.12.patch
+      - debian/patches/storage-default-pool-permission-mode-to-0755
+      - debian/patches/netcf-daemon-fix-wrong-macro-name
+      - debian/patches/xen_hypervisor-treat-missing-privcmd-file-as-temporary.patch
+    + Re-diffed:
+      - debian/patches/9002-better_default_uri_virsh.patch
+      - debian/patches/dnsmasq-as-priv-user
+      - debian/patches/enable-kvm-spice.patch
+    + debian/control, debian/rules: Turn on rbd pool storage.
+   [ Serge Hallyn ]
+   * Add patches to fix apparmor labeling issue at VM start:
+     - apparmor-no-need-to-check-security-model
+     - apparmor-use-apparmor-setfdlabel
