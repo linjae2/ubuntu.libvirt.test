@@ -1,0 +1,3 @@
+  * better_default_uri_virsh.patch:
+    - Make virsh connect to qemu:///system by default if the user has write
+      access to /var/run/libvirt/libvirt-sock and qemu:///session if not.
