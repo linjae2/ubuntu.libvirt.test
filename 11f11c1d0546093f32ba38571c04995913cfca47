@@ -1,0 +1,1 @@
+  * debian/libvirt-bin.postinst: don't sed a non-existent file (LP: #493582)
