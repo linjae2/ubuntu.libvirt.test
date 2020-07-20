@@ -1,0 +1,3 @@
+  * re-enable numa (undo delta against debian)  (LP: #614322):
+    - debian/control: remove from dependencies
+    - debian/rules: turn it off
