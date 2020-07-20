@@ -1,0 +1,5 @@
+  * debian/patches/9013-apparmor-dont-clear-caps.patch: Don't clear
+    capabilities when calling virt-aa-helper. When built with libcap-ng,
+    clearing caps makes virt-aa-helper lose MAC_ADMIN, which is (obviously)
+    needed by apparmor_parser. This restores libcap-ng behavior to what it was
+    when not built with libcap-ng. (LP: #517714)
