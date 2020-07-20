@@ -1,0 +1,4 @@
+  * [2d51700] New upstream version 0.9.7~rc2
+  * [bae02ad] Drop patches, now fixed upstream.
+      - Fix-storage-pool-source-comparison-to-avoid-comparin.patch
+      - Skip-socket-test-if-we-exceed-UNIX_PATH_MAX.patch
