@@ -1,0 +1,3 @@
+  * Start libvirtd by default.
+  * Create libvirtd group, and have libvirtd's sockets have group ownership
+    "libvirtd".
