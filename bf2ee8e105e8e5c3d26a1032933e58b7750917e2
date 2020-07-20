@@ -1,0 +1,4 @@
+  * [1c2c5ee] Don't let dh_systemd_start guess the package to act on
+    (Closes: #758552)
+  * [ab79901] Don't restart libvirt-guests when using systemd so it's
+    consistent with sysvinit. We'd restart VMs on package upgrads otherwise.
