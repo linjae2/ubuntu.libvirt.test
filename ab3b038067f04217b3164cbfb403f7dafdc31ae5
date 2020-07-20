@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.sbin.libvirtd: allow execution of /lib/udev/scsi_id
+    (LP: #992378)
