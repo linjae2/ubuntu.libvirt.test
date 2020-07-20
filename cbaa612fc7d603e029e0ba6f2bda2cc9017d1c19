@@ -1,0 +1,246 @@
+  * Merged with Debian unstable (LP: #1786957).
+    Among many other new features and fixes this includes fixes
+    for (LP: #1754871), Remaining changes:
+    - Disable libssh2 support (universe dependency)
+    - Disable firewalld support (universe dependency)
+    - Set qemu-group to kvm (for compat with older ubuntu)
+    - Additional apport package-hook
+    - Autostart default bridged network (As upstream does, but not Debian).
+      In addition to just enabling it our solution provides:
+      + do not autostart if subnet is already taken (e.g. in guests).
+      + iterate some alternative subnets before giving up
+    - d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch: This is
+      the group based access to libvirt functions as it was used in Ubuntu
+      for quite long.
+      + d/p/ubuntu/daemon-augeas-fix-expected.patch fix some related tests
+        due to the group access change.
+      + d/libvirt-daemon-system.postinst: add users in sudo to the libvirt
+        group.
+    - ubuntu/parallel-shutdown.patch: set parallel shutdown by default.
+    - d/p/ubuntu/enable-kvm-spice.patch: compat with older Ubuntu qemu/kvm
+      which provided a separate kvm-spice.
+    - Xen related
+      - d/p/ubuntu/ubuntu-libxl-qemu-path.patch: this change was split. The
+        section that adapts the path of the emulator to the Debian/Ubuntu
+        packaging is kept.
+      - d/p/ubuntu/ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch: auto
+        set VRAM to minimum requirements
+      - d/p/ubuntu/xen-default-uri.patch: set default URI on xen hosts
+      - Add libxl log directory
+      - libvirt-uri.sh: Automatically switch default libvirt URI for users on
+        Xen dom0 via user profile (was missing on changelogs before)
+    - d/p/ubuntu/apibuild-skip-libvirt-common.h: drop libvirt-common.h from
+      included_files to avoid build failures due to duplicate definitions.
+    - Update README.Debian with Ubuntu changes
+    - Convert libvirt0, libnss_libvirt and libvirt-dev to multi-arch.
+    - Enable some additional features on ppc64el and s390x (for arch parity)
+      + systemtap, zfs, numa and numad on s390x.
+      + systemtap on ppc64el.
+    - d/t/control, d/t/smoke-qemu-session: fixup smoke-qemu-session by making
+      vmlinuz available and accessible (Debian bug 848314)
+    - d/t/control, d/t/smoke-lxc: fix up lxc smoke test isolation
+    - Add dnsmasq configuration to work with system wide dnsmasq (drop >18.04,
+      no more UCA onto Xenial then which has global dnsmasq by default).
+    - d/p/ubuntu/ubuntu_machine_type.patch: accept ubuntu types as pci440fx
+    - Further upstreamed apparmor Delta, especially any new one
+      Our former delta is split into logical pieces and is either Ubuntu only
+      or is part of a continuous upstreaming effort.
+      Listing related remaining changes in debian/patches/ubuntu-aa/:
+      + 0001-apparmor-Allow-pygrub-to-run-on-Debian-Ubuntu.patch: apparmor:
+        Allow pygrub to run on Debian/Ubuntu
+      + 0003-apparmor-libvirt-qemu-Allow-read-access-to-overcommi.patch:
+        apparmor, libvirt-qemu: Allow read access to overcommit_memory
+      + 0007-apparmor-libvirt-qemu-Allow-owner-read-access-to-PRO.patch:
+        apparmor, libvirt-qemu: Allow owner read access to @{PROC}/*/auxv
+      + 0017-apparmor-virt-aa-helper-Allow-access-to-tmp-director.patch:
+        apparmor, virt-aa-helper: Allow access to tmp directories
+      + ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch:
+        apparmor, virt-aa-helper: Allow various storage pools and image
+        locations
+      + 0021-apparmor-virt-aa-helper-Add-openvswitch-support.patch:
+        apparmor, virt-aa-helper: Add openvswitch support
+      + 0025-apparmor-fix-newer-virt-manager-1.4.0.patch: Add Apparmor
+        permissions so virt-manager 1.4.0 viewing works (LP 1668681 1747442).
+        Can be dropped >=libvirt 4.7
+      + 0029-appmor-libvirt-qemu-Add-9p-support.patch: appmor,
+        libvirt-qemu: Add 9p support
+      + 0030-virt-aa-helper-Complete-9p-support.patch: virt-aa-helper:
+        add l to 9p file options.
+      + 0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch:
+        virt-aa-helper: Ask for no deny rule for readonly disk (renamed and
+        reworded, was virt-aa-helper-no-explicity-deny-for-basefiles.patch)
+      + 0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch:
+        apparmor, libvirt-qemu: Allow reading charm-specific ceph config
+      + 0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch: allow
+        commands executed by ubuntu only kvm wrapper on ppc64el
+        (LP 1686621 & LP 1680384).
+      + 0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch:
+        apparmor, virt-aa-helper: access for snapped nova
+      + 0040-apparmor-add-mediation-rules-for-unconfined.patch:
+        apparmor: add mediation rules for unconfined guests
+        Can be dropped >=libvirt 4.7
+    - d/rules: enable build time self tests on all architectures
+    - run dnsmasq as libvirt-dnsmasq (LP: 1743718)
+      + d/libvirt-daemon-system.postinst: add libvirt-dnsmasq user and group
+      + d/libvirt-daemon-system.postrm: remove libvirt-dnsmasq user and group on
+        purge
+      + d/p/ubuntu/dnsmasq-as-priv-user: write dnsmas config with user
+        libvirt-dnsmasq and adapt the self tests to expect that config
+      + d/libvirt-daemon-system.postinst: fix old libvirt-dnsmasq users
+    - debian/rules: disable the netcf backend. (LP: 1764314)
+    - debian/control: drop libnetcf from Build-Depends.
+    - ddebian/patches/ubuntu/ovmf_paths.patch: adjust paths to secboot.fd UEFI
+      Secure Boot enabled variants of the OVMF firmware and variable store for
+      the paths where we ship these files in Ubuntu.
+    - d/rules: install virtlockd correctly with defaults file (LP: 1729516)
+  * Added Changes
+    - 0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch:
+      updated to take care of no more silencing and thereby hiding denials
+      (LP 1719579 is an example)
+    - 0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch:
+      updated to also allow the optionally placed ceph asok file (LP: #1779674)
+    - 0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch: prepare
+      profile for usrmerge (LP: #1784023)
+    - Finalize the libvirt-bin -> libvirt-* transition in the apport
+      package-hook.
+    - d/p/ubuntu-aa/0050-local-include-for-libvirt-qemu.patch,
+      d/libvirt-daemon-system.postinst: provide a local apparmor include
+      for abstraction/libvirt-qemu (LP: #1786019)
+    - d/p/ubuntu-aa/0051-allow-user-tmp.patch: some features need tmp, but we
+      don't want blanket access. We only allow enumerating the base dir and
+      reading owned files. Further features needing /tmp have to add local
+      overrides, examples are qemu-smb and some modes of local snapshots.
+      (LP: #1365261) Can be dropped >=libvirt 4.7
+    - d/p/ubuntu-aa/0052-allow-to-preserve-dev-mountpoints.patch: Allow to
+      preserve /dev mountpoints in qemu namespaces (LP: #1786168)
+      Can be dropped >=libvirt 4.7
+    - avoid service dependency issues on upgrade (LP: #1786179)
+      This will in the long term be resolved in dh_* tools, but to let an
+      upgrade work for now we need to drop the sysV scripts (which we don't
+      use anyway) and slightly modify the systemd service to work with todays
+      dh_systemd_start properly. Can be dropped once Debian bug 905772 is
+      resolved in dh_* tools and libvirt uses those new code.
+      - d/libvirt-daemon-system.virtlogd.init: removed sysV init file
+      - d/libvirt-daemon-system.libvirtd.init: removed sysV init file
+      - debian/libvirt-daemon-system.maintscript: rm_conffile for virtlogd
+        and lbivirtd sysV init file
+      - d/p/ubuntu/avoid-restarting-virtlog-socket.patch: drop Also references
+        to virtlogd/virtlockd sockets as they would imply a restart of
+        virtlogd breaking it.
+      - d/t/smoke-lxc: use systemd instead of sysV to restart the service
+  * Dropped Changes (upstream)
+    - d/p/ubuntu/virt-aa-helper-Set-the-supported-features.patch: allow parsing
+      of memory slots and other extended features without breaking
+      virt-aa-helper (LP: 1746431).
+    - d/p/stable/0001-Revert-qemu-monitor-do-not-report-error-on-shutdown.patch
+    - d/p/stable/0002-nodedev-Fix-failing-to-parse-PCI-address-for-non-PCI.patch
+    - d/p/stable/0003-qemu-assign-correct-type-of-PCI-address-for-vhost-sc.patch
+    - d/p/stable/0004-qemu-Refresh-caps-cache-after-booting-a-different-ke.patch
+    - d/p/stable/0005-qemu-auto-add-generic-xhci-rather-than-NEC-xhci-to-Q.patch
+    - d/p/stable/0006-libvirtd-Explicit-dependency-on-systemd-machined.patch
+    - d/p/stable/0007-rpc-fix-race-sending-and-encoding-sasl-data.patch
+    - d/p/stable/0008-vhost-user-add-support-reconnect-for-vhost-user-port.patch
+    - d/p/stable/0009-qemu-Fix-memory-leak-in-processGuestPanicEvent.patch
+    - d/p/stable/0010-storage-util-Properly-ignore-errors-when-backing-vol.patch
+    - d/p/stable/0011-conf-Use-correct-attribute-name-in-error-message.patch
+    - d/p/stable/0012-util-json-Add-helper-to-return-string-or-number-prop.patch
+    - d/p/stable/0013-util-storage-Parse-lun-for-iSCSI-protocol-from-JSON-.patch
+    - d/p/stable/0014-virsh-Offer-only-persistent-domains-for-autostart.patch
+    - d/p/stable/0015-blockjob-Fix-a-error-checking-of-blockjob-status-in-.patch
+    - d/p/stable/0016-qemu-Expose-rx-tx_queue_size-in-qemu.conf-too.patch
+    - d/p/stable/0017-qemu-migration-Refresh-device-information-after-tran.patch
+    - d/p/stable/0018-qemuDomainRemoveMemoryDevice-unlink-memory-backing-f.patch
+    - d/p/stable/0019-vbox-fix-SEGV-during-dumpxml-of-a-serial-port.patch
+    - d/p/stable/0020-qemu-Initialize-priv-in-qemuDomainCoreDumpWithFormat.patch
+    - d/p/stable/0021-fix-regex-to-check-CN-from-server-certificate.patch
+    - d/p/stable/0022-storage-Fix-formatting-and-parsing-of-qemu-type-Unix.patch
+    - d/p/stable/0023-util-storage-Remove-detected-authentication-data-for.patch
+    - d/p/stable/0024-qemu-blockcopy-Add-check-for-bandwidth.patch
+    - d/p/stable/0025-conf-move-generated-member-from-virMacAddr-to-virDom.patch
+    - d/p/stable/0026-lxc-Drop-useless-check-in-live-device-update.patch
+    - d/p/stable/0027-Pass-oldDev-to-virDomainDefCompatibleDevice-on-devic.patch
+    - d/p/stable/0028-qemu-Fix-updating-device-with-boot-order.patch
+    - d/p/stable/0030-daemon-fix-rpc-event-leak-on-error-path-in-remoteDis.patch
+    - d/p/stable/0029-lxc-fix-rpc-event-leak-on-error-path-in-virLXCContro.patch
+    - d/p/stable/0031-qemu-fix-memory-leak-of-vporttype-during-migration.patch
+    - d/p/stable/0032-virsh-fixing-segfault-by-pool-autocompleter-function.patch
+    - d/p/stable/0033-qemu-Fix-comparison-assignment-in-qemuDomainUpdateDe.patch
+    - d/p/stable/0034-qemu-Fix-memory-leak-in-qemuConnectGetAllDomainStats.patch
+    - d/p/stable/0035-libvirtd-fix-potential-deadlock-when-reloading.patch
+    - d/p/stable/0036-qemu-Use-correct-bus-type-for-input-devices.patch
+    - d/p/stable/0037-qemu-hostdev-Fix-the-error-on-VM-start-with-an-mdev-.patch
+    - d/p/stable/0038-conf-Fix-crash-in-virDomainDefCompatibleDevice.patch
+    - d/p/ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch:
+      avoid hanging on shutdown (LP: 1688508)
+    - d/p/ubuntu-aa/0041-apparmor-add-ro-rule-for-sasl-GSSAPI-
+      plugin-on-etc-g.patch fix issues if sasl is configured (LP: 1696471)
+    - d/p/ubuntu-aa/0042-virt-aa-helper-resolve-yet-to-be-created-paths.patch
+      ensure symlinks are resolved to get valid rules if interim parts of a path
+      are a symlink (LP: 1752361)
+    - d/p/ubuntu/lp1688508-tools-fix-variable-scope-in-in-check_guests_shutdown:
+      avoid issues shutting down more guests than configured for parallel
+      shutdown (LP: 1688508)
+    - d/p/ubuntu-aa/lp1756394-virt-aa-helper-resolve-file-symlinks.patch: fix
+      using devices that are symlinks (LP: 1756394)
+    - Fix nvdimm memory and passthrough input devices for hotplug via
+      domain security callbacks backporting upstream commits (LP: 1755153).
+      + d/p/ubuntu-aa/lp1755153-apparmor-add-Set-Restore-InputLabel.patch
+      + d/p/ubuntu-aa/lp1755153-apparmor-add-Set-Restore-MemoryLabel.patch
+    - Fix nvdimm memory and passthrough input devices in initial guest
+      description via virt-aa-helper (LP: 1757085).
+      + d/p/ubuntu-aa/lp1757085-virt-aa-helper-nvdimm-memory.patch
+      + d/p/ubuntu-aa/lp1757085-virt-aa-helper-passthrough-input.patch
+    - Fix clean shut down of guests on system shutdown (LP: 1764668)
+      + d/p/ubuntu/lp-1764668-do-not-report-unknown-guests.patch
+      + d/p/ubuntu/lp-1764668-fix-check_guests_shutdown-loop.patch
+    - SECURITY UPDATE: QEMU monitor DoS
+      + debian/patches/CVE-2018-1064.patch: add size limit to
+        src/qemu/qemu_agent.c.
+      + CVE-2018-1064
+    - SECURITY UPDATE: Speculative Store Bypass
+      + debian/patches/CVE-2018-3639-1.patch: define the 'ssbd' CPUID feature
+        bit in src/cpu/cpu_map.xml.
+      + debian/patches/CVE-2018-3639-2.patch: define the 'virt-ssbd' CPUID
+        feature bit in src/cpu/cpu_map.xml.
+      + CVE-2018-3639
+    - d/p/ubuntu-aa/lp1775777-vfio-usage-without-initial-hostdev.patch: fix
+      hotplug use cases where the initial guest had no hostdev at all and
+      therefore vrit-aa-helper did not allow /dev/vfio/vfio (LP: 1775777)
+    - debian/patches/ubuntu/lp-1758037-nwfilter-increase-pcap-buffer-size.patch:
+      Fix nwfilters that set CTRL_IP_LEARNING set to dhcp failing with "An error
+      occurred, but the cause is unknown" due to a buffer being too small
+      for pcap with TPACKET_V3 enabled (LP: 1758037)
+    - SECURITY UPDATE: code injection via libnss_dns.so
+      + debian/patches/CVE-2018-6764-1.patch: determine the hostname on
+        startup in src/util/virlog.c.
+      + debian/patches/CVE-2018-6764-2.patch: fix syntax-check in
+        src/util/virlog.c.
+      + debian/patches/CVE-2018-6764-3.patch: fix deadlock obtaining hostname
+        in cfg.mk, src/util/virlog.c.
+      + CVE-2018-6764
+  * Dropped Changes (no upgrade path left that needs those)
+    - Backwards compatible handling of group rename (can be dropped >18.04).
+    - Modifications to adapt for our delayed switch away from libvirt-bin (can
+      be dropped >18.04).
+      + d/p/ubuntu/libvirtd-service-add-bin-alias.patch: systemd: define alias
+        to old service name so that old references work
+      + d/p/ubuntu/libvirtd-init-add-bin-alias.patch: sysv init: define alias
+        to old service name so that old references work
+      + d/control: transitional package with the old name and maintainer
+        scripts to handle the transition
+    - fix conffile upgrade handling to avoid obsolete files
+      and inactive duplicates (LP 1694159)
+    - conffile handling of files dropped in 3.5 (can be dropped >18.04)
+      + /etc/init.d/virtlockd was sysv init only
+      + /etc/apparmor.d/local/usr.sbin.libvirtd and
+        /etc/apparmor.d/local/usr.lib.libvirt.virt-aa-helper are now generated
+        by dh_apparmor as needed
+    - d/libvirt-daemon-system.maintscript: remove the now dropped conffile
+      /etc/cron.daily/libvirt-daemon-system
+  * Dropped Changes (cleanups)
+    - d/test/smoke-lxc workaround for debbug 848317/867379 (systemd has fixed
+      one issue and the other is solved in libvirt by ensuring to move to the
+      right cgroups.)
+    - remove no more used libvirt-dnsmasq user (this was redundant since
+      4.0.0-1ubuntu5 reintroduced a libvirt-dnsmasq user)
+    - Disable selinux (now in main)
