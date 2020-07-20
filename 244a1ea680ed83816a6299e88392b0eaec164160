@@ -1,0 +1,3 @@
+  * Non-maintainer upload.
+  * Fix linking when using pthread atomic ops, such as on armel.
+  * Disable silent build rules.
