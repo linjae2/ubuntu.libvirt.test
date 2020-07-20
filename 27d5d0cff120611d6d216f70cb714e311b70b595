@@ -1,0 +1,11 @@
+  * debian/patches/9093-lp460271.patch: require absolute path for dynamic
+    added files (LP: #460271)
+  * debian/patches/9094-lp453335.patch: suppress confusing and misleading
+    apparmor denied message when kvm/qemu tries to open a libvirt specified
+    readonly file (such as a cdrom) with write permissions. libvirt uses the
+    readonly attribute for the security driver only, and has no way of telling
+    kvm/qemu that the device should be opened readonly. (LP: #453335)
+  * debian/apparmor/usr.sbin.libvirtd: allow 'inet dgram' for migration to
+    work (LP: #461528)
+  * debian/apparmor/usr.sbin.libvirtd: properly support qemu+tcp:// by
+    allowing 'inet6 stream' and 'inet6 dgram' (LP: #462000)
