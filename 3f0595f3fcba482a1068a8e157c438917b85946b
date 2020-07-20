@@ -1,0 +1,217 @@
+  * Merged with Debian unstable (4.0)
+    This closes several bugs:
+    - Error generating apparmor profile when hostname contains spaces
+      (LP: #799997)
+    - qemu 2.10 locks files, libvirt shared now sets share-rw=on (LP: #1716028)
+    - libvirt usb passthrough throws apparmor denials related to
+      /run/udev/data/+usb (LP: #1727311)
+    - AppArmor denies access to /sys/block/*/queue/max_segments (LP: #1729626)
+    - iohelper improvements to let bypass-cache work without opening up the
+      apparmor isolation (LP: #1719579)
+    - nodeinfo on s390x to contain more CPU info (LP: #1733688)
+    - Upgrade libvirt >= 4.0 (LP: #1745934)
+  * Remaining changes:
+    - Disable libssh2 support (universe dependency)
+    - Disable firewalld support (universe dependency)
+    - Disable selinux
+    - Set qemu-group to kvm (for compat with older ubuntu)
+    - Additional apport package-hook
+    - Modifications to adapt for our delayed switch away from libvirt-bin (can
+      be dropped >18.04).
+      + d/p/ubuntu/libvirtd-service-add-bin-alias.patch: systemd: define alias
+        to old service name so that old references work
+      + d/p/ubuntu/libvirtd-init-add-bin-alias.patch: sysv init: define alias
+        to old service name so that old references work
+      + d/control: transitional package with the old name and maintainer
+        scripts to handle the transition
+    - Backwards compatible handling of group rename (can be dropped >18.04).
+    - config details and autostart of default bridged network. Creating that is
+      now the default in general, yet our solution provides the following on
+      top as of today:
+      + autostart the default network by default
+      + do not autostart if subnet is already taken (e.g. in guests).
+    - d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch: This is
+      the group based access to libvirt functions as it was used in Ubuntu
+      for quite long.
+      + d/p/ubuntu/daemon-augeas-fix-expected.patch fix some related tests
+        due to the group access change.
+    - ubuntu/parallel-shutdown.patch: set parallel shutdown by default.
+    - d/p/ubuntu/enable-kvm-spice.patch: compat with older Ubuntu qemu/kvm
+      which provided a separate kvm-spice.
+    - d/p/ubuntu/ubuntu-libxl-qemu-path.patch: this change was split. The
+      section that adapts the path of the emulator to the Debian/Ubuntu
+      packaging is kept.
+    - d/p/ubuntu/ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch: auto
+      set VRAM to minimum requirements
+    - d/p/ubuntu/xen-default-uri.patch: set default URI on xen hosts
+    - Add libxl log directory
+    - libvirt-uri.sh: Automatically switch default libvirt URI for users on
+      Xen dom0 via user profile (was missing on changelogs before)
+    - d/p/ubuntu/apibuild-skip-libvirt-common.h: drop libvirt-common.h from
+      included_files to avoid build failures due to duplicate definitions.
+    - Update README.Debian with Ubuntu changes
+    - Convert libvirt0, libnss_libvirt and libvirt-dev to multi-arch.
+    - Enable some additional features on ppc64el and s390x (for arch parity)
+      + systemtap, zfs, numa and numad on s390x.
+      + systemtap on ppc64el.
+    - fix conffile upgrade handling to avoid obsolete files
+      and inactive duplicates (LP 1694159)
+    - d/t/control, d/t/smoke-qemu-session: fixup smoke-qemu-session by making
+      vmlinuz available and accessible (Debian bug 848314)
+    - d/test/smoke-lxc workaround for debbug 848317/867379
+    - d/t/control, d/t/smoke-lxc: fix up lxc smoke test (Debian bug 848317)
+    - Add dnsmasq configuration to work with system wide dnsmasq (drop >18.04,
+      no more UCA onto Xenial then which has global dnsmasq by default).
+    - d/p/ubuntu/ubuntu_machine_type.patch: accept ubuntu types as pci440fx
+    - conffile handling of files dropped in 3.5 (can be dropped >18.04)
+      + /etc/init.d/virtlockd was sysv init only
+      + /etc/apparmor.d/local/usr.sbin.libvirtd and
+        /etc/apparmor.d/local/usr.lib.libvirt.virt-aa-helper are now generated
+        by dh_apparmor as needed
+    - Reworked apparmor Delta, especially the more complex delta is dropped
+      now, also our former delta is now split into logical pieces, has
+      improved comments and is part of a continuous upstreaming effort.
+      Listing related remaining changes:
+      + d/p/0001-apparmor-Allow-pygrub-to-run-on-Debian-Ubuntu.patch: apparmor:
+        Allow pygrub to run on Debian/Ubuntu
+      + d/p/0003-apparmor-libvirt-qemu-Allow-read-access-to-overcommi.patch:
+        apparmor, libvirt-qemu: Allow read access to overcommit_memory
+      + d/p/0007-apparmor-libvirt-qemu-Allow-owner-read-access-to-PRO.patch:
+        apparmor, libvirt-qemu: Allow owner read access to @{PROC}/*/auxv
+      + d/p/0017-apparmor-virt-aa-helper-Allow-access-to-tmp-director.patch:
+        apparmor, virt-aa-helper: Allow access to tmp directories
+      + d/p/ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch:
+        apparmor, virt-aa-helper: Allow various storage pools and image
+        locations
+      + d/p/0021-apparmor-virt-aa-helper-Add-openvswitch-support.patch:
+        apparmor, virt-aa-helper: Add openvswitch support
+      + d/p/0025-apparmor-fix-newer-virt-manager-1.4.0.patch: Add Apparmor
+        permissions so virt-manager 1.4.0 viewing works (LP 1668681).
+      + d/p/0029-appmor-libvirt-qemu-Add-9p-support.patch: appmor,
+        libvirt-qemu: Add 9p support
+      + d/p/0030-virt-aa-helper-Complete-9p-support.patch: virt-aa-helper:
+        add l to 9p file options.
+      + d/p/0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch:
+        virt-aa-helper: Ask for no deny rule for readonly disk (renamed and
+        reworded, was virt-aa-helper-no-explicity-deny-for-basefiles.patch)
+      + d/p/0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch:
+        apparmor, libvirt-qemu: Allow reading charm-specific ceph config
+      + d/p/0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch: allow
+        commands executed by ubuntu only kvm wrapper on ppc64el (LP 1686621).
+      + d/p/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch:
+        apparmor, virt-aa-helper: access for snapped nova
+  * Dropped Changes (Upstream):
+    - d/p/0005-apparmor-libvirt-qemu-Allow-use-of-sgabios.patch: apparmor,
+      libvirt-qemu: Allow use of sgabios
+    - d/p/0006-apparmor-libvirt-qemu-Silence-lttng-related-deny-mes.patch:
+      apparmor, libvirt-qemu: Silence lttng related deny messages
+    - d/p/0008-apparmor-libvirt-qemu-Allow-read-access-to-sysfs-sys.patch:
+      apparmor, libvirt-qemu: Allow read access to sysfs system info
+    - d/p/0009-apparmor-libvirt-qemu-Allow-read-access-to-max_mem_r.patch:
+      apparmor, libvirt-qemu: Allow read access to max_mem_regions
+    - d/p/0010-apparmor-libvirt-qemu-Allow-qemu-block-extra-librari.patch:
+      apparmor, libvirt-qemu: Allow qemu-block-extra libraries
+    - d/p/0012-apparmor-libvirtd-Allow-access-to-netlink-sockets.patch:
+      apparmor, libvirtd: Allow access to netlink sockets
+    - d/p/0013-apparmor-Add-rules-for-mediation-support.patch:
+      apparmor: Add rules for mediation support
+    - d/p/0015-apparmor-virt-aa-helper-Allow-access-to-ecryptfs-fil.patch:
+      apparmor, virt-aa-helper: Allow access to ecryptfs files
+    - d/p/0016-apparmor-libvirtd-Allow-ixr-to-var-lib-libvirt-virtd.patch:
+      apparmor, libvirtd: Allow ixr to /var/lib/libvirt/virtd*
+    - d/p/0018-apparmor-virt-aa-helper-Add-ipv6-network-policy.patch:
+      apparmor, virt-aa-helper: Add ipv6 network policy
+    - d/p/0019-apparmor-virt-aa-helper-Allow-access-to-sys-bus-usb-.patch:
+      apparmor, virt-aa-helper: Allow access to /sys/bus/usb/devices
+    - d/p/0023-apparmor-qemu-won-t-call-qemu-nbd.patch: apparmor: qemu
+      won't call qemu-nbd
+    - d/p/0027-apparmor-allow-reading-cmdline-of-shutdown-signal.patch:
+      apparmor: allow to parse cmdline of the pid that send the shutdown
+      signal (LP 1680384).
+    - d/p/0028-apparmor-add-default-pki-path-of-lbvirt-spice.patch:
+      apparmor: add default pki path of lbvirt-spice (LP 1690140)
+    - d/p/ubuntu-aa/0035-virt-aa-helper-locking-disk-files-for-qemu-2.10.patch:
+      for compatibility with the behavior of qemu 2.10 this adds locking
+      permission to rules generated for disk files (LP 1709818)
+    - d/p/ubuntu-aa/0036-virt-aa-helper-locking-loader-nvram-for-qemu-2.10.patch:
+      for compatibility with the behavior of qemu 2.10 this adds locking
+      permission to rules generated for loader/nvram (LP 1710960)
+    - d/p/ubuntu-aa/0037-virt-aa-helper...: grant locking permission on append
+      files (LP 1726804)
+    - d/p/ubuntu-aa/0038-virt-aa-helper-fix-paths-for-usb-hostdevs.patch:
+      fix path generation for USB host devices (LP 1552241)
+    - d/p/ubuntu-aa/0039-virt-aa-helper-fix-libusb-access-to-udev-usb-data.patch:
+      generate valid rules on usb passthrough (LP 1686324)
+    - d/p/avoid-double-locking.patch: fix a deadlock that could occur when
+      libvirtd interactions raced with dbus causing a deadlock (LP 1714254).
+    - d/p/u/gnulib-getopt-posix-Fix-build-failure-when-using-ac_cv_head.patch:
+      fix FTBFS with glibc 2.26 (LP 1718668)
+    - Extended handling of apparmor profiles - clear lost profiles via cron
+      (now cleared by virt-aa-helper on domain stop)
+    - nat only on some ports <port start='1024' end='65535'/> (upstream
+      default now if nothing is specified, actually dropped last cycle)
+  * Dropped Changes (In Debian or no more important):
+    - d/p/0002-apparmor-libvirt-qemu-Allow-macvtap-access.patch: apparmor,
+      libvirt-qemu: Allow macvtap access
+    - d/p/0004-apparmor-Explicit-deny-for-setpcap.patch: apparmor: Explicit
+      deny for setpcap (LP 522845).
+    - d/p/0014-apparmor-virt-aa-helper-Improve-comment-about-backin.patch:
+      apparmor, virt-aa-helper: Improve comment about backing store
+    - d/p/0022-apparmor-drop-references-to-qemu-kvm.patch: apparmor: drop
+      references to qemu-kvm
+    - d/p/0024-apparmor-virt-aa-helper-Allow-access-to-name-service.patch:
+      apparmor, virt-aa-helper: Allow access to name services
+    - d/p/0026-apparmor-add-generic-base-vfio-device.patch: apparmor: add
+      /dev/vfio for vf (hot) attach (LP 1680384) (added by virt-aa-helper per
+      guest if needed).
+    - d/p/0011-apparmor-libvirt-qemu-Allow-access-to-hugepage-mount.patch:
+      apparmor, libvirt-qemu: Allow access to hugepage mounts
+    - Disable sheepdog (was for universe dependency, but is now only a suggest)
+    - d/p/ubuntu/storage-disable-gluster-test: gluster not enabled, skip test
+  * Dropped Changes (In Debian/Upstream now based on interim 3.10 work) some of
+    these were never released, but important to mention for the bug references:
+    - libnss-libvirt once enabled causes apt to call getdents
+      avoid this being an issue by dropping a apt conf that allows
+      this in seccomp (LP: #1732030).
+    - d/libvirt-daemon-system.postrm: clean up more libvirt directories on
+      purge
+    - d/p/ubuntu-aa/0041-apparmor-allow-unix-stream-for-p2p-migrations.patch:
+      apparmor: allow unix stream for p2p migrations
+    - d/p/ubuntu-aa/0043-security-apparmor-implement-domainSetPathLabel.patch:
+      this replaces the hugepage rules and fixes many more formerly missing
+    - d/p/ubuntu-aa/0044-security-full-path-option-for-DomainSetPathLabel.patch:
+      allowing to have path wildcards on labels set by domain callbacks
+    - d/p/ubuntu-aa/0045-security-apparmor-add-Set-Restore-ChardevLabel.patch:
+      apparmor implementation of security callback
+    - d/p/ubuntu-aa/0046-apparmor-virt-aa-helper-drop-static-channel-rule.patch:
+      this is now covered by chardev label callbacks
+  * Added Changes:
+    - Revert Debian change "Drop libvirt-bin upgrade handling"
+      This is needed in Ubuntu one last time (drop >18.04)
+    - Revert Debian change "Drop maintscript helpers for versions predating
+      jessie and wheezy-backports". This is needed in Ubuntu one last
+      time (drop >18.04)
+    - Refreshed d/p/* to match new version (only fuzz, no semantic change)
+    - d/libvirt-daemon-system.postrm: change order of libvirt-qemu removal
+      to avoid error messages on purge
+    - remove no more used libvirt-dnsmasq user (drop >18.04)
+    - d/p/ubuntu-aa/0040-apparmor-add-mediation-rules-for-unconfined.patch:
+      apparmor: add mediation rules for unconfined guests
+    - d/p/ubuntu-aa/0042-security-introduce-virSecurityManager-Set-Restore-Ch
+      .patch: backport upstream cahnge to expose already used chardev calls.
+    - d/libvirt-daemon-system.postrm: Remove the default.xml network link
+      set up by postinst.
+    - d/libvirt-daemon-system.maintscript: remove the now dropped conffile
+      /etc/cron.daily/libvirt-daemon-system
+    - d/libvirt-daemon-system.postinst: fixups for autostart default network
+      - use modern shell syntax
+      - try more default networks before giving up to enable by default
+    - d/p/ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch:
+      add multipass image path and mark as ubuntu only change.
+    - d/rules: install virtlockd correctly with defaults file (LP: #1729516)
+    - extended d/p/0025-apparmor-fix-newer-virt-manager-1.4.0.patch to cover
+      the slightly changed behavior of libvirt 4.0 (LP: #1741617)
+    - d/control: make libvirt-daemon-driver-storage-rbd a recommend instead of
+      just a suggest to have 3rd party relying on rbd out of the box working.
+      This is deprecated and users of rbd backend should start depending on
+      this package for it will be dropped to a suggest in future releases.
