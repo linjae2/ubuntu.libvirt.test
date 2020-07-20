@@ -1,0 +1,2 @@
+  * d/p/ubuntu/properly-parse-unsigned-long-long.patch: fix i386 Python
+    binding integer length mismatch for long longs (LP: #1248394).
