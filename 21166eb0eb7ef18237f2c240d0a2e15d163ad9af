@@ -1,0 +1,2 @@
+  * [44874f6] Add directories chown'ed in the postinst.  Thanks to Houmehr
+    Aghabozorgi for the report (Closes: #636965)
