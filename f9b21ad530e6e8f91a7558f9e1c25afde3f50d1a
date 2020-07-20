@@ -1,0 +1,9 @@
+  * SECURITY UPDATE: 0.8.8 regression which reopens disk probing
+    (CVE-2010-2238)
+    - 9029-CVE-2011-2178.patch: use correct pointer address in
+      virSecurityManagerGetPrivateData()
+    - CVE-2011-2178
+  * SECURITY UPDATE:
+    - 9030-CVE-2011-1486.patch: update daemon/dispatch.c and daemon/remote.c
+      to call virDomainFree() after remoteDispatchConnError()
+    - CVE-2011-1486
