@@ -1,0 +1,2 @@
+  * Make QEmu a suggested package of libvirt0 rather than a recommended one. 
+  * Make kvm a recommended package of libvirt0.
