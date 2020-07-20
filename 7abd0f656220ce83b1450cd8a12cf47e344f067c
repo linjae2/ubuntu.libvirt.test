@@ -1,0 +1,2 @@
+  * CVE-2017-1000256: qemu: ensure TLS clients always verify the server
+    certificate (Closes: #878799)
