@@ -29,6 +29,7 @@ typedef struct _iptablesContext iptablesContext;
 iptablesContext *iptablesContextNew              (void);
 void             iptablesContextFree             (iptablesContext *ctx);
 
+void             iptablesSaveRules               (iptablesContext *ctx);
 void             iptablesReloadRules             (iptablesContext *ctx);
 
 int              iptablesAddTcpInput             (iptablesContext *ctx,
@@ -50,6 +51,15 @@ int              iptablesAddForwardAllowOut      (iptablesContext *ctx,
                                                   const char *iface,
                                                   const char *physdev);
 int              iptablesRemoveForwardAllowOut   (iptablesContext *ctx,
+                                                  const char *network,
+                                                  const char *iface,
+                                                  const char *physdev);
+
+int              iptablesAddForwardAllowRelatedIn(iptablesContext *ctx,
+                                                  const char *network,
+                                                  const char *iface,
+                                                  const char *physdev);
+int              iptablesRemoveForwardAllowRelatedIn(iptablesContext *ctx,
                                                   const char *network,
                                                   const char *iface,
                                                   const char *physdev);

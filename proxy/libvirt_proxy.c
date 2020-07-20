@@ -2,14 +2,14 @@
  * proxy_svr.c: root suid proxy server for Xen access to APIs with no
  *              side effects from unauthenticated clients.
  *
- * Copyright (C) 2006, 2007 Red Hat, Inc.
+ * Copyright (C) 2006, 2007, 2008 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
  * Daniel Veillard <veillard@redhat.com>
  */
 
-#include "config.h"
+#include <config.h>
 
 #ifdef WITH_XEN
 
@@ -26,10 +26,16 @@
 #include "internal.h"
 
 #include "proxy_internal.h"
+#include "util.h"
 #include "xen_internal.h"
 #include "xend_internal.h"
 #include "xs_internal.h"
 #include "xen_unified.h"
+
+/*
+ * This is provided in libvirt.c when the code is part of the library
+ */
+int debugFlag = 0;
 
 static int fdServer = -1;
 static int debug = 0;
@@ -134,7 +140,7 @@ proxyCloseUnixSocket(void) {
 
     if (fdServer < 0)
         return(0);
-    
+
     ret = close(fdServer);
     if (debug > 0)
         fprintf(stderr, "closing unix socket %d: %d\n", fdServer, ret);
@@ -166,8 +172,8 @@ proxyListenUnixSocket(const char *path) {
     }
 
     /*
-     * Abstract socket do not hit the filesystem, way more secure and 
-     * garanteed to be atomic
+     * Abstract socket do not hit the filesystem, way more secure and
+     * guaranteed to be atomic
      */
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
@@ -317,19 +323,12 @@ proxyWriteClientSocket(int nr, virProxyPacketPtr req) {
 	return(-1);
     }
 
-retry:
-    ret = write(pollInfos[nr].fd, (char *) req, req->len);
+    ret = safewrite(pollInfos[nr].fd, (char *) req, req->len);
     if (ret < 0) {
-        if (errno == EINTR) {
-	    if (debug > 0)
-	        fprintf(stderr, "write socket %d to client %d interrupted\n",
-		        pollInfos[nr].fd, nr);
-	    goto retry;
-	}
         fprintf(stderr, "write %d bytes to socket %d from client %d failed\n",
 	        req->len, pollInfos[nr].fd, nr);
-	proxyCloseClientSocket(nr);
-	return(-1);
+        proxyCloseClientSocket(nr);
+        return(-1);
     }
     if (ret == 0) {
 	if (debug)
@@ -348,7 +347,7 @@ retry:
     if (debug)
         fprintf(stderr, "wrote %d bytes to client %d on socket %d\n",
 	        ret, nr, pollInfos[nr].fd);
-    
+
     return(0);
 }
 /**
@@ -389,13 +388,13 @@ retry:
     if (debug)
         fprintf(stderr, "read %d bytes from client %d on socket %d\n",
 	        ret, nr, pollInfos[nr].fd);
-    
+
     if ((req->version != PROXY_PROTO_VERSION) ||
         (req->len < sizeof(virProxyPacket)) ||
 	(req->len > sizeof(virProxyFullPacket)))
 	goto comm_error;
 
-    
+
     if (debug)
         fprintf(stderr, "Got command %d from client %d\n", req->command, nr);
 
@@ -505,8 +504,7 @@ retry2:
 		memcpy(&request.extra.str[0], uuid, VIR_UUID_BUFLEN);
 		strcpy(&request.extra.str[VIR_UUID_BUFLEN], name);
 	    }
-	    if (name)
-	        free(name);
+        free(name);
 	    break;
 	}
 	case VIR_PROXY_LOOKUP_UUID: {
@@ -578,7 +576,7 @@ retry2:
 	        goto comm_error;
 
 	    /*
-	     * Hum, could we expect those informations to be unmutable and
+	     * Hum, could we expect those information to be unmutable and
 	     * cache them ? Since it's probably an unfrequent call better
 	     * not make assumption and do the xend RPC each call.
 	     */
@@ -684,7 +682,7 @@ comm_error:
 /**
  * proxyProcessRequests:
  *
- * process requests and timers 
+ * process requests and timers
  */
 static void
 proxyProcessRequests(void) {
@@ -746,7 +744,7 @@ proxyProcessRequests(void) {
 		proxyCloseClientSocket(i);
 	    }
 	}
-	    
+
     }
 }
 
@@ -757,7 +755,7 @@ proxyProcessRequests(void) {
  * open, serve client requests, and process timing events.
  */
 
-static void 
+static void
 proxyMainLoop(void) {
     while (! done) {
 	if (proxyListenUnixSocket(PROXY_SOCKET_PATH) < 0)
@@ -770,7 +768,7 @@ proxyMainLoop(void) {
 /**
  * usage:
  *
- * dump on stdout informations about the program
+ * dump on stdout information about the program
  */
 static void
 usage(const char *progname) {
@@ -784,7 +782,7 @@ usage(const char *progname) {
 /**
  * main:
  *
- * Check that we are running with root priviledges, initialize the
+ * Check that we are running with root privileges, initialize the
  * connections to the daemon and or hypervisor, and then run the main loop
  */
 int main(int argc, char **argv) {

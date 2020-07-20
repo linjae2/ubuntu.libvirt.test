@@ -1,14 +1,14 @@
 /*
  * xen_unified.c: Unified Xen driver.
  *
- * Copyright (C) 2007 Red Hat, Inc.
+ * Copyright (C) 2007, 2008 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
  * Richard W.M. Jones <rjones@redhat.com>
  */
 
-#include "config.h"
+#include <config.h>
 
 #ifdef WITH_XEN
 
@@ -39,6 +39,10 @@
 #include "xs_internal.h"
 #include "xm_internal.h"
 #include "xml.h"
+#include "util.h"
+
+#define DEBUG(fmt,...) VIR_DEBUG(__FILE__, fmt,__VA_ARGS__)
+#define DEBUG0(msg) VIR_DEBUG(__FILE__, "%s", msg)
 
 static int
 xenUnifiedNodeGetInfo (virConnectPtr conn, virNodeInfoPtr info);
@@ -78,8 +82,8 @@ xenUnifiedError (virConnectPtr conn, virErrorNumber error, const char *info)
 
 /*
  * Helper functions currently used in the NUMA code
- * Those variables should not be accessed directly but through helper 
- * functions xenNbCells() and xenNbCpu() available to all Xen backends 
+ * Those variables should not be accessed directly but through helper
+ * functions xenNbCells() and xenNbCpu() available to all Xen backends
  */
 static int nbNodeCells = -1;
 static int nbNodeCpus = -1;
@@ -89,7 +93,7 @@ static int nbNodeCpus = -1;
  * @conn: pointer to the hypervisor connection
  *
  * Initializer for previous variables. We currently assume that
- * the number of physical CPU and the numebr of NUMA cell is fixed
+ * the number of physical CPU and the number of NUMA cell is fixed
  * until reboot which might be false in future Xen implementations.
  */
 static void
@@ -108,7 +112,7 @@ xenNumaInit(virConnectPtr conn) {
  * xenNbCells:
  * @conn: pointer to the hypervisor connection
  *
- * Number of NUMa cells present in the actual Node
+ * Number of NUMA cells present in the actual Node
  *
  * Returns the number of NUMA cells available on that Node
  */
@@ -188,9 +192,9 @@ xenDomainUsedCpus(virDomainPtr dom)
 		    cpulist[m] = 1;
 		    nb++;
 		    /* if all CPU are used just return NULL */
-		    if (nb == nb_cpu) 
+		    if (nb == nb_cpu)
 		        goto done;
-		        
+
 		}
 	    }
 	}
@@ -198,12 +202,9 @@ xenDomainUsedCpus(virDomainPtr dom)
     }
 
 done:
-    if (cpulist != NULL)
-        free(cpulist);
-    if (cpumap != NULL)
-        free(cpumap);
-    if (cpuinfo != NULL)
-        free(cpuinfo);
+    free(cpulist);
+    free(cpumap);
+    free(cpuinfo);
     return(res);
 }
 
@@ -218,10 +219,28 @@ done:
  * in the low level drivers directly.
  */
 
+static const char *
+xenUnifiedProbe (void)
+{
+#ifdef __linux__
+    if (virFileExists("/proc/xen"))
+        return("xen:///");
+#endif
+#ifdef __sun__
+    FILE *fh;
+
+    if (fh = fopen("/dev/xen/domcaps", "r")) {
+	fclose(fh);
+        return("xen:///");
+    }
+#endif
+    return(NULL);
+}
+
 static int
 xenUnifiedOpen (virConnectPtr conn, xmlURIPtr uri, virConnectAuthPtr auth, int flags)
 {
-    int i, j;
+    int i;
     xenUnifiedPrivatePtr priv;
 
     /* Refuse any scheme which isn't "xen://" or "http://". */
@@ -258,45 +277,73 @@ xenUnifiedOpen (virConnectPtr conn, xmlURIPtr uri, virConnectAuthPtr auth, int f
     priv->xshandle = NULL;
     priv->proxy = -1;
 
-    for (i = 0; i < XEN_UNIFIED_NR_DRIVERS; ++i) {
-        priv->opened[i] = 0;
 
-        /* Only use XM driver for Xen <= 3.0.3 (ie xendConfigVersion <= 2) */
-        if (drivers[i] == &xenXMDriver &&
-            priv->xendConfigVersion > 2)
-            continue;
-
-        /* Ignore proxy for root */
-        if (i == XEN_UNIFIED_PROXY_OFFSET && getuid() == 0)
-            continue;
-
-        if (drivers[i]->open) {
-#ifdef ENABLE_DEBUG
-            fprintf (stderr, "libvirt: xenUnifiedOpen: trying Xen sub-driver %d\n", i);
-#endif
-            if (drivers[i]->open (conn, uri, auth, flags) == VIR_DRV_OPEN_SUCCESS)
-                priv->opened[i] = 1;
-#ifdef ENABLE_DEBUG
-            fprintf (stderr, "libvirt: xenUnifiedOpen: Xen sub-driver %d open %s\n",
-                     i, priv->opened[i] ? "ok" : "failed");
-#endif
+    /* Hypervisor is only run as root & required to succeed */
+    if (getuid() == 0) {
+        DEBUG0("Trying hypervisor sub-driver");
+        if (drivers[XEN_UNIFIED_HYPERVISOR_OFFSET]->open(conn, uri, auth, flags) ==
+            VIR_DRV_OPEN_SUCCESS) {
+            DEBUG0("Activated hypervisor sub-driver");
+            priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET] = 1;
         }
+    }
 
-        /* If as root, then all drivers must succeed.
-           If non-root, then only proxy must succeed */
-        if (!priv->opened[i] &&
-            (getuid() == 0 || i == XEN_UNIFIED_PROXY_OFFSET)) {
-            for (j = 0; j < i; ++j)
-                if (priv->opened[j]) drivers[j]->close (conn);
-            free (priv);
-            /* The assumption is that one of the underlying drivers
-             * has set virterror already.
-             */
-            return VIR_DRV_OPEN_ERROR;
+    /* XenD is required to suceed if root.
+     * If it fails as non-root, then the proxy driver may take over
+     */
+    DEBUG0("Trying XenD sub-driver");
+    if (drivers[XEN_UNIFIED_XEND_OFFSET]->open(conn, uri, auth, flags) ==
+        VIR_DRV_OPEN_SUCCESS) {
+        DEBUG0("Activated XenD sub-driver");
+        priv->opened[XEN_UNIFIED_XEND_OFFSET] = 1;
+
+        /* XenD is active, so try the xm & xs drivers too, both requird to
+         * succeed if root, optional otherwise */
+        if (priv->xendConfigVersion <= 2) {
+            DEBUG0("Trying XM sub-driver");
+            if (drivers[XEN_UNIFIED_XM_OFFSET]->open(conn, uri, auth, flags) ==
+                VIR_DRV_OPEN_SUCCESS) {
+                DEBUG0("Activated XM sub-driver");
+                priv->opened[XEN_UNIFIED_XM_OFFSET] = 1;
+            }
+        }
+        DEBUG0("Trying XS sub-driver");
+        if (drivers[XEN_UNIFIED_XS_OFFSET]->open(conn, uri, auth, flags) ==
+            VIR_DRV_OPEN_SUCCESS) {
+            DEBUG0("Activated XS sub-driver");
+            priv->opened[XEN_UNIFIED_XS_OFFSET] = 1;
+        } else {
+            if (getuid() == 0)
+                goto fail; /* XS is mandatory as root */
+        }
+    } else {
+        if (getuid() == 0) {
+            goto fail; /* XenD is mandatory as root */
+        } else {
+#if WITH_PROXY
+            DEBUG0("Trying proxy sub-driver");
+            if (drivers[XEN_UNIFIED_PROXY_OFFSET]->open(conn, uri, auth, flags) ==
+                VIR_DRV_OPEN_SUCCESS) {
+                DEBUG0("Activated proxy sub-driver");
+                priv->opened[XEN_UNIFIED_PROXY_OFFSET] = 1;
+            } else {
+                goto fail; /* Proxy is mandatory if XenD failed */
+            }
+#else
+            DEBUG0("Handing off for remote driver");
+            return VIR_DRV_OPEN_DECLINED; /* Let remote_driver try instead */
+#endif
         }
     }
 
     return VIR_DRV_OPEN_SUCCESS;
+
+ fail:
+    DEBUG0("Failed to activate a mandatory sub-driver");
+    for (i = 0 ; i < XEN_UNIFIED_NR_DRIVERS ; i++)
+        if (priv->opened[i]) drivers[i]->close(conn);
+    free(priv);
+    return VIR_DRV_OPEN_ERROR;
 }
 
 #define GET_PRIVATE(conn) \
@@ -699,7 +746,7 @@ xenUnifiedDomainDestroy (virDomainPtr dom)
             drivers[i]->domainDestroy (dom) == 0)
             return 0;
 
-    if (priv->opened[i] &&
+    if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET] &&
         drivers[XEN_UNIFIED_HYPERVISOR_OFFSET]->domainDestroy &&
         drivers[XEN_UNIFIED_HYPERVISOR_OFFSET]->domainDestroy (dom) == 0)
         return 0;
@@ -914,13 +961,12 @@ xenUnifiedDomainDumpXML (virDomainPtr dom, int flags)
             char *cpus, *res;
             cpus = xenDomainUsedCpus(dom);
             res = xenDaemonDomainDumpXML(dom, flags, cpus);
-	    if (cpus != NULL)
 	        free(cpus);
-	    return(res);
+            return(res);
         }
         if (priv->opened[XEN_UNIFIED_PROXY_OFFSET])
             return xenProxyDomainDumpXML(dom, flags);
-    } 
+    }
 
     xenUnifiedError (dom->conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
     return NULL;
@@ -1093,7 +1139,7 @@ xenUnifiedDomainGetSchedulerType (virDomainPtr dom, int *nparams)
         if (priv->opened[i] && drivers[i]->domainGetSchedulerType) {
             schedulertype = drivers[i]->domainGetSchedulerType (dom, nparams);
 	    if (schedulertype != NULL)
-		return(schedulertype); 
+		return(schedulertype);
         }
     }
     return(NULL);
@@ -1167,7 +1213,7 @@ xenUnifiedNodeGetCellsFreeMemory (virConnectPtr conn, unsigned long long *freeMe
     GET_PRIVATE (conn);
 
     if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET])
-        return xenHypervisorNodeGetCellsFreeMemory (conn, freeMems, 
+        return xenHypervisorNodeGetCellsFreeMemory (conn, freeMems,
                                                     startCell, maxCells);
 
     xenUnifiedError (conn, VIR_ERR_NO_SUPPORT, __FUNCTION__);
@@ -1182,7 +1228,7 @@ xenUnifiedNodeGetFreeMemory (virConnectPtr conn)
     GET_PRIVATE (conn);
 
     if (priv->opened[XEN_UNIFIED_HYPERVISOR_OFFSET]) {
-        ret = xenHypervisorNodeGetCellsFreeMemory (conn, &freeMem, 
+        ret = xenHypervisorNodeGetCellsFreeMemory (conn, &freeMem,
                                                     -1, 1);
 	if (ret != 1)
 	    return (0);
@@ -1204,6 +1250,7 @@ static virDriver xenUnifiedDriver = {
     .no = VIR_DRV_XEN_UNIFIED,
     .name = "Xen",
     .ver = HV_VERSION,
+    .probe 			= xenUnifiedProbe,
     .open 			= xenUnifiedOpen,
     .close 			= xenUnifiedClose,
     .supports_feature   = xenUnifiedSupportsFeature,

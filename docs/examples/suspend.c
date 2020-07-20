@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <libvirt/libvirt.h>
 
-virConnectPtr conn = NULL; /* the hypervisor connection */
+static virConnectPtr conn = NULL; /* the hypervisor connection */
 
 /**
  * checkDomainState:
@@ -25,9 +25,9 @@ virConnectPtr conn = NULL; /* the hypervisor connection */
  */
 static int
 checkDomainState(virDomainPtr dom) {
-    virDomainInfo info;        /* the informations being fetched */
+    virDomainInfo info;        /* the information being fetched */
     int ret;
-    
+
     ret = virDomainGetInfo(dom, &info);
     if (ret < 0) {
 	return(-1);
@@ -39,7 +39,7 @@ checkDomainState(virDomainPtr dom) {
  * SuspendAndResumeDomain:
  * @id: the id of the domain
  *
- * extract the domain 0 informations
+ * extract the domain 0 information
  */
 static void
 SuspendAndResumeDomain(int id) {
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
 	fprintf(stderr, "Failed find a running guest domain\n");
 	goto error;
     }
-    
+
     SuspendAndResumeDomain(id);
 
 error:
