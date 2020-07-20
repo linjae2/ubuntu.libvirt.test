@@ -1,0 +1,2 @@
+  * powerpc-make-qemu-system-ppc64-the-default: fix failure starting kvm
+    through nova on ppc64le  (LP: #1418221)
