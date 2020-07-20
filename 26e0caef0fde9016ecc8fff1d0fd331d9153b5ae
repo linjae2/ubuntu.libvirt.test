@@ -1,0 +1,3 @@
+  * Quiet some of the following errors.
+    "error : virNetSocketReadWire:1006 : End of file while reading data: 
+     Input/output error" (LP: #1451598)
