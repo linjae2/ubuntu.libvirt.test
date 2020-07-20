@@ -1,0 +1,4 @@
+  * Add fix for event loop hang (LP: #344195)
+    http://article.gmane.org/gmane.comp.emulators.libvirt/12437
+  * Add fix for Xen events handling.
+    http://git.et.redhat.com/?p=libvirt.git;a=commit;h=124cfcbc2bcd1b71b51e720b9bfc7d8e69e8af89 
