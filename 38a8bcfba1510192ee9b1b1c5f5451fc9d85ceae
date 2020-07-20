@@ -1,0 +1,18 @@
+  * Fakesync with Debian.
+  * Reenable Xen.
+  * put packages into the proper sections
+  * fix messed up Standards-Version (Closes: #453900)
+  * add initscript to start libvirtd
+  * debian/copyright:
+      * update FSF address
+      * update upstream author and copyright information
+  * install the virsh manpage
+  * use binary:Version instead of Source-Version
+  * repackage for Debian (Closes: #384300)
+  * enable avahi
+  * build with qemu/kvm support
+  * disable xen support until #402249 is fixed
+  * disable qemu autonetwork for now, causes libvirtd to seqfault
+  * fix path to kvm
+  * switch off DH_VERBOSE
+  * thanks to the Ubuntu maintainers for their work!
