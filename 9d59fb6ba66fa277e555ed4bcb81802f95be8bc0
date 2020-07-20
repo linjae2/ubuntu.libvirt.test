@@ -1,0 +1,9 @@
+  [ Stefan Bader ]
+  * debian/patches/ubuntu-xend-probe.patch: Fix search path for xen-toolstack
+    command (LP: #1248025)
+  * debian/patches/libxl-fix-dom0-detection.patch: Check contents of
+    /proc/xen/capabilities to decide whether running in dom0. (LP: #1248025)
+  [ Serge Hallyn ]
+  * debian/libvirt-dev.install: add libvirt-lxc.so (LP: #1287232)
+  * d/p/lp1264465: cherrypick upstream patches to fix usb hotplug by
+    vendor/product (LP: #1264465)
