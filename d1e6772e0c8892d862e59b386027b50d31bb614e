@@ -1,0 +1,7 @@
+  [Serge Hallyn]
+  * do not rely on 'ip' or 'ifconfig' commands inside container (LP: #828211)
+    Reported and fixed by Scott Moser <smoser@ubuntu.com>.
+  * make ptmx a bind mount rather than a symlink (LP: #832123)
+  [Chuck Short]
+  * debian/arm-startup-fixes.patch: Dont detect DMI information on non-intel
+    compatible arches.
