@@ -1,0 +1,7 @@
+  * [afd5e39] d/control: Fix typo in libnss-libvirt's short description.
+    Thanks to Salvatore Bonaccorso (Closes: #904738)
+  * [f2f7871] New upstream version 4.6.0
+  * [a81e098] Drop apparmor-Fix-forgotten-comma-at-EOL.patch applied upstream
+  * [d53b4b1] Use jansson instead of yajl.  The later is no longer supported
+    upstream
+  * [bf99d36] Bump symbol versions
