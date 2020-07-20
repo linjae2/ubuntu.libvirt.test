@@ -1,0 +1,3 @@
+  [ Nigel Jones ]
+  * debian/patches/9024-free-memory-for-invalid-devices.patch: clean
+    up a memory leak affecting multipath+libvirt, LP: #571093
