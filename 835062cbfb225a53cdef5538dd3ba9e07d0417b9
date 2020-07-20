@@ -1,0 +1,4 @@
+  * d/apparmor/libvirt-qemu: generalize the qemu-block-extra libs line.
+    (LP: #1554761)
+  * d/p/ubuntu/virt-aa-helper-add-mknod-for-guest-agent.patch: add mknod
+    capability if there is a qemu guest agent. (LP: #1393842)
