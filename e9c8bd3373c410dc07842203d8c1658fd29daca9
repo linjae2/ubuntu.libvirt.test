@@ -1,0 +1,4 @@
+  * add d/p/util_use_w_flag_when_calling_iptables.patch (LP: #1245322)
+  * debian/apparmor/libvirt-qemu: allow access to usb info (LP: #1245251)
+  * debian/apparmor/libvirt-qemu: allow access to hugepages mounts
+    (LP: #1250216)
