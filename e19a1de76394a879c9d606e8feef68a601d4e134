@@ -1,0 +1,4 @@
+  * debian/patches/ubuntu/lp1787405-*: Support guest dedicated Crypto
+    Adapters on s390x (LP: #1787405)
+  * d/p/ubuntu/lp-1802727-netdevbridge-fall-back-to-ioctl-from-sysfs.patch:
+    fix libvirt bridge handling in unprivileged containers (LP: #1802906)
