@@ -1,0 +1,3 @@
+  * Backport from Jaunty
+  * debian/control: drop open-iscsi dep, adjust libparted dep
+  * debian/rules: configure without iscsi
