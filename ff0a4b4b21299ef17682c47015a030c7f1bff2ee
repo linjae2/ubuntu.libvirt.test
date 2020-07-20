@@ -1,0 +1,2 @@
+  * apparmor libvirt-qemu template: allow reading charm-specific ceph config
+    and silence denials for /tmp/**.  (LP: #1403648)
