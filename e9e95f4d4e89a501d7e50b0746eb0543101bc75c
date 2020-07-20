@@ -1,0 +1,4 @@
+  [ Matthew Ruffell ]
+  * debian/libvirt-bin.upstart: update pre-stop section in upstart
+    script to stop the libvirt-guests service instead of the now
+    removed libvirt-stop-guests script. (LP: #1829823)
