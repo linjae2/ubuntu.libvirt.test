@@ -1,0 +1,37 @@
+  [ Chuck Short ]
+  * New upstream version:
+    - Rediffed patches:
+      + d/p/Don-t-enable-default-network-on-boot.patch
+      + d/p/ubuntu-xend-probe.patch
+      + d/p/Don-t-fail-if-we-can-t-setup-avahi.patch
+      + d/p/Disable-failing-virnetsockettest.patch
+      + d/p/Don-t-enable-default-network-on-boot.patch
+    - Dropped patches:
+      + d/p/v1.1.1-maint/0001-xen-fix-memory-corruption-in-legacy-driver.patch
+      + d/p/v1.1.1-maint/0002-qemu_migration-Don-t-error-on-tunelled-migration-wit.patch
+      + d/p/v1.1.1-maint/0003-build-fix-configure-detection-of-if_bridge.h-on-RHEL.patch
+      + d/p/v1.1.1-maint/0004-remote-Fix-a-segfault-in-remoteDomainCreateWithFlags.patch
+      + d/p/v1.1.1-maint/0005-Revert-build-fix-configure-detection-of-if_bridge.h-.patch
+      + d/p/v1.1.1-maint/0006-build-more-workarounds-for-if_bridge.h.patch
+      + d/p/v1.1.1-maint/0007-Fix-qemuProcessReadLog-with-non-zero-offset.patch
+      + d/p/v1.1.1-maint/0008-Reverse-logic-allowing-partial-DHCP-host-XML.patch
+      + d/p/v1.1.1-maint/0009-virsh-domain-Fix-memleak-in-cmdUndefine-with-storage.patch
+      + d/p/v1.1.1-maint/0010-virsh-domain-Fix-memleak-in-cmdCPUBaseline.patch
+      + d/p/v1.1.1-maint/0011-virbitmap-Refactor-virBitmapParse-to-avoid-access-be.patch
+      + d/p/CVE-2013-4296.patch
+      + d/p/CVE-2013-4311.patch
+      + d/p/CVE-2013-4297.patch
+      + d/p/fix-crash-in-libvirtd-when-events
+      + d/p/security-provide-supplemental-groups
+      + d/p/add-bounds-checking-on-virdomainmigrate
+      + d/p/xen-use-internal-interfaces-in-xendomainusedcpus
+      + d/p/fix-remote-client-segfault.patch
+      + d/p/ubuntu-xend-xmlcreate-double-free.patch
+      + d/p/9002-better_default_uri_virsh.patch
+  [ Serge Hallyn ]
+  * update and re-add d/p/9002-better_default_uri_virsh.patch.  Also patch
+    new uri-precedence test, as we break it with this patch.
+  * add d/p/util_use_w_flag_when_calling_iptables.patch (LP: #1245322)
+  * debian/apparmor/libvirt-qemu: allow access to hugepages mounts
+    (LP: #1250216)
+  * debian/apparmor/libvirt-qemu: allow access to usb info (LP: #1245251)
