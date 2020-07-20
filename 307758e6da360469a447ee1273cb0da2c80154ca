@@ -1,0 +1,2 @@
+  * d/control, d/rules: Disable rbd and zfs on riscv64 where they are
+    unavailable (LP: #1872952)
