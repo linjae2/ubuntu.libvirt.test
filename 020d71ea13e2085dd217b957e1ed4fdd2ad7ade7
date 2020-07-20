@@ -1,0 +1,4 @@
+  * [4097bbd] New patch 0007-Fix-block-statistics-with-newer-versions-
+    of-Xen.patch. Fix block statistics with newer versions of Xen 
+    (Closes: #596004) - thanks to Gerald Turner for the patch
+  * [d554da3] Explain disk image probing changes (Closes: #594962)
