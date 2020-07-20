@@ -1,0 +1,3 @@
+  * [d455289] Move bug-presbj to libvirt-daemon-system since libvirt-bin will
+    go away
+  * [961c93d] Drop libvirt-bin transitional package
