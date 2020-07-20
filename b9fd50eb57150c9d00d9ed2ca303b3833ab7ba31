@@ -1,0 +1,5 @@
+  * d/p/ubuntu/lp1688508-fix-variable-scope-in-in-check_guests_shutdown.patch:
+    backport further upstream fixes that were identified on verification.
+    Together with the former change this fixes (LP: #1688508)
+  * d/p/ubuntu/lp1753604-nwfilter-fix-lock-order-deadlock.patch:
+    fix intermittent deadlock in NWFilter handling (LP: #1753604)
