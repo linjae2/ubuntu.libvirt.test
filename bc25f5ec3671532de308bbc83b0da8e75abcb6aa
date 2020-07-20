@@ -1,0 +1,11 @@
+  [ Guido Günther ]
+  * [6bc6e60] CVE-2019-10132: Fix vir{lock,log}d socket access.
+    All patches were cherry-picked from upstream's v5.0-maint branch.
+    (Closes: #929334)
+  * [09016dd] d/patches: Move security fixes into security/
+  [ Joachim Falk ]
+  * [5d96699] lxc: Fix killing of lxc containers if cgroup backend v2 is
+    unavailable.
+    (Closes: #926999)
+  * [ea7a491] lxc: Fix container shutdown and host reboot
+    (Closes: #927310, #897394)
