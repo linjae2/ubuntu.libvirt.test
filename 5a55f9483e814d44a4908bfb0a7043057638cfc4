@@ -1,0 +1,3 @@
+  * d/p/ubuntu/0004-apparmor-apply-ubuntu-delta.patch: Adjust to also allow
+    access to snapshots in nova-hypervisor snap's $SNAP_COMMON directory
+    (LP: #1644507).
