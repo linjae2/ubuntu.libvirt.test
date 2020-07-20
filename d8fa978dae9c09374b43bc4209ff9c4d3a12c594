@@ -1,0 +1,3 @@
+  * [4fbc990] New patch security-plug-regression-introduced-in-disk-probe-lo.
+    patch (Closes: #629128)
+    - Fixes: CVE-2011-2178
