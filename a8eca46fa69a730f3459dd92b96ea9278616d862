@@ -1,0 +1,103 @@
+  * Resynchronize and merge from Debian unstable. Remaining changes:
+    - debian/patches:
+      * 9000-delayed_iff_up_bridge.patch
+      * 9001-dont_clobber_existing_bridges.patch
+      * 9002-better_default_uri_virsh.patch
+      * 9003-better-default-arch.patch
+      * 9004-libvirtd-group-name.patch
+      * 9005-increase-unix-socket-timeout.patch
+      * 9006-default-config-test-case.patch
+      * 9007-fix-daemon-conf-ftbfs.patch
+      * 9011-move-ebtables-script.patch
+      * 9014-skip-nodeinfotest.patch
+      * 9020-lp545795.patch
+      * 9021-fix-uint64_t.patch
+    - debian/patches/series:
+      * Disable qemu-disable-network.diff.patch
+    - debian/control:
+      * set ubuntu maintainer
+      * Build-Depends:
+        - swap libxen to libxen3, qemu to qemu-kvm, and open-iscsi to
+          open-iscsi-utils in Build-Depends
+        - remove virtualbox Build-Depends
+        - add libxml2 and libapparmor-dev Build-Depends
+      * convert Vcs-Git to Xs-Debian-Vcs-Git
+      * libvirt-bin Depends: move netcat-openbsd, bridge-utils, dnsmasq-base
+        (>= 2.46-1), and iptables from Recommends to Depends
+      * libvirt-bin Recommends: move qemu to Suggests
+      * libvirt-bin Suggests: add apparmor
+      * libvirt0 Recommands: move lvm2 to Suggests
+    - keep debian/libvirt-bin.apport
+    - keep debian/libvirt-bin.cron.daily
+    - debian/libvirt-bin.dirs:
+      * add apparmor, cron.daily, and apport dirs
+    - debian/libvirt-bin.examples:
+      * add debian/libvirt-suspendonreboot
+    - debian/libvirt-bin.install:
+      * add /etc/apparmor.d files
+      * add apport hook
+    - debian/libvirt-bin.manpages:
+      * add debian/libvirt-migrate-qemu-disks.1
+    - debian/libvirt-bin.postinst:
+      * replace libvirt groupname with libvirtd
+      * add each admin user to libvirtd group
+      * call apparmor_parser on usr.sbin.libvirtd and
+        usr.lib.libvirt.virt-aa-helper
+      * call 'libvirt-migrate-qemu-disks -a' after
+        libvirt-bin has started if migrating from
+        older than 0.8.3-1ubuntu1
+    - debian/libvirt-bin.postrm:
+      * replace libvirt groupname with libvirtd
+      * remove usr.sbin.libvirtd and
+        usr.lib.libvirt.virt-aa-helper
+    - keep added files under debian/:
+      * libvirt-bin.upstart
+      * libvirt-migrate-qemu-disks
+      * libvirt-migrate-qemu-disks.1
+      * libvirt-suspendonreboot
+      * apparmor profiles
+    - debian/README.Debian:
+      * add 'Apparmor Profile' section
+      * add 'Disk migration' section
+    - debian/rules:
+      * don't build with vbox since virtualbox-ose is in universe
+      * add --with-apparmor to DEB_CONFIGURE_EXTRA_FLAGS
+      * set DEB_DH_INSTALLINIT_ARGS to '--upstart-only'
+      * set DEB_MAKE_CHECK_TARGET to 'check'
+      * remove unneeded binary-install/libvirt-bin:: and clean::
+        sections (they only deal with sysvinit stuff)
+      * add build/libvirt-bin:: section to install
+        - apparmor files
+        - apport hooks
+        - libvirt-migrate-qemu-disks
+  * The following Ubuntu packaging changes occurred during the divergence
+    between Debian and Ubuntu. These changes are not new, but included here
+    for completeness: (0.8.5-0ubuntu1 - 0.8.5-0ubuntu5):
+    - Have upstart job source /etc/default/libvirt-bin.  This is only a
+      temporary fix until upstart provides proper default override support
+      through /etc/init/libvirt-bin.override (or any other mechanism).
+      (LP: 708172)
+    - debian/apparmor/usr.sbin.libvirtd: use PUx instead of Ux for executables
+      (LP: 573315)
+    - Rebuild with python 2.7 as the python default.
+    - debian/libvirt-bin.cron.daily: use shell globbing to enumerate xml files.
+      Based on patch thanks to Henryk Plötz (LP: 655176)
+  * Dropped the following patches included/fixed upstream:
+    - 9010-dont-disable-ipv6.patch
+    - 9022-build-cleanup-declaration-of-xen-tests.patch
+    - 9023-vah-require-uuid.patch
+    - 9009-autodetect-nc-params.patch
+      * rolled into Debian's
+        Autodetect-if-the-remote-nc-command-supports-the-q-o.patch
+  * Updated the following patches:
+    - 9011-move-ebtables-script.patch:
+      * LOCALSTATEDIR is defined in configmake.h
+    - 9000-9006: added DEP-3 tags
+    - 9002-better_default_uri_virsh.patch: updated (context changed)
+  * New patches:
+    - 9022-drop-booton-when-kernel-specified.patch (LP: #720426)
+    - 9023-fix-lxc-console-hangup.patch (LP: #668369)
+    - 9024-skip-broken-commandtest.patch
+  * debian/patches/series:
+    - don't apply Disable-CHECKSUM-rule.patch: our iptables can do this
+    - don't apply Debian-specific Debianize-libvirt-guests.patch
