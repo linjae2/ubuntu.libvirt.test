@@ -1,0 +1,3 @@
+  * Stop libvirt-bin at pre-inst if upgrading from a non-systemd version,
+    restart at postinst.  (This can be removed after 16.04 release)
+  * Commonize stopping of vms in upstart/systemd.
