@@ -1,0 +1,20 @@
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg, since
+        we used to ship them as such.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Rename libvirt group to libvirtd.
+    - 0005-delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - We call libxen-dev libxen3-dev, so change all references.
+  * Add qemu migration patch (from upstream git (adjusted for 0.4.6)).
+  * Add dynamic_bridge_names.patch to again support dynamic bridge names.
