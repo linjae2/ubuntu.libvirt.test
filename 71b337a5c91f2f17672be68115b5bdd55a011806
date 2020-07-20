@@ -1,0 +1,6 @@
+  [ Guido Günther ]
+  * [af660e5] Allow xen toolstack to find it's binaries.
+    Thanks to George Dunlap for the patch. (Closes: #685749)
+  [ Luca Tettamanti ]
+  * [90d8287] Fix leak in virStorageBackendLogicalMakeVol
+    (Closes: #705205)
