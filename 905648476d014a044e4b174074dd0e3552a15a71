@@ -1,0 +1,5 @@
+  * [2a23b23] qemu: skip QMP probing of CPU definitions when missing.
+    Don't probe CPU definitions if we lack the monitor command. This
+    unbreaks e.g. mips based VMs. (Closes: #85412)
+  * [21bc332] apprarmor: unbreak lbvirt invoking qemu-bridge-helpers
+    This makes VM creation in gnome-boxes work with apparmor enabled.
