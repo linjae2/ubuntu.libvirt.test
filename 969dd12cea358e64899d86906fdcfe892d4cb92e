@@ -1,0 +1,3 @@
+  * [cb74dfd] Properly parse (unsigned) long long in the python bindings to
+    fix those on platforms where sizeof(long) != sizeof(long long).
+    This fixes virt-install's '--location='.
