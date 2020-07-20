@@ -1,0 +1,6 @@
+  * Added d/p/ubuntu/preup-virt-aa-helper-better-write-denials-handling.patch
+    and refreshed d/p/ubuntu/9034-complete-9p-support accordingly.
+  * Added d/p/ubuntu/additional-libvirt-guest-tweaks.patch to fix default
+    URI detection when running in a Xen control domain. Also change the
+    default config to do parallel shutdown requests (max. 10) and reduce the
+    timeout to 2 minutes.
