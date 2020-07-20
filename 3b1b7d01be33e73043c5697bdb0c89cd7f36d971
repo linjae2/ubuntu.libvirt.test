@@ -1,0 +1,2 @@
+  * d/p/ubuntu/lp1688508-tools-avoid-text-spilling-into-variables.patch:
+    avoid hanging on shutdown (LP: #1688508)
