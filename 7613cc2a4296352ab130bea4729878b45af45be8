@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.sbin.libvirtd: Include the system bus abstraction in
+    the libvirtd AppArmor profile as libvirtd connects to the D-Bus system bus
