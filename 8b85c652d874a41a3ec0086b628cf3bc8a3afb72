@@ -1,0 +1,2 @@
+  * Drop the cgmanager patches - they break under systemd, and are no longer
+    needed in containers due to lxcfs. (LP: #1486296)
