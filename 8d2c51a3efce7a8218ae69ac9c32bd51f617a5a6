@@ -1,0 +1,11 @@
+  * [031b9c1] Don't hardcode buffer size for getgrnam_r. Works around
+              #520744 and fixes possible problems with implementations having
+              _SC_GETGR_R_SIZE_MAX != 1024.
+  * [bbe7743] respect log priority for qemu domain logs (Closes: #524145)
+  * [a2e4cb0] don't rely on log_end_msg returning 0 this isn't the case
+              with splashy. (Closes: #523712)
+  * [ddfafda] move debug package into section debug
+  * [99fd06c] Imported Upstream version 0.6.2 (Closes: #521785)
+  * [78cd5c8] drop /var/run/libvirt created by init script
+  * [2a7cb3b] move startup of libvirtd after hal (Closes: #522310)
+  * [b8707ed] bump standards version 0.8.1 (no changes necessary)
