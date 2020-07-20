@@ -1,0 +1,8 @@
+  [Simon Déziel]
+  * d/p/u/apparmor-fix-name-resolution.patch adds missing rules for name
+    resolution to virt-aa-helper Apparmor profile (LP: #1546674).
+  * d/p/u/apparmor-fix-debug-threads.patch adds missing rule for debug-threads
+    feature that is now default enabled to Apparmor profile (LP: #1615550).
+  [Christian Ehrhardt]
+  * d/p/u/apparmor-fix-other-seclabels.patch fixes an issue parsing non
+    apparmor security labels (LP: #1633207).
