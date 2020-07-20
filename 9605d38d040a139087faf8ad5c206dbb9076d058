@@ -1,0 +1,9 @@
+  * update to allow pcidev and hostdev to work with AppArmor (LP: #545795)
+    - debian/patches/lp-545795.patch: add vendor and device to
+      pciDeviceFileIterate(). Patch submitted upstream and they feel it is
+      reasonable, but not committed yet. This should fix pcidev.
+    - debian/apparmor/usr.lib.libvirt.virt-aa-helper: add read access to
+      /sys/bus/usb/devices/**
+    - debian/apparmor/libvirt-qemu: adjust read access to be
+      /sys/devices/**/usb[0-9]*/** instead of /sys/devices/*/*/usb[0-9]*/**.
+      Patched based on work by Andreas Ntaflos.
