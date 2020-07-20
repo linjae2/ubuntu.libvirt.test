@@ -1,0 +1,12 @@
+  * allow access for sound (LP: #437854)
+    - abstractions/libvirt-qemu: add very specific rules for allowing ALSA. We
+      do not use the audio abstraction because the virtual machine runs as root
+      and therefore DAC cannot be used as a fallback.
+    - debian/README.Debian: add some text to encourage review of the AppArmor
+      profiles and abstraction when using in production environments
+  * debian/libvirt-bin.cron.daily: added to clean out old profiles that are no
+    longer associated with a virtual machine definition (LP: #438165)
+  * debian/patches/9091-apparmor.patch:
+    - quote the pid, monitor and logfile in case any of them have weird
+      characters (complete fix for LP: #432810)
+    - support <readonly/> for disks
