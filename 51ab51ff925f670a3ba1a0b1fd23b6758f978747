@@ -1,0 +1,1 @@
+  * virt-aa-helper apparmor policy:  add 'network inet6' (LP: #1511830)
