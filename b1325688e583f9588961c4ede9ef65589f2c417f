@@ -1,0 +1,3 @@
+  * d/p/ubuntu/qemu-Allow-empty-script-path-to-interface.patch: in the past
+    it was possible to have <script path=''/> which now fails - fix to match
+    the old behavior (LP: #1665698)
