@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Red Hat, Inc.
+ * Copyright (C) 2012-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -12,8 +12,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -24,11 +24,13 @@
 
 #include "testutils.h"
 #include "daemon/libvirtd-config.h"
-#include "util.h"
+#include "virutil.h"
 #include "c-ctype.h"
-#include "virterror_internal.h"
-#include "logging.h"
-#include "conf.h"
+#include "virerror.h"
+#include "virfile.h"
+#include "virlog.h"
+#include "virconf.h"
+#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_NONE
 
@@ -76,10 +78,8 @@ munge_param(const char *datain,
         strlen(replace) +
         strlen(eol) + 1;
 
-    if (VIR_ALLOC_N(dataout, dataoutlen) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC_N(dataout, dataoutlen) < 0)
         return NULL;
-    }
     memcpy(dataout, datain, (eq - datain) + 1);
     memcpy(dataout + (eq - datain) + 1,
            replace, strlen(replace));
@@ -119,6 +119,13 @@ testCorrupt(const void *opaque)
         ret = -1;
         goto cleanup;
     }
+
+#if !WITH_SASL
+    if (strstr(err->message, "unsupported auth sasl")) {
+        VIR_DEBUG("sasl unsupported, skipping this config");
+        goto cleanup;
+    }
+#endif
 
     switch (type) {
     case VIR_CONF_LONG:
@@ -214,9 +221,9 @@ mymain(void)
         goto cleanup;
     }
     VIR_DEBUG("Initial config [%s]", filedata);
-    for (i = 0 ; params[i] != 0 ; i++) {
+    for (i = 0; params[i] != 0; i++) {
         const struct testCorruptData data = { params, filedata, filename, i };
-        if (virtTestRun("Test corruption", 1, testCorrupt, &data) < 0)
+        if (virtTestRun("Test corruption", testCorrupt, &data) < 0)
             ret = -1;
     }
 

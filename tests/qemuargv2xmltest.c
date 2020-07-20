@@ -8,15 +8,18 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include "testutils.h"
+
 #ifdef WITH_QEMU
 
 # include "internal.h"
-# include "testutils.h"
 # include "qemu/qemu_command.h"
-
 # include "testutilsqemu.h"
+# include "virstring.h"
 
-static struct qemud_driver driver;
+# define VIR_FROM_THIS VIR_FROM_NONE
+
+static virQEMUDriver driver;
 
 static int blankProblemElements(char *data)
 {
@@ -39,24 +42,31 @@ static int testCompareXMLToArgvFiles(const char *xml,
     char *cmd = NULL;
     int ret = -1;
     virDomainDefPtr vmdef = NULL;
-    char *log;
 
     if (virtTestLoadFile(cmdfile, &cmd) < 0)
         goto fail;
     if (virtTestLoadFile(xml, &expectxml) < 0)
         goto fail;
 
-    if (!(vmdef = qemuParseCommandLineString(driver.caps, cmd,
-                                             NULL, NULL, NULL)))
+    if (!(vmdef = qemuParseCommandLineString(driver.caps, driver.xmlopt,
+                                             cmd, NULL, NULL, NULL)))
         goto fail;
 
-    if ((log = virtTestLogContentAndReset()) == NULL)
-        goto fail;
-    if ((*log != '\0') != expect_warning) {
+    if (!virtTestOOMActive()) {
+        char *log;
+        if ((log = virtTestLogContentAndReset()) == NULL)
+            goto fail;
+        if ((*log != '\0') != expect_warning) {
+            VIR_FREE(log);
+            goto fail;
+        }
         VIR_FREE(log);
+    }
+
+    if (!virDomainDefCheckABIStability(vmdef, vmdef)) {
+        fprintf(stderr, "ABI stability check failed on %s", xml);
         goto fail;
     }
-    VIR_FREE(log);
 
     if (!(actualxml = virDomainDefFormat(vmdef, 0)))
         goto fail;
@@ -116,16 +126,18 @@ mymain(void)
 {
     int ret = 0;
 
+    driver.config = virQEMUDriverConfigNew(false);
     if ((driver.caps = testQemuCapsInit()) == NULL)
         return EXIT_FAILURE;
-    if((driver.stateDir = strdup("/nowhere")) == NULL)
+
+    if (!(driver.xmlopt = virQEMUDriverCreateXMLConf(&driver)))
         return EXIT_FAILURE;
 
-# define DO_TEST_FULL(name, extraFlags, migrateFrom)                     \
+# define DO_TEST_FULL(name, extraFlags, migrateFrom)                    \
     do {                                                                \
         const struct testInfo info = { name, extraFlags, migrateFrom }; \
         if (virtTestRun("QEMU ARGV-2-XML " name,                        \
-                        1, testCompareXMLToArgvHelper, &info) < 0)      \
+                        testCompareXMLToArgvHelper, &info) < 0)         \
             ret = -1;                                                   \
     } while (0)
 
@@ -142,6 +154,8 @@ mymain(void)
 
     /* Can't roundtrip vcpu  cpuset attribute */
     /*DO_TEST("minimal", QEMU_CAPS_NAME);*/
+    DO_TEST("machine-core-on");
+    DO_TEST("machine-core-off");
     DO_TEST("boot-cdrom");
     DO_TEST("boot-network");
     DO_TEST("boot-floppy");
@@ -151,6 +165,10 @@ mymain(void)
 
     /* Can't roundtrip xenner arch */
     /*DO_TEST("bootloader");*/
+
+    DO_TEST("reboot-timeout-enabled");
+    DO_TEST("reboot-timeout-disabled");
+
     DO_TEST("clock-utc");
     DO_TEST("clock-localtime");
     DO_TEST("disk-cdrom");
@@ -177,25 +195,25 @@ mymain(void)
     DO_TEST("disk-drive-cache-directsync");
     DO_TEST("disk-drive-cache-unsafe");
     DO_TEST("disk-drive-network-nbd");
+    DO_TEST("disk-drive-network-nbd-export");
+    DO_TEST("disk-drive-network-nbd-ipv6");
+    DO_TEST("disk-drive-network-nbd-ipv6-export");
+    DO_TEST("disk-drive-network-nbd-unix");
+    DO_TEST("disk-drive-network-iscsi");
+    DO_TEST("disk-drive-network-gluster");
     DO_TEST("disk-drive-network-rbd");
+    DO_TEST("disk-drive-network-rbd-ipv6");
     /* older format using CEPH_ARGS env var */
     DO_TEST("disk-drive-network-rbd-ceph-env");
     DO_TEST("disk-drive-network-sheepdog");
     DO_TEST("disk-usb");
     DO_TEST("graphics-vnc");
     DO_TEST("graphics-vnc-socket");
+    DO_TEST("graphics-vnc-websocket");
+    DO_TEST("graphics-vnc-policy");
 
-    driver.vncSASL = 1;
-    driver.vncSASLdir = strdup("/root/.sasl2");
     DO_TEST("graphics-vnc-sasl");
-    driver.vncTLS = 1;
-    driver.vncTLSx509verify = 1;
-    driver.vncTLSx509certdir = strdup("/etc/pki/tls/qemu");
     DO_TEST("graphics-vnc-tls");
-    driver.vncSASL = driver.vncTLSx509verify = driver.vncTLS = 0;
-    VIR_FREE(driver.vncSASLdir);
-    VIR_FREE(driver.vncTLSx509certdir);
-    driver.vncSASLdir = driver.vncTLSx509certdir = NULL;
 
     DO_TEST("graphics-sdl");
     DO_TEST("graphics-sdl-fullscreen");
@@ -205,6 +223,9 @@ mymain(void)
     /* Can't rountrip xenner arch */
     /*DO_TEST("input-xen");*/
     DO_TEST("misc-acpi");
+    DO_TEST("misc-disable-s3");
+    DO_TEST("misc-disable-suspends");
+    DO_TEST("misc-enable-s4");
     DO_TEST("misc-no-reboot");
     DO_TEST("misc-uuid");
     DO_TEST("net-user");
@@ -232,6 +253,13 @@ mymain(void)
 
     DO_TEST("smp");
 
+    DO_TEST("hyperv");
+
+    DO_TEST("pseries-nvram");
+    DO_TEST("pseries-disk");
+
+    DO_TEST("nosharepages");
+
     DO_TEST_FULL("restore-v1", 0, "stdio");
     DO_TEST_FULL("restore-v2", 0, "stdio");
     DO_TEST_FULL("restore-v2", 0, "exec:cat");
@@ -239,8 +267,9 @@ mymain(void)
 
     DO_TEST_FULL("qemu-ns-no-env", 1, NULL);
 
-    VIR_FREE(driver.stateDir);
-    virCapabilitiesFree(driver.caps);
+    virObjectUnref(driver.config);
+    virObjectUnref(driver.caps);
+    virObjectUnref(driver.xmlopt);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -248,7 +277,6 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
-# include "testutils.h"
 
 int
 main(void)

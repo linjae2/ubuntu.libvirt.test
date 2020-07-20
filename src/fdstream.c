@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -33,18 +33,16 @@
 #include <netinet/in.h>
 
 #include "fdstream.h"
-#include "virterror_internal.h"
+#include "virerror.h"
 #include "datatypes.h"
-#include "logging.h"
-#include "memory.h"
-#include "util.h"
+#include "virlog.h"
+#include "viralloc.h"
+#include "virutil.h"
 #include "virfile.h"
 #include "configmake.h"
+#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_STREAMS
-#define streamsReportError(code, ...)                                \
-    virReportErrorHelper(VIR_FROM_THIS, code, __FILE__,              \
-                         __FUNCTION__, __LINE__, __VA_ARGS__)
 
 /* Tunnelled migration stream support */
 struct virFDStreamData {
@@ -76,21 +74,33 @@ struct virFDStreamData {
     virMutex lock;
 };
 
+
+static const char *iohelper_path = LIBEXECDIR "/libvirt_iohelper";
+
+void virFDStreamSetIOHelper(const char *path)
+{
+    if (path == NULL)
+        iohelper_path = LIBEXECDIR "/libvirt_iohelper";
+    else
+        iohelper_path = path;
+}
+
+
 static int virFDStreamRemoveCallback(virStreamPtr stream)
 {
     struct virFDStreamData *fdst = stream->privateData;
     int ret = -1;
 
     if (!fdst) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream is not open"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream is not open"));
         return -1;
     }
 
     virMutexLock(&fdst->lock);
     if (fdst->watch == 0) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream does not have a callback registered"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream does not have a callback registered"));
         goto cleanup;
     }
 
@@ -119,15 +129,15 @@ static int virFDStreamUpdateCallback(virStreamPtr stream, int events)
     int ret = -1;
 
     if (!fdst) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream is not open"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream is not open"));
         return -1;
     }
 
     virMutexLock(&fdst->lock);
     if (fdst->watch == 0) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream does not have a callback registered"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream does not have a callback registered"));
         goto cleanup;
     }
 
@@ -201,15 +211,15 @@ virFDStreamAddCallback(virStreamPtr st,
     int ret = -1;
 
     if (!fdst) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream is not open"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream is not open"));
         return -1;
     }
 
     virMutexLock(&fdst->lock);
     if (fdst->watch != 0) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream already has a callback registered"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream already has a callback registered"));
         goto cleanup;
     }
 
@@ -218,8 +228,8 @@ virFDStreamAddCallback(virStreamPtr st,
                                            virFDStreamEvent,
                                            st,
                                            virFDStreamCallbackFree)) < 0) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("cannot register file watch on stream"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("cannot register file watch on stream"));
         goto cleanup;
     }
 
@@ -297,16 +307,16 @@ virFDStreamCloseInt(virStreamPtr st, bool streamAbort)
         } else if (status != 0) {
             if (buf[0] == '\0') {
                 if (WIFEXITED(status)) {
-                    streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                                       _("I/O helper exited with status %d"),
-                                       WEXITSTATUS(status));
+                    virReportError(VIR_ERR_INTERNAL_ERROR,
+                                   _("I/O helper exited with status %d"),
+                                   WEXITSTATUS(status));
                 } else {
-                    streamsReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                                       _("I/O helper exited abnormally"));
+                    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                                   _("I/O helper exited abnormally"));
                 }
             } else {
-                streamsReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                                   buf);
+                virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                               buf);
             }
             ret = -1;
         }
@@ -363,8 +373,8 @@ static int virFDStreamWrite(virStreamPtr st, const char *bytes, size_t nbytes)
     }
 
     if (!fdst) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream is not open"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream is not open"));
         return -1;
     }
 
@@ -415,8 +425,8 @@ static int virFDStreamRead(virStreamPtr st, char *bytes, size_t nbytes)
     }
 
     if (!fdst) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           "%s", _("stream is not open"));
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       "%s", _("stream is not open"));
         return -1;
     }
 
@@ -458,9 +468,9 @@ static virStreamDriver virFDStreamDrv = {
     .streamRecv = virFDStreamRead,
     .streamFinish = virFDStreamClose,
     .streamAbort = virFDStreamAbort,
-    .streamAddCallback = virFDStreamAddCallback,
-    .streamUpdateCallback = virFDStreamUpdateCallback,
-    .streamRemoveCallback = virFDStreamRemoveCallback
+    .streamEventAddCallback = virFDStreamAddCallback,
+    .streamEventUpdateCallback = virFDStreamUpdateCallback,
+    .streamEventRemoveCallback = virFDStreamRemoveCallback
 };
 
 static int virFDStreamOpenInternal(virStreamPtr st,
@@ -478,10 +488,8 @@ static int virFDStreamOpenInternal(virStreamPtr st,
         virSetNonBlock(fd) < 0)
         return -1;
 
-    if (VIR_ALLOC(fdst) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(fdst) < 0)
         return -1;
-    }
 
     fdst->fd = fd;
     fdst->cmd = cmd;
@@ -489,8 +497,8 @@ static int virFDStreamOpenInternal(virStreamPtr st,
     fdst->length = length;
     if (virMutexInit(&fdst->lock) < 0) {
         VIR_FREE(fdst);
-        streamsReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                           _("Unable to initialize mutex"));
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                       _("Unable to initialize mutex"));
         return -1;
     }
 
@@ -514,7 +522,7 @@ int virFDStreamConnectUNIX(virStreamPtr st,
                            bool abstract)
 {
     struct sockaddr_un sa;
-    int i = 0;
+    size_t i = 0;
     int timeout = 3;
     int ret;
 
@@ -577,13 +585,15 @@ virFDStreamOpenFileInternal(virStreamPtr st,
                             int mode)
 {
     int fd = -1;
-    int fds[2] = { -1, -1 };
+    int childfd = -1;
     struct stat sb;
     virCommandPtr cmd = NULL;
     int errfd = -1;
 
     VIR_DEBUG("st=%p path=%s oflags=%x offset=%llu length=%llu mode=%o",
               st, path, oflags, offset, length, mode);
+
+    oflags |= O_NOCTTY | O_BINARY;
 
     if (oflags & O_CREAT)
         fd = open(path, oflags, mode);
@@ -619,12 +629,12 @@ virFDStreamOpenFileInternal(virStreamPtr st,
     if ((st->flags & VIR_STREAM_NONBLOCK) &&
         (!S_ISCHR(sb.st_mode) &&
          !S_ISFIFO(sb.st_mode))) {
-        int childfd;
+        int fds[2] = { -1, -1 };
 
         if ((oflags & O_ACCMODE) == O_RDWR) {
-            streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                               _("%s: Cannot request read and write flags together"),
-                               path);
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("%s: Cannot request read and write flags together"),
+                           path);
             goto error;
         }
 
@@ -634,14 +644,15 @@ virFDStreamOpenFileInternal(virStreamPtr st,
             goto error;
         }
 
-        cmd = virCommandNewArgList(LIBEXECDIR "/libvirt_iohelper",
+        cmd = virCommandNewArgList(iohelper_path,
                                    path,
                                    NULL);
         virCommandAddArgFormat(cmd, "%llu", length);
-        virCommandTransferFD(cmd, fd);
+        virCommandPassFD(cmd, fd,
+                         VIR_COMMAND_PASS_FD_CLOSE_PARENT);
         virCommandAddArgFormat(cmd, "%d", fd);
 
-        if (oflags == O_RDONLY) {
+        if ((oflags & O_ACCMODE) == O_RDONLY) {
             childfd = fds[1];
             fd = fds[0];
             virCommandSetOutputFD(cmd, &childfd);
@@ -665,9 +676,9 @@ virFDStreamOpenFileInternal(virStreamPtr st,
 
 error:
     virCommandFree(cmd);
-    VIR_FORCE_CLOSE(fds[0]);
-    VIR_FORCE_CLOSE(fds[1]);
     VIR_FORCE_CLOSE(fd);
+    VIR_FORCE_CLOSE(childfd);
+    VIR_FORCE_CLOSE(errfd);
     if (oflags & O_CREAT)
         unlink(path);
     return -1;
@@ -680,9 +691,9 @@ int virFDStreamOpenFile(virStreamPtr st,
                         int oflags)
 {
     if (oflags & O_CREAT) {
-        streamsReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("Attempt to create %s without specifying mode"),
-                           path);
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("Attempt to create %s without specifying mode"),
+                       path);
         return -1;
     }
     return virFDStreamOpenFileInternal(st, path,

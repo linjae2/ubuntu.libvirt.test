@@ -90,7 +90,8 @@ out:
 static int
 showDomains(virConnectPtr conn)
 {
-    int ret = 0, i, numNames, numInactiveDomains, numActiveDomains;
+    int ret = 0, numNames, numInactiveDomains, numActiveDomains;
+    size_t i;
     char **nameList = NULL;
 
     numActiveDomains = virConnectNumOfDomains(conn);
@@ -135,7 +136,7 @@ showDomains(virConnectPtr conn)
         printf("Inactive domains:\n");
     }
 
-    for (i = 0 ; i < numNames ; i++) {
+    for (i = 0; i < numNames; i++) {
         printf("  %s\n", *(nameList + i));
         /* The API documentation doesn't say so, but the names
          * returned by virConnectListDefinedDomains are strdup'd and
@@ -161,7 +162,7 @@ typedef struct _AuthData AuthData;
 static int
 authCallback(virConnectCredentialPtr cred, unsigned int ncred, void *cbdata)
 {
-    int i;
+    size_t i;
     AuthData *authData = cbdata;
 
     /* libvirt might request multiple credentials in a single call.
@@ -175,7 +176,7 @@ authCallback(virConnectCredentialPtr cred, unsigned int ncred, void *cbdata)
      * For example the ESX driver passes the hostname of the ESX or vCenter
      * server as challenge. This allows a auth callback to return the
      * proper credentials. */
-    for (i = 0; i < ncred ; ++i) {
+    for (i = 0; i < ncred; ++i) {
         switch (cred[i].type) {
         case VIR_CRED_AUTHNAME:
             cred[i].result = strdup(authData->username);

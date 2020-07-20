@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -27,14 +27,8 @@
 
 #include "virsocketaddr.h"
 #include "testutils.h"
-#include "logging.h"
-#include "memory.h"
-
-static void testQuietError(void *userData ATTRIBUTE_UNUSED,
-                           virErrorPtr error ATTRIBUTE_UNUSED)
-{
-    /* nada */
-}
+#include "virlog.h"
+#include "viralloc.h"
 
 static int testParse(virSocketAddr *addr, const char *addrstr, int family, bool pass)
 {
@@ -157,6 +151,43 @@ static int testNetmaskHelper(const void *opaque)
     return testNetmask(data->addr1, data->addr2, data->netmask, data->pass);
 }
 
+static int testWildcard(const char *addrstr,
+                        bool pass)
+{
+    virSocketAddr addr;
+
+    if (virSocketAddrParse(&addr, addrstr, AF_UNSPEC) < 0)
+        return -1;
+
+    if (virSocketAddrIsWildcard(&addr))
+        return pass ? 0 : -1;
+    return pass ? -1 : 0;
+}
+
+struct testWildcardData {
+    const char *addr;
+    bool pass;
+};
+static int testWildcardHelper(const void *opaque)
+{
+    const struct testWildcardData *data = opaque;
+    return testWildcard(data->addr, data->pass);
+}
+
+struct testIsNumericData {
+    const char *addr;
+    bool pass;
+};
+
+static int
+testIsNumericHelper(const void *opaque)
+{
+    const struct testIsNumericData *data = opaque;
+
+    if (virSocketAddrIsNumeric(data->addr))
+        return data->pass ? 0 : -1;
+    return data->pass ? -1 : 0;
+}
 
 static int
 mymain(void)
@@ -166,8 +197,7 @@ mymain(void)
      * register a handler to stop error messages cluttering
      * up display
      */
-    if (!virTestGetDebug())
-        virSetErrorFunc(NULL, testQuietError);
+    virtTestQuiesceLibvirtErrors(false);
 
 #define DO_TEST_PARSE(addrstr, family, pass)                            \
     do {                                                                \
@@ -175,7 +205,7 @@ mymain(void)
         struct testParseData data = { &addr, addrstr, family, pass };   \
         memset(&addr, 0, sizeof(addr));                                 \
         if (virtTestRun("Test parse " addrstr,                          \
-                        1, testParseHelper, &data) < 0)                 \
+                        testParseHelper, &data) < 0)                    \
             ret = -1;                                                   \
     } while (0)
 
@@ -185,11 +215,25 @@ mymain(void)
         struct testParseData data = { &addr, addrstr, family, pass };   \
         memset(&addr, 0, sizeof(addr));                                 \
         if (virtTestRun("Test parse " addrstr " family " #family,       \
-                        1, testParseHelper, &data) < 0)                 \
+                        testParseHelper, &data) < 0)                    \
             ret = -1;                                                   \
         struct testFormatData data2 = { &addr, addrstr, pass };         \
         if (virtTestRun("Test format " addrstr " family " #family,      \
-                        1, testFormatHelper, &data2) < 0)               \
+                        testFormatHelper, &data2) < 0)                  \
+            ret = -1;                                                   \
+    } while (0)
+
+#define DO_TEST_PARSE_AND_CHECK_FORMAT(addrstr, addrformated, family, pass) \
+    do {                                                                \
+        virSocketAddr addr;                                             \
+        struct testParseData data = { &addr, addrstr, family, true};    \
+        memset(&addr, 0, sizeof(addr));                                 \
+        if (virtTestRun("Test parse " addrstr " family " #family,       \
+                        testParseHelper, &data) < 0)                    \
+            ret = -1;                                                   \
+        struct testFormatData data2 = { &addr, addrformated, pass };    \
+        if (virtTestRun("Test format " addrstr " family " #family,      \
+                        testFormatHelper, &data2) < 0)                  \
             ret = -1;                                                   \
     } while (0)
 
@@ -197,7 +241,7 @@ mymain(void)
     do {                                                                \
         struct testRangeData data = { saddr, eaddr, size, pass };       \
         if (virtTestRun("Test range " saddr " -> " eaddr " size " #size, \
-                        1, testRangeHelper, &data) < 0)                 \
+                        testRangeHelper, &data) < 0)                    \
             ret = -1;                                                   \
     } while (0)
 
@@ -205,7 +249,23 @@ mymain(void)
     do {                                                                \
         struct testNetmaskData data = { addr1, addr2, netmask, pass };  \
         if (virtTestRun("Test netmask " addr1 " + " addr2 " in " netmask, \
-                        1, testNetmaskHelper, &data) < 0)               \
+                        testNetmaskHelper, &data) < 0)                  \
+            ret = -1;                                                   \
+    } while (0)
+
+#define DO_TEST_WILDCARD(addr, pass)                                    \
+    do {                                                                \
+        struct testWildcardData data = { addr, pass};                   \
+        if (virtTestRun("Test wildcard " addr,                          \
+                        testWildcardHelper, &data) < 0)                 \
+            ret = -1;                                                   \
+    } while (0)
+
+#define DO_TEST_IS_NUMERIC(addr, pass)                                  \
+    do {                                                                \
+        struct testIsNumericData data = { addr, pass};                  \
+        if (virtTestRun("Test isNumeric " addr,                         \
+                       testIsNumericHelper, &data) < 0)                 \
             ret = -1;                                                   \
     } while (0)
 
@@ -215,6 +275,16 @@ mymain(void)
     DO_TEST_PARSE_AND_FORMAT("127.0.0.1", AF_INET6, false);
     DO_TEST_PARSE_AND_FORMAT("127.0.0.1", AF_UNIX, false);
     DO_TEST_PARSE_AND_FORMAT("127.0.0.256", AF_UNSPEC, false);
+
+    DO_TEST_PARSE_AND_CHECK_FORMAT("127.0.0.2", "127.0.0.2", AF_INET, true);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("127.0.0.2", "127.0.0.3", AF_INET, false);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("0", "0.0.0.0", AF_INET, true);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("127", "0.0.0.127", AF_INET, true);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("127", "127.0.0.0", AF_INET, false);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("127.2", "127.0.0.2", AF_INET, true);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("127.2", "127.2.0.0", AF_INET, false);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("1.2.3", "1.2.0.3", AF_INET, true);
+    DO_TEST_PARSE_AND_CHECK_FORMAT("1.2.3", "1.2.3.0", AF_INET, false);
 
     DO_TEST_PARSE_AND_FORMAT("::1", AF_UNSPEC, true);
     DO_TEST_PARSE_AND_FORMAT("::1", AF_INET, false);
@@ -251,6 +321,20 @@ mymain(void)
                     "ffff:ffff:ffff:ffff:ffff:ffff:fff8:0", true);
     DO_TEST_NETMASK("2000::1:1", "9000::1:1",
                     "ffff:ffff:ffff:ffff:ffff:ffff:ffff:0", false);
+
+    DO_TEST_WILDCARD("0.0.0.0", true);
+    DO_TEST_WILDCARD("::", true);
+    DO_TEST_WILDCARD("0", true);
+    DO_TEST_WILDCARD("0.0", true);
+    DO_TEST_WILDCARD("0.0.0", true);
+    DO_TEST_WILDCARD("1", false);
+    DO_TEST_WILDCARD("0.1", false);
+
+    DO_TEST_IS_NUMERIC("0.0.0.0", true);
+    DO_TEST_IS_NUMERIC("::", true);
+    DO_TEST_IS_NUMERIC("1", true);
+    DO_TEST_IS_NUMERIC("::ffff", true);
+    DO_TEST_IS_NUMERIC("examplehost", false);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

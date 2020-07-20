@@ -12,6 +12,9 @@
 #include "testutils.h"
 #include "node_device_conf.h"
 #include "testutilsqemu.h"
+#include "virstring.h"
+
+#define VIR_FROM_THIS VIR_FROM_NONE
 
 static int
 testCompareXMLToXMLFiles(const char *xml)
@@ -66,9 +69,9 @@ mymain(void)
 {
     int ret = 0;
 
-#define DO_TEST(name) \
-    if (virtTestRun("Node device XML-2-XML " name, \
-                    1, testCompareXMLToXMLHelper, (name)) < 0) \
+#define DO_TEST(name)                                           \
+    if (virtTestRun("Node device XML-2-XML " name,              \
+                    testCompareXMLToXMLHelper, (name)) < 0)     \
         ret = -1
 
     DO_TEST("computer");
@@ -77,6 +80,7 @@ mymain(void)
     DO_TEST("net_00_13_02_b9_f9_d3");
     DO_TEST("net_00_15_58_2f_e9_55");
     DO_TEST("pci_1002_71c4");
+    DO_TEST("pci_8086_10c9_sriov_pf");
     DO_TEST("pci_8086_27c5_scsi_host_0");
     DO_TEST("pci_8086_27c5_scsi_host_scsi_device_lun0");
     DO_TEST("pci_8086_27c5_scsi_host_scsi_host");

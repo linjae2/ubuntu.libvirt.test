@@ -2,6 +2,7 @@
 /*
  * vbox_MSCOMGlue.c: glue to the MSCOM based VirtualBox API
  *
+ * Copyright (C) 2013 Red Hat, Inc.
  * Copyright (C) 2010-2011 Matthias Bolte <matthias.bolte@googlemail.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -15,22 +16,26 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  */
 
 #include <config.h>
 
+#ifdef HAVE_WINSOCK2_H
+# include <winsock2.h>
+#endif
 #include <windows.h>
 
 #define nsCID CLSID
 
 #include "internal.h"
-#include "memory.h"
-#include "util.h"
-#include "logging.h"
-#include "virterror_internal.h"
+#include "viralloc.h"
+#include "virlog.h"
+#include "virerror.h"
+#include "virstring.h"
+#include "virutil.h"
 #include "vbox_MSCOMGlue.h"
 
 #define VIR_FROM_THIS VIR_FROM_VBOX
@@ -367,10 +372,8 @@ vboxLookupRegistryValue(HKEY key, const char *keyName, const char *valueName)
     }
 
     /* +1 for the null-terminator if it's missing */
-    if (VIR_ALLOC_N(value, length + 1) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC_N(value, length + 1) < 0)
         goto cleanup;
-    }
 
     status = RegQueryValueEx(key, valueName, NULL, NULL, (LPBYTE)value, &length);
 
@@ -529,10 +532,8 @@ vboxComInitialize_v2(const char *pszVirtualBoxIID, IVirtualBox **ppVirtualBox,
     CoInitialize(NULL);
 
     if (virAsprintf(&mbsVirtualBoxIID, "{%s}", pszVirtualBoxIID) < 0 ||
-        virAsprintf(&mbsSessionIID, "{%s}", pszSessionIID) < 0) {
-        virReportOOMError();
+        virAsprintf(&mbsSessionIID, "{%s}", pszSessionIID) < 0)
         goto cleanup;
-    }
 
     if (vboxUtf8ToUtf16(mbsVirtualBoxIID, &wcsVirtualBoxIID) < 0 ||
         vboxUtf8ToUtf16(mbsSessionIID, &wcsSessionIID) < 0) {

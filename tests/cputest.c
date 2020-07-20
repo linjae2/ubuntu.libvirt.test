@@ -1,7 +1,7 @@
 /*
  * cputest.c: Test the libvirtd internal CPU APIs
  *
- * Copyright (C) 2010-2012 Red Hat, Inc.
+ * Copyright (C) 2010-2013 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * Author: Jiri Denemark <jdenemar@redhat.com>
  */
@@ -31,13 +31,14 @@
 #include <fcntl.h>
 
 #include "internal.h"
-#include "xml.h"
-#include "memory.h"
-#include "buf.h"
+#include "virxml.h"
+#include "viralloc.h"
+#include "virbuffer.h"
 #include "testutils.h"
 #include "cpu_conf.h"
 #include "cpu/cpu.h"
 #include "cpu/cpu_map.h"
+#include "virstring.h"
 
 static const char *abs_top_srcdir;
 
@@ -74,6 +75,7 @@ struct data {
     const char *modelsName;
     unsigned int nmodels;
     const char *preferred;
+    unsigned int flags;
     int result;
 };
 
@@ -113,7 +115,7 @@ cpuTestLoadMultiXML(const char *arch,
     xmlNodePtr *nodes = NULL;
     virCPUDefPtr *cpus = NULL;
     int n;
-    int i;
+    size_t i;
 
     if (virAsprintf(&xml, "%s/cputestdata/%s-%s.xml", abs_srcdir, arch, name) < 0)
         goto cleanup;
@@ -151,7 +153,7 @@ cleanup_cpus:
 
 static int
 cpuTestCompareXML(const char *arch,
-                  const virCPUDefPtr cpu,
+                  virCPUDef *cpu,
                   const char *name,
                   unsigned int flags)
 {
@@ -260,7 +262,7 @@ cpuTestGuestData(const void *arg)
     virCPUDefPtr host = NULL;
     virCPUDefPtr cpu = NULL;
     virCPUDefPtr guest = NULL;
-    union cpuData *guestData = NULL;
+    virCPUDataPtr guestData = NULL;
     virCPUCompareResult cmpResult;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
     char *result = NULL;
@@ -274,9 +276,10 @@ cpuTestGuestData(const void *arg)
         cmpResult == VIR_CPU_COMPARE_INCOMPATIBLE)
         goto cleanup;
 
-    if (VIR_ALLOC(guest) < 0 || !(guest->arch = strdup(host->arch)))
+    if (VIR_ALLOC(guest) < 0)
         goto cleanup;
 
+    guest->arch = host->arch;
     guest->type = VIR_CPU_TYPE_GUEST;
     guest->match = VIR_CPU_MATCH_EXACT;
     guest->fallback = cpu->fallback;
@@ -306,8 +309,7 @@ cpuTestGuestData(const void *arg)
 
 cleanup:
     VIR_FREE(result);
-    if (host)
-        cpuDataFree(host->arch, guestData);
+    cpuDataFree(guestData);
     virCPUDefFree(host);
     virCPUDefFree(cpu);
     virCPUDefFree(guest);
@@ -324,12 +326,13 @@ cpuTestBaseline(const void *arg)
     virCPUDefPtr baseline = NULL;
     unsigned int ncpus = 0;
     char *result = NULL;
-    unsigned int i;
+    const char *suffix;
+    size_t i;
 
     if (!(cpus = cpuTestLoadMultiXML(data->arch, data->name, &ncpus)))
         goto cleanup;
 
-    baseline = cpuBaseline(cpus, ncpus, NULL, 0);
+    baseline = cpuBaseline(cpus, ncpus, NULL, 0, data->flags);
     if (data->result < 0) {
         virResetLastError();
         if (!baseline)
@@ -343,7 +346,11 @@ cpuTestBaseline(const void *arg)
     if (!baseline)
         goto cleanup;
 
-    if (virAsprintf(&result, "%s-result", data->name) < 0)
+    if (data->flags & VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES)
+        suffix = "expanded";
+    else
+        suffix = "result";
+    if (virAsprintf(&result, "%s-%s", data->name, suffix) < 0)
         goto cleanup;
 
     if (cpuTestCompareXML(data->arch, baseline, result, 0) < 0)
@@ -357,7 +364,7 @@ cpuTestBaseline(const void *arg)
             cmp != VIR_CPU_COMPARE_IDENTICAL) {
             if (virTestGetVerbose()) {
                 fprintf(stderr,
-                        "\nbaseline CPU is incompatible with CPU %u\n", i);
+                        "\nbaseline CPU is incompatible with CPU %zu\n", i);
                 fprintf(stderr, "%74s", "... ");
             }
             ret = -1;
@@ -415,7 +422,7 @@ cpuTestHasFeature(const void *arg)
     const struct data *data = arg;
     int ret = -1;
     virCPUDefPtr host = NULL;
-    union cpuData *hostData = NULL;
+    virCPUDataPtr hostData = NULL;
     int result;
 
     if (!(host = cpuTestLoadXML(data->arch, data->host)))
@@ -425,7 +432,7 @@ cpuTestHasFeature(const void *arg)
                   NULL, NULL, NULL, NULL) < 0)
         goto cleanup;
 
-    result = cpuHasFeature(host->arch, hostData, data->name);
+    result = cpuHasFeature(hostData, data->name);
     if (data->result == -1)
         virResetLastError();
 
@@ -443,8 +450,7 @@ cpuTestHasFeature(const void *arg)
     ret = 0;
 
 cleanup:
-    if (host)
-        cpuDataFree(host->arch, hostData);
+    cpuDataFree(hostData);
     virCPUDefFree(host);
     return ret;
 }
@@ -471,7 +477,7 @@ cpuTestRun(const char *name, const struct data *data)
     tmp = virtTestLogContentAndReset();
     VIR_FREE(tmp);
 
-    if (virtTestRun(label, 1, cpuTest[data->api], data) < 0) {
+    if (virtTestRun(label, cpuTest[data->api], data) < 0) {
         if (virTestGetDebug()) {
             char *log;
             if ((log = virtTestLogContentAndReset()) &&
@@ -492,6 +498,7 @@ cpuTestRun(const char *name, const struct data *data)
 static const char *model486[]   = { "486" };
 static const char *nomodel[]    = { "nomodel" };
 static const char *models[]     = { "qemu64", "core2duo", "Nehalem" };
+static const char *ppc_models[]     = { "POWER7", "POWER7_v2.1", "POWER8_v1.0"};
 
 static int
 mymain(void)
@@ -501,7 +508,7 @@ mymain(void)
 
     abs_top_srcdir = getenv("abs_top_srcdir");
     if (!abs_top_srcdir)
-        abs_top_srcdir = "..";
+        abs_top_srcdir = abs_srcdir "/..";
 
     if (virAsprintf(&map, "%s/src/cpu/cpu_map.xml", abs_top_srcdir) < 0 ||
         cpuMapOverride(map) < 0) {
@@ -510,12 +517,12 @@ mymain(void)
     }
 
 #define DO_TEST(arch, api, name, host, cpu,                             \
-                models, nmodels, preferred, result)                     \
+                models, nmodels, preferred, flags, result)              \
     do {                                                                \
         static struct data data = {                                     \
             arch, api, host, cpu, models,                               \
             models == NULL ? NULL : #models,                            \
-            nmodels, preferred, result    \
+            nmodels, preferred, flags, result                           \
         };                                                              \
         if (cpuTestRun(name, &data) < 0)                                \
             ret = -1;                                                   \
@@ -524,31 +531,42 @@ mymain(void)
 #define DO_TEST_COMPARE(arch, host, cpu, result)                        \
     DO_TEST(arch, API_COMPARE,                                          \
             host "/" cpu " (" #result ")",                              \
-            host, cpu, NULL, 0, NULL, result)
+            host, cpu, NULL, 0, NULL, 0, result)
 
 #define DO_TEST_UPDATE(arch, host, cpu, result)                         \
     do {                                                                \
         DO_TEST(arch, API_UPDATE,                                       \
                 cpu " on " host,                                        \
-                host, cpu, NULL, 0, NULL, 0);                           \
+                host, cpu, NULL, 0, NULL, 0, 0);                        \
         DO_TEST_COMPARE(arch, host, host "+" cpu, result);              \
     } while (0)
 
-#define DO_TEST_BASELINE(arch, name, result)                            \
-    DO_TEST(arch, API_BASELINE, name, NULL, "baseline-" name,           \
-            NULL, 0, NULL, result)
+#define DO_TEST_BASELINE(arch, name, flags, result)                     \
+    do {                                                                \
+        const char *suffix = "";                                        \
+        char *label;                                                    \
+        if ((flags) & VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES)         \
+            suffix = " (expanded)";                                     \
+        if (virAsprintf(&label, "%s%s", name, suffix) < 0) {            \
+            ret = -1;                                                   \
+        } else {                                                        \
+            DO_TEST(arch, API_BASELINE, label, NULL, "baseline-" name,  \
+                    NULL, 0, NULL, flags, result);                      \
+        }                                                               \
+        VIR_FREE(label);                                                \
+    } while (0)
 
 #define DO_TEST_HASFEATURE(arch, host, feature, result)                 \
     DO_TEST(arch, API_HAS_FEATURE,                                      \
             host "/" feature " (" #result ")",                          \
-            host, feature, NULL, 0, NULL, result)
+            host, feature, NULL, 0, NULL, 0, result)
 
 #define DO_TEST_GUESTDATA(arch, host, cpu, models, preferred, result)   \
     DO_TEST(arch, API_GUEST_DATA,                                       \
             host "/" cpu " (" #models ", pref=" #preferred ")",         \
             host, cpu, models,                                          \
             models == NULL ? 0 : sizeof(models) / sizeof(char *),       \
-            preferred, result)
+            preferred, 0, result)
 
     /* host to host comparison */
     DO_TEST_COMPARE("x86", "host", "host", VIR_CPU_COMPARE_IDENTICAL);
@@ -581,6 +599,10 @@ mymain(void)
     DO_TEST_COMPARE("x86", "host", "pentium3-amd", VIR_CPU_COMPARE_INCOMPATIBLE);
     DO_TEST_COMPARE("x86", "host-amd", "pentium3-amd", VIR_CPU_COMPARE_SUPERSET);
     DO_TEST_COMPARE("x86", "host-worse", "nehalem-force", VIR_CPU_COMPARE_IDENTICAL);
+    DO_TEST_COMPARE("x86", "host-SandyBridge", "exact-force-Haswell", VIR_CPU_COMPARE_IDENTICAL);
+
+    DO_TEST_COMPARE("ppc64", "host", "strict", VIR_CPU_COMPARE_IDENTICAL);
+    DO_TEST_COMPARE("ppc64", "host", "exact", VIR_CPU_COMPARE_INCOMPATIBLE);
 
     /* guest updates for migration
      * automatically compares host CPU with the result */
@@ -592,12 +614,20 @@ mymain(void)
     DO_TEST_UPDATE("x86", "host", "host-passthrough", VIR_CPU_COMPARE_IDENTICAL);
 
     /* computing baseline CPUs */
-    DO_TEST_BASELINE("x86", "incompatible-vendors", -1);
-    DO_TEST_BASELINE("x86", "no-vendor", 0);
-    DO_TEST_BASELINE("x86", "some-vendors", 0);
-    DO_TEST_BASELINE("x86", "1", 0);
-    DO_TEST_BASELINE("x86", "2", 0);
+    DO_TEST_BASELINE("x86", "incompatible-vendors", 0, -1);
+    DO_TEST_BASELINE("x86", "no-vendor", 0, 0);
+    DO_TEST_BASELINE("x86", "some-vendors", 0, 0);
+    DO_TEST_BASELINE("x86", "1", 0, 0);
+    DO_TEST_BASELINE("x86", "2", 0, 0);
+    DO_TEST_BASELINE("x86", "3", 0, 0);
+    DO_TEST_BASELINE("x86", "3", VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES, 0);
+    DO_TEST_BASELINE("x86", "4", 0, 0);
+    DO_TEST_BASELINE("x86", "4", VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES, 0);
+    DO_TEST_BASELINE("x86", "5", 0, 0);
+    DO_TEST_BASELINE("x86", "5", VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES, 0);
 
+    DO_TEST_BASELINE("ppc64", "incompatible-vendors", 0, -1);
+    DO_TEST_BASELINE("ppc64", "no-vendor", 0, 0);
     /* CPU features */
     DO_TEST_HASFEATURE("x86", "host", "vmx", YES);
     DO_TEST_HASFEATURE("x86", "host", "lm", YES);
@@ -623,6 +653,9 @@ mymain(void)
     DO_TEST_GUESTDATA("x86", "host", "host+host-model", models, "Penryn", 0);
     DO_TEST_GUESTDATA("x86", "host", "host+host-model-nofallback",
                       models, "Penryn", -1);
+
+    DO_TEST_GUESTDATA("ppc64", "host", "guest", ppc_models, NULL, 0);
+    DO_TEST_GUESTDATA("ppc64", "host", "guest-nofallback", ppc_models, "POWER7_v2.1", -1);
 
     VIR_FREE(map);
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

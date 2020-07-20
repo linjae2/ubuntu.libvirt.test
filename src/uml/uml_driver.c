@@ -1,7 +1,7 @@
 /*
  * uml_driver.c: core driver methods for managing UML guests
  *
- * Copyright (C) 2006-2012 Red Hat, Inc.
+ * Copyright (C) 2006-2014 Red Hat, Inc.
  * Copyright (C) 2006-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * License along with this library.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -38,7 +38,6 @@
 #include <signal.h>
 #include <paths.h>
 #include <pwd.h>
-#include <stdio.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 #include <sys/inotify.h>
@@ -46,18 +45,18 @@
 
 #include "uml_driver.h"
 #include "uml_conf.h"
-#include "buf.h"
-#include "util.h"
+#include "virbuffer.h"
 #include "nodeinfo.h"
-#include "stats_linux.h"
+#include "virstatslinux.h"
 #include "capabilities.h"
-#include "memory.h"
-#include "uuid.h"
+#include "viralloc.h"
+#include "viruuid.h"
 #include "domain_conf.h"
 #include "domain_audit.h"
 #include "datatypes.h"
-#include "logging.h"
+#include "virlog.h"
 #include "domain_nwfilter.h"
+#include "nwfilter_conf.h"
 #include "virfile.h"
 #include "fdstream.h"
 #include "configmake.h"
@@ -65,6 +64,8 @@
 #include "virnodesuspend.h"
 #include "virprocess.h"
 #include "viruri.h"
+#include "virstring.h"
+#include "viraccessapicheck.h"
 
 #define VIR_FROM_THIS VIR_FROM_UML
 
@@ -89,7 +90,7 @@ static int umlProcessAutoDestroyRemove(struct uml_driver *driver,
                                        virDomainObjPtr vm);
 
 
-static int umlShutdown(void);
+static int umlStateCleanup(void);
 
 static void *umlDomainObjPrivateAlloc(void)
 {
@@ -127,7 +128,7 @@ static int umlOpenMonitor(struct uml_driver *driver,
 static int umlReadPidFile(struct uml_driver *driver,
                           virDomainObjPtr vm);
 static void umlDomainEventQueue(struct uml_driver *driver,
-                                virDomainEventPtr event);
+                                virObjectEventPtr event);
 
 static int umlStartVMDaemon(virConnectPtr conn,
                             struct uml_driver *driver,
@@ -140,27 +141,51 @@ static void umlShutdownVMDaemon(struct uml_driver *driver,
 
 
 static int umlMonitorCommand(const struct uml_driver *driver,
-                             const virDomainObjPtr vm,
+                             const virDomainObj *vm,
                              const char *cmd,
                              char **reply);
 
 static struct uml_driver *uml_driver = NULL;
+
+static int
+umlVMFilterRebuild(virDomainObjListIterator iter, void *data)
+{
+    return virDomainObjListForEach(uml_driver->domains, iter, data);
+}
+
+static void
+umlVMDriverLock(void)
+{
+    umlDriverLock(uml_driver);
+}
+
+static void
+umlVMDriverUnlock(void)
+{
+    umlDriverUnlock(uml_driver);
+}
+
+static virNWFilterCallbackDriver umlCallbackDriver = {
+    .name = "UML",
+    .vmFilterRebuild = umlVMFilterRebuild,
+    .vmDriverLock = umlVMDriverLock,
+    .vmDriverUnlock = umlVMDriverUnlock,
+};
 
 struct umlAutostartData {
     struct uml_driver *driver;
     virConnectPtr conn;
 };
 
-static void
-umlAutostartDomain(void *payload, const void *name ATTRIBUTE_UNUSED, void *opaque)
+static int
+umlAutostartDomain(virDomainObjPtr vm,
+                   void *opaque)
 {
-    virDomainObjPtr vm = payload;
     const struct umlAutostartData *data = opaque;
-
-    virDomainObjLock(vm);
+    int ret = 0;
+    virObjectLock(vm);
     if (vm->autostart &&
         !virDomainObjIsActive(vm)) {
-        int ret;
         virResetLastError();
         ret = umlStartVMDaemon(data->conn, data->driver, vm, false);
         virDomainAuditStart(vm, "booted", ret >= 0);
@@ -169,15 +194,16 @@ umlAutostartDomain(void *payload, const void *name ATTRIBUTE_UNUSED, void *opaqu
             VIR_ERROR(_("Failed to autostart VM '%s': %s"),
                       vm->def->name, err ? err->message : _("unknown error"));
         } else {
-            virDomainEventPtr event =
-                virDomainEventNewFromObj(vm,
+            virObjectEventPtr event =
+                virDomainEventLifecycleNewFromObj(vm,
                                          VIR_DOMAIN_EVENT_STARTED,
                                          VIR_DOMAIN_EVENT_STARTED_BOOTED);
             if (event)
                 umlDomainEventQueue(data->driver, event);
         }
     }
-    virDomainObjUnlock(vm);
+    virObjectUnlock(vm);
+    return ret;
 }
 
 static void
@@ -195,11 +221,10 @@ umlAutostartConfigs(struct uml_driver *driver) {
     struct umlAutostartData data = { driver, conn };
 
     umlDriverLock(driver);
-    virHashForEach(driver->domains.objs, umlAutostartDomain, &data);
+    virDomainObjListForEach(driver->domains, umlAutostartDomain, &data);
     umlDriverUnlock(driver);
 
-    if (conn)
-        virConnectClose(conn);
+    virObjectUnref(conn);
 }
 
 
@@ -212,28 +237,26 @@ umlIdentifyOneChrPTY(struct uml_driver *driver,
     char *cmd;
     char *res = NULL;
     int retries = 0;
-    if (virAsprintf(&cmd, "config %s%d", dev, def->target.port) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "config %s%d", dev, def->target.port) < 0)
         return -1;
-    }
 requery:
     if (umlMonitorCommand(driver, dom, cmd, &res) < 0)
         return -1;
 
     if (res && STRPREFIX(res, "pts:")) {
         VIR_FREE(def->source.data.file.path);
-        if ((def->source.data.file.path = strdup(res + 4)) == NULL) {
-            virReportOOMError();
+        if (VIR_STRDUP(def->source.data.file.path, res + 4) < 0) {
             VIR_FREE(res);
             VIR_FREE(cmd);
             return -1;
         }
     } else if (!res || STRPREFIX(res, "pts")) {
         /* It can take a while to startup, so retry for
-           upto 5 seconds */
+           up to 5 seconds */
         /* XXX should do this in a better non-blocking
            way somehow ...perhaps register a timer */
         if (retries++ < 50) {
+            VIR_FREE(res);
             usleep(1000*10);
             goto requery;
         }
@@ -248,15 +271,15 @@ static int
 umlIdentifyChrPTY(struct uml_driver *driver,
                   virDomainObjPtr dom)
 {
-    int i;
+    size_t i;
 
-    for (i = 0 ; i < dom->def->nconsoles; i++)
+    for (i = 0; i < dom->def->nconsoles; i++)
         if (dom->def->consoles[i]->source.type == VIR_DOMAIN_CHR_TYPE_PTY)
         if (umlIdentifyOneChrPTY(driver, dom,
                                  dom->def->consoles[i], "con") < 0)
             return -1;
 
-    for (i = 0 ; i < dom->def->nserials; i++)
+    for (i = 0; i < dom->def->nserials; i++)
         if (dom->def->serials[i]->source.type == VIR_DOMAIN_CHR_TYPE_PTY &&
             umlIdentifyOneChrPTY(driver, dom,
                                  dom->def->serials[i], "ssl") < 0)
@@ -272,12 +295,12 @@ umlInotifyEvent(int watch,
                 void *data)
 {
     char buf[1024];
-    struct inotify_event *e;
+    struct inotify_event e;
     int got;
     char *tmp, *name;
     struct uml_driver *driver = data;
     virDomainObjPtr dom;
-    virDomainEventPtr event = NULL;
+    virObjectEventPtr event = NULL;
 
     umlDriverLock(driver);
     if (watch != driver->inotifyWatch)
@@ -293,57 +316,62 @@ reread:
 
     tmp = buf;
     while (got) {
-        if (got < sizeof(struct inotify_event))
+        if (got < sizeof(e))
             goto cleanup; /* bad */
 
-        e = (struct inotify_event *)tmp;
-        tmp += sizeof(struct inotify_event);
-        got -= sizeof(struct inotify_event);
+        memcpy(&e, tmp, sizeof(e));
+        tmp += sizeof(e);
+        got -= sizeof(e);
 
-        if (got < e->len)
+        if (got < e.len)
             goto cleanup;
 
-        tmp += e->len;
-        got -= e->len;
+        tmp += e.len;
+        got -= e.len;
 
-        name = (char *)&(e->name);
+        name = (char *)&(e.name);
 
-        dom = virDomainFindByName(&driver->domains, name);
+        dom = virDomainObjListFindByName(driver->domains, name);
 
         if (!dom) {
             continue;
         }
 
-        if (e->mask & IN_DELETE) {
+        if (e.mask & IN_DELETE) {
             VIR_DEBUG("Got inotify domain shutdown '%s'", name);
             if (!virDomainObjIsActive(dom)) {
-                virDomainObjUnlock(dom);
+                virObjectUnlock(dom);
                 continue;
             }
 
             umlShutdownVMDaemon(driver, dom, VIR_DOMAIN_SHUTOFF_SHUTDOWN);
             virDomainAuditStop(dom, "shutdown");
-            event = virDomainEventNewFromObj(dom,
+            event = virDomainEventLifecycleNewFromObj(dom,
                                              VIR_DOMAIN_EVENT_STOPPED,
                                              VIR_DOMAIN_EVENT_STOPPED_SHUTDOWN);
             if (!dom->persistent) {
-                virDomainRemoveInactive(&driver->domains,
-                                        dom);
+                virDomainObjListRemove(driver->domains,
+                                       dom);
                 dom = NULL;
             }
-        } else if (e->mask & (IN_CREATE | IN_MODIFY)) {
+        } else if (e.mask & (IN_CREATE | IN_MODIFY)) {
             VIR_DEBUG("Got inotify domain startup '%s'", name);
             if (virDomainObjIsActive(dom)) {
-                virDomainObjUnlock(dom);
+                virObjectUnlock(dom);
                 continue;
             }
 
             if (umlReadPidFile(driver, dom) < 0) {
-                virDomainObjUnlock(dom);
+                virObjectUnlock(dom);
                 continue;
             }
 
             dom->def->id = driver->nextvmid++;
+
+            if (!driver->nactive && driver->inhibitCallback)
+                driver->inhibitCallback(true, driver->inhibitOpaque);
+            driver->nactive++;
+
             virDomainObjSetState(dom, VIR_DOMAIN_RUNNING,
                                  VIR_DOMAIN_RUNNING_BOOTED);
 
@@ -352,12 +380,12 @@ reread:
                 umlShutdownVMDaemon(driver, dom,
                                     VIR_DOMAIN_SHUTOFF_FAILED);
                 virDomainAuditStop(dom, "failed");
-                event = virDomainEventNewFromObj(dom,
+                event = virDomainEventLifecycleNewFromObj(dom,
                                                  VIR_DOMAIN_EVENT_STOPPED,
                                                  VIR_DOMAIN_EVENT_STOPPED_FAILED);
                 if (!dom->persistent) {
-                    virDomainRemoveInactive(&driver->domains,
-                                            dom);
+                    virDomainObjListRemove(driver->domains,
+                                           dom);
                     dom = NULL;
                 }
             } else if (umlIdentifyChrPTY(driver, dom) < 0) {
@@ -365,25 +393,48 @@ reread:
                 umlShutdownVMDaemon(driver, dom,
                                     VIR_DOMAIN_SHUTOFF_FAILED);
                 virDomainAuditStop(dom, "failed");
-                event = virDomainEventNewFromObj(dom,
+                event = virDomainEventLifecycleNewFromObj(dom,
                                                  VIR_DOMAIN_EVENT_STOPPED,
                                                  VIR_DOMAIN_EVENT_STOPPED_FAILED);
                 if (!dom->persistent) {
-                    virDomainRemoveInactive(&driver->domains,
-                                            dom);
+                    virDomainObjListRemove(driver->domains,
+                                           dom);
                     dom = NULL;
                 }
             }
         }
         if (dom)
-            virDomainObjUnlock(dom);
+            virObjectUnlock(dom);
+        if (event) {
+            umlDomainEventQueue(driver, event);
+            event = NULL;
+        }
     }
 
 cleanup:
-    if (event)
-        umlDomainEventQueue(driver, event);
     umlDriverUnlock(driver);
 }
+
+
+static int
+umlDomainDeviceDefPostParse(virDomainDeviceDefPtr dev,
+                            const virDomainDef *def ATTRIBUTE_UNUSED,
+                            virCapsPtr caps ATTRIBUTE_UNUSED,
+                            void *opaque ATTRIBUTE_UNUSED)
+{
+    if (dev->type == VIR_DOMAIN_DEVICE_CHR &&
+        dev->data.chr->deviceType == VIR_DOMAIN_CHR_DEVICE_TYPE_CONSOLE &&
+        dev->data.chr->targetType == VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_NONE)
+        dev->data.chr->targetType = VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_UML;
+
+    return 0;
+}
+
+
+virDomainDefParserConfig umlDriverDomainDefParserConfig = {
+    .devicesPostParseCallback = umlDomainDeviceDefPostParse,
+};
+
 
 /**
  * umlStartup:
@@ -391,16 +442,24 @@ cleanup:
  * Initialization function for the Uml daemon
  */
 static int
-umlStartup(int privileged)
+umlStateInitialize(bool privileged,
+                   virStateInhibitCallback callback,
+                   void *opaque)
 {
-    uid_t uid = geteuid();
     char *base = NULL;
     char *userdir = NULL;
+
+    virDomainXMLPrivateDataCallbacks privcb = {
+        .alloc = umlDomainObjPrivateAlloc,
+        .free = umlDomainObjPrivateFree,
+    };
 
     if (VIR_ALLOC(uml_driver) < 0)
         return -1;
 
     uml_driver->privileged = privileged;
+    uml_driver->inhibitCallback = callback;
+    uml_driver->inhibitOpaque = opaque;
 
     if (virMutexInit(&uml_driver->lock) < 0) {
         VIR_FREE(uml_driver);
@@ -412,14 +471,14 @@ umlStartup(int privileged)
     uml_driver->nextvmid = 1;
     uml_driver->inotifyWatch = -1;
 
-    if (virDomainObjListInit(&uml_driver->domains) < 0)
+    if (!(uml_driver->domains = virDomainObjListNew()))
         goto error;
 
-    uml_driver->domainEventState = virDomainEventStateNew();
+    uml_driver->domainEventState = virObjectEventStateNew();
     if (!uml_driver->domainEventState)
         goto error;
 
-    userdir = virGetUserDirectory(uid);
+    userdir = virGetUserDirectory();
     if (!userdir)
         goto error;
 
@@ -428,19 +487,19 @@ umlStartup(int privileged)
                         "%s/log/libvirt/uml", LOCALSTATEDIR) == -1)
             goto out_of_memory;
 
-        if ((base = strdup (SYSCONFDIR "/libvirt")) == NULL)
-            goto out_of_memory;
+        if (VIR_STRDUP(base, SYSCONFDIR "/libvirt") < 0)
+            goto error;
 
         if (virAsprintf(&uml_driver->monitorDir,
                         "%s/run/libvirt/uml-guest", LOCALSTATEDIR) == -1)
             goto out_of_memory;
     } else {
+        base = virGetUserConfigDirectory();
+        if (!base)
+            goto error;
 
         if (virAsprintf(&uml_driver->logDir,
-                        "%s/.libvirt/uml/log", userdir) == -1)
-            goto out_of_memory;
-
-        if (virAsprintf(&base, "%s/.libvirt", userdir) == -1)
+                        "%s/uml/log", base) == -1)
             goto out_of_memory;
 
         if (virAsprintf(&uml_driver->monitorDir,
@@ -448,7 +507,7 @@ umlStartup(int privileged)
             goto out_of_memory;
     }
 
-    /* Configuration paths are either ~/.libvirt/uml/... (session) or
+    /* Configuration paths are either $XDG_CONFIG_HOME/libvirt/uml/... (session) or
      * /etc/libvirt/uml/... (system).
      */
     if (virAsprintf(&uml_driver->configDir, "%s/uml", base) == -1)
@@ -462,8 +521,9 @@ umlStartup(int privileged)
     if ((uml_driver->caps = umlCapsInit()) == NULL)
         goto out_of_memory;
 
-    uml_driver->caps->privateDataAllocFunc = umlDomainObjPrivateAlloc;
-    uml_driver->caps->privateDataFreeFunc = umlDomainObjPrivateFree;
+    if (!(uml_driver->xmlopt = virDomainXMLOptionNew(&umlDriverDomainDefParserConfig,
+                                                     &privcb, NULL)))
+        goto error;
 
     if ((uml_driver->inotifyFD = inotify_init()) < 0) {
         VIR_ERROR(_("cannot initialize inotify"));
@@ -473,7 +533,8 @@ umlStartup(int privileged)
     if (virFileMakePath(uml_driver->monitorDir) < 0) {
         char ebuf[1024];
         VIR_ERROR(_("Failed to create monitor directory %s: %s"),
-                  uml_driver->monitorDir, virStrerror(errno, ebuf, sizeof(ebuf)));
+                  uml_driver->monitorDir,
+                  virStrerror(errno, ebuf, sizeof(ebuf)));
         goto error;
     }
 
@@ -481,6 +542,10 @@ umlStartup(int privileged)
     if (inotify_add_watch(uml_driver->inotifyFD,
                           uml_driver->monitorDir,
                           IN_CREATE | IN_MODIFY | IN_DELETE) < 0) {
+        char ebuf[1024];
+        VIR_ERROR(_("Failed to create inotify watch on %s: %s"),
+                  uml_driver->monitorDir,
+                  virStrerror(errno, ebuf, sizeof(ebuf)));
         goto error;
     }
 
@@ -492,20 +557,20 @@ umlStartup(int privileged)
     if (umlProcessAutoDestroyInit(uml_driver) < 0)
         goto error;
 
-    if (virDomainLoadAllConfigs(uml_driver->caps,
-                                &uml_driver->domains,
-                                uml_driver->configDir,
-                                uml_driver->autostartDir,
-                                0, 1 << VIR_DOMAIN_VIRT_UML,
-                                NULL, NULL) < 0)
+    if (virDomainObjListLoadAllConfigs(uml_driver->domains,
+                                       uml_driver->configDir,
+                                       uml_driver->autostartDir, 0,
+                                       uml_driver->caps,
+                                       uml_driver->xmlopt,
+                                       1 << VIR_DOMAIN_VIRT_UML,
+                                       NULL, NULL) < 0)
         goto error;
 
     umlDriverUnlock(uml_driver);
 
-    umlAutostartConfigs(uml_driver);
-
     VIR_FREE(userdir);
 
+    virNWFilterRegisterCallbackDriver(&umlCallbackDriver);
     return 0;
 
 out_of_memory:
@@ -515,8 +580,22 @@ error:
     VIR_FREE(userdir);
     VIR_FREE(base);
     umlDriverUnlock(uml_driver);
-    umlShutdown();
+    umlStateCleanup();
     return -1;
+}
+
+/**
+ * umlStateAutoStart:
+ *
+ * Function to autostart the Uml daemons
+ */
+static void
+umlStateAutoStart(void)
+{
+    if (!uml_driver)
+        return;
+
+    umlAutostartConfigs(uml_driver);
 }
 
 static void umlNotifyLoadDomain(virDomainObjPtr vm, int newVM, void *opaque)
@@ -524,8 +603,8 @@ static void umlNotifyLoadDomain(virDomainObjPtr vm, int newVM, void *opaque)
     struct uml_driver *driver = opaque;
 
     if (newVM) {
-        virDomainEventPtr event =
-            virDomainEventNewFromObj(vm,
+        virObjectEventPtr event =
+            virDomainEventLifecycleNewFromObj(vm,
                                      VIR_DOMAIN_EVENT_DEFINED,
                                      VIR_DOMAIN_EVENT_DEFINED_ADDED);
         if (event)
@@ -535,89 +614,69 @@ static void umlNotifyLoadDomain(virDomainObjPtr vm, int newVM, void *opaque)
 
 
 /**
- * umlReload:
+ * umlStateReload:
  *
  * Function to restart the Uml daemon, it will recheck the configuration
  * files and update its state and the networking
  */
 static int
-umlReload(void) {
+umlStateReload(void) {
     if (!uml_driver)
         return 0;
 
     umlDriverLock(uml_driver);
-    virDomainLoadAllConfigs(uml_driver->caps,
-                            &uml_driver->domains,
-                            uml_driver->configDir,
-                            uml_driver->autostartDir,
-                            0, 1 << VIR_DOMAIN_VIRT_UML,
-                            umlNotifyLoadDomain, uml_driver);
+    virDomainObjListLoadAllConfigs(uml_driver->domains,
+                                   uml_driver->configDir,
+                                   uml_driver->autostartDir, 0,
+                                   uml_driver->caps,
+                                   uml_driver->xmlopt,
+                                   1 << VIR_DOMAIN_VIRT_UML,
+                                   umlNotifyLoadDomain, uml_driver);
     umlDriverUnlock(uml_driver);
-
-    umlAutostartConfigs(uml_driver);
 
     return 0;
 }
 
-/**
- * umlActive:
- *
- * Checks if the Uml daemon is active, i.e. has an active domain or
- * an active network
- *
- * Returns 1 if active, 0 otherwise
- */
+
 static int
-umlActive(void) {
-    int active = 0;
-
-    if (!uml_driver)
-        return 0;
-
-    umlDriverLock(uml_driver);
-    active = virDomainObjListNumOfDomains(&uml_driver->domains, 1);
-    umlDriverUnlock(uml_driver);
-
-    return active;
-}
-
-static void
-umlShutdownOneVM(void *payload, const void *name ATTRIBUTE_UNUSED, void *opaque)
+umlShutdownOneVM(virDomainObjPtr dom, void *opaque)
 {
-    virDomainObjPtr dom = payload;
     struct uml_driver *driver = opaque;
 
-    virDomainObjLock(dom);
+    virObjectLock(dom);
     if (virDomainObjIsActive(dom)) {
         umlShutdownVMDaemon(driver, dom, VIR_DOMAIN_SHUTOFF_SHUTDOWN);
         virDomainAuditStop(dom, "shutdown");
     }
-    virDomainObjUnlock(dom);
+    virObjectUnlock(dom);
+    return 0;
 }
 
 /**
- * umlShutdown:
+ * umlStateCleanup:
  *
  * Shutdown the Uml daemon, it will stop all active domains and networks
  */
 static int
-umlShutdown(void) {
+umlStateCleanup(void) {
     if (!uml_driver)
         return -1;
 
     umlDriverLock(uml_driver);
+    virNWFilterRegisterCallbackDriver(&umlCallbackDriver);
     if (uml_driver->inotifyWatch != -1)
         virEventRemoveHandle(uml_driver->inotifyWatch);
     VIR_FORCE_CLOSE(uml_driver->inotifyFD);
-    virCapabilitiesFree(uml_driver->caps);
+    virObjectUnref(uml_driver->caps);
+    virObjectUnref(uml_driver->xmlopt);
 
     /* shutdown active VMs
      * XXX allow them to stay around & reconnect */
-    virHashForEach(uml_driver->domains.objs, umlShutdownOneVM, uml_driver);
+    virDomainObjListForEach(uml_driver->domains, umlShutdownOneVM, uml_driver);
 
-    virDomainObjListDeinit(&uml_driver->domains);
+    virObjectUnref(uml_driver->domains);
 
-    virDomainEventStateFree(uml_driver->domainEventState);
+    virObjectEventStateFree(uml_driver->domainEventState);
 
     VIR_FREE(uml_driver->logDir);
     VIR_FREE(uml_driver->configDir);
@@ -656,7 +715,7 @@ static void umlProcessAutoDestroyDom(void *payload,
     const char *uuidstr = name;
     unsigned char uuid[VIR_UUID_BUFLEN];
     virDomainObjPtr dom;
-    virDomainEventPtr event = NULL;
+    virObjectEventPtr event = NULL;
 
     VIR_DEBUG("conn=%p uuidstr=%s thisconn=%p", conn, uuidstr, data->conn);
 
@@ -668,8 +727,8 @@ static void umlProcessAutoDestroyDom(void *payload,
         return;
     }
 
-    if (!(dom = virDomainFindByUUID(&data->driver->domains,
-                                    uuid))) {
+    if (!(dom = virDomainObjListFindByUUID(data->driver->domains,
+                                           uuid))) {
         VIR_DEBUG("No domain object to kill");
         return;
     }
@@ -677,15 +736,15 @@ static void umlProcessAutoDestroyDom(void *payload,
     VIR_DEBUG("Killing domain");
     umlShutdownVMDaemon(data->driver, dom, VIR_DOMAIN_SHUTOFF_DESTROYED);
     virDomainAuditStop(dom, "destroyed");
-    event = virDomainEventNewFromObj(dom,
+    event = virDomainEventLifecycleNewFromObj(dom,
                                      VIR_DOMAIN_EVENT_STOPPED,
                                      VIR_DOMAIN_EVENT_STOPPED_DESTROYED);
 
     if (dom && !dom->persistent)
-        virDomainRemoveInactive(&data->driver->domains, dom);
+        virDomainObjListRemove(data->driver->domains, dom);
 
     if (dom)
-        virDomainObjUnlock(dom);
+        virObjectUnlock(dom);
     if (event)
         umlDomainEventQueue(data->driver, event);
     virHashRemoveEntry(data->driver->autodestroy, uuidstr);
@@ -742,10 +801,8 @@ static int umlReadPidFile(struct uml_driver *driver,
 
     vm->pid = -1;
     if (virAsprintf(&pidfile, "%s/%s/pid",
-                    driver->monitorDir, vm->def->name) < 0) {
-        virReportOOMError();
+                    driver->monitorDir, vm->def->name) < 0)
         return -1;
-    }
 
 reopen:
     if (!(file = fopen(pidfile, "r"))) {
@@ -778,21 +835,20 @@ reopen:
 }
 
 static int umlMonitorAddress(const struct uml_driver *driver,
-                             virDomainObjPtr vm,
-                             struct sockaddr_un *addr) {
+                             const virDomainObj *vm,
+                             struct sockaddr_un *addr)
+{
     char *sockname;
     int retval = 0;
 
     if (virAsprintf(&sockname, "%s/%s/mconsole",
-                    driver->monitorDir, vm->def->name) < 0) {
-        virReportOOMError();
+                    driver->monitorDir, vm->def->name) < 0)
         return -1;
-    }
 
     memset(addr, 0, sizeof(*addr));
     addr->sun_family = AF_UNIX;
     if (virStrcpyStatic(addr->sun_path, sockname) == NULL) {
-        umlReportError(VIR_ERR_INTERNAL_ERROR,
+        virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Unix path %s too long for destination"), sockname);
         retval = -1;
     }
@@ -862,7 +918,7 @@ struct monitor_response {
 
 
 static int umlMonitorCommand(const struct uml_driver *driver,
-                             const virDomainObjPtr vm,
+                             const virDomainObj *vm,
                              const char *cmd,
                              char **reply)
 {
@@ -892,7 +948,7 @@ static int umlMonitorCommand(const struct uml_driver *driver,
         return -1;
     }
     if (virStrcpyStatic(req.data, cmd) == NULL) {
-        umlReportError(VIR_ERR_INTERNAL_ERROR,
+        virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Command %s too long for destination"), cmd);
         return -1;
     }
@@ -923,10 +979,8 @@ static int umlMonitorCommand(const struct uml_driver *driver,
             goto error;
         }
 
-        if (VIR_REALLOC_N(retdata, retlen + res.length) < 0) {
-            virReportOOMError();
+        if (VIR_REALLOC_N(retdata, retlen + res.length) < 0)
             goto error;
-        }
         memcpy(retdata + retlen, res.data, res.length);
         retlen += res.length - 1;
         retdata[retlen] = '\0';
@@ -952,9 +1006,9 @@ error:
 
 
 static void umlCleanupTapDevices(virDomainObjPtr vm) {
-    int i;
+    size_t i;
 
-    for (i = 0 ; i < vm->def->nnets ; i++) {
+    for (i = 0; i < vm->def->nnets; i++) {
         virDomainNetDefPtr def = vm->def->nets[i];
 
         if (def->type != VIR_DOMAIN_NET_TYPE_BRIDGE &&
@@ -977,13 +1031,13 @@ static int umlStartVMDaemon(virConnectPtr conn,
     size_t i;
 
     if (virDomainObjIsActive(vm)) {
-        umlReportError(VIR_ERR_OPERATION_INVALID, "%s",
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
                        _("VM is already active"));
         return -1;
     }
 
     if (!vm->def->os.kernel) {
-        umlReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("no kernel specified"));
         return -1;
     }
@@ -1006,10 +1060,8 @@ static int umlStartVMDaemon(virConnectPtr conn,
     }
 
     if (virAsprintf(&logfile, "%s/%s.log",
-                    driver->logDir, vm->def->name) < 0) {
-        virReportOOMError();
+                    driver->logDir, vm->def->name) < 0)
         return -1;
-    }
 
     if ((logfd = open(logfile, O_CREAT | O_TRUNC | O_WRONLY,
                       S_IRUSR | S_IWUSR)) < 0) {
@@ -1033,7 +1085,8 @@ static int umlStartVMDaemon(virConnectPtr conn,
      * report implicit runtime defaults in the XML, like vnc listen/socket
      */
     VIR_DEBUG("Setting current domain def as transient");
-    if (virDomainObjSetDefTransient(driver->caps, vm, true) < 0) {
+    if (virDomainObjSetDefTransient(driver->caps, driver->xmlopt,
+                                    vm, true) < 0) {
         VIR_FORCE_CLOSE(logfd);
         return -1;
     }
@@ -1041,12 +1094,10 @@ static int umlStartVMDaemon(virConnectPtr conn,
     if (!(cmd = umlBuildCommandLine(conn, driver, vm)))
         goto cleanup;
 
-    for (i = 0 ; i < vm->def->nconsoles ; i++) {
+    for (i = 0; i < vm->def->nconsoles; i++) {
         VIR_FREE(vm->def->consoles[i]->info.alias);
-        if (virAsprintf(&vm->def->consoles[i]->info.alias, "console%zu", i) < 0) {
-            virReportOOMError();
+        if (virAsprintf(&vm->def->consoles[i]->info.alias, "console%zu", i) < 0)
             goto cleanup;
-        }
     }
 
     virCommandWriteArgLog(cmd, logfd);
@@ -1066,7 +1117,7 @@ static int umlStartVMDaemon(virConnectPtr conn,
         (ret = umlProcessAutoDestroyAdd(driver, vm, conn)) < 0)
         goto cleanup;
 
-    ret = virDomainObjSetDefTransient(driver->caps, vm, false);
+    ret = virDomainObjSetDefTransient(driver->caps, driver->xmlopt, vm, false);
 cleanup:
     VIR_FORCE_CLOSE(logfd);
     virCommandFree(cmd);
@@ -1127,12 +1178,16 @@ static void umlShutdownVMDaemon(struct uml_driver *driver,
         vm->def->id = -1;
         vm->newDef = NULL;
     }
+
+    driver->nactive--;
+    if (!driver->nactive && driver->inhibitCallback)
+        driver->inhibitCallback(false, driver->inhibitOpaque);
 }
 
 
-static virDrvOpenStatus umlOpen(virConnectPtr conn,
-                                virConnectAuthPtr auth ATTRIBUTE_UNUSED,
-                                unsigned int flags)
+static virDrvOpenStatus umlConnectOpen(virConnectPtr conn,
+                                       virConnectAuthPtr auth ATTRIBUTE_UNUSED,
+                                       unsigned int flags)
 {
     virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
 
@@ -1146,7 +1201,7 @@ static virDrvOpenStatus umlOpen(virConnectPtr conn,
             return VIR_DRV_OPEN_ERROR;
     } else {
         if (conn->uri->scheme == NULL ||
-            STRNEQ (conn->uri->scheme, "uml"))
+            STRNEQ(conn->uri->scheme, "uml"))
             return VIR_DRV_OPEN_DECLINED;
 
         /* Allow remote driver to deal with URIs with hostname server */
@@ -1156,16 +1211,16 @@ static virDrvOpenStatus umlOpen(virConnectPtr conn,
 
         /* Check path and tell them correct path if they made a mistake */
         if (uml_driver->privileged) {
-            if (STRNEQ (conn->uri->path, "/system") &&
-                STRNEQ (conn->uri->path, "/session")) {
-                umlReportError(VIR_ERR_INTERNAL_ERROR,
+            if (STRNEQ(conn->uri->path, "/system") &&
+                STRNEQ(conn->uri->path, "/session")) {
+                virReportError(VIR_ERR_INTERNAL_ERROR,
                                _("unexpected UML URI path '%s', try uml:///system"),
                                conn->uri->path);
                 return VIR_DRV_OPEN_ERROR;
             }
         } else {
-            if (STRNEQ (conn->uri->path, "/session")) {
-                umlReportError(VIR_ERR_INTERNAL_ERROR,
+            if (STRNEQ(conn->uri->path, "/session")) {
+                virReportError(VIR_ERR_INTERNAL_ERROR,
                                _("unexpected UML URI path '%s', try uml:///session"),
                                conn->uri->path);
                 return VIR_DRV_OPEN_ERROR;
@@ -1174,23 +1229,24 @@ static virDrvOpenStatus umlOpen(virConnectPtr conn,
 
         /* URI was good, but driver isn't active */
         if (uml_driver == NULL) {
-            umlReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("uml state driver is not active"));
             return VIR_DRV_OPEN_ERROR;
         }
     }
+
+    if (virConnectOpenEnsureACL(conn) < 0)
+        return VIR_DRV_OPEN_ERROR;
 
     conn->privateData = uml_driver;
 
     return VIR_DRV_OPEN_SUCCESS;
 }
 
-static int umlClose(virConnectPtr conn) {
+static int umlConnectClose(virConnectPtr conn) {
     struct uml_driver *driver = conn->privateData;
 
     umlDriverLock(driver);
-    virDomainEventStateDeregisterConn(conn,
-                                      driver->domainEventState);
     umlProcessAutoDestroyRun(driver, conn);
     umlDriverUnlock(driver);
 
@@ -1199,34 +1255,40 @@ static int umlClose(virConnectPtr conn) {
     return 0;
 }
 
-static const char *umlGetType(virConnectPtr conn ATTRIBUTE_UNUSED) {
+static const char *umlConnectGetType(virConnectPtr conn) {
+    if (virConnectGetTypeEnsureACL(conn) < 0)
+        return NULL;
+
     return "UML";
 }
 
 
-static int umlIsSecure(virConnectPtr conn ATTRIBUTE_UNUSED)
+static int umlConnectIsSecure(virConnectPtr conn ATTRIBUTE_UNUSED)
 {
     /* Trivially secure, since always inside the daemon */
     return 1;
 }
 
 
-static int umlIsEncrypted(virConnectPtr conn ATTRIBUTE_UNUSED)
+static int umlConnectIsEncrypted(virConnectPtr conn ATTRIBUTE_UNUSED)
 {
     /* Not encrypted, but remote driver takes care of that */
     return 0;
 }
 
 
-static int umlIsAlive(virConnectPtr conn ATTRIBUTE_UNUSED)
+static int umlConnectIsAlive(virConnectPtr conn ATTRIBUTE_UNUSED)
 {
     return 1;
 }
 
 
-static char *umlGetCapabilities(virConnectPtr conn) {
+static char *umlConnectGetCapabilities(virConnectPtr conn) {
     struct uml_driver *driver = (struct uml_driver *)conn->privateData;
     char *xml;
+
+    if (virConnectGetCapabilitiesEnsureACL(conn) < 0)
+        return NULL;
 
     umlDriverLock(driver);
     if ((xml = virCapabilitiesFormatXML(driver->caps)) == NULL)
@@ -1285,20 +1347,23 @@ static virDomainPtr umlDomainLookupByID(virConnectPtr conn,
     virDomainPtr dom = NULL;
 
     umlDriverLock(driver);
-    vm = virDomainFindByID(&driver->domains, id);
+    vm = virDomainObjListFindByID(driver->domains, id);
     umlDriverUnlock(driver);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, NULL);
+        virReportError(VIR_ERR_NO_DOMAIN, NULL);
         goto cleanup;
     }
+
+    if (virDomainLookupByIDEnsureACL(conn, vm->def) < 0)
+        goto cleanup;
 
     dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
     if (dom) dom->id = vm->def->id;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return dom;
 }
 
@@ -1309,20 +1374,23 @@ static virDomainPtr umlDomainLookupByUUID(virConnectPtr conn,
     virDomainPtr dom = NULL;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, NULL);
+        virReportError(VIR_ERR_NO_DOMAIN, NULL);
         goto cleanup;
     }
+
+    if (virDomainLookupByUUIDEnsureACL(conn, vm->def) < 0)
+        goto cleanup;
 
     dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
     if (dom) dom->id = vm->def->id;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return dom;
 }
 
@@ -1333,20 +1401,23 @@ static virDomainPtr umlDomainLookupByName(virConnectPtr conn,
     virDomainPtr dom = NULL;
 
     umlDriverLock(driver);
-    vm = virDomainFindByName(&driver->domains, name);
+    vm = virDomainObjListFindByName(driver->domains, name);
     umlDriverUnlock(driver);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, NULL);
+        virReportError(VIR_ERR_NO_DOMAIN, NULL);
         goto cleanup;
     }
+
+    if (virDomainLookupByNameEnsureACL(conn, vm->def) < 0)
+        goto cleanup;
 
     dom = virGetDomain(conn, vm->def->name, vm->def->uuid);
     if (dom) dom->id = vm->def->id;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return dom;
 }
 
@@ -1358,17 +1429,21 @@ static int umlDomainIsActive(virDomainPtr dom)
     int ret = -1;
 
     umlDriverLock(driver);
-    obj = virDomainFindByUUID(&driver->domains, dom->uuid);
+    obj = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
     if (!obj) {
-        umlReportError(VIR_ERR_NO_DOMAIN, NULL);
+        virReportError(VIR_ERR_NO_DOMAIN, NULL);
         goto cleanup;
     }
+
+    if (virDomainIsActiveEnsureACL(dom->conn, obj->def) < 0)
+        goto cleanup;
+
     ret = virDomainObjIsActive(obj);
 
 cleanup:
     if (obj)
-        virDomainObjUnlock(obj);
+        virObjectUnlock(obj);
     return ret;
 }
 
@@ -1380,17 +1455,21 @@ static int umlDomainIsPersistent(virDomainPtr dom)
     int ret = -1;
 
     umlDriverLock(driver);
-    obj = virDomainFindByUUID(&driver->domains, dom->uuid);
+    obj = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
     if (!obj) {
-        umlReportError(VIR_ERR_NO_DOMAIN, NULL);
+        virReportError(VIR_ERR_NO_DOMAIN, NULL);
         goto cleanup;
     }
+
+    if (virDomainIsPersistentEnsureACL(dom->conn, obj->def) < 0)
+        goto cleanup;
+
     ret = obj->persistent;
 
 cleanup:
     if (obj)
-        virDomainObjUnlock(obj);
+        virObjectUnlock(obj);
     return ret;
 }
 
@@ -1401,24 +1480,31 @@ static int umlDomainIsUpdated(virDomainPtr dom)
     int ret = -1;
 
     umlDriverLock(driver);
-    obj = virDomainFindByUUID(&driver->domains, dom->uuid);
+    obj = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
     if (!obj) {
-        umlReportError(VIR_ERR_NO_DOMAIN, NULL);
+        virReportError(VIR_ERR_NO_DOMAIN, NULL);
         goto cleanup;
     }
+
+    if (virDomainIsUpdatedEnsureACL(dom->conn, obj->def) < 0)
+        goto cleanup;
+
     ret = obj->updated;
 
 cleanup:
     if (obj)
-        virDomainObjUnlock(obj);
+        virObjectUnlock(obj);
     return ret;
 }
 
-static int umlGetVersion(virConnectPtr conn, unsigned long *version) {
+static int umlConnectGetVersion(virConnectPtr conn, unsigned long *version) {
     struct uml_driver *driver = conn->privateData;
     struct utsname ut;
     int ret = -1;
+
+    if (virConnectGetVersionEnsureACL(conn) < 0)
+        return -1;
 
     umlDriverLock(driver);
 
@@ -1426,7 +1512,7 @@ static int umlGetVersion(virConnectPtr conn, unsigned long *version) {
         uname(&ut);
 
         if (virParseVersionString(ut.release, &driver->umlVersion, true) < 0) {
-            umlReportError(VIR_ERR_INTERNAL_ERROR,
+            virReportError(VIR_ERR_INTERNAL_ERROR,
                            _("cannot parse version %s"), ut.release);
             goto cleanup;
         }
@@ -1440,61 +1526,81 @@ cleanup:
     return ret;
 }
 
-static int umlListDomains(virConnectPtr conn, int *ids, int nids) {
+
+static char *umlConnectGetHostname(virConnectPtr conn)
+{
+    if (virConnectGetHostnameEnsureACL(conn) < 0)
+        return NULL;
+
+    return virGetHostname();
+}
+
+
+static int umlConnectListDomains(virConnectPtr conn, int *ids, int nids) {
     struct uml_driver *driver = conn->privateData;
     int n;
 
+    if (virConnectListDomainsEnsureACL(conn) < 0)
+        return -1;
+
     umlDriverLock(driver);
-    n = virDomainObjListGetActiveIDs(&driver->domains, ids, nids);
+    n = virDomainObjListGetActiveIDs(driver->domains, ids, nids,
+                                     virConnectListDomainsCheckACL, conn);
     umlDriverUnlock(driver);
 
     return n;
 }
-static int umlNumDomains(virConnectPtr conn) {
+static int umlConnectNumOfDomains(virConnectPtr conn) {
     struct uml_driver *driver = conn->privateData;
     int n;
 
+    if (virConnectNumOfDomainsEnsureACL(conn) < 0)
+        return -1;
+
     umlDriverLock(driver);
-    n = virDomainObjListNumOfDomains(&driver->domains, 1);
+    n = virDomainObjListNumOfDomains(driver->domains, true,
+                                     virConnectNumOfDomainsCheckACL, conn);
     umlDriverUnlock(driver);
 
     return n;
 }
-static virDomainPtr umlDomainCreate(virConnectPtr conn, const char *xml,
-                                      unsigned int flags) {
+static virDomainPtr umlDomainCreateXML(virConnectPtr conn, const char *xml,
+                                       unsigned int flags) {
     struct uml_driver *driver = conn->privateData;
     virDomainDefPtr def;
     virDomainObjPtr vm = NULL;
     virDomainPtr dom = NULL;
-    virDomainEventPtr event = NULL;
+    virObjectEventPtr event = NULL;
 
     virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, NULL);
 
+    virNWFilterReadLockFilterUpdates();
     umlDriverLock(driver);
-    if (!(def = virDomainDefParseString(driver->caps, xml,
+    if (!(def = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
                                         1 << VIR_DOMAIN_VIRT_UML,
                                         VIR_DOMAIN_XML_INACTIVE)))
         goto cleanup;
 
-    if (virDomainObjIsDuplicate(&driver->domains, def, 1) < 0)
+    if (virDomainCreateXMLEnsureACL(conn, def) < 0)
         goto cleanup;
 
-    if (!(vm = virDomainAssignDef(driver->caps,
-                                  &driver->domains,
-                                  def, false)))
+    if (!(vm = virDomainObjListAdd(driver->domains, def,
+                                   driver->xmlopt,
+                                   VIR_DOMAIN_OBJ_LIST_ADD_CHECK_LIVE,
+                                   NULL)))
         goto cleanup;
     def = NULL;
 
     if (umlStartVMDaemon(conn, driver, vm,
                          (flags & VIR_DOMAIN_START_AUTODESTROY)) < 0) {
         virDomainAuditStart(vm, "booted", false);
-        virDomainRemoveInactive(&driver->domains,
-                                vm);
+        virDomainObjListRemove(driver->domains,
+                               vm);
         vm = NULL;
         goto cleanup;
     }
     virDomainAuditStart(vm, "booted", true);
-    event = virDomainEventNewFromObj(vm,
+    event = virDomainEventLifecycleNewFromObj(vm,
                                      VIR_DOMAIN_EVENT_STARTED,
                                      VIR_DOMAIN_EVENT_STARTED_BOOTED);
 
@@ -1504,10 +1610,11 @@ static virDomainPtr umlDomainCreate(virConnectPtr conn, const char *xml,
 cleanup:
     virDomainDefFree(def);
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     if (event)
         umlDomainEventQueue(driver, event);
     umlDriverUnlock(driver);
+    virNWFilterUnlockFilterUpdates();
     return dom;
 }
 
@@ -1522,17 +1629,20 @@ static int umlDomainShutdownFlags(virDomainPtr dom,
     virCheckFlags(0, -1);
 
     umlDriverLock(driver);
-    vm = virDomainFindByID(&driver->domains, dom->id);
+    vm = virDomainObjListFindByID(driver->domains, dom->id);
     umlDriverUnlock(driver);
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching id %d"), dom->id);
         goto cleanup;
     }
 
+    if (virDomainShutdownFlagsEnsureACL(dom->conn, vm->def, flags) < 0)
+        goto cleanup;
+
 #if 0
     if (umlMonitorCommand(driver, vm, "system_powerdown", &info) < 0) {
-        umlReportError(VIR_ERR_OPERATION_FAILED, "%s",
+        virReportError(VIR_ERR_OPERATION_FAILED, "%s",
                        _("shutdown operation failed"));
         goto cleanup;
     }
@@ -1542,7 +1652,7 @@ static int umlDomainShutdownFlags(virDomainPtr dom,
 cleanup:
     VIR_FREE(info);
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
@@ -1558,34 +1668,37 @@ umlDomainDestroyFlags(virDomainPtr dom,
 {
     struct uml_driver *driver = dom->conn->privateData;
     virDomainObjPtr vm;
-    virDomainEventPtr event = NULL;
+    virObjectEventPtr event = NULL;
     int ret = -1;
 
     virCheckFlags(0, -1);
 
     umlDriverLock(driver);
-    vm = virDomainFindByID(&driver->domains, dom->id);
+    vm = virDomainObjListFindByID(driver->domains, dom->id);
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching id %d"), dom->id);
         goto cleanup;
     }
 
+    if (virDomainDestroyFlagsEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     umlShutdownVMDaemon(driver, vm, VIR_DOMAIN_SHUTOFF_DESTROYED);
     virDomainAuditStop(vm, "destroyed");
-    event = virDomainEventNewFromObj(vm,
+    event = virDomainEventLifecycleNewFromObj(vm,
                                      VIR_DOMAIN_EVENT_STOPPED,
                                      VIR_DOMAIN_EVENT_STOPPED_DESTROYED);
     if (!vm->persistent) {
-        virDomainRemoveInactive(&driver->domains,
-                                vm);
+        virDomainObjListRemove(driver->domains,
+                               vm);
         vm = NULL;
     }
     ret = 0;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     if (event)
         umlDomainEventQueue(driver, event);
     umlDriverUnlock(driver);
@@ -1605,20 +1718,23 @@ static char *umlDomainGetOSType(virDomainPtr dom) {
     char *type = NULL;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
 
-    if (!(type = strdup(vm->def->os.type)))
-        virReportOOMError();
+    if (virDomainGetOSTypeEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
+    if (VIR_STRDUP(type, vm->def->os.type) < 0)
+        goto cleanup;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return type;
 }
 
@@ -1631,22 +1747,26 @@ umlDomainGetMaxMemory(virDomainPtr dom)
     unsigned long long ret = 0;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
         char uuidstr[VIR_UUID_STRING_BUFLEN];
 
         virUUIDFormat(dom->uuid, uuidstr);
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
+
+    if (virDomainGetMaxMemoryEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     ret = vm->def->mem.max_balloon;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
@@ -1656,20 +1776,23 @@ static int umlDomainSetMaxMemory(virDomainPtr dom, unsigned long newmax) {
     int ret = -1;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
         char uuidstr[VIR_UUID_STRING_BUFLEN];
 
         virUUIDFormat(dom->uuid, uuidstr);
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
 
+    if (virDomainSetMaxMemoryEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (newmax < vm->def->mem.cur_balloon) {
-        umlReportError(VIR_ERR_INVALID_ARG, "%s",
+        virReportError(VIR_ERR_INVALID_ARG, "%s",
                        _("cannot set max memory lower than current memory"));
         goto cleanup;
     }
@@ -1679,7 +1802,7 @@ static int umlDomainSetMaxMemory(virDomainPtr dom, unsigned long newmax) {
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
@@ -1689,26 +1812,29 @@ static int umlDomainSetMemory(virDomainPtr dom, unsigned long newmem) {
     int ret = -1;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
         char uuidstr[VIR_UUID_STRING_BUFLEN];
 
         virUUIDFormat(dom->uuid, uuidstr);
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
 
+    if (virDomainSetMemoryEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (virDomainObjIsActive(vm)) {
-        umlReportError(VIR_ERR_OPERATION_INVALID, "%s",
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
                        _("cannot set memory of an active domain"));
         goto cleanup;
     }
 
     if (newmem > vm->def->mem.max_balloon) {
-        umlReportError(VIR_ERR_INVALID_ARG, "%s",
+        virReportError(VIR_ERR_INVALID_ARG, "%s",
                        _("cannot set memory higher than max memory"));
         goto cleanup;
     }
@@ -1718,7 +1844,7 @@ static int umlDomainSetMemory(virDomainPtr dom, unsigned long newmem) {
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
@@ -1729,14 +1855,17 @@ static int umlDomainGetInfo(virDomainPtr dom,
     int ret = -1;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
+
+    if (virDomainGetInfoEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
 
     info->state = virDomainObjGetState(vm, NULL);
 
@@ -1744,7 +1873,7 @@ static int umlDomainGetInfo(virDomainPtr dom,
         info->cpuTime = 0;
     } else {
         if (umlGetProcessInfo(&(info->cpuTime), vm->pid) < 0) {
-            umlReportError(VIR_ERR_OPERATION_FAILED, "%s",
+            virReportError(VIR_ERR_OPERATION_FAILED, "%s",
                            _("cannot read cputime for domain"));
             goto cleanup;
         }
@@ -1757,7 +1886,7 @@ static int umlDomainGetInfo(virDomainPtr dom,
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
@@ -1775,21 +1904,24 @@ umlDomainGetState(virDomainPtr dom,
     virCheckFlags(0, -1);
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
+
+    if (virDomainGetStateEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
 
     *state = virDomainObjGetState(vm, reason);
     ret = 0;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
@@ -1804,14 +1936,17 @@ static char *umlDomainGetXMLDesc(virDomainPtr dom,
     /* Flags checked by virDomainDefFormat */
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
+
+    if (virDomainGetXMLDescEnsureACL(dom->conn, vm->def, flags) < 0)
+        goto cleanup;
 
     ret = virDomainDefFormat((flags & VIR_DOMAIN_XML_INACTIVE) && vm->newDef ?
                              vm->newDef : vm->def,
@@ -1819,99 +1954,112 @@ static char *umlDomainGetXMLDesc(virDomainPtr dom,
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
 
-static int umlListDefinedDomains(virConnectPtr conn,
-                            char **const names, int nnames) {
+static int umlConnectListDefinedDomains(virConnectPtr conn,
+                                        char **const names, int nnames) {
     struct uml_driver *driver = conn->privateData;
     int n;
 
+    if (virConnectListDefinedDomainsEnsureACL(conn) < 0)
+        return -1;
+
     umlDriverLock(driver);
-    n = virDomainObjListGetInactiveNames(&driver->domains, names, nnames);
+    n = virDomainObjListGetInactiveNames(driver->domains, names, nnames,
+                                         virConnectListDefinedDomainsCheckACL, conn);
     umlDriverUnlock(driver);
 
     return n;
 }
 
-static int umlNumDefinedDomains(virConnectPtr conn) {
+static int umlConnectNumOfDefinedDomains(virConnectPtr conn) {
     struct uml_driver *driver = conn->privateData;
     int n;
 
+    if (virConnectNumOfDefinedDomainsEnsureACL(conn) < 0)
+        return -1;
+
     umlDriverLock(driver);
-    n = virDomainObjListNumOfDomains(&driver->domains, 0);
+    n = virDomainObjListNumOfDomains(driver->domains, false,
+                                     virConnectNumOfDefinedDomainsCheckACL, conn);
     umlDriverUnlock(driver);
 
     return n;
 }
 
 
-static int umlDomainStartWithFlags(virDomainPtr dom, unsigned int flags) {
+static int umlDomainCreateWithFlags(virDomainPtr dom, unsigned int flags) {
     struct uml_driver *driver = dom->conn->privateData;
     virDomainObjPtr vm;
-    virDomainEventPtr event = NULL;
+    virObjectEventPtr event = NULL;
     int ret = -1;
 
     virCheckFlags(VIR_DOMAIN_START_AUTODESTROY, -1);
 
+    virNWFilterReadLockFilterUpdates();
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
+
+    if (virDomainCreateWithFlagsEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
 
     ret = umlStartVMDaemon(dom->conn, driver, vm,
                            (flags & VIR_DOMAIN_START_AUTODESTROY));
     virDomainAuditStart(vm, "booted", ret >= 0);
     if (ret == 0)
-        event = virDomainEventNewFromObj(vm,
+        event = virDomainEventLifecycleNewFromObj(vm,
                                          VIR_DOMAIN_EVENT_STARTED,
                                          VIR_DOMAIN_EVENT_STARTED_BOOTED);
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     if (event)
         umlDomainEventQueue(driver, event);
     umlDriverUnlock(driver);
+    virNWFilterUnlockFilterUpdates();
     return ret;
 }
 
-static int umlDomainStart(virDomainPtr dom) {
-    return umlDomainStartWithFlags(dom, 0);
+static int umlDomainCreate(virDomainPtr dom) {
+    return umlDomainCreateWithFlags(dom, 0);
 }
 
-static virDomainPtr umlDomainDefine(virConnectPtr conn, const char *xml) {
+static virDomainPtr umlDomainDefineXML(virConnectPtr conn, const char *xml) {
     struct uml_driver *driver = conn->privateData;
     virDomainDefPtr def;
     virDomainObjPtr vm = NULL;
     virDomainPtr dom = NULL;
 
     umlDriverLock(driver);
-    if (!(def = virDomainDefParseString(driver->caps, xml,
+    if (!(def = virDomainDefParseString(xml, driver->caps, driver->xmlopt,
                                         1 << VIR_DOMAIN_VIRT_UML,
                                         VIR_DOMAIN_XML_INACTIVE)))
         goto cleanup;
 
-    if (virDomainObjIsDuplicate(&driver->domains, def, 0) < 0)
+    if (virDomainDefineXMLEnsureACL(conn, def) < 0)
         goto cleanup;
 
-    if (!(vm = virDomainAssignDef(driver->caps,
-                                  &driver->domains,
-                                  def, false)))
+    if (!(vm = virDomainObjListAdd(driver->domains, def,
+                                   driver->xmlopt,
+                                   0, NULL)))
         goto cleanup;
     def = NULL;
     vm->persistent = 1;
 
     if (virDomainSaveConfig(driver->configDir,
                             vm->newDef ? vm->newDef : vm->def) < 0) {
-        virDomainRemoveInactive(&driver->domains,
-                                vm);
+        virDomainObjListRemove(driver->domains,
+                               vm);
         vm = NULL;
         goto cleanup;
     }
@@ -1922,7 +2070,7 @@ static virDomainPtr umlDomainDefine(virConnectPtr conn, const char *xml) {
 cleanup:
     virDomainDefFree(def);
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     umlDriverUnlock(driver);
     return dom;
 }
@@ -1937,15 +2085,18 @@ static int umlDomainUndefineFlags(virDomainPtr dom,
     virCheckFlags(0, -1);
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
 
+    if (virDomainUndefineFlagsEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (!vm->persistent) {
-        umlReportError(VIR_ERR_OPERATION_INVALID, "%s",
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
                        _("cannot undefine transient domain"));
         goto cleanup;
     }
@@ -1956,7 +2107,7 @@ static int umlDomainUndefineFlags(virDomainPtr dom,
     if (virDomainObjIsActive(vm)) {
         vm->persistent = 0;
     } else {
-        virDomainRemoveInactive(&driver->domains, vm);
+        virDomainObjListRemove(driver->domains, vm);
         vm = NULL;
     }
 
@@ -1964,7 +2115,7 @@ static int umlDomainUndefineFlags(virDomainPtr dom,
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     umlDriverUnlock(driver);
     return ret;
 }
@@ -1979,36 +2130,32 @@ static int umlDomainAttachUmlDisk(struct uml_driver *driver,
                                   virDomainObjPtr vm,
                                   virDomainDiskDefPtr disk)
 {
-    int i;
+    size_t i;
     char *cmd = NULL;
     char *reply = NULL;
 
-    for (i = 0 ; i < vm->def->ndisks ; i++) {
+    for (i = 0; i < vm->def->ndisks; i++) {
         if (STREQ(vm->def->disks[i]->dst, disk->dst)) {
-            umlReportError(VIR_ERR_OPERATION_FAILED,
+            virReportError(VIR_ERR_OPERATION_FAILED,
                            _("target %s already exists"), disk->dst);
             return -1;
         }
     }
 
     if (!disk->src) {
-        umlReportError(VIR_ERR_INTERNAL_ERROR,
+        virReportError(VIR_ERR_INTERNAL_ERROR,
                        "%s", _("disk source path is missing"));
         goto error;
     }
 
-    if (virAsprintf(&cmd, "config %s=%s", disk->dst, disk->src) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "config %s=%s", disk->dst, disk->src) < 0)
         return -1;
-    }
 
     if (umlMonitorCommand(driver, vm, cmd, &reply) < 0)
         goto error;
 
-    if (VIR_REALLOC_N(vm->def->disks, vm->def->ndisks+1) < 0) {
-        virReportOOMError();
+    if (VIR_REALLOC_N(vm->def->disks, vm->def->ndisks+1) < 0)
         goto error;
-    }
 
     virDomainDiskInsertPreAlloced(vm->def, disk);
 
@@ -2035,22 +2182,25 @@ static int umlDomainAttachDevice(virDomainPtr dom, const char *xml)
 
     umlDriverLock(driver);
 
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     if (!vm) {
         char uuidstr[VIR_UUID_STRING_BUFLEN];
         virUUIDFormat(dom->uuid, uuidstr);
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
 
+    if (virDomainAttachDeviceEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (!virDomainObjIsActive(vm)) {
-        umlReportError(VIR_ERR_OPERATION_INVALID,
+        virReportError(VIR_ERR_OPERATION_INVALID,
                        "%s", _("cannot attach device on inactive domain"));
         goto cleanup;
     }
 
-    dev = virDomainDeviceDefParse(driver->caps, vm->def, xml,
+    dev = virDomainDeviceDefParse(xml, vm->def, driver->caps, driver->xmlopt,
                                   VIR_DOMAIN_XML_INACTIVE);
 
     if (dev == NULL)
@@ -2062,12 +2212,12 @@ static int umlDomainAttachDevice(virDomainPtr dom, const char *xml)
             if (ret == 0)
                 dev->data.disk = NULL;
         } else {
-            umlReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                            _("disk bus '%s' cannot be hotplugged."),
                            virDomainDiskBusTypeToString(dev->data.disk->bus));
         }
     } else {
-        umlReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                        _("device type '%s' cannot be attached"),
                        virDomainDeviceTypeToString(dev->type));
         goto cleanup;
@@ -2077,7 +2227,7 @@ cleanup:
 
     virDomainDeviceDefFree(dev);
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     umlDriverUnlock(driver);
     return ret;
 }
@@ -2091,7 +2241,7 @@ umlDomainAttachDeviceFlags(virDomainPtr dom,
     virCheckFlags(VIR_DOMAIN_AFFECT_LIVE | VIR_DOMAIN_AFFECT_CONFIG, -1);
 
     if (flags & VIR_DOMAIN_AFFECT_CONFIG) {
-        umlReportError(VIR_ERR_OPERATION_INVALID,
+        virReportError(VIR_ERR_OPERATION_INVALID,
                        "%s", _("cannot modify the persistent configuration of a domain"));
         return -1;
     }
@@ -2104,29 +2254,28 @@ static int umlDomainDetachUmlDisk(struct uml_driver *driver,
                                   virDomainObjPtr vm,
                                   virDomainDeviceDefPtr dev)
 {
-    int i, ret = -1;
+    size_t i;
+    int ret = -1;
     virDomainDiskDefPtr detach = NULL;
     char *cmd;
     char *reply;
 
-    for (i = 0 ; i < vm->def->ndisks ; i++) {
+    for (i = 0; i < vm->def->ndisks; i++) {
         if (STREQ(vm->def->disks[i]->dst, dev->data.disk->dst)) {
             break;
         }
     }
 
     if (i == vm->def->ndisks) {
-        umlReportError(VIR_ERR_OPERATION_FAILED,
+        virReportError(VIR_ERR_OPERATION_FAILED,
                        _("disk %s not found"), dev->data.disk->dst);
         return -1;
     }
 
     detach = vm->def->disks[i];
 
-    if (virAsprintf(&cmd, "remove %s", detach->dst) < 0) {
-        virReportOOMError();
+    if (virAsprintf(&cmd, "remove %s", detach->dst) < 0)
         return -1;
-    }
 
     if (umlMonitorCommand(driver, vm, cmd, &reply) < 0)
         goto cleanup;
@@ -2153,22 +2302,25 @@ static int umlDomainDetachDevice(virDomainPtr dom, const char *xml) {
     int ret = -1;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     if (!vm) {
         char uuidstr[VIR_UUID_STRING_BUFLEN];
         virUUIDFormat(dom->uuid, uuidstr);
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
 
+    if (virDomainDetachDeviceEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (!virDomainObjIsActive(vm)) {
-        umlReportError(VIR_ERR_OPERATION_INVALID,
+        virReportError(VIR_ERR_OPERATION_INVALID,
                        "%s", _("cannot detach device on inactive domain"));
         goto cleanup;
     }
 
-    dev = virDomainDeviceDefParse(driver->caps, vm->def, xml,
+    dev = virDomainDeviceDefParse(xml, vm->def, driver->caps, driver->xmlopt,
                                   VIR_DOMAIN_XML_INACTIVE);
     if (dev == NULL)
         goto cleanup;
@@ -2178,18 +2330,18 @@ static int umlDomainDetachDevice(virDomainPtr dom, const char *xml) {
         if (dev->data.disk->bus == VIR_DOMAIN_DISK_BUS_UML)
             ret = umlDomainDetachUmlDisk(driver, vm, dev);
         else {
-            umlReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                            _("This type of disk cannot be hot unplugged"));
         }
     } else {
-        umlReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                        "%s", _("This type of device cannot be hot unplugged"));
     }
 
 cleanup:
     virDomainDeviceDefFree(dev);
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     umlDriverUnlock(driver);
     return ret;
 }
@@ -2203,7 +2355,7 @@ umlDomainDetachDeviceFlags(virDomainPtr dom,
     virCheckFlags(VIR_DOMAIN_AFFECT_LIVE | VIR_DOMAIN_AFFECT_CONFIG, -1);
 
     if (flags & VIR_DOMAIN_AFFECT_CONFIG) {
-        umlReportError(VIR_ERR_OPERATION_INVALID,
+        virReportError(VIR_ERR_OPERATION_INVALID,
                        "%s", _("cannot modify the persistent configuration of a domain"));
         return -1;
     }
@@ -2219,20 +2371,23 @@ static int umlDomainGetAutostart(virDomainPtr dom,
     int ret = -1;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
+
+    if (virDomainGetAutostartEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
 
     *autostart = vm->autostart;
     ret = 0;
 
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     umlDriverUnlock(driver);
     return ret;
 }
@@ -2245,16 +2400,19 @@ static int umlDomainSetAutostart(virDomainPtr dom,
     int ret = -1;
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
 
+    if (virDomainSetAutostartEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (!vm->persistent) {
-        umlReportError(VIR_ERR_OPERATION_INVALID, "%s",
+        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
                        _("cannot set autostart for transient domain"));
         goto cleanup;
     }
@@ -2298,7 +2456,7 @@ cleanup:
     VIR_FREE(configFile);
     VIR_FREE(autostartLink);
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     umlDriverUnlock(driver);
     return ret;
 }
@@ -2319,24 +2477,27 @@ umlDomainBlockPeek(virDomainPtr dom,
     virCheckFlags(0, -1);
 
     umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     umlDriverUnlock(driver);
 
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
+        virReportError(VIR_ERR_NO_DOMAIN, "%s",
                        _("no domain with matching uuid"));
         goto cleanup;
     }
 
+    if (virDomainBlockPeekEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (!path || path[0] == '\0') {
-        umlReportError(VIR_ERR_INVALID_ARG, "%s",
+        virReportError(VIR_ERR_INVALID_ARG, "%s",
                        _("NULL or empty path"));
         goto cleanup;
     }
 
     /* Check the path belongs to this domain. */
     if (!(actual = virDomainDiskPathByName(vm->def, path))) {
-        umlReportError(VIR_ERR_INVALID_ARG,
+        virReportError(VIR_ERR_INVALID_ARG,
                        _("invalid path '%s'"), path);
         goto cleanup;
     }
@@ -2366,7 +2527,7 @@ umlDomainBlockPeek(virDomainPtr dom,
 cleanup:
     VIR_FORCE_CLOSE(fd);
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     return ret;
 }
 
@@ -2388,21 +2549,24 @@ umlDomainOpenConsole(virDomainPtr dom,
 
     umlDriverLock(driver);
     virUUIDFormat(dom->uuid, uuidstr);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
+    vm = virDomainObjListFindByUUID(driver->domains, dom->uuid);
     if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN,
+        virReportError(VIR_ERR_NO_DOMAIN,
                        _("no domain with matching uuid '%s'"), uuidstr);
         goto cleanup;
     }
 
+    if (virDomainOpenConsoleEnsureACL(dom->conn, vm->def) < 0)
+        goto cleanup;
+
     if (!virDomainObjIsActive(vm)) {
-        umlReportError(VIR_ERR_OPERATION_INVALID,
+        virReportError(VIR_ERR_OPERATION_INVALID,
                         "%s", _("domain is not running"));
         goto cleanup;
     }
 
     if (dev_name) {
-        for (i = 0 ; i < vm->def->nconsoles ; i++) {
+        for (i = 0; i < vm->def->nconsoles; i++) {
             if (vm->def->consoles[i]->info.alias &&
                 STREQ(vm->def->consoles[i]->info.alias, dev_name)) {
                 chr = vm->def->consoles[i];
@@ -2417,14 +2581,14 @@ umlDomainOpenConsole(virDomainPtr dom,
     }
 
     if (!chr) {
-        umlReportError(VIR_ERR_INTERNAL_ERROR,
+        virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("cannot find console device '%s'"),
                        dev_name ? dev_name : _("default"));
         goto cleanup;
     }
 
     if (chr->source.type != VIR_DOMAIN_CHR_TYPE_PTY) {
-        umlReportError(VIR_ERR_INTERNAL_ERROR,
+        virReportError(VIR_ERR_INTERNAL_ERROR,
                         _("character device %s is not using a PTY"), dev_name);
         goto cleanup;
     }
@@ -2436,56 +2600,67 @@ umlDomainOpenConsole(virDomainPtr dom,
     ret = 0;
 cleanup:
     if (vm)
-        virDomainObjUnlock(vm);
+        virObjectUnlock(vm);
     umlDriverUnlock(driver);
     return ret;
 }
 
 
 static int
-umlDomainEventRegister(virConnectPtr conn,
-                       virConnectDomainEventCallback callback,
-                       void *opaque,
-                       virFreeCallback freecb)
+umlConnectDomainEventRegister(virConnectPtr conn,
+                              virConnectDomainEventCallback callback,
+                              void *opaque,
+                              virFreeCallback freecb)
 {
     struct uml_driver *driver = conn->privateData;
-    int ret;
+    int ret = 0;
+
+    if (virConnectDomainEventRegisterEnsureACL(conn) < 0)
+        return -1;
 
     umlDriverLock(driver);
-    ret = virDomainEventStateRegister(conn,
+    if (virDomainEventStateRegister(conn,
+                                    driver->domainEventState,
+                                    callback, opaque, freecb) < 0)
+        ret = -1;
+    umlDriverUnlock(driver);
+
+    return ret;
+}
+
+static int
+umlConnectDomainEventDeregister(virConnectPtr conn,
+                                virConnectDomainEventCallback callback)
+{
+    struct uml_driver *driver = conn->privateData;
+    int ret = 0;
+
+    if (virConnectDomainEventDeregisterEnsureACL(conn) < 0)
+        return -1;
+
+    umlDriverLock(driver);
+    if (virDomainEventStateDeregister(conn,
                                       driver->domainEventState,
-                                      callback, opaque, freecb);
+                                      callback) < 0)
+        ret = -1;
     umlDriverUnlock(driver);
 
     return ret;
 }
 
 static int
-umlDomainEventDeregister(virConnectPtr conn,
-                         virConnectDomainEventCallback callback)
+umlConnectDomainEventRegisterAny(virConnectPtr conn,
+                                 virDomainPtr dom,
+                                 int eventID,
+                                 virConnectDomainEventGenericCallback callback,
+                                 void *opaque,
+                                 virFreeCallback freecb)
 {
     struct uml_driver *driver = conn->privateData;
     int ret;
 
-    umlDriverLock(driver);
-    ret = virDomainEventStateDeregister(conn,
-                                        driver->domainEventState,
-                                        callback);
-    umlDriverUnlock(driver);
-
-    return ret;
-}
-
-static int
-umlDomainEventRegisterAny(virConnectPtr conn,
-                          virDomainPtr dom,
-                          int eventID,
-                          virConnectDomainEventGenericCallback callback,
-                          void *opaque,
-                          virFreeCallback freecb)
-{
-    struct uml_driver *driver = conn->privateData;
-    int ret;
+    if (virConnectDomainEventRegisterAnyEnsureACL(conn) < 0)
+        return -1;
 
     umlDriverLock(driver);
     if (virDomainEventStateRegisterID(conn,
@@ -2500,16 +2675,20 @@ umlDomainEventRegisterAny(virConnectPtr conn,
 
 
 static int
-umlDomainEventDeregisterAny(virConnectPtr conn,
-                            int callbackID)
+umlConnectDomainEventDeregisterAny(virConnectPtr conn,
+                                   int callbackID)
 {
     struct uml_driver *driver = conn->privateData;
-    int ret;
+    int ret = 0;
+
+    if (virConnectDomainEventDeregisterAnyEnsureACL(conn) < 0)
+        return -1;
 
     umlDriverLock(driver);
-    ret = virDomainEventStateDeregisterID(conn,
-                                          driver->domainEventState,
-                                          callbackID);
+    if (virObjectEventStateDeregisterID(conn,
+                                        driver->domainEventState,
+                                        callbackID) < 0)
+        ret = -1;
     umlDriverUnlock(driver);
 
     return ret;
@@ -2518,26 +2697,160 @@ umlDomainEventDeregisterAny(virConnectPtr conn,
 
 /* driver must be locked before calling */
 static void umlDomainEventQueue(struct uml_driver *driver,
-                                virDomainEventPtr event)
+                                virObjectEventPtr event)
 {
-    virDomainEventStateQueue(driver->domainEventState, event);
+    virObjectEventStateQueue(driver->domainEventState, event);
 }
 
+static int umlConnectListAllDomains(virConnectPtr conn,
+                                    virDomainPtr **domains,
+                                    unsigned int flags)
+{
+    struct uml_driver *driver = conn->privateData;
+    int ret = -1;
+
+    virCheckFlags(VIR_CONNECT_LIST_DOMAINS_FILTERS_ALL, -1);
+
+    if (virConnectListAllDomainsEnsureACL(conn) < 0)
+        return -1;
+
+    umlDriverLock(driver);
+    ret = virDomainObjListExport(driver->domains, conn, domains,
+                                 virConnectListAllDomainsCheckACL, flags);
+    umlDriverUnlock(driver);
+
+    return ret;
+}
+
+
+static int
+umlNodeGetInfo(virConnectPtr conn,
+               virNodeInfoPtr nodeinfo)
+{
+    if (virNodeGetInfoEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeGetInfo(nodeinfo);
+}
+
+
+static int
+umlNodeGetCPUStats(virConnectPtr conn,
+                   int cpuNum,
+                   virNodeCPUStatsPtr params,
+                   int *nparams,
+                   unsigned int flags)
+{
+    if (virNodeGetCPUStatsEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeGetCPUStats(cpuNum, params, nparams, flags);
+}
+
+
+static int
+umlNodeGetMemoryStats(virConnectPtr conn,
+                      int cellNum,
+                      virNodeMemoryStatsPtr params,
+                      int *nparams,
+                      unsigned int flags)
+{
+    if (virNodeGetMemoryStatsEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeGetMemoryStats(cellNum, params, nparams, flags);
+}
+
+
+static int
+umlNodeGetCellsFreeMemory(virConnectPtr conn,
+                          unsigned long long *freeMems,
+                          int startCell,
+                          int maxCells)
+{
+    if (virNodeGetCellsFreeMemoryEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeGetCellsFreeMemory(freeMems, startCell, maxCells);
+}
+
+
+static unsigned long long
+umlNodeGetFreeMemory(virConnectPtr conn)
+{
+    if (virNodeGetFreeMemoryEnsureACL(conn) < 0)
+        return 0;
+
+    return nodeGetFreeMemory();
+}
+
+
+static int
+umlNodeGetMemoryParameters(virConnectPtr conn,
+                           virTypedParameterPtr params,
+                           int *nparams,
+                           unsigned int flags)
+{
+    if (virNodeGetMemoryParametersEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeGetMemoryParameters(params, nparams, flags);
+}
+
+
+static int
+umlNodeSetMemoryParameters(virConnectPtr conn,
+                           virTypedParameterPtr params,
+                           int nparams,
+                           unsigned int flags)
+{
+    if (virNodeSetMemoryParametersEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeSetMemoryParameters(params, nparams, flags);
+}
+
+
+static int
+umlNodeGetCPUMap(virConnectPtr conn,
+                 unsigned char **cpumap,
+                 unsigned int *online,
+                 unsigned int flags)
+{
+    if (virNodeGetCPUMapEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeGetCPUMap(cpumap, online, flags);
+}
+
+
+static int
+umlNodeSuspendForDuration(virConnectPtr conn,
+                          unsigned int target,
+                          unsigned long long duration,
+                          unsigned int flags)
+{
+    if (virNodeSuspendForDurationEnsureACL(conn) < 0)
+        return -1;
+
+    return nodeSuspendForDuration(target, duration, flags);
+}
 
 
 static virDriver umlDriver = {
     .no = VIR_DRV_UML,
     .name = "UML",
-    .open = umlOpen, /* 0.5.0 */
-    .close = umlClose, /* 0.5.0 */
-    .type = umlGetType, /* 0.5.0 */
-    .version = umlGetVersion, /* 0.5.0 */
-    .getHostname = virGetHostname, /* 0.5.0 */
-    .nodeGetInfo = nodeGetInfo, /* 0.5.0 */
-    .getCapabilities = umlGetCapabilities, /* 0.5.0 */
-    .listDomains = umlListDomains, /* 0.5.0 */
-    .numOfDomains = umlNumDomains, /* 0.5.0 */
-    .domainCreateXML = umlDomainCreate, /* 0.5.0 */
+    .connectOpen = umlConnectOpen, /* 0.5.0 */
+    .connectClose = umlConnectClose, /* 0.5.0 */
+    .connectGetType = umlConnectGetType, /* 0.5.0 */
+    .connectGetVersion = umlConnectGetVersion, /* 0.5.0 */
+    .connectGetHostname = umlConnectGetHostname, /* 0.5.0 */
+    .nodeGetInfo = umlNodeGetInfo, /* 0.5.0 */
+    .connectGetCapabilities = umlConnectGetCapabilities, /* 0.5.0 */
+    .connectListDomains = umlConnectListDomains, /* 0.5.0 */
+    .connectNumOfDomains = umlConnectNumOfDomains, /* 0.5.0 */
+    .connectListAllDomains = umlConnectListAllDomains, /* 0.9.13 */
+    .domainCreateXML = umlDomainCreateXML, /* 0.5.0 */
     .domainLookupByID = umlDomainLookupByID, /* 0.5.0 */
     .domainLookupByUUID = umlDomainLookupByUUID, /* 0.5.0 */
     .domainLookupByName = umlDomainLookupByName, /* 0.5.0 */
@@ -2552,11 +2865,11 @@ static virDriver umlDriver = {
     .domainGetInfo = umlDomainGetInfo, /* 0.5.0 */
     .domainGetState = umlDomainGetState, /* 0.9.2 */
     .domainGetXMLDesc = umlDomainGetXMLDesc, /* 0.5.0 */
-    .listDefinedDomains = umlListDefinedDomains, /* 0.5.0 */
-    .numOfDefinedDomains = umlNumDefinedDomains, /* 0.5.0 */
-    .domainCreate = umlDomainStart, /* 0.5.0 */
-    .domainCreateWithFlags = umlDomainStartWithFlags, /* 0.8.2 */
-    .domainDefineXML = umlDomainDefine, /* 0.5.0 */
+    .connectListDefinedDomains = umlConnectListDefinedDomains, /* 0.5.0 */
+    .connectNumOfDefinedDomains = umlConnectNumOfDefinedDomains, /* 0.5.0 */
+    .domainCreate = umlDomainCreate, /* 0.5.0 */
+    .domainCreateWithFlags = umlDomainCreateWithFlags, /* 0.8.2 */
+    .domainDefineXML = umlDomainDefineXML, /* 0.5.0 */
     .domainUndefine = umlDomainUndefine, /* 0.5.0 */
     .domainUndefineFlags = umlDomainUndefineFlags, /* 0.9.4 */
     .domainAttachDevice = umlDomainAttachDevice, /* 0.8.4 */
@@ -2566,63 +2879,37 @@ static virDriver umlDriver = {
     .domainGetAutostart = umlDomainGetAutostart, /* 0.5.0 */
     .domainSetAutostart = umlDomainSetAutostart, /* 0.5.0 */
     .domainBlockPeek = umlDomainBlockPeek, /* 0.5.0 */
-    .nodeGetCPUStats = nodeGetCPUStats, /* 0.9.3 */
-    .nodeGetMemoryStats = nodeGetMemoryStats, /* 0.9.3 */
-    .nodeGetCellsFreeMemory = nodeGetCellsFreeMemory, /* 0.5.0 */
-    .nodeGetFreeMemory = nodeGetFreeMemory, /* 0.5.0 */
-    .domainEventRegister = umlDomainEventRegister, /* 0.9.4 */
-    .domainEventDeregister = umlDomainEventDeregister, /* 0.9.4 */
-    .isEncrypted = umlIsEncrypted, /* 0.7.3 */
-    .isSecure = umlIsSecure, /* 0.7.3 */
+    .nodeGetCPUStats = umlNodeGetCPUStats, /* 0.9.3 */
+    .nodeGetMemoryStats = umlNodeGetMemoryStats, /* 0.9.3 */
+    .nodeGetCellsFreeMemory = umlNodeGetCellsFreeMemory, /* 0.5.0 */
+    .nodeGetFreeMemory = umlNodeGetFreeMemory, /* 0.5.0 */
+    .nodeGetCPUMap = umlNodeGetCPUMap, /* 1.0.0 */
+    .connectDomainEventRegister = umlConnectDomainEventRegister, /* 0.9.4 */
+    .connectDomainEventDeregister = umlConnectDomainEventDeregister, /* 0.9.4 */
+    .connectIsEncrypted = umlConnectIsEncrypted, /* 0.7.3 */
+    .connectIsSecure = umlConnectIsSecure, /* 0.7.3 */
     .domainIsActive = umlDomainIsActive, /* 0.7.3 */
     .domainIsPersistent = umlDomainIsPersistent, /* 0.7.3 */
     .domainIsUpdated = umlDomainIsUpdated, /* 0.8.6 */
-    .domainEventRegisterAny = umlDomainEventRegisterAny, /* 0.9.4 */
-    .domainEventDeregisterAny = umlDomainEventDeregisterAny, /* 0.9.4 */
+    .connectDomainEventRegisterAny = umlConnectDomainEventRegisterAny, /* 0.9.4 */
+    .connectDomainEventDeregisterAny = umlConnectDomainEventDeregisterAny, /* 0.9.4 */
     .domainOpenConsole = umlDomainOpenConsole, /* 0.8.6 */
-    .isAlive = umlIsAlive, /* 0.9.8 */
-    .nodeSuspendForDuration = nodeSuspendForDuration, /* 0.9.8 */
+    .connectIsAlive = umlConnectIsAlive, /* 0.9.8 */
+    .nodeSuspendForDuration = umlNodeSuspendForDuration, /* 0.9.8 */
+    .nodeGetMemoryParameters = umlNodeGetMemoryParameters, /* 0.10.2 */
+    .nodeSetMemoryParameters = umlNodeSetMemoryParameters, /* 0.10.2 */
 };
-
-static int
-umlVMFilterRebuild(virConnectPtr conn ATTRIBUTE_UNUSED,
-                   virHashIterator iter, void *data)
-{
-    virHashForEach(uml_driver->domains.objs, iter, data);
-
-    return 0;
-}
 
 static virStateDriver umlStateDriver = {
     .name = "UML",
-    .initialize = umlStartup,
-    .cleanup = umlShutdown,
-    .reload = umlReload,
-    .active = umlActive,
-};
-
-static void
-umlVMDriverLock(void)
-{
-    umlDriverLock(uml_driver);
-}
-
-static void
-umlVMDriverUnlock(void)
-{
-    umlDriverUnlock(uml_driver);
-}
-
-static virNWFilterCallbackDriver umlCallbackDriver = {
-    .name = "UML",
-    .vmFilterRebuild = umlVMFilterRebuild,
-    .vmDriverLock = umlVMDriverLock,
-    .vmDriverUnlock = umlVMDriverUnlock,
+    .stateInitialize = umlStateInitialize,
+    .stateAutoStart = umlStateAutoStart,
+    .stateCleanup = umlStateCleanup,
+    .stateReload = umlStateReload,
 };
 
 int umlRegister(void) {
     virRegisterDriver(&umlDriver);
     virRegisterStateDriver(&umlStateDriver);
-    virNWFilterRegisterCallbackDriver(&umlCallbackDriver);
     return 0;
 }
