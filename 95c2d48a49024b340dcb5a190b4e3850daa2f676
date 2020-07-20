@@ -1,0 +1,2 @@
+  * d/p/ubuntu/virsh-maxvcpu-fall-back-to-old-command.patch: virsh: maxvcpus:
+    Always fall back to the old command if domain caps fail (LP: #1674298)
