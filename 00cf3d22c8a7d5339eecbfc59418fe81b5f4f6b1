@@ -1,0 +1,6 @@
+  * qemu-delete-usb-devices-on-stop and
+    qemu-build-activeusbhostdevs-on-reconnect: ensure that we can re-use
+    a usb device after another domain using the device has shut
+    down.  (LP: #1190387)  Backported from upstream git.
+  * cherrypick fix-for-parallel-port-passthrough-for-qemu from upstream
+    (LP: #1203620)
