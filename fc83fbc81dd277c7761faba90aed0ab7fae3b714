@@ -1,0 +1,9 @@
+  [ Laurent Bigonville ]
+  * [8d62a8c] Start admin sockets on installation (Closes: #893484)
+  [ Guido Günther ]
+  * [417534b] New upstream version 4.2.0 (Closes: #894985)
+  * [9d7fa44] Bump symbol versions
+  * [c23ed3d] Rediff patches.
+    Applied upstream:
+      lockd-fix-typo-in-virtlockd-admin.socket.patch
+      CVE-2018-1064-qemu-avoid-denial-of-service-reading-from-Q.patch
