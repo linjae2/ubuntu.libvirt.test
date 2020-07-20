@@ -1,0 +1,7 @@
+  * debian/apparmor/usr.sbin.libvirtd: allow libvirtd to run
+    libxl-save-helper (required for save restore through libxl).
+    (LP: #1334195)
+  * debian/apparmor/usr.sbin.libvirtd: allow pygrub to be run
+    (LP: #1326003)
+  * debian/patches/libxl-Support-PV-consoles.patch
+    Enable console support for PV guests (LP: #1334738)
