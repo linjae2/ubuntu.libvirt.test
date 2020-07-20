@@ -1,0 +1,3 @@
+  * Non-maintainer upload.
+  * Change build-dependency to libgnutls28-dev and libgcrypt20-dev to avoid
+    build-dependency conflict (thanks, Peter Green; closes: #753121).
