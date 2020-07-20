@@ -1,0 +1,4 @@
+  * [ac67c93] CVE-2011-1486: Make error reporting in libvirtd thread safe
+    (Closes: #623222)
+  * [eafb3d8] CVE-2011-2511: Fix integer overflow in VirDomainGetVcpus
+    (Closes: #633630)
