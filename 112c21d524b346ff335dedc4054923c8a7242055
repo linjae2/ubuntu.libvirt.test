@@ -1,0 +1,3 @@
+  * [ce15a08] Build against libnl-3 on Linux systems (Closes: #688167)
+  * [19ec20b] Depend on a libnetcf1 that's build against libnl3 to avoid
+    pulling in libnl1 symbols.
