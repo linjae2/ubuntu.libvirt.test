@@ -1,0 +1,2 @@
+  * [b385504] Disable the testsuite on all architectures except i386 and amd64
+    so the current version can move into testing.
