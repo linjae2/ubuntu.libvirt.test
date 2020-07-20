@@ -1,0 +1,3 @@
+  * [ff8e9ae] README.Debian: clarify xen configuration
+  * [c07c68f] prefer xenstoraged driver for listDomains - avoids seeing "ghost
+    domains" due to bugs in several versions of the xen HV
