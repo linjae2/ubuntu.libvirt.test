@@ -1,0 +1,6 @@
+  * Upload to unstable
+  * [34aa61b] New upstream version 0.9.11
+  * [649c570] Build-dependency on virtualbox-ose no longer needed.
+    Thanks to Jean-Baptiste Rouault (Closes: #663589)
+  * [8323080] We need gcrypt so build-depend on it although it's already being
+    pulled in by gnutls. Thanks to Serge Hallyn (Closes: #660018)
