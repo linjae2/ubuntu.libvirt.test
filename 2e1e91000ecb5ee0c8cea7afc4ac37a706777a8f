@@ -1,0 +1,3 @@
+  * d/p/fix-util-don-t-fail-if-no-portdata-is-found.patch: 
+    make ovs-vsctl not raise error if there's no portData available.
+    (LP: #1540537).
