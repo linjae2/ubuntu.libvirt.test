@@ -1,0 +1,2 @@
+  * d/p/ubuntu/qemu-fix-race-between-async-and-query-jobs.patch: fix a race
+    between asynchronous and query jobs.  (LP: #1254872)
