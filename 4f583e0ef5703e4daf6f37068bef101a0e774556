@@ -1,0 +1,5 @@
+  * SECURITY UPDATE: fix privilege escalation due to missing read only
+    connection checks
+    - debian/patches/CVE-2008-5086.patch: update functions in src/libvirt.c to
+      check against VIR_CONNECT_RO and return with operation denied error
+    - CVE-2008-5086
