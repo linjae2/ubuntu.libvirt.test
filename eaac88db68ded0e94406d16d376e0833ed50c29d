@@ -1,0 +1,4 @@
+  * d/p/virt-aa-helper-handle-ovmf and
+    d/p/virt-aa-helper-add-nvram-store-file.patch: Support OVMF images in
+    virt-aa-helper.  (LP: #1483071)
+  * virt-aa-helper apparmor policy:  add 'network inet6' (LP: #1511830)
