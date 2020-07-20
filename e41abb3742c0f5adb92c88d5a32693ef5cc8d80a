@@ -1,0 +1,70 @@
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + DebianMaintainerField
+      + Don't build-depend on QEmu.
+      + Add "XS-Original-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables to Depends
+        of libvirt-bin.
+      + s/interract/interact/g
+    - Add libvirt0-dbg package
+    - debian/libvirt-bin.default
+      + Make libvirtd start by default
+    - Add /var/lib/libvirt to libvirt-bin package. (dnsmasq needs it to store
+      its state info.
+    - Create /var/run/libvirt in libvirt-bin's init script.
+    - Install PolicyKit and sasl stuff in libvirt-bin.
+    - Rename libvirt group to libvirtd.
+    - Build iscsi and disk storage support.
+    - delayed_iff_up_bridge.patch: Don't try to bring up the bridge before at
+      least one interface has been added to it.
+    - dont_clobber_existing_bridges.patch: Assign the name of the virtual
+      bridge dynamically to avoid interfering with existing bridges.
+    - nic-model.patch: Add support for <model type='foo'/> NIC configuration.
+    - disk-bus.patch:  Add support for bus='foo' attributes for disk targets.
+    - better_default_uri_virsh.patch: Default to qemu:///system if the user
+      has write access to the libvirt socket, otherwise qemu:///session.
+    - ancient_parted.patch: Fix builds against libparted1.7
+  * no need to depend on python-all-dev we only build an extension for
+    the current python version
+  * only build-dep on qemu on architectures that have it  
+    (Closes: #476290)
+  * the packages containing the daemon should suggest polkit
+  * drop the {build-,}dependency on open-iscsi too 
+  * suggest policykit
+  * disable the iscsi storage backend until #423368 is fixed in unstable
+  * disable polkit authentication by default so the libvirt stays accessible
+    for members of the libvirt group
+  * drop no-mac.diff - applied upstream
+  * no need to explicitly link against libpthread
+  * always enable debugging
+  * add Homepage URL
+  * add Vcs-{Git,Browser} fields
+  * symlink devhelp docs
+  * enable policy kit
+  * new upstream version
+       * Xen 3.2 fixes
+       * storage pool support
+  * partition based storage pools are disabled, since this needs parted 1.8
+    which is only in experimental
+  * update patches for new upstream release
+       * boot-dev-error.diff - applied upstream
+       * qemu-parse-error.diff - applied upstream
+       * qemu-path.diff - adjust to new hypervisor detection code
+       * rediff the rest
+  * new patches:
+       * no-mac.diff: don't set mac address on tun device since it breaks kvm
+  * bump shlibs version 
+  * depend on libxen-dev (Closes:#467598)
+  * allow members of the libvirt group to manage virtual machines
+  * thanks to the xen maintainers Debian now has a working libxen-dev, so
+    enable xen support in the default build (Closes: #453826)
+  * recommend netcat-openbsd for unix domain socket support (Closes: #453627)
+  * README.Debian: document necessary xend options
+  * fix spelling of Python 
+  * don't segfault on broken boot device configuration (Closes: #463686)
+  * don't segfault due to missing errorhandling in the XML parsing code
+  * add and remove the libvirt group for the socket
+  * be a bit more verbose on libvirtd reload
+  * depend on adduser since we add the libvirt user
+  * don't restart libvirtd on upgrades since it kills running qemus
+  * enable debugging via DEB_BUILD_OPTS
