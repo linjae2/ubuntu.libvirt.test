@@ -1,0 +1,2 @@
+  * Apply patch from smoser to make libvirt on ppc64le functional.
+    (LP: #1418221)
