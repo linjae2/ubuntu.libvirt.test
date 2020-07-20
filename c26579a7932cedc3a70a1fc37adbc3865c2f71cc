@@ -1,0 +1,4 @@
+  * debian/control changes:
+    - Replace module-init-tools with kmod
+  * debian/tests:
+    - add autopkgtests from Debian
