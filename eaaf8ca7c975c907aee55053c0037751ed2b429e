@@ -1,0 +1,3 @@
+  * Non-maintainer upload.
+  * Drop build-dep on hal-dev (closes: #710195; backported from experimental
+    git branch).
