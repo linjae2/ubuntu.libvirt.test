@@ -1,0 +1,8 @@
+  * New upstream version.  (LP: #1102487)
+    + Dropped apparmor-allow-hugepages
+    + update dnsmasq-as-priv-user, upstream now uses a configuration file.
+    + swap Add_RESUME_event_listener_to_qemu_monitor.patch from git tree for
+      the backported handle_resume_1.0.0-0ubuntu4.patch.
+    + rebuild debian/patches/build-work-around-broken-kernel-header
+    + add bridge-fix-persistent-networks.patch from upstream to fix bug
+      where new networks are not marked persistent.
