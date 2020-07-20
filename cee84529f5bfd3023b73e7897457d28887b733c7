@@ -1,0 +1,2 @@
+  * cull too-new apparmor rules depending on target host (LP: #1387251)
+  * add mising apparmor permissions for slof (LP: #1374554)
