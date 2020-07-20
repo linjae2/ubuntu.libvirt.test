@@ -1,0 +1,47 @@
+  * Merge 1.3.3-2 from Debian unstable
+  * Merge new packaging layout
+    - debian/control
+      * add libsanlock-dev, dtrace, systemtap-sdt-dev, librados-dev,
+        libfuse-dev, augeas-tools to Build-Depends.
+      * Drop libcgmanager-dev from Build-Depends.
+      * Add libvirt-clients, libvirt-daemon, and libvirt-daemon-system
+        packages which replace the now-virtual libvirt-bin package.
+      * Drop libvirt0-dbg (is this intential in Debian?)
+      * Add libvirt-sanlock package (this should be in universe)
+  * Switch to 'libvirt' group, keeping the same gid as 'libvirtd'
+    on upgrade.  Keep libvirtd group name on upgrade in case any
+    site scripts use it.
+  * Enable dtrace
+  * Add Debian policy-kit configuration
+  * drop ubuntu/9004-libvirtd-group-name.patch as we are switching to group
+    'libvirt'
+  * Drop obsolete migration scripts:
+    - libvirt-migrate-xend-managed-domains
+    - libvirt-migrate-qemu-disks
+    - libvirt-migrate-qemu-machinetype
+  * Remaining changes:
+    - keep libvirt-bin transitional package - until 18.10 (for lts-to-lts
+      upgrades)
+    - keep (redundant) libvirtd group if it existed on upgrade - until 18.10
+      (for lts-to-lts upgrades)
+    - keep ubuntu-specific patches
+    - ship apport and dnsmasq files
+    - enable virbr0
+    - ship apparmor from debian/*.  We should push changes upstrema, but
+      cannot sync with debian as apparmor profiles must be processed in
+      debian/rules for cloud archive.
+    - debian/control
+      - enable zfs
+      - disable libssh2 and sheepdog
+      - add libxml-libxml-perl and libcurl4-gnutls-dev
+      - enable libnuma-dev on ppc64el (pushed to Debian)
+      - update release for conflicts/replaces on libvirt-bin to << 1.3.3-2
+    - debian/libvirt-daemon-system.preinst: stop libvirt-bin on certain
+      upgrades.
+      - Multi-arch-ify.
+    - debian/rules: disable selinux and firewalld;  use 'kvm' group; disable
+      ssh2, enable zfs and esx;  process apparmor files for older releases;
+      copy dnsmasq configuration.
+    - debian/tests/control: add depends
+  * d/p/ubuntu/conf-also-mark-implicit-video-as-primary.patch: upstream patch
+    to fix failure to start vms with video not explicitly marked as 'primary'
