@@ -1,0 +1,3 @@
+  * Update libvirt0 description to match the other packages in supported
+    virtualization technologies.
+  * Rename Vcs-* to XS-Debian-Vcs-*.
