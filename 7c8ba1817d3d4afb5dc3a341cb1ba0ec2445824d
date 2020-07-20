@@ -1,0 +1,41 @@
+  * New upstream release.
+  * Removed a slew of patches which have been
+    applied upstream since 0.8.3.
+    - 9012-apparmor-extra-tests.patch
+    - 9013-apparmor-chardev.patch
+    - 9015-Add-ubd-to-the-list-of-disk-prefixes.patch
+    - 9016-Close-fd-s-of-persistent-tap-devices.patch
+    - 9017-Make-sure-all-command-line-arguments-get-passed-to-U.patch
+    - 9018-Make-umlConnectTapDevice-ask-brAddTap-for-a-persiste.patch
+    - 9019-uml-fix-logic-bug-in-checking-reply-length.patch
+    - 9021-Allow-chardev-of-type-file-for-UML-domains.patch
+    - 9022-Rename-qemudShrinkDisks-to-virDomainDiskRemove-and-m.patch
+    - 9023-Support-virDomainAttachDevice-and-virDomainDetachDev.patch
+    - 9024-Explicitly-pass-uml_dir-argument-to-user-mode-linux.patch
+    - 9025-Add-nwfilter-support-to-UML-driver.patch
+    - 9026-Rebuild-network-filter-for-UML-guests-on-updates.patch
+    - 9027-Make-newfilter-xml-transformations-endian-safe.patch
+    - 9028-lp628055.patch
+  * Updated 9002-better_default_uri_virsh.patch to use vshStrdup,
+    as now required in that file.  (use of strdup now causes compilation
+    to fail)
+  * Removed 9008-run-as-root-by-default.patch, which has not been
+    applied for awhile now, with no ill effects.
+  * Simple refresh of:
+    - 0001-remove-RHism.diff.patch
+    - 0003-allow-libvirt-group-to-access-the-socket.patch
+    - 0004-fix-Debian-specific-path-to-hvm-loader.patch
+    - 0006-patch-qemuMonitorTextGetMigrationStatus-to-intercept.patch
+    - 9000-delayed_iff_up_bridge.patch
+    - 9001-dont_clobber_existing_bridges.patch
+    - 9003-better-default-arch.patch
+    - 9004-libvirtd-group-name.patch
+    - 9005-increase-unix-socket-timeout.patch
+    - 9006-default-config-test-case.patch
+    - 9009-autodetect-nc-params.patch
+    - 9010-dont-disable-ipv6.patch
+    - 9011-move-ebtables-script.patch
+    - 9014-skip-nodeinfotest.patch
+    - 9020-lp545795.patch
+  * Create a patch to include stdint.h so lxc_container.h, which
+    #includes linux/fs.h, doesn't trip up on undefined uint64_t.
