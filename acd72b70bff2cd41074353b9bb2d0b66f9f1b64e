@@ -1,0 +1,6 @@
+  * New upstream relase.
+    + Dropped patches:
+      - debian/patches/vnc-socket.patch: Dropped no longer needed.
+      - debian/patches/Add-sanitytest.py.patch: Dropped no longer needed.
+   * debian/libvirt-bin.postinst: Make sure qemu.conf isn't world readable 
+     by default.
