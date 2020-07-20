@@ -1,0 +1,3 @@
+  * fix virsh nodecpumap output (LP: #1659769)
+  * fix using type ethernet interfaces with user scripts (LP: #1620407)
+  * add new block device types to virt-aa-helpers profile (LP: #1641618)
