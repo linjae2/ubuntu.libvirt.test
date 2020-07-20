@@ -1,0 +1,3 @@
+  * d/p/ubuntu/lp1787405-0008-qemu-mdev-Use-vfio-pci-display-property-only
+    -with-vf.patch: fix handling of non PCI vfio display propery (part
+    of LP: #1787405)
