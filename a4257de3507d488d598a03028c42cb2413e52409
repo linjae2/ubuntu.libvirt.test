@@ -1,0 +1,5 @@
+  * [0e60a81] New upstream version 0.9.4~rc1
+  * [db6dbcc] Suggest radvd needed for IPv6
+  * [a9b77e5] Drop Catch-dnsmasq-start-failures.patch applied upstream
+  * [b18ac26] Rediff remaining patches
+  * [8ee8750] Update symbols
