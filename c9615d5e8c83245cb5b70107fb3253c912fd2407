@@ -1,0 +1,32 @@
+  * New upstream version:
+    * Synchronize with debian packaging:
+      - debian/control: Update build depends.
+      - debian/libvirt-bin.postrm: Cleanup /var/log/libvirt
+        on purge.
+      - Bump standards verson (no changes).
+      - debian/patches/Don-t-fail-if-we-can-t-setup-avahi.patch: Added
+    * Dropped patches:
+      - debian/patches/Debianize-libvirt-guests.patch
+      - debian/patches/rewrite-lxc-controller-eof-handling-yet-again
+      - debian/patches/ubuntu/libnl13.patch
+      - debian/patches/ubuntu/fix-lxc-startup-error.patch
+      - debian/patches/ubuntu/fix-bridge-fd.patch
+      - debian/patches/ubuntu/skip-labelling-network-disks.patch
+      - debian/patches/ubuntu/xen-xend-shutdown-detection.patch
+      - debian/patches/ubuntu/xen-config-no-vfb-for-hvm.patch
+      - debian/patches/debian/Disable-daemon-start-test.patch
+      - debian/patches/debian/Disable-gnulib-s-test-nonplocking-pipe.sh.patch
+      - debian/patches/ubuntu/9006-default-config-test-case.patch
+      - debian/patches/fix-block-migration.patch
+      - debian/patches/ubuntu/9022-qemu-unescape-HMP-commands-before-converting-them-to.patch
+      - debian/patches/ubuntu/9023-qemu-change-rbd-auth_supported-separation-character-.patch
+      - debian/patches/ubuntu/9024-qemu-allow-snapshotting-of-sheepdog-and-rbd-disks.patch
+      - debian/patches/9025-qemu-change-rbd-auth_supported-separation-character-.patch
+      - debian/patches/ubuntu/arm-gcc-workaround.patch
+    * Rediffed:
+      - debian/patches/Allow-libvirt-group-to-access-the-socket.patch
+      - debian/patches/Disable-failing-virnetsockettest.patch
+      - debian/patches/dnsmasq-as-priv-user
+      - debian/patches/9002-better_default_uri_virsh.patch
+    * debian/control: Add libnl-route-3-dev ass a build depends.
+    * debian/patches/libnl3-build-fix.patch: Fix build with libnl3.
