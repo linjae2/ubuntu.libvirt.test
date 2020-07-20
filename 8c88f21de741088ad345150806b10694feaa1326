@@ -1,0 +1,2 @@
+  * d/p/recognize-trusty-machine-type.patch: handle "trusty" qemu machine type
+    (LP: #1294823)
