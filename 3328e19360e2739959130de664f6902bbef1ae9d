@@ -1,0 +1,16 @@
+  * SECURITY UPDATE: DoS via incorrect permissions check
+    - debian/patches/CVE-2019-3886-1.patch: disallow virDomainGetHostname
+      for read-only connections in src/libvirt-domain.c.
+    - debian/patches/CVE-2019-3886-2.patch: enforce ACL write permission
+      for getting guest time & hostname in src/remote/remote_protocol.x.
+    - CVE-2019-3886
+  * SECURITY UPDATE: privilege escalation via incorrect socket permissions
+    - debian/patches/CVE-2019-10132-1.patch: reject clients unless their
+      UID matches the current UID in src/admin/admin_server_dispatch.c.
+    - debian/patches/CVE-2019-10132-2.patch: restrict sockets to mode 0600
+      in src/locking/virtlockd-admin.socket.in,
+      src/locking/virtlockd.socket.in.
+    - debian/patches/CVE-2019-10132-3.patch: restrict sockets to mode 0600
+      in src/logging/virtlogd-admin.socket.in,
+      src/logging/virtlogd.socket.in.
+    - CVE-2019-10132
