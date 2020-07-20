@@ -1,0 +1,2 @@
+  * d/p/ubuntu/qemu_process-spice-don-t-release-used-port.patch: qemu_process
+    spice: don't release used port (LP: #1697729) - upstream in libvirt 3.1.
