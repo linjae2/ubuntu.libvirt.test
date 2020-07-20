@@ -1,0 +1,2 @@
+  * debian/rules: disable the netcf backend. (LP: #1764314)
+  * debian/control: drop libnetcf from Build-Depends.
