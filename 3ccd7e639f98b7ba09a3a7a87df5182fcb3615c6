@@ -1,0 +1,2 @@
+  * debian/patches/9016-warn-on-daemon-conf-test-wait.patch: workaround FTBFS
+    on buildd by not failing when waiting on pid
