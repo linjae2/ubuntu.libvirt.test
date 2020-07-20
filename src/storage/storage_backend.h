@@ -93,7 +93,6 @@ enum {
     VIR_STORAGE_VOL_OPEN_REG    = 1 << 1, /* regular files okay */
     VIR_STORAGE_VOL_OPEN_BLOCK  = 1 << 2, /* block files okay */
     VIR_STORAGE_VOL_OPEN_CHAR   = 1 << 3, /* char files okay */
-    VIR_STORAGE_VOL_OPEN_DIR    = 1 << 4, /* directories okay */
 };
 
 # define VIR_STORAGE_VOL_OPEN_DEFAULT (VIR_STORAGE_VOL_OPEN_ERROR    |\
@@ -108,13 +107,9 @@ ATTRIBUTE_NONNULL(1);
 int virStorageBackendUpdateVolInfo(virStorageVolDefPtr vol,
                                    int withCapacity);
 
-int virStorageBackendUpdateVolInfoFlags(virStorageVolDefPtr vol,
-                                        int withCapacity,
-                                        unsigned int openflags);
 int virStorageBackendUpdateVolTargetInfo(virStorageVolTargetPtr target,
                                          unsigned long long *allocation,
-                                         unsigned long long *capacity,
-                                         unsigned int openflags);
+                                         unsigned long long *capacity);
 int virStorageBackendUpdateVolTargetInfoFD(virStorageVolTargetPtr target,
                                            int fd,
                                            unsigned long long *allocation,
@@ -140,7 +135,8 @@ int virStorageBackendRunProgRegex(virStoragePoolObjPtr pool,
                                   const char **regex,
                                   int *nvars,
                                   virStorageBackendListVolRegexFunc func,
-                                  void *data);
+                                  void *data,
+                                  int *exitstatus);
 
 int virStorageBackendRunProgNul(virStoragePoolObjPtr pool,
                                 const char **prog,

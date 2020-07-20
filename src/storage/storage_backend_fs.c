@@ -48,11 +48,6 @@
 
 #define VIR_FROM_THIS VIR_FROM_STORAGE
 
-#define VIR_STORAGE_VOL_FS_OPEN_FLAGS       (VIR_STORAGE_VOL_OPEN_DEFAULT   |\
-                                             VIR_STORAGE_VOL_OPEN_DIR)
-#define VIR_STORAGE_VOL_FS_REFRESH_FLAGS    (VIR_STORAGE_VOL_FS_OPEN_FLAGS  &\
-                                             ~VIR_STORAGE_VOL_OPEN_ERROR)
-
 static int ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3)
 virStorageBackendProbeTarget(virStorageVolTargetPtr target,
                              char **backingStore,
@@ -70,7 +65,7 @@ virStorageBackendProbeTarget(virStorageVolTargetPtr target,
         *encryption = NULL;
 
     if ((ret = virStorageBackendVolOpenCheckMode(target->path,
-                                        VIR_STORAGE_VOL_FS_REFRESH_FLAGS)) < 0)
+                                                 (VIR_STORAGE_VOL_OPEN_DEFAULT & ~VIR_STORAGE_VOL_OPEN_ERROR))) < 0)
         return ret; /* Take care to propagate ret, it is not always -1 */
     fd = ret;
 
@@ -238,6 +233,7 @@ virStorageBackendFileSystemNetFindPoolSources(virConnectPtr conn ATTRIBUTE_UNUSE
     };
     const char *prog[] = { SHOWMOUNT, "--no-headers", "--exports", NULL, NULL };
     virStoragePoolSourcePtr source = NULL;
+    int exitstatus;
     char *retval = NULL;
     unsigned int i;
 
@@ -250,8 +246,8 @@ virStorageBackendFileSystemNetFindPoolSources(virConnectPtr conn ATTRIBUTE_UNUSE
     prog[3] = source->host.name;
 
     if (virStorageBackendRunProgRegex(NULL, prog, 1, regexes, vars,
-                            virStorageBackendFileSystemNetFindPoolSourcesFunc,
-                            &state) < 0)
+                                      virStorageBackendFileSystemNetFindPoolSourcesFunc,
+                                      &state, &exitstatus) < 0)
         goto cleanup;
 
     retval = virStoragePoolSourceListFormat(&state.list);
@@ -317,6 +313,7 @@ virStorageBackendFileSystemIsMounted(virStoragePoolObjPtr pool) {
 static int
 virStorageBackendFileSystemMount(virStoragePoolObjPtr pool) {
     char *src;
+    char *options = NULL;
     const char **mntargv;
 
     /* 'mount -t auto' doesn't seem to auto determine nfs (or cifs),
@@ -327,6 +324,7 @@ virStorageBackendFileSystemMount(virStoragePoolObjPtr pool) {
     int glusterfs = (pool->def->type == VIR_STORAGE_POOL_NETFS &&
                  pool->def->source.format == VIR_STORAGE_POOL_NETFS_GLUSTERFS);
 
+    int option_index;
     int source_index;
 
     const char *netfs_auto_argv[] = {
@@ -356,7 +354,7 @@ virStorageBackendFileSystemMount(virStoragePoolObjPtr pool) {
         virStoragePoolFormatFileSystemNetTypeToString(pool->def->source.format),
         NULL,
         "-o",
-        "direct-io-mode=1",
+        NULL,
         pool->def->target.path,
         NULL,
     };
@@ -367,6 +365,7 @@ virStorageBackendFileSystemMount(virStoragePoolObjPtr pool) {
     } else if (glusterfs) {
         mntargv = glusterfs_argv;
         source_index = 3;
+        option_index = 5;
     } else {
         mntargv = fs_argv;
         source_index = 3;
@@ -402,6 +401,12 @@ virStorageBackendFileSystemMount(virStoragePoolObjPtr pool) {
     }
 
     if (pool->def->type == VIR_STORAGE_POOL_NETFS) {
+        if (pool->def->source.format == VIR_STORAGE_POOL_NETFS_GLUSTERFS) {
+            if ((options = strdup("direct-io-mode=1")) == NULL) {
+                virReportOOMError();
+                return -1;
+            }
+        }
         if (virAsprintf(&src, "%s:%s",
                         pool->def->source.host.name,
                         pool->def->source.dir) == -1) {
@@ -416,6 +421,10 @@ virStorageBackendFileSystemMount(virStoragePoolObjPtr pool) {
         }
     }
     mntargv[source_index] = src;
+
+    if (glusterfs) {
+        mntargv[option_index] = options;
+    }
 
     if (virRun(mntargv, NULL) < 0) {
         VIR_FREE(src);
@@ -668,8 +677,8 @@ virStorageBackendFileSystemRefresh(virConnectPtr conn ATTRIBUTE_UNUSED,
             vol->backingStore.format = backingStoreFormat;
 
             if (virStorageBackendUpdateVolTargetInfo(&vol->backingStore,
-                                        NULL, NULL,
-                                        VIR_STORAGE_VOL_OPEN_DEFAULT) < 0) {
+                                                     NULL,
+                                                     NULL) < 0) {
                 /* The backing file is currently unavailable, the capacity,
                  * allocation, owner, group and mode are unknown. Just log the
                  * error an continue.
@@ -933,8 +942,7 @@ virStorageBackendFileSystemVolRefresh(virConnectPtr conn,
     int ret;
 
     /* Refresh allocation / permissions info in case its changed */
-    ret = virStorageBackendUpdateVolInfoFlags(vol, 0,
-                                              VIR_STORAGE_VOL_FS_OPEN_FLAGS);
+    ret = virStorageBackendUpdateVolInfo(vol, 0);
     if (ret < 0)
         return ret;
 

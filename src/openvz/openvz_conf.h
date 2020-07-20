@@ -53,16 +53,10 @@ struct openvz_driver {
     int version;
 };
 
-typedef int (*openvzLocateConfFileFunc)(int vpsid, char **conffile, const char *ext);
-
-/* this allows the testsuite to replace the conf file locator function */
-extern openvzLocateConfFileFunc openvzLocateConfFile;
-
 int openvz_readline(int fd, char *ptr, int maxlen);
 int openvzExtractVersion(struct openvz_driver *driver);
 int openvzReadVPSConfigParam(int vpsid, const char *param, char **value);
 int openvzWriteVPSConfigParam(int vpsid, const char *param, const char *value);
-int openvzReadConfigParam(const char *conf_file, const char *param, char **value);
 int openvzCopyDefaultConfig(int vpsid);
 virCapsPtr openvzCapsInit(void);
 int openvzLoadDomains(struct openvz_driver *driver);
@@ -71,6 +65,5 @@ int strtoI(const char *str);
 int openvzSetDefinedUUID(int vpsid, unsigned char *uuid);
 unsigned int openvzGetNodeCPUs(void);
 int openvzGetVEID(const char *name);
-int openvzReadNetworkConf(virDomainDefPtr def, int veid);
 
 #endif /* OPENVZ_CONF_H */

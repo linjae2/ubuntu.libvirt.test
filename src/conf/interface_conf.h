@@ -192,9 +192,6 @@ virInterfaceObjPtr virInterfaceFindByName(const virInterfaceObjListPtr
 void virInterfaceDefFree(virInterfaceDefPtr def);
 void virInterfaceObjFree(virInterfaceObjPtr iface);
 void virInterfaceObjListFree(virInterfaceObjListPtr vms);
-int virInterfaceObjListClone(virInterfaceObjListPtr src,
-                             virInterfaceObjListPtr dest);
-
 
 virInterfaceObjPtr virInterfaceAssignDef(virInterfaceObjListPtr interfaces,
                                          const virInterfaceDefPtr def);

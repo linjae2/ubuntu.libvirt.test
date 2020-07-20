@@ -66,9 +66,26 @@ esxNetworkClose(virConnectPtr conn)
 
 
 static virNetworkDriver esxNetworkDriver = {
-    .name = "ESX",
-    .open = esxNetworkOpen, /* 0.7.6 */
-    .close = esxNetworkClose, /* 0.7.6 */
+    "ESX",                                 /* name */
+    esxNetworkOpen,                        /* open */
+    esxNetworkClose,                       /* close */
+    NULL,                                  /* numOfNetworks */
+    NULL,                                  /* listNetworks */
+    NULL,                                  /* numOfDefinedNetworks */
+    NULL,                                  /* listDefinedNetworks */
+    NULL,                                  /* networkLookupByUUID */
+    NULL,                                  /* networkLookupByName */
+    NULL,                                  /* networkCreateXML */
+    NULL,                                  /* networkDefineXML */
+    NULL,                                  /* networkUndefine */
+    NULL,                                  /* networkCreate */
+    NULL,                                  /* networkDestroy */
+    NULL,                                  /* networkDumpXML */
+    NULL,                                  /* networkGetBridgeName */
+    NULL,                                  /* networkGetAutostart */
+    NULL,                                  /* networkSetAutostart */
+    NULL,                                  /* networkIsActive */
+    NULL,                                  /* networkIsPersistent */
 };
 
 

@@ -215,7 +215,7 @@ sexpr2string(const struct sexpr *sexpr, virBufferPtr buffer)
         virBufferAddChar(buffer, '(');
 
         if (sexpr2string(sexpr->u.s.car, buffer) < 0)
-            return -1;
+            goto error;
 
         while (sexpr->u.s.cdr->kind != SEXPR_NIL) {
             sexpr = sexpr->u.s.cdr;
@@ -223,7 +223,7 @@ sexpr2string(const struct sexpr *sexpr, virBufferPtr buffer)
             virBufferAddChar(buffer, ' ');
 
             if (sexpr2string(sexpr->u.s.car, buffer) < 0)
-                return -1;
+                goto error;
         }
 
         virBufferAddChar(buffer, ')');
@@ -232,7 +232,7 @@ sexpr2string(const struct sexpr *sexpr, virBufferPtr buffer)
         if (strchr(sexpr->u.value, ' ') ||
             strchr(sexpr->u.value, ')') ||
             strchr(sexpr->u.value, '('))
-            virBufferAsprintf(buffer, "'%s'", sexpr->u.value);
+            virBufferVSprintf(buffer, "'%s'", sexpr->u.value);
         else
             virBufferAdd(buffer, sexpr->u.value, -1);
 
@@ -241,12 +241,14 @@ sexpr2string(const struct sexpr *sexpr, virBufferPtr buffer)
         virBufferAddLit(buffer, "()");
         break;
     default:
-        virSexprError(VIR_ERR_SEXPR_SERIAL,
-                      _("unknown s-expression kind %d"), sexpr->kind);
-        return -1;
+        goto error;
     }
 
     return 0;
+
+  error:
+    virSexprError(VIR_ERR_SEXPR_SERIAL, NULL);
+    return -1;
 }
 
 #define IS_SPACE(c) ((c == 0x20) || (c == 0x9) || (c == 0xD) || (c == 0xA))

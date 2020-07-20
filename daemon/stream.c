@@ -27,9 +27,6 @@
 #include "memory.h"
 #include "dispatch.h"
 #include "logging.h"
-#include "virterror_internal.h"
-
-#define VIR_FROM_THIS VIR_FROM_STREAMS
 
 static int
 remoteStreamHandleWrite(struct qemud_client *client,
@@ -212,10 +209,8 @@ remoteCreateClientStream(virConnectPtr conn,
 
     VIR_DEBUG("proc=%d serial=%d", hdr->proc, hdr->serial);
 
-    if (VIR_ALLOC(stream) < 0) {
-        virReportOOMError();
+    if (VIR_ALLOC(stream) < 0)
         return NULL;
-    }
 
     stream->procedure = hdr->proc;
     stream->serial = hdr->serial;
@@ -406,7 +401,7 @@ remoteStreamHandleWriteData(struct qemud_client *client,
         /* Blocking, so indicate we have more todo later */
         return 1;
     } else {
-        VIR_INFO("Stream send failed");
+        VIR_INFO0("Stream send failed");
         stream->closed = 1;
         remoteDispatchError(&rerr);
         return remoteSerializeReplyError(client, &rerr, &msg->hdr);

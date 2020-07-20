@@ -43,7 +43,6 @@ int qemuMonitorTextCommandWithFd(qemuMonitorPtr mon,
 int qemuMonitorTextStartCPUs(qemuMonitorPtr mon,
                              virConnectPtr conn);
 int qemuMonitorTextStopCPUs(qemuMonitorPtr mon);
-int qemuMonitorTextGetStatus(qemuMonitorPtr mon, bool *running);
 
 int qemuMonitorTextSystemPowerdown(qemuMonitorPtr mon);
 
@@ -113,13 +112,6 @@ int qemuMonitorTextMigrate(qemuMonitorPtr mon,
                            const char *uri);
 
 int qemuMonitorTextMigrateCancel(qemuMonitorPtr mon);
-
-int qemuMonitorTextGraphicsRelocate(qemuMonitorPtr mon,
-                                    int type,
-                                    const char *hostname,
-                                    int port,
-                                    int tlsPort,
-                                    const char *tlsSubject);
 
 int qemuMonitorTextAddUSBDisk(qemuMonitorPtr mon,
                               const char *path);
@@ -205,9 +197,5 @@ int qemuMonitorTextDeleteSnapshot(qemuMonitorPtr mon, const char *name);
 
 int qemuMonitorTextArbitraryCommand(qemuMonitorPtr mon, const char *cmd,
                                     char **reply);
-
-int qemuMonitorTextInjectNMI(qemuMonitorPtr mon);
-
-int qemuMonitorTextScreendump(qemuMonitorPtr mon, const char *file);
 
 #endif /* QEMU_MONITOR_TEXT_H */

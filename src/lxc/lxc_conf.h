@@ -55,7 +55,11 @@ struct __lxc_driver {
     int log_libvirtd;
     int have_netns;
 
-    virDomainEventStatePtr domainEventState;
+    /* An array of callbacks */
+    virDomainEventCallbackListPtr domainEventCallbacks;
+    virDomainEventQueuePtr domainEventQueue;
+    int domainEventTimer;
+    int domainEventDispatching;
 };
 
 int lxcLoadDriverConfig(lxc_driver_t *driver);

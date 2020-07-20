@@ -107,9 +107,7 @@ virSecurityManagerPtr virSecurityManagerNew(const char *name,
 
 void *virSecurityManagerGetPrivateData(virSecurityManagerPtr mgr)
 {
-    /* This accesses the memory just beyond mgr, which was allocated
-     * via VIR_ALLOC_VAR earlier.  */
-    return mgr + 1;
+    return ((char*)mgr) + sizeof(mgr);
 }
 
 

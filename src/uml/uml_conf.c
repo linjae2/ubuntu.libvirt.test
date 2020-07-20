@@ -73,7 +73,7 @@ virCapsPtr umlCapsInit(void) {
      */
     if (nodeCapsInitNUMA(caps) < 0) {
         virCapabilitiesFreeNUMAInfo(caps);
-        VIR_WARN("Failed to query host NUMA topology, disabling NUMA capabilities");
+        VIR_WARN0("Failed to query host NUMA topology, disabling NUMA capabilities");
     }
 
     if (virGetHostUUID(caps->host.host_uuid)) {
@@ -132,7 +132,7 @@ umlConnectTapDevice(virConnectPtr conn,
         VIR_FREE(net->ifname);
         if (!(net->ifname = strdup("vnet%d")))
             goto no_memory;
-        /* avoid exposing vnet%d in getXMLDesc or error outputs */
+        /* avoid exposing vnet%d in dumpxml or error outputs */
         template_ifname = 1;
     }
 
@@ -197,7 +197,7 @@ umlBuildCommandLineNet(virConnectPtr conn,
 
     /* General format:  ethNN=type,options */
 
-    virBufferAsprintf(&buf, "eth%d=", idx);
+    virBufferVSprintf(&buf, "eth%d=", idx);
 
     switch (def->type) {
     case VIR_DOMAIN_NET_TYPE_USER:
@@ -207,10 +207,7 @@ umlBuildCommandLineNet(virConnectPtr conn,
 
     case VIR_DOMAIN_NET_TYPE_ETHERNET:
         /* ethNNN=tuntap,tapname,macaddr,gateway */
-        virBufferAddLit(&buf, "tuntap,");
-        if (def->ifname) {
-            virBufferAdd(&buf, def->ifname, -1);
-        }
+        virBufferAddLit(&buf, "tuntap");
         if (def->data.ethernet.ipaddr) {
             umlReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("IP address not supported for ethernet inteface"));
@@ -261,7 +258,7 @@ umlBuildCommandLineNet(virConnectPtr conn,
         }
 
         /* ethNNN=tuntap,tapname,macaddr,gateway */
-        virBufferAsprintf(&buf, "tuntap,%s", def->ifname);
+        virBufferVSprintf(&buf, "tuntap,%s", def->ifname);
         break;
     }
 
@@ -270,7 +267,7 @@ umlBuildCommandLineNet(virConnectPtr conn,
             goto error;
 
         /* ethNNN=tuntap,tapname,macaddr,gateway */
-        virBufferAsprintf(&buf, "tuntap,%s", def->ifname);
+        virBufferVSprintf(&buf, "tuntap,%s", def->ifname);
         break;
 
     case VIR_DOMAIN_NET_TYPE_INTERNAL:
@@ -287,12 +284,12 @@ umlBuildCommandLineNet(virConnectPtr conn,
         break;
     }
 
-    virBufferAsprintf(&buf, ",%02x:%02x:%02x:%02x:%02x:%02x",
+    virBufferVSprintf(&buf, ",%02x:%02x:%02x:%02x:%02x:%02x",
                       def->mac[0], def->mac[1], def->mac[2],
                       def->mac[3], def->mac[4], def->mac[5]);
 
     if (def->type == VIR_DOMAIN_NET_TYPE_MCAST) {
-        virBufferAsprintf(&buf, ",%s,%d",
+        virBufferVSprintf(&buf, ",%s,%d",
                           def->data.socket.address,
                           def->data.socket.port);
     }

@@ -72,7 +72,6 @@ struct xenUnifiedDriver xenInotifyDriver = {
     NULL, /* domainSave */
     NULL, /* domainRestore */
     NULL, /* domainCoreDump */
-    NULL, /* domainScreenshot */
     NULL, /* domainPinVcpu */
     NULL, /* domainGetVcpus */
     NULL, /* listDefinedDomains */
@@ -106,7 +105,7 @@ xenInotifyXenCacheLookup(virConnectPtr conn,
     memcpy(uuid, entry->def->uuid, VIR_UUID_BUFLEN);
 
     if (!*name) {
-        VIR_DEBUG("Error getting dom from def");
+        VIR_DEBUG0("Error getting dom from def");
         virReportOOMError();
         return -1;
     }
@@ -150,7 +149,7 @@ xenInotifyXendDomainsDirLookup(virConnectPtr conn, const char *filename,
                     return -1;
                 }
                 memcpy(uuid, priv->configInfoList->doms[i]->uuid, VIR_UUID_BUFLEN);
-                VIR_DEBUG("Found dom on list");
+                VIR_DEBUG0("Found dom on list");
                 return 0;
             }
         }
@@ -289,7 +288,7 @@ xenInotifyEvent(int watch ATTRIBUTE_UNUSED,
     virConnectPtr conn = data;
     xenUnifiedPrivatePtr priv = NULL;
 
-    VIR_DEBUG("got inotify event");
+    VIR_DEBUG0("got inotify event");
 
     if( conn && conn->privateData ) {
         priv = conn->privateData;
@@ -451,18 +450,18 @@ xenInotifyOpen(virConnectPtr conn,
         return -1;
     }
 
-    VIR_DEBUG("Building initial config cache");
+    VIR_DEBUG0("Building initial config cache");
     if (priv->useXenConfigCache &&
         xenXMConfigCacheRefresh (conn) < 0) {
         VIR_DEBUG("Failed to enable XM config cache %s", conn->err.message);
         return -1;
     }
 
-    VIR_DEBUG("Registering with event loop");
+    VIR_DEBUG0("Registering with event loop");
     /* Add the handle for monitoring */
     if ((priv->inotifyWatch = virEventAddHandle(priv->inotifyFD, VIR_EVENT_HANDLE_READABLE,
                                                 xenInotifyEvent, conn, NULL)) < 0) {
-        VIR_DEBUG("Failed to add inotify handle, disabling events");
+        VIR_DEBUG0("Failed to add inotify handle, disabling events");
     }
 
     return 0;

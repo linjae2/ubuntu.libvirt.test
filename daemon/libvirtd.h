@@ -38,6 +38,10 @@
 #  include <dbus/dbus.h>
 # endif
 
+# ifdef HAVE_SYS_SYSLIMITS_H
+#  include <sys/syslimits.h>
+# endif
+
 # include <rpc/types.h>
 # include <rpc/xdr.h>
 # include "remote_protocol.h"

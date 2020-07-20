@@ -24,7 +24,6 @@
 #include <config.h>
 #include "storage_file.h"
 
-#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #ifdef __linux__
@@ -737,19 +736,6 @@ virStorageFileProbeFormatFromFD(const char *path, int fd)
     unsigned char *head;
     ssize_t len = STORAGE_MAX_HEAD;
     int ret = -1;
-    struct stat sb;
-
-    if (fstat(fd, &sb) < 0) {
-        virReportSystemError(errno,
-                             _("cannot stat file '%s'"),
-                             path);
-        return -1;
-    }
-
-    /* No header to probe for directories */
-    if (S_ISDIR(sb.st_mode)) {
-        return VIR_STORAGE_FILE_DIR;
-    }
 
     if (VIR_ALLOC_N(head, len) < 0) {
         virReportOOMError();
@@ -826,33 +812,20 @@ virStorageFileGetMetadataFromFD(const char *path,
                                 int format,
                                 virStorageFileMetadata *meta)
 {
-    unsigned char *head = NULL;
+    unsigned char *head;
     ssize_t len = STORAGE_MAX_HEAD;
     int ret = -1;
-    struct stat sb;
-
-    memset(meta, 0, sizeof (*meta));
-
-    if (fstat(fd, &sb) < 0) {
-        virReportSystemError(errno,
-                             _("cannot stat file '%s'"),
-                             path);
-        return -1;
-    }
-
-    /* No header to probe for directories */
-    if (S_ISDIR(sb.st_mode)) {
-        return 0;
-    }
-
-    if (lseek(fd, 0, SEEK_SET) == (off_t)-1) {
-        virReportSystemError(errno, _("cannot seek to start of '%s'"), path);
-        return -1;
-    }
 
     if (VIR_ALLOC_N(head, len) < 0) {
         virReportOOMError();
         return -1;
+    }
+
+    memset(meta, 0, sizeof (*meta));
+
+    if (lseek(fd, 0, SEEK_SET) == (off_t)-1) {
+        virReportSystemError(errno, _("cannot seek to start of '%s'"), path);
+        goto cleanup;
     }
 
     if ((len = read(fd, head, len)) < 0) {

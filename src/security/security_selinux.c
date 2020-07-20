@@ -733,19 +733,14 @@ SELinuxSetSecurityChardevLabel(virDomainObjPtr vm,
         break;
 
     case VIR_DOMAIN_CHR_TYPE_PIPE:
-        if (virFileExists(dev->data.file.path)) {
-            if (SELinuxSetFilecon(dev->data.file.path, secdef->imagelabel) < 0)
-                goto done;
-        } else {
-            if ((virAsprintf(&in, "%s.in", dev->data.file.path) < 0) ||
-                (virAsprintf(&out, "%s.out", dev->data.file.path) < 0)) {
-                virReportOOMError();
-                goto done;
-            }
-            if ((SELinuxSetFilecon(in, secdef->imagelabel) < 0) ||
-                (SELinuxSetFilecon(out, secdef->imagelabel) < 0))
-                goto done;
+        if ((virAsprintf(&in, "%s.in", dev->data.file.path) < 0) ||
+            (virAsprintf(&out, "%s.out", dev->data.file.path) < 0)) {
+            virReportOOMError();
+            goto done;
         }
+        if ((SELinuxSetFilecon(in, secdef->imagelabel) < 0) ||
+            (SELinuxSetFilecon(out, secdef->imagelabel) < 0))
+            goto done;
         ret = 0;
         break;
 

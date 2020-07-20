@@ -454,7 +454,7 @@ learnIPAddressThread(void *arg)
             req->status = EINVAL;
             goto done;
         }
-        virBufferAsprintf(&buf, " ether dst %s"
+        virBufferVSprintf(&buf, " ether dst %s"
                                 " and src port 67 and dst port 68",
                           macaddr);
         break;
@@ -464,7 +464,7 @@ learnIPAddressThread(void *arg)
             req->status = EINVAL;
             goto done;
         }
-        virBufferAsprintf(&buf, "ether host %s", macaddr);
+        virBufferVSprintf(&buf, "ether host %s", macaddr);
     }
 
     if (virBufferError(&buf)) {

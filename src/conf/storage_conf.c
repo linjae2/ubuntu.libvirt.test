@@ -438,9 +438,6 @@ virStoragePoolDefParseSource(xmlXPathContextPtr ctxt,
     source->initiator.iqn = virXPathString("string(./initiator/iqn/@name)", ctxt);
 
     nsource = virXPathNodeSet("./device", ctxt, &nodeset);
-    if (nsource < 0)
-        goto cleanup;
-
     if (nsource > 0) {
         if (VIR_ALLOC_N(source->devices, nsource) < 0) {
             VIR_FREE(nodeset);
@@ -505,7 +502,13 @@ virStoragePoolDefParseSourceString(const char *srcSpec,
     xmlXPathContextPtr xpath_ctxt = NULL;
     virStoragePoolSourcePtr def = NULL, ret = NULL;
 
-    if (!(doc = virXMLParseString(srcSpec, "srcSpec.xml"))) {
+    doc = xmlReadDoc((const xmlChar *)srcSpec, "srcSpec.xml", NULL,
+                     XML_PARSE_NOENT | XML_PARSE_NONET |
+                     XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
+
+    if (doc == NULL) {
+        virStorageReportError(VIR_ERR_XML_ERROR,
+                              "%s", _("bad <source> spec"));
         goto cleanup;
     }
 
@@ -801,9 +804,9 @@ virStoragePoolSourceFormat(virBufferPtr buf,
     virBufferAddLit(buf,"  <source>\n");
     if ((options->flags & VIR_STORAGE_POOL_SOURCE_HOST) &&
         src->host.name) {
-        virBufferAsprintf(buf, "    <host name='%s'", src->host.name);
+        virBufferVSprintf(buf, "    <host name='%s'", src->host.name);
         if (src->host.port)
-            virBufferAsprintf(buf, " port='%d'", src->host.port);
+            virBufferVSprintf(buf, " port='%d'", src->host.port);
         virBufferAddLit(buf, "/>\n");
     }
 
@@ -811,29 +814,29 @@ virStoragePoolSourceFormat(virBufferPtr buf,
         src->ndevice) {
         for (i = 0 ; i < src->ndevice ; i++) {
             if (src->devices[i].nfreeExtent) {
-                virBufferAsprintf(buf,"    <device path='%s'>\n",
+                virBufferVSprintf(buf,"    <device path='%s'>\n",
                                   src->devices[i].path);
                 for (j = 0 ; j < src->devices[i].nfreeExtent ; j++) {
-                    virBufferAsprintf(buf, "    <freeExtent start='%llu' end='%llu'/>\n",
+                    virBufferVSprintf(buf, "    <freeExtent start='%llu' end='%llu'/>\n",
                                       src->devices[i].freeExtents[j].start,
                                       src->devices[i].freeExtents[j].end);
                 }
                 virBufferAddLit(buf,"    </device>\n");
             }
             else
-                virBufferAsprintf(buf, "    <device path='%s'/>\n",
+                virBufferVSprintf(buf, "    <device path='%s'/>\n",
                                   src->devices[i].path);
         }
     }
     if ((options->flags & VIR_STORAGE_POOL_SOURCE_DIR) &&
         src->dir)
-        virBufferAsprintf(buf,"    <dir path='%s'/>\n", src->dir);
+        virBufferVSprintf(buf,"    <dir path='%s'/>\n", src->dir);
     if ((options->flags & VIR_STORAGE_POOL_SOURCE_ADAPTER) &&
         src->adapter)
-        virBufferAsprintf(buf,"    <adapter name='%s'/>\n", src->adapter);
+        virBufferVSprintf(buf,"    <adapter name='%s'/>\n", src->adapter);
     if ((options->flags & VIR_STORAGE_POOL_SOURCE_NAME) &&
         src->name)
-        virBufferAsprintf(buf,"    <name>%s</name>\n", src->name);
+        virBufferVSprintf(buf,"    <name>%s</name>\n", src->name);
 
     if ((options->flags & VIR_STORAGE_POOL_SOURCE_INITIATOR_IQN) &&
         src->initiator.iqn) {
@@ -850,12 +853,12 @@ virStoragePoolSourceFormat(virBufferPtr buf,
                                   src->format);
             return -1;
         }
-        virBufferAsprintf(buf,"    <format type='%s'/>\n", format);
+        virBufferVSprintf(buf,"    <format type='%s'/>\n", format);
     }
 
 
     if (src->authType == VIR_STORAGE_POOL_AUTH_CHAP)
-        virBufferAsprintf(buf,"    <auth type='chap' login='%s' passwd='%s'/>\n",
+        virBufferVSprintf(buf,"    <auth type='chap' login='%s' passwd='%s'/>\n",
                           src->auth.chap.login,
                           src->auth.chap.passwd);
 
@@ -890,17 +893,17 @@ virStoragePoolDefFormat(virStoragePoolDefPtr def) {
                               "%s", _("unexpected pool type"));
         goto cleanup;
     }
-    virBufferAsprintf(&buf, "<pool type='%s'>\n", type);
-    virBufferAsprintf(&buf,"  <name>%s</name>\n", def->name);
+    virBufferVSprintf(&buf, "<pool type='%s'>\n", type);
+    virBufferVSprintf(&buf,"  <name>%s</name>\n", def->name);
 
     virUUIDFormat(def->uuid, uuid);
-    virBufferAsprintf(&buf,"  <uuid>%s</uuid>\n", uuid);
+    virBufferVSprintf(&buf,"  <uuid>%s</uuid>\n", uuid);
 
-    virBufferAsprintf(&buf,"  <capacity>%llu</capacity>\n",
+    virBufferVSprintf(&buf,"  <capacity>%llu</capacity>\n",
                       def->capacity);
-    virBufferAsprintf(&buf,"  <allocation>%llu</allocation>\n",
+    virBufferVSprintf(&buf,"  <allocation>%llu</allocation>\n",
                       def->allocation);
-    virBufferAsprintf(&buf,"  <available>%llu</available>\n",
+    virBufferVSprintf(&buf,"  <available>%llu</available>\n",
                       def->available);
 
     if (virStoragePoolSourceFormat(&buf, options, &def->source) < 0)
@@ -909,18 +912,18 @@ virStoragePoolDefFormat(virStoragePoolDefPtr def) {
     virBufferAddLit(&buf,"  <target>\n");
 
     if (def->target.path)
-        virBufferAsprintf(&buf,"    <path>%s</path>\n", def->target.path);
+        virBufferVSprintf(&buf,"    <path>%s</path>\n", def->target.path);
 
     virBufferAddLit(&buf,"    <permissions>\n");
-    virBufferAsprintf(&buf,"      <mode>0%o</mode>\n",
+    virBufferVSprintf(&buf,"      <mode>0%o</mode>\n",
                       def->target.perms.mode);
-    virBufferAsprintf(&buf,"      <owner>%d</owner>\n",
+    virBufferVSprintf(&buf,"      <owner>%d</owner>\n",
                       def->target.perms.uid);
-    virBufferAsprintf(&buf,"      <group>%d</group>\n",
+    virBufferVSprintf(&buf,"      <group>%d</group>\n",
                       def->target.perms.gid);
 
     if (def->target.perms.label)
-        virBufferAsprintf(&buf,"      <label>%s</label>\n",
+        virBufferVSprintf(&buf,"      <label>%s</label>\n",
                           def->target.perms.label);
 
     virBufferAddLit(&buf,"    </permissions>\n");
@@ -1179,10 +1182,10 @@ virStorageVolTargetDefFormat(virStorageVolOptionsPtr options,
                              virBufferPtr buf,
                              virStorageVolTargetPtr def,
                              const char *type) {
-    virBufferAsprintf(buf, "  <%s>\n", type);
+    virBufferVSprintf(buf, "  <%s>\n", type);
 
     if (def->path)
-        virBufferAsprintf(buf,"    <path>%s</path>\n", def->path);
+        virBufferVSprintf(buf,"    <path>%s</path>\n", def->path);
 
     if (options->formatToString) {
         const char *format = (options->formatToString)(def->format);
@@ -1192,20 +1195,20 @@ virStorageVolTargetDefFormat(virStorageVolOptionsPtr options,
                                   def->format);
             return -1;
         }
-        virBufferAsprintf(buf,"    <format type='%s'/>\n", format);
+        virBufferVSprintf(buf,"    <format type='%s'/>\n", format);
     }
 
     virBufferAddLit(buf,"    <permissions>\n");
-    virBufferAsprintf(buf,"      <mode>0%o</mode>\n",
+    virBufferVSprintf(buf,"      <mode>0%o</mode>\n",
                       def->perms.mode);
-    virBufferAsprintf(buf,"      <owner>%d</owner>\n",
+    virBufferVSprintf(buf,"      <owner>%d</owner>\n",
                       def->perms.uid);
-    virBufferAsprintf(buf,"      <group>%d</group>\n",
+    virBufferVSprintf(buf,"      <group>%d</group>\n",
                       def->perms.gid);
 
 
     if (def->perms.label)
-        virBufferAsprintf(buf,"      <label>%s</label>\n",
+        virBufferVSprintf(buf,"      <label>%s</label>\n",
                           def->perms.label);
 
     virBufferAddLit(buf,"    </permissions>\n");
@@ -1214,7 +1217,7 @@ virStorageVolTargetDefFormat(virStorageVolOptionsPtr options,
         virStorageEncryptionFormat(buf, def->encryption, 4) < 0)
         return -1;
 
-    virBufferAsprintf(buf, "  </%s>\n", type);
+    virBufferVSprintf(buf, "  </%s>\n", type);
 
     return 0;
 }
@@ -1230,8 +1233,8 @@ virStorageVolDefFormat(virStoragePoolDefPtr pool,
         return NULL;
 
     virBufferAddLit(&buf, "<volume>\n");
-    virBufferAsprintf(&buf,"  <name>%s</name>\n", def->name);
-    virBufferAsprintf(&buf,"  <key>%s</key>\n", def->key);
+    virBufferVSprintf(&buf,"  <name>%s</name>\n", def->name);
+    virBufferVSprintf(&buf,"  <key>%s</key>\n", def->key);
     virBufferAddLit(&buf, "  <source>\n");
 
     if (def->source.nextent) {
@@ -1243,11 +1246,11 @@ virStorageVolDefFormat(virStoragePoolDefPtr pool,
                 if (thispath != NULL)
                     virBufferAddLit(&buf, "    </device>\n");
 
-                virBufferAsprintf(&buf, "    <device path='%s'>\n",
+                virBufferVSprintf(&buf, "    <device path='%s'>\n",
                                   def->source.extents[i].path);
             }
 
-            virBufferAsprintf(&buf,
+            virBufferVSprintf(&buf,
                               "      <extent start='%llu' end='%llu'/>\n",
                               def->source.extents[i].start,
                               def->source.extents[i].end);
@@ -1258,9 +1261,9 @@ virStorageVolDefFormat(virStoragePoolDefPtr pool,
     }
     virBufferAddLit(&buf, "  </source>\n");
 
-    virBufferAsprintf(&buf,"  <capacity>%llu</capacity>\n",
+    virBufferVSprintf(&buf,"  <capacity>%llu</capacity>\n",
                       def->capacity);
-    virBufferAsprintf(&buf,"  <allocation>%llu</allocation>\n",
+    virBufferVSprintf(&buf,"  <allocation>%llu</allocation>\n",
                       def->allocation);
 
     if (virStorageVolTargetDefFormat(options, &buf,
@@ -1547,8 +1550,6 @@ virStoragePoolObjSaveDef(virStorageDriverStatePtr driver,
                              pool->configFile);
         goto cleanup;
     }
-
-    virEmitXMLWarning(fd, def->name, "pool-edit");
 
     towrite = strlen(xml);
     if (safewrite(fd, xml, towrite) != towrite) {

@@ -49,16 +49,12 @@ struct _qemuMonitorMessage {
     int txOffset;
     int txLength;
 
-    /* Used by the text monitor reply / error */
     char *rxBuffer;
     int rxLength;
-    /* Used by the JSON monitor to hold reply / error */
-    void *rxObject;
 
-    /* True if rxBuffer / rxObject are ready, or a
-     * fatal error occurred on the monitor channel
-     */
-    bool finished;
+    int finished;
+
+    int lastErrno;
 
     qemuMonitorPasswordHandler passwordHandler;
     void *passwordOpaque;
@@ -71,10 +67,9 @@ struct _qemuMonitorCallbacks {
                     virDomainObjPtr vm);
 
     void (*eofNotify)(qemuMonitorPtr mon,
-                      virDomainObjPtr vm);
-    void (*errorNotify)(qemuMonitorPtr mon,
-                        virDomainObjPtr vm);
-    /* XXX we'd really like to avoid virConnectPtr here
+                      virDomainObjPtr vm,
+                      int withError);
+    /* XXX we'd really like to avoid virCOnnectPtr here
      * It is required so the callback can find the active
      * secret driver. Need to change this to work like the
      * security drivers do, to avoid this
@@ -141,7 +136,6 @@ int qemuMonitorRef(qemuMonitorPtr mon);
 int qemuMonitorUnref(qemuMonitorPtr mon) ATTRIBUTE_RETURN_CHECK;
 
 /* These APIs are for use by the internal Text/JSON monitor impl code only */
-char *qemuMonitorNextCommandID(qemuMonitorPtr mon);
 int qemuMonitorSend(qemuMonitorPtr mon,
                     qemuMonitorMessagePtr msg);
 int qemuMonitorHMPCommandWithFd(qemuMonitorPtr mon,
@@ -184,7 +178,6 @@ int qemuMonitorEmitGraphics(qemuMonitorPtr mon,
 int qemuMonitorStartCPUs(qemuMonitorPtr mon,
                          virConnectPtr conn);
 int qemuMonitorStopCPUs(qemuMonitorPtr mon);
-int qemuMonitorGetStatus(qemuMonitorPtr mon, bool *running);
 
 int qemuMonitorSystemPowerdown(qemuMonitorPtr mon);
 
@@ -311,12 +304,6 @@ int qemuMonitorMigrateToUnix(qemuMonitorPtr mon,
 
 int qemuMonitorMigrateCancel(qemuMonitorPtr mon);
 
-int qemuMonitorGraphicsRelocate(qemuMonitorPtr mon,
-                                int type,
-                                const char *hostname,
-                                int port,
-                                int tlsPort,
-                                const char *tlsSubject);
 
 /* XXX disk driver type eg,  qcow/etc.
  * XXX cache mode
@@ -435,11 +422,6 @@ int qemuMonitorArbitraryCommand(qemuMonitorPtr mon,
                                 const char *cmd,
                                 char **reply,
                                 bool hmp);
-
-int qemuMonitorInjectNMI(qemuMonitorPtr mon);
-
-int qemuMonitorScreendump(qemuMonitorPtr mon,
-                          const char *file);
 
 /**
  * When running two dd process and using <> redirection, we need a

@@ -185,8 +185,7 @@ vmwareLoadDomains(struct vmware_driver *driver)
         if ((vm->def->id = vmwareExtractPid(vmxPath)) < 0)
             goto cleanup;
         /* vmrun list only reports running vms */
-        virDomainObjSetState(vm, VIR_DOMAIN_RUNNING,
-                             VIR_DOMAIN_RUNNING_UNKNOWN);
+        vm->state = VIR_DOMAIN_RUNNING;
         vm->persistent = 1;
 
         virDomainObjUnlock(vm);

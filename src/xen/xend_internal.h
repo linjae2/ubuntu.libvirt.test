@@ -110,11 +110,7 @@ int xenDaemonDomainRestore(virConnectPtr conn, const char *filename);
 int xenDaemonDomainSetMemory(virDomainPtr domain, unsigned long memory);
 int xenDaemonDomainSetMaxMemory(virDomainPtr domain, unsigned long memory);
 int xenDaemonDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info);
-int xenDaemonDomainGetState(virDomainPtr domain,
-                            int *state,
-                            int *reason,
-                            unsigned int flags);
-char *xenDaemonDomainGetXMLDesc(virDomainPtr domain, int flags, const char *cpus);
+char *xenDaemonDomainDumpXML(virDomainPtr domain, int flags, const char *cpus);
 unsigned long xenDaemonDomainGetMaxMemory(virDomainPtr domain);
 char **xenDaemonListDomainsOld(virConnectPtr xend);
 

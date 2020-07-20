@@ -48,7 +48,7 @@ static int testBufInfiniteLoop(const void *data ATTRIBUTE_UNUSED)
     if (info->doEscape)
         virBufferEscapeString(buf, "%s", addstr);
     else
-        virBufferAsprintf(buf, "%s", addstr);
+        virBufferVSprintf(buf, "%s", addstr);
 
     ret = 0;
 out:

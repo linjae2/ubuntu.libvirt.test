@@ -145,7 +145,7 @@ void virEventRegisterImpl(virEventAddHandleFunc addHandle,
  */
 int virEventRegisterDefaultImpl(void)
 {
-    VIR_DEBUG("registering default event implementation");
+    VIR_DEBUG0("");
 
     virResetLastError();
 
@@ -185,7 +185,7 @@ int virEventRegisterDefaultImpl(void)
  */
 int virEventRunDefaultImpl(void)
 {
-    VIR_DEBUG("running default event implementation");
+    VIR_DEBUG0("");
     virResetLastError();
 
     if (virEventPollRunOnce() < 0) {

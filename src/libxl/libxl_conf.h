@@ -1,6 +1,5 @@
 /*---------------------------------------------------------------------------*/
 /*  Copyright (c) 2011 SUSE LINUX Products GmbH, Nuernberg, Germany.
- *  Copyright (C) 2011 Univention GmbH.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,7 +17,6 @@
  *
  * Authors:
  *     Jim Fehlig <jfehlig@novell.com>
- *     Markus Groß <gross@univention.de>
  */
 /*---------------------------------------------------------------------------*/
 
@@ -63,7 +61,11 @@ struct _libxlDriverPrivate {
     virBitmapPtr reservedVNCPorts;
     virDomainObjList domains;
 
-    virDomainEventStatePtr domainEventState;
+    /* A list of callbacks */
+    virDomainEventCallbackListPtr domainEventCallbacks;
+    virDomainEventQueuePtr domainEventQueue;
+    int domainEventTimer;
+    int domainEventDispatching;
 
     char *configDir;
     char *autostartDir;
@@ -83,18 +85,6 @@ struct _libxlDomainObjPrivate {
     int eventHdl;
 };
 
-# define LIBXL_SAVE_MAGIC "libvirt-xml\n \0 \r"
-# define LIBXL_SAVE_VERSION 1
-
-typedef struct _libxlSavefileHeader libxlSavefileHeader;
-typedef libxlSavefileHeader *libxlSavefileHeaderPtr;
-struct _libxlSavefileHeader {
-    char magic[sizeof(LIBXL_SAVE_MAGIC)-1];
-    uint32_t version;
-    uint32_t xmlLen;
-    /* 24 bytes used, pad up to 64 bytes */
-    uint32_t unused[10];
-};
 
 # define libxlError(code, ...)                                     \
     virReportErrorHelper(VIR_FROM_LIBXL, code, __FILE__,           \
@@ -102,16 +92,6 @@ struct _libxlSavefileHeader {
 
 virCapsPtr
 libxlMakeCapabilities(libxl_ctx *ctx);
-
-int
-libxlMakeDisk(virDomainDefPtr def, virDomainDiskDefPtr l_dev,
-              libxl_device_disk *x_dev);
-int
-libxlMakeNic(virDomainDefPtr def, virDomainNetDefPtr l_nic,
-             libxl_device_nic *x_nic);
-int
-libxlMakeVfb(libxlDriverPrivatePtr driver, virDomainDefPtr def,
-             virDomainGraphicsDefPtr l_vfb, libxl_device_vfb *x_vfb);
 
 int
 libxlBuildDomainConfig(libxlDriverPrivatePtr driver,

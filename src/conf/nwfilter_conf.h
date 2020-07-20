@@ -97,9 +97,8 @@ enum attrDatatype {
     DATATYPE_IPV6ADDR         = (1 << 9),
     DATATYPE_IPV6MASK         = (1 << 10),
     DATATYPE_STRINGCOPY       = (1 << 11),
-    DATATYPE_BOOLEAN          = (1 << 12),
 
-    DATATYPE_LAST             = (1 << 13),
+    DATATYPE_LAST             = (1 << 12),
 };
 
 
@@ -119,7 +118,6 @@ struct _nwItemDesc {
     union {
         nwMACAddress macaddr;
         virSocketAddr ipaddr;
-        bool         boolean;
         uint8_t      u8;
         uint16_t     u16;
         char         protocolID[10];
@@ -162,7 +160,6 @@ struct _arpHdrFilterDef {
     nwItemDesc dataARPSrcIPAddr;
     nwItemDesc dataARPDstMACAddr;
     nwItemDesc dataARPDstIPAddr;
-    nwItemDesc dataGratuitousARP;
     nwItemDesc dataComment;
 };
 

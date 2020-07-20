@@ -581,11 +581,6 @@
           <ref name="uint16range"/>
         </attribute>
       </optional>
-      <optional>
-        <attribute name="gratuitous">
-          <ref name="boolean"/>
-        </attribute>
-      </optional>
    </interleave>
   </define>
 
@@ -786,17 +781,6 @@
         <param name="minInclusive">0</param>
         <param name="maxInclusive">65535</param>
       </data>
-    </choice>
-  </define>
-
-  <define name="boolean">
-    <choice>
-      <value>yes</value>
-      <value>no</value>
-      <value>true</value>
-      <value>false</value>
-      <value>1</value>
-      <value>0</value>
     </choice>
   </define>
 

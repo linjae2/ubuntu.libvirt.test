@@ -323,12 +323,12 @@ static int udevGenerateDeviceName(struct udev_device *device,
     int ret = 0, i = 0;
     virBuffer buf = VIR_BUFFER_INITIALIZER;
 
-    virBufferAsprintf(&buf, "%s_%s",
+    virBufferVSprintf(&buf, "%s_%s",
                       udev_device_get_subsystem(device),
                       udev_device_get_sysname(device));
 
     if (s != NULL) {
-        virBufferAsprintf(&buf, "_%s", s);
+        virBufferVSprintf(&buf, "_%s", s);
     }
 
     if (virBufferError(&buf)) {
@@ -1236,10 +1236,8 @@ static int udevSetParent(struct udev_device *device,
 
         parent_sysfs_path = udev_device_get_syspath(parent_device);
         if (parent_sysfs_path == NULL) {
-            virNodeDeviceReportError(VIR_ERR_INTERNAL_ERROR,
-                                     _("Could not get syspath for parent of '%s'"),
-                                     udev_device_get_syspath(parent_device));
-            goto out;
+            VIR_DEBUG("Could not get syspath for parent of '%s'",
+                      udev_device_get_syspath(parent_device));
         }
 
         dev = virNodeDeviceFindBySysfsPath(&driverState->devs,
@@ -1454,7 +1452,7 @@ static void udevEventHandleCallback(int watch ATTRIBUTE_UNUSED,
 
     device = udev_monitor_receive_device(udev_monitor);
     if (device == NULL) {
-        VIR_ERROR(_("udev_monitor_receive_device returned NULL"));
+        VIR_ERROR0(_("udev_monitor_receive_device returned NULL"));
         goto out;
     }
 
@@ -1636,7 +1634,7 @@ static int udevDeviceMonitorStartup(int privileged)
     }
 
     if (virMutexInit(&driverState->lock) < 0) {
-        VIR_ERROR(_("Failed to initialize mutex for driverState"));
+        VIR_ERROR0(_("Failed to initialize mutex for driverState"));
         VIR_FREE(priv);
         VIR_FREE(driverState);
         ret = -1;
@@ -1657,7 +1655,7 @@ static int udevDeviceMonitorStartup(int privileged)
     priv->udev_monitor = udev_monitor_new_from_netlink(udev, "udev");
     if (priv->udev_monitor == NULL) {
         VIR_FREE(priv);
-        VIR_ERROR(_("udev_monitor_new_from_netlink returned NULL"));
+        VIR_ERROR0(_("udev_monitor_new_from_netlink returned NULL"));
         ret = -1;
         goto out_unlock;
     }
@@ -1755,7 +1753,7 @@ static virStateDriver udevStateDriver = {
 
 int udevNodeRegister(void)
 {
-    VIR_DEBUG("Registering udev node device backend");
+    VIR_DEBUG0("Registering udev node device backend");
 
     registerCommonNodeFuncs(&udevDeviceMonitor);
     if (virRegisterDeviceMonitor(&udevDeviceMonitor) < 0) {

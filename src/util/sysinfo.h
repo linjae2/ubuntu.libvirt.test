@@ -27,10 +27,10 @@
 # include "internal.h"
 # include "util.h"
 
-enum virSysinfoType {
-    VIR_SYSINFO_SMBIOS,
+enum virDomainSysinfoType {
+    VIR_DOMAIN_SYSINFO_SMBIOS,
 
-    VIR_SYSINFO_LAST
+    VIR_DOMAIN_SYSINFO_LAST
 };
 
 typedef struct _virSysinfoDef virSysinfoDef;
@@ -58,10 +58,5 @@ void virSysinfoDefFree(virSysinfoDefPtr def);
 
 char *virSysinfoFormat(virSysinfoDefPtr def, const char *prefix)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-
-bool virSysinfoIsEqual(virSysinfoDefPtr src,
-                       virSysinfoDefPtr dst);
-
-VIR_ENUM_DECL(virSysinfo)
 
 #endif /* __VIR_SYSINFOS_H__ */

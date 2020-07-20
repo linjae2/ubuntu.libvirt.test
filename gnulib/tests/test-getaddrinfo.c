@@ -109,7 +109,7 @@ simple (char const *host, char const *service)
 #endif
       /* Provide details if errno was set.  */
       if (res == EAI_SYSTEM)
-        fprintf (stderr, "system error: %s\n", strerror (err));
+        dbgprintf ("system error: %s\n", strerror (err));
 
       return 1;
     }

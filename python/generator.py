@@ -154,18 +154,6 @@ def function(name, desc, ret, args, file, cond):
 def enum(type, name, value):
     if not enums.has_key(type):
         enums[type] = {}
-    if value == 'VIR_TYPED_PARAM_INT':
-        value = 1
-    elif value == 'VIR_TYPED_PARAM_UINT':
-        value = 2
-    elif value == 'VIR_TYPED_PARAM_LLONG':
-        value = 3
-    elif value == 'VIR_TYPED_PARAM_ULLONG':
-        value = 4
-    elif value == 'VIR_TYPED_PARAM_DOUBLE':
-        value = 5
-    elif value == 'VIR_TYPED_PARAM_BOOLEAN':
-        value = 6
     enums[type][name] = value
 
 #######################################################################
@@ -305,7 +293,6 @@ skip_impl = (
     'virConnGetLastError',
     'virGetLastError',
     'virDomainGetInfo',
-    'virDomainGetState',
     'virDomainGetBlockInfo',
     'virDomainGetJobInfo',
     'virNodeGetInfo',
@@ -323,9 +310,7 @@ skip_impl = (
     'virNodeGetCellsFreeMemory',
     'virDomainGetSchedulerType',
     'virDomainGetSchedulerParameters',
-    'virDomainGetSchedulerParametersFlags',
     'virDomainSetSchedulerParameters',
-    'virDomainSetSchedulerParametersFlags',
     'virDomainSetBlkioParameters',
     'virDomainGetBlkioParameters',
     'virDomainSetMemoryParameters',

@@ -123,7 +123,7 @@ static int umlSetCloseExec(int fd) {
         goto error;
     return 0;
  error:
-    VIR_ERROR(_("Failed to set close-on-exec file descriptor flag"));
+    VIR_ERROR0(_("Failed to set close-on-exec file descriptor flag"));
     return -1;
 }
 
@@ -133,8 +133,7 @@ static int umlStartVMDaemon(virConnectPtr conn,
 
 static void umlShutdownVMDaemon(virConnectPtr conn,
                                 struct uml_driver *driver,
-                                virDomainObjPtr vm,
-                                virDomainShutoffReason reason);
+                                virDomainObjPtr vm);
 
 
 static int umlMonitorCommand(const struct uml_driver *driver,
@@ -306,7 +305,7 @@ reread:
                 continue;
             }
 
-            umlShutdownVMDaemon(NULL, driver, dom, VIR_DOMAIN_SHUTOFF_SHUTDOWN);
+            umlShutdownVMDaemon(NULL, driver, dom);
         } else if (e->mask & (IN_CREATE | IN_MODIFY)) {
             VIR_DEBUG("Got inotify domain startup '%s'", name);
             if (virDomainObjIsActive(dom)) {
@@ -320,17 +319,14 @@ reread:
             }
 
             dom->def->id = driver->nextvmid++;
-            virDomainObjSetState(dom, VIR_DOMAIN_RUNNING,
-                                 VIR_DOMAIN_RUNNING_BOOTED);
+            dom->state = VIR_DOMAIN_RUNNING;
 
             if (umlOpenMonitor(driver, dom) < 0) {
-                VIR_WARN("Could not open monitor for new domain");
-                umlShutdownVMDaemon(NULL, driver, dom,
-                                    VIR_DOMAIN_SHUTOFF_FAILED);
+                VIR_WARN0("Could not open monitor for new domain");
+                umlShutdownVMDaemon(NULL, driver, dom);
             } else if (umlIdentifyChrPTY(driver, dom) < 0) {
-                VIR_WARN("Could not identify charater devices for new domain");
-                umlShutdownVMDaemon(NULL, driver, dom,
-                                    VIR_DOMAIN_SHUTOFF_FAILED);
+                VIR_WARN0("Could not identify charater devices for new domain");
+                umlShutdownVMDaemon(NULL, driver, dom);
             }
         }
         virDomainObjUnlock(dom);
@@ -417,7 +413,7 @@ umlStartup(int privileged)
     uml_driver->caps->privateDataFreeFunc = umlDomainObjPrivateFree;
 
     if ((uml_driver->inotifyFD = inotify_init()) < 0) {
-        VIR_ERROR(_("cannot initialize inotify"));
+        VIR_ERROR0(_("cannot initialize inotify"));
         goto error;
     }
 
@@ -455,7 +451,7 @@ umlStartup(int privileged)
     return 0;
 
 out_of_memory:
-    VIR_ERROR(_("umlStartup: out of memory"));
+    VIR_ERROR0(_("umlStartup: out of memory"));
 
 error:
     VIR_FREE(userdir);
@@ -519,7 +515,7 @@ umlShutdownOneVM(void *payload, const void *name ATTRIBUTE_UNUSED, void *opaque)
 
     virDomainObjLock(dom);
     if (virDomainObjIsActive(dom))
-        umlShutdownVMDaemon(NULL, driver, dom, VIR_DOMAIN_SHUTOFF_SHUTDOWN);
+        umlShutdownVMDaemon(NULL, driver, dom);
     virDomainObjUnlock(dom);
 }
 
@@ -786,7 +782,7 @@ static int umlCleanupTapDevices(virConnectPtr conn ATTRIBUTE_UNUSED,
     int err;
     int ret = 0;
     brControl *brctl = NULL;
-    VIR_ERROR(_("Cleanup tap"));
+    VIR_ERROR0(_("Cleanup tap"));
     if (brInit(&brctl) < 0)
         return -1;
 
@@ -804,7 +800,7 @@ static int umlCleanupTapDevices(virConnectPtr conn ATTRIBUTE_UNUSED,
             ret = -1;
         }
     }
-    VIR_ERROR(_("Cleanup tap done"));
+    VIR_ERROR0(_("Cleanup tap done"));
     brShutdown(brctl);
     return ret;
 }
@@ -911,8 +907,7 @@ cleanup:
 
 static void umlShutdownVMDaemon(virConnectPtr conn ATTRIBUTE_UNUSED,
                                 struct uml_driver *driver ATTRIBUTE_UNUSED,
-                                virDomainObjPtr vm,
-                                virDomainShutoffReason reason)
+                                virDomainObjPtr vm)
 {
     int ret;
     umlDomainObjPrivatePtr priv = vm->privateData;
@@ -931,7 +926,7 @@ static void umlShutdownVMDaemon(virConnectPtr conn ATTRIBUTE_UNUSED,
 
     vm->pid = -1;
     vm->def->id = -1;
-    virDomainObjSetState(vm, VIR_DOMAIN_SHUTOFF, reason);
+    vm->state = VIR_DOMAIN_SHUTOFF;
 
     virDomainConfVMNWFilterTeardown(vm);
     umlCleanupTapDevices(conn, vm);
@@ -1350,7 +1345,7 @@ static int umlDomainDestroy(virDomainPtr dom) {
         goto cleanup;
     }
 
-    umlShutdownVMDaemon(dom->conn, driver, vm, VIR_DOMAIN_SHUTOFF_DESTROYED);
+    umlShutdownVMDaemon(dom->conn, driver, vm);
     if (!vm->persistent) {
         virDomainRemoveInactive(&driver->domains,
                                 vm);
@@ -1503,7 +1498,7 @@ static int umlDomainGetInfo(virDomainPtr dom,
         goto cleanup;
     }
 
-    info->state = virDomainObjGetState(vm, NULL);
+    info->state = vm->state;
 
     if (!virDomainObjIsActive(vm)) {
         info->cpuTime = 0;
@@ -1527,40 +1522,8 @@ cleanup:
 }
 
 
-static int
-umlDomainGetState(virDomainPtr dom,
-                  int *state,
-                  int *reason,
-                  unsigned int flags)
-{
-    struct uml_driver *driver = dom->conn->privateData;
-    virDomainObjPtr vm;
-    int ret = -1;
-
-    virCheckFlags(0, -1);
-
-    umlDriverLock(driver);
-    vm = virDomainFindByUUID(&driver->domains, dom->uuid);
-    umlDriverUnlock(driver);
-
-    if (!vm) {
-        umlReportError(VIR_ERR_NO_DOMAIN, "%s",
-                       _("no domain with matching uuid"));
-        goto cleanup;
-    }
-
-    *state = virDomainObjGetState(vm, reason);
-    ret = 0;
-
-cleanup:
-    if (vm)
-        virDomainObjUnlock(vm);
-    return ret;
-}
-
-
-static char *umlDomainGetXMLDesc(virDomainPtr dom,
-                                 int flags ATTRIBUTE_UNUSED) {
+static char *umlDomainDumpXML(virDomainPtr dom,
+                                int flags ATTRIBUTE_UNUSED) {
     struct uml_driver *driver = dom->conn->privateData;
     virDomainObjPtr vm;
     char *ret = NULL;
@@ -2167,8 +2130,7 @@ umlDomainOpenConsole(virDomainPtr dom,
         goto cleanup;
     }
 
-    if (virFDStreamOpenFile(st, chr->source.data.file.path,
-                            0, 0, O_RDWR, false) < 0)
+    if (virFDStreamOpenFile(st, chr->source.data.file.path, 0, 0, O_RDWR) < 0)
         goto cleanup;
 
     ret = 0;
@@ -2181,51 +2143,116 @@ cleanup:
 
 
 static virDriver umlDriver = {
-    .no = VIR_DRV_UML,
-    .name = "UML",
-    .open = umlOpen, /* 0.5.0 */
-    .close = umlClose, /* 0.5.0 */
-    .type = umlGetType, /* 0.5.0 */
-    .version = umlGetVersion, /* 0.5.0 */
-    .getHostname = virGetHostname, /* 0.5.0 */
-    .nodeGetInfo = nodeGetInfo, /* 0.5.0 */
-    .getCapabilities = umlGetCapabilities, /* 0.5.0 */
-    .listDomains = umlListDomains, /* 0.5.0 */
-    .numOfDomains = umlNumDomains, /* 0.5.0 */
-    .domainCreateXML = umlDomainCreate, /* 0.5.0 */
-    .domainLookupByID = umlDomainLookupByID, /* 0.5.0 */
-    .domainLookupByUUID = umlDomainLookupByUUID, /* 0.5.0 */
-    .domainLookupByName = umlDomainLookupByName, /* 0.5.0 */
-    .domainShutdown = umlDomainShutdown, /* 0.5.0 */
-    .domainDestroy = umlDomainDestroy, /* 0.5.0 */
-    .domainGetOSType = umlDomainGetOSType, /* 0.5.0 */
-    .domainGetMaxMemory = umlDomainGetMaxMemory, /* 0.5.0 */
-    .domainSetMaxMemory = umlDomainSetMaxMemory, /* 0.5.0 */
-    .domainSetMemory = umlDomainSetMemory, /* 0.5.0 */
-    .domainGetInfo = umlDomainGetInfo, /* 0.5.0 */
-    .domainGetState = umlDomainGetState, /* 0.9.2 */
-    .domainGetXMLDesc = umlDomainGetXMLDesc, /* 0.5.0 */
-    .listDefinedDomains = umlListDefinedDomains, /* 0.5.0 */
-    .numOfDefinedDomains = umlNumDefinedDomains, /* 0.5.0 */
-    .domainCreate = umlDomainStart, /* 0.5.0 */
-    .domainCreateWithFlags = umlDomainStartWithFlags, /* 0.8.2 */
-    .domainDefineXML = umlDomainDefine, /* 0.5.0 */
-    .domainUndefine = umlDomainUndefine, /* 0.5.0 */
-    .domainAttachDevice = umlDomainAttachDevice, /* 0.8.4 */
-    .domainAttachDeviceFlags = umlDomainAttachDeviceFlags, /* 0.8.4 */
-    .domainDetachDevice = umlDomainDetachDevice, /* 0.8.4 */
-    .domainDetachDeviceFlags = umlDomainDetachDeviceFlags, /* 0.8.4 */
-    .domainGetAutostart = umlDomainGetAutostart, /* 0.5.0 */
-    .domainSetAutostart = umlDomainSetAutostart, /* 0.5.0 */
-    .domainBlockPeek = umlDomainBlockPeek, /* 0.5.0 */
-    .nodeGetCellsFreeMemory = nodeGetCellsFreeMemory, /* 0.5.0 */
-    .nodeGetFreeMemory = nodeGetFreeMemory, /* 0.5.0 */
-    .isEncrypted = umlIsEncrypted, /* 0.7.3 */
-    .isSecure = umlIsSecure, /* 0.7.3 */
-    .domainIsActive = umlDomainIsActive, /* 0.7.3 */
-    .domainIsPersistent = umlDomainIsPersistent, /* 0.7.3 */
-    .domainIsUpdated = umlDomainIsUpdated, /* 0.8.6 */
-    .domainOpenConsole = umlDomainOpenConsole, /* 0.8.6 */
+    VIR_DRV_UML,
+    "UML",
+    umlOpen, /* open */
+    umlClose, /* close */
+    NULL, /* supports_feature */
+    umlGetType, /* type */
+    umlGetVersion, /* version */
+    NULL, /* libvirtVersion (impl. in libvirt.c) */
+    virGetHostname, /* getHostname */
+    NULL, /* getSysinfo */
+    NULL, /* getMaxVcpus */
+    nodeGetInfo, /* nodeGetInfo */
+    umlGetCapabilities, /* getCapabilities */
+    umlListDomains, /* listDomains */
+    umlNumDomains, /* numOfDomains */
+    umlDomainCreate, /* domainCreateXML */
+    umlDomainLookupByID, /* domainLookupByID */
+    umlDomainLookupByUUID, /* domainLookupByUUID */
+    umlDomainLookupByName, /* domainLookupByName */
+    NULL, /* domainSuspend */
+    NULL, /* domainResume */
+    umlDomainShutdown, /* domainShutdown */
+    NULL, /* domainReboot */
+    umlDomainDestroy, /* domainDestroy */
+    umlDomainGetOSType, /* domainGetOSType */
+    umlDomainGetMaxMemory, /* domainGetMaxMemory */
+    umlDomainSetMaxMemory, /* domainSetMaxMemory */
+    umlDomainSetMemory, /* domainSetMemory */
+    NULL, /* domainSetMemoryFlags */
+    NULL, /* domainSetMemoryParameters */
+    NULL, /* domainGetMemoryParameters */
+    NULL, /* domainSetBlkioParameters */
+    NULL, /* domainGetBlkioParameters */
+    umlDomainGetInfo, /* domainGetInfo */
+    NULL, /* domainSave */
+    NULL, /* domainRestore */
+    NULL, /* domainCoreDump */
+    NULL, /* domainSetVcpus */
+    NULL, /* domainSetVcpusFlags */
+    NULL, /* domainGetVcpusFlags */
+    NULL, /* domainPinVcpu */
+    NULL, /* domainGetVcpus */
+    NULL, /* domainGetMaxVcpus */
+    NULL, /* domainGetSecurityLabel */
+    NULL, /* nodeGetSecurityModel */
+    umlDomainDumpXML, /* domainDumpXML */
+    NULL, /* domainXMLFromNative */
+    NULL, /* domainXMLToNative */
+    umlListDefinedDomains, /* listDefinedDomains */
+    umlNumDefinedDomains, /* numOfDefinedDomains */
+    umlDomainStart, /* domainCreate */
+    umlDomainStartWithFlags, /* domainCreateWithFlags */
+    umlDomainDefine, /* domainDefineXML */
+    umlDomainUndefine, /* domainUndefine */
+    umlDomainAttachDevice, /* domainAttachDevice */
+    umlDomainAttachDeviceFlags, /* domainAttachDeviceFlags */
+    umlDomainDetachDevice, /* domainDetachDevice */
+    umlDomainDetachDeviceFlags, /* domainDetachDeviceFlags */
+    NULL, /* domainUpdateDeviceFlags */
+    umlDomainGetAutostart, /* domainGetAutostart */
+    umlDomainSetAutostart, /* domainSetAutostart */
+    NULL, /* domainGetSchedulerType */
+    NULL, /* domainGetSchedulerParameters */
+    NULL, /* domainSetSchedulerParameters */
+    NULL, /* domainMigratePrepare */
+    NULL, /* domainMigratePerform */
+    NULL, /* domainMigrateFinish */
+    NULL, /* domainBlockStats */
+    NULL, /* domainInterfaceStats */
+    NULL, /* domainMemoryStats */
+    umlDomainBlockPeek, /* domainBlockPeek */
+    NULL, /* domainMemoryPeek */
+    NULL, /* domainGetBlockInfo */
+    nodeGetCellsFreeMemory, /* nodeGetCellsFreeMemory */
+    nodeGetFreeMemory,  /* getFreeMemory */
+    NULL, /* domainEventRegister */
+    NULL, /* domainEventDeregister */
+    NULL, /* domainMigratePrepare2 */
+    NULL, /* domainMigrateFinish2 */
+    NULL, /* nodeDeviceDettach */
+    NULL, /* nodeDeviceReAttach */
+    NULL, /* nodeDeviceReset */
+    NULL, /* domainMigratePrepareTunnel */
+    umlIsEncrypted, /* isEncrypted */
+    umlIsSecure, /* isSecure */
+    umlDomainIsActive, /* domainIsActive */
+    umlDomainIsPersistent, /* domainIsPersistent */
+    umlDomainIsUpdated, /* domainIsUpdated */
+    NULL, /* cpuCompare */
+    NULL, /* cpuBaseline */
+    NULL, /* domainGetJobInfo */
+    NULL, /* domainAbortJob */
+    NULL, /* domainMigrateSetMaxDowntime */
+    NULL, /* domainMigrateSetMaxSpeed */
+    NULL, /* domainEventRegisterAny */
+    NULL, /* domainEventDeregisterAny */
+    NULL, /* domainManagedSave */
+    NULL, /* domainHasManagedSaveImage */
+    NULL, /* domainManagedSaveRemove */
+    NULL, /* domainSnapshotCreateXML */
+    NULL, /* domainSnapshotDumpXML */
+    NULL, /* domainSnapshotNum */
+    NULL, /* domainSnapshotListNames */
+    NULL, /* domainSnapshotLookupByName */
+    NULL, /* domainHasCurrentSnapshot */
+    NULL, /* domainSnapshotCurrent */
+    NULL, /* domainRevertToSnapshot */
+    NULL, /* domainSnapshotDelete */
+    NULL, /* qemuDomainMonitorCommand */
+    umlDomainOpenConsole, /* domainOpenConsole */
 };
 
 static int
