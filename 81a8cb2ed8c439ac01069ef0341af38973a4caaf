@@ -1,0 +1,23 @@
+  * Merge from debian unstable, remaining changes:
+    - DebianMaintainerField.
+    - Add libxen3.1-dev to enable Xen management.
+    - Add libpolkit-dbus-dev to enable polkit integration.
+    - Build libvirt0-dbg flavour.
+    - Start libvirtd by default.
+    - Install polkit policy.
+    - Install sasl config.
+    - Install sample qemu and libvirtd config.
+    - Create libvirtd group in postinst.
+    - libvirt-remote-ssh.patch: Fix foo+ssh:// urls.
+    - delayed_iff_up_bridge.patch: Don't try to IFF_UP the bridge interface
+      until an interface gets added to it.
+  * Create /var/run if it doesn't exist (LP: #178106).
+  * libvirt-bin.init: fix the reload target
+  * add configuration examples
+  * new upstream version
+  * enable sasl support
+  * leave policykit support disabled since it's not in unstable yet
+  * bump shlibs version
+  * remove CVS metadata
+  * rediff patches
+  * libvirtd-bin.init: libvirtd supports reload
