@@ -1,0 +1,14 @@
+  * SECURITY UPDATE: denial of service via incorrect ACL check handling
+    - debian/patches/CVE-2014-8136.patch: properly unlock vm on failed ACL
+      check in src/qemu/qemu_driver.c.
+    - CVE-2014-8136
+  * SECURITY UPDATE: VNC password leak via snapshots and save images
+    - debian/patches/CVE-2015-0236.patch: check ACLs when dumping security
+      info in src/qemu/qemu_driver.c, src/remote/remote_protocol.x.
+    - CVE-2015-0236
+  * SECURITY UPDATE: ACL bypass using storage pool directory traversal
+    - debian/patches/CVE-2015-5313.patch: filter filesystem volume names in
+      src/storage/storage_backend_fs.c.
+    - CVE-2015-5313
+  * This package does _not_ contain the changes from 1.2.2-0ubuntu13.1.15
+    in trusty-proposed.
