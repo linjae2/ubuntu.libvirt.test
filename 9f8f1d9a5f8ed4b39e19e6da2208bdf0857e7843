@@ -1,0 +1,3 @@
+  * lxc_controller: use our own unlocpt+grantpt rather than glibc's, which
+    can't handle opening a pty in a devpts not mounted at /dev/pts.
+    (LP: #863629)
