@@ -1,0 +1,8 @@
+  * enable use of libvirt with kvm-spice (LP: #903962):
+    . src/qemu/qemu_capabilities.c: search for 'kvm-spice' before
+      'kvm' (debian/patches/ubuntu/enable-kvm-spice.patch)
+    . debian/apparmor/libvirt-qemu:
+      * prepend 'owner' to /run/shm/spice.* rule
+      * add more needed spice perms
+  * move cgroup-lite | cgroup-bin to depends, now that cgroup-lite is in
+    main.
