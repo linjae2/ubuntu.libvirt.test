@@ -1,0 +1,4 @@
+  * [97182f9] Don't fail if we can't setup avahi. We'd need to make this a
+    hard dependency otherwise.
+  * [bf94bbd] xen: Don't crash when we fail to init caps (Closes: #656075)
+  * [56f2dbc] Cleanup /var/log/libvirt on purge (Closes: #656460)
