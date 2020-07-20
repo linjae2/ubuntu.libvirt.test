@@ -1,0 +1,4 @@
+  * d/p/ubuntu/bug-1705132-* qemu: Adaptive timeout for connecting to
+    monitor (LP: #1705132)
+    - includes backports that make backing off on timeouts exponentially
+      but cap the exponential increase on 1s.
