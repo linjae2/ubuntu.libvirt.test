@@ -1,0 +1,6 @@
+  [ Stefan Bader ]
+  * Use domain/status to check for inactive domains in the xend sub-
+    driver. (LP: #929626)
+  * Prevent the hypervisor sub-driver from logging an internal error
+    just because it cannot find a certain domain when looking for
+    the number of vcpus. (LP: #963006)
