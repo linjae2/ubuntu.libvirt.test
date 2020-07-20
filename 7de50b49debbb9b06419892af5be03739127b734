@@ -1,0 +1,6 @@
+  * [4c14b83] qemu: Don't try to parse -help for new QEMU.
+    Closes: #777138, #775773
+    Thanks to Mathieu Malaterre for the debugging
+  * [1addae5] Force capability refresh on upgrades. This makes sure we
+    refresh the capabilities at least once when upgrading from Wheezy.
+    (Closes: #731815)
