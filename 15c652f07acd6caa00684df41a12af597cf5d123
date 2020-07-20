@@ -1,0 +1,4 @@
+  * Fix xml validation for Xen by allowing non-absolute path values
+    in loader and bootloader elements (LP: #1425497).
+  * Fix up Xen emulator in old configurations and for new definitions to
+    point to /usr/bin/qemu-system-i386 (LP: #1425497).
