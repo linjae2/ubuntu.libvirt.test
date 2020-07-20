@@ -11,20 +11,28 @@
 #ifndef __VIR_XEN_INTERNAL_H__
 #define __VIR_XEN_INTERNAL_H__
 
-/* required for dom0_getdomaininfo_t and DOM0_INTERFACE_VERSION */
-#include <xen/dom0_ops.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void	xenHypervisorRegister		(void);
+extern virDriver xenHypervisorDriver;
+int	xenHypervisorInit		(void);
+
+/* The following calls are made directly by the Xen proxy: */
+
 int	xenHypervisorOpen		(virConnectPtr conn,
 					 const char *name,
 					 int flags);
 int	xenHypervisorClose		(virConnectPtr conn);
 int	xenHypervisorGetVersion		(virConnectPtr conn,
 				 	 unsigned long *hvVer);
+char *
+        xenHypervisorMakeCapabilitiesXML (virConnectPtr conn,
+					  const char *hostmachine,
+					  FILE *cpuinfo,
+					  FILE *capabilities);
+char *
+        xenHypervisorGetCapabilities    (virConnectPtr conn);
 unsigned long
         xenHypervisorGetDomMaxMemory	(virConnectPtr conn,
 					 int id);
@@ -32,6 +40,7 @@ int	xenHypervisorNumOfDomains	(virConnectPtr conn);
 int	xenHypervisorListDomains	(virConnectPtr conn,
 					 int *ids,
 					 int maxids);
+  int	xenHypervisorGetMaxVcpus	(virConnectPtr conn, const char *type);
 int	xenHypervisorDestroyDomain	(virDomainPtr domain);
 int	xenHypervisorResumeDomain	(virDomainPtr domain);
 int	xenHypervisorPauseDomain	(virDomainPtr domain);
@@ -55,6 +64,7 @@ int	xenHypervisorGetVcpus		(virDomainPtr domain,
 					 int maxinfo,
 					 unsigned char *cpumaps,
 					 int maplen);
+int	xenHypervisorGetVcpuMax		(virDomainPtr domain);
 
 #ifdef __cplusplus
 }

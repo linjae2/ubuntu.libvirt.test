@@ -34,6 +34,18 @@ libvirt_longWrap(long val)
 }
 
 PyObject *
+libvirt_ulongWrap(unsigned long val)
+{
+    PyObject *ret;
+
+#ifdef DEBUG
+    printf("libvirt_ulongWrap: val = %lu\n", val);
+#endif
+    ret = PyLong_FromLong(val);
+    return (ret);
+}   
+
+PyObject *
 libvirt_longlongWrap(long long val)
 {
     PyObject *ret;
@@ -108,6 +120,24 @@ libvirt_virDomainPtrWrap(virDomainPtr node)
     }
     ret =
         PyCObject_FromVoidPtrAndDesc((void *) node, (char *) "virDomainPtr",
+                                     NULL);
+    return (ret);
+}
+
+PyObject *
+libvirt_virNetworkPtrWrap(virNetworkPtr node)
+{
+    PyObject *ret;
+
+#ifdef DEBUG
+    printf("libvirt_virNetworkPtrWrap: node = %p\n", node);
+#endif
+    if (node == NULL) {
+        Py_INCREF(Py_None);
+        return (Py_None);
+    }
+    ret =
+        PyCObject_FromVoidPtrAndDesc((void *) node, (char *) "virNetworkPtr",
                                      NULL);
     return (ret);
 }

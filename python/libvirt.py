@@ -7,10 +7,71 @@
 import libvirtmod
 import types
 
-# The root of all libxml2 errors.
+# The root of all libvirt errors.
 class libvirtError(Exception):
-    pass
+    def __init__(self, msg, conn=None, dom=None, net=None):
+        Exception.__init__(self, msg)
 
+        if dom is not None:
+            conn = dom._conn
+        elif net is not None:
+            conn = net._conn
+
+        if conn is None:
+            self.err = virGetLastError()
+        else:
+            self.err = conn.virConnGetLastError()
+
+    def get_error_code(self):
+        if self.err is None:
+            return None
+        return self.err[0]
+
+    def get_error_domain(self):
+        if self.err is None:
+            return None
+        return self.err[1]
+
+    def get_error_message(self):
+        if self.err is None:
+            return None
+        return self.err[2]
+
+    def get_error_level(self):
+        if self.err is None:
+            return None
+        return self.err[3]
+
+    def get_str1(self):
+        if self.err is None:
+            return None
+        return self.err[4]
+
+    def get_str2(self):
+        if self.err is None:
+            return None
+        return self.err[5]
+
+    def get_str3(self):
+        if self.err is None:
+            return None
+        return self.err[6]
+
+    def get_int1(self):
+        if self.err is None:
+            return None
+        return self.err[7]
+
+    def get_int2(self):
+        if self.err is None:
+            return None
+        return self.err[8]
+
+    def __str__(self):
+        if self.get_error_message() is None:
+            return Exception.__str__(self)
+        else:
+            return Exception.__str__(self) + " " + self.get_error_message()
 
 #
 # register the libvirt global error handler
@@ -53,18 +114,27 @@ def virInitialize():
        startup in multithreaded applications to avoid potential
        race when initializing the library. """
     ret = libvirtmod.virInitialize()
+    if ret == -1: raise libvirtError ('virInitialize() failed')
     return ret
 
 #
 # Functions from module virterror
 #
 
+def virGetLastError():
+    """Provide a pointer to the last error caught at the library
+       level Simpler but may not be suitable for multithreaded
+       accesses, in which case use virCopyLastError() """
+    ret = libvirtmod.virGetLastError()
+    return ret
+
 def virResetLastError():
     """Reset the last error caught at the library level. """
     libvirtmod.virResetLastError()
 
 class virDomain:
-    def __init__(self, _obj=None):
+    def __init__(self, conn, _obj=None):
+        self._conn = conn
         if _obj != None:self._o = _obj;return
         self._o = None
 
@@ -85,6 +155,14 @@ class virDomain:
     def OSType(self):
         """Get the type of domain operation system. """
         ret = libvirtmod.virDomainGetOSType(self._o)
+        if ret is None: raise libvirtError ('virDomainGetOSType() failed', dom=self)
+        return ret
+
+    def UUIDString(self, buf):
+        """Get the UUID for a domain as string. For more information
+           about UUID see RFC4122. """
+        ret = libvirtmod.virDomainGetUUIDString(self._o, buf)
+        if ret == -1: raise libvirtError ('virDomainGetUUIDString() failed', dom=self)
         return ret
 
     def XMLDesc(self, flags):
@@ -92,12 +170,28 @@ class virDomain:
            may be reused later to relaunch the domain with
            virDomainCreateLinux(). """
         ret = libvirtmod.virDomainGetXMLDesc(self._o, flags)
+        if ret is None: raise libvirtError ('virDomainGetXMLDesc() failed', dom=self)
+        return ret
+
+    def attachDevice(self, xml):
+        """Create a virtual device attachment to backend. """
+        ret = libvirtmod.virDomainAttachDevice(self._o, xml)
+        if ret == -1: raise libvirtError ('virDomainAttachDevice() failed', dom=self)
+        return ret
+
+    def coreDump(self, to, flags):
+        """This method will dump the core of a domain on a given file
+           for analysis. Note that for remote Xen Daemon the file
+           path will be interpreted in the remote host. """
+        ret = libvirtmod.virDomainCoreDump(self._o, to, flags)
+        if ret == -1: raise libvirtError ('virDomainCoreDump() failed', dom=self)
         return ret
 
     def create(self):
         """launch a defined domain. If the call succeed the domain
            moves from the defined to the running domains pools. """
         ret = libvirtmod.virDomainCreate(self._o)
+        if ret == -1: raise libvirtError ('virDomainCreate() failed', dom=self)
         return ret
 
     def destroy(self):
@@ -107,7 +201,14 @@ class virDomain:
            should not be used thereafter if the call does not return
            an error. This function may requires priviledged access """
         ret = libvirtmod.virDomainDestroy(self._o)
+        if ret == -1: raise libvirtError ('virDomainDestroy() failed', dom=self)
         self._o = None
+        return ret
+
+    def detachDevice(self, xml):
+        """Destroy a virtual device attachment to backend. """
+        ret = libvirtmod.virDomainDetachDevice(self._o, xml)
+        if ret == -1: raise libvirtError ('virDomainDetachDevice() failed', dom=self)
         return ret
 
     def maxMemory(self):
@@ -116,6 +217,17 @@ class virDomain:
            memory reserved to Domain0 i.e. the domain where the
            application runs. """
         ret = libvirtmod.virDomainGetMaxMemory(self._o)
+        if ret == 0: raise libvirtError ('virDomainGetMaxMemory() failed', dom=self)
+        return ret
+
+    def maxVcpus(self):
+        """Provides the maximum number of virtual CPUs supported for
+           the guest VM. If the guest is inactive, this is basically
+           the same as virConnectGetMaxVcpus. If the guest is running
+           this will reflect the maximum number of virtual CPUs the
+           guest was booted with. """
+        ret = libvirtmod.virDomainGetMaxVcpus(self._o)
+        if ret == -1: raise libvirtError ('virDomainGetMaxVcpus() failed', dom=self)
         return ret
 
     def name(self):
@@ -128,6 +240,7 @@ class virDomain:
            a virtual CPU. This function requires priviledged access
            to the hypervisor. """
         ret = libvirtmod.virDomainPinVcpu(self._o, vcpu, cpumap, maplen)
+        if ret == -1: raise libvirtError ('virDomainPinVcpu() failed', dom=self)
         return ret
 
     def reboot(self, flags):
@@ -135,6 +248,7 @@ class virDomain:
            after but the domain OS is being stopped for a restart.
            Note that the guest OS may ignore the request. """
         ret = libvirtmod.virDomainReboot(self._o, flags)
+        if ret == -1: raise libvirtError ('virDomainReboot() failed', dom=self)
         return ret
 
     def resume(self):
@@ -143,6 +257,7 @@ class virDomain:
            virSuspendDomain(). This function may requires priviledged
            access """
         ret = libvirtmod.virDomainResume(self._o)
+        if ret == -1: raise libvirtError ('virDomainResume() failed', dom=self)
         return ret
 
     def save(self, to):
@@ -152,6 +267,14 @@ class virDomain:
            problem). Use virDomainRestore() to restore a domain after
            saving. """
         ret = libvirtmod.virDomainSave(self._o, to)
+        if ret == -1: raise libvirtError ('virDomainSave() failed', dom=self)
+        return ret
+
+    def setAutostart(self, autostart):
+        """Configure the domain to be automatically started when the
+           host machine boots. """
+        ret = libvirtmod.virDomainSetAutostart(self._o, autostart)
+        if ret == -1: raise libvirtError ('virDomainSetAutostart() failed', dom=self)
         return ret
 
     def setMaxMemory(self, memory):
@@ -161,6 +284,7 @@ class virDomain:
            where the application runs. This function requires
            priviledged access to the hypervisor. """
         ret = libvirtmod.virDomainSetMaxMemory(self._o, memory)
+        if ret == -1: raise libvirtError ('virDomainSetMaxMemory() failed', dom=self)
         return ret
 
     def setMemory(self, memory):
@@ -170,6 +294,7 @@ class virDomain:
            where the application runs. This function may requires
            priviledged access to the hypervisor. """
         ret = libvirtmod.virDomainSetMemory(self._o, memory)
+        if ret == -1: raise libvirtError ('virDomainSetMemory() failed', dom=self)
         return ret
 
     def setVcpus(self, nvcpus):
@@ -179,6 +304,7 @@ class virDomain:
            growing the number is arbitrary limited. This function
            requires priviledged access to the hypervisor. """
         ret = libvirtmod.virDomainSetVcpus(self._o, nvcpus)
+        if ret == -1: raise libvirtError ('virDomainSetVcpus() failed', dom=self)
         return ret
 
     def shutdown(self):
@@ -188,6 +314,7 @@ class virDomain:
            option for reboot, knowing it may not be doable in the
            general case ? """
         ret = libvirtmod.virDomainShutdown(self._o)
+        if ret == -1: raise libvirtError ('virDomainShutdown() failed', dom=self)
         return ret
 
     def suspend(self):
@@ -197,17 +324,13 @@ class virDomain:
            allocated. Use virDomainResume() to reactivate the domain.
            This function may requires priviledged access. """
         ret = libvirtmod.virDomainSuspend(self._o)
-        return ret
-
-    def uUIDString(self, buf):
-        """Get the UUID for a domain as string. For more information
-           about UUID see RFC4122. """
-        ret = libvirtmod.virDomainGetUUIDString(self._o, buf)
+        if ret == -1: raise libvirtError ('virDomainSuspend() failed', dom=self)
         return ret
 
     def undefine(self):
         """undefine a domain but does not stop it if it is running """
         ret = libvirtmod.virDomainUndefine(self._o)
+        if ret == -1: raise libvirtError ('virDomainUndefine() failed', dom=self)
         return ret
 
     #
@@ -217,6 +340,13 @@ class virDomain:
     def UUID(self):
         """Extract the UUID unique Identifier of a domain. """
         ret = libvirtmod.virDomainGetUUID(self._o)
+        if ret is None: raise libvirtError ('virDomainGetUUID() failed', dom=self)
+        return ret
+
+    def autostart(self):
+        """Extract the autostart flag for a domain """
+        ret = libvirtmod.virDomainGetAutostart(self._o)
+        if ret == -1: raise libvirtError ('virDomainGetAutostart() failed', dom=self)
         return ret
 
     def info(self):
@@ -224,7 +354,108 @@ class virDomain:
            connection used to get the domain is limited only a
            partial set of the informations can be extracted. """
         ret = libvirtmod.virDomainGetInfo(self._o)
+        if ret is None: raise libvirtError ('virDomainGetInfo() failed', dom=self)
         return ret
+
+class virNetwork:
+    def __init__(self, conn, _obj=None):
+        self._conn = conn
+        if _obj != None:self._o = _obj;return
+        self._o = None
+
+    def __del__(self):
+        if self._o != None:
+            libvirtmod.virNetworkFree(self._o)
+        self._o = None
+
+    #
+    # virNetwork functions from module libvirt
+    #
+
+    def UUIDString(self, buf):
+        """Get the UUID for a network as string. For more information
+           about UUID see RFC4122. """
+        ret = libvirtmod.virNetworkGetUUIDString(self._o, buf)
+        if ret == -1: raise libvirtError ('virNetworkGetUUIDString() failed', net=self)
+        return ret
+
+    def XMLDesc(self, flags):
+        """Provide an XML description of the network. The description
+           may be reused later to relaunch the network with
+           virNetworkCreateXML(). """
+        ret = libvirtmod.virNetworkGetXMLDesc(self._o, flags)
+        if ret is None: raise libvirtError ('virNetworkGetXMLDesc() failed', net=self)
+        return ret
+
+    def bridgeName(self):
+        """Provides a bridge interface name to which a domain may
+           connect a network interface in order to join the network. """
+        ret = libvirtmod.virNetworkGetBridgeName(self._o)
+        if ret is None: raise libvirtError ('virNetworkGetBridgeName() failed', net=self)
+        return ret
+
+    def create(self):
+        """Create and start a defined network. If the call succeed the
+           network moves from the defined to the running networks
+           pools. """
+        ret = libvirtmod.virNetworkCreate(self._o)
+        if ret == -1: raise libvirtError ('virNetworkCreate() failed', net=self)
+        return ret
+
+    def destroy(self):
+        """Destroy the network object. The running instance is
+           shutdown if not down already and all resources used by it
+           are given back to the hypervisor. The data structure is
+           freed and should not be used thereafter if the call does
+           not return an error. This function may requires
+           priviledged access """
+        ret = libvirtmod.virNetworkDestroy(self._o)
+        if ret == -1: raise libvirtError ('virNetworkDestroy() failed', net=self)
+        self._o = None
+        return ret
+
+    def name(self):
+        """Get the public name for that network """
+        ret = libvirtmod.virNetworkGetName(self._o)
+        if ret is None: raise libvirtError ('virNetworkGetName() failed', net=self)
+        return ret
+
+    def setAutostart(self, autostart):
+        """Configure the network to be automatically started when the
+           host machine boots. """
+        ret = libvirtmod.virNetworkSetAutostart(self._o, autostart)
+        if ret == -1: raise libvirtError ('virNetworkSetAutostart() failed', net=self)
+        return ret
+
+    def undefine(self):
+        """Undefine a network but does not stop it if it is running """
+        ret = libvirtmod.virNetworkUndefine(self._o)
+        if ret == -1: raise libvirtError ('virNetworkUndefine() failed', net=self)
+        return ret
+
+    #
+    # virNetwork functions from module python
+    #
+
+    def UUID(self):
+        """Extract the UUID unique Identifier of a network. """
+        ret = libvirtmod.virNetworkGetUUID(self._o)
+        if ret is None: raise libvirtError ('virNetworkGetUUID() failed', net=self)
+        return ret
+
+    def autostart(self):
+        """Extract the autostart flag for a network. """
+        ret = libvirtmod.virNetworkGetAutostart(self._o)
+        if ret == -1: raise libvirtError ('virNetworkGetAutostart() failed', net=self)
+        return ret
+
+    def networkLookupByUUID(self, uuid):
+        """Try to lookup a network on the given hypervisor based on
+           its UUID. """
+        ret = libvirtmod.virNetworkLookupByUUID(self._o, uuid)
+        if ret is None:raise libvirtError('virNetworkLookupByUUID() failed', net=self)
+        __tmp = virNetwork(self, _obj=ret)
+        return __tmp
 
 class virConnect:
     def __init__(self, _obj=None):
@@ -246,59 +477,122 @@ class virConnect:
            virDomainGetXMLDesc() This function may requires
            priviledged access to the hypervisor. """
         ret = libvirtmod.virDomainCreateLinux(self._o, xmlDesc, flags)
-        if ret is None:raise libvirtError('virDomainCreateLinux() failed')
-        __tmp = virDomain(_obj=ret)
+        if ret is None:raise libvirtError('virDomainCreateLinux() failed', conn=self)
+        __tmp = virDomain(self,_obj=ret)
+        return __tmp
+
+    def createXML(self, xmlDesc):
+        """Create and start a new virtual network, based on an XML
+           description similar to the one returned by
+           virNetworkGetXMLDesc() """
+        ret = libvirtmod.virNetworkCreateXML(self._o, xmlDesc)
+        if ret is None:raise libvirtError('virNetworkCreateXML() failed', conn=self)
+        __tmp = virNetwork(self, _obj=ret)
         return __tmp
 
     def defineXML(self, xml):
         """define a domain, but does not start it """
         ret = libvirtmod.virDomainDefineXML(self._o, xml)
-        if ret is None:raise libvirtError('virDomainDefineXML() failed')
-        __tmp = virDomain(_obj=ret)
+        if ret is None:raise libvirtError('virDomainDefineXML() failed', conn=self)
+        __tmp = virDomain(self,_obj=ret)
         return __tmp
+
+    def getCapabilities(self):
+        """Provides capabilities of the hypervisor / driver. """
+        ret = libvirtmod.virConnectGetCapabilities(self._o)
+        if ret is None: raise libvirtError ('virConnectGetCapabilities() failed', conn=self)
+        return ret
+
+    def getMaxVcpus(self, type):
+        """Provides the maximum number of virtual CPUs supported for a
+           guest VM of a specific type. The 'type' parameter here
+           corresponds to the 'type' attribute in the <domain>
+           element of the XML. """
+        ret = libvirtmod.virConnectGetMaxVcpus(self._o, type)
+        if ret == -1: raise libvirtError ('virConnectGetMaxVcpus() failed', conn=self)
+        return ret
 
     def getType(self):
         """Get the name of the Hypervisor software used. """
         ret = libvirtmod.virConnectGetType(self._o)
+        if ret is None: raise libvirtError ('virConnectGetType() failed', conn=self)
         return ret
 
     def lookupByID(self, id):
         """Try to find a domain based on the hypervisor ID number """
         ret = libvirtmod.virDomainLookupByID(self._o, id)
-        if ret is None:raise libvirtError('virDomainLookupByID() failed')
-        __tmp = virDomain(_obj=ret)
+        if ret is None:raise libvirtError('virDomainLookupByID() failed', conn=self)
+        __tmp = virDomain(self,_obj=ret)
         return __tmp
 
     def lookupByName(self, name):
         """Try to lookup a domain on the given hypervisor based on its
            name. """
         ret = libvirtmod.virDomainLookupByName(self._o, name)
-        if ret is None:raise libvirtError('virDomainLookupByName() failed')
-        __tmp = virDomain(_obj=ret)
+        if ret is None:raise libvirtError('virDomainLookupByName() failed', conn=self)
+        __tmp = virDomain(self,_obj=ret)
         return __tmp
 
     def lookupByUUIDString(self, uuidstr):
         """Try to lookup a domain on the given hypervisor based on its
            UUID. """
         ret = libvirtmod.virDomainLookupByUUIDString(self._o, uuidstr)
-        if ret is None:raise libvirtError('virDomainLookupByUUIDString() failed')
-        __tmp = virDomain(_obj=ret)
+        if ret is None:raise libvirtError('virDomainLookupByUUIDString() failed', conn=self)
+        __tmp = virDomain(self,_obj=ret)
+        return __tmp
+
+    def networkDefineXML(self, xml):
+        """Define a network, but does not create it """
+        ret = libvirtmod.virNetworkDefineXML(self._o, xml)
+        if ret is None:raise libvirtError('virNetworkDefineXML() failed', conn=self)
+        __tmp = virNetwork(self, _obj=ret)
+        return __tmp
+
+    def networkLookupByName(self, name):
+        """Try to lookup a network on the given hypervisor based on
+           its name. """
+        ret = libvirtmod.virNetworkLookupByName(self._o, name)
+        if ret is None:raise libvirtError('virNetworkLookupByName() failed', conn=self)
+        __tmp = virNetwork(self, _obj=ret)
+        return __tmp
+
+    def networkLookupByUUIDString(self, uuidstr):
+        """Try to lookup a network on the given hypervisor based on
+           its UUID. """
+        ret = libvirtmod.virNetworkLookupByUUIDString(self._o, uuidstr)
+        if ret is None:raise libvirtError('virNetworkLookupByUUIDString() failed', conn=self)
+        __tmp = virNetwork(self, _obj=ret)
         return __tmp
 
     def numOfDefinedDomains(self):
         """Provides the number of active domains. """
         ret = libvirtmod.virConnectNumOfDefinedDomains(self._o)
+        if ret == -1: raise libvirtError ('virConnectNumOfDefinedDomains() failed', conn=self)
+        return ret
+
+    def numOfDefinedNetworks(self):
+        """Provides the number of inactive networks. """
+        ret = libvirtmod.virConnectNumOfDefinedNetworks(self._o)
+        if ret == -1: raise libvirtError ('virConnectNumOfDefinedNetworks() failed', conn=self)
         return ret
 
     def numOfDomains(self):
         """Provides the number of active domains. """
         ret = libvirtmod.virConnectNumOfDomains(self._o)
+        if ret == -1: raise libvirtError ('virConnectNumOfDomains() failed', conn=self)
+        return ret
+
+    def numOfNetworks(self):
+        """Provides the number of active networks. """
+        ret = libvirtmod.virConnectNumOfNetworks(self._o)
+        if ret == -1: raise libvirtError ('virConnectNumOfNetworks() failed', conn=self)
         return ret
 
     def restore(self, frm):
         """This method will restore a domain saved to disk by
            virDomainSave(). """
         ret = libvirtmod.virDomainRestore(self._o, frm)
+        if ret == -1: raise libvirtError ('virDomainRestore() failed', conn=self)
         return ret
 
     #
@@ -308,24 +602,55 @@ class virConnect:
     def getInfo(self):
         """Extract hardware informations about the Node. """
         ret = libvirtmod.virNodeGetInfo(self._o)
+        if ret is None: raise libvirtError ('virNodeGetInfo() failed', conn=self)
+        return ret
+
+    def listDefinedDomains(self):
+        """list the defined domains, stores the pointers to the names
+           in @names """
+        ret = libvirtmod.virConnectListDefinedDomains(self._o)
+        if ret is None: raise libvirtError ('virConnectListDefinedDomains() failed', conn=self)
+        return ret
+
+    def listDefinedNetworks(self):
+        """list the defined networks, stores the pointers to the names
+           in @names """
+        ret = libvirtmod.virConnectListDefinedNetworks(self._o)
+        if ret is None: raise libvirtError ('virConnectListDefinedNetworks() failed', conn=self)
         return ret
 
     def listDomainsID(self):
         """Returns the list of the ID of the domains on the hypervisor """
         ret = libvirtmod.virConnectListDomainsID(self._o)
+        if ret is None: raise libvirtError ('virConnectListDomainsID() failed', conn=self)
+        return ret
+
+    def listNetworks(self):
+        """list the networks, stores the pointers to the names in
+           @names """
+        ret = libvirtmod.virConnectListNetworks(self._o)
+        if ret is None: raise libvirtError ('virConnectListNetworks() failed', conn=self)
         return ret
 
     def lookupByUUID(self, uuid):
         """Try to lookup a domain on the given hypervisor based on its
            UUID. """
         ret = libvirtmod.virDomainLookupByUUID(self._o, uuid)
-        if ret is None:raise libvirtError('virDomainLookupByUUID() failed')
-        __tmp = virDomain(_obj=ret)
+        if ret is None:raise libvirtError('virDomainLookupByUUID() failed', conn=self)
+        __tmp = virDomain(self,_obj=ret)
         return __tmp
 
     #
     # virConnect functions from module virterror
     #
+
+    def virConnGetLastError(self):
+        """Provide a pointer to the last error caught on that
+           connection Simpler but may not be suitable for
+           multithreaded accesses, in which case use
+           virConnCopyLastError() """
+        ret = libvirtmod.virConnGetLastError(self._o)
+        return ret
 
     def virConnResetLastError(self):
         """Reset the last error caught on that connection """
@@ -362,6 +687,8 @@ VIR_FROM_DOM = 6
 VIR_FROM_RPC = 7
 VIR_FROM_PROXY = 8
 VIR_FROM_CONF = 9
+VIR_FROM_QEMU = 10
+VIR_FROM_NET = 11
 
 # virDomainRestart
 VIR_DOMAIN_DESTROY = 1
@@ -405,6 +732,10 @@ VIR_ERR_READ_FAILED = 31
 VIR_ERR_PARSE_FAILED = 32
 VIR_ERR_CONF_SYNTAX = 33
 VIR_ERR_WRITE_FAILED = 34
+VIR_ERR_XML_DETAIL = 35
+VIR_ERR_INVALID_NETWORK = 36
+VIR_ERR_NETWORK_EXIST = 37
+VIR_ERR_SYSTEM_ERROR = 38
 
 # virDomainCreateFlags
 VIR_DOMAIN_NONE = 0

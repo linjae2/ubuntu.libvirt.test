@@ -17,11 +17,9 @@ extern "C" {
  * List of registered drivers numbers
  */
 typedef enum {
-    VIR_DRV_XEN_HYPERVISOR = 1,
-    VIR_DRV_XEN_STORE = 2,
-    VIR_DRV_XEN_DAEMON = 3,
-    VIR_DRV_TEST = 4,
-    VIR_DRV_XEN_PROXY = 5
+    VIR_DRV_XEN_UNIFIED = 1,
+    VIR_DRV_TEST = 2,
+    VIR_DRV_QEMU = 3,
 } virDrvNo;
 
 
@@ -30,12 +28,24 @@ typedef enum {
     VIR_DRV_OPEN_RO = 2
 } virDrvOpenFlag;
 
-typedef int
-	(*virDrvInit)			(void);
-typedef int
-	(*virDrvOpen)			(virConnectPtr conn,
-					 const char *name,
-					 int flags);
+/* Status codes returned from driver open call. */
+typedef enum {
+    /* Opened successfully. */
+    VIR_DRV_OPEN_SUCCESS = 0,
+
+    /* 'name' is not for us. */
+    VIR_DRV_OPEN_DECLINED = -1,
+
+    /* 'name' is for us, but there was some error.  virConnectOpen will
+     * return an error rather than continue probing the other drivers.
+     */
+    VIR_DRV_OPEN_ERROR = -2,
+} virDrvOpenStatus;
+
+typedef virDrvOpenStatus
+    (*virDrvOpen)			(virConnectPtr conn,
+                             const char *name,
+                             int flags);
 typedef int
 	(*virDrvClose)			(virConnectPtr conn);
 typedef const char *
@@ -44,8 +54,12 @@ typedef int
 	(*virDrvGetVersion)		(virConnectPtr conn,
 					 unsigned long *hvVer);
 typedef int
+    (*virDrvGetMaxVcpus)		(virConnectPtr conn, const char *type);
+typedef int
 	(*virDrvNodeGetInfo)		(virConnectPtr conn,
 					 virNodeInfoPtr info);
+typedef char *
+	(*virDrvGetCapabilities) (virConnectPtr conn);
 typedef int
 	(*virDrvListDomains)		(virConnectPtr conn,
 					 int *ids,
@@ -76,15 +90,6 @@ typedef int
 					 unsigned int flags);
 typedef int
 	(*virDrvDomainDestroy)		(virDomainPtr domain);
-typedef int
-	(*virDrvDomainFree)		(virDomainPtr domain);
-typedef const char *
-	(*virDrvDomainGetName)		(virDomainPtr domain);
-typedef int
-	(*virDrvDomainGetID)		(virDomainPtr domain);
-typedef int
-	(*virDrvDomainGetUUID)		(virDomainPtr domain,
-					 unsigned char *uuid);
 typedef char *
 	(*virDrvDomainGetOSType)	(virDomainPtr domain);
 typedef unsigned long
@@ -104,12 +109,16 @@ typedef int
 typedef int
 	(*virDrvDomainRestore)		(virConnectPtr conn,
 					 const char *from);
+typedef int
+	(*virDrvDomainCoreDump)		(virDomainPtr domain,
+					 const char *to,
+					 int flags);
 typedef char *
 	(*virDrvDomainDumpXML)		(virDomainPtr dom,
 					 int flags);
 typedef int
 	(*virDrvListDefinedDomains)	(virConnectPtr conn,
-					 const char **names,
+					 char **const names,
 					 int maxnames);
 typedef int
 	(*virDrvNumOfDefinedDomains)	(virConnectPtr conn);
@@ -133,6 +142,20 @@ typedef int
 					 int maxinfo,
 					 unsigned char *cpumaps,
 					 int maplen);
+typedef int
+	(*virDrvDomainGetMaxVcpus)	(virDomainPtr domain);
+typedef int
+	(*virDrvDomainAttachDevice)	(virDomainPtr domain,
+					 char *xml);
+typedef int
+	(*virDrvDomainDetachDevice)	(virDomainPtr domain,
+					 char *xml);
+typedef int
+	(*virDrvDomainGetAutostart)	(virDomainPtr domain,
+					 int *autostart);
+typedef int
+	(*virDrvDomainSetAutostart)	(virDomainPtr domain,
+					 int autostart);
 
 typedef struct _virDriver virDriver;
 typedef virDriver *virDriverPtr;
@@ -142,17 +165,24 @@ typedef virDriver *virDriverPtr;
  *
  * Structure associated to a virtualization driver, defining the various
  * entry points for it.
+ *
+ * All drivers must support the following fields/methods:
+ *  - no
+ *  - name
+ *  - open
+ *  - close
  */
 struct _virDriver {
 	int	       no;	/* the number virDrvNo */
 	const char * name;	/* the name of the driver */
 	unsigned long ver;	/* the version of the backend */
-	virDrvInit			init;
 	virDrvOpen			open;
 	virDrvClose			close;
 	virDrvGetType			type;
 	virDrvGetVersion		version;
+	virDrvGetMaxVcpus		getMaxVcpus;
 	virDrvNodeGetInfo		nodeGetInfo;
+    virDrvGetCapabilities   getCapabilities;
 	virDrvListDomains		listDomains;
 	virDrvNumOfDomains		numOfDomains;
 	virDrvDomainCreateLinux		domainCreateLinux;
@@ -164,10 +194,6 @@ struct _virDriver {
 	virDrvDomainShutdown		domainShutdown;
 	virDrvDomainReboot		domainReboot;
 	virDrvDomainDestroy		domainDestroy;
-	virDrvDomainFree		domainFree;
-	virDrvDomainGetName		domainGetName;
-	virDrvDomainGetID		domainGetID;
-	virDrvDomainGetUUID		domainGetUUID;
 	virDrvDomainGetOSType		domainGetOSType;
 	virDrvDomainGetMaxMemory	domainGetMaxMemory;
 	virDrvDomainSetMaxMemory	domainSetMaxMemory;
@@ -175,15 +201,96 @@ struct _virDriver {
 	virDrvDomainGetInfo		domainGetInfo;
 	virDrvDomainSave		domainSave;
 	virDrvDomainRestore		domainRestore;
+	virDrvDomainCoreDump		domainCoreDump;
 	virDrvDomainSetVcpus		domainSetVcpus;
 	virDrvDomainPinVcpu		domainPinVcpu;
 	virDrvDomainGetVcpus		domainGetVcpus;
+	virDrvDomainGetMaxVcpus		domainGetMaxVcpus;
 	virDrvDomainDumpXML		domainDumpXML;
 	virDrvListDefinedDomains	listDefinedDomains;
 	virDrvNumOfDefinedDomains	numOfDefinedDomains;
 	virDrvDomainCreate		domainCreate;
 	virDrvDomainDefineXML           domainDefineXML;
 	virDrvDomainUndefine            domainUndefine;
+	virDrvDomainAttachDevice	domainAttachDevice;
+	virDrvDomainDetachDevice	domainDetachDevice;
+	virDrvDomainGetAutostart	domainGetAutostart;
+	virDrvDomainSetAutostart	domainSetAutostart;
+};
+
+typedef int
+	(*virDrvNumOfNetworks)		(virConnectPtr conn);
+typedef int
+	(*virDrvListNetworks)		(virConnectPtr conn,
+					 char **const names,
+					 int maxnames);
+typedef int
+	(*virDrvNumOfDefinedNetworks)	(virConnectPtr conn);
+typedef int
+	(*virDrvListDefinedNetworks)	(virConnectPtr conn,
+					 char **const names,
+					 int maxnames);
+typedef virNetworkPtr
+	(*virDrvNetworkLookupByUUID)	(virConnectPtr conn,
+					 const unsigned char *uuid);
+typedef virNetworkPtr
+	(*virDrvNetworkLookupByName)	(virConnectPtr conn,
+					 const char *name);
+typedef virNetworkPtr
+	(*virDrvNetworkCreateXML)	(virConnectPtr conn,
+					 const char *xmlDesc);
+typedef virNetworkPtr
+	(*virDrvNetworkDefineXML)	(virConnectPtr conn, const char *xml);
+typedef int
+	(*virDrvNetworkUndefine)	(virNetworkPtr network);
+typedef int
+	(*virDrvNetworkCreate)		(virNetworkPtr network);
+typedef int
+	(*virDrvNetworkDestroy)		(virNetworkPtr network);
+typedef char *
+	(*virDrvNetworkDumpXML)		(virNetworkPtr network,
+					 int flags);
+typedef char *
+	(*virDrvNetworkGetBridgeName)	(virNetworkPtr network);
+typedef int
+	(*virDrvNetworkGetAutostart)	(virNetworkPtr network,
+					 int *autostart);
+typedef int
+	(*virDrvNetworkSetAutostart)	(virNetworkPtr network,
+					 int autostart);
+
+
+typedef struct _virNetworkDriver virNetworkDriver;
+typedef virNetworkDriver *virNetworkDriverPtr;
+
+/**
+ * _virNetworkDriver:
+ *
+ * Structure associated to a network virtualization driver, defining the various
+ * entry points for it.
+ *
+ * All drivers must support the following fields/methods:
+ *  - open
+ *  - close
+ */
+struct _virNetworkDriver {
+	virDrvOpen			open;
+	virDrvClose			close;
+	virDrvNumOfNetworks		numOfNetworks;
+	virDrvListNetworks		listNetworks;
+	virDrvNumOfDefinedNetworks	numOfDefinedNetworks;
+	virDrvListDefinedNetworks	listDefinedNetworks;
+	virDrvNetworkLookupByUUID	networkLookupByUUID;
+	virDrvNetworkLookupByName	networkLookupByName;
+	virDrvNetworkCreateXML		networkCreateXML;
+	virDrvNetworkDefineXML		networkDefineXML;
+	virDrvNetworkUndefine		networkUndefine;
+	virDrvNetworkCreate		networkCreate;
+	virDrvNetworkDestroy		networkDestroy;
+	virDrvNetworkDumpXML		networkDumpXML;
+	virDrvNetworkGetBridgeName	networkGetBridgeName;
+	virDrvNetworkGetAutostart	networkGetAutostart;
+	virDrvNetworkSetAutostart	networkSetAutostart;
 };
 
 
@@ -193,8 +300,23 @@ struct _virDriver {
  *       lookup based on the URI given in a virConnectOpen(ReadOnly)
  */
 int virRegisterDriver(virDriverPtr);
+int virRegisterNetworkDriver(virNetworkDriverPtr);
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 #endif /* __VIR_DRIVER_H__ */
+
+/*
+ * vim: set tabstop=4:
+ * vim: set shiftwidth=4:
+ * vim: set expandtab:
+ */
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

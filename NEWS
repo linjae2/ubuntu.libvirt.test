@@ -5,6 +5,98 @@
        http://libvirt.org/news.html
 
 Releases
+0.2.1: Mar 16 2007:
+   - Various internal cleanups (Richard Jones,Daniel Berrange,Mark McLoughlin)
+   - Bug fixes: libvirt_qemud daemon path (Daniel Berrange), libvirt
+      config directory (Daniel Berrange and Mark McLoughlin), memory leak
+      in qemud (Mark), various fixes on network support (Mark), avoid Xen
+      domain zombies on device hotplug errors (Daniel Berrange), various
+      fixes on qemud (Mark), args parsing (Richard Jones), virsh -t argument
+      (Saori Fukuta), avoid virsh crash on TAB key (Daniel Berrange), detect
+      xend operation failures (Kazuki Mizushima), don't listen on null socket
+      (Rich Jones), read-only socket cleanup (Rich Jones), use of vnc port 5900
+      (Nobuhiro Itou), assorted networking fixes (Daniel Berrange), shutoff and
+      shutdown mismatches (Kazuki Mizushima), unlimited memory handling
+      (Atsushi SAKAI), python binding fixes (Tatsuro Enokura)
+   - Build and portability fixes: IA64 fixes (Atsushi SAKAI), dependancies
+      and build (Daniel Berrange), fix xend port detection (Daniel
+      Berrange), icompile time warnings (Mark), avoid const related
+      compiler warnings (Daniel Berrange), automated builds (Daniel
+      Berrange), pointer/int mismatch (Richard Jones), configure time
+      selection of drivers, libvirt spec hacking (Daniel Berrange)
+   - Add support for network autostart and init scripts (Mark McLoughlin)
+   - New API virConnectGetCapabilities() to detect the virtualization 
+    capabilities of a host (Richard Jones)
+   - Minor improvements: qemud signal handling (Mark), don't shutdown or reboot
+    domain0 (Kazuki Mizushima), QEmu version autodetection (Daniel Berrange),
+    network UUIDs (Mark), speed up UUID domain lookups (Tatsuro Enokura and
+    Daniel Berrange), support for paused QEmu CPU (Daniel Berrange), keymap
+    VNC attribute support (Takahashi Tomohiro and Daniel Berrange), maximum
+    number of virtual CPU (Masayuki Sunou), virtsh --readonly option (Rich
+    Jones), python bindings for new functions (Daniel Berrange)
+   - Documentation updates especially on the XML formats
+
+
+0.2.0: Feb 14 2007:
+   - Various internal cleanups (Mark McLoughlin, Richard Jones,
+      Daniel Berrange, Karel Zak)
+   - Bug fixes: avoid a crash in connect (Daniel Berrange), virsh args
+      parsing (Richard Jones)
+   - Add support for QEmu and KVM virtualization (Daniel Berrange)
+   - Add support for network configuration (Mark McLoughlin)
+   - Minor improvements: regression testing (Daniel Berrange), 
+      localization string updates
+
+
+0.1.11: Jan 22 2007:
+   - Finish XML <-> XM config files support
+   - Remove memory leak when freeing virConf objects
+   - Finishing inactive domain support (Daniel Berrange)
+   - Added a Relax-NG schemas to check XML instances
+
+
+0.1.10: Dec 20 2006:
+   - more localizations
+   - bug fixes: VCPU info breakages on xen 3.0.3, xenDaemonListDomains buffer overflow (Daniel Berrange), reference count bug when creating Xen domains (Daniel Berrange).
+   - improvements: support graphic framebuffer for Xen paravirt (Daniel Berrange), VNC listen IP range support (Daniel Berrange), support for default Xen config files and inactive domains of 3.0.4 (Daniel Berrange).
+
+
+0.1.9: Nov 29 2006:
+   - python bindings: release interpeter lock when calling C (Daniel Berrange)
+   - don't raise HTTP error when looking informations for a domain
+   - some refactoring to use the driver for all entry points
+   - better error reporting (Daniel Berrange)
+   - fix OS reporting when running as non-root
+   - provide XML parsing errors
+   - extension of the test framework (Daniel Berrange)
+   - fix the reconnect regression test
+   - python bindings: Domain instances now link to the Connect to avoid garbage collection and disconnect
+   - separate the notion of maximum memory and current use at the XML level
+   - Fix a memory leak (Daniel Berrange)
+   - add support for shareable drives
+   - add support for non-bridge style networking configs for guests(Daniel Berrange)
+   - python bindings: fix unsigned long marshalling (Daniel Berrange)
+   - new config APIs virConfNew() and virConfSetValue() to build configs from scratch
+   - hot plug device support based on Michel Ponceau patch
+   - added support for inactive domains, new APIs, various associated cleanup (Daniel Berrange)
+   - special device model for HVM guests (Daniel Berrange)
+   - add API to dump core of domains (but requires a patched xend)
+   - pygrub bootloader informations take over <os> informations
+   - updated the localization strings
+
+
+0.1.8: Oct 16 2006:
+   -  Bug for system with page size != 4k
+   -  vcpu number initialization (Philippe Berthault)
+   -  don't label crashed domains as shut off (Peter Vetere)
+   -  fix virsh man page (Noriko Mizumoto)
+   -  blktapdd support for alternate drivers like blktap (Daniel Berrange)
+   -  memory leak fixes (xend interface and XML parsing) (Daniel Berrange)
+   -  compile fix
+   -  mlock/munlock size fixes (Daniel Berrange)
+   -  improve error reporting
+
+
 0.1.7: Sep 29 2006:
    -  fix a memory bug on getting vcpu informations from xend (Daniel Berrange)
    -  fix another problem in the hypercalls change in Xen changeset

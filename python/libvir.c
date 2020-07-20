@@ -15,9 +15,14 @@
 #include "libvirt_wrap.h"
 #include "libvirt-py.h"
 
-void initlibvirmod(void);
+extern void initlibvirtmod(void);
 
 PyObject *libvirt_virDomainGetUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args);
+PyObject *libvirt_virNetworkGetUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args);
+PyObject *libvirt_virGetLastError(PyObject *self ATTRIBUTE_UNUSED, PyObject *args);
+PyObject *libvirt_virConnGetLastError(PyObject *self ATTRIBUTE_UNUSED, PyObject *args);
+
+
 /************************************************************************
  *									*
  *		Global error handler at the Python level		*
@@ -26,6 +31,62 @@ PyObject *libvirt_virDomainGetUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *ar
 
 static PyObject *libvirt_virPythonErrorFuncHandler = NULL;
 static PyObject *libvirt_virPythonErrorFuncCtxt = NULL;
+
+PyObject *
+libvirt_virGetLastError(PyObject *self ATTRIBUTE_UNUSED, PyObject *args ATTRIBUTE_UNUSED)
+{
+    virError err;
+    PyObject *info;
+
+    if (virCopyLastError(&err) <= 0) {
+        Py_INCREF(Py_None);
+	return(Py_None);
+    }
+
+    info = PyTuple_New(9);
+    PyTuple_SetItem(info, 0, PyInt_FromLong((long) err.code));
+    PyTuple_SetItem(info, 1, PyInt_FromLong((long) err.domain));
+    PyTuple_SetItem(info, 2, libvirt_constcharPtrWrap(err.message));
+    PyTuple_SetItem(info, 3, PyInt_FromLong((long) err.level));
+    PyTuple_SetItem(info, 4, libvirt_constcharPtrWrap(err.str1));
+    PyTuple_SetItem(info, 5, libvirt_constcharPtrWrap(err.str2));
+    PyTuple_SetItem(info, 6, libvirt_constcharPtrWrap(err.str3));
+    PyTuple_SetItem(info, 7, PyInt_FromLong((long) err.int1));
+    PyTuple_SetItem(info, 8, PyInt_FromLong((long) err.int2));
+
+    return info;
+}
+
+PyObject *
+libvirt_virConnGetLastError(PyObject *self ATTRIBUTE_UNUSED, PyObject *args)
+{
+    virError err;
+    PyObject *info;
+    virConnectPtr conn;
+    PyObject *pyobj_conn;
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virConGetLastError", &pyobj_conn))
+        return(NULL);
+    conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
+
+    if (virConnCopyLastError(conn, &err) <= 0) {
+        Py_INCREF(Py_None);
+	return(Py_None);
+    }
+
+    info = PyTuple_New(9);
+    PyTuple_SetItem(info, 0, PyInt_FromLong((long) err.code));
+    PyTuple_SetItem(info, 1, PyInt_FromLong((long) err.domain));
+    PyTuple_SetItem(info, 2, libvirt_constcharPtrWrap(err.message));
+    PyTuple_SetItem(info, 3, PyInt_FromLong((long) err.level));
+    PyTuple_SetItem(info, 4, libvirt_constcharPtrWrap(err.str1));
+    PyTuple_SetItem(info, 5, libvirt_constcharPtrWrap(err.str2));
+    PyTuple_SetItem(info, 6, libvirt_constcharPtrWrap(err.str3));
+    PyTuple_SetItem(info, 7, PyInt_FromLong((long) err.int1));
+    PyTuple_SetItem(info, 8, PyInt_FromLong((long) err.int2));
+
+    return info;
+}
 
 static void
 libvirt_virErrorFuncHandler(ATTRIBUTE_UNUSED void *ctx, virErrorPtr err)
@@ -39,6 +100,8 @@ libvirt_virErrorFuncHandler(ATTRIBUTE_UNUSED void *ctx, virErrorPtr err)
 
     if ((err == NULL) || (err->code == VIR_ERR_OK))
         return;
+
+    LIBVIRT_ENSURE_THREAD_STATE;
 
     if ((libvirt_virPythonErrorFuncHandler == NULL) ||
         (libvirt_virPythonErrorFuncHandler == Py_None)) {
@@ -63,6 +126,8 @@ libvirt_virErrorFuncHandler(ATTRIBUTE_UNUSED void *ctx, virErrorPtr err)
         Py_XDECREF(list);
         Py_XDECREF(result);
     }
+
+    LIBVIRT_RELEASE_THREAD_STATE;
 }
 
 static PyObject *
@@ -124,7 +189,9 @@ libvirt_virDomainFree(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
         return(NULL);
     domain = (virDomainPtr) PyvirDomain_Get(pyobj_domain);
 
+    LIBVIRT_BEGIN_ALLOW_THREADS;
     c_retval = virDomainFree(domain);
+    LIBVIRT_END_ALLOW_THREADS;
     py_retval = libvirt_intWrap((int) c_retval);
     return(py_retval);
 }
@@ -140,7 +207,9 @@ libvirt_virConnectClose(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
         return(NULL);
     conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
 
+    LIBVIRT_BEGIN_ALLOW_THREADS;
     c_retval = virConnectClose(conn);
+    LIBVIRT_END_ALLOW_THREADS;
     py_retval = libvirt_intWrap((int) c_retval);
     return(py_retval);
 }
@@ -158,7 +227,9 @@ libvirt_virConnectListDomainsID(PyObject *self ATTRIBUTE_UNUSED,
         return(NULL);
     conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
 
+    LIBVIRT_BEGIN_ALLOW_THREADS;
     c_retval = virConnectListDomains(conn, &ids[0], 500);
+    LIBVIRT_END_ALLOW_THREADS;
     if (c_retval < 0) {
         Py_INCREF(Py_None);
 	return(Py_None);
@@ -167,6 +238,52 @@ libvirt_virConnectListDomainsID(PyObject *self ATTRIBUTE_UNUSED,
     for (i = 0;i < c_retval;i++) {
         PyList_SetItem(py_retval, i, libvirt_intWrap(ids[i]));
     }
+    return(py_retval);
+}
+
+static PyObject *
+libvirt_virConnectListDefinedDomains(PyObject *self ATTRIBUTE_UNUSED,
+				     PyObject *args) {
+    PyObject *py_retval;
+    char **names = NULL;
+    int c_retval, i;
+    virConnectPtr conn;
+    PyObject *pyobj_conn;
+
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virConnectListDefinedDomains", &pyobj_conn))
+        return(NULL);
+    conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
+
+    c_retval = virConnectNumOfDefinedDomains(conn);
+    if (c_retval < 0) {
+        Py_INCREF(Py_None);
+        return (Py_None);
+    }
+    
+    if (c_retval) {
+        names = malloc(sizeof(char *) * c_retval);
+        if (!names) {
+            Py_INCREF(Py_None);
+            return (Py_None);
+        }
+        c_retval = virConnectListDefinedDomains(conn, names, c_retval);
+        if (c_retval < 0) {
+            free(names);
+            Py_INCREF(Py_None);
+            return(Py_None);
+        }
+    }
+    py_retval = PyList_New(c_retval);
+
+    if (names) {
+        for (i = 0;i < c_retval;i++) {
+            PyList_SetItem(py_retval, i, libvirt_constcharPtrWrap(names[i]));
+            free(names[i]);
+        }
+        free(names);
+    }
+
     return(py_retval);
 }
 
@@ -182,15 +299,17 @@ libvirt_virDomainGetInfo(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
         return(NULL);
     domain = (virDomainPtr) PyvirDomain_Get(pyobj_domain);
 
+    LIBVIRT_BEGIN_ALLOW_THREADS;
     c_retval = virDomainGetInfo(domain, &info);
+    LIBVIRT_END_ALLOW_THREADS;
     if (c_retval < 0) {
         Py_INCREF(Py_None);
 	return(Py_None);
     }
     py_retval = PyList_New(5);
     PyList_SetItem(py_retval, 0, libvirt_intWrap((int) info.state));
-    PyList_SetItem(py_retval, 1, libvirt_longWrap((long) info.maxMem));
-    PyList_SetItem(py_retval, 2, libvirt_longWrap((long) info.memory));
+    PyList_SetItem(py_retval, 1, libvirt_ulongWrap(info.maxMem));
+    PyList_SetItem(py_retval, 2, libvirt_ulongWrap(info.memory));
     PyList_SetItem(py_retval, 3, libvirt_intWrap((int) info.nrVirtCpu));
     PyList_SetItem(py_retval, 4,
                    libvirt_longlongWrap((unsigned long long) info.cpuTime));
@@ -209,7 +328,9 @@ libvirt_virNodeGetInfo(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
         return(NULL);
     conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
 
+    LIBVIRT_BEGIN_ALLOW_THREADS;
     c_retval = virNodeGetInfo(conn, &info);
+    LIBVIRT_END_ALLOW_THREADS;
     if (c_retval < 0) {
         Py_INCREF(Py_None);
 	return(Py_None);
@@ -229,9 +350,10 @@ libvirt_virNodeGetInfo(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
 PyObject *
 libvirt_virDomainGetUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
     PyObject *py_retval;
-    unsigned char uuid[16];
+    unsigned char uuid[VIR_UUID_BUFLEN];
     virDomainPtr domain;
     PyObject *pyobj_domain;
+    int c_retval;
 
     if (!PyArg_ParseTuple(args, (char *)"O:virDomainGetUUID", &pyobj_domain))
         return(NULL);
@@ -241,16 +363,20 @@ libvirt_virDomainGetUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
         Py_INCREF(Py_None);
 	return(Py_None);
     }
-    if (virDomainGetUUID(domain, &uuid[0]) < 0) {
+    LIBVIRT_BEGIN_ALLOW_THREADS;
+    c_retval = virDomainGetUUID(domain, &uuid[0]);
+    LIBVIRT_END_ALLOW_THREADS;
+
+    if (c_retval < 0) {
         Py_INCREF(Py_None);
 	return(Py_None);
     }
-    py_retval = PyString_FromStringAndSize((char *) &uuid[0], 16);
+    py_retval = PyString_FromStringAndSize((char *) &uuid[0], VIR_UUID_BUFLEN);
 
     return(py_retval);
 }
 
-PyObject *
+static PyObject *
 libvirt_virDomainLookupByUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
     PyObject *py_retval;
     virDomainPtr c_retval;
@@ -263,15 +389,237 @@ libvirt_virDomainLookupByUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
         return(NULL);
     conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
 
-    if ((uuid == NULL) || (len != 16)) {
+    if ((uuid == NULL) || (len != VIR_UUID_BUFLEN)) {
         Py_INCREF(Py_None);
 	return(Py_None);
     }
 
+    LIBVIRT_BEGIN_ALLOW_THREADS;
     c_retval = virDomainLookupByUUID(conn, uuid);
+    LIBVIRT_END_ALLOW_THREADS;
     py_retval = libvirt_virDomainPtrWrap((virDomainPtr) c_retval);
     return(py_retval);
 }
+
+
+static PyObject *
+libvirt_virNetworkFree(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
+    PyObject *py_retval;
+    int c_retval;
+    virNetworkPtr domain;
+    PyObject *pyobj_domain;
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virNetworkFree", &pyobj_domain))
+        return(NULL);
+    domain = (virNetworkPtr) PyvirNetwork_Get(pyobj_domain);
+
+    LIBVIRT_BEGIN_ALLOW_THREADS;
+    c_retval = virNetworkFree(domain);
+    LIBVIRT_END_ALLOW_THREADS;
+    py_retval = libvirt_intWrap((int) c_retval);
+    return(py_retval);
+}
+
+
+static PyObject *
+libvirt_virConnectListNetworks(PyObject *self ATTRIBUTE_UNUSED,
+			       PyObject *args) {
+    PyObject *py_retval;
+    char **names = NULL;
+    int c_retval, i;
+    virConnectPtr conn;
+    PyObject *pyobj_conn;
+
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virConnectListNetworks", &pyobj_conn))
+        return(NULL);
+    conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
+
+    c_retval = virConnectNumOfNetworks(conn);
+    if (c_retval < 0) {
+        Py_INCREF(Py_None);
+        return (Py_None);
+    }
+    
+    if (c_retval) {
+        names = malloc(sizeof(char *) * c_retval);
+        if (!names) {
+            Py_INCREF(Py_None);
+            return (Py_None);
+        }
+        c_retval = virConnectListNetworks(conn, names, c_retval);
+        if (c_retval < 0) {
+            free(names);
+            Py_INCREF(Py_None);
+            return(Py_None);
+        }
+    }
+    py_retval = PyList_New(c_retval);
+
+    if (names) {
+        for (i = 0;i < c_retval;i++) {
+            PyList_SetItem(py_retval, i, libvirt_constcharPtrWrap(names[i]));
+            free(names[i]);
+        }
+        free(names);
+    }
+
+    return(py_retval);
+}
+
+
+static PyObject *
+libvirt_virConnectListDefinedNetworks(PyObject *self ATTRIBUTE_UNUSED,
+				      PyObject *args) {
+    PyObject *py_retval;
+    char **names = NULL;
+    int c_retval, i;
+    virConnectPtr conn;
+    PyObject *pyobj_conn;
+
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virConnectListDefinedNetworks", &pyobj_conn))
+        return(NULL);
+    conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
+
+    c_retval = virConnectNumOfDefinedNetworks(conn);
+    if (c_retval < 0) {
+        Py_INCREF(Py_None);
+        return (Py_None);
+    }
+    
+    if (c_retval) {
+        names = malloc(sizeof(char *) * c_retval);
+        if (!names) {
+            Py_INCREF(Py_None);
+            return (Py_None);
+        }
+        c_retval = virConnectListDefinedNetworks(conn, names, c_retval);
+        if (c_retval < 0) {
+            free(names);
+            Py_INCREF(Py_None);
+            return(Py_None);
+        }
+    }
+    py_retval = PyList_New(c_retval);
+
+    if (names) {
+        for (i = 0;i < c_retval;i++) {
+            PyList_SetItem(py_retval, i, libvirt_constcharPtrWrap(names[i]));
+            free(names[i]);
+        }
+        free(names);
+    }
+
+    return(py_retval);
+}
+
+
+PyObject *
+libvirt_virNetworkGetUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
+    PyObject *py_retval;
+    unsigned char uuid[VIR_UUID_BUFLEN];
+    virNetworkPtr domain;
+    PyObject *pyobj_domain;
+    int c_retval;
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virNetworkGetUUID", &pyobj_domain))
+        return(NULL);
+    domain = (virNetworkPtr) PyvirNetwork_Get(pyobj_domain);
+
+    if (domain == NULL) {
+        Py_INCREF(Py_None);
+	return(Py_None);
+    }
+    LIBVIRT_BEGIN_ALLOW_THREADS;
+    c_retval = virNetworkGetUUID(domain, &uuid[0]);
+    LIBVIRT_END_ALLOW_THREADS;
+
+    if (c_retval < 0) {
+        Py_INCREF(Py_None);
+	return(Py_None);
+    }
+    py_retval = PyString_FromStringAndSize((char *) &uuid[0], VIR_UUID_BUFLEN);
+
+    return(py_retval);
+}
+
+static PyObject *
+libvirt_virNetworkLookupByUUID(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
+    PyObject *py_retval;
+    virNetworkPtr c_retval;
+    virConnectPtr conn;
+    PyObject *pyobj_conn;
+    unsigned char * uuid;
+    int len;
+
+    if (!PyArg_ParseTuple(args, (char *)"Oz#:virNetworkLookupByUUID", &pyobj_conn, &uuid, &len))
+        return(NULL);
+    conn = (virConnectPtr) PyvirConnect_Get(pyobj_conn);
+
+    if ((uuid == NULL) || (len != VIR_UUID_BUFLEN)) {
+        Py_INCREF(Py_None);
+	return(Py_None);
+    }
+
+    LIBVIRT_BEGIN_ALLOW_THREADS;
+    c_retval = virNetworkLookupByUUID(conn, uuid);
+    LIBVIRT_END_ALLOW_THREADS;
+    py_retval = libvirt_virNetworkPtrWrap((virNetworkPtr) c_retval);
+    return(py_retval);
+}
+
+
+PyObject *
+libvirt_virDomainGetAutostart(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
+    PyObject *py_retval;
+    int c_retval, autostart;
+    virDomainPtr domain;
+    PyObject *pyobj_domain;
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virDomainGetAutostart", &pyobj_domain))
+        return(NULL);
+
+    domain = (virDomainPtr) PyvirDomain_Get(pyobj_domain);
+
+    LIBVIRT_BEGIN_ALLOW_THREADS;
+    c_retval = virDomainGetAutostart(domain, &autostart);
+    LIBVIRT_END_ALLOW_THREADS;
+
+    if (c_retval < 0) {
+        Py_INCREF(Py_None);
+	return Py_None;
+    }
+    py_retval = libvirt_intWrap(autostart);
+    return(py_retval);
+}
+
+
+PyObject *
+libvirt_virNetworkGetAutostart(PyObject *self ATTRIBUTE_UNUSED, PyObject *args) {
+    PyObject *py_retval;
+    int c_retval, autostart;
+    virNetworkPtr network;
+    PyObject *pyobj_network;
+
+    if (!PyArg_ParseTuple(args, (char *)"O:virNetworkGetAutostart", &pyobj_network))
+        return(NULL);
+
+    network = (virNetworkPtr) PyvirNetwork_Get(pyobj_network);
+
+    LIBVIRT_BEGIN_ALLOW_THREADS;
+    c_retval = virNetworkGetAutostart(network, &autostart);
+    LIBVIRT_END_ALLOW_THREADS;
+
+    if (c_retval < 0) {
+        Py_INCREF(Py_None);
+	return Py_None;
+    }
+    py_retval = libvirt_intWrap(autostart);
+    return(py_retval);
+}
+
+
 
 /************************************************************************
  *									*
@@ -283,11 +631,21 @@ static PyMethodDef libvirtMethods[] = {
     {(char *) "virDomainFree", libvirt_virDomainFree, METH_VARARGS, NULL},
     {(char *) "virConnectClose", libvirt_virConnectClose, METH_VARARGS, NULL},
     {(char *) "virConnectListDomainsID", libvirt_virConnectListDomainsID, METH_VARARGS, NULL},
+    {(char *) "virConnectListDefinedDomains", libvirt_virConnectListDefinedDomains, METH_VARARGS, NULL},
     {(char *) "virDomainGetInfo", libvirt_virDomainGetInfo, METH_VARARGS, NULL},
     {(char *) "virNodeGetInfo", libvirt_virNodeGetInfo, METH_VARARGS, NULL},
     {(char *) "virDomainGetUUID", libvirt_virDomainGetUUID, METH_VARARGS, NULL},
     {(char *) "virDomainLookupByUUID", libvirt_virDomainLookupByUUID, METH_VARARGS, NULL},
     {(char *) "virRegisterErrorHandler", libvirt_virRegisterErrorHandler, METH_VARARGS, NULL},
+    {(char *) "virGetLastError", libvirt_virGetLastError, METH_VARARGS, NULL},
+    {(char *) "virConnGetLastError", libvirt_virConnGetLastError, METH_VARARGS, NULL},
+    {(char *) "virNetworkFree", libvirt_virNetworkFree, METH_VARARGS, NULL},
+    {(char *) "virConnectListNetworks", libvirt_virConnectListNetworks, METH_VARARGS, NULL},
+    {(char *) "virConnectListDefinedNetworks", libvirt_virConnectListDefinedNetworks, METH_VARARGS, NULL},
+    {(char *) "virNetworkGetUUID", libvirt_virNetworkGetUUID, METH_VARARGS, NULL},
+    {(char *) "virNetworkLookupByUUID", libvirt_virNetworkLookupByUUID, METH_VARARGS, NULL},
+    {(char *) "virDomainGetAutostart", libvirt_virDomainGetAutostart, METH_VARARGS, NULL},
+    {(char *) "virNetworkGetAutostart", libvirt_virNetworkGetAutostart, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 

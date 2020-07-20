@@ -89,9 +89,8 @@ virHashCreate(int size)
     if (table) {
         table->size = size;
         table->nbElems = 0;
-        table->table = malloc(size * sizeof(virHashEntry));
+        table->table = calloc(1, size * sizeof(virHashEntry));
         if (table->table) {
-            memset(table->table, 0, size * sizeof(virHashEntry));
             return (table);
         }
         free(table);
@@ -132,12 +131,11 @@ virHashGrow(virHashTablePtr table, int size)
     if (oldtable == NULL)
         return (-1);
 
-    table->table = malloc(size * sizeof(virHashEntry));
+    table->table = calloc(1, size * sizeof(virHashEntry));
     if (table->table == NULL) {
         table->table = oldtable;
         return (-1);
     }
-    memset(table->table, 0, size * sizeof(virHashEntry));
     table->size = size;
 
     /*  If the two loops are merged, there would be situations where
@@ -473,6 +471,127 @@ virHashRemoveEntry(virHashTablePtr table, const char *name,
     }
 }
 
+
+/**
+ * virHashForEach
+ * @table: the hash table to process
+ * @iter: callback to process each element
+ * @data: opaque data to pass to the iterator
+ *
+ * Iterates over every element in the hash table, invoking the
+ * 'iter' callback. The callback must not call any other virHash*
+ * functions, and in particular must not attempt to remove the
+ * element.
+ *
+ * Returns number of items iterated over upon completion, -1 on failure
+ */
+int virHashForEach(virHashTablePtr table, virHashIterator iter, const void *data) {
+    int i, count = 0;
+
+    if (table == NULL || iter == NULL)
+        return (-1);
+
+    for (i = 0 ; i < table->size ; i++) {
+        virHashEntryPtr entry = table->table + i;
+        while (entry) {
+            if (entry->valid) {
+                iter(entry->payload, entry->name, data);
+                count++;
+            }
+            entry = entry->next;
+        }
+    }
+    return (count);
+}
+
+/**
+ * virHashRemoveSet
+ * @table: the hash table to process
+ * @iter: callback to identify elements for removal
+ * @f: callback to free memory from element payload
+ * @data: opaque data to pass to the iterator
+ *
+ * Iterates over all elements in the hash table, invoking the 'iter'
+ * callback. If the callback returns a non-zero value, the element
+ * will be removed from the hash table & its payload passed to the
+ * callback 'f' for de-allocation.
+ *
+ * Returns number of items removed on success, -1 on failure
+ */
+int virHashRemoveSet(virHashTablePtr table, virHashSearcher iter, virHashDeallocator f, const void *data) {
+    int i, count = 0;
+
+    if (table == NULL || iter == NULL)
+        return (-1);
+
+    for (i = 0 ; i < table->size ; i++) {
+        virHashEntryPtr prev = NULL;
+        virHashEntryPtr entry = &(table->table[i]);
+
+        while (entry && entry->valid) {
+            if (iter(entry->payload, entry->name, data)) {
+                count++;
+                f(entry->payload, entry->name);
+                if (entry->name)
+                    free(entry->name);
+                if (prev) {
+                    prev->next = entry->next;
+                    free(entry);
+                } else {
+                    if (entry->next == NULL) {
+                        entry->valid = 0;
+                        entry->name = NULL;
+                    } else {
+                        entry = entry->next;
+                        memcpy(&(table->table[i]), entry,
+                               sizeof(virHashEntry));
+                        free(entry);
+                        entry = NULL;
+                    }
+                }
+                table->nbElems--;
+            }
+            prev = entry;
+            if (entry) {
+                entry = entry->next;
+            } else {
+                entry = NULL;
+            }
+        }
+    }
+    return (count);
+}
+
+/**
+ * virHashSearch:
+ * @table: the hash table to search
+ * @iter: an iterator to identify the desired element
+ * @data: extra opaque information passed to the iter
+ *
+ * Iterates over the hash table calling the 'iter' callback
+ * for each element. The first element for which the iter
+ * returns non-zero will be returned by this function.
+ * The elements are processed in a undefined order
+ */
+void *virHashSearch(virHashTablePtr table, virHashSearcher iter, const void *data) {
+    int i;
+
+    if (table == NULL || iter == NULL)
+        return (NULL);
+
+    for (i = 0 ; i < table->size ; i++) {
+        virHashEntryPtr entry = table->table + i;
+        while (entry) {
+            if (entry->valid) {
+                if (iter(entry->payload, entry->name, data))
+                    return entry->payload;
+            }
+            entry = entry->next;
+        }
+    }
+    return (NULL);
+}
+
 /************************************************************************
  *									*
  *			Domain and Connections allocations		*
@@ -496,7 +615,7 @@ virHashError(virConnectPtr conn, virErrorNumber error, const char *info)
         return;
 
     errmsg = __virErrorMsg(error, info);
-    __virRaiseError(conn, NULL, VIR_FROM_NONE, error, VIR_ERR_ERROR,
+    __virRaiseError(conn, NULL, NULL, VIR_FROM_NONE, error, VIR_ERR_ERROR,
                     errmsg, info, NULL, 0, 0, errmsg, info);
 }
 
@@ -516,6 +635,20 @@ virDomainFreeName(virDomainPtr domain, const char *name ATTRIBUTE_UNUSED)
 }
 
 /**
+ * virNetworkFreeName:
+ * @network: a network object
+ *
+ * Destroy the network object, this is just used by the network hash callback.
+ *
+ * Returns 0 in case of success and -1 in case of failure.
+ */
+static int
+virNetworkFreeName(virNetworkPtr network, const char *name ATTRIBUTE_UNUSED)
+{
+    return (virNetworkFree(network));
+}
+
+/**
  * virGetConnect:
  *
  * Allocates a new hypervisor connection structure
@@ -526,19 +659,24 @@ virConnectPtr
 virGetConnect(void) {
     virConnectPtr ret;
 
-    ret = (virConnectPtr) malloc(sizeof(virConnect));
+    ret = (virConnectPtr) calloc(1, sizeof(virConnect));
     if (ret == NULL) {
         virHashError(NULL, VIR_ERR_NO_MEMORY, _("allocating connection"));
         goto failed;
     }
-    memset(ret, 0, sizeof(virConnect));
     ret->magic = VIR_CONNECT_MAGIC;
-    ret->nb_drivers = 0;
+    ret->driver = NULL;
+    ret->networkDriver = NULL;
+    ret->privateData = NULL;
+    ret->networkPrivateData = NULL;
     ret->domains = virHashCreate(20);
     if (ret->domains == NULL)
         goto failed;
-    ret->domains_mux = xmlNewMutex();
-    if (ret->domains_mux == NULL)
+    ret->networks = virHashCreate(20);
+    if (ret->networks == NULL)
+        goto failed;
+    ret->hashes_mux = xmlNewMutex();
+    if (ret->hashes_mux == NULL)
         goto failed;
 
     ret->uses = 1;
@@ -548,8 +686,10 @@ failed:
     if (ret != NULL) {
 	if (ret->domains != NULL)
 	    virHashFree(ret->domains, (virHashDeallocator) virDomainFreeName);
-	if (ret->domains_mux != NULL)
-	    xmlFreeMutex(ret->domains_mux);
+	if (ret->networks != NULL)
+	    virHashFree(ret->networks, (virHashDeallocator) virNetworkFreeName);
+	if (ret->hashes_mux != NULL)
+	    xmlFreeMutex(ret->hashes_mux);
         free(ret);
     }
     return(NULL);
@@ -568,22 +708,24 @@ int
 virFreeConnect(virConnectPtr conn) {
     int ret;
 
-    if ((!VIR_IS_CONNECT(conn)) || (conn->domains_mux == NULL)) {
+    if ((!VIR_IS_CONNECT(conn)) || (conn->hashes_mux == NULL)) {
         virHashError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return(-1);
     }
-    xmlMutexLock(conn->domains_mux);
+    xmlMutexLock(conn->hashes_mux);
     conn->uses--;
     ret = conn->uses;
     if (ret > 0) {
-	xmlMutexUnlock(conn->domains_mux);
+	xmlMutexUnlock(conn->hashes_mux);
 	return(ret);
     }
 
     if (conn->domains != NULL)
         virHashFree(conn->domains, (virHashDeallocator) virDomainFreeName);
-    if (conn->domains_mux != NULL)
-        xmlFreeMutex(conn->domains_mux);
+    if (conn->networks != NULL)
+        virHashFree(conn->networks, (virHashDeallocator) virNetworkFreeName);
+    if (conn->hashes_mux != NULL)
+        xmlFreeMutex(conn->hashes_mux);
     free(conn);
     return(0);
 }
@@ -591,8 +733,8 @@ virFreeConnect(virConnectPtr conn) {
 /**
  * virGetDomain:
  * @conn: the hypervisor connection
- * @name: pointer to the domain name or NULL
- * @uuid: pointer to the uuid or NULL
+ * @name: pointer to the domain name
+ * @uuid: pointer to the uuid
  *
  * Lookup if the domain is already registered for that connection,
  * if yes return a new pointer to it, if no allocate a new structure,
@@ -605,12 +747,12 @@ virDomainPtr
 virGetDomain(virConnectPtr conn, const char *name, const unsigned char *uuid) {
     virDomainPtr ret = NULL;
 
-    if ((!VIR_IS_CONNECT(conn)) || ((name == NULL) && (uuid == NULL)) ||
-        (conn->domains_mux == NULL)) {
+    if ((!VIR_IS_CONNECT(conn)) || (name == NULL) || (uuid == NULL) ||
+        (conn->hashes_mux == NULL)) {
         virHashError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return(NULL);
     }
-    xmlMutexLock(conn->domains_mux);
+    xmlMutexLock(conn->hashes_mux);
 
     /* TODO search by UUID first as they are better differenciators */
 
@@ -623,12 +765,11 @@ virGetDomain(virConnectPtr conn, const char *name, const unsigned char *uuid) {
     /*
      * not found, allocate a new one
      */
-    ret = (virDomainPtr) malloc(sizeof(virDomain));
+    ret = (virDomainPtr) calloc(1, sizeof(virDomain));
     if (ret == NULL) {
         virHashError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
 	goto error;
     }
-    memset(ret, 0, sizeof(virDomain));
     ret->name = strdup(name);
     if (ret->name == NULL) {
         virHashError(conn, VIR_ERR_NO_MEMORY, _("allocating domain"));
@@ -636,9 +777,9 @@ virGetDomain(virConnectPtr conn, const char *name, const unsigned char *uuid) {
     }
     ret->magic = VIR_DOMAIN_MAGIC;
     ret->conn = conn;
-    ret->handle = -1;
+    ret->id = -1;
     if (uuid != NULL)
-        memcpy(&(ret->uuid[0]), uuid, 16);
+        memcpy(&(ret->uuid[0]), uuid, VIR_UUID_BUFLEN);
 
     if (virHashAddEntry(conn->domains, name, ret) < 0) {
         virHashError(conn, VIR_ERR_INTERNAL_ERROR,
@@ -648,11 +789,11 @@ virGetDomain(virConnectPtr conn, const char *name, const unsigned char *uuid) {
     conn->uses++;
 done:
     ret->uses++;
-    xmlMutexUnlock(conn->domains_mux);
+    xmlMutexUnlock(conn->hashes_mux);
     return(ret);
 
 error:
-    xmlMutexUnlock(conn->domains_mux);
+    xmlMutexUnlock(conn->hashes_mux);
     if (ret != NULL) {
 	if (ret->name != NULL)
 	    free(ret->name );
@@ -676,11 +817,11 @@ virFreeDomain(virConnectPtr conn, virDomainPtr domain) {
     int ret = 0;
 
     if ((!VIR_IS_CONNECT(conn)) || (!VIR_IS_CONNECTED_DOMAIN(domain)) ||
-        (domain->conn != conn) || (conn->domains_mux == NULL)) {
+        (domain->conn != conn) || (conn->hashes_mux == NULL)) {
         virHashError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return(-1);
     }
-    xmlMutexLock(conn->domains_mux);
+    xmlMutexLock(conn->hashes_mux);
 
     /*
      * decrement the count for the domain
@@ -698,7 +839,7 @@ virFreeDomain(virConnectPtr conn, virDomainPtr domain) {
         goto done;
     }
     domain->magic = -1;
-    domain->handle = -1;
+    domain->id = -1;
     if (domain->path != NULL)
         free(domain->path);
     if (domain->xml)
@@ -716,13 +857,13 @@ virFreeDomain(virConnectPtr conn, virDomainPtr domain) {
     
     if (conn->domains != NULL)
         virHashFree(conn->domains, (virHashDeallocator) virDomainFreeName);
-    if (conn->domains_mux != NULL)
-        xmlFreeMutex(conn->domains_mux);
+    if (conn->hashes_mux != NULL)
+        xmlFreeMutex(conn->hashes_mux);
     free(conn);
     return(0);
 
 done:
-    xmlMutexUnlock(conn->domains_mux);
+    xmlMutexUnlock(conn->hashes_mux);
     return(ret);
 }
 
@@ -747,7 +888,7 @@ virGetDomainByID(virConnectPtr conn, int id) {
         virHashError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
         return(NULL);
     }
-    xmlMutexLock(conn->domains_mux);
+    xmlMutexLock(conn->hashes_mux);
 
     table = conn->domains;
     if ((table == NULL) || (table->nbElems == 0))
@@ -759,7 +900,7 @@ virGetDomainByID(virConnectPtr conn, int id) {
 	while (iter != NULL) {
 	    next = iter->next;
 	    cur = (virDomainPtr) iter->payload;
-	    if ((cur != NULL) && (cur->handle == id)) {
+	    if ((cur != NULL) && (cur->id == id)) {
 	        ret = cur;
 		goto done;
 	    }
@@ -767,6 +908,146 @@ virGetDomainByID(virConnectPtr conn, int id) {
 	}
     }
 done:
-    xmlMutexUnlock(conn->domains_mux);
+    xmlMutexUnlock(conn->hashes_mux);
     return(ret);
 }
+
+/**
+ * virGetNetwork:
+ * @conn: the hypervisor connection
+ * @name: pointer to the network name
+ * @uuid: pointer to the uuid
+ *
+ * Lookup if the network is already registered for that connection,
+ * if yes return a new pointer to it, if no allocate a new structure,
+ * and register it in the table. In any case a corresponding call to
+ * virFreeNetwork() is needed to not leak data.
+ *
+ * Returns a pointer to the network, or NULL in case of failure
+ */
+virNetworkPtr
+virGetNetwork(virConnectPtr conn, const char *name, const unsigned char *uuid) {
+    virNetworkPtr ret = NULL;
+
+    if ((!VIR_IS_CONNECT(conn)) || (name == NULL) || (uuid == NULL) ||
+        (conn->hashes_mux == NULL)) {
+        virHashError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
+        return(NULL);
+    }
+    xmlMutexLock(conn->hashes_mux);
+
+    /* TODO search by UUID first as they are better differenciators */
+
+    ret = (virNetworkPtr) virHashLookup(conn->networks, name);
+    if (ret != NULL) {
+        /* TODO check the UUID */
+	goto done;
+    }
+
+    /*
+     * not found, allocate a new one
+     */
+    ret = (virNetworkPtr) calloc(1, sizeof(virNetwork));
+    if (ret == NULL) {
+        virHashError(conn, VIR_ERR_NO_MEMORY, _("allocating network"));
+	goto error;
+    }
+    ret->name = strdup(name);
+    if (ret->name == NULL) {
+        virHashError(conn, VIR_ERR_NO_MEMORY, _("allocating network"));
+	goto error;
+    }
+    ret->magic = VIR_NETWORK_MAGIC;
+    ret->conn = conn;
+    if (uuid != NULL)
+        memcpy(&(ret->uuid[0]), uuid, VIR_UUID_BUFLEN);
+
+    if (virHashAddEntry(conn->networks, name, ret) < 0) {
+        virHashError(conn, VIR_ERR_INTERNAL_ERROR,
+	             _("failed to add network to connection hash table"));
+	goto error;
+    }
+    conn->uses++;
+done:
+    ret->uses++;
+    xmlMutexUnlock(conn->hashes_mux);
+    return(ret);
+
+error:
+    xmlMutexUnlock(conn->hashes_mux);
+    if (ret != NULL) {
+	if (ret->name != NULL)
+	    free(ret->name );
+	free(ret);
+    }
+    return(NULL);
+}
+
+/**
+ * virFreeNetwork:
+ * @conn: the hypervisor connection
+ * @network: the network to release
+ *
+ * Release the given network, if the reference count drops to zero, then
+ * the network is really freed.
+ *
+ * Returns the reference count or -1 in case of failure.
+ */
+int
+virFreeNetwork(virConnectPtr conn, virNetworkPtr network) {
+    int ret = 0;
+
+    if ((!VIR_IS_CONNECT(conn)) || (!VIR_IS_CONNECTED_NETWORK(network)) ||
+        (network->conn != conn) || (conn->hashes_mux == NULL)) {
+        virHashError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
+        return(-1);
+    }
+    xmlMutexLock(conn->hashes_mux);
+
+    /*
+     * decrement the count for the network
+     */
+    network->uses--;
+    ret = network->uses;
+    if (ret > 0)
+        goto done;
+
+    /* TODO search by UUID first as they are better differenciators */
+
+    if (virHashRemoveEntry(conn->networks, network->name, NULL) < 0) {
+        virHashError(conn, VIR_ERR_INTERNAL_ERROR,
+	             _("network missing from connection hash table"));
+        goto done;
+    }
+    network->magic = -1;
+    if (network->name)
+        free(network->name);
+    free(network);
+
+    /*
+     * decrement the count for the connection
+     */
+    conn->uses--;
+    if (conn->uses > 0)
+        goto done;
+
+    if (conn->networks != NULL)
+        virHashFree(conn->networks, (virHashDeallocator) virNetworkFreeName);
+    if (conn->hashes_mux != NULL)
+        xmlFreeMutex(conn->hashes_mux);
+    free(conn);
+    return(0);
+
+done:
+    xmlMutexUnlock(conn->hashes_mux);
+    return(ret);
+}
+
+/*
+ * Local variables:
+ *  indent-tabs-mode: nil
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ *  tab-width: 4
+ * End:
+ */

@@ -41,7 +41,12 @@ host_triplet = @host@
 subdir = python
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in TODO
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4/compiler-flags.m4 \
+	$(top_srcdir)/m4/gettext.m4 $(top_srcdir)/m4/iconv.m4 \
+	$(top_srcdir)/m4/lib-ld.m4 $(top_srcdir)/m4/lib-link.m4 \
+	$(top_srcdir)/m4/lib-prefix.m4 $(top_srcdir)/m4/nls.m4 \
+	$(top_srcdir)/m4/po.m4 $(top_srcdir)/m4/progtest.m4 \
+	$(top_srcdir)/acinclude.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -60,8 +65,9 @@ LTLIBRARIES = $(python_LTLIBRARIES)
 @WITH_PYTHON_TRUE@libvirtmod_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am__libvirtmod_la_SOURCES_DIST = libvir.c types.c libvirt-py.c \
 	libvirt-py.h
-@WITH_PYTHON_TRUE@am_libvirtmod_la_OBJECTS = libvir.lo types.lo \
-@WITH_PYTHON_TRUE@	libvirt-py.lo
+@WITH_PYTHON_TRUE@am_libvirtmod_la_OBJECTS = libvirtmod_la-libvir.lo \
+@WITH_PYTHON_TRUE@	libvirtmod_la-types.lo \
+@WITH_PYTHON_TRUE@	libvirtmod_la-libvirt-py.lo
 libvirtmod_la_OBJECTS = $(am_libvirtmod_la_OBJECTS)
 @WITH_PYTHON_TRUE@am_libvirtmod_la_rpath = -rpath $(pythondir)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
@@ -99,6 +105,9 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
+COMPILER_FLAGS = @COMPILER_FLAGS@
+COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
+COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
@@ -113,6 +122,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_XEN_TESTS_FALSE = @ENABLE_XEN_TESTS_FALSE@
+ENABLE_XEN_TESTS_TRUE = @ENABLE_XEN_TESTS_TRUE@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
@@ -123,13 +134,16 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
-INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+IPTABLES_PATH = @IPTABLES_PATH@
 LDFLAGS = @LDFLAGS@
 LIBICONV = @LIBICONV@
 LIBINTL = @LIBINTL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIBVIRT_FEATURES = @LIBVIRT_FEATURES@
+LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE = @LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE@
+LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE = @LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@
 LIBVIRT_MAJOR_VERSION = @LIBVIRT_MAJOR_VERSION@
 LIBVIRT_MICRO_VERSION = @LIBVIRT_MICRO_VERSION@
 LIBVIRT_MINOR_VERSION = @LIBVIRT_MINOR_VERSION@
@@ -165,19 +179,24 @@ PYTHON_INCLUDES = @PYTHON_INCLUDES@
 PYTHON_SITE_PACKAGES = @PYTHON_SITE_PACKAGES@
 PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
+QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
 RM = @RM@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
+SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 VIRSH_LIBS = @VIRSH_LIBS@
+WARN_CFLAGS = @WARN_CFLAGS@
 WITH_PYTHON_FALSE = @WITH_PYTHON_FALSE@
 WITH_PYTHON_TRUE = @WITH_PYTHON_TRUE@
+WITH_XEN = @WITH_XEN@
 XGETTEXT = @XGETTEXT@
 XMLLINT = @XMLLINT@
 XSLTPROC = @XSLTPROC@
@@ -228,6 +247,7 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 SUBDIRS = . tests
 INCLUDES = \
+        $(WARN_CFLAGS) \
         -I$(PYTHON_INCLUDES) \
 	-I$(top_srcdir)/include \
 	-I$(top_builddir)/include \
@@ -249,7 +269,9 @@ libvirtmod_la_LDFLAGS = -module -avoid-version -L$(top_builddir)/src/.libs
 @WITH_PYTHON_TRUE@mylibs = $(top_builddir)/src/libvirt.la
 @WITH_PYTHON_TRUE@python_LTLIBRARIES = libvirtmod.la
 @WITH_PYTHON_TRUE@libvirtmod_la_SOURCES = libvir.c types.c libvirt-py.c libvirt-py.h
-@WITH_PYTHON_TRUE@libvirtmod_la_LIBADD = $(mylibs) 
+@WITH_PYTHON_TRUE@libvirtmod_la_LIBADD = $(mylibs)
+# Python header files contain a redundant decl, hence:
+@WITH_PYTHON_TRUE@libvirtmod_la_CFLAGS = -Wno-redundant-decls
 @WITH_PYTHON_TRUE@GENERATE = generator.py
 @WITH_PYTHON_TRUE@API_DESC = $(top_srcdir)/docs/libvirt-api.xml $(srcdir)/libvirt-python-api.xml
 @WITH_PYTHON_TRUE@GENERATED = libvirt.py \
@@ -329,9 +351,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvir.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirt-py.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/types.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtmod_la-libvir.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtmod_la-libvirt-py.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libvirtmod_la-types.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -353,6 +375,27 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+libvirtmod_la-libvir.lo: libvir.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtmod_la_CFLAGS) $(CFLAGS) -MT libvirtmod_la-libvir.lo -MD -MP -MF "$(DEPDIR)/libvirtmod_la-libvir.Tpo" -c -o libvirtmod_la-libvir.lo `test -f 'libvir.c' || echo '$(srcdir)/'`libvir.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtmod_la-libvir.Tpo" "$(DEPDIR)/libvirtmod_la-libvir.Plo"; else rm -f "$(DEPDIR)/libvirtmod_la-libvir.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='libvir.c' object='libvirtmod_la-libvir.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtmod_la_CFLAGS) $(CFLAGS) -c -o libvirtmod_la-libvir.lo `test -f 'libvir.c' || echo '$(srcdir)/'`libvir.c
+
+libvirtmod_la-types.lo: types.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtmod_la_CFLAGS) $(CFLAGS) -MT libvirtmod_la-types.lo -MD -MP -MF "$(DEPDIR)/libvirtmod_la-types.Tpo" -c -o libvirtmod_la-types.lo `test -f 'types.c' || echo '$(srcdir)/'`types.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtmod_la-types.Tpo" "$(DEPDIR)/libvirtmod_la-types.Plo"; else rm -f "$(DEPDIR)/libvirtmod_la-types.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='types.c' object='libvirtmod_la-types.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtmod_la_CFLAGS) $(CFLAGS) -c -o libvirtmod_la-types.lo `test -f 'types.c' || echo '$(srcdir)/'`types.c
+
+libvirtmod_la-libvirt-py.lo: libvirt-py.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtmod_la_CFLAGS) $(CFLAGS) -MT libvirtmod_la-libvirt-py.lo -MD -MP -MF "$(DEPDIR)/libvirtmod_la-libvirt-py.Tpo" -c -o libvirtmod_la-libvirt-py.lo `test -f 'libvirt-py.c' || echo '$(srcdir)/'`libvirt-py.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libvirtmod_la-libvirt-py.Tpo" "$(DEPDIR)/libvirtmod_la-libvirt-py.Plo"; else rm -f "$(DEPDIR)/libvirtmod_la-libvirt-py.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='libvirt-py.c' object='libvirtmod_la-libvirt-py.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libvirtmod_la_CFLAGS) $(CFLAGS) -c -o libvirtmod_la-libvirt-py.lo `test -f 'libvirt-py.c' || echo '$(srcdir)/'`libvirt-py.c
 
 mostlyclean-libtool:
 	-rm -f *.lo

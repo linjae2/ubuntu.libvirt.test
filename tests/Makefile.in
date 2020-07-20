@@ -38,11 +38,17 @@ build_triplet = @build@
 host_triplet = @host@
 noinst_PROGRAMS = xmlrpctest$(EXEEXT) xml2sexprtest$(EXEEXT) \
 	sexpr2xmltest$(EXEEXT) virshtest$(EXEEXT) conftest$(EXEEXT) \
-	reconnect$(EXEEXT)
+	reconnect$(EXEEXT) xmconfigtest$(EXEEXT) xencapstest$(EXEEXT)
+@ENABLE_XEN_TESTS_TRUE@am__append_1 = reconnect
 subdir = tests
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4/compiler-flags.m4 \
+	$(top_srcdir)/m4/gettext.m4 $(top_srcdir)/m4/iconv.m4 \
+	$(top_srcdir)/m4/lib-ld.m4 $(top_srcdir)/m4/lib-link.m4 \
+	$(top_srcdir)/m4/lib-prefix.m4 $(top_srcdir)/m4/nls.m4 \
+	$(top_srcdir)/m4/po.m4 $(top_srcdir)/m4/progtest.m4 \
+	$(top_srcdir)/acinclude.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -51,25 +57,33 @@ CONFIG_CLEAN_FILES =
 PROGRAMS = $(noinst_PROGRAMS)
 am_conftest_OBJECTS = conftest.$(OBJEXT)
 conftest_OBJECTS = $(am_conftest_OBJECTS)
-am__DEPENDENCIES_1 = $(top_builddir)/src/.libs/libvirt.a
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-conftest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am__DEPENDENCIES_1 = $(wildcard \
+	$(top_builddir)/src/.libs/libvirt_la-*.o)
+am__DEPENDENCIES_2 =
+am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2)
+conftest_DEPENDENCIES = $(am__DEPENDENCIES_3)
 am_reconnect_OBJECTS = reconnect.$(OBJEXT)
 reconnect_OBJECTS = $(am_reconnect_OBJECTS)
-reconnect_DEPENDENCIES = $(am__DEPENDENCIES_2)
+reconnect_DEPENDENCIES = $(am__DEPENDENCIES_3)
 am_sexpr2xmltest_OBJECTS = sexpr2xmltest.$(OBJEXT) testutils.$(OBJEXT)
 sexpr2xmltest_OBJECTS = $(am_sexpr2xmltest_OBJECTS)
-sexpr2xmltest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+sexpr2xmltest_DEPENDENCIES = $(am__DEPENDENCIES_3)
 am_virshtest_OBJECTS = virshtest.$(OBJEXT) testutils.$(OBJEXT)
 virshtest_OBJECTS = $(am_virshtest_OBJECTS)
-virshtest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+virshtest_DEPENDENCIES = $(am__DEPENDENCIES_3)
+am_xencapstest_OBJECTS = xencapstest.$(OBJEXT) testutils.$(OBJEXT)
+xencapstest_OBJECTS = $(am_xencapstest_OBJECTS)
+xencapstest_DEPENDENCIES = $(am__DEPENDENCIES_3)
+am_xmconfigtest_OBJECTS = xmconfigtest.$(OBJEXT) testutils.$(OBJEXT)
+xmconfigtest_OBJECTS = $(am_xmconfigtest_OBJECTS)
+xmconfigtest_DEPENDENCIES = $(am__DEPENDENCIES_3)
 am_xml2sexprtest_OBJECTS = xml2sexprtest.$(OBJEXT) testutils.$(OBJEXT)
 xml2sexprtest_OBJECTS = $(am_xml2sexprtest_OBJECTS)
-xml2sexprtest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+xml2sexprtest_DEPENDENCIES = $(am__DEPENDENCIES_3)
 am_xmlrpctest_OBJECTS = xmlrpctest.$(OBJEXT) testutils.$(OBJEXT) \
 	xmlrpc.$(OBJEXT)
 xmlrpctest_OBJECTS = $(am_xmlrpctest_OBJECTS)
-xmlrpctest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+xmlrpctest_DEPENDENCIES = $(am__DEPENDENCIES_3)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -83,9 +97,11 @@ LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(conftest_SOURCES) $(reconnect_SOURCES) \
 	$(sexpr2xmltest_SOURCES) $(virshtest_SOURCES) \
+	$(xencapstest_SOURCES) $(xmconfigtest_SOURCES) \
 	$(xml2sexprtest_SOURCES) $(xmlrpctest_SOURCES)
 DIST_SOURCES = $(conftest_SOURCES) $(reconnect_SOURCES) \
 	$(sexpr2xmltest_SOURCES) $(virshtest_SOURCES) \
+	$(xencapstest_SOURCES) $(xmconfigtest_SOURCES) \
 	$(xml2sexprtest_SOURCES) $(xmlrpctest_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
@@ -109,6 +125,9 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
+COMPILER_FLAGS = @COMPILER_FLAGS@
+COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
+COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
@@ -123,6 +142,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_XEN_TESTS_FALSE = @ENABLE_XEN_TESTS_FALSE@
+ENABLE_XEN_TESTS_TRUE = @ENABLE_XEN_TESTS_TRUE@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
@@ -133,13 +154,16 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
-INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+IPTABLES_PATH = @IPTABLES_PATH@
 LDFLAGS = @LDFLAGS@
 LIBICONV = @LIBICONV@
 LIBINTL = @LIBINTL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIBVIRT_FEATURES = @LIBVIRT_FEATURES@
+LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE = @LIBVIRT_INIT_SCRIPTS_RED_HAT_FALSE@
+LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE = @LIBVIRT_INIT_SCRIPTS_RED_HAT_TRUE@
 LIBVIRT_MAJOR_VERSION = @LIBVIRT_MAJOR_VERSION@
 LIBVIRT_MICRO_VERSION = @LIBVIRT_MICRO_VERSION@
 LIBVIRT_MINOR_VERSION = @LIBVIRT_MINOR_VERSION@
@@ -175,19 +199,24 @@ PYTHON_INCLUDES = @PYTHON_INCLUDES@
 PYTHON_SITE_PACKAGES = @PYTHON_SITE_PACKAGES@
 PYTHON_SUBDIR = @PYTHON_SUBDIR@
 PYTHON_VERSION = @PYTHON_VERSION@
+QEMUD_PID_FILE = @QEMUD_PID_FILE@
 RANLIB = @RANLIB@
 RM = @RM@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATIC_BINARIES = @STATIC_BINARIES@
 STRIP = @STRIP@
+SYSFS_LIBS = @SYSFS_LIBS@
 TAR = @TAR@
 U = @U@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 VIRSH_LIBS = @VIRSH_LIBS@
+WARN_CFLAGS = @WARN_CFLAGS@
 WITH_PYTHON_FALSE = @WITH_PYTHON_FALSE@
 WITH_PYTHON_TRUE = @WITH_PYTHON_TRUE@
+WITH_XEN = @WITH_XEN@
 XGETTEXT = @XGETTEXT@
 XMLLINT = @XMLLINT@
 XSLTPROC = @XSLTPROC@
@@ -236,8 +265,15 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-SUBDIRS = virshdata confdata sexpr2xmldata xml2sexprdata
-LIBVIRT = $(top_builddir)/src/.libs/libvirt.a
+SUBDIRS = virshdata confdata sexpr2xmldata xml2sexprdata xmconfigdata xencapsdata
+
+# Wierd libtool related juju...
+#
+# We explicitly want wildcard here instead of just linking
+# to the libvirt.a file. This ensures that when coverage
+# tests are run, all the output data ends up in the correct
+# location. ie, src/ instead of src/.libs.
+LIBVIRT = $(wildcard $(top_builddir)/src/.libs/libvirt_la-*.o)
 INCLUDES = \
 	-I$(top_builddir)/include \
 	-I$(top_builddir)/src \
@@ -245,15 +281,20 @@ INCLUDES = \
 	-I$(top_srcdir)/src \
 	@LIBXML_CFLAGS@ \
         -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=199506L \
-        -DGETTEXT_PACKAGE=\"$(PACKAGE)\"
+        -DGETTEXT_PACKAGE=\"$(PACKAGE)\" \
+         $(COVERAGE_CFLAGS) \
+         $(WARN_CFLAGS)	\
+	 $(LIBVIRT_FEATURES)
 
 LDADDS = \
 	@STATIC_BINARIES@ \
 	@LIBXML_LIBS@ \
-	$(LIBVIRT)
+	$(LIBVIRT) \
+        $(COVERAGE_LDFLAGS)
 
 EXTRA_DIST = xmlrpcserver.py test_conf.sh
-TESTS = xml2sexprtest sexpr2xmltest virshtest test_conf.sh reconnect
+TESTS = xml2sexprtest sexpr2xmltest virshtest test_conf.sh \
+	xmconfigtest xencapstest $(am__append_1)
 
 # Note: xmlrpc.[c|h] is not in libvirt yet
 xmlrpctest_SOURCES = \
@@ -276,6 +317,12 @@ sexpr2xmltest_SOURCES = \
 
 sexpr2xmltest_LDFLAGS = 
 sexpr2xmltest_LDADD = $(LDADDS)
+xmconfigtest_SOURCES = \
+	xmconfigtest.c \
+	testutils.c testutils.h
+
+xmconfigtest_LDFLAGS = 
+xmconfigtest_LDADD = $(LDADDS)
 virshtest_SOURCES = \
 	virshtest.c \
 	testutils.c testutils.h
@@ -287,6 +334,11 @@ conftest_SOURCES = \
 
 conftest_LDFLAGS = 
 conftest_LDADD = $(LDADDS)
+xencapstest_SOURCES = \
+	xencapstest.c testutils.h testutils.c
+
+xencapstest_LDFLAGS = 
+xencapstest_LDADD = $(LDADDS)
 reconnect_SOURCES = \
 	reconnect.c
 
@@ -344,6 +396,12 @@ sexpr2xmltest$(EXEEXT): $(sexpr2xmltest_OBJECTS) $(sexpr2xmltest_DEPENDENCIES)
 virshtest$(EXEEXT): $(virshtest_OBJECTS) $(virshtest_DEPENDENCIES) 
 	@rm -f virshtest$(EXEEXT)
 	$(LINK) $(virshtest_LDFLAGS) $(virshtest_OBJECTS) $(virshtest_LDADD) $(LIBS)
+xencapstest$(EXEEXT): $(xencapstest_OBJECTS) $(xencapstest_DEPENDENCIES) 
+	@rm -f xencapstest$(EXEEXT)
+	$(LINK) $(xencapstest_LDFLAGS) $(xencapstest_OBJECTS) $(xencapstest_LDADD) $(LIBS)
+xmconfigtest$(EXEEXT): $(xmconfigtest_OBJECTS) $(xmconfigtest_DEPENDENCIES) 
+	@rm -f xmconfigtest$(EXEEXT)
+	$(LINK) $(xmconfigtest_LDFLAGS) $(xmconfigtest_OBJECTS) $(xmconfigtest_LDADD) $(LIBS)
 xml2sexprtest$(EXEEXT): $(xml2sexprtest_OBJECTS) $(xml2sexprtest_DEPENDENCIES) 
 	@rm -f xml2sexprtest$(EXEEXT)
 	$(LINK) $(xml2sexprtest_LDFLAGS) $(xml2sexprtest_OBJECTS) $(xml2sexprtest_LDADD) $(LIBS)
@@ -362,6 +420,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sexpr2xmltest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testutils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/virshtest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xencapstest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xmconfigtest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xml2sexprtest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xmlrpc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xmlrpctest.Po@am__quote@

@@ -1,16 +1,21 @@
 # -*- rpm-spec -*-
 
-Summary: Library providing an API to use the Xen virtualization
+# This macro is used for the continuous automated builds. It just
+# allows an extra fragment based on the timestamp to be appended
+# to the release. This distinguishes automated builds, from formal
+# Fedora RPM builds
+%define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
+
+Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.1.8
-Release: 1
+Version: 0.2.2
+Release: 1%{?_extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
-Requires: xen
 Requires: libxml2
 Requires: readline
 Requires: ncurses
@@ -19,40 +24,43 @@ BuildRequires: libxml2-devel
 BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
+BuildRequires: libsysfs-devel
+BuildRequires: /sbin/iptables
 Obsoletes: libvir
 ExclusiveArch: i386 x86_64 ia64
 
 %description
-This C library provides an API to use the Xen virtualization framework,
-and the virsh command line tool to control virtual domains.
+Libvirt is a C toolkit to interract with the virtualization capabilities
+of recent versions of Linux (and other OSes).
 
 %package devel
 Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
 Requires: libvirt = %{version}
+Requires: pkgconfig
 Obsoletes: libvir-devel
 
 %description devel
 Includes and documentations for the C library providing an API to use
-the Xen virtualization framework
+the virtualization capabilities of recent versions of Linux (and other OSes).
 
 %package python
 Summary: Python bindings for the libvirt library
 Group: Development/Libraries
 Requires: libvirt = %{version}
 Obsoletes: libvir-python
-Requires: %{_libdir}/python%(echo `python -c "import sys; print sys.version[0:3]"`)
 
 %description python
 The libvirt-python package contains a module that permits applications
 written in the Python programming language to use the interface
-supplied by the libvirt library to use the Xen virtualization framework.
+supplied by the libvirt library to use the the virtualization capabilities 
+of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
 
 %build
-%configure
+%configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid
 make
 
 %install
@@ -64,6 +72,18 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.a
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.a
+install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/run/libvirt/
+
+# We don't want to install /etc/libvirt/qemu/networks in the main %files list
+# because if the admin wants to delete the default network completely, we don't
+# want to end up re-incarnating it on every RPM upgrade.
+install -d -m 0755 $RPM_BUILD_ROOT%{_datadir}/libvirt/networks/
+cp $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu/networks/default.xml \
+   $RPM_BUILD_ROOT%{_datadir}/libvirt/networks/default.xml
+rm -f $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu/networks/default.xml
+rm -f $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu/networks/autostart/default.xml
+# Strip auto-generated UUID - we need it generated per-install
+sed -i -e "/<uuid>/d" $RPM_BUILD_ROOT%{_datadir}/libvirt/networks/default.xml
 %find_lang %{name}
 
 %clean
@@ -71,6 +91,27 @@ rm -fr %{buildroot}
 
 %post
 /sbin/ldconfig
+
+# We want to install the default network for initial RPM installs
+# or on the first upgrade from a non-network aware libvirt only.
+# We check this by looking to see if the daemon is already installed
+/sbin/chkconfig --list libvirtd 1>/dev/null 2>&1
+if [ $? != 0 ]
+then
+    UUID=`/usr/bin/uuidgen`
+    sed -e "s,</name>,</name>\n  <uuid>$UUID</uuid>," \
+         < %{_datadir}/libvirt/networks/default.xml \
+         > %{_sysconfdir}/libvirt/qemu/networks/default.xml
+    ln -s ../default.xml %{_sysconfdir}/libvirt/qemu/networks/autostart/default.xml
+fi
+
+/sbin/chkconfig --add libvirtd
+
+%preun
+if [ $1 = 0 ]; then
+    /sbin/service libvirtd stop 1>/dev/null 2>&1
+    /sbin/chkconfig --del libvirtd
+fi
 
 %postun
 /sbin/ldconfig
@@ -82,12 +123,29 @@ rm -fr %{buildroot}
 %doc %{_mandir}/man1/virsh.1*
 %{_bindir}/virsh
 %{_libdir}/lib*.so.*
+%dir %attr(0700, root, root) %{_sysconfdir}/libvirt/
+%dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/
+%dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/
+%dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/autostart
+%{_sysconfdir}/rc.d/init.d/libvirtd
+%dir %{_sysconfdir}/libvirt
+%dir %{_sysconfdir}/libvirt/qemu
+%dir %{_sysconfdir}/libvirt/qemu/networks
+%dir %{_sysconfdir}/libvirt/qemu/networks/autostart
+%dir %{_datadir}/libvirt/
+%dir %{_datadir}/libvirt/networks/
+%{_datadir}/libvirt/networks/default.xml
+%dir %{_localstatedir}/run/libvirt/
+%dir %{_localstatedir}/lib/libvirt/
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
+%attr(0755, root, root) %{_sbindir}/libvirt_qemud
+%doc docs/libvirt.rng
 
 %files devel
 %defattr(-, root, root)
 
 %{_libdir}/lib*.so
+%dir %{_includedir}/libvirt
 %{_includedir}/libvirt/*.h
 %{_libdir}/pkgconfig/libvirt.pc
 %doc %{_datadir}/gtk-doc/html/libvirt/*.devhelp
@@ -111,6 +169,72 @@ rm -fr %{buildroot}
 %doc docs/examples/python
 
 %changelog
+* Tue Apr 17 2007 Daniel Veillard <veillard@redhat.com> - 0.2.2-1
+- Release of 0.2.2
+- lot of assorted bugfixes and cleanups
+- preparing for Xen-3.0.5
+
+* Thu Mar 22 2007 Jeremy Katz <katzj@redhat.com> - 0.2.1-2.fc7
+- don't require xen; we don't need the daemon and can control non-xen now
+- fix scriptlet error (need to own more directories)
+- update description text
+
+* Fri Mar 16 2007 Daniel Veillard <veillard@redhat.com> - 0.2.1-1
+- Release of 0.2.1
+- lot of bug and portability fixes
+- Add support for network autostart and init scripts
+- New API to detect the virtualization capabilities of a host
+- Documentation updates
+
+* Fri Feb 23 2007 Daniel P. Berrange <berrange@redhat.com> - 0.2.0-4.fc7
+- Fix loading of guest & network configs
+
+* Fri Feb 16 2007 Daniel P. Berrange <berrange@redhat.com> - 0.2.0-3.fc7
+- Disable kqemu support since its not in Fedora qemu binary
+- Fix for -vnc arg syntax change in 0.9.0  QEMU
+
+* Thu Feb 15 2007 Daniel P. Berrange <berrange@redhat.com> - 0.2.0-2.fc7
+- Fixed path to qemu daemon for autostart
+- Fixed generation of <features> block in XML
+- Pre-create config directory at startup
+
+* Wed Feb 14 2007 Daniel Veillard <veillard@redhat.com> 0.2.0-1.fc7
+- support for KVM and QEmu
+- support for network configuration
+- assorted fixes
+
+* Mon Jan 22 2007 Daniel Veillard <veillard@redhat.com> 0.1.11-1.fc7
+- finish inactive Xen domains support
+- memory leak fix
+- RelaxNG schemas for XML configs
+
+* Wed Dec 20 2006 Daniel Veillard <veillard@redhat.com> 0.1.10-1.fc7
+- support for inactive Xen domains
+- improved support for Xen display and vnc
+- a few bug fixes
+- localization updates
+
+* Thu Dec  7 2006 Jeremy Katz <katzj@redhat.com> - 0.1.9-2
+- rebuild against python 2.5
+
+* Wed Nov 29 2006 Daniel Veillard <veillard@redhat.com> 0.1.9-1
+- better error reporting
+- python bindings fixes and extensions
+- add support for shareable drives
+- add support for non-bridge style networking
+- hot plug device support
+- added support for inactive domains
+- API to dump core of domains
+- various bug fixes, cleanups and improvements
+- updated the localization
+
+* Tue Nov  7 2006 Daniel Veillard <veillard@redhat.com> 0.1.8-3
+- it's pkgconfig not pgkconfig !
+
+* Mon Nov  6 2006 Daniel Veillard <veillard@redhat.com> 0.1.8-2
+- fixing spec file, added %dist, -devel requires pkgconfig and xen-devel
+- Resolves: rhbz#202320
+
 * Mon Oct 16 2006 Daniel Veillard <veillard@redhat.com> 0.1.8-1
 - fix missing page size detection code for ia64
 - fix mlock size when getting domain info list from hypervisor
