@@ -1,0 +1,3 @@
+  * libvirt-bin.upstart: delay start until rc finished
+    This give hypervisors more time to finish their setup (LP: #1377900).
+  * libvirt-bin.upstart: add xen:/// uri to the list (LP: #1377960)
