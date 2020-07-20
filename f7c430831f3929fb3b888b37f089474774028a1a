@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu:
+    allow serial console backed by pts chardev (LP: #1342083) 
