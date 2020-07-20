@@ -1,0 +1,2 @@
+  * Really fix the ADT regression and not only the changelog due
+    to somehow ending up on the wrong git branch.
