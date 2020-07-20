@@ -1,0 +1,5 @@
+  * Ensure d/p/ubuntu/9002-default_uri_virsh_to_system.patch is
+    dropped as intended.
+  * Re-Add d/p/ubuntu/apibuild-skip-libvirt-common.h for an issue that
+    transiently occurs on LP builds (real trigger not yet identified, so it
+    can't be upstreamed).
