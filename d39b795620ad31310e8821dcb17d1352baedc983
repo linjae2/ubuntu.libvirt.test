@@ -1,0 +1,7 @@
+  * debian/patches/series: per Ubuntu Server team, run qemu/kvm as non-root
+    and comment out 9008-run-as-root-by-default.patch. This has now received
+    significant testing in Debian, adds a good security benefit for people
+    who disable AppArmor and fixes the libvirt portion of LP: #619843. With
+    this patch removed, libvirt will default to the Debian configure arguments
+    and run qemu/kvm VMs as 'libvirt-qemu:kvm'.
+  * debian/README.Debian: adjusted for the above
