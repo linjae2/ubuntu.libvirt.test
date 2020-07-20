@@ -1,0 +1,4 @@
+  * debian/patches/apparmor-allow-hugepages: update apparmor policies to
+    allow use of hugepages.  (LP: #646468)
+  * debian/patches/vnc-socket.patch: If a vnc socket is in use, add it's
+    path to the apparmor policy.  (LP: #1069534)
