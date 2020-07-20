@@ -1,0 +1,5 @@
+  * [b0bdb13] Enable numa support. (Closes: #648323)
+    Thanks to Ralf Spenneberg for testing
+  * [5b55828] Disk storage: forbid rebuilding existing disk storage pools
+    wiping all it's data.
+  * [d77511c] Build depend on radvd (Closes: #648551)
