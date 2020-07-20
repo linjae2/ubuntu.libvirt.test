@@ -1,0 +1,2 @@
+  * We call libxen-dev libxen3-dev.
+  * Make libvirt-dev installable alongside libvirt0-dbg.
