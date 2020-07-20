@@ -1,0 +1,5 @@
+  * [4d41fd7] Also look for dmi information in /sys/class older kernels such
+    as 2.6.26 have it there. (Closes: #564020)
+  * [1c0e0b5] Explicitly disable ESX support
+  * [c3c84f6] Terminate nc on EOF (Closes: #564053) - thanks to Gabor Gombas
+    for the patch
