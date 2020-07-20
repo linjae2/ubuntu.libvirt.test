@@ -1,0 +1,5 @@
+  * Build against libxen3-dev instead of libxen3.2-dev.
+  * libvirt-bin:
+    + Replace "Suggests: dnsmasq" with "Depends: dnsmasq-base".
+    + Add dependency on netcat-openbsd (to enable qemu+ssh:// style remote
+      management)
