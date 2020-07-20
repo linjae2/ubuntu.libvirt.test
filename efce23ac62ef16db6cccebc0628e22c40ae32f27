@@ -1,0 +1,11 @@
+  * disk-bus.patch:
+    - Add bus attribute to disk/target tags. Allows you to create virtio disks.
+      (LP: #213991)
+  * nic-model.patch:
+    - Add <model type='foo'/> support to network interfaces. (LP: #213991)
+  * graceful_shutdown.patch:
+    - Rather than pulling the power from virtual machines, send an ACPI power
+      button event and let the OS handle it.
+  * better_default_uri_virsh.patch:
+    - Updated patch: Output connection URI to stderr instead of stdout to avoid
+      breaking scripts that use virsh.
