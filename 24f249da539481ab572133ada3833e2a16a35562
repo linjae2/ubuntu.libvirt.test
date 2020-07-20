@@ -1,0 +1,35 @@
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + Don't build-depend on QEmu.
+      + Add "XS-Debian-" prefix to Debian's Vcs headers.
+      + Bump bridge-utils, dnsmasq-base, netcat-openbsd, and iptables
+        to Depends of libvirt-bin.
+      + s/interract/interact/g
+      + Add versioned Conflicts/Replaces to libvirt0 for libvirt0-dbg,
+        since we used to ship them as such.
+    - 9000-delayed_iff_up_bridge.patch:
+      Don't try to bring up the bridge before at least one interface has been
+      added to it.
+    - 9001-dont_clobber_existing_bridges.patch
+      Assign the name of the virtual bridge dynamically to avoid interfering
+      with existing bridges.
+    - 9002-better_default_uri_virsh.patch:
+      Default to qemu:///system if the user has write access to the libvirt
+      socket, otherwise qemu:///session.
+    - 9003-increase-logoutput-timeout.patch:
+      increase timeout waiting for log output in src/qemu_driver.c, set to 30
+      seconds, which 10x longer than before, and matches the disk-wait in
+      mdadm. (LP #344400)
+    - 9004-better-default-arch.patch:
+      If a domain does not specify its architecture, attempt to match the host.
+      (LP #344913)
+    - 9005-libvirtd-group-name.patch:
+      Rename libvirt group to libvirtd.
+    - We call libxen-dev libxen3-dev, so change all references.
+  * [dd3adb2] Imported Upstream version 0.6.4
+  * [2320162] update symbols file
+  * [89c9720] remove bashism (Closes: #530122)
+  * [30d86c1] drop patches fixed upstream:
+        0005-don-t-crash-with-def-NULL.patch
+        0006-Fix-QEMU-ARGV-detection-with-kvm-85.patch
+        0007-Declare-support-for-QEMU-migration-in-capabilities.patch
