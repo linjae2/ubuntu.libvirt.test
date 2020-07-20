@@ -1,0 +1,3 @@
+  * IFF_UP'ing a bridge interface doesn't work until the first interface has
+    been added to it.
+  * Fix remote ssh connections.
