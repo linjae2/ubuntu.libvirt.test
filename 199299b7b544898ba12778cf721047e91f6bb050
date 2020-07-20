@@ -1,0 +1,3 @@
+  * Add a dependency on the new apparmor to make sure we have the new
+    parser around before we attempt to load a profile requiring the new
+    stanza support. (LP: #1304167)
