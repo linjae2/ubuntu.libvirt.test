@@ -1,0 +1,11 @@
+  [ Serge Hallyn ]
+  * Apply patches from Josh Durgin <josh.durgin@dreamhost.com> to make
+    attaching rbd volumes and taking snapshots of them work.
+    - ubuntu/9022-qemu-unescape-HMP-commands-before-converting-them-to.patch
+    - ubuntu/9023-qemu-change-rbd-auth_supported-separation-character-.patch
+    - ubuntu/9024-qemu-allow-snapshotting-of-sheepdog-and-rbd-disks.patch
+    - ubuntu/9025-qemu-change-rbd-auth_supported-separation-character-.patch
+  [ Stefan Bader ]
+  * Do not use vfb sections in HVM graphics definitions (side-
+    effect will create a vkbd device as well which causes error
+    messages in the HVM guest). (LP: #973529)
