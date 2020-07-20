@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: a couple more fixes for pulseaudio
+    LP: #453329
