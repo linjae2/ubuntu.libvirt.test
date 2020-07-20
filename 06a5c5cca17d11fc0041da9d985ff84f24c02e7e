@@ -1,0 +1,12 @@
+  [ Seyeong Kim ]
+  * d/p/fix_libvirtd_killed_by_sigsegv.patch: fix incorrect backport
+    (LP: #1464175)
+  [ Edward Hope-Morley ]
+  * Add post-start to upstart (/etc/init/libvirt-bin.conf) and
+    sysv (/etc/init.d/libvirt-bin) to ensure libvirt-sock
+    created before up (LP: #1455608)
+  [ Chris J Arges ]
+  * Add d/p/PowerPC-Make-qemu-system-ppc64-the-default-emulator-.patch,
+    d/p/PowerPC-Forbid-NULL-CPU-model-with-host-model-mode.patch,
+    d/p/schema-Allow-multiple-machines-for-VMs-and-unite-arc.patch
+    To fix issues with libvirt on ppc64el.(LP: #1468247)
