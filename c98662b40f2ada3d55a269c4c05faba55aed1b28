@@ -1,0 +1,4 @@
+  * debian/control: lower qemu-kvm and lvm2 from Recommends to Suggests,
+    LP: #556312; it's reasonable to install libvirt on systems that
+    host xen and qemu VMs; see meta packages (ubuntu-virt, ubuntu-virt-server,
+    ubuntu-virt-mgmt) for group installation of virt pacakge sets
