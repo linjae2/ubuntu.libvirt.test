@@ -1,0 +1,3 @@
+  * debian/libvirt-bin.postinst: even if we think it's a new install, don't
+    assume that /etc/libvirt/qemu/networks/autostart/default.xml doesn't
+    exist.
