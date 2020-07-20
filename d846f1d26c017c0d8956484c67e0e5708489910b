@@ -1,0 +1,4 @@
+  * [5936904] New upstream version 4.0.0
+  * [bcb7ca3] Drop patches applied upstream.
+      Allow-libvirt-to-kill-unconfined-domains.patch
+      Drop qemu-avoid-denial-of-service-reading-from-QEMU-monitor-CV.patch
