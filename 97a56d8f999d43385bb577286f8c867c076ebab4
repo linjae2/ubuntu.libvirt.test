@@ -1,0 +1,8 @@
+  * SECURITY UPDATE: Add support for Spectre mitigations
+    - debian/patches/CVE-2017-5715-microcode*.patch: include x86 microcode
+      version in virsh capabilities and force update if the microcode
+      does not match.
+    - debian/patches/CVE-2017-5715-ibrs*.patch: add CPU features for
+      indirect branch prediction protection and add new *-IBRS CPU models.
+    - debian/control: add Breaks to get updated qemu with new CPU models.
+    - CVE-2017-5715
