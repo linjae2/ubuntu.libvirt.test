@@ -1,0 +1,2 @@
+  * Add systemd units and libvirt-stop-guests script to stop VMs before
+    a host completes shutdown  (LP: #1480440)
