@@ -1,0 +1,2 @@
+  * debian/apparmor/libvirt-qemu: allow qemu read access to
+    @{PROC}/sys/vm/overcommit_memory
