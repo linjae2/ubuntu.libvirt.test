@@ -1,0 +1,11 @@
+  * [b56f727] Add option to mount cgroups during daemon start.  The init
+    script can mount each control group to a different mount point during
+    prior to starting libvirt bin. This allows running qemu and lxc guests
+    together without using systemd.
+    Thanks to Manuel VIVES (Closes: #725261)
+  * [e044f56] New upstream version 1.1.4~rc2 (Closes: #727101)
+  * [d046906] Update symbols file
+  * [6a8cd2d] Update patches
+  * [ac24680] Lower policykit-1 build-dep since CVE-2013-4288 was fixed in
+    unstable by patching policykit instead of moving the new upstream version
+    from unstable.
