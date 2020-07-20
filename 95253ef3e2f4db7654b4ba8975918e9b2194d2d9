@@ -1,0 +1,5 @@
+  * [70dcb2e] Make module-init-tools a linux-any dependency
+    (Closes: #667477)
+  * [ea112f4] Depend on dwarves for checks requiring pdwtags
+  * [5152b85] virURIParse: don't forget to copy the user part
+    (Closes: #667636)
