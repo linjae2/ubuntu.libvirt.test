@@ -1,0 +1,3 @@
+  * [0019ff9] Pass WITH_AUDIT to configure (Closes: #688177)
+  * [faf7972] Add epoch to libnetcf build dependency since both the usuable
+    and unusable verion carry an epoch now (Closes: #697303)
