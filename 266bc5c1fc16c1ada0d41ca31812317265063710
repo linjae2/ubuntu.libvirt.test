@@ -1,0 +1,4 @@
+  * gbp: switch branch to stretch
+  * CVE-2018-1064: qemu: avoid denial of service reading from QEMU guest agent
+  * CVE-2018-6764: virlog: determine the hostname on startup
+    (Closes: #889839)
