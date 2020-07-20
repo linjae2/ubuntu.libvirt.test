@@ -1,0 +1,3 @@
+  * Upload to unstable (Closes: #709216, #705205)
+  * [037b674] daemon: fix leak after listing all volumes.
+    Thanks to Ján Tomko (Closes: #708647)
