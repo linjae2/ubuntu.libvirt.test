@@ -1,0 +1,2 @@
+  * debian/libvirt-bin.upstart: simplify pidfile cleanup logic,
+    per discussion with Jamie Strandboge and Loic Minier in LP: #510658
