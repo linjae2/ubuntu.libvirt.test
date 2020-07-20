@@ -1,0 +1,2 @@
+  * debian/apparmor/usr.sbin.libvirtd - add cap-sys-resource to fully
+    fix (LP: #1276719)
