@@ -1,0 +1,4 @@
+  * SECURITY UPDATE:
+    - 9030-CVE-2011-1486.patch: update daemon/dispatch.c and daemon/remote.c
+      to call virDomainFree() after remoteDispatchConnError()
+    - CVE-2011-1486
