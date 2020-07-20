@@ -1,0 +1,3 @@
+  * Clean up debian/rules (should reenable concurrent builds).
+  * Don't restart libvirt on upgrades (if there's a good reason, we'll
+    add it to postinst/prerm with checks for specific versions).
