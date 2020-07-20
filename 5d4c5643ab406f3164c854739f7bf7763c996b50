@@ -1,0 +1,6 @@
+  * d/p/ubuntu/qemu-Allow-empty-script-path-to-interface.patch: in the past
+    <script path=''/> meant a no-op, but libvirt now fails - fix to match
+    the old behavior (LP: #1665698).
+  * d/p/ubuntu/fix-command-generation-for-rbd.patch: fix the generation
+    of the command used to add disks when secrets are provided like when
+    using rbd (LP: #1672367).
