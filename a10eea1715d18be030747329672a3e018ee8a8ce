@@ -1,0 +1,9 @@
+  * SECURITY UPDATE: denial of service via crafted XML document
+    - debian/patches/CVE-2014-0179.patch: don't expand entities when
+      parsing XML in src/util/xml.c.
+    - CVE-2014-0179
+  * SECURITY UPDATE: denial of service or information disclosure via
+    virDomainGetBlockIoTune
+    - debian/patches/CVE-2014-3633.patch: use correct definition when
+      looking up disk in src/qemu/qemu_driver.c.
+    - CVE-2014-3633
