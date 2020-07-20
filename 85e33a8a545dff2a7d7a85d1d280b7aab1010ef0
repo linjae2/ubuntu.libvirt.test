@@ -1,0 +1,9 @@
+  [ Serge Hallyn ]
+  * run dnsmasq as a new libvirt-dnsmasq user (LP: #938255)
+    - ubuntu/dnsmasq-as-priv-user: add '-u libvirt-dnsmasq' to dnsmasq args
+    - debian/libvirt-bin.postinst: create libvirt-dnsmasq user
+    - tests/networkxml2argvdata/*.argv: update expected dnsmasq command lines
+      to include '-u libvirt-dnsmasq'.
+  [ Chuck Short ]
+  * cherry-pick rewrite-lxc-controller-eof-handling-yet-again (commit
+    9130396214975ba2251082f943c9717281039050) from upstream.
