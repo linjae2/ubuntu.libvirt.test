@@ -1,0 +1,8 @@
+  * Update copyright file
+  * New upstream version 3.7.0 (Closes: #874323)
+  * Rediff patches
+  * Bump symbol versions
+  * Also pass $TERM to ssh so pinentry works
+    Thanks to Guilhem Moulin (Closes: #843863)
+  * Enable Gluster support (Closes: #755545)
+  * Enable wireshark dissector (Closes: #862989)
