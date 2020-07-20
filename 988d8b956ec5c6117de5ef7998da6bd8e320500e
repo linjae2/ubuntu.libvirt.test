@@ -1,0 +1,4 @@
+  * [7346f30] New upstream version 5.0.0
+  * [1c46a4c] Drop sheepdog support (Closes: #908071)
+  * [b88175f] Bump symbol versions
+  * [c13a8da] Rediff patches
