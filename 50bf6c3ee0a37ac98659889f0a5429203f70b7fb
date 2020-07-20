@@ -1,0 +1,5 @@
+  * debian/patches/9029-lp750565.patch
+    Fix initialization error of controller in QEmu SCSI hotplug.
+    (LP: #750565)
+  * debian/patches/9901-handle-no-ip.patch: Additional patch cherrypick
+    to handle no ip address in the network configuration. (LP: #748834)
