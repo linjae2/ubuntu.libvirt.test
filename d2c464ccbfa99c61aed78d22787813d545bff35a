@@ -1,0 +1,4 @@
+  * 9027-Make-newfilter-xml-transformations-endian-safe.patch
+    NWFilter XML processing includes endian assumptions.  Ensure
+    that XML is parsed in an endian-safe manner.  Thanks to
+    Stefan Berger for developing the patch upstream. (LP: #643394)
