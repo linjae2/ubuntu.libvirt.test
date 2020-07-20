@@ -29,7 +29,6 @@
 #include <libxml/xpath.h>
 
 #include "internal.h"
-#include "threads.h"
 
 /* 2 possible types of forwarding */
 enum virNetworkForwardType {
@@ -83,12 +82,13 @@ struct _virNetworkDef {
 typedef struct _virNetworkObj virNetworkObj;
 typedef virNetworkObj *virNetworkObjPtr;
 struct _virNetworkObj {
-    virMutex lock;
-
     pid_t dnsmasqPid;
     unsigned int active : 1;
     unsigned int autostart : 1;
     unsigned int persistent : 1;
+
+    char *configFile;    /* Persistent config file path */
+    char *autostartLink; /* Symlink path for autostart */
 
     virNetworkDefPtr def; /* The current definition */
     virNetworkDefPtr newDef; /* New definition to activate at shutdown */
@@ -136,14 +136,10 @@ char *virNetworkDefFormat(virConnectPtr conn,
                           const virNetworkDefPtr def);
 
 
-int virNetworkSaveXML(virConnectPtr conn,
-                      const char *configDir,
-                      virNetworkDefPtr def,
-                      const char *xml);
-
 int virNetworkSaveConfig(virConnectPtr conn,
                          const char *configDir,
-                         virNetworkDefPtr def);
+                         const char *autostartDir,
+                         virNetworkObjPtr net);
 
 virNetworkObjPtr virNetworkLoadConfig(virConnectPtr conn,
                                       virNetworkObjListPtr nets,
@@ -157,17 +153,7 @@ int virNetworkLoadAllConfigs(virConnectPtr conn,
                              const char *autostartDir);
 
 int virNetworkDeleteConfig(virConnectPtr conn,
-                           const char *configDir,
-                           const char *autostartDir,
                            virNetworkObjPtr net);
-
-char *virNetworkConfigFile(virConnectPtr conn,
-                           const char *dir,
-                           const char *name);
-
-
-void virNetworkObjLock(virNetworkObjPtr obj);
-void virNetworkObjUnlock(virNetworkObjPtr obj);
 
 #endif /* __NETWORK_CONF_H__ */
 

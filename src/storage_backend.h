@@ -64,15 +64,10 @@ int virStorageBackendUpdateVolInfo(virConnectPtr conn,
                                    virStorageVolDefPtr vol,
                                    int withCapacity);
 
-int virStorageBackendUpdateVolTargetInfo(virConnectPtr conn,
-                                         virStorageVolTargetPtr target,
-                                         unsigned long long *allocation,
-                                         unsigned long long *capacity);
-int virStorageBackendUpdateVolTargetInfoFD(virConnectPtr conn,
-                                           virStorageVolTargetPtr target,
-                                           int fd,
-                                           unsigned long long *allocation,
-                                           unsigned long long *capacity);
+int virStorageBackendUpdateVolInfoFD(virConnectPtr conn,
+                                     virStorageVolDefPtr vol,
+                                     int fd,
+                                     int withCapacity);
 
 void virStorageBackendWaitForDevices(virConnectPtr conn);
 

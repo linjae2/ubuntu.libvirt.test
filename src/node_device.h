@@ -26,7 +26,6 @@
 
 #include "internal.h"
 #include "driver.h"
-#include "node_device_conf.h"
 
 #ifdef HAVE_HAL
 int halNodeRegister(void);
@@ -34,9 +33,6 @@ int halNodeRegister(void);
 #ifdef HAVE_DEVKIT
 int devkitNodeRegister(void);
 #endif
-
-void nodeDeviceLock(virDeviceMonitorStatePtr driver);
-void nodeDeviceUnlock(virDeviceMonitorStatePtr driver);
 
 void registerCommonNodeFuncs(virDeviceMonitorPtr mon);
 

@@ -27,7 +27,6 @@
 
 #include "verify.h"
 #include <sys/select.h>
-#include <sys/types.h>
 
 int saferead(int fd, void *buf, size_t count);
 ssize_t safewrite(int fd, const void *buf, size_t count);
@@ -38,13 +37,11 @@ enum {
     VIR_EXEC_DAEMON = (1 << 1),
 };
 
-int virSetNonBlock(int fd);
-
 int virExec(virConnectPtr conn,
             const char *const*argv,
             const char *const*envp,
             const fd_set *keepfd,
-            pid_t *retpid,
+            int *retpid,
             int infd,
             int *outfd,
             int *errfd,
@@ -82,8 +79,6 @@ int virFileOpenTty(int *ttymaster,
                    char **ttyName,
                    int rawmode);
 
-char* virFilePid(const char *dir,
-                 const char *name);
 int virFileWritePid(const char *dir,
                     const char *name,
                     pid_t pid);
@@ -117,8 +112,6 @@ int virMacAddrCompare (const char *mac1, const char *mac2);
 
 void virSkipSpaces(const char **str);
 int virParseNumber(const char **str);
-int virAsprintf(char **strp, const char *fmt, ...)
-    ATTRIBUTE_FORMAT(printf, 2, 3);
 
 #define VIR_MAC_BUFLEN 6
 #define VIR_MAC_PREFIX_BUFLEN 3
@@ -167,17 +160,5 @@ static inline int getuid (void) { return 0; }
 #ifndef HAVE_GETGID
 static inline int getgid (void) { return 0; }
 #endif
-
-char *virGetHostname(void);
-
-int virKillProcess(pid_t pid, int sig);
-
-#ifdef HAVE_GETPWUID_R
-char *virGetUserDirectory(virConnectPtr conn,
-                          uid_t uid);
-#endif
-
-int virRandomInitialize(unsigned int seed);
-int virRandom(int max);
 
 #endif /* __VIR_UTIL_H__ */

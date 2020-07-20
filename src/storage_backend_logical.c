@@ -1,7 +1,7 @@
 /*
  * storage_backend_logvol.c: storage backend for logical volume handling
  *
- * Copyright (C) 2007-2009 Red Hat, Inc.
+ * Copyright (C) 2007-2008 Red Hat, Inc.
  * Copyright (C) 2007-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -36,8 +36,6 @@
 #include "storage_conf.h"
 #include "util.h"
 #include "memory.h"
-
-#define VIR_FROM_THIS VIR_FROM_STORAGE
 
 #define PV_BLANK_SECTOR_SIZE 512
 
@@ -84,21 +82,21 @@ virStorageBackendLogicalMakeVol(virConnectPtr conn,
     /* Or a completely new volume */
     if (vol == NULL) {
         if (VIR_ALLOC(vol) < 0) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             return -1;
         }
 
         vol->type = VIR_STORAGE_VOL_BLOCK;
 
         if ((vol->name = strdup(groups[0])) == NULL) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             virStorageVolDefFree(vol);
             return -1;
         }
 
         if (VIR_REALLOC_N(pool->volumes.objs,
                           pool->volumes.count + 1)) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, NULL);
             virStorageVolDefFree(vol);
             return -1;
         }
@@ -106,28 +104,19 @@ virStorageBackendLogicalMakeVol(virConnectPtr conn,
     }
 
     if (vol->target.path == NULL) {
-        if (virAsprintf(&vol->target.path, "%s/%s",
-                        pool->def->target.path, vol->name) < 0) {
-            virReportOOMError(conn);
-            virStorageVolDefFree(vol);
+        if (VIR_ALLOC_N(vol->target.path, strlen(pool->def->target.path) +
+                        1 + strlen(vol->name) + 1) < 0) {
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             return -1;
         }
-    }
-
-    if (groups[1] && !STREQ(groups[1], "")) {
-        if (virAsprintf(&vol->backingStore.path, "%s/%s",
-                        pool->def->target.path, groups[1]) < 0) {
-            virReportOOMError(conn);
-            virStorageVolDefFree(vol);
-            return -1;
-        }
-
-        vol->backingStore.format = VIR_STORAGE_POOL_LOGICAL_LVM2;
+        strcpy(vol->target.path, pool->def->target.path);
+        strcat(vol->target.path, "/");
+        strcat(vol->target.path, vol->name);
     }
 
     if (vol->key == NULL &&
-        (vol->key = strdup(groups[2])) == NULL) {
-        virReportOOMError(conn);
+        (vol->key = strdup(groups[1])) == NULL) {
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
         return -1;
     }
 
@@ -138,27 +127,27 @@ virStorageBackendLogicalMakeVol(virConnectPtr conn,
     /* Finally fill in extents information */
     if (VIR_REALLOC_N(vol->source.extents,
                       vol->source.nextent + 1) < 0) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("extents"));
         return -1;
     }
 
     if ((vol->source.extents[vol->source.nextent].path =
-         strdup(groups[3])) == NULL) {
-        virReportOOMError(conn);
+         strdup(groups[2])) == NULL) {
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("extents"));
         return -1;
     }
 
-    if (virStrToLong_ull(groups[4], NULL, 10, &offset) < 0) {
+    if (virStrToLong_ull(groups[3], NULL, 10, &offset) < 0) {
         virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
                               "%s", _("malformed volume extent offset value"));
         return -1;
     }
-    if (virStrToLong_ull(groups[5], NULL, 10, &length) < 0) {
+    if (virStrToLong_ull(groups[4], NULL, 10, &length) < 0) {
         virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
                               "%s", _("malformed volume extent length value"));
         return -1;
     }
-    if (virStrToLong_ull(groups[6], NULL, 10, &size) < 0) {
+    if (virStrToLong_ull(groups[5], NULL, 10, &size) < 0) {
         virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
                               "%s", _("malformed volume extent size value"));
         return -1;
@@ -177,14 +166,14 @@ virStorageBackendLogicalFindLVs(virConnectPtr conn,
                                 virStorageVolDefPtr vol)
 {
     /*
-     *  # lvs --separator , --noheadings --units b --unbuffered --nosuffix --options "lv_name,origin,uuid,devices,seg_size,vg_extent_size" VGNAME
-     *  RootLV,,06UgP5-2rhb-w3Bo-3mdR-WeoL-pytO-SAa2ky,/dev/hda2(0),5234491392,33554432
-     *  SwapLV,,oHviCK-8Ik0-paqS-V20c-nkhY-Bm1e-zgzU0M,/dev/hda2(156),1040187392,33554432
-     *  Test2,,3pg3he-mQsA-5Sui-h0i6-HNmc-Cz7W-QSndcR,/dev/hda2(219),1073741824,33554432
-     *  Test3,,UB5hFw-kmlm-LSoX-EI1t-ioVd-h7GL-M0W8Ht,/dev/hda2(251),2181038080,33554432
-     *  Test3,Test2,UB5hFw-kmlm-LSoX-EI1t-ioVd-h7GL-M0W8Ht,/dev/hda2(187),1040187392,33554432
+     *  # lvs --separator , --noheadings --units b --unbuffered --nosuffix --options "lv_name,uuid,devices,seg_size,vg_extent_size" VGNAME
+     *  RootLV,06UgP5-2rhb-w3Bo-3mdR-WeoL-pytO-SAa2ky,/dev/hda2(0),5234491392,33554432
+     *  SwapLV,oHviCK-8Ik0-paqS-V20c-nkhY-Bm1e-zgzU0M,/dev/hda2(156),1040187392,33554432
+     *  Test2,3pg3he-mQsA-5Sui-h0i6-HNmc-Cz7W-QSndcR,/dev/hda2(219),1073741824,33554432
+     *  Test3,UB5hFw-kmlm-LSoX-EI1t-ioVd-h7GL-M0W8Ht,/dev/hda2(251),2181038080,33554432
+     *  Test3,UB5hFw-kmlm-LSoX-EI1t-ioVd-h7GL-M0W8Ht,/dev/hda2(187),1040187392,33554432
      *
-     * Pull out name, origin, & uuid, device, device extent start #, segment size, extent size.
+     * Pull out name & uuid, device, device extent start #, segment size, extent size.
      *
      * NB can be multiple rows per volume if they have many extents
      *
@@ -194,15 +183,15 @@ virStorageBackendLogicalFindLVs(virConnectPtr conn,
      *    not a suitable separator (rhbz 470693).
      */
     const char *regexes[] = {
-        "^\\s*(\\S+),(\\S*),(\\S+),(\\S+)\\((\\S+)\\),(\\S+),([0-9]+),?\\s*$"
+        "^\\s*(\\S+),(\\S+),(\\S+)\\((\\S+)\\),(\\S+),([0-9]+),?\\s*$"
     };
     int vars[] = {
-        7
+        6
     };
     const char *prog[] = {
         LVS, "--separator", ",", "--noheadings", "--units", "b",
         "--unbuffered", "--nosuffix", "--options",
-        "lv_name,origin,uuid,devices,seg_size,vg_extent_size",
+        "lv_name,uuid,devices,seg_size,vg_extent_size",
         pool->def->source.name, NULL
     };
 
@@ -265,7 +254,8 @@ virStorageBackendLogicalFindPoolSourcesFunc(virConnectPtr conn,
     vgname = strdup(groups[1]);
 
     if (pvname == NULL || vgname == NULL) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s",
+                              _("allocating pvname or vgname"));
         goto err_no_memory;
     }
 
@@ -279,7 +269,8 @@ virStorageBackendLogicalFindPoolSourcesFunc(virConnectPtr conn,
 
     if (thisSource == NULL) {
         if (VIR_REALLOC_N(sourceList->sources, sourceList->nsources + 1) != 0) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s",
+                                  _("allocating new source"));
             goto err_no_memory;
         }
 
@@ -293,7 +284,8 @@ virStorageBackendLogicalFindPoolSourcesFunc(virConnectPtr conn,
         VIR_FREE(vgname);
 
     if (VIR_REALLOC_N(thisSource->devices, thisSource->ndevice + 1) != 0) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s",
+                              _("allocating new device"));
         goto err_no_memory;
     }
 
@@ -392,7 +384,7 @@ virStorageBackendLogicalBuildPool(virConnectPtr conn,
     memset(zeros, 0, sizeof(zeros));
 
     if (VIR_ALLOC_N(vgargv, 3 + pool->def->source.ndevice) < 0) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("command line"));
         return -1;
     }
 
@@ -408,22 +400,22 @@ virStorageBackendLogicalBuildPool(virConnectPtr conn,
          * rather than trying to figure out if we're a disk or partition
          */
         if ((fd = open(pool->def->source.devices[i].path, O_WRONLY)) < 0) {
-            virReportSystemError(conn, errno,
-                                 _("cannot open device '%s'"),
-                                 pool->def->source.devices[i].path);
+            virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot open device %s"),
+                                  strerror(errno));
             goto cleanup;
         }
         if (safewrite(fd, zeros, sizeof(zeros)) < 0) {
-            virReportSystemError(conn, errno,
-                                 _("cannot clear device header of '%s'"),
-                                 pool->def->source.devices[i].path);
+            virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot clear device header %s"),
+                                  strerror(errno));
             close(fd);
             goto cleanup;
         }
         if (close(fd) < 0) {
-            virReportSystemError(conn, errno,
-                                 _("cannot close device '%s'"),
-                                 pool->def->source.devices[i].path);
+            virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot close device %s"),
+                                  strerror(errno));
             goto cleanup;
         }
 
@@ -546,9 +538,10 @@ virStorageBackendLogicalDeletePool(virConnectPtr conn,
         pvargv[1] = pool->def->source.devices[i].path;
         if (virRun(conn, pvargv, NULL) < 0) {
             error = -1;
-            virReportSystemError(conn, errno,
-                                 _("cannot remove PV device '%s'"),
-                                 pool->def->source.devices[i].path);
+            virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot remove PV device %s: %s"),
+                                  pool->def->source.devices[i].path,
+                                  strerror(errno));
             break;
         }
     }
@@ -571,25 +564,10 @@ virStorageBackendLogicalCreateVol(virConnectPtr conn,
 {
     int fd = -1;
     char size[100];
-    const char *cmdargvnew[] = {
+    const char *cmdargv[] = {
         LVCREATE, "--name", vol->name, "-L", size,
         pool->def->target.path, NULL
     };
-    const char *cmdargvsnap[] = {
-        LVCREATE, "--name", vol->name, "-L", size,
-        "-s", vol->backingStore.path, NULL
-    };
-    const char **cmdargv = cmdargvnew;
-
-    if (vol->backingStore.path) {
-        if (vol->backingStore.format !=
-            VIR_STORAGE_POOL_LOGICAL_LVM2) {
-            virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR, "%s",
-                                  _("LVM snapshots must be backed by another LVM volume"));
-            return -1;
-        }
-        cmdargv = cmdargvsnap;
-    }
 
     snprintf(size, sizeof(size)-1, "%lluK", vol->capacity/1024);
     size[sizeof(size)-1] = '\0';
@@ -602,7 +580,7 @@ virStorageBackendLogicalCreateVol(virConnectPtr conn,
     }
     if (VIR_ALLOC_N(vol->target.path, strlen(pool->def->target.path) +
                     1 + strlen(vol->name) + 1) < 0) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
         return -1;
     }
     strcpy(vol->target.path, pool->def->target.path);
@@ -613,41 +591,41 @@ virStorageBackendLogicalCreateVol(virConnectPtr conn,
         return -1;
 
     if ((fd = open(vol->target.path, O_RDONLY)) < 0) {
-        virReportSystemError(conn, errno,
-                             _("cannot read path '%s'"),
-                             vol->target.path);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("cannot read path '%s': %s"),
+                              vol->target.path, strerror(errno));
         goto cleanup;
     }
 
     /* We can only chown/grp if root */
     if (getuid() == 0) {
         if (fchown(fd, vol->target.perms.uid, vol->target.perms.gid) < 0) {
-            virReportSystemError(conn, errno,
-                                 _("cannot set file owner '%s'"),
-                                 vol->target.path);
+            virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                  _("cannot set file owner '%s': %s"),
+                                  vol->target.path, strerror(errno));
             goto cleanup;
         }
     }
     if (fchmod(fd, vol->target.perms.mode) < 0) {
-        virReportSystemError(conn, errno,
-                             _("cannot set file mode '%s'"),
-                             vol->target.path);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("cannot set file mode '%s': %s"),
+                              vol->target.path, strerror(errno));
         goto cleanup;
     }
 
     if (close(fd) < 0) {
-        virReportSystemError(conn, errno,
-                             _("cannot close file '%s'"),
-                             vol->target.path);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("cannot close file '%s': %s"),
+                              vol->target.path, strerror(errno));
         goto cleanup;
     }
     fd = -1;
 
     /* Fill in data about this new vol */
     if (virStorageBackendLogicalFindLVs(conn, pool, vol) < 0) {
-        virReportSystemError(conn, errno,
-                             _("cannot find newly created volume '%s'"),
-                             vol->target.path);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("cannot find newly created volume '%s': %s"),
+                              vol->target.path, strerror(errno));
         goto cleanup;
     }
 

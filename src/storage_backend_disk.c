@@ -32,8 +32,6 @@
 #include "util.h"
 #include "memory.h"
 
-#define VIR_FROM_THIS VIR_FROM_STORAGE
-
 #define PARTHELPER BINDIR "/libvirt_parthelper"
 
 static int
@@ -46,13 +44,13 @@ virStorageBackendDiskMakeDataVol(virConnectPtr conn,
 
     if (vol == NULL) {
         if (VIR_ALLOC(vol) < 0) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             return -1;
         }
 
         if (VIR_REALLOC_N(pool->volumes.objs,
                           pool->volumes.count+1) < 0) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             virStorageVolDefFree(vol);
             return -1;
         }
@@ -63,14 +61,14 @@ virStorageBackendDiskMakeDataVol(virConnectPtr conn,
          */
         tmp = strrchr(groups[0], '/');
         if ((vol->name = strdup(tmp ? tmp + 1 : groups[0])) == NULL) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             return -1;
         }
     }
 
     if (vol->target.path == NULL) {
         if ((devpath = strdup(groups[0])) == NULL) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             return -1;
         }
 
@@ -91,14 +89,15 @@ virStorageBackendDiskMakeDataVol(virConnectPtr conn,
     if (vol->key == NULL) {
         /* XXX base off a unique key of the underlying disk */
         if ((vol->key = strdup(vol->target.path)) == NULL) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
             return -1;
         }
     }
 
     if (vol->source.extents == NULL) {
         if (VIR_ALLOC(vol->source.extents) < 0) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY,
+                                  "%s", _("volume extents"));
             return -1;
         }
         vol->source.nextent = 1;
@@ -119,7 +118,7 @@ virStorageBackendDiskMakeDataVol(virConnectPtr conn,
 
         if ((vol->source.extents[0].path =
              strdup(pool->def->source.devices[0].path)) == NULL) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("extents"));
             return -1;
         }
     }
@@ -368,9 +367,9 @@ virStorageBackendDiskDeleteVol(virConnectPtr conn,
 
     if ((n = readlink(vol->target.path, devpath, sizeof(devpath))) < 0 &&
         errno != EINVAL) {
-        virReportSystemError(conn, errno,
-                             _("Couldn't read volume target path '%s'"),
-                             vol->target.path);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("Couldn't read volume target path '%s'. %s"),
+                              vol->target.path, strerror(errno));
         return -1;
     } else if (n <= 0) {
         strncpy(devpath, vol->target.path, PATH_MAX);

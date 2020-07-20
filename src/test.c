@@ -42,14 +42,8 @@
 #include "memory.h"
 #include "network_conf.h"
 #include "domain_conf.h"
-#include "domain_event.h"
-#include "event.h"
 #include "storage_conf.h"
 #include "xml.h"
-#include "threads.h"
-#include "logging.h"
-
-#define VIR_FROM_THIS VIR_FROM_TEST
 
 #define MAX_CPUS 128
 
@@ -64,8 +58,6 @@ typedef struct _testCell *testCellPtr;
 #define MAX_CELLS 128
 
 struct _testConn {
-    virMutex lock;
-
     char path[PATH_MAX];
     int nextDomID;
     virCapsPtr caps;
@@ -75,13 +67,6 @@ struct _testConn {
     virStoragePoolObjList pools;
     int numCells;
     testCell cells[MAX_CELLS];
-
-
-    /* An array of callbacks */
-    virDomainEventCallbackListPtr domainEventCallbacks;
-    virDomainEventQueuePtr domainEventQueue;
-    int domainEventTimer;
-    int domainEventDispatching;
 };
 typedef struct _testConn testConn;
 typedef struct _testConn *testConnPtr;
@@ -101,34 +86,94 @@ static const virNodeInfo defaultNodeInfo = {
     2,
 };
 
+#define GET_DOMAIN(dom, ret)                                            \
+    testConnPtr privconn;                                               \
+    virDomainObjPtr privdom;                                            \
+                                                                        \
+    privconn = (testConnPtr)dom->conn->privateData;                     \
+    do {                                                                \
+        if ((privdom = virDomainFindByName(&privconn->domains,           \
+                                            (dom)->name)) == NULL) {    \
+            testError((dom)->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);  \
+            return (ret);                                               \
+        }                                                               \
+    } while (0)
+
+#define GET_NETWORK(net, ret)                                           \
+    testConnPtr privconn;                                               \
+    virNetworkObjPtr privnet;                                           \
+                                                                        \
+    privconn = (testConnPtr)net->conn->privateData;                     \
+    do {                                                                \
+        if ((privnet = virNetworkFindByName(&privconn->networks,        \
+                                            (net)->name)) == NULL) {    \
+            testError((net)->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);  \
+            return (ret);                                               \
+        }                                                               \
+    } while (0)
+
+#define GET_POOL(pool, ret)                                             \
+    testConnPtr privconn;                                               \
+    virStoragePoolObjPtr privpool;                                      \
+                                                                        \
+    privconn = (testConnPtr)pool->conn->privateData;                    \
+    do {                                                                \
+        if ((privpool = virStoragePoolObjFindByName(&privconn->pools,   \
+                                                    (pool)->name)) == NULL) {\
+            testError((pool)->conn, VIR_ERR_INVALID_ARG, __FUNCTION__); \
+            return (ret);                                               \
+        }                                                               \
+    } while (0)
+
+#define GET_POOL_FROM_VOL(vol, ret)                                     \
+    GET_POOL(testStoragePoolLookupByName((virConnectPtr)                \
+                                         vol->conn,                     \
+                                         vol->pool), ret)
+
+#define GET_VOL(vol, pool, ret)                                         \
+    virStorageVolDefPtr privvol;                                        \
+                                                                        \
+    privvol = virStorageVolDefFindByName(pool, vol->name);              \
+    do {                                                                \
+        if (!privvol) {                                                 \
+            testError(vol->conn, VIR_ERR_INVALID_STORAGE_VOL,           \
+                      _("no storage vol with matching name '%s'"),      \
+                      vol->name);                                       \
+            return (ret);                                               \
+        }                                                               \
+    } while (0)                                                         \
+
+
+#define GET_CONNECTION(conn)                                            \
+    testConnPtr privconn;                                               \
+                                                                        \
+    privconn = (testConnPtr)conn->privateData;
+
+#define POOL_IS_ACTIVE(pool, ret)                                       \
+    if (!virStoragePoolObjIsActive(pool)) {                             \
+        testError(obj->conn, VIR_ERR_INTERNAL_ERROR,                    \
+                  _("storage pool '%s' is not active"), pool->def->name); \
+       return (ret);                                                    \
+    }                                                                   \
+
+#define POOL_IS_NOT_ACTIVE(pool, ret)                                   \
+    if (virStoragePoolObjIsActive(pool)) {                              \
+        testError(obj->conn, VIR_ERR_INTERNAL_ERROR,                    \
+                  _("storage pool '%s' is already active"), pool->def->name); \
+        return (ret);                                                   \
+    }                                                                   \
 
 #define testError(conn, code, fmt...)                               \
         virReportErrorHelper(conn, VIR_FROM_TEST, code, __FILE__, \
                                __FUNCTION__, __LINE__, fmt)
 
-static int testClose(virConnectPtr conn);
-static void testDomainEventFlush(int timer, void *opaque);
-static void testDomainEventQueue(testConnPtr driver,
-                                 virDomainEventPtr event);
-
-
-static void testDriverLock(testConnPtr driver)
-{
-    virMutexLock(&driver->lock);
-}
-
-static void testDriverUnlock(testConnPtr driver)
-{
-    virMutexUnlock(&driver->lock);
-}
-
 static virCapsPtr
 testBuildCapabilities(virConnectPtr conn) {
-    testConnPtr privconn = conn->privateData;
     virCapsPtr caps;
     virCapsGuestPtr guest;
     const char *const guest_types[] = { "hvm", "xen" };
     int i;
+    GET_CONNECTION(conn);
 
     if ((caps = virCapabilitiesNew(TEST_MODEL, 0, 0)) == NULL)
         goto no_memory;
@@ -172,7 +217,7 @@ testBuildCapabilities(virConnectPtr conn) {
     return caps;
 
 no_memory:
-    virReportOOMError(conn);
+    testError(conn, VIR_ERR_NO_MEMORY, NULL);
     virCapabilitiesFree(caps);
     return NULL;
 }
@@ -210,10 +255,10 @@ static const char *defaultPoolXML =
 "  </target>"
 "</pool>";
 
-static const unsigned long long defaultPoolCap = (100 * 1024 * 1024 * 1024ull);
+static const unsigned long long defaultPoolCap = (100 * 1024 * 1024 * 1024ul);
 static const unsigned long long defaultPoolAlloc = 0;
 
-static int testStoragePoolObjSetDefaults(virConnectPtr conn, virStoragePoolObjPtr pool);
+static int testStoragePoolObjSetDefaults(virStoragePoolObjPtr pool);
 
 static int testOpenDefault(virConnectPtr conn) {
     int u;
@@ -227,22 +272,13 @@ static int testOpenDefault(virConnectPtr conn) {
     virStoragePoolObjPtr poolobj = NULL;
 
     if (VIR_ALLOC(privconn) < 0) {
-        virReportOOMError(conn);
+        testError(conn, VIR_ERR_NO_MEMORY, "testConn");
         return VIR_DRV_OPEN_ERROR;
     }
-    if (virMutexInit(&privconn->lock) < 0) {
-        testError(conn, VIR_ERR_INTERNAL_ERROR,
-                  "%s", _("cannot initialize mutex"));
-        VIR_FREE(privconn);
-        return VIR_DRV_OPEN_ERROR;
-    }
-
-    testDriverLock(privconn);
     conn->privateData = privconn;
 
     if (gettimeofday(&tv, NULL) < 0) {
-        virReportSystemError(conn, errno,
-                             "%s", _("getting time of day"));
+        testError(NULL, VIR_ERR_INTERNAL_ERROR, "%s", _("getting time of day"));
         goto error;
     }
 
@@ -263,9 +299,7 @@ static int testOpenDefault(virConnectPtr conn) {
 
     privconn->nextDomID = 1;
 
-    if (!(domdef = virDomainDefParseString(conn, privconn->caps,
-                                           defaultDomainXML,
-                                           VIR_DOMAIN_XML_INACTIVE)))
+    if (!(domdef = virDomainDefParseString(conn, privconn->caps, defaultDomainXML)))
         goto error;
     if (!(domobj = virDomainAssignDef(conn, &privconn->domains, domdef))) {
         virDomainDefFree(domdef);
@@ -274,7 +308,6 @@ static int testOpenDefault(virConnectPtr conn) {
     domobj->def->id = privconn->nextDomID++;
     domobj->state = VIR_DOMAIN_RUNNING;
     domobj->persistent = 1;
-    virDomainObjUnlock(domobj);
 
     if (!(netdef = virNetworkDefParseString(conn, defaultNetworkXML)))
         goto error;
@@ -284,7 +317,6 @@ static int testOpenDefault(virConnectPtr conn) {
     }
     netobj->active = 1;
     netobj->persistent = 1;
-    virNetworkObjUnlock(netobj);
 
     if (!(pooldef = virStoragePoolDefParse(conn, defaultPoolXML, NULL)))
         goto error;
@@ -294,15 +326,9 @@ static int testOpenDefault(virConnectPtr conn) {
         virStoragePoolDefFree(pooldef);
         goto error;
     }
-
-    if (testStoragePoolObjSetDefaults(conn, poolobj) == -1) {
-        virStoragePoolObjUnlock(poolobj);
+    if (testStoragePoolObjSetDefaults(poolobj) == -1)
         goto error;
-    }
     poolobj->active = 1;
-    virStoragePoolObjUnlock(poolobj);
-
-    testDriverUnlock(privconn);
 
     return VIR_DRV_OPEN_SUCCESS;
 
@@ -311,8 +337,6 @@ error:
     virNetworkObjListFree(&privconn->networks);
     virStoragePoolObjListFree(&privconn->pools);
     virCapabilitiesFree(privconn->caps);
-    testDriverUnlock(privconn);
-    conn->privateData = NULL;
     VIR_FREE(privconn);
     return VIR_DRV_OPEN_ERROR;
 }
@@ -355,26 +379,18 @@ static int testOpenFromFile(virConnectPtr conn,
     virDomainObjPtr dom;
     testConnPtr privconn;
     if (VIR_ALLOC(privconn) < 0) {
-        virReportOOMError(conn);
+        testError(NULL, VIR_ERR_NO_MEMORY, "testConn");
         return VIR_DRV_OPEN_ERROR;
     }
-    if (virMutexInit(&privconn->lock) < 0) {
-        testError(conn, VIR_ERR_INTERNAL_ERROR,
-                  "%s", _("cannot initialize mutex"));
-        VIR_FREE(privconn);
-        return VIR_DRV_OPEN_ERROR;
-    }
-
-    testDriverLock(privconn);
     conn->privateData = privconn;
 
     if (!(privconn->caps = testBuildCapabilities(conn)))
         goto error;
 
     if ((fd = open(file, O_RDONLY)) < 0) {
-        virReportSystemError(NULL, errno,
-                             _("loading host definition file '%s'"),
-                             file);
+        testError(NULL, VIR_ERR_INTERNAL_ERROR,
+                  _("loading host definition file '%s': %s"),
+                  file, strerror(errno));
         goto error;
     }
 
@@ -507,7 +523,6 @@ static int testOpenFromFile(virConnectPtr conn,
         dom->state = VIR_DOMAIN_RUNNING;
         dom->def->id = privconn->nextDomID++;
         dom->persistent = 1;
-        virDomainObjUnlock(dom);
     }
     if (domains != NULL)
         VIR_FREE(domains);
@@ -541,8 +556,8 @@ static int testOpenFromFile(virConnectPtr conn,
             virNetworkDefFree(def);
             goto error;
         }
+
         net->persistent = 1;
-        virNetworkObjUnlock(net);
     }
     if (networks != NULL)
         VIR_FREE(networks);
@@ -592,19 +607,15 @@ static int testOpenFromFile(virConnectPtr conn,
             goto error;
         }
 
-        if (testStoragePoolObjSetDefaults(conn, pool) == -1) {
-            virStoragePoolObjUnlock(pool);
+        if (testStoragePoolObjSetDefaults(pool) == -1)
             goto error;
-        }
         pool->active = 1;
-        virStoragePoolObjUnlock(pool);
     }
     if (pools != NULL)
         VIR_FREE(pools);
 
     xmlXPathFreeContext(ctxt);
     xmlFreeDoc(xml);
-    testDriverUnlock(privconn);
 
     return (0);
 
@@ -619,14 +630,13 @@ static int testOpenFromFile(virConnectPtr conn,
     virDomainObjListFree(&privconn->domains);
     virNetworkObjListFree(&privconn->networks);
     virStoragePoolObjListFree(&privconn->pools);
-    testDriverUnlock(privconn);
     VIR_FREE(privconn);
     conn->privateData = NULL;
     return VIR_DRV_OPEN_ERROR;
 }
 
 
-static virDrvOpenStatus testOpen(virConnectPtr conn,
+static int testOpen(virConnectPtr conn,
                     virConnectAuthPtr auth ATTRIBUTE_UNUSED,
                     int flags ATTRIBUTE_UNUSED)
 {
@@ -660,45 +670,20 @@ static virDrvOpenStatus testOpen(virConnectPtr conn,
         ret = testOpenFromFile(conn,
                                conn->uri->path);
 
-    if (ret == VIR_DRV_OPEN_SUCCESS) {
-        testConnPtr privconn = conn->privateData;
-        /* Init callback list */
-        if (VIR_ALLOC(privconn->domainEventCallbacks) < 0 ||
-            !(privconn->domainEventQueue = virDomainEventQueueNew())) {
-            virReportOOMError(NULL);
-            testClose(conn);
-            return VIR_DRV_OPEN_ERROR;
-        }
-
-        if ((privconn->domainEventTimer =
-             virEventAddTimeout(-1, testDomainEventFlush, privconn, NULL)) < 0)
-            DEBUG0("virEventAddTimeout failed: No addTimeoutImpl defined. "
-                   "continuing without events.");
-    }
-
     return (ret);
 }
 
 static int testClose(virConnectPtr conn)
 {
-    testConnPtr privconn = conn->privateData;
-    testDriverLock(privconn);
+    GET_CONNECTION(conn);
+
     virCapabilitiesFree(privconn->caps);
     virDomainObjListFree(&privconn->domains);
     virNetworkObjListFree(&privconn->networks);
     virStoragePoolObjListFree(&privconn->pools);
 
-    virDomainEventCallbackListFree(privconn->domainEventCallbacks);
-    virDomainEventQueueFree(privconn->domainEventQueue);
-
-    if (privconn->domainEventTimer != -1)
-        virEventRemoveTimeout(privconn->domainEventTimer);
-
-    testDriverUnlock(privconn);
-    virMutexDestroy(&privconn->lock);
-
     VIR_FREE (privconn);
-    conn->privateData = NULL;
+    conn->privateData = conn;
     return 0;
 }
 
@@ -711,16 +696,22 @@ static int testGetVersion(virConnectPtr conn ATTRIBUTE_UNUSED,
 
 static char *testGetHostname (virConnectPtr conn)
 {
-    char *result;
+    int r;
+    char hostname [HOST_NAME_MAX+1], *str;
 
-    result = virGetHostname();
-    if (result == NULL) {
-        virReportSystemError(conn, errno,
-                             "%s", _("cannot lookup hostname"));
+    r = gethostname (hostname, HOST_NAME_MAX+1);
+    if (r == -1) {
+        testError (conn, VIR_ERR_SYSTEM_ERROR, "%s",
+                   strerror (errno));
         return NULL;
     }
-    /* Caller frees this string. */
-    return result;
+    str = strdup (hostname);
+    if (str == NULL) {
+        testError (conn, VIR_ERR_SYSTEM_ERROR, "%s",
+                   strerror (errno));
+        return NULL;
+    }
+    return str;
 }
 
 static int testGetMaxVCPUs(virConnectPtr conn ATTRIBUTE_UNUSED,
@@ -732,34 +723,32 @@ static int testGetMaxVCPUs(virConnectPtr conn ATTRIBUTE_UNUSED,
 static int testNodeGetInfo(virConnectPtr conn,
                            virNodeInfoPtr info)
 {
-    testConnPtr privconn = conn->privateData;
-    testDriverLock(privconn);
+    GET_CONNECTION(conn);
     memcpy(info, &privconn->nodeInfo, sizeof(virNodeInfo));
-    testDriverUnlock(privconn);
     return (0);
 }
 
 static char *testGetCapabilities (virConnectPtr conn)
 {
-    testConnPtr privconn = conn->privateData;
     char *xml;
-    testDriverLock(privconn);
-    if ((xml = virCapabilitiesFormatXML(privconn->caps)) == NULL)
-        virReportOOMError(conn);
-    testDriverUnlock(privconn);
+    GET_CONNECTION(conn);
+
+    if ((xml = virCapabilitiesFormatXML(privconn->caps)) == NULL) {
+        testError(conn, VIR_ERR_NO_MEMORY, NULL);
+        return NULL;
+    }
+
     return xml;
 }
 
 static int testNumOfDomains(virConnectPtr conn)
 {
-    testConnPtr privconn = conn->privateData;
     unsigned int numActive = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     for (i = 0 ; i < privconn->domains.count ; i++)
         if (virDomainIsActive(privconn->domains.objs[i]))
             numActive++;
-    testDriverUnlock(privconn);
 
     return numActive;
 }
@@ -768,39 +757,26 @@ static virDomainPtr
 testDomainCreateXML(virConnectPtr conn, const char *xml,
                       unsigned int flags ATTRIBUTE_UNUSED)
 {
-    testConnPtr privconn = conn->privateData;
-    virDomainPtr ret = NULL;
+    virDomainPtr ret;
     virDomainDefPtr def;
-    virDomainObjPtr dom = NULL;
-    virDomainEventPtr event = NULL;
+    virDomainObjPtr dom;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    if ((def = virDomainDefParseString(conn, privconn->caps, xml,
-                                       VIR_DOMAIN_XML_INACTIVE)) == NULL)
-        goto cleanup;
+    if ((def = virDomainDefParseString(conn, privconn->caps, xml)) == NULL)
+        return NULL;
 
     if ((dom = virDomainAssignDef(conn, &privconn->domains,
                                   def)) == NULL) {
         virDomainDefFree(def);
-        goto cleanup;
+        return NULL;
     }
     dom->state = VIR_DOMAIN_RUNNING;
     dom->def->id = privconn->nextDomID++;
 
-    event = virDomainEventNewFromObj(dom,
-                                     VIR_DOMAIN_EVENT_STARTED,
-                                     VIR_DOMAIN_EVENT_STARTED_BOOTED);
-
     ret = virGetDomain(conn, def->name, def->uuid);
-    if (ret)
-        ret->id = def->id;
-
-cleanup:
-    if (dom)
-        virDomainObjUnlock(dom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
+    if (!ret)
+        return NULL;
+    ret->id = def->id;
     return ret;
 }
 
@@ -808,78 +784,57 @@ cleanup:
 static virDomainPtr testLookupDomainByID(virConnectPtr conn,
                                          int id)
 {
-    testConnPtr privconn = conn->privateData;
-    virDomainPtr ret = NULL;
-    virDomainObjPtr dom;
+    virDomainObjPtr dom = NULL;
+    virDomainPtr ret;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    dom = virDomainFindByID(&privconn->domains, id);
-    testDriverUnlock(privconn);
-
-    if (dom == NULL) {
+    if ((dom = virDomainFindByID(&privconn->domains, id)) == NULL) {
         testError (conn, VIR_ERR_NO_DOMAIN, NULL);
-        goto cleanup;
+        return NULL;
     }
 
     ret = virGetDomain(conn, dom->def->name, dom->def->uuid);
-    if (ret)
-        ret->id = dom->def->id;
-
-cleanup:
-    if (dom)
-        virDomainObjUnlock(dom);
+    if (!ret)
+        return NULL;
+    ret->id = dom->def->id;
     return ret;
 }
 
 static virDomainPtr testLookupDomainByUUID(virConnectPtr conn,
                                            const unsigned char *uuid)
 {
-    testConnPtr privconn = conn->privateData;
-    virDomainPtr ret = NULL;
-    virDomainObjPtr dom ;
+    virDomainPtr ret;
+    virDomainObjPtr dom = NULL;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    dom = virDomainFindByUUID(&privconn->domains, uuid);
-    testDriverUnlock(privconn);
-
-    if (dom == NULL) {
+    if ((dom = virDomainFindByUUID(&privconn->domains, uuid)) == NULL) {
         testError (conn, VIR_ERR_NO_DOMAIN, NULL);
-        goto cleanup;
+        return NULL;
     }
 
     ret = virGetDomain(conn, dom->def->name, dom->def->uuid);
-    if (ret)
-        ret->id = dom->def->id;
-
-cleanup:
-    if (dom)
-        virDomainObjUnlock(dom);
+    if (!ret)
+        return NULL;
+    ret->id = dom->def->id;
     return ret;
 }
 
 static virDomainPtr testLookupDomainByName(virConnectPtr conn,
                                            const char *name)
 {
-    testConnPtr privconn = conn->privateData;
-    virDomainPtr ret = NULL;
-    virDomainObjPtr dom;
+    virDomainPtr ret;
+    virDomainObjPtr dom = NULL;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    dom = virDomainFindByName(&privconn->domains, name);
-    testDriverUnlock(privconn);
-
-    if (dom == NULL) {
+    if ((dom = virDomainFindByName(&privconn->domains, name)) == NULL) {
         testError (conn, VIR_ERR_NO_DOMAIN, NULL);
-        goto cleanup;
+        return NULL;
     }
 
     ret = virGetDomain(conn, dom->def->name, dom->def->uuid);
-    if (ret)
-        ret->id = dom->def->id;
-
-cleanup:
-    if (dom)
-        virDomainObjUnlock(dom);
+    if (!ret)
+        return NULL;
+    ret->id = dom->def->id;
     return ret;
 }
 
@@ -887,205 +842,83 @@ static int testListDomains (virConnectPtr conn,
                             int *ids,
                             int maxids)
 {
-    testConnPtr privconn = conn->privateData;
     unsigned int n = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    for (i = 0 ; i < privconn->domains.count && n < maxids ; i++) {
-        virDomainObjLock(privconn->domains.objs[i]);
+    for (i = 0 ; i < privconn->domains.count && n < maxids ; i++)
         if (virDomainIsActive(privconn->domains.objs[i]))
             ids[n++] = privconn->domains.objs[i]->def->id;
-        virDomainObjUnlock(privconn->domains.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return n;
 }
 
 static int testDestroyDomain (virDomainPtr domain)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     privdom->state = VIR_DOMAIN_SHUTOFF;
     privdom->def->id = -1;
     domain->id = -1;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_STOPPED,
-                                     VIR_DOMAIN_EVENT_STOPPED_DESTROYED);
     if (!privdom->persistent) {
         virDomainRemoveInactive(&privconn->domains,
                                 privdom);
-        privdom = NULL;
     }
-
-
-    ret = 0;
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return (0);
 }
 
 static int testResumeDomain (virDomainPtr domain)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     if (privdom->state != VIR_DOMAIN_PAUSED) {
         testError(domain->conn,
                   VIR_ERR_INTERNAL_ERROR, _("domain '%s' not paused"),
                   domain->name);
-        goto cleanup;
+        return -1;
     }
 
     privdom->state = VIR_DOMAIN_RUNNING;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_RESUMED,
-                                     VIR_DOMAIN_EVENT_RESUMED_UNPAUSED);
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event) {
-        testDriverLock(privconn);
-        testDomainEventQueue(privconn, event);
-        testDriverUnlock(privconn);
-    }
-    return ret;
+    return (0);
 }
 
 static int testPauseDomain (virDomainPtr domain)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     if (privdom->state == VIR_DOMAIN_SHUTOFF ||
         privdom->state == VIR_DOMAIN_PAUSED) {
         testError(domain->conn,
                   VIR_ERR_INTERNAL_ERROR, _("domain '%s' not running"),
                   domain->name);
-        goto cleanup;
+        return -1;
     }
 
     privdom->state = VIR_DOMAIN_PAUSED;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_SUSPENDED,
-                                     VIR_DOMAIN_EVENT_SUSPENDED_PAUSED);
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-
-    if (event) {
-        testDriverLock(privconn);
-        testDomainEventQueue(privconn, event);
-        testDriverUnlock(privconn);
-    }
-    return ret;
+    return (0);
 }
 
 static int testShutdownDomain (virDomainPtr domain)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     if (privdom->state == VIR_DOMAIN_SHUTOFF) {
         testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
                   _("domain '%s' not running"), domain->name);
-        goto cleanup;
+        return -1;
     }
 
     privdom->state = VIR_DOMAIN_SHUTOFF;
     domain->id = -1;
     privdom->def->id = -1;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_STOPPED,
-                                     VIR_DOMAIN_EVENT_STOPPED_SHUTDOWN);
-    if (!privdom->persistent) {
-        virDomainRemoveInactive(&privconn->domains,
-                                privdom);
-        privdom = NULL;
-    }
-    ret = 0;
 
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return (0);
 }
 
 /* Similar behaviour as shutdown */
 static int testRebootDomain (virDomainPtr domain,
                              unsigned int action ATTRIBUTE_UNUSED)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     privdom->state = VIR_DOMAIN_SHUTDOWN;
     switch (privdom->def->onReboot) {
@@ -1116,50 +949,19 @@ static int testRebootDomain (virDomainPtr domain,
         break;
     }
 
-    if (privdom->state == VIR_DOMAIN_SHUTOFF) {
-        event = virDomainEventNewFromObj(privdom,
-                                         VIR_DOMAIN_EVENT_STOPPED,
-                                         VIR_DOMAIN_EVENT_STOPPED_SHUTDOWN);
-        if (!privdom->persistent) {
-            virDomainRemoveInactive(&privconn->domains,
-                                    privdom);
-            privdom = NULL;
-        }
-    }
-
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return (0);
 }
 
 static int testGetDomainInfo (virDomainPtr domain,
                               virDomainInfoPtr info)
 {
-    testConnPtr privconn = domain->conn->privateData;
     struct timeval tv;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     if (gettimeofday(&tv, NULL) < 0) {
         testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
                   "%s", _("getting time of day"));
-        goto cleanup;
+        return (-1);
     }
 
     info->state = privdom->state;
@@ -1167,12 +969,7 @@ static int testGetDomainInfo (virDomainPtr domain,
     info->maxMem = privdom->def->maxmem;
     info->nrVirtCpu = privdom->def->vcpus;
     info->cpuTime = ((tv.tv_sec * 1000ll * 1000ll  * 1000ll) + (tv.tv_usec * 1000ll));
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return (0);
 }
 
 static char *testDomainDumpXML(virDomainPtr domain, int flags);
@@ -1182,399 +979,238 @@ static char *testDomainDumpXML(virDomainPtr domain, int flags);
 static int testDomainSave(virDomainPtr domain,
                           const char *path)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    char *xml = NULL;
-    int fd = -1;
-    int len;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    char *xml;
+    int fd, len;
+    GET_DOMAIN(domain, -1);
 
     xml = testDomainDumpXML(domain, 0);
     if (xml == NULL) {
-        virReportSystemError(domain->conn, errno,
-                             _("saving domain '%s' failed to allocate space for metadata"),
-                             domain->name);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("saving domain '%s' failed to allocate space for metadata: %s"),
+                  domain->name, strerror(errno));
+        return (-1);
     }
 
     if ((fd = open(path, O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR)) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("saving domain '%s' to '%s': open failed"),
-                             domain->name, path);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("saving domain '%s' to '%s': open failed: %s"),
+                  domain->name, path, strerror(errno));
+        return (-1);
     }
     len = strlen(xml);
     if (safewrite(fd, TEST_SAVE_MAGIC, sizeof(TEST_SAVE_MAGIC)) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("saving domain '%s' to '%s': write failed"),
-                             domain->name, path);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("saving domain '%s' to '%s': write failed: %s"),
+                  domain->name, path, strerror(errno));
+        close(fd);
+        return (-1);
     }
     if (safewrite(fd, (char*)&len, sizeof(len)) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("saving domain '%s' to '%s': write failed"),
-                             domain->name, path);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("saving domain '%s' to '%s': write failed: %s"),
+                  domain->name, path, strerror(errno));
+        close(fd);
+        return (-1);
     }
     if (safewrite(fd, xml, len) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("saving domain '%s' to '%s': write failed"),
-                             domain->name, path);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("saving domain '%s' to '%s': write failed: %s"),
+                  domain->name, path, strerror(errno));
+        VIR_FREE(xml);
+        close(fd);
+        return (-1);
     }
-
+    VIR_FREE(xml);
     if (close(fd) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("saving domain '%s' to '%s': write failed"),
-                             domain->name, path);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("saving domain '%s' to '%s': write failed: %s"),
+                  domain->name, path, strerror(errno));
+        close(fd);
+        return (-1);
     }
-    fd = -1;
-
     privdom->state = VIR_DOMAIN_SHUTOFF;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_STOPPED,
-                                     VIR_DOMAIN_EVENT_STOPPED_SAVED);
     if (!privdom->persistent) {
         virDomainRemoveInactive(&privconn->domains,
                                 privdom);
-        privdom = NULL;
     }
-    ret = 0;
-
-cleanup:
-    VIR_FREE(xml);
-
-    /* Don't report failure in close or unlink, because
-     * in either case we're already in a failure scenario
-     * and have reported a earlier error */
-    if (ret != 0) {
-        if (fd != -1)
-            close(fd);
-        unlink(path);
-    }
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return 0;
 }
 
 static int testDomainRestore(virConnectPtr conn,
                              const char *path)
 {
-    testConnPtr privconn = conn->privateData;
-    char *xml = NULL;
+    char *xml;
     char magic[15];
-    int fd = -1;
-    int len;
-    virDomainDefPtr def = NULL;
-    virDomainObjPtr dom = NULL;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
+    int fd, len;
+    virDomainDefPtr def;
+    virDomainObjPtr dom;
+    GET_CONNECTION(conn);
 
     if ((fd = open(path, O_RDONLY)) < 0) {
-        virReportSystemError(conn, errno,
-                             _("cannot read domain image '%s'"),
-                             path);
-        goto cleanup;
+        testError(conn, VIR_ERR_INTERNAL_ERROR,
+                  "%s", _("cannot read domain image"));
+        return (-1);
     }
-    if (saferead(fd, magic, sizeof(magic)) != sizeof(magic)) {
-        virReportSystemError(conn, errno,
-                             _("incomplete save header in '%s'"),
-                             path);
-        goto cleanup;
+    if (read(fd, magic, sizeof(magic)) != sizeof(magic)) {
+        testError(conn, VIR_ERR_INTERNAL_ERROR,
+                  "%s", _("incomplete save header"));
+        close(fd);
+        return (-1);
     }
     if (memcmp(magic, TEST_SAVE_MAGIC, sizeof(magic))) {
         testError(conn, VIR_ERR_INTERNAL_ERROR,
                   "%s", _("mismatched header magic"));
-        goto cleanup;
+        close(fd);
+        return (-1);
     }
-    if (saferead(fd, (char*)&len, sizeof(len)) != sizeof(len)) {
-        virReportSystemError(conn, errno,
-                             _("failed to read metadata length in '%s'"),
-                             path);
-        goto cleanup;
+    if (read(fd, (char*)&len, sizeof(len)) != sizeof(len)) {
+        testError(conn, VIR_ERR_INTERNAL_ERROR,
+                  "%s", _("failed to read metadata length"));
+        close(fd);
+        return (-1);
     }
     if (len < 1 || len > 8192) {
         testError(conn, VIR_ERR_INTERNAL_ERROR,
                   "%s", _("length of metadata out of range"));
-        goto cleanup;
+        close(fd);
+        return (-1);
     }
     if (VIR_ALLOC_N(xml, len+1) < 0) {
-        virReportOOMError(conn);
-        goto cleanup;
+        testError(conn, VIR_ERR_NO_MEMORY, "xml");
+        close(fd);
+        return (-1);
     }
-    if (saferead(fd, xml, len) != len) {
-        virReportSystemError(conn, errno,
-                             _("incomplete metdata in '%s'"), path);
-        goto cleanup;
+    if (read(fd, xml, len) != len) {
+        testError(conn, VIR_ERR_INTERNAL_ERROR,
+                  "%s", _("incomplete metdata"));
+        close(fd);
+        return (-1);
     }
     xml[len] = '\0';
+    close(fd);
 
-    testDriverLock(privconn);
-    def = virDomainDefParseString(conn, privconn->caps, xml,
-                                  VIR_DOMAIN_XML_INACTIVE);
+    def = virDomainDefParseString(conn, privconn->caps, xml);
+    VIR_FREE(xml);
     if (!def)
-        goto cleanup;
+        return -1;
 
     if ((dom = virDomainAssignDef(conn, &privconn->domains,
-                                  def)) == NULL)
-        goto cleanup;
-
+                                  def)) == NULL) {
+        virDomainDefFree(def);
+        return -1;
+    }
     dom->state = VIR_DOMAIN_RUNNING;
     dom->def->id = privconn->nextDomID++;
-    def = NULL;
-    event = virDomainEventNewFromObj(dom,
-                                     VIR_DOMAIN_EVENT_STARTED,
-                                     VIR_DOMAIN_EVENT_STARTED_RESTORED);
-    ret = dom->def->id;
-
-cleanup:
-    virDomainDefFree(def);
-    VIR_FREE(xml);
-    if (fd != -1)
-        close(fd);
-    if (dom)
-        virDomainObjUnlock(dom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return dom->def->id;
 }
 
 static int testDomainCoreDump(virDomainPtr domain,
                               const char *to,
                               int flags ATTRIBUTE_UNUSED)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    int fd = -1;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    int fd;
+    GET_DOMAIN(domain, -1);
 
     if ((fd = open(to, O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR)) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("domain '%s' coredump: failed to open %s"),
-                             domain->name, to);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("domain '%s' coredump: failed to open %s: %s"),
+                  domain->name, to, strerror (errno));
+        return (-1);
     }
     if (safewrite(fd, TEST_SAVE_MAGIC, sizeof(TEST_SAVE_MAGIC)) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("domain '%s' coredump: failed to write header to %s"),
-                             domain->name, to);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("domain '%s' coredump: failed to write header to %s: %s"),
+                  domain->name, to, strerror (errno));
+        close(fd);
+        return (-1);
     }
     if (close(fd) < 0) {
-        virReportSystemError(domain->conn, errno,
-                             _("domain '%s' coredump: write failed: %s"),
-                             domain->name, to);
-        goto cleanup;
+        testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
+                  _("domain '%s' coredump: write failed: %s: %s"),
+                  domain->name, to, strerror (errno));
+        close(fd);
+        return (-1);
     }
     privdom->state = VIR_DOMAIN_SHUTOFF;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_STOPPED,
-                                     VIR_DOMAIN_EVENT_STOPPED_CRASHED);
     if (!privdom->persistent) {
         virDomainRemoveInactive(&privconn->domains,
                                 privdom);
-        privdom = NULL;
     }
-    ret = 0;
-
-cleanup:
-    if (fd != -1)
-        close(fd);
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return 0;
 }
 
 static char *testGetOSType(virDomainPtr dom) {
     char *ret = strdup("linux");
     if (!ret)
-        virReportOOMError(dom->conn);
+        testError(dom->conn, VIR_ERR_NO_MEMORY, NULL);
     return ret;
 }
 
 static unsigned long testGetMaxMemory(virDomainPtr domain) {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    unsigned long ret = 0;
+    GET_DOMAIN(domain, -1);
 
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    ret = privdom->def->maxmem;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return privdom->def->maxmem;
 }
 
 static int testSetMaxMemory(virDomainPtr domain,
                             unsigned long memory)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     /* XXX validate not over host memory wrt to other domains */
     privdom->def->maxmem = memory;
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return (0);
 }
 
 static int testSetMemory(virDomainPtr domain,
                          unsigned long memory)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     if (memory > privdom->def->maxmem) {
         testError(domain->conn,
                   VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
+        return (-1);
     }
 
     privdom->def->memory = memory;
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return (0);
 }
 
 static int testSetVcpus(virDomainPtr domain,
                         unsigned int nrCpus) {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     /* We allow more cpus in guest than host */
     if (nrCpus > 32) {
         testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
+        return (-1);
     }
 
     privdom->def->vcpus = nrCpus;
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return (0);
 }
 
 static char *testDomainDumpXML(virDomainPtr domain, int flags)
 {
-    testConnPtr privconn = domain->conn->privateData;
     virDomainDefPtr def;
-    virDomainObjPtr privdom;
-    char *ret = NULL;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, NULL);
 
     def = (flags & VIR_DOMAIN_XML_INACTIVE) &&
         privdom->newDef ? privdom->newDef : privdom->def;
 
-    ret = virDomainDefFormat(domain->conn,
-                             def,
-                             flags);
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return virDomainDefFormat(domain->conn,
+                              def,
+                              flags);
 }
 
 static int testNumOfDefinedDomains(virConnectPtr conn) {
-    testConnPtr privconn = conn->privateData;
     unsigned int numInactive = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    for (i = 0 ; i < privconn->domains.count ; i++) {
-        virDomainObjLock(privconn->domains.objs[i]);
+    for (i = 0 ; i < privconn->domains.count ; i++)
         if (!virDomainIsActive(privconn->domains.objs[i]))
             numInactive++;
-        virDomainObjUnlock(privconn->domains.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return numInactive;
 }
@@ -1582,82 +1218,60 @@ static int testNumOfDefinedDomains(virConnectPtr conn) {
 static int testListDefinedDomains(virConnectPtr conn,
                                   char **const names,
                                   int maxnames) {
-    testConnPtr privconn = conn->privateData;
     unsigned int n = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     memset(names, 0, sizeof(*names)*maxnames);
-    for (i = 0 ; i < privconn->domains.count && n < maxnames ; i++) {
-        virDomainObjLock(privconn->domains.objs[i]);
+    for (i = 0 ; i < privconn->domains.count && n < maxnames ; i++)
         if (!virDomainIsActive(privconn->domains.objs[i]) &&
-            !(names[n++] = strdup(privconn->domains.objs[i]->def->name))) {
-            virDomainObjUnlock(privconn->domains.objs[i]);
+            !(names[n++] = strdup(privconn->domains.objs[i]->def->name)))
             goto no_memory;
-        }
-        virDomainObjUnlock(privconn->domains.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return n;
 
 no_memory:
-    virReportOOMError(conn);
+    testError(conn, VIR_ERR_NO_MEMORY, NULL);
     for (n = 0 ; n < maxnames ; n++)
         VIR_FREE(names[n]);
-    testDriverUnlock(privconn);
     return -1;
 }
 
 static virDomainPtr testDomainDefineXML(virConnectPtr conn,
                                         const char *xml) {
-    testConnPtr privconn = conn->privateData;
-    virDomainPtr ret = NULL;
+    virDomainPtr ret;
     virDomainDefPtr def;
-    virDomainObjPtr dom = NULL;
-    virDomainEventPtr event = NULL;
+    virDomainObjPtr dom;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    if ((def = virDomainDefParseString(conn, privconn->caps, xml,
-                                       VIR_DOMAIN_XML_INACTIVE)) == NULL)
-        goto cleanup;
+    if ((def = virDomainDefParseString(conn, privconn->caps, xml)) == NULL)
+        return NULL;
 
     if ((dom = virDomainAssignDef(conn, &privconn->domains,
                                   def)) == NULL) {
-        goto cleanup;
+        virDomainDefFree(def);
+        return NULL;
     }
     dom->persistent = 1;
     dom->def->id = -1;
-    event = virDomainEventNewFromObj(dom,
-                                     VIR_DOMAIN_EVENT_DEFINED,
-                                     VIR_DOMAIN_EVENT_DEFINED_ADDED);
 
     ret = virGetDomain(conn, def->name, def->uuid);
-    def = NULL;
-    if (ret)
-        ret->id = -1;
-
-cleanup:
-    virDomainDefFree(def);
-    if (dom)
-        virDomainObjUnlock(dom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
+    if (!ret)
+        return NULL;
+    ret->id = -1;
     return ret;
 }
 
 static int testNodeGetCellsFreeMemory(virConnectPtr conn,
                                       unsigned long long *freemems,
                                       int startCell, int maxCells) {
-    testConnPtr privconn = conn->privateData;
     int i, j;
-    int ret = -1;
 
-    testDriverLock(privconn);
+    GET_CONNECTION(conn);
+
     if (startCell > privconn->numCells) {
         testError(conn, VIR_ERR_INVALID_ARG,
                   "%s", _("Range exceeds available cells"));
-        goto cleanup;
+        return -1;
     }
 
     for (i = startCell, j = 0;
@@ -1665,153 +1279,69 @@ static int testNodeGetCellsFreeMemory(virConnectPtr conn,
          ++i, ++j) {
         freemems[j] = privconn->cells[i].mem;
     }
-    ret = j;
 
-cleanup:
-    testDriverUnlock(privconn);
-    return ret;
+    return j;
 }
 
 
 static int testDomainCreate(virDomainPtr domain) {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     if (privdom->state != VIR_DOMAIN_SHUTOFF) {
         testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
                   _("Domain '%s' is already running"), domain->name);
-        goto cleanup;
+        return (-1);
     }
 
     domain->id = privdom->def->id = privconn->nextDomID++;
     privdom->state = VIR_DOMAIN_RUNNING;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_STARTED,
-                                     VIR_DOMAIN_EVENT_STARTED_BOOTED);
-    ret = 0;
 
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return (0);
 }
 
 static int testDomainUndefine(virDomainPtr domain) {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    virDomainEventPtr event = NULL;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_DOMAIN(domain, -1);
 
     if (privdom->state != VIR_DOMAIN_SHUTOFF) {
         testError(domain->conn, VIR_ERR_INTERNAL_ERROR,
                   _("Domain '%s' is still running"), domain->name);
-        goto cleanup;
+        return (-1);
     }
 
     privdom->state = VIR_DOMAIN_SHUTOFF;
-    event = virDomainEventNewFromObj(privdom,
-                                     VIR_DOMAIN_EVENT_UNDEFINED,
-                                     VIR_DOMAIN_EVENT_UNDEFINED_REMOVED);
     virDomainRemoveInactive(&privconn->domains,
                             privdom);
-    privdom = NULL;
-    ret = 0;
 
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    if (event)
-        testDomainEventQueue(privconn, event);
-    testDriverUnlock(privconn);
-    return ret;
+    return (0);
 }
 
 static int testDomainGetAutostart(virDomainPtr domain,
                                   int *autostart)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
+    GET_DOMAIN(domain, -1);
     *autostart = privdom->autostart;
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return (0);
 }
 
 
 static int testDomainSetAutostart(virDomainPtr domain,
                                   int autostart)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
+    GET_DOMAIN(domain, -1);
     privdom->autostart = autostart ? 1 : 0;
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return (0);
 }
 
 static char *testDomainGetSchedulerType(virDomainPtr domain,
                                         int *nparams)
 {
-    char *type = NULL;
-
+    char *type;
     *nparams = 1;
     type = strdup("fair");
-    if (!type)
-        virReportOOMError(domain->conn);
-
+    if (!type) {
+        testError(domain->conn, VIR_ERR_NO_MEMORY, "schedular");
+        return (NULL);
+    }
     return type;
 }
 
@@ -1819,35 +1349,17 @@ static int testDomainGetSchedulerParams(virDomainPtr domain,
                                         virSchedParameterPtr params,
                                         int *nparams)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
+    GET_DOMAIN(domain, -1);
     if (*nparams != 1) {
         testError(domain->conn, VIR_ERR_INVALID_ARG, "nparams");
-        goto cleanup;
+        return (-1);
     }
     strcpy(params[0].field, "weight");
     params[0].type = VIR_DOMAIN_SCHED_FIELD_UINT;
     /* XXX */
     /*params[0].value.ui = privdom->weight;*/
     params[0].value.ui = 50;
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return 0;
 }
 
 
@@ -1855,40 +1367,22 @@ static int testDomainSetSchedulerParams(virDomainPtr domain,
                                         virSchedParameterPtr params,
                                         int nparams)
 {
-    testConnPtr privconn = domain->conn->privateData;
-    virDomainObjPtr privdom;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privdom = virDomainFindByName(&privconn->domains,
-                                  domain->name);
-    testDriverUnlock(privconn);
-
-    if (privdom == NULL) {
-        testError(domain->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
+    GET_DOMAIN(domain, -1);
     if (nparams != 1) {
         testError(domain->conn, VIR_ERR_INVALID_ARG, "nparams");
-        goto cleanup;
+        return (-1);
     }
     if (STRNEQ(params[0].field, "weight")) {
         testError(domain->conn, VIR_ERR_INVALID_ARG, "field");
-        goto cleanup;
+        return (-1);
     }
     if (params[0].type != VIR_DOMAIN_SCHED_FIELD_UINT) {
         testError(domain->conn, VIR_ERR_INVALID_ARG, "type");
-        goto cleanup;
+        return (-1);
     }
     /* XXX */
     /*privdom->weight = params[0].value.ui;*/
-    ret = 0;
-
-cleanup:
-    if (privdom)
-        virDomainObjUnlock(privdom);
-    return ret;
+    return 0;
 }
 
 static virDrvOpenStatus testOpenNetwork(virConnectPtr conn,
@@ -1910,381 +1404,197 @@ static int testCloseNetwork(virConnectPtr conn) {
 static virNetworkPtr testLookupNetworkByUUID(virConnectPtr conn,
                                            const unsigned char *uuid)
 {
-    testConnPtr privconn = conn->privateData;
-    virNetworkObjPtr net;
-    virNetworkPtr ret = NULL;
+    virNetworkObjPtr net = NULL;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    net = virNetworkFindByUUID(&privconn->networks, uuid);
-    testDriverUnlock(privconn);
-
-    if (net == NULL) {
+    if ((net = virNetworkFindByUUID(&privconn->networks, uuid)) == NULL) {
         testError (conn, VIR_ERR_NO_NETWORK, NULL);
-        goto cleanup;
+        return NULL;
     }
 
-    ret = virGetNetwork(conn, net->def->name, net->def->uuid);
-
-cleanup:
-    if (net)
-        virNetworkObjUnlock(net);
-    return ret;
+    return virGetNetwork(conn, net->def->name, net->def->uuid);
 }
 
 static virNetworkPtr testLookupNetworkByName(virConnectPtr conn,
                                              const char *name)
 {
-    testConnPtr privconn = conn->privateData;
-    virNetworkObjPtr net;
-    virNetworkPtr ret = NULL;
+    virNetworkObjPtr net = NULL;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    net = virNetworkFindByName(&privconn->networks, name);
-    testDriverUnlock(privconn);
-
-    if (net == NULL) {
+    if ((net = virNetworkFindByName(&privconn->networks, name)) == NULL) {
         testError (conn, VIR_ERR_NO_NETWORK, NULL);
-        goto cleanup;
+        return NULL;
     }
 
-    ret = virGetNetwork(conn, net->def->name, net->def->uuid);
-
-cleanup:
-    if (net)
-        virNetworkObjUnlock(net);
-    return ret;
+    return virGetNetwork(conn, net->def->name, net->def->uuid);
 }
 
 
 static int testNumNetworks(virConnectPtr conn) {
-    testConnPtr privconn = conn->privateData;
     int numActive = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    for (i = 0 ; i < privconn->networks.count ; i++) {
-        virNetworkObjLock(privconn->networks.objs[i]);
+    for (i = 0 ; i < privconn->networks.count ; i++)
         if (virNetworkIsActive(privconn->networks.objs[i]))
             numActive++;
-        virNetworkObjUnlock(privconn->networks.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return numActive;
 }
 
 static int testListNetworks(virConnectPtr conn, char **const names, int nnames) {
-    testConnPtr privconn = conn->privateData;
     int n = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     memset(names, 0, sizeof(*names)*nnames);
-    for (i = 0 ; i < privconn->networks.count && n < nnames ; i++) {
-        virNetworkObjLock(privconn->networks.objs[i]);
+    for (i = 0 ; i < privconn->networks.count && n < nnames ; i++)
         if (virNetworkIsActive(privconn->networks.objs[i]) &&
-            !(names[n++] = strdup(privconn->networks.objs[i]->def->name))) {
-            virNetworkObjUnlock(privconn->networks.objs[i]);
+            !(names[n++] = strdup(privconn->networks.objs[i]->def->name)))
             goto no_memory;
-        }
-        virNetworkObjUnlock(privconn->networks.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return n;
 
 no_memory:
-    virReportOOMError(conn);
+    testError(conn, VIR_ERR_NO_MEMORY, NULL);
     for (n = 0 ; n < nnames ; n++)
         VIR_FREE(names[n]);
-    testDriverUnlock(privconn);
-    return -1;
+    return (-1);
 }
 
 static int testNumDefinedNetworks(virConnectPtr conn) {
-    testConnPtr privconn = conn->privateData;
     int numInactive = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    for (i = 0 ; i < privconn->networks.count ; i++) {
-        virNetworkObjLock(privconn->networks.objs[i]);
+    for (i = 0 ; i < privconn->networks.count ; i++)
         if (!virNetworkIsActive(privconn->networks.objs[i]))
             numInactive++;
-        virNetworkObjUnlock(privconn->networks.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return numInactive;
 }
 
 static int testListDefinedNetworks(virConnectPtr conn, char **const names, int nnames) {
-    testConnPtr privconn = conn->privateData;
     int n = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     memset(names, 0, sizeof(*names)*nnames);
-    for (i = 0 ; i < privconn->networks.count && n < nnames ; i++) {
-        virNetworkObjLock(privconn->networks.objs[i]);
+    for (i = 0 ; i < privconn->networks.count && n < nnames ; i++)
         if (!virNetworkIsActive(privconn->networks.objs[i]) &&
-            !(names[n++] = strdup(privconn->networks.objs[i]->def->name))) {
-            virNetworkObjUnlock(privconn->networks.objs[i]);
+            !(names[n++] = strdup(privconn->networks.objs[i]->def->name)))
             goto no_memory;
-        }
-        virNetworkObjUnlock(privconn->networks.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return n;
 
 no_memory:
-    virReportOOMError(conn);
+    testError(conn, VIR_ERR_NO_MEMORY, NULL);
     for (n = 0 ; n < nnames ; n++)
         VIR_FREE(names[n]);
-    testDriverUnlock(privconn);
-    return -1;
+    return (-1);
 }
 
 static virNetworkPtr testNetworkCreate(virConnectPtr conn, const char *xml) {
-    testConnPtr privconn = conn->privateData;
     virNetworkDefPtr def;
-    virNetworkObjPtr net = NULL;
-    virNetworkPtr ret = NULL;
+    virNetworkObjPtr net;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     if ((def = virNetworkDefParseString(conn, xml)) == NULL)
-        goto cleanup;
+        return NULL;
 
     if ((net = virNetworkAssignDef(conn, &privconn->networks,
                                    def)) == NULL) {
-        goto cleanup;
+        virNetworkDefFree(def);
+        return NULL;
     }
     net->active = 1;
-    def = NULL;
 
-    ret = virGetNetwork(conn, def->name, def->uuid);
-
-cleanup:
-    virNetworkDefFree(def);
-    if (net)
-        virNetworkObjUnlock(net);
-    testDriverUnlock(privconn);
-    return ret;
+    return virGetNetwork(conn, def->name, def->uuid);
 }
 
 static virNetworkPtr testNetworkDefine(virConnectPtr conn, const char *xml) {
-    testConnPtr privconn = conn->privateData;
     virNetworkDefPtr def;
-    virNetworkObjPtr net = NULL;
-    virNetworkPtr ret = NULL;
+    virNetworkObjPtr net;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     if ((def = virNetworkDefParseString(conn, xml)) == NULL)
-        goto cleanup;
+        return NULL;
 
     if ((net = virNetworkAssignDef(conn, &privconn->networks,
                                    def)) == NULL) {
-        goto cleanup;
+        virNetworkDefFree(def);
+        return NULL;
     }
     net->persistent = 1;
-    def = NULL;
 
-    ret = virGetNetwork(conn, def->name, def->uuid);
-
-cleanup:
-    virNetworkDefFree(def);
-    if (net)
-        virNetworkObjUnlock(net);
-    testDriverUnlock(privconn);
-    return ret;
+    return virGetNetwork(conn, def->name, def->uuid);
 }
 
 static int testNetworkUndefine(virNetworkPtr network) {
-    testConnPtr privconn = network->conn->privateData;
-    virNetworkObjPtr privnet;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privnet = virNetworkFindByName(&privconn->networks,
-                                   network->name);
-
-    if (privnet == NULL) {
-        testError(network->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_NETWORK(network, -1);
 
     if (virNetworkIsActive(privnet)) {
         testError(network->conn, VIR_ERR_INTERNAL_ERROR,
                   _("Network '%s' is still running"), network->name);
-        goto cleanup;
+        return (-1);
     }
 
     virNetworkRemoveInactive(&privconn->networks,
                              privnet);
-    privnet = NULL;
-    ret = 0;
 
-cleanup:
-    if (privnet)
-        virNetworkObjUnlock(privnet);
-    testDriverUnlock(privconn);
-    return ret;
+    return (0);
 }
 
 static int testNetworkStart(virNetworkPtr network) {
-    testConnPtr privconn = network->conn->privateData;
-    virNetworkObjPtr privnet;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privnet = virNetworkFindByName(&privconn->networks,
-                                   network->name);
-    testDriverUnlock(privconn);
-
-    if (privnet == NULL) {
-        testError(network->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_NETWORK(network, -1);
 
     if (virNetworkIsActive(privnet)) {
         testError(network->conn, VIR_ERR_INTERNAL_ERROR,
                   _("Network '%s' is already running"), network->name);
-        goto cleanup;
+        return (-1);
     }
 
     privnet->active = 1;
-    ret = 0;
 
-cleanup:
-    if (privnet)
-        virNetworkObjUnlock(privnet);
-    return ret;
+    return (0);
 }
 
 static int testNetworkDestroy(virNetworkPtr network) {
-    testConnPtr privconn = network->conn->privateData;
-    virNetworkObjPtr privnet;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privnet = virNetworkFindByName(&privconn->networks,
-                                   network->name);
-
-    if (privnet == NULL) {
-        testError(network->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_NETWORK(network, -1);
 
     privnet->active = 0;
     if (!privnet->persistent) {
         virNetworkRemoveInactive(&privconn->networks,
                                  privnet);
-        privnet = NULL;
     }
-    ret = 0;
-
-cleanup:
-    if (privnet)
-        virNetworkObjUnlock(privnet);
-    testDriverUnlock(privconn);
-    return ret;
+    return (0);
 }
 
 static char *testNetworkDumpXML(virNetworkPtr network, int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = network->conn->privateData;
-    virNetworkObjPtr privnet;
-    char *ret = NULL;
+    GET_NETWORK(network, NULL);
 
-    testDriverLock(privconn);
-    privnet = virNetworkFindByName(&privconn->networks,
-                                   network->name);
-    testDriverUnlock(privconn);
-
-    if (privnet == NULL) {
-        testError(network->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    ret = virNetworkDefFormat(network->conn, privnet->def);
-
-cleanup:
-    if (privnet)
-        virNetworkObjUnlock(privnet);
-    return ret;
+    return virNetworkDefFormat(network->conn, privnet->def);
 }
 
 static char *testNetworkGetBridgeName(virNetworkPtr network) {
-    testConnPtr privconn = network->conn->privateData;
     char *bridge = NULL;
-    virNetworkObjPtr privnet;
-
-    testDriverLock(privconn);
-    privnet = virNetworkFindByName(&privconn->networks,
-                                   network->name);
-    testDriverUnlock(privconn);
-
-    if (privnet == NULL) {
-        testError(network->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
+    GET_NETWORK(network, NULL);
     if (privnet->def->bridge &&
         !(bridge = strdup(privnet->def->bridge))) {
-        virReportOOMError(network->conn);
-        goto cleanup;
+        testError(network->conn, VIR_ERR_NO_MEMORY, "network");
+        return NULL;
     }
-
-cleanup:
-    if (privnet)
-        virNetworkObjUnlock(privnet);
     return bridge;
 }
 
 static int testNetworkGetAutostart(virNetworkPtr network,
                                    int *autostart) {
-    testConnPtr privconn = network->conn->privateData;
-    virNetworkObjPtr privnet;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privnet = virNetworkFindByName(&privconn->networks,
-                                   network->name);
-    testDriverUnlock(privconn);
-
-    if (privnet == NULL) {
-        testError(network->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
+    GET_NETWORK(network, -1);
     *autostart = privnet->autostart;
-    ret = 0;
-
-cleanup:
-    if (privnet)
-        virNetworkObjUnlock(privnet);
-    return ret;
+    return (0);
 }
 
 static int testNetworkSetAutostart(virNetworkPtr network,
                                    int autostart) {
-    testConnPtr privconn = network->conn->privateData;
-    virNetworkObjPtr privnet;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privnet = virNetworkFindByName(&privconn->networks,
-                                   network->name);
-    testDriverUnlock(privconn);
-
-    if (privnet == NULL) {
-        testError(network->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
+    GET_NETWORK(network, -1);
     privnet->autostart = autostart ? 1 : 0;
-    ret = 0;
-
-cleanup:
-    if (privnet)
-        virNetworkObjUnlock(privnet);
-    return ret;
+    return (0);
 }
 
 
@@ -2292,8 +1602,7 @@ cleanup:
  * Storage Driver routines
  */
 
-static int testStoragePoolObjSetDefaults(virConnectPtr conn,
-                                         virStoragePoolObjPtr pool) {
+static int testStoragePoolObjSetDefaults(virStoragePoolObjPtr pool) {
 
     pool->def->capacity = defaultPoolCap;
     pool->def->allocation = defaultPoolAlloc;
@@ -2301,7 +1610,7 @@ static int testStoragePoolObjSetDefaults(virConnectPtr conn,
 
     pool->configFile = strdup("\0");
     if (!pool->configFile) {
-        virReportOOMError(conn);
+        testError(NULL, VIR_ERR_NO_MEMORY, "configFile");
         return -1;
     }
 
@@ -2326,49 +1635,29 @@ static int testStorageClose(virConnectPtr conn) {
 static virStoragePoolPtr
 testStoragePoolLookupByUUID(virConnectPtr conn,
                             const unsigned char *uuid) {
-    testConnPtr privconn = conn->privateData;
-    virStoragePoolObjPtr pool;
-    virStoragePoolPtr ret = NULL;
+    virStoragePoolObjPtr pool = NULL;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    pool = virStoragePoolObjFindByUUID(&privconn->pools, uuid);
-    testDriverUnlock(privconn);
-
-    if (pool == NULL) {
+    if ((pool = virStoragePoolObjFindByUUID(&privconn->pools, uuid)) == NULL) {
         testError (conn, VIR_ERR_NO_STORAGE_POOL, NULL);
-        goto cleanup;
+        return NULL;
     }
 
-    ret = virGetStoragePool(conn, pool->def->name, pool->def->uuid);
-
-cleanup:
-    if (pool)
-        virStoragePoolObjUnlock(pool);
-    return ret;
+    return virGetStoragePool(conn, pool->def->name, pool->def->uuid);
 }
 
 static virStoragePoolPtr
 testStoragePoolLookupByName(virConnectPtr conn,
                             const char *name) {
-    testConnPtr privconn = conn->privateData;
-    virStoragePoolObjPtr pool;
-    virStoragePoolPtr ret = NULL;
+    virStoragePoolObjPtr pool = NULL;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
-    pool = virStoragePoolObjFindByName(&privconn->pools, name);
-    testDriverUnlock(privconn);
-
-    if (pool == NULL) {
+    if ((pool = virStoragePoolObjFindByName(&privconn->pools, name)) == NULL) {
         testError (conn, VIR_ERR_NO_STORAGE_POOL, NULL);
-        goto cleanup;
+        return NULL;
     }
 
-    ret = virGetStoragePool(conn, pool->def->name, pool->def->uuid);
-
-cleanup:
-    if (pool)
-        virStoragePoolObjUnlock(pool);
-    return ret;
+    return virGetStoragePool(conn, pool->def->name, pool->def->uuid);
 }
 
 static virStoragePoolPtr
@@ -2378,14 +1667,13 @@ testStoragePoolLookupByVolume(virStorageVolPtr vol) {
 
 static int
 testStorageNumPools(virConnectPtr conn) {
-    testConnPtr privconn = conn->privateData;
-    int numActive = 0, i;
 
-    testDriverLock(privconn);
+    int numActive = 0, i;
+    GET_CONNECTION(conn);
+
     for (i = 0 ; i < privconn->pools.count ; i++)
         if (virStoragePoolObjIsActive(privconn->pools.objs[i]))
             numActive++;
-    testDriverUnlock(privconn);
 
     return numActive;
 }
@@ -2394,45 +1682,33 @@ static int
 testStorageListPools(virConnectPtr conn,
                      char **const names,
                      int nnames) {
-    testConnPtr privconn = conn->privateData;
     int n = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     memset(names, 0, sizeof(*names)*nnames);
-    for (i = 0 ; i < privconn->pools.count && n < nnames ; i++) {
-        virStoragePoolObjLock(privconn->pools.objs[i]);
+    for (i = 0 ; i < privconn->pools.count && n < nnames ; i++)
         if (virStoragePoolObjIsActive(privconn->pools.objs[i]) &&
-            !(names[n++] = strdup(privconn->pools.objs[i]->def->name))) {
-            virStoragePoolObjUnlock(privconn->pools.objs[i]);
+            !(names[n++] = strdup(privconn->pools.objs[i]->def->name)))
             goto no_memory;
-        }
-        virStoragePoolObjUnlock(privconn->pools.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return n;
 
 no_memory:
-    virReportOOMError(conn);
+    testError(conn, VIR_ERR_NO_MEMORY, NULL);
     for (n = 0 ; n < nnames ; n++)
         VIR_FREE(names[n]);
-    testDriverUnlock(privconn);
-    return -1;
+    return (-1);
 }
 
 static int
 testStorageNumDefinedPools(virConnectPtr conn) {
-    testConnPtr privconn = conn->privateData;
-    int numInactive = 0, i;
 
-    testDriverLock(privconn);
-    for (i = 0 ; i < privconn->pools.count ; i++) {
-        virStoragePoolObjLock(privconn->pools.objs[i]);
+    int numInactive = 0, i;
+    GET_CONNECTION(conn);
+
+    for (i = 0 ; i < privconn->pools.count ; i++)
         if (!virStoragePoolObjIsActive(privconn->pools.objs[i]))
             numInactive++;
-        virStoragePoolObjUnlock(privconn->pools.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return numInactive;
 }
@@ -2441,63 +1717,39 @@ static int
 testStorageListDefinedPools(virConnectPtr conn,
                             char **const names,
                             int nnames) {
-    testConnPtr privconn = conn->privateData;
     int n = 0, i;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     memset(names, 0, sizeof(*names)*nnames);
-    for (i = 0 ; i < privconn->pools.count && n < nnames ; i++) {
-        virStoragePoolObjLock(privconn->pools.objs[i]);
+    for (i = 0 ; i < privconn->pools.count && n < nnames ; i++)
         if (!virStoragePoolObjIsActive(privconn->pools.objs[i]) &&
-            !(names[n++] = strdup(privconn->pools.objs[i]->def->name))) {
-            virStoragePoolObjUnlock(privconn->pools.objs[i]);
+            !(names[n++] = strdup(privconn->pools.objs[i]->def->name)))
             goto no_memory;
-        }
-        virStoragePoolObjUnlock(privconn->pools.objs[i]);
-    }
-    testDriverUnlock(privconn);
 
     return n;
 
 no_memory:
-    virReportOOMError(conn);
+    testError(conn, VIR_ERR_NO_MEMORY, NULL);
     for (n = 0 ; n < nnames ; n++)
         VIR_FREE(names[n]);
-    testDriverUnlock(privconn);
-    return -1;
+    return (-1);
 }
 
+static int
+testStoragePoolRefresh(virStoragePoolPtr obj,
+                       unsigned int flags ATTRIBUTE_UNUSED);
 
 static int
-testStoragePoolStart(virStoragePoolPtr pool,
+testStoragePoolStart(virStoragePoolPtr obj,
                      unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
+    GET_POOL(obj, -1);
+    POOL_IS_NOT_ACTIVE(privpool, -1);
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    if (virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is already active"), pool->name);
-        goto cleanup;
-    }
-
+    if (testStoragePoolRefresh(obj, 0) == 0)
+        return -1;
     privpool->active = 1;
-    ret = 0;
 
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 static char *
@@ -2514,262 +1766,121 @@ static virStoragePoolPtr
 testStoragePoolCreate(virConnectPtr conn,
                       const char *xml,
                       unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = conn->privateData;
     virStoragePoolDefPtr def;
-    virStoragePoolObjPtr pool = NULL;
-    virStoragePoolPtr ret = NULL;
+    virStoragePoolObjPtr pool;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     if (!(def = virStoragePoolDefParse(conn, xml, NULL)))
-        goto cleanup;
+        return NULL;
 
-    pool = virStoragePoolObjFindByUUID(&privconn->pools, def->uuid);
-    if (!pool)
-        pool = virStoragePoolObjFindByName(&privconn->pools, def->name);
-    if (pool) {
+    if (virStoragePoolObjFindByUUID(&privconn->pools, def->uuid) ||
+        virStoragePoolObjFindByName(&privconn->pools, def->name)) {
         testError(conn, VIR_ERR_INTERNAL_ERROR,
                   "%s", _("storage pool already exists"));
-        goto cleanup;
+        virStoragePoolDefFree(def);
+        return NULL;
     }
 
     if (!(pool = virStoragePoolObjAssignDef(conn, &privconn->pools, def))) {
-        goto cleanup;
+        virStoragePoolDefFree(def);
+        return NULL;
     }
-    def = NULL;
 
-    if (testStoragePoolObjSetDefaults(conn, pool) == -1) {
+    if (testStoragePoolObjSetDefaults(pool) == -1) {
         virStoragePoolObjRemove(&privconn->pools, pool);
-        pool = NULL;
-        goto cleanup;
+        return NULL;
     }
     pool->active = 1;
 
-    ret = virGetStoragePool(conn, pool->def->name, pool->def->uuid);
-
-cleanup:
-    virStoragePoolDefFree(def);
-    if (pool)
-        virStoragePoolObjUnlock(pool);
-    testDriverUnlock(privconn);
-    return ret;
+    return virGetStoragePool(conn, pool->def->name, pool->def->uuid);
 }
 
 static virStoragePoolPtr
 testStoragePoolDefine(virConnectPtr conn,
                       const char *xml,
                       unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = conn->privateData;
     virStoragePoolDefPtr def;
-    virStoragePoolObjPtr pool = NULL;
-    virStoragePoolPtr ret = NULL;
+    virStoragePoolObjPtr pool;
+    GET_CONNECTION(conn);
 
-    testDriverLock(privconn);
     if (!(def = virStoragePoolDefParse(conn, xml, NULL)))
-        goto cleanup;
+        return NULL;
 
     def->capacity = defaultPoolCap;
     def->allocation = defaultPoolAlloc;
     def->available = defaultPoolCap - defaultPoolAlloc;
 
     if (!(pool = virStoragePoolObjAssignDef(conn, &privconn->pools, def))) {
-        goto cleanup;
+        virStoragePoolDefFree(def);
+        return NULL;
     }
-    def = NULL;
 
-    if (testStoragePoolObjSetDefaults(conn, pool) == -1) {
+    if (testStoragePoolObjSetDefaults(pool) == -1) {
         virStoragePoolObjRemove(&privconn->pools, pool);
-        pool = NULL;
-        goto cleanup;
+        return NULL;
     }
 
-    ret = virGetStoragePool(conn, pool->def->name, pool->def->uuid);
-
-cleanup:
-    virStoragePoolDefFree(def);
-    if (pool)
-        virStoragePoolObjUnlock(pool);
-    testDriverUnlock(privconn);
-    return ret;
+    return virGetStoragePool(conn, pool->def->name, pool->def->uuid);
 }
 
 static int
-testStoragePoolUndefine(virStoragePoolPtr pool) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    if (virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is already active"), pool->name);
-        goto cleanup;
-    }
+testStoragePoolUndefine(virStoragePoolPtr obj) {
+    GET_POOL(obj, -1);
+    POOL_IS_NOT_ACTIVE(privpool, -1);
 
     virStoragePoolObjRemove(&privconn->pools, privpool);
-    ret = 0;
 
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    testDriverUnlock(privconn);
-    return ret;
+    return 0;
 }
 
 static int
-testStoragePoolBuild(virStoragePoolPtr pool,
+testStoragePoolBuild(virStoragePoolPtr obj,
                      unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
+    GET_POOL(obj, -1);
+    POOL_IS_NOT_ACTIVE(privpool, -1);
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    if (virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is already active"), pool->name);
-        goto cleanup;
-    }
-    ret = 0;
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 
 static int
-testStoragePoolDestroy(virStoragePoolPtr pool) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), pool->name);
-        goto cleanup;
-    }
+testStoragePoolDestroy(virStoragePoolPtr obj) {
+    GET_POOL(obj, -1);
+    POOL_IS_ACTIVE(privpool, -1);
 
     privpool->active = 0;
 
-    if (privpool->configFile == NULL) {
+    if (privpool->configFile == NULL)
         virStoragePoolObjRemove(&privconn->pools, privpool);
-        privpool = NULL;
-    }
-    ret = 0;
 
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    testDriverUnlock(privconn);
-    return ret;
+    return 0;
 }
 
 
 static int
-testStoragePoolDelete(virStoragePoolPtr pool,
+testStoragePoolDelete(virStoragePoolPtr obj,
                       unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
+    GET_POOL(obj, -1);
+    POOL_IS_NOT_ACTIVE(privpool, -1);
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    if (virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is already active"), pool->name);
-        goto cleanup;
-    }
-
-    ret = 0;
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 
 static int
-testStoragePoolRefresh(virStoragePoolPtr pool,
+testStoragePoolRefresh(virStoragePoolPtr obj,
                        unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
+    GET_POOL(obj, -1);
+    POOL_IS_ACTIVE(privpool, -1);
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), pool->name);
-        goto cleanup;
-    }
-    ret = 0;
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 
 static int
-testStoragePoolGetInfo(virStoragePoolPtr pool,
+testStoragePoolGetInfo(virStoragePoolPtr obj,
                        virStoragePoolInfoPtr info) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_POOL(obj, -1);
 
     memset(info, 0, sizeof(virStoragePoolInfo));
     if (privpool->active)
@@ -2779,168 +1890,77 @@ testStoragePoolGetInfo(virStoragePoolPtr pool,
     info->capacity = privpool->def->capacity;
     info->allocation = privpool->def->allocation;
     info->available = privpool->def->available;
-    ret = 0;
 
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 static char *
-testStoragePoolDumpXML(virStoragePoolPtr pool,
+testStoragePoolDumpXML(virStoragePoolPtr obj,
                        unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    char *ret = NULL;
+    GET_POOL(obj, NULL);
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    ret = virStoragePoolDefFormat(pool->conn, privpool->def);
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return virStoragePoolDefFormat(obj->conn, privpool->def);
 }
 
 static int
-testStoragePoolGetAutostart(virStoragePoolPtr pool,
+testStoragePoolGetAutostart(virStoragePoolPtr obj,
                             int *autostart) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_POOL(obj, -1);
 
     if (!privpool->configFile) {
         *autostart = 0;
     } else {
         *autostart = privpool->autostart;
     }
-    ret = 0;
 
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 static int
-testStoragePoolSetAutostart(virStoragePoolPtr pool,
+testStoragePoolSetAutostart(virStoragePoolPtr obj,
                             int autostart) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
+    GET_POOL(obj, -1);
 
     if (!privpool->configFile) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG,
+        testError(obj->conn, VIR_ERR_INVALID_ARG,
                   "%s", _("pool has no config file"));
-        goto cleanup;
+        return -1;
     }
 
     autostart = (autostart != 0);
+
+    if (privpool->autostart == autostart)
+        return 0;
+
     privpool->autostart = autostart;
-    ret = 0;
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 
 static int
-testStoragePoolNumVolumes(virStoragePoolPtr pool) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    int ret = -1;
+testStoragePoolNumVolumes(virStoragePoolPtr obj) {
+    GET_POOL(obj, -1);
+    POOL_IS_ACTIVE(privpool, -1);
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), pool->name);
-        goto cleanup;
-    }
-
-    ret = privpool->volumes.count;
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return privpool->volumes.count;
 }
 
 static int
-testStoragePoolListVolumes(virStoragePoolPtr pool,
+testStoragePoolListVolumes(virStoragePoolPtr obj,
                            char **const names,
                            int maxnames) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
+    GET_POOL(obj, -1);
+    POOL_IS_ACTIVE(privpool, -1);
     int i = 0, n = 0;
 
     memset(names, 0, maxnames * sizeof(*names));
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), pool->name);
-        goto cleanup;
-    }
-
     for (i = 0 ; i < privpool->volumes.count && n < maxnames ; i++) {
         if ((names[n++] = strdup(privpool->volumes.objs[i]->name)) == NULL) {
-            virReportOOMError(pool->conn);
+            testError(obj->conn, VIR_ERR_NO_MEMORY, "%s", _("name"));
             goto cleanup;
         }
     }
 
-    virStoragePoolObjUnlock(privpool);
     return n;
 
  cleanup:
@@ -2948,245 +1968,149 @@ testStoragePoolListVolumes(virStoragePoolPtr pool,
         VIR_FREE(names[i]);
 
     memset(names, 0, maxnames * sizeof(*names));
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
     return -1;
 }
 
 
 static virStorageVolPtr
-testStorageVolumeLookupByName(virStoragePoolPtr pool,
+testStorageVolumeLookupByName(virStoragePoolPtr obj,
                               const char *name ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    virStorageVolDefPtr privvol;
-    virStorageVolPtr ret = NULL;
+    GET_POOL(obj, NULL);
+    POOL_IS_ACTIVE(privpool, NULL);
+    virStorageVolDefPtr vol = virStorageVolDefFindByName(privpool, name);
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), pool->name);
-        goto cleanup;
-    }
-
-    privvol = virStorageVolDefFindByName(privpool, name);
-
-    if (!privvol) {
-        testError(pool->conn, VIR_ERR_INVALID_STORAGE_VOL,
+    if (!vol) {
+        testError(obj->conn, VIR_ERR_INVALID_STORAGE_VOL,
                   _("no storage vol with matching name '%s'"), name);
-        goto cleanup;
+        return NULL;
     }
 
-    ret = virGetStorageVol(pool->conn, privpool->def->name,
-                           privvol->name, privvol->key);
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return virGetStorageVol(obj->conn, privpool->def->name,
+                            vol->name, vol->key);
 }
 
 
 static virStorageVolPtr
 testStorageVolumeLookupByKey(virConnectPtr conn,
                              const char *key) {
-    testConnPtr privconn = conn->privateData;
+    GET_CONNECTION(conn);
     unsigned int i;
-    virStorageVolPtr ret = NULL;
 
-    testDriverLock(privconn);
     for (i = 0 ; i < privconn->pools.count ; i++) {
-        virStoragePoolObjLock(privconn->pools.objs[i]);
         if (virStoragePoolObjIsActive(privconn->pools.objs[i])) {
-            virStorageVolDefPtr privvol =
+            virStorageVolDefPtr vol =
                 virStorageVolDefFindByKey(privconn->pools.objs[i], key);
 
-            if (privvol) {
-                ret = virGetStorageVol(conn,
-                                       privconn->pools.objs[i]->def->name,
-                                       privvol->name,
-                                       privvol->key);
-                virStoragePoolObjUnlock(privconn->pools.objs[i]);
-                break;
-            }
+            if (vol)
+                return virGetStorageVol(conn,
+                                        privconn->pools.objs[i]->def->name,
+                                        vol->name,
+                                        vol->key);
         }
-        virStoragePoolObjUnlock(privconn->pools.objs[i]);
     }
-    testDriverUnlock(privconn);
 
-    if (!ret)
-        testError(conn, VIR_ERR_INVALID_STORAGE_VOL,
-                  _("no storage vol with matching key '%s'"), key);
-
-    return ret;
+    testError(conn, VIR_ERR_INVALID_STORAGE_VOL,
+              _("no storage vol with matching key '%s'"), key);
+    return NULL;
 }
 
 static virStorageVolPtr
 testStorageVolumeLookupByPath(virConnectPtr conn,
                               const char *path) {
-    testConnPtr privconn = conn->privateData;
+    GET_CONNECTION(conn);
     unsigned int i;
-    virStorageVolPtr ret = NULL;
 
-    testDriverLock(privconn);
     for (i = 0 ; i < privconn->pools.count ; i++) {
-        virStoragePoolObjLock(privconn->pools.objs[i]);
         if (virStoragePoolObjIsActive(privconn->pools.objs[i])) {
-            virStorageVolDefPtr privvol =
+            virStorageVolDefPtr vol =
                 virStorageVolDefFindByPath(privconn->pools.objs[i], path);
 
-            if (privvol) {
-                ret = virGetStorageVol(conn,
-                                       privconn->pools.objs[i]->def->name,
-                                       privvol->name,
-                                       privvol->key);
-                virStoragePoolObjUnlock(privconn->pools.objs[i]);
-                break;
-            }
+            if (vol)
+                return virGetStorageVol(conn,
+                                        privconn->pools.objs[i]->def->name,
+                                        vol->name,
+                                        vol->key);
         }
-        virStoragePoolObjUnlock(privconn->pools.objs[i]);
     }
-    testDriverUnlock(privconn);
 
-    if (!ret)
-        testError(conn, VIR_ERR_INVALID_STORAGE_VOL,
-                  _("no storage vol with matching path '%s'"), path);
-
-    return ret;
+    testError(conn, VIR_ERR_INVALID_STORAGE_VOL,
+              _("no storage vol with matching path '%s'"), path);
+    return NULL;
 }
 
 static virStorageVolPtr
-testStorageVolumeCreateXML(virStoragePoolPtr pool,
+testStorageVolumeCreateXML(virStoragePoolPtr obj,
                            const char *xmldesc,
                            unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = pool->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    virStorageVolDefPtr privvol = NULL;
-    virStorageVolPtr ret = NULL;
+    GET_POOL(obj, NULL);
+    POOL_IS_ACTIVE(privpool, NULL);
+    virStorageVolDefPtr vol;
 
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           pool->name);
-    testDriverUnlock(privconn);
+    vol = virStorageVolDefParse(obj->conn, privpool->def, xmldesc, NULL);
+    if (vol == NULL)
+        return NULL;
 
-    if (privpool == NULL) {
-        testError(pool->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), pool->name);
-        goto cleanup;
-    }
-
-
-    privvol = virStorageVolDefParse(pool->conn, privpool->def, xmldesc, NULL);
-    if (privvol == NULL)
-        goto cleanup;
-
-    if (virStorageVolDefFindByName(privpool, privvol->name)) {
-        testError(pool->conn, VIR_ERR_INVALID_STORAGE_POOL,
+    if (virStorageVolDefFindByName(privpool, vol->name)) {
+        testError(obj->conn, VIR_ERR_INVALID_STORAGE_POOL,
                   "%s", _("storage vol already exists"));
-        goto cleanup;
+        virStorageVolDefFree(vol);
+        return NULL;
     }
 
     /* Make sure enough space */
-    if ((privpool->def->allocation + privvol->allocation) >
+    if ((privpool->def->allocation + vol->allocation) >
          privpool->def->capacity) {
-        testError(pool->conn, VIR_ERR_INTERNAL_ERROR,
+        testError(obj->conn, VIR_ERR_INTERNAL_ERROR,
                   _("Not enough free space in pool for volume '%s'"),
-                  privvol->name);
-        goto cleanup;
+                  vol->name);
+        virStorageVolDefFree(vol);
+        return NULL;
     }
     privpool->def->available = (privpool->def->capacity -
                                 privpool->def->allocation);
 
     if (VIR_REALLOC_N(privpool->volumes.objs,
                       privpool->volumes.count+1) < 0) {
-        virReportOOMError(pool->conn);
-        goto cleanup;
+        testError(obj->conn, VIR_ERR_NO_MEMORY, NULL);
+        virStorageVolDefFree(vol);
+        return NULL;
     }
 
-    if (VIR_ALLOC_N(privvol->target.path,
-                    strlen(privpool->def->target.path) +
-                    1 + strlen(privvol->name) + 1) < 0) {
-        virReportOOMError(pool->conn);
-        goto cleanup;
+    if (VIR_ALLOC_N(vol->target.path, strlen(privpool->def->target.path) +
+                    1 + strlen(vol->name) + 1) < 0) {
+        virStorageVolDefFree(vol);
+        testError(obj->conn, VIR_ERR_NO_MEMORY, "%s", _("target"));
+        return NULL;
     }
 
-    strcpy(privvol->target.path, privpool->def->target.path);
-    strcat(privvol->target.path, "/");
-    strcat(privvol->target.path, privvol->name);
-    privvol->key = strdup(privvol->target.path);
-    if (privvol->key == NULL) {
-        virReportOOMError(pool->conn);
-        goto cleanup;
+    strcpy(vol->target.path, privpool->def->target.path);
+    strcat(vol->target.path, "/");
+    strcat(vol->target.path, vol->name);
+    vol->key = strdup(vol->target.path);
+    if (vol->key == NULL) {
+        virStorageVolDefFree(vol);
+        testError(obj->conn, VIR_ERR_INTERNAL_ERROR, "%s",
+                  _("storage vol key"));
+        return NULL;
     }
 
-    privpool->def->allocation += privvol->allocation;
+    privpool->def->allocation += vol->allocation;
     privpool->def->available = (privpool->def->capacity -
                                 privpool->def->allocation);
 
-    privpool->volumes.objs[privpool->volumes.count++] = privvol;
+    privpool->volumes.objs[privpool->volumes.count++] = vol;
 
-    ret = virGetStorageVol(pool->conn, privpool->def->name,
-                           privvol->name, privvol->key);
-    privvol = NULL;
-
-cleanup:
-    virStorageVolDefFree(privvol);
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return virGetStorageVol(obj->conn, privpool->def->name, vol->name,
+                            vol->key);
 }
 
 static int
-testStorageVolumeDelete(virStorageVolPtr vol,
+testStorageVolumeDelete(virStorageVolPtr obj,
                         unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = vol->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    virStorageVolDefPtr privvol;
+    GET_POOL_FROM_VOL(obj, -1);
+    POOL_IS_ACTIVE(privpool, -1);
+    GET_VOL(obj, privpool, -1);
     int i;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           vol->pool);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-
-    privvol = virStorageVolDefFindByName(privpool, vol->name);
-
-    if (privvol == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_STORAGE_VOL,
-                  _("no storage vol with matching name '%s'"),
-                  vol->name);
-        goto cleanup;
-    }
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(vol->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), vol->pool);
-        goto cleanup;
-    }
-
 
     privpool->def->allocation -= privvol->allocation;
     privpool->def->available = (privpool->def->capacity -
@@ -3211,12 +2135,8 @@ testStorageVolumeDelete(virStorageVolPtr vol,
             break;
         }
     }
-    ret = 0;
 
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
+    return 0;
 }
 
 
@@ -3233,244 +2153,43 @@ static int testStorageVolumeTypeForPool(int pooltype) {
 }
 
 static int
-testStorageVolumeGetInfo(virStorageVolPtr vol,
+testStorageVolumeGetInfo(virStorageVolPtr obj,
                          virStorageVolInfoPtr info) {
-    testConnPtr privconn = vol->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    virStorageVolDefPtr privvol;
-    int ret = -1;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           vol->pool);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    privvol = virStorageVolDefFindByName(privpool, vol->name);
-
-    if (privvol == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_STORAGE_VOL,
-                  _("no storage vol with matching name '%s'"),
-                  vol->name);
-        goto cleanup;
-    }
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(vol->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), vol->pool);
-        goto cleanup;
-    }
+    GET_POOL_FROM_VOL(obj, -1);
+    POOL_IS_ACTIVE(privpool, -1);
+    GET_VOL(obj, privpool, -1);
 
     memset(info, 0, sizeof(*info));
     info->type = testStorageVolumeTypeForPool(privpool->def->type);
     info->capacity = privvol->capacity;
     info->allocation = privvol->allocation;
-    ret = 0;
 
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
-}
-
-static char *
-testStorageVolumeGetXMLDesc(virStorageVolPtr vol,
-                            unsigned int flags ATTRIBUTE_UNUSED) {
-    testConnPtr privconn = vol->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    virStorageVolDefPtr privvol;
-    char *ret = NULL;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           vol->pool);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    privvol = virStorageVolDefFindByName(privpool, vol->name);
-
-    if (privvol == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_STORAGE_VOL,
-                  _("no storage vol with matching name '%s'"),
-                  vol->name);
-        goto cleanup;
-    }
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(vol->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), vol->pool);
-        goto cleanup;
-    }
-
-    ret = virStorageVolDefFormat(vol->conn, privpool->def, privvol);
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
-}
-
-static char *
-testStorageVolumeGetPath(virStorageVolPtr vol) {
-    testConnPtr privconn = vol->conn->privateData;
-    virStoragePoolObjPtr privpool;
-    virStorageVolDefPtr privvol;
-    char *ret = NULL;
-
-    testDriverLock(privconn);
-    privpool = virStoragePoolObjFindByName(&privconn->pools,
-                                           vol->pool);
-    testDriverUnlock(privconn);
-
-    if (privpool == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
-        goto cleanup;
-    }
-
-    privvol = virStorageVolDefFindByName(privpool, vol->name);
-
-    if (privvol == NULL) {
-        testError(vol->conn, VIR_ERR_INVALID_STORAGE_VOL,
-                  _("no storage vol with matching name '%s'"),
-                  vol->name);
-        goto cleanup;
-    }
-
-    if (!virStoragePoolObjIsActive(privpool)) {
-        testError(vol->conn, VIR_ERR_INTERNAL_ERROR,
-                  _("storage pool '%s' is not active"), vol->pool);
-        goto cleanup;
-    }
-
-    ret = strdup(privvol->target.path);
-    if (ret == NULL)
-        virReportOOMError(vol->conn);
-
-cleanup:
-    if (privpool)
-        virStoragePoolObjUnlock(privpool);
-    return ret;
-}
-
-
-static virDrvOpenStatus testDevMonOpen(virConnectPtr conn,
-                                       virConnectAuthPtr auth ATTRIBUTE_UNUSED,
-                                       int flags ATTRIBUTE_UNUSED) {
-    if (STRNEQ(conn->driver->name, "Test"))
-        return VIR_DRV_OPEN_DECLINED;
-
-    conn->devMonPrivateData = conn->privateData;
-    return VIR_DRV_OPEN_SUCCESS;
-}
-
-static int testDevMonClose(virConnectPtr conn) {
-    conn->devMonPrivateData = NULL;
     return 0;
 }
 
+static char *
+testStorageVolumeGetXMLDesc(virStorageVolPtr obj,
+                            unsigned int flags ATTRIBUTE_UNUSED) {
+    GET_POOL_FROM_VOL(obj, NULL);
+    POOL_IS_ACTIVE(privpool, NULL);
+    GET_VOL(obj, privpool, NULL);
 
-static int
-testDomainEventRegister (virConnectPtr conn,
-                         virConnectDomainEventCallback callback,
-                         void *opaque,
-                         virFreeCallback freecb)
-{
-    testConnPtr driver = conn->privateData;
-    int ret;
-
-    testDriverLock(driver);
-    ret = virDomainEventCallbackListAdd(conn, driver->domainEventCallbacks,
-                                        callback, opaque, freecb);
-    testDriverUnlock(driver);
-
-    return ret;
+    return virStorageVolDefFormat(obj->conn, privpool->def, privvol);
 }
 
-static int
-testDomainEventDeregister (virConnectPtr conn,
-                           virConnectDomainEventCallback callback)
-{
-    testConnPtr driver = conn->privateData;
-    int ret;
+static char *
+testStorageVolumeGetPath(virStorageVolPtr obj) {
+    GET_POOL_FROM_VOL(obj, NULL);
+    POOL_IS_ACTIVE(privpool, NULL);
+    GET_VOL(obj, privpool, NULL);
+    char *ret;
 
-    testDriverLock(driver);
-    if (driver->domainEventDispatching)
-        ret = virDomainEventCallbackListMarkDelete(conn, driver->domainEventCallbacks,
-                                                   callback);
-    else
-        ret = virDomainEventCallbackListRemove(conn, driver->domainEventCallbacks,
-                                               callback);
-    testDriverUnlock(driver);
-
-    return ret;
-}
-
-static void testDomainEventDispatchFunc(virConnectPtr conn,
-                                        virDomainEventPtr event,
-                                        virConnectDomainEventCallback cb,
-                                        void *cbopaque,
-                                        void *opaque)
-{
-    testConnPtr driver = opaque;
-
-    /* Drop the lock whle dispatching, for sake of re-entrancy */
-    testDriverUnlock(driver);
-    virDomainEventDispatchDefaultFunc(conn, event, cb, cbopaque, NULL);
-    testDriverLock(driver);
-}
-
-static void testDomainEventFlush(int timer ATTRIBUTE_UNUSED, void *opaque)
-{
-    testConnPtr driver = opaque;
-    virDomainEventQueue tempQueue;
-
-    testDriverLock(driver);
-
-    driver->domainEventDispatching = 1;
-
-    /* Copy the queue, so we're reentrant safe */
-    tempQueue.count = driver->domainEventQueue->count;
-    tempQueue.events = driver->domainEventQueue->events;
-    driver->domainEventQueue->count = 0;
-    driver->domainEventQueue->events = NULL;
-
-    virEventUpdateTimeout(driver->domainEventTimer, -1);
-    virDomainEventQueueDispatch(&tempQueue,
-                                driver->domainEventCallbacks,
-                                testDomainEventDispatchFunc,
-                                driver);
-
-    /* Purge any deleted callbacks */
-    virDomainEventCallbackListPurgeMarked(driver->domainEventCallbacks);
-
-    driver->domainEventDispatching = 0;
-    testDriverUnlock(driver);
-}
-
-
-/* driver must be locked before calling */
-static void testDomainEventQueue(testConnPtr driver,
-                                 virDomainEventPtr event)
-{
-    if (driver->domainEventTimer < 0) {
-        virDomainEventFree(event);
-        return;
+    ret = strdup(privvol->target.path);
+    if (ret == NULL) {
+        testError(obj->conn, VIR_ERR_NO_MEMORY, "%s", _("path"));
+        return NULL;
     }
-
-    if (virDomainEventQueuePush(driver->domainEventQueue,
-                                event) < 0)
-        virDomainEventFree(event);
-
-    if (driver->domainEventQueue->count == 1)
-        virEventUpdateTimeout(driver->domainEventTimer, 0);
+    return ret;
 }
 
 
@@ -3532,8 +2251,8 @@ static virDriver testDriver = {
     NULL, /* domainMemoryPeek */
     testNodeGetCellsFreeMemory, /* nodeGetCellsFreeMemory */
     NULL, /* getFreeMemory */
-    testDomainEventRegister, /* domainEventRegister */
-    testDomainEventDeregister, /* domainEventDeregister */
+    NULL, /* domainEventRegister */
+    NULL, /* domainEventDeregister */
     NULL, /* domainMigratePrepare2 */
     NULL, /* domainMigrateFinish2 */
 };
@@ -3597,14 +2316,6 @@ static virStorageDriver testStorageDriver = {
     .volGetPath = testStorageVolumeGetPath,
 };
 
-static virDeviceMonitor testDevMonitor = {
-    .name = "Test",
-    .open = testDevMonOpen,
-    .close = testDevMonClose,
-};
-
-
-
 /**
  * testRegister:
  *
@@ -3619,8 +2330,5 @@ testRegister(void)
         return -1;
     if (virRegisterStorageDriver(&testStorageDriver) < 0)
         return -1;
-    if (virRegisterDeviceMonitor(&testDevMonitor) < 0)
-        return -1;
-
     return 0;
 }

@@ -1,4 +1,4 @@
-# sys_ioctl_h.m4 serial 2
+# sys_ioctl_h.m4 serial 1
 dnl Copyright (C) 2008 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
@@ -19,13 +19,10 @@ AC_DEFUN([gl_SYS_IOCTL_H],
     dnl header file, such as <unistd.h> or <stropts.h>, is needed for that.
     AC_CACHE_CHECK([whether <sys/ioctl.h> declares ioctl],
       [gl_cv_decl_ioctl_in_sys_ioctl_h],
-      [dnl We cannot use AC_CHECK_DECL because it produces its own messages.
-       AC_COMPILE_IFELSE(
-         [AC_LANG_PROGRAM(
-            [AC_INCLUDES_DEFAULT([#include <sys/ioctl.h>])],
-            [(void) ioctl;])],
+      [AC_CHECK_DECL([ioctl],
          [gl_cv_decl_ioctl_in_sys_ioctl_h=yes],
-         [gl_cv_decl_ioctl_in_sys_ioctl_h=no])
+         [gl_cv_decl_ioctl_in_sys_ioctl_h=no],
+         [#include <sys/ioctl.h>])
       ])
     if test $gl_cv_decl_ioctl_in_sys_ioctl_h != yes; then
       SYS_IOCTL_H='sys/ioctl.h'

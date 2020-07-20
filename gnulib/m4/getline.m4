@@ -1,6 +1,7 @@
-# getline.m4 serial 19
+# getline.m4 serial 18
 
-dnl Copyright (C) 1998-2003, 2005-2007, 2009 Free Software Foundation, Inc.
+dnl Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2005, 2006, 2007 Free
+dnl Software Foundation, Inc.
 dnl
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
@@ -9,7 +10,7 @@ dnl with or without modifications, as long as this notice is preserved.
 AC_PREREQ([2.59])
 
 dnl See if there's a working, system-supplied version of the getline function.
-dnl We can't just do AC_REPLACE_FUNCS([getline]) because some systems
+dnl We can't just do AC_REPLACE_FUNCS(getline) because some systems
 dnl have a function by that name in -linet that doesn't have anything
 dnl to do with the function we need.
 AC_DEFUN([gl_FUNC_GETLINE],
@@ -22,12 +23,12 @@ AC_DEFUN([gl_FUNC_GETLINE],
   AC_CHECK_DECLS_ONCE([getline])
 
   gl_getline_needs_run_time_check=no
-  AC_CHECK_FUNC([getline],
+  AC_CHECK_FUNC(getline,
 		dnl Found it in some library.  Verify that it works.
 		gl_getline_needs_run_time_check=yes,
 		am_cv_func_working_getline=no)
   if test $gl_getline_needs_run_time_check = yes; then
-    AC_CACHE_CHECK([for working getline function], [am_cv_func_working_getline],
+    AC_CACHE_CHECK([for working getline function], am_cv_func_working_getline,
     [echo fooN |tr -d '\012'|tr N '\012' > conftest.data
     AC_TRY_RUN([
 #    include <stdio.h>

@@ -12,12 +12,11 @@
 #define __VIR_XS_INTERNAL_H__
 
 #include "internal.h"
-#include "driver.h"
 
 extern struct xenUnifiedDriver xenStoreDriver;
 int xenStoreInit (void);
 
-virDrvOpenStatus	xenStoreOpen	(virConnectPtr conn,
+int		xenStoreOpen		(virConnectPtr conn,
                                          virConnectAuthPtr auth,
                                          int flags);
 int		xenStoreClose		(virConnectPtr conn);
@@ -78,6 +77,8 @@ typedef struct _xenStoreWatchList xenStoreWatchList;
 typedef xenStoreWatchList *xenStoreWatchListPtr;
 
 
+void            xenStoreWatchListFree(xenStoreWatchListPtr head);
+
 int             xenStoreAddWatch(virConnectPtr conn,
                                  const char *path,
                                  const char *token,
@@ -86,6 +87,11 @@ int             xenStoreAddWatch(virConnectPtr conn,
 int             xenStoreRemoveWatch(virConnectPtr conn,
                                     const char *path,
                                     const char *token);
+xenStoreWatchPtr xenStoreFindWatch(xenStoreWatchListPtr list,
+                                  const char *path,
+                                  const char *token);
+
+void xenStoreWatchEvent(int watch, int fd, int events, void *data);
 
 /* domain events */
 int xenStoreDomainIntroduced(virConnectPtr conn,

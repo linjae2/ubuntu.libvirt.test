@@ -29,7 +29,6 @@
 #include "internal.h"
 #include "domain_conf.h"
 #include "capabilities.h"
-#include "threads.h"
 
 #define LXC_CONFIG_DIR SYSCONF_DIR "/libvirt/lxc"
 #define LXC_STATE_DIR LOCAL_STATE_DIR "/run/libvirt/lxc"
@@ -37,8 +36,6 @@
 
 typedef struct __lxc_driver lxc_driver_t;
 struct __lxc_driver {
-    virMutex lock;
-
     virCapsPtr caps;
 
     virDomainObjList domains;

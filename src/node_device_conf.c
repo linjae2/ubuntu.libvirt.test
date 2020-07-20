@@ -36,7 +36,6 @@
 #include "buf.h"
 #include "uuid.h"
 
-#define VIR_FROM_THIS VIR_FROM_NODEDEV
 
 VIR_ENUM_IMPL(virNodeDevCap, VIR_NODE_DEV_CAP_LAST,
               "system",
@@ -46,11 +45,11 @@ VIR_ENUM_IMPL(virNodeDevCap, VIR_NODE_DEV_CAP_LAST,
               "net",
               "scsi_host",
               "scsi",
-              "storage")
+              "storage");
 
 VIR_ENUM_IMPL(virNodeDevNetCap, VIR_NODE_DEV_CAP_NET_LAST,
               "80203",
-              "80211")
+              "80211");
 
 
 #define virNodeDeviceLog(msg...) fprintf(stderr, msg)
@@ -60,12 +59,9 @@ virNodeDeviceObjPtr virNodeDeviceFindByName(const virNodeDeviceObjListPtr devs,
 {
     unsigned int i;
 
-    for (i = 0; i < devs->count; i++) {
-        virNodeDeviceObjLock(devs->objs[i]);
+    for (i = 0; i < devs->count; i++)
         if (STREQ(devs->objs[i]->def->name, name))
             return devs->objs[i];
-        virNodeDeviceObjUnlock(devs->objs[i]);
-    }
 
     return NULL;
 }
@@ -100,8 +96,6 @@ void virNodeDeviceObjFree(virNodeDeviceObjPtr dev)
     if (dev->privateFree)
         (*dev->privateFree)(dev->privateData);
 
-    virMutexDestroy(&dev->lock);
-
     VIR_FREE(dev);
 }
 
@@ -127,24 +121,16 @@ virNodeDeviceObjPtr virNodeDeviceAssignDef(virConnectPtr conn,
     }
 
     if (VIR_ALLOC(device) < 0) {
-        virReportOOMError(conn);
+        virNodeDeviceReportError(conn, VIR_ERR_NO_MEMORY, NULL);
         return NULL;
     }
 
-    if (virMutexInit(&device->lock) < 0) {
-        virNodeDeviceReportError(conn, VIR_ERR_INTERNAL_ERROR,
-                                 "%s", _("cannot initialize mutex"));
-        VIR_FREE(device);
-        return NULL;
-    }
-    virNodeDeviceObjLock(device);
     device->def = def;
 
     if (VIR_REALLOC_N(devs->objs, devs->count+1) < 0) {
         device->def = NULL;
-        virNodeDeviceObjUnlock(device);
         virNodeDeviceObjFree(device);
-        virReportOOMError(conn);
+        virNodeDeviceReportError(conn, VIR_ERR_NO_MEMORY, NULL);
         return NULL;
     }
     devs->objs[devs->count++] = device;
@@ -158,12 +144,8 @@ void virNodeDeviceObjRemove(virNodeDeviceObjListPtr devs,
 {
     unsigned int i;
 
-    virNodeDeviceObjUnlock(dev);
-
     for (i = 0; i < devs->count; i++) {
-        virNodeDeviceObjLock(dev);
         if (devs->objs[i] == dev) {
-            virNodeDeviceObjUnlock(dev);
             virNodeDeviceObjFree(devs->objs[i]);
 
             if (i < (devs->count - 1))
@@ -177,7 +159,6 @@ void virNodeDeviceObjRemove(virNodeDeviceObjListPtr devs,
 
             break;
         }
-        virNodeDeviceObjUnlock(dev);
     }
 }
 
@@ -361,7 +342,7 @@ char *virNodeDeviceDefFormat(virConnectPtr conn,
     return virBufferContentAndReset(&buf);
 
  no_memory:
-    virReportOOMError(conn);
+    virNodeDeviceReportError(conn, VIR_ERR_NO_MEMORY, NULL);
     tmp = virBufferContentAndReset(&buf);
     VIR_FREE(tmp);
     return NULL;
@@ -416,13 +397,3 @@ void virNodeDevCapsDefFree(virNodeDevCapsDefPtr caps)
     VIR_FREE(caps);
 }
 
-
-void virNodeDeviceObjLock(virNodeDeviceObjPtr obj)
-{
-    virMutexLock(&obj->lock);
-}
-
-void virNodeDeviceObjUnlock(virNodeDeviceObjPtr obj)
-{
-    virMutexUnlock(&obj->lock);
-}

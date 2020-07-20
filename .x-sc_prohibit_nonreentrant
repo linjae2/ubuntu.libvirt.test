@@ -1,8 +1,0 @@
-^gnulib/
-^po/
-ChangeLog
-^Makefile*
-^docs/
-^tests/
-^src/virsh.c
-^build-aux/

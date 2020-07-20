@@ -101,13 +101,6 @@ void virEventUpdateTimeoutImpl(int timer, int frequency);
 int virEventRemoveTimeoutImpl(int timer);
 
 /**
- * virEventInit: Initialize the event loop
- *
- * returns -1 if initialization failed
- */
-int virEventInit(void);
-
-/**
  * virEventRunOnce: run a single iteration of the event loop.
  *
  * Blocks the caller until at least one file handle has an
@@ -122,13 +115,6 @@ virEventHandleTypeToPollEvent(int events);
 int
 virPollEventToEventHandleType(int events);
 
-
-/**
- * virEventInterrupt: wakeup any thread waiting in poll()
- *
- * return -1 if wakup failed
- */
-int virEventInterrupt(void);
 
 
 #endif /* __VIRTD_EVENT_H__ */

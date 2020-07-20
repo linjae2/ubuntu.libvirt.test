@@ -39,9 +39,6 @@
 #include "util.h"
 #include "memory.h"
 
-#define VIR_FROM_THIS VIR_FROM_STORAGE
-
-
 static int
 virStorageBackendISCSITargetIP(virConnectPtr conn,
                                const char *hostname,
@@ -97,7 +94,7 @@ virStorageBackendISCSIExtractSession(virConnectPtr conn,
 
     if (STREQ(groups[1], pool->def->source.devices[0].path)) {
         if ((*session = strdup(groups[0])) == NULL) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("session"));
             return -1;
         }
     }
@@ -107,8 +104,7 @@ virStorageBackendISCSIExtractSession(virConnectPtr conn,
 
 static char *
 virStorageBackendISCSISession(virConnectPtr conn,
-                              virStoragePoolObjPtr pool,
-                              int probe)
+                              virStoragePoolObjPtr pool)
 {
     /*
      * # iscsiadm --mode session
@@ -142,8 +138,7 @@ virStorageBackendISCSISession(virConnectPtr conn,
                                       NULL) < 0)
         return NULL;
 
-    if (session == NULL &&
-        !probe) {
+    if (session == NULL) {
         virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
                               "%s", _("cannot find session"));
         return NULL;
@@ -179,19 +174,19 @@ virStorageBackendISCSINewLun(virConnectPtr conn, virStoragePoolObjPtr pool,
     int opentries = 0;
 
     if (VIR_ALLOC(vol) < 0) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("volume"));
         goto cleanup;
     }
 
     vol->type = VIR_STORAGE_VOL_BLOCK;
 
-    if (virAsprintf(&(vol->name), "lun-%d", lun) < 0) {
-        virReportOOMError(conn);
+    if (asprintf(&(vol->name), "lun-%d", lun) < 0) {
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("name"));
         goto cleanup;
     }
 
-    if (virAsprintf(&devpath, "/dev/%s", dev) < 0) {
-        virReportOOMError(conn);
+    if (asprintf(&devpath, "/dev/%s", dev) < 0) {
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("devpath"));
         goto cleanup;
     }
 
@@ -209,9 +204,9 @@ virStorageBackendISCSINewLun(virConnectPtr conn, virStoragePoolObjPtr pool,
             usleep(100 * 1000);
             goto reopen;
         }
-        virReportSystemError(conn, errno,
-                             _("cannot open '%s'"),
-                             devpath);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("cannot open %s: %s"),
+                              devpath, strerror(errno));
         goto cleanup;
     }
 
@@ -228,17 +223,13 @@ virStorageBackendISCSINewLun(virConnectPtr conn, virStoragePoolObjPtr pool,
 
     VIR_FREE(devpath);
 
-    if (virStorageBackendUpdateVolTargetInfoFD(conn,
-                                               &vol->target,
-                                               fd,
-                                               &vol->allocation,
-                                               &vol->capacity) < 0)
+    if (virStorageBackendUpdateVolInfoFD(conn, vol, fd, 1) < 0)
         goto cleanup;
 
     /* XXX use unique iSCSI id instead */
     vol->key = strdup(vol->target.path);
     if (vol->key == NULL) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("key"));
         goto cleanup;
     }
 
@@ -248,7 +239,7 @@ virStorageBackendISCSINewLun(virConnectPtr conn, virStoragePoolObjPtr pool,
 
     if (VIR_REALLOC_N(pool->volumes.objs,
                       pool->volumes.count+1) < 0) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, NULL);
         goto cleanup;
     }
     pool->volumes.objs[pool->volumes.count++] = vol;
@@ -331,9 +322,9 @@ virStorageBackendISCSIFindLUNs(virConnectPtr conn,
 
     sysdir = opendir(sysfs_path);
     if (sysdir == NULL) {
-        virReportSystemError(conn, errno,
-                             _("Failed to opendir sysfs path '%s'"),
-                             sysfs_path);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("Failed to opendir sysfs path %s: %s"),
+                              sysfs_path, strerror(errno));
         return -1;
     }
     while ((sys_dirent = readdir(sysdir))) {
@@ -363,9 +354,10 @@ virStorageBackendISCSIFindLUNs(virConnectPtr conn,
     n = scandir(sysfs_path, &namelist, notdotdir, versionsort);
     if (n <= 0) {
         /* we didn't find any reasonable entries; return failure */
-        virReportSystemError(conn, errno,
-                             _("Failed to find any LUNs for session '%s'"),
-                             session);
+        virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                              _("Failed to find any LUNs for session %s: %s"),
+                              session, strerror(errno));
+
         return -1;
     }
 
@@ -415,9 +407,9 @@ virStorageBackendISCSIFindLUNs(virConnectPtr conn,
 
             sysdir = opendir(sysfs_path);
             if (sysdir == NULL) {
-                virReportSystemError(conn, errno,
-                                     _("Failed to opendir sysfs path '%s'"),
-                                     sysfs_path);
+                virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                      _("Failed to opendir sysfs path %s: %s"),
+                                      sysfs_path, strerror(errno));
                 retval = -1;
                 goto namelist_cleanup;
             }
@@ -451,9 +443,9 @@ virStorageBackendISCSIFindLUNs(virConnectPtr conn,
                      host, bus, target, lun);
             sysdir = opendir(sysfs_path);
             if (sysdir == NULL) {
-                virReportSystemError(conn, errno,
-                                     _("Failed to opendir sysfs path '%s'"),
-                                     sysfs_path);
+                virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
+                                      _("Failed to opendir sysfs path %s: %s"),
+                                      sysfs_path, strerror(errno));
                 retval = -1;
                 goto namelist_cleanup;
             }
@@ -481,7 +473,8 @@ virStorageBackendISCSIFindLUNs(virConnectPtr conn,
             scsidev = strdup(block2);
         }
         if (scsidev == NULL) {
-            virReportOOMError(conn);
+            virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s",
+                                  _("Failed allocating memory for scsidev"));
             retval = -1;
             goto namelist_cleanup;
         }
@@ -562,7 +555,7 @@ virStorageBackendISCSIPortal(virConnectPtr conn,
         return NULL;
 
     if (VIR_ALLOC_N(portal, strlen(ipaddr) + 1 + 4 + 2 + 1) < 0) {
-        virReportOOMError(conn);
+        virStorageReportError(conn, VIR_ERR_NO_MEMORY, "%s", _("portal"));
         return NULL;
     }
 
@@ -578,7 +571,6 @@ virStorageBackendISCSIStartPool(virConnectPtr conn,
                                 virStoragePoolObjPtr pool)
 {
     char *portal = NULL;
-    char *session;
 
     if (pool->def->source.host.name == NULL) {
         virStorageReportError(conn, VIR_ERR_INTERNAL_ERROR,
@@ -593,17 +585,13 @@ virStorageBackendISCSIStartPool(virConnectPtr conn,
         return -1;
     }
 
-    if ((session = virStorageBackendISCSISession(conn, pool, 1)) == NULL) {
-        if ((portal = virStorageBackendISCSIPortal(conn, pool)) == NULL)
-            return -1;
-        if (virStorageBackendISCSILogin(conn, pool, portal) < 0) {
-            VIR_FREE(portal);
-            return -1;
-        }
+    if ((portal = virStorageBackendISCSIPortal(conn, pool)) == NULL)
+        return -1;
+    if (virStorageBackendISCSILogin(conn, pool, portal) < 0) {
         VIR_FREE(portal);
-    } else {
-        VIR_FREE(session);
+        return -1;
     }
+    VIR_FREE(portal);
     return 0;
 }
 
@@ -617,7 +605,7 @@ virStorageBackendISCSIRefreshPool(virConnectPtr conn,
 
     virStorageBackendWaitForDevices(conn);
 
-    if ((session = virStorageBackendISCSISession(conn, pool, 0)) == NULL)
+    if ((session = virStorageBackendISCSISession(conn, pool)) == NULL)
         goto cleanup;
     if (virStorageBackendISCSIRescanLUNs(conn, pool, session) < 0)
         goto cleanup;

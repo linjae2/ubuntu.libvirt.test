@@ -21,10 +21,10 @@
  * Author: David F. Lively <dlively@virtualiron.com>
  */
 
-#include <config.h>
-
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <config.h>
 #include <libhal.h>
 
 #include "node_device_conf.h"
@@ -403,62 +403,53 @@ static void free_udi(void *udi)
     VIR_FREE(udi);
 }
 
-static void dev_create(const char *udi)
+static void dev_create(char *udi)
 {
-    LibHalContext *ctx;
+    LibHalContext *ctx = DRV_STATE_HAL_CTX(driverState);
     char *parent_key = NULL;
-    virNodeDeviceObjPtr dev = NULL;
-    virNodeDeviceDefPtr def = NULL;
+    virNodeDeviceObjPtr dev;
     const char *name = hal_name(udi);
     int rv;
-    char *privData = strdup(udi);
 
-    if (!privData)
-        return;
-
-    nodeDeviceLock(driverState);
-    ctx = DRV_STATE_HAL_CTX(driverState);
-
-    if (VIR_ALLOC(def) < 0)
+    if (VIR_ALLOC(dev) < 0 || VIR_ALLOC(dev->def) < 0)
         goto failure;
 
-    if ((def->name = strdup(name)) == NULL)
+    dev->privateData = udi;
+    dev->privateFree = free_udi;
+
+    if ((dev->def->name = strdup(name)) == NULL)
         goto failure;
 
     if (get_str_prop(ctx, udi, "info.parent", &parent_key) == 0) {
-        def->parent = strdup(hal_name(parent_key));
+        dev->def->parent = strdup(hal_name(parent_key));
         VIR_FREE(parent_key);
-        if (def->parent == NULL)
+        if (dev->def->parent == NULL)
             goto failure;
     }
 
-    rv = gather_capabilities(ctx, udi, &def->caps);
+    rv = gather_capabilities(ctx, udi, &dev->def->caps);
     if (rv != 0) goto failure;
 
-    if (def->caps == NULL)
-        goto cleanup;
+    if (dev->def->caps == NULL) {
+        virNodeDeviceDefFree(dev->def);
+        VIR_FREE(dev);
+        VIR_FREE(udi);
+        return;
+    }
 
-    dev = virNodeDeviceAssignDef(NULL,
-                                 &driverState->devs,
-                                 def);
-
-    if (!dev)
+    if (VIR_REALLOC_N(driverState->devs.objs, driverState->devs.count + 1) < 0)
         goto failure;
 
-    dev->privateData = privData;
-    dev->privateFree = free_udi;
-    virNodeDeviceObjUnlock(dev);
+    driverState->devs.objs[driverState->devs.count++] = dev;
 
-    nodeDeviceUnlock(driverState);
     return;
 
  failure:
     DEBUG("FAILED TO ADD dev %s", name);
-cleanup:
-    VIR_FREE(privData);
-    if (def)
-        virNodeDeviceDefFree(def);
-    nodeDeviceUnlock(driverState);
+    if (dev)
+        virNodeDeviceDefFree(dev->def);
+    VIR_FREE(dev);
+    VIR_FREE(udi);
 }
 
 
@@ -466,7 +457,7 @@ static void device_added(LibHalContext *ctx ATTRIBUTE_UNUSED,
                          const char *udi)
 {
     DEBUG0(hal_name(udi));
-    dev_create(udi);
+    dev_create(strdup(udi));
 }
 
 
@@ -474,16 +465,12 @@ static void device_removed(LibHalContext *ctx ATTRIBUTE_UNUSED,
                            const char *udi)
 {
     const char *name = hal_name(udi);
-    virNodeDeviceObjPtr dev;
-
-    nodeDeviceLock(driverState);
-    dev = virNodeDeviceFindByName(&driverState->devs,name);
+    virNodeDeviceObjPtr dev = virNodeDeviceFindByName(&driverState->devs,name);
     DEBUG0(name);
     if (dev)
         virNodeDeviceObjRemove(&driverState->devs, dev);
     else
         DEBUG("no device named %s", name);
-    nodeDeviceUnlock(driverState);
 }
 
 
@@ -491,18 +478,12 @@ static void device_cap_added(LibHalContext *ctx,
                              const char *udi, const char *cap)
 {
     const char *name = hal_name(udi);
-    virNodeDeviceObjPtr dev;
-
-    nodeDeviceLock(driverState);
-    dev = virNodeDeviceFindByName(&driverState->devs,name);
-    nodeDeviceUnlock(driverState);
+    virNodeDeviceObjPtr dev = virNodeDeviceFindByName(&driverState->devs,name);
     DEBUG("%s %s", cap, name);
-    if (dev) {
+    if (dev)
         (void)gather_capability(ctx, udi, cap, &dev->def->caps);
-        virNodeDeviceObjUnlock(dev);
-    } else {
+    else
         DEBUG("no device named %s", name);
-    }
 }
 
 
@@ -511,20 +492,16 @@ static void device_cap_lost(LibHalContext *ctx ATTRIBUTE_UNUSED,
                             const char *cap)
 {
     const char *name = hal_name(udi);
-    virNodeDeviceObjPtr dev;
-
-    nodeDeviceLock(driverState);
-    dev = virNodeDeviceFindByName(&driverState->devs,name);
+    virNodeDeviceObjPtr dev = virNodeDeviceFindByName(&driverState->devs,name);
     DEBUG("%s %s", cap, name);
     if (dev) {
         /* Simply "rediscover" device -- incrementally handling changes
          * to sub-capabilities (like net.80203) is nasty ... so avoid it.
          */
         virNodeDeviceObjRemove(&driverState->devs, dev);
-        dev_create(udi);
+        dev_create(strdup(udi));
     } else
         DEBUG("no device named %s", name);
-    nodeDeviceUnlock(driverState);
 }
 
 
@@ -535,10 +512,7 @@ static void device_prop_modified(LibHalContext *ctx ATTRIBUTE_UNUSED,
                                  dbus_bool_t is_added ATTRIBUTE_UNUSED)
 {
     const char *name = hal_name(udi);
-    virNodeDeviceObjPtr dev;
-
-    nodeDeviceLock(driverState);
-    dev = virNodeDeviceFindByName(&driverState->devs,name);
+    virNodeDeviceObjPtr dev = virNodeDeviceFindByName(&driverState->devs,name);
     DEBUG("%s %s", key, name);
     if (dev) {
         /* Simply "rediscover" device -- incrementally handling changes
@@ -546,10 +520,9 @@ static void device_prop_modified(LibHalContext *ctx ATTRIBUTE_UNUSED,
          * specific ways) is nasty ... so avoid it.
          */
         virNodeDeviceObjRemove(&driverState->devs, dev);
-        dev_create(udi);
+        dev_create(strdup(udi));
     } else
         DEBUG("no device named %s", name);
-    nodeDeviceUnlock(driverState);
 }
 
 
@@ -558,8 +531,8 @@ static void dbus_watch_callback(int fdatch ATTRIBUTE_UNUSED,
                                 int events, void *opaque)
 {
     DBusWatch *watch = opaque;
-    LibHalContext *hal_ctx;
-    DBusConnection *dbus_conn;
+    LibHalContext *hal_ctx = DRV_STATE_HAL_CTX(driverState);
+    DBusConnection *dbus_conn = libhal_ctx_get_dbus_connection(hal_ctx);
     int dbus_flags = 0;
 
     if (events & VIR_EVENT_HANDLE_READABLE)
@@ -573,10 +546,6 @@ static void dbus_watch_callback(int fdatch ATTRIBUTE_UNUSED,
 
     (void)dbus_watch_handle(watch, dbus_flags);
 
-    nodeDeviceLock(driverState);
-    hal_ctx = DRV_STATE_HAL_CTX(driverState);
-    dbus_conn = libhal_ctx_get_dbus_connection(hal_ctx);
-    nodeDeviceUnlock(driverState);
     while (dbus_connection_dispatch(dbus_conn) == DBUS_DISPATCH_DATA_REMAINS)
         /* keep dispatching while data remains */;
 }
@@ -597,69 +566,42 @@ static int xlate_dbus_watch_flags(int dbus_flags)
 }
 
 
-struct nodeDeviceWatchInfo
-{
-    int watch;
-};
-
-static void nodeDeviceWatchFree(void *data) {
-    struct nodeDeviceWatchInfo *info = data;
-    VIR_FREE(info);
-}
-
 static dbus_bool_t add_dbus_watch(DBusWatch *watch,
-                                  void *data ATTRIBUTE_UNUSED)
+                                  void *data)
 {
     int flags = 0;
-    int fd;
-    struct nodeDeviceWatchInfo *info;
-
-    if (VIR_ALLOC(info) < 0)
-        return 0;
+    virDeviceMonitorStatePtr state = data;
 
     if (dbus_watch_get_enabled(watch))
         flags = xlate_dbus_watch_flags(dbus_watch_get_flags(watch));
 
-#if HAVE_DBUS_WATCH_GET_UNIX_FD
-    fd = dbus_watch_get_unix_fd(watch);
-#else
-    fd = dbus_watch_get_fd(watch);
-#endif
-    info->watch = virEventAddHandle(fd, flags, dbus_watch_callback,
-                                    watch, NULL);
-    if (info->watch < 0) {
-        VIR_FREE(info);
+    if ((state->dbusWatch =
+         virEventAddHandle(dbus_watch_get_unix_fd(watch), flags,
+                           dbus_watch_callback, watch, NULL)) < 0)
         return 0;
-    }
-    dbus_watch_set_data(watch, info, nodeDeviceWatchFree);
-
     return 1;
 }
 
 
-static void remove_dbus_watch(DBusWatch *watch,
-                              void *data ATTRIBUTE_UNUSED)
+static void remove_dbus_watch(DBusWatch *watch ATTRIBUTE_UNUSED,
+                              void *data)
 {
-    struct nodeDeviceWatchInfo *info;
+    virDeviceMonitorStatePtr state = data;
 
-    info = dbus_watch_get_data(watch);
-
-    (void)virEventRemoveHandle(info->watch);
+    (void)virEventRemoveHandle(state->dbusWatch);
 }
 
 
 static void toggle_dbus_watch(DBusWatch *watch,
-                              void *data ATTRIBUTE_UNUSED)
+                              void *data)
 {
     int flags = 0;
-    struct nodeDeviceWatchInfo *info;
+    virDeviceMonitorStatePtr state = data;
 
     if (dbus_watch_get_enabled(watch))
         flags = xlate_dbus_watch_flags(dbus_watch_get_flags(watch));
 
-    info = dbus_watch_get_data(watch);
-
-    (void)virEventUpdateHandle(info->watch, flags);
+    (void)virEventUpdateHandle(state->dbusWatch, flags);
 }
 
 
@@ -677,12 +619,6 @@ static int halDeviceMonitorStartup(void)
 
     if (VIR_ALLOC(driverState) < 0)
         return -1;
-
-    if (virMutexInit(&driverState->lock) < 0) {
-        VIR_FREE(driverState);
-        return -1;
-    }
-    nodeDeviceLock(driverState);
 
     /* Allocate and initialize a new HAL context */
     dbus_error_init(&err);
@@ -711,7 +647,7 @@ static int halDeviceMonitorStartup(void)
                                              add_dbus_watch,
                                              remove_dbus_watch,
                                              toggle_dbus_watch,
-                                             NULL, NULL)) {
+                                             driverState, NULL)) {
         fprintf(stderr, "%s: dbus_connection_set_watch_functions failed\n",
                 __FUNCTION__);
         goto failure;
@@ -729,18 +665,14 @@ static int halDeviceMonitorStartup(void)
 
     /* Populate with known devices */
     driverState->privateData = hal_ctx;
-
-    nodeDeviceUnlock(driverState);
     udi = libhal_get_all_devices(hal_ctx, &num_devs, &err);
     if (udi == NULL) {
         fprintf(stderr, "%s: libhal_get_all_devices failed\n", __FUNCTION__);
         goto failure;
     }
-    for (i = 0; i < num_devs; i++) {
+    for (i = 0; i < num_devs; i++)
         dev_create(udi[i]);
-        VIR_FREE(udi[i]);
-    }
-    VIR_FREE(udi);
+    free(udi);
 
     return 0;
 
@@ -754,10 +686,9 @@ static int halDeviceMonitorStartup(void)
         (void)libhal_ctx_free(hal_ctx);
     if (udi) {
         for (i = 0; i < num_devs; i++)
-            VIR_FREE(udi[i]);
-        VIR_FREE(udi);
+            free(udi[i]);
+        free(udi);
     }
-    nodeDeviceUnlock(driverState);
     VIR_FREE(driverState);
 
     return -1;
@@ -767,13 +698,10 @@ static int halDeviceMonitorStartup(void)
 static int halDeviceMonitorShutdown(void)
 {
     if (driverState) {
-        nodeDeviceLock(driverState);
         LibHalContext *hal_ctx = DRV_STATE_HAL_CTX(driverState);
         virNodeDeviceObjListFree(&driverState->devs);
         (void)libhal_ctx_shutdown(hal_ctx, NULL);
         (void)libhal_ctx_free(hal_ctx);
-        nodeDeviceUnlock(driverState);
-        virMutexDestroy(&driverState->lock);
         VIR_FREE(driverState);
         return 0;
     }
@@ -783,8 +711,6 @@ static int halDeviceMonitorShutdown(void)
 
 static int halDeviceMonitorReload(void)
 {
-    /* XXX This isn't thread safe because its free'ing the thing
-     * we're locking */
     (void)halDeviceMonitorShutdown();
     return halDeviceMonitorStartup();
 }

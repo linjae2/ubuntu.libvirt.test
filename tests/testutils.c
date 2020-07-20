@@ -1,11 +1,13 @@
 /*
  * testutils.c: basic test utils
  *
- * Copyright (C) 2005-2008 Red Hat, Inc.
+ * Copyright (C) 2005-2007 Red Hat, Inc.
  *
  * See COPYING.LIB for the License of this software
  *
  * Karel Zak <kzak@redhat.com>
+ *
+ * $Id: testutils.c,v 1.22 2008/11/21 12:16:08 berrange Exp $
  */
 
 #include <config.h>
@@ -26,8 +28,6 @@
 #include "internal.h"
 #include "memory.h"
 #include "util.h"
-#include "threads.h"
-#include "virterror_internal.h"
 
 #if TEST_OOM_TRACE
 #include <execinfo.h>
@@ -35,6 +35,10 @@
 
 #ifdef HAVE_PATHS_H
 #include <paths.h>
+#endif
+
+#ifndef _PATH_DEVNULL
+#define	_PATH_DEVNULL	"/dev/null"
 #endif
 
 #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
@@ -153,9 +157,9 @@ void virtTestCaptureProgramExecChild(const char *const argv[],
         NULL
     };
 
-    if ((stdinfd = open("/dev/null", O_RDONLY)) < 0)
+    if ((stdinfd = open(_PATH_DEVNULL, O_RDONLY)) < 0)
         goto cleanup;
-    if ((stderrfd = open("/dev/null", O_WRONLY)) < 0)
+    if ((stderrfd = open(_PATH_DEVNULL, O_WRONLY)) < 0)
         goto cleanup;
 
     open_max = sysconf (_SC_OPEN_MAX);
@@ -321,8 +325,8 @@ int virtTestMain(int argc,
                  int (*func)(int, char **))
 {
     char *debugStr;
-    int ret;
 #if TEST_OOM
+    int ret;
     int approxAlloc = 0;
     int n;
     char *oomStr = NULL;
@@ -331,10 +335,6 @@ int virtTestMain(int argc,
     pid_t *workers;
     int worker = 0;
 #endif
-
-    if (virThreadInitialize() < 0 ||
-        virErrorInitialize() < 0)
-        return 1;
 
     if ((debugStr = getenv("VIR_TEST_DEBUG")) != NULL) {
         if (virStrToLong_ui(debugStr, NULL, 10, &testDebug) < 0)
@@ -355,10 +355,8 @@ int virtTestMain(int argc,
     if (getenv("VIR_TEST_MP") != NULL) {
         mp = sysconf(_SC_NPROCESSORS_ONLN);
         fprintf(stderr, "Using %d worker processes\n", mp);
-        if (VIR_ALLOC_N(workers, mp) < 0) {
-            ret = EXIT_FAILURE;
-            goto cleanup;
-        }
+        if (VIR_ALLOC_N(workers, mp) < 0)
+            return EXIT_FAILURE;
     }
 
     if (testOOM)
@@ -367,7 +365,7 @@ int virtTestMain(int argc,
     /* Run once to count allocs, and ensure it passes :-) */
     ret = (func)(argc, argv);
     if (ret != EXIT_SUCCESS)
-        goto cleanup;
+        return EXIT_FAILURE;
 
 #if TEST_OOM_TRACE
     if (testDebug)
@@ -439,11 +437,9 @@ int virtTestMain(int argc,
         else
             fprintf(stderr, " FAILED\n");
     }
-cleanup:
-#else
-    ret = (func)(argc, argv);
-#endif
-
-    virResetLastError();
     return ret;
+
+#else
+    return (func)(argc, argv);
+#endif
 }

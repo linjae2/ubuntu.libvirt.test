@@ -282,14 +282,14 @@ typedef unsigned long long
 typedef int
     (*virDrvDomainEventRegister)
                     (virConnectPtr conn,
-                     virConnectDomainEventCallback cb,
+                     void *callback,
                      void *opaque,
                      virFreeCallback freecb);
 
 typedef int
     (*virDrvDomainEventDeregister)
                     (virConnectPtr conn,
-                     virConnectDomainEventCallback cb);
+                     void *callback);
 
 typedef int
     (*virDrvDomainMigratePrepare2)

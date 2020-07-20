@@ -32,8 +32,7 @@ static int testCompareXMLToXMLFiles(const char *xml) {
     if (virtTestLoadFile(xml, &xmlPtr, MAX_FILE) < 0)
         goto fail;
 
-    if (!(vmdef = virDomainDefParseString(NULL, driver.caps, xmlData,
-                                          VIR_DOMAIN_XML_INACTIVE)))
+    if (!(vmdef = virDomainDefParseString(NULL, driver.caps, xmlData)))
         goto fail;
 
     if (!(actual = virDomainDefFormat(NULL, vmdef, 0)))
@@ -97,13 +96,8 @@ mymain(int argc, char **argv)
     DO_TEST("disk-many");
     DO_TEST("disk-xenvbd");
     DO_TEST("disk-usb");
-    DO_TEST("disk-drive-fmt-qcow");
-    DO_TEST("disk-drive-cache-v1-wt");
-    DO_TEST("disk-drive-cache-v1-wb");
-    DO_TEST("disk-drive-cache-v1-none");
     DO_TEST("graphics-vnc");
     DO_TEST("graphics-sdl");
-    DO_TEST("graphics-sdl-fullscreen");
     DO_TEST("input-usbmouse");
     DO_TEST("input-usbtablet");
     DO_TEST("input-xen");
@@ -111,8 +105,6 @@ mymain(int argc, char **argv)
     DO_TEST("misc-no-reboot");
     DO_TEST("net-user");
     DO_TEST("net-virtio");
-    DO_TEST("net-eth");
-    DO_TEST("net-eth-ifname");
     DO_TEST("sound");
 
     DO_TEST("serial-vc");
@@ -129,7 +121,6 @@ mymain(int argc, char **argv)
 
     DO_TEST("hostdev-usb-product");
     DO_TEST("hostdev-usb-address");
-    DO_TEST("hostdev-pci-address");
 
     virCapabilitiesFree(driver.caps);
 
