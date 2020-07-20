@@ -1,0 +1,1 @@
+  * [d319f15] Only reexec virtlockd if enabled (Closes: #758688)
