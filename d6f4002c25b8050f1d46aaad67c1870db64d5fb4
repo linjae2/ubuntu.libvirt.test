@@ -1,0 +1,14 @@
+  * [063cc84] New upstream version 1.2.9~rc1
+  * [42079a5] Rework patches.
+    Dropped
+        security/CVE-2014-3633-....patch: applied upstream
+  * [d72bb99] Bump symbol versions
+  * [7359fcb] Add simple smoke test using the test:///default driver
+  * [da11813] Use polkit instead of socket permissions.  As before membership
+    in the libvirt group gives r/w access to all VMs.
+  * [98cdfca] Allow for libvirt's socket activation. Now that we're using
+    polkit by default having the rw socket mode 0777 is fine.
+  * [9e3d695] Don't ship the socket activation file until we switched to
+    polkit and we can therefore ignore socket permissions. (Closes: #762606)
+  * [a32e72e,4eb67f4] Clean up capabilities and possibly empty dirs
+    (Closes: #761131)
