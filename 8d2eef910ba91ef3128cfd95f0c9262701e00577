@@ -1,0 +1,16 @@
+  [ Chuck Short ]
+  * New usptream version:
+    - Dropped: 
+      + debian/patches/CVE-2013-2218-fix-crash-listing-network-interfaces-with-filters:
+        no longer needed.
+      + debian/patches/ubuntu-xen-hypervisor-4.3.patch: no longer needed.
+      + debian/patches/ubuntu-xen-fix-api-deadlocks.patch: no longer needed.
+    - Rediffed:
+      + debian/patches/Don-t-enable-default-network-on-boot.patch
+      + debian/patches/9005-increase-unix-socket-timeout.patch
+   [ Stefan Bader ]
+   * Add apparmor rights to call into /usr/lib/xen-common/bin/xen-toolstack
+     to figure out which one is active.
+   * debian/patches/ubuntu-xend-probe.patch: Fix failure to detect
+     whether Xen uses xm/xend toolstack or xl/libxl. Avoid running
+     "xend status" as we do not package that in a pbublic path.
