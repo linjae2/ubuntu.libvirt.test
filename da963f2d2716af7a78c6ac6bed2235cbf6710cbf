@@ -1,0 +1,4 @@
+  * [e722456] New upstream version 1.0.1
+  * [dccead7] Update patches
+  * [1384de7] Dropped patches.
+      * Define-SANLK_INQ_WAIT-if-missing-in-headers.patch - fixed upstream
