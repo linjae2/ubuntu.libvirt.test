@@ -1,0 +1,4 @@
+  * debian/libvirt-bin.upstart: add a pre-stop script to shut down running VMs
+    before the host shuts down.  (LP: #350936)
+  * debian/libvirt-bin.default: add a comment that this file is not actually
+    used at startup.  (LP: #823638)
