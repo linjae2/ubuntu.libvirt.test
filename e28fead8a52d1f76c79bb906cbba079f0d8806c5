@@ -1,0 +1,2 @@
+  * d/p/ubuntu/lp-1830268-refresh-capabilities-on-KVM-nesting.patch: fix
+    consideration of VMX flag (LP: #1830268)
