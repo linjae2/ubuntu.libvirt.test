@@ -1,0 +1,5 @@
+  * [aa3d87e] New upstream version 0.10.1
+  * [39ae471] Drop Revert-security-Add-DAC-to-security_drivers.patch: fixed
+    upstream.
+  * [b531061] Update symbol file
+  * [8d4f9dc] Enable sheepdog support
