@@ -1,0 +1,4 @@
+  * [9e3d695] Don't ship the socket activation file until we switched to
+    polkit and we can therefore ignore socket permissions. (Closes: #762606)
+  * [a32e72e,4eb67f4] Clean up capabilities and possibly empty dirs
+    (Closes: #761131)
