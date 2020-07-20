@@ -1,0 +1,7 @@
+  [ Laurent Léonard ]
+  * [49a581b] Imported Upstream version 0.8.4
+  * [e1dc0c7] Redo patches
+  * [cce7327] Update libvirt0 symbols
+  [ Guido Günther ]
+  * [bd91614] Drop 0007-Fix-block-statistics-with-newer-versions-of-
+    Xen.patch fixed upstream.
