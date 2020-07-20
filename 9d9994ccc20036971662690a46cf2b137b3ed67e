@@ -1,0 +1,4 @@
+  * drop d/p/ubuntu/fix-ftbfs-for-gnutls-3-5-6.patch as the offending change
+    in gnutls has been reverted (LP: #1641615)
+  * Build depend on gnutls >= 3.5.6-4ubuntu2 to build after the gnutls fix
+    migrated
