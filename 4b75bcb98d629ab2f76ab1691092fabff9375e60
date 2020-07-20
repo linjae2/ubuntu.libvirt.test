@@ -1,0 +1,5 @@
+  * debian/patches/9904-lp748834.patch: Avoid segfault on network restart
+    if the network configuration is invalid.  (LP: #748834)  Thanks to
+    pdf for the fix.
+  * debian/patches/9905-handle-no-ip.patch: Additional patch cherrypick
+    to handle no ip address in the network configuration. (LP: #748834)
