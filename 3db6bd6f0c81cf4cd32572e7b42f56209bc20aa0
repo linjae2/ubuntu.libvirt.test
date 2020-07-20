@@ -1,0 +1,6 @@
+  * debian/patches/9091-apparmor.patch:
+    - src/virt-aa-helper.c: update to parse XML for guest's architecture and
+      os.type rather than just trying to make something up.
+    - tests/virt-aa-helper-test: add some tests for the above and fix another
+      test
+    - LP: #448671
