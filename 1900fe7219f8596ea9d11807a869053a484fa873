@@ -1,0 +1,7 @@
+  [ Laurent Léonard ]
+  * [4fb1a38] Imported Upstream version 0.7.0
+  * [5578fd3] Drop 0005-Fix-PCI-device-hotplug-unplug-with-newer-
+    QEMU.patch. Fixed upstream.
+  * [9a8afd0] Redo patches.
+  * [937ab63] Update symbols.
+  * [b4bd1ea] Update section in doc-base control file.
