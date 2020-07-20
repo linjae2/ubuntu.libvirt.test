@@ -1,0 +1,5 @@
+  * [5e39138] Don't provide libvirt-bin via LSB headers.
+    This avoids a conflict when /e/i/libvirt-bin and /e/i/libvirtd
+    are around at the same time during dpkg's configure phase and
+    both init scripts Provide: libvirt-bin.
+    (Closes: #757330)
