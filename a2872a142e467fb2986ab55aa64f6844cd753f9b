@@ -1,0 +1,8 @@
+  * [6e5ad9d] Install libvirtd manpage. Thanks to Serge E. Hallyn
+    (Closes: #644457, #606069)
+  * [480ef36] Remove now superfluous build-dep on QEMU
+  * [86140cf] python-libvirt: Recommend libvirt-bin (Closes: #646440)
+  * [a76d37f] Build-depend and Recommend: parted since it's needed for disk
+    storage pool creation (found by libvirt-tck)
+  * [2e7bee9] Remove workaround for m68k ICE fixed in gcc-4.6 upstream and
+    Debian's gcc-4.4. Thanks to Thorsten Glaser
