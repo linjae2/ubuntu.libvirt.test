@@ -1984,7 +1984,9 @@ esxDomainSetMaxMemory(virDomainPtr domain, unsigned long memory)
 
 
 static int
-esxDomainSetMemory(virDomainPtr domain, unsigned long memory)
+esxDomainSetMemoryFlags(virDomainPtr domain,
+                        unsigned long memory,
+                        unsigned int flags)
 {
     int result = -1;
     esxPrivate *priv = domain->conn->privateData;
@@ -1993,6 +1995,8 @@ esxDomainSetMemory(virDomainPtr domain, unsigned long memory)
     esxVI_ManagedObjectReference *task = NULL;
     esxVI_TaskInfoState taskInfoState;
     char *taskInfoErrorMessage = NULL;
+
+    virCheckFlags(0, -1);
 
     if (esxVI_EnsureSession(priv->primary) < 0)
         return -1;
@@ -2036,6 +2040,12 @@ esxDomainSetMemory(virDomainPtr domain, unsigned long memory)
     return result;
 }
 
+
+static int
+esxDomainSetMemory(virDomainPtr domain, unsigned long memory)
+{
+    return esxDomainSetMemoryFlags(domain, memory, 0);
+}
 
 
 /*
@@ -4091,18 +4101,23 @@ esxDomainSnapshotCreateXML(virDomainPtr domain, const char *xmlDesc,
     bool diskOnly = (flags & VIR_DOMAIN_SNAPSHOT_CREATE_DISK_ONLY) != 0;
     bool quiesce = (flags & VIR_DOMAIN_SNAPSHOT_CREATE_QUIESCE) != 0;
     VIR_AUTOUNREF(virDomainSnapshotDefPtr) def = NULL;
+    unsigned int parse_flags = 0;
 
     /* ESX supports disk-only and quiesced snapshots; libvirt tracks no
      * snapshot metadata so supporting that flag is trivial.  */
     virCheckFlags(VIR_DOMAIN_SNAPSHOT_CREATE_DISK_ONLY |
                   VIR_DOMAIN_SNAPSHOT_CREATE_QUIESCE |
-                  VIR_DOMAIN_SNAPSHOT_CREATE_NO_METADATA, NULL);
+                  VIR_DOMAIN_SNAPSHOT_CREATE_NO_METADATA |
+                  VIR_DOMAIN_SNAPSHOT_CREATE_VALIDATE, NULL);
+
+    if (flags & VIR_DOMAIN_SNAPSHOT_CREATE_VALIDATE)
+        parse_flags = VIR_DOMAIN_SNAPSHOT_PARSE_VALIDATE;
 
     if (esxVI_EnsureSession(priv->primary) < 0)
         return NULL;
 
     def = virDomainSnapshotDefParseString(xmlDesc, priv->caps,
-                                          priv->xmlopt, NULL, 0);
+                                          priv->xmlopt, NULL, parse_flags);
 
     if (!def)
         return NULL;
@@ -5122,6 +5137,7 @@ static virHypervisorDriver esxHypervisorDriver = {
     .domainGetMaxMemory = esxDomainGetMaxMemory, /* 0.7.0 */
     .domainSetMaxMemory = esxDomainSetMaxMemory, /* 0.7.0 */
     .domainSetMemory = esxDomainSetMemory, /* 0.7.0 */
+    .domainSetMemoryFlags = esxDomainSetMemoryFlags, /* 5.6.0 */
     .domainSetMemoryParameters = esxDomainSetMemoryParameters, /* 0.8.6 */
     .domainGetMemoryParameters = esxDomainGetMemoryParameters, /* 0.8.6 */
     .domainGetInfo = esxDomainGetInfo, /* 0.7.0 */

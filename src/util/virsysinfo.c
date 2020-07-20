@@ -192,6 +192,15 @@ void virSysinfoDefFree(virSysinfoDefPtr def)
 }
 
 
+static bool
+virSysinfoDefIsEmpty(const virSysinfoDef *def)
+{
+    return !(def->bios || def->system || def->nbaseBoard > 0 ||
+             def->chassis || def->nprocessor > 0 ||
+             def->nmemory > 0 || def->oemStrings);
+}
+
+
 static int
 virSysinfoParsePPCSystem(const char *base, virSysinfoSystemDefPtr *sysdef)
 {
@@ -432,6 +441,16 @@ virSysinfoReadARM(void)
 {
     virSysinfoDefPtr ret = NULL;
     char *outbuf = NULL;
+
+    /* Some ARM systems have DMI tables available. */
+    if ((ret = virSysinfoReadDMI())) {
+        if (!virSysinfoDefIsEmpty(ret))
+            return ret;
+        virSysinfoDefFree(ret);
+    }
+
+    /* Well, we've tried. Fall back to parsing cpuinfo */
+    virResetLastError();
 
     if (VIR_ALLOC(ret) < 0)
         goto no_memory;
@@ -1139,7 +1158,7 @@ virSysinfoParseX86Memory(const char *base, virSysinfoDefPtr ret)
 }
 
 virSysinfoDefPtr
-virSysinfoReadX86(void)
+virSysinfoReadDMI(void)
 {
     char *path;
     virSysinfoDefPtr ret = NULL;
@@ -1220,7 +1239,7 @@ virSysinfoRead(void)
     (defined(__x86_64__) || \
      defined(__i386__) || \
      defined(__amd64__))
-    return virSysinfoReadX86();
+    return virSysinfoReadDMI();
 #else /* WIN32 || not supported arch */
     /*
      * this can probably be extracted from Windows using API or registry

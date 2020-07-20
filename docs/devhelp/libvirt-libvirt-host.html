@@ -585,7 +585,7 @@ name; for example, both KVM and QEMU guests are serviced by the
 driver for the qemu:// URI, so a return of "QEMU" does not indicate
 whether KVM acceleration is present. For more details about the
 hypervisor, use virConnectGetCapabilities().</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>NULL in case of error, a static zero terminated string otherwise. See also: http://www.redhat.com/archives/libvir-list/2007-February/msg00096.html</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>NULL in case of error, a static zero terminated string otherwise.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectGetURI"/>virConnectGetURI ()</h3><pre class="programlisting">char *	virConnectGetURI		(<a href="libvirt-libvirt-host.html#virConnectPtr">virConnectPtr</a> conn)<br/>
 </pre><p>This returns the URI (name) of the hypervisor connection.

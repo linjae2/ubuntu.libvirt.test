@@ -2614,9 +2614,6 @@
 /* whether libaudit is available */
 #undef WITH_AUDIT
 
-/* whether avahi-client >= 0.6.0 is available */
-#undef WITH_AVAHI
-
 /* whether bash-completion >= 2.0 is available */
 #undef WITH_BASH_COMPLETION
 
@@ -3170,6 +3167,14 @@
 /* ssh_get_publickey is deprecated and replaced by ssh_get_server_publickey.
    */
 #undef ssh_get_server_publickey
+
+/* ssh_is_server_known is deprecated and replaced by
+   ssh_session_is_known_server. */
+#undef ssh_session_is_known_server
+
+/* ssh_write_knownhost is deprecated and replaced by
+   ssh_session_update_known_hosts. */
+#undef ssh_session_update_known_hosts
 
 /* Define as a signed type of the same size as size_t. */
 #undef ssize_t

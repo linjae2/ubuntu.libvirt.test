@@ -53,7 +53,7 @@ CI_IMAGE_PREFIX = quay.io/libvirt/buildenv-
 
 # The default tag is ':latest' but if the container
 # repo above uses different conventions this can override it
-CI_IMAGE_TAG = :master
+CI_IMAGE_TAG = :latest
 
 # We delete the virtual root after completion, set
 # to 0 if you need to keep it around for debugging
@@ -243,23 +243,25 @@ ci-help:
 	@echo
 	@echo "    centos-7"
 	@echo "    debian-9"
+	@echo "    debian-10"
 	@echo "    debian-sid"
-	@echo "    fedora-28"
 	@echo "    fedora-29"
+	@echo "    fedora-30"
 	@echo "    fedora-rawhide"
+	@echo "    ubuntu-16"
 	@echo "    ubuntu-18"
 	@echo
 	@echo "Available cross-compiler container images:"
 	@echo
-	@echo "    debian-{9,sid}-cross-aarch64"
-	@echo "    debian-{9,sid}-cross-armv6l"
-	@echo "    debian-{9,sid}-cross-armv7l"
-	@echo "    debian-sid-cross-i686"
-	@echo "    debian-{9,sid}-cross-mips64el"
-	@echo "    debian-{9,sid}-cross-mips"
-	@echo "    debian-{9,sid}-cross-mipsel"
-	@echo "    debian-{9,sid}-cross-ppc64le"
-	@echo "    debian-{9,sid}-cross-s390x"
+	@echo "    debian-{9,10,sid}-cross-aarch64"
+	@echo "    debian-{9,10,sid}-cross-armv6l"
+	@echo "    debian-{9,10,sid}-cross-armv7l"
+	@echo "    debian-{10,sid}-cross-i686"
+	@echo "    debian-{9,10,sid}-cross-mips64el"
+	@echo "    debian-{9,10,sid}-cross-mips"
+	@echo "    debian-{9,10,sid}-cross-mipsel"
+	@echo "    debian-{9,10,sid}-cross-ppc64le"
+	@echo "    debian-{9,10,sid}-cross-s390x"
 	@echo
 	@echo "Available make variables:"
 	@echo

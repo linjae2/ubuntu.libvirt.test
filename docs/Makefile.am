@@ -22,6 +22,7 @@ DEVHELP_DIR=$(datadir)/gtk-doc/html/libvirt
 modules = \
 	libvirt-common \
 	libvirt-domain \
+	libvirt-domain-checkpoint \
 	libvirt-domain-snapshot \
 	libvirt-event \
 	libvirt-host \
@@ -67,10 +68,7 @@ css = \
 
 javascript = \
   js/main.js \
-  js/jquery-3.1.1.min.js \
-  js/jquery.rss.min.js \
-  js/moment.min.js
-
+  $(NULL)
 
 fonts = \
   fonts/LICENSE.md \
@@ -135,6 +133,10 @@ internals_html_in = \
   $(patsubst $(srcdir)/%,%,$(wildcard $(srcdir)/internals/*.html.in))
 internals_html = $(internals_html_in:%.html.in=%.html)
 
+kbase_html_in = \
+  $(patsubst $(srcdir)/%,%,$(wildcard $(srcdir)/kbase/*.html.in))
+kbase_html = $(kbase_html_in:%.html.in=%.html)
+
 # Since we ship pre-built html in the tarball, we must also
 # ship the sources, even when those sources are themselves
 # generated.
@@ -190,6 +192,7 @@ EXTRA_DIST= \
   $(xml) $(qemu_xml) $(lxc_xml) $(admin_xml) $(fig) $(png) $(css) \
   $(javascript) $(logofiles) \
   $(internals_html_in) $(internals_html) $(fonts) \
+  $(kbase_html_in) $(kbase_html) \
   aclperms.htmlinc \
   hvsupport.pl \
   $(schema_DATA)
@@ -205,6 +208,7 @@ MAINTAINERCLEANFILES = \
   $(addprefix $(srcdir)/,$(apihtml)) \
   $(addprefix $(srcdir)/,$(devhelphtml)) \
   $(addprefix $(srcdir)/,$(internals_html)) \
+  $(addprefix $(srcdir)/,$(kbase_html)) \
   $(srcdir)/hvsupport.html.in $(srcdir)/aclperms.htmlinc
 
 timestamp="$(shell if test -n "$$SOURCE_DATE_EPOCH"; \
@@ -221,7 +225,8 @@ qemu_api: $(srcdir)/libvirt-qemu-api.xml $(srcdir)/libvirt-qemu-refs.xml
 lxc_api: $(srcdir)/libvirt-lxc-api.xml $(srcdir)/libvirt-lxc-refs.xml
 admin_api: $(srcdir)/libvirt-admin-api.xml $(srcdir)/libvirt-admin-refs.xml
 
-web: $(dot_html) $(internals_html) html/index.html devhelp/index.html
+web: $(dot_html) $(internals_html) $(kbase_html) \
+	html/index.html devhelp/index.html
 
 hvsupport.html: $(srcdir)/hvsupport.html.in
 
@@ -232,20 +237,14 @@ $(srcdir)/hvsupport.html.in: $(srcdir)/hvsupport.pl $(api_DATA) \
 	$(AM_V_GEN)$(PERL) $(srcdir)/hvsupport.pl $(top_srcdir)/src > $@ \
 		|| { rm $@ && exit 1; }
 
-# xsltproc seems to add the xmlns="" attribute to random output elements:
-# use sed to strip it out, as leaving it there triggers XML errors during
-# further transformation steps
 news.html.in: \
 	  $(srcdir)/news.xml \
 	  $(srcdir)/news-html.xsl
 	$(AM_V_GEN)$(XSLTPROC) --nonet \
 	    $(srcdir)/news-html.xsl \
 	    $(srcdir)/news.xml \
-	  >$@-tmp \
-	    || { rm -f $@-tmp; exit 1; }; \
-	  sed 's/ xmlns=""//g' $@-tmp >$@ \
-	    || { rm -f $@-tmp; exit 1; }; \
-	  rm -f $@-tmp
+	  >$@ \
+	    || { rm -f $@; exit 1; };
 EXTRA_DIST += \
 	$(srcdir)/news.xml \
 	$(srcdir)/news.rng \
@@ -315,6 +314,7 @@ $(python_generated_files): $(APIBUILD_STAMP)
 $(APIBUILD_STAMP): $(srcdir)/apibuild.py \
 		$(top_srcdir)/include/libvirt/libvirt.h \
 		$(top_srcdir)/include/libvirt/libvirt-common.h.in \
+		$(top_srcdir)/include/libvirt/libvirt-domain-checkpoint.h \
 		$(top_srcdir)/include/libvirt/libvirt-domain-snapshot.h \
 		$(top_srcdir)/include/libvirt/libvirt-domain.h \
 		$(top_srcdir)/include/libvirt/libvirt-event.h \
@@ -331,6 +331,7 @@ $(APIBUILD_STAMP): $(srcdir)/apibuild.py \
 		$(top_srcdir)/include/libvirt/libvirt-admin.h \
 		$(top_srcdir)/include/libvirt/virterror.h \
 		$(top_srcdir)/src/libvirt.c \
+		$(top_srcdir)/src/libvirt-domain-checkpoint.c \
 		$(top_srcdir)/src/libvirt-domain-snapshot.c \
 		$(top_srcdir)/src/libvirt-domain.c \
 		$(top_srcdir)/src/libvirt-host.c \
@@ -384,6 +385,9 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(HTML_DIR)/internals
 	for f in $(internals_html); do \
 	  $(INSTALL) -m 0644 $(srcdir)/$$f $(DESTDIR)$(HTML_DIR)/internals; done
+	$(mkinstalldirs) $(DESTDIR)$(HTML_DIR)/kbase
+	for f in $(kbase_html); do \
+	  $(INSTALL) -m 0644 $(srcdir)/$$f $(DESTDIR)$(HTML_DIR)/kbase; done
 	$(mkinstalldirs) $(DESTDIR)$(DEVHELP_DIR)
 	for file in $(devhelphtml) $(devhelppng) $(devhelpcss); do \
 	    $(INSTALL) -m 0644 $(srcdir)/$${file} $(DESTDIR)$(DEVHELP_DIR) ; \
@@ -406,6 +410,9 @@ uninstall-local:
 	for h in $(apihtml); do rm -f $(DESTDIR)$(HTML_DIR)/$$h; done
 	for p in $(apipng); do rm -f $(DESTDIR)$(HTML_DIR)/$$p; done
 	for f in $(internals_html); do \
+	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
+	done
+	for f in $(kbase_html); do \
 	  rm -f $(DESTDIR)$(HTML_DIR)/$$f; \
 	done
 	for f in $(devhelphtml) $(devhelppng) $(devhelpcss); do \

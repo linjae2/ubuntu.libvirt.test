@@ -4,7 +4,7 @@
 # that's still supported by the vendor. It may work on other distros
 # or versions, but no effort will be made to ensure that going forward.
 %define min_rhel 7
-%define min_fedora 28
+%define min_fedora 29
 
 %if (0%{?fedora} && 0%{?fedora} >= %{min_fedora}) || (0%{?rhel} && 0%{?rhel} >= %{min_rhel})
     %define supported_platform 1
@@ -215,7 +215,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 5.4.0
+Version: 5.6.0
 Release: 1%{?dist}
 License: LGPLv2+
 URL: https://libvirt.org/
@@ -297,7 +297,6 @@ BuildRequires: sanlock-devel >= 2.4
 %endif
 BuildRequires: libpcap-devel
 BuildRequires: libnl3-devel
-BuildRequires: avahi-devel
 BuildRequires: libselinux-devel
 BuildRequires: dnsmasq >= 2.41
 BuildRequires: iptables
@@ -436,7 +435,6 @@ Requires: iproute
 Requires: iproute-tc
 %endif
 
-Requires: avahi-libs
 Requires: polkit >= 0.112
 %ifarch %{ix86} x86_64 ia64
 # For virConnectGetSysinfo
@@ -1163,7 +1161,6 @@ rm -f po/stamp-po
            %{?arg_vbox} \
            %{?arg_libxl} \
            --with-sasl \
-           --with-avahi \
            --with-polkit \
            --with-libvirtd \
            %{?arg_phyp} \
@@ -1345,6 +1342,8 @@ exit 0
 
 %systemd_post virtlockd.socket virtlockd-admin.socket
 %systemd_post virtlogd.socket virtlogd-admin.socket
+%systemd_post libvirtd.socket libvirtd-ro.socket libvirtd-admin.socket
+%systemd_post libvirtd-tcp.socket libvirtd-tls.socket
 %systemd_post libvirtd.service
 
 # request daemon restart in posttrans
@@ -1353,6 +1352,8 @@ touch %{_localstatedir}/lib/rpm-state/libvirt/restart || :
 
 %preun daemon
 %systemd_preun libvirtd.service
+%systemd_preun libvirtd-tcp.socket libvirtd-tls.socket
+%systemd_preun libvirtd.socket libvirtd-ro.socket libvirtd-admin.socket
 %systemd_preun virtlogd.socket virtlogd-admin.socket virtlogd.service
 %systemd_preun virtlockd.socket virtlockd-admin.socket virtlockd.service
 
@@ -1377,7 +1378,20 @@ fi
 
 %posttrans daemon
 if [ -f %{_localstatedir}/lib/rpm-state/libvirt/restart ]; then
-    /bin/systemctl try-restart libvirtd.service >/dev/null 2>&1 || :
+    # Old libvirtd owns the sockets and will delete them on
+    # shutdown. Can't use a try-restart as libvirtd will simply
+    # own the sockets again when it comes back up. Thus we must
+    # do this particular ordering
+    /bin/systemctl is-active libvirtd.service 1>/dev/null 2>&1
+    if test $? = 0 ; then
+        /bin/systemctl stop libvirtd.service >/dev/null 2>&1 || :
+
+        /bin/systemctl try-restart libvirtd.socket >/dev/null 2>&1 || :
+        /bin/systemctl try-restart libvirtd-ro.socket >/dev/null 2>&1 || :
+        /bin/systemctl try-restart libvirtd-admin.socket >/dev/null 2>&1 || :
+
+        /bin/systemctl start libvirtd.service >/dev/null 2>&1 || :
+    fi
 fi
 rm -rf %{_localstatedir}/lib/rpm-state/libvirt || :
 
@@ -1508,6 +1522,11 @@ exit 0
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/
 
 %{_unitdir}/libvirtd.service
+%{_unitdir}/libvirtd.socket
+%{_unitdir}/libvirtd-ro.socket
+%{_unitdir}/libvirtd-admin.socket
+%{_unitdir}/libvirtd-tcp.socket
+%{_unitdir}/libvirtd-tls.socket
 %{_unitdir}/virt-guest-shutdown.target
 %{_unitdir}/virtlogd.service
 %{_unitdir}/virtlogd.socket
@@ -1567,8 +1586,6 @@ exit 0
 %{_mandir}/man8/virtlogd.8*
 %{_mandir}/man8/virtlockd.8*
 %{_mandir}/man7/virkey*.7*
-
-%doc examples/polkit/*.rules
 
 %files daemon-config-network
 %dir %{_datadir}/libvirt/networks/
@@ -1785,11 +1802,13 @@ exit 0
 %{_datadir}/libvirt/schemas/cputypes.rng
 %{_datadir}/libvirt/schemas/domain.rng
 %{_datadir}/libvirt/schemas/domaincaps.rng
+%{_datadir}/libvirt/schemas/domaincheckpoint.rng
 %{_datadir}/libvirt/schemas/domaincommon.rng
 %{_datadir}/libvirt/schemas/domainsnapshot.rng
 %{_datadir}/libvirt/schemas/interface.rng
 %{_datadir}/libvirt/schemas/network.rng
 %{_datadir}/libvirt/schemas/networkcommon.rng
+%{_datadir}/libvirt/schemas/networkport.rng
 %{_datadir}/libvirt/schemas/nodedev.rng
 %{_datadir}/libvirt/schemas/nwfilter.rng
 %{_datadir}/libvirt/schemas/nwfilter_params.rng
@@ -1843,6 +1862,7 @@ exit 0
 %{_includedir}/libvirt/libvirt-admin.h
 %{_includedir}/libvirt/libvirt-common.h
 %{_includedir}/libvirt/libvirt-domain.h
+%{_includedir}/libvirt/libvirt-domain-checkpoint.h
 %{_includedir}/libvirt/libvirt-domain-snapshot.h
 %{_includedir}/libvirt/libvirt-event.h
 %{_includedir}/libvirt/libvirt-host.h
@@ -1865,8 +1885,6 @@ exit 0
 %{_datadir}/libvirt/api/libvirt-admin-api.xml
 %{_datadir}/libvirt/api/libvirt-qemu-api.xml
 %{_datadir}/libvirt/api/libvirt-lxc-api.xml
-# Needed building python bindings
-%doc docs/libvirt-api.xml
 
 
 %changelog

@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "configmake.h"
 #include "internal.h"
 #include "virbitmap.h"
 #include "virbuffer.h"
@@ -45,6 +46,9 @@
 #include "virxml.h"
 #include "virstring.h"
 #include "virdomainsnapshotobjlist.h"
+
+#define LIBVIRT_SNAPSHOT_CONF_PRIV_H_ALLOW
+#include "snapshot_conf_priv.h"
 
 #define VIR_FROM_THIS VIR_FROM_DOMAIN_SNAPSHOT
 
@@ -95,6 +99,17 @@ virDomainSnapshotDiskDefClear(virDomainSnapshotDiskDefPtr disk)
     disk->src = NULL;
 }
 
+void
+virDomainSnapshotDiskDefFree(virDomainSnapshotDiskDefPtr disk)
+{
+    if (!disk)
+        return;
+
+    virDomainSnapshotDiskDefClear(disk);
+    VIR_FREE(disk);
+}
+
+
 /* Allocate a new virDomainSnapshotDef; free with virObjectUnref() */
 virDomainSnapshotDefPtr
 virDomainSnapshotDefNew(void)
@@ -121,7 +136,7 @@ virDomainSnapshotDefDispose(void *obj)
     virObjectUnref(def->cookie);
 }
 
-static int
+int
 virDomainSnapshotDiskDefParseXML(xmlNodePtr node,
                                  xmlXPathContextPtr ctxt,
                                  virDomainSnapshotDiskDefPtr def,
@@ -407,6 +422,18 @@ virDomainSnapshotDefParseNode(xmlDocPtr xml,
     if (!virXMLNodeNameEqual(root, "domainsnapshot")) {
         virReportError(VIR_ERR_XML_ERROR, "%s", _("domainsnapshot"));
         goto cleanup;
+    }
+
+    if (flags & VIR_DOMAIN_SNAPSHOT_PARSE_VALIDATE) {
+        VIR_AUTOFREE(char *) schema = NULL;
+
+        schema = virFileFindResource("domainsnapshot.rng",
+                                     abs_top_srcdir "/docs/schemas",
+                                     PKGDATADIR "/schemas");
+        if (!schema)
+            goto cleanup;
+        if (virXMLValidateAgainstSchema(schema, xml) < 0)
+            goto cleanup;
     }
 
     ctxt = xmlXPathNewContext(xml);
@@ -953,46 +980,15 @@ virDomainSnapshotRedefinePrep(virDomainPtr domain,
 {
     virDomainSnapshotDefPtr def = *defptr;
     virDomainMomentObjPtr other;
-    virDomainSnapshotDefPtr otherdef;
+    virDomainSnapshotDefPtr otherdef = NULL;
     bool check_if_stolen;
 
-    /* Prevent circular chains */
-    if (def->parent.parent_name) {
-        if (STREQ(def->parent.name, def->parent.parent_name)) {
-            virReportError(VIR_ERR_INVALID_ARG,
-                           _("cannot set snapshot %s as its own parent"),
-                           def->parent.name);
-            return -1;
-        }
-        other = virDomainSnapshotFindByName(vm->snapshots,
-                                            def->parent.parent_name);
-        if (!other) {
-            virReportError(VIR_ERR_INVALID_ARG,
-                           _("parent %s for snapshot %s not found"),
-                           def->parent.parent_name, def->parent.name);
-            return -1;
-        }
-        otherdef = virDomainSnapshotObjGetDef(other);
-        while (otherdef->parent.parent_name) {
-            if (STREQ(otherdef->parent.parent_name, def->parent.name)) {
-                virReportError(VIR_ERR_INVALID_ARG,
-                               _("parent %s would create cycle to %s"),
-                               otherdef->parent.name, def->parent.name);
-                return -1;
-            }
-            other = virDomainSnapshotFindByName(vm->snapshots,
-                                                otherdef->parent.parent_name);
-            if (!other) {
-                VIR_WARN("snapshots are inconsistent for %s",
-                         vm->def->name);
-                break;
-            }
-            otherdef = virDomainSnapshotObjGetDef(other);
-        }
-    }
+    if (virDomainSnapshotCheckCycles(vm->snapshots, def, vm->def->name) < 0)
+        return -1;
 
     other = virDomainSnapshotFindByName(vm->snapshots, def->parent.name);
-    otherdef = other ? virDomainSnapshotObjGetDef(other) : NULL;
+    if (other)
+        otherdef = virDomainSnapshotObjGetDef(other);
     check_if_stolen = other && otherdef->parent.dom;
     if (virDomainSnapshotRedefineValidate(def, domain->uuid, other, xmlopt,
                                           flags) < 0) {

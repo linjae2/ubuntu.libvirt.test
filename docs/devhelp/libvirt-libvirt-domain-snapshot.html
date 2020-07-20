@@ -13,7 +13,7 @@
     <table class="navigation" width="100%" summary="Navigation header" cellpadding="2" cellspacing="2">
       <tr valign="middle">
         <td>
-          <a accesskey="p" href="libvirt-libvirt-common.html">
+          <a accesskey="p" href="libvirt-libvirt-domain-checkpoint.html">
             <img src="left.png" width="24" height="24" border="0" alt="Prev"/>
           </a>
         </td>
@@ -94,6 +94,7 @@ The content of this structure is not made public by the API.
     <a name="VIR_DOMAIN_SNAPSHOT_CREATE_QUIESCE">VIR_DOMAIN_SNAPSHOT_CREATE_QUIESCE</a> = 64 /* use guest agent to quiesce all mounted file systems within the domain */
     <a name="VIR_DOMAIN_SNAPSHOT_CREATE_ATOMIC">VIR_DOMAIN_SNAPSHOT_CREATE_ATOMIC</a> = 128 /* atomically avoid partial changes */
     <a name="VIR_DOMAIN_SNAPSHOT_CREATE_LIVE">VIR_DOMAIN_SNAPSHOT_CREATE_LIVE</a> = 256 /* create the snapshot while the guest is running */
+    <a name="VIR_DOMAIN_SNAPSHOT_CREATE_VALIDATE">VIR_DOMAIN_SNAPSHOT_CREATE_VALIDATE</a> = 512 /* validate the XML against the schema */
 };
 </pre><p/>
 </div>
@@ -240,6 +241,9 @@ the domain can be inactive, in which case the snapshot includes
 just the disk state prior to booting. The newly created snapshot
 becomes current (see virDomainSnapshotCurrent()), and is a child
 of any previous current snapshot.
+
+If @flags includes VIR_DOMAIN_SNAPSHOT_CREATE_VALIDATE, then @xmlDesc
+is validated against the &lt;domainsnapshot&gt; XML schema.
 
 If @flags includes VIR_DOMAIN_SNAPSHOT_CREATE_REDEFINE, then this
 is a request to reinstate snapshot metadata that was previously

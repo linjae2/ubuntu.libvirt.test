@@ -158,6 +158,7 @@ int	<a href="#virStorageVolWipePattern">virStorageVolWipePattern</a>	(<a href="l
     <a name="VIR_CONNECT_LIST_STORAGE_POOLS_GLUSTER">VIR_CONNECT_LIST_STORAGE_POOLS_GLUSTER</a> = 65536
     <a name="VIR_CONNECT_LIST_STORAGE_POOLS_ZFS">VIR_CONNECT_LIST_STORAGE_POOLS_ZFS</a> = 131072
     <a name="VIR_CONNECT_LIST_STORAGE_POOLS_VSTORAGE">VIR_CONNECT_LIST_STORAGE_POOLS_VSTORAGE</a> = 262144
+    <a name="VIR_CONNECT_LIST_STORAGE_POOLS_ISCSI_DIRECT">VIR_CONNECT_LIST_STORAGE_POOLS_ISCSI_DIRECT</a> = 524288
 };
 </pre><p/>
 </div>
@@ -409,7 +410,11 @@ VIR_CONNECT_LIST_STORAGE_POOLS_ISCSI
 VIR_CONNECT_LIST_STORAGE_POOLS_SCSI
 VIR_CONNECT_LIST_STORAGE_POOLS_MPATH
 VIR_CONNECT_LIST_STORAGE_POOLS_RBD
-VIR_CONNECT_LIST_STORAGE_POOLS_SHEEPDOG</p>
+VIR_CONNECT_LIST_STORAGE_POOLS_SHEEPDOG
+VIR_CONNECT_LIST_STORAGE_POOLS_GLUSTER
+VIR_CONNECT_LIST_STORAGE_POOLS_ZFS
+VIR_CONNECT_LIST_STORAGE_POOLS_VSTORAGE
+VIR_CONNECT_LIST_STORAGE_POOLS_ISCSI_DIRECT</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>Pointer to the hypervisor connection.</td></tr><tr><td><span class="term"><i><tt>pools</tt></i>:</span></td><td>Pointer to a variable to store the array containing storage pool objects or NULL if the list is not required (just returns number of pools).</td></tr><tr><td><span class="term"><i><tt>flags</tt></i>:</span></td><td>bitwise-OR of virConnectListAllStoragePoolsFlags.</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>the number of storage pools found or -1 and sets @pools to NULL in case of error. On success, the array stored into @pools is guaranteed to have an extra allocated element set to NULL but not included in the return count, to make iteration easier. The caller is responsible for calling virStoragePoolFree() on each array element, then calling free() on @pools.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virConnectListDefinedStoragePools"/>virConnectListDefinedStoragePools ()</h3><pre class="programlisting">int	virConnectListDefinedStoragePools	(<a href="libvirt-libvirt-host.html#virConnectPtr">virConnectPtr</a> conn, <br/>						 char ** const names, <br/>						 int maxnames)<br/>

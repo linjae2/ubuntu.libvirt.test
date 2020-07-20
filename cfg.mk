@@ -146,9 +146,6 @@ useless_free_options = \
   --name=virJSONValueFree \
   --name=virLastErrFreeData \
   --name=virNetMessageFree \
-  --name=virNetServerMDNSFree \
-  --name=virNetServerMDNSEntryFree \
-  --name=virNetServerMDNSGroupFree \
   --name=virNWFilterDefFree \
   --name=virNWFilterEntryFree \
   --name=virNWFilterHashTableFree \
@@ -614,6 +611,7 @@ msg_gen_function += virReportError
 msg_gen_function += virReportErrorHelper
 msg_gen_function += virReportSystemError
 msg_gen_function += xenapiSessionErrorHandler
+msg_gen_function += virLastErrorPrefixMessage
 
 # Uncomment the following and run "make syntax-check" to see diagnostics
 # that are not yet marked for translation, but that need to be rewritten
@@ -1145,6 +1143,11 @@ ifneq ($(_gl-Makefile),)
 syntax-check: spacing-check test-wrap-argv \
 	prohibit-duplicate-header mock-noinline group-qemu-caps \
         header-ifdef
+	@if ! cppi --version >/dev/null 2>&1; then \
+		echo "*****************************************************" >&2; \
+		echo "* cppi not installed, some checks have been skipped *" >&2; \
+		echo "*****************************************************" >&2; \
+	fi
 endif
 
 # Don't include duplicate header in the source (either *.c or *.h)
@@ -1253,7 +1256,7 @@ exclude_file_name_regexp--sc_prohibit_newline_at_end_of_diagnostic = \
   ^src/rpc/gendispatch\.pl$$
 
 exclude_file_name_regexp--sc_prohibit_nonreentrant = \
-  ^((po|tests|examples/admin)/|docs/.*(py|js|html\.in)|run.in$$|tools/wireshark/util/genxdrstub\.pl$$)
+  ^((po|tests|examples)/|docs/.*(py|js|html\.in)|run.in$$|tools/wireshark/util/genxdrstub\.pl$$)
 
 exclude_file_name_regexp--sc_prohibit_select = \
 	^cfg\.mk$$

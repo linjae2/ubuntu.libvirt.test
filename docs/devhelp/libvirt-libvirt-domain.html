@@ -1441,6 +1441,8 @@ int	<a href="#virDomainUpdateDeviceFlags">virDomainUpdateDeviceFlags</a>	(<a hre
     <a name="VIR_CONNECT_LIST_DOMAINS_NO_AUTOSTART">VIR_CONNECT_LIST_DOMAINS_NO_AUTOSTART</a> = 2048
     <a name="VIR_CONNECT_LIST_DOMAINS_HAS_SNAPSHOT">VIR_CONNECT_LIST_DOMAINS_HAS_SNAPSHOT</a> = 4096
     <a name="VIR_CONNECT_LIST_DOMAINS_NO_SNAPSHOT">VIR_CONNECT_LIST_DOMAINS_NO_SNAPSHOT</a> = 8192
+    <a name="VIR_CONNECT_LIST_DOMAINS_HAS_CHECKPOINT">VIR_CONNECT_LIST_DOMAINS_HAS_CHECKPOINT</a> = 16384
+    <a name="VIR_CONNECT_LIST_DOMAINS_NO_CHECKPOINT">VIR_CONNECT_LIST_DOMAINS_NO_CHECKPOINT</a> = 32768
 };
 </pre><p/>
 </div>
@@ -2439,7 +2441,8 @@ The content of this structure is not made public by the API.
     <a name="VIR_DOMAIN_UNDEFINE_MANAGED_SAVE">VIR_DOMAIN_UNDEFINE_MANAGED_SAVE</a> = 1 /* Also remove any managed save */
     <a name="VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA">VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA</a> = 2 /* If last use of domain, then also remove any snapshot metadata */
     <a name="VIR_DOMAIN_UNDEFINE_NVRAM">VIR_DOMAIN_UNDEFINE_NVRAM</a> = 4 /* Also remove any nvram file */
-    <a name="VIR_DOMAIN_UNDEFINE_KEEP_NVRAM">VIR_DOMAIN_UNDEFINE_KEEP_NVRAM</a> = 8 /* Keep nvram file Future undefine control flags should come here. */
+    <a name="VIR_DOMAIN_UNDEFINE_KEEP_NVRAM">VIR_DOMAIN_UNDEFINE_KEEP_NVRAM</a> = 8 /* Keep nvram file */
+    <a name="VIR_DOMAIN_UNDEFINE_CHECKPOINTS_METADATA">VIR_DOMAIN_UNDEFINE_CHECKPOINTS_METADATA</a> = 16 /* If last use of domain, then also remove any checkpoint metadata Future undefine control flags should come here. */
 };
 </pre><p/>
 </div>
@@ -3125,7 +3128,9 @@ a managed save image exists; <a href="libvirt-libvirt-domain.html#VIR_CONNECT_LI
 VIR_CONNECT_LIST_DOMAINS_NO_AUTOSTART, for filtering based on autostart;
 VIR_CONNECT_LIST_DOMAINS_HAS_SNAPSHOT and
 VIR_CONNECT_LIST_DOMAINS_NO_SNAPSHOT, for filtering based on whether
-a domain has snapshots.
+a domain has snapshots; <a href="libvirt-libvirt-domain.html#VIR_CONNECT_LIST_DOMAINS_HAS_CHECKPOINT">VIR_CONNECT_LIST_DOMAINS_HAS_CHECKPOINT</a> and
+VIR_CONNECT_LIST_DOMAINS_NO_CHECKPOINT, for filtering based on whether
+a domain has checkpoints.
 
 Example of usage:
 
@@ -4467,7 +4472,7 @@ expects the caller to allocate the @params.</p>
 will likely be introduced in the future.
 
 Linux perf events are performance analyzing tool in Linux.</p>
-<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>a domain object</td></tr><tr><td><span class="term"><i><tt>params</tt></i>:</span></td><td>where to store perf events setting</td></tr><tr><td><span class="term"><i><tt>nparams</tt></i>:</span></td><td>number of items in @params</td></tr><tr><td><span class="term"><i><tt>flags</tt></i>:</span></td><td>bitwise-OR of <a href="libvirt-libvirt-domain.html#virDomainModificationImpact">virDomainModificationImpact</a></td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>-1 in case of failure, 0 in case of success.</td></tr></tbody></table></div></div>
+<div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>a domain object</td></tr><tr><td><span class="term"><i><tt>params</tt></i>:</span></td><td>where to store perf events setting</td></tr><tr><td><span class="term"><i><tt>nparams</tt></i>:</span></td><td>number of items in @params</td></tr><tr><td><span class="term"><i><tt>flags</tt></i>:</span></td><td>bitwise-OR of <a href="libvirt-libvirt-domain.html#virDomainModificationImpact">virDomainModificationImpact</a> and <a href="libvirt-libvirt-common.html#virTypedParameterFlags">virTypedParameterFlags</a></td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>-1 in case of failure, 0 in case of success.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainGetSchedulerParameters"/>virDomainGetSchedulerParameters ()</h3><pre class="programlisting">int	virDomainGetSchedulerParameters	(<a href="libvirt-libvirt-domain.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt-common.html#virTypedParameterPtr">virTypedParameterPtr</a> params, <br/>					 int * nparams)<br/>
 </pre><p>Get all scheduler parameters. On input, @nparams gives the size of the
@@ -5430,8 +5435,7 @@ a saved state file was created. @file must be a file created
 previously by virDomainSave() or virDomainSaveFlags().
 
 No security-sensitive data will be included unless @flags contains
-VIR_DOMAIN_SAVE_IMAGE_XML_SECURE; this flag is rejected on read-only
-connections.</p>
+VIR_DOMAIN_SAVE_IMAGE_XML_SECURE.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>conn</tt></i>:</span></td><td>pointer to the hypervisor connection</td></tr><tr><td><span class="term"><i><tt>file</tt></i>:</span></td><td>path to saved state file</td></tr><tr><td><span class="term"><i><tt>flags</tt></i>:</span></td><td>bitwise-OR of supported <a href="libvirt-libvirt-domain.html#virDomainSaveImageXMLFlags">virDomainSaveImageXMLFlags</a></td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>a 0 terminated UTF-8 encoded XML instance, or NULL in case of error. The caller must free() the returned value.</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainScreenshot"/>virDomainScreenshot ()</h3><pre class="programlisting">char *	virDomainScreenshot		(<a href="libvirt-libvirt-domain.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 <a href="libvirt-libvirt-host.html#virStreamPtr">virStreamPtr</a> stream, <br/>					 unsigned int screen, <br/>					 unsigned int flags)<br/>
@@ -5830,8 +5834,9 @@ the domain configuration is removed.
 
 If the domain has a managed save image (see
 virDomainHasManagedSaveImage()), or if it is inactive and has any
-snapshot metadata (see virDomainSnapshotNum()), then the undefine will
-fail. See virDomainUndefineFlags() for more control.</p>
+snapshot metadata (see virDomainSnapshotNum()) or checkpoint
+metadata (see virDomainListAllCheckpoints()), then the undefine
+will fail. See virDomainUndefineFlags() for more control.</p>
 <div class="variablelist"><table border="0"><col align="left"/><tbody><tr><td><span class="term"><i><tt>domain</tt></i>:</span></td><td>pointer to a defined domain</td></tr><tr><td><span class="term"><i><tt>Returns</tt></i>:</span></td><td>0 in case of success, -1 in case of error</td></tr></tbody></table></div></div>
         <hr/>
         <div class="refsect2" lang="en"><h3><a name="virDomainUndefineFlags"/>virDomainUndefineFlags ()</h3><pre class="programlisting">int	virDomainUndefineFlags		(<a href="libvirt-libvirt-domain.html#virDomainPtr">virDomainPtr</a> domain, <br/>					 unsigned int flags)<br/>
@@ -5847,10 +5852,21 @@ If the domain is inactive and has any snapshot metadata (see
 virDomainSnapshotNum()), then including
 VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA in @flags will also remove
 that metadata. Omitting the flag will cause the undefine of an
-inactive domain to fail. Active snapshots will retain snapshot
-metadata until the (now-transient) domain halts, regardless of
-whether this flag is present. On hypervisors where snapshots do
-not use libvirt metadata, this flag has no effect.
+inactive domain with snapshots to fail. Active domains will retain
+snapshot metadata until the (now-transient) domain halts,
+regardless of whether this flag is present. On hypervisors that
+support snapshots, but where snapshots do not use libvirt metadata,
+this flag has no effect.
+
+If the domain is inactive and has any checkpoint metadata (see
+virDomainListAllCheckpoints()), then including
+VIR_DOMAIN_UNDEFINE_CHECKPOINTS_METADATA in @flags will also remove
+that metadata. Omitting the flag will cause the undefine of an
+inactive domain with checkpoints to fail. Active domains will
+retain checkpoint metadata until the (now-transient) domain halts,
+regardless of whether this flag is present. On hypervisors that
+support checkpoints, but where checkpoints do not use libvirt
+metadata, this flag has no effect.
 
 If the domain has any nvram specified, the undefine process will fail
 unless <a href="libvirt-libvirt-domain.html#VIR_DOMAIN_UNDEFINE_KEEP_NVRAM">VIR_DOMAIN_UNDEFINE_KEEP_NVRAM</a> is specified, or if
