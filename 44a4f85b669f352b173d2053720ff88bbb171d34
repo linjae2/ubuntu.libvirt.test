@@ -1,0 +1,1 @@
+  * silence denial of attempted reads of lttng files (LP: #1432644)
