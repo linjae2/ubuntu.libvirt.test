@@ -1,0 +1,3 @@
+  * Pull patches from upstream which prevent a race between lxc driver and
+    controller while a container is started, easily exposed by nova.
+    (LP: #842845)
