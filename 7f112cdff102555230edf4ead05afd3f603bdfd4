@@ -1,0 +1,3 @@
+  [ Jon Grimm ]
+  * Fix libvirt start failure when security_driver set (LP: #1618592)
+    - qemu: fix qemu.conf security_driver
