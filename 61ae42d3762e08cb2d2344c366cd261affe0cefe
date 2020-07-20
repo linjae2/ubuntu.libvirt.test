@@ -1,0 +1,3 @@
+  * [65e69d3] New upstream version 1.2.7
+  * [d615910] Don't try to install virt-login-shell on non-linux.
+    It's LXC only. This fixes the build failure on kFreeBSD.
