@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013 Red Hat, Inc.
+ * Copyright (C) 2011 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -12,8 +12,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -40,9 +40,6 @@
 
 #include <config.h>
 
-#define NO_LIBVIRT /* This file intentionally does not link to libvirt */
-#include "testutils.h"
-
 #ifdef linux
 
 # include <dlfcn.h>
@@ -53,26 +50,23 @@
 # include <signal.h>
 
 # include "internal.h"
+# include "ignore-value.h"
+# include "testutils.h"
 
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 bool running = false;
-bool failstart = false;
 bool quit = false;
 
 static void *threadMain(void *arg)
 {
-    int (*startup)(void) = arg;
+    void (*startup)(void) = arg;
 
-    if (startup() < 0) {
-        pthread_mutex_lock(&lock);
-        failstart = true;
-        pthread_cond_signal(&cond);
-    } else {
-        pthread_mutex_lock(&lock);
-        running = true;
-        pthread_cond_signal(&cond);
-    }
+    startup();
+
+    pthread_mutex_lock(&lock);
+    running = true;
+    pthread_cond_signal(&cond);
 
     while (!quit) {
         pthread_cond_wait(&cond, &lock);
@@ -125,7 +119,7 @@ int main(int argc ATTRIBUTE_UNUSED, char **argv)
 
     /* Wait for the thread to start and call libvirt */
     pthread_mutex_lock(&lock);
-    while (!running && !failstart) {
+    while (!running) {
         pthread_cond_wait(&cond, &lock);
     }
 
@@ -144,15 +138,13 @@ int main(int argc ATTRIBUTE_UNUSED, char **argv)
      * causing a SEGV !
      */
 
-    if (failstart)
-        fprintf(stderr, "FAIL to initialize libvirt\n");
-    else
-        fprintf(stderr, "OK\n");
+    fprintf(stderr, "OK\n");
 
     return 0;
 }
 
 #else
+# include "testutils.h"
 
 int main(void)
 {

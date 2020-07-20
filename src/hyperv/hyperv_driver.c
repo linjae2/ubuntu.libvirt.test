@@ -2,7 +2,7 @@
 /*
  * hyperv_driver.c: core driver functions for managing Microsoft Hyper-V hosts
  *
- * Copyright (C) 2011-2013 Matthias Bolte <matthias.bolte@googlemail.com>
+ * Copyright (C) 2011 Matthias Bolte <matthias.bolte@googlemail.com>
  * Copyright (C) 2009 Michael Sievers <msievers83@googlemail.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -16,8 +16,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -27,9 +27,10 @@
 #include "datatypes.h"
 #include "domain_conf.h"
 #include "virauth.h"
-#include "viralloc.h"
-#include "virlog.h"
-#include "viruuid.h"
+#include "util.h"
+#include "memory.h"
+#include "logging.h"
+#include "uuid.h"
 #include "hyperv_driver.h"
 #include "hyperv_interface_driver.h"
 #include "hyperv_network_driver.h"
@@ -41,7 +42,6 @@
 #include "hyperv_util.h"
 #include "hyperv_wmi.h"
 #include "openwsman.h"
-#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_HYPERV
 
@@ -66,7 +66,7 @@ hypervFreePrivate(hypervPrivate **priv)
 
 
 static virDrvOpenStatus
-hypervConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags)
+hypervOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags)
 {
     virDrvOpenStatus result = VIR_DRV_OPEN_ERROR;
     char *plus;
@@ -96,29 +96,31 @@ hypervConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags
             return VIR_DRV_OPEN_DECLINED;
         }
 
-        virReportError(VIR_ERR_INVALID_ARG,
-                       _("Transport '%s' in URI scheme is not supported, try again "
-                         "without the transport part"), plus + 1);
+        HYPERV_ERROR(VIR_ERR_INVALID_ARG,
+                     _("Transport '%s' in URI scheme is not supported, try again "
+                       "without the transport part"), plus + 1);
         return VIR_DRV_OPEN_ERROR;
     }
 
     /* Require server part */
     if (conn->uri->server == NULL) {
-        virReportError(VIR_ERR_INVALID_ARG, "%s",
-                       _("URI is missing the server part"));
+        HYPERV_ERROR(VIR_ERR_INVALID_ARG, "%s",
+                     _("URI is missing the server part"));
         return VIR_DRV_OPEN_ERROR;
     }
 
     /* Require auth */
     if (auth == NULL || auth->cb == NULL) {
-        virReportError(VIR_ERR_INVALID_ARG, "%s",
-                       _("Missing or invalid auth pointer"));
+        HYPERV_ERROR(VIR_ERR_INVALID_ARG, "%s",
+                     _("Missing or invalid auth pointer"));
         return VIR_DRV_OPEN_ERROR;
     }
 
     /* Allocate per-connection private data */
-    if (VIR_ALLOC(priv) < 0)
+    if (VIR_ALLOC(priv) < 0) {
+        virReportOOMError();
         goto cleanup;
+    }
 
     if (hypervParseUri(&priv->parsedUri, conn->uri) < 0) {
         goto cleanup;
@@ -138,13 +140,17 @@ hypervConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags
 
     /* Request credentials */
     if (conn->uri->user != NULL) {
-        if (VIR_STRDUP(username, conn->uri->user) < 0)
+        username = strdup(conn->uri->user);
+
+        if (username == NULL) {
+            virReportOOMError();
             goto cleanup;
+        }
     } else {
         username = virAuthGetUsername(conn, auth, "hyperv", "administrator", conn->uri->server);
 
         if (username == NULL) {
-            virReportError(VIR_ERR_AUTH_FAILED, "%s", _("Username request failed"));
+            HYPERV_ERROR(VIR_ERR_AUTH_FAILED, "%s", _("Username request failed"));
             goto cleanup;
         }
     }
@@ -152,7 +158,7 @@ hypervConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags
     password = virAuthGetPassword(conn, auth, "hyperv", username, conn->uri->server);
 
     if (password == NULL) {
-        virReportError(VIR_ERR_AUTH_FAILED, "%s", _("Password request failed"));
+        HYPERV_ERROR(VIR_ERR_AUTH_FAILED, "%s", _("Password request failed"));
         goto cleanup;
     }
 
@@ -161,14 +167,14 @@ hypervConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags
                                priv->parsedUri->transport, username, password);
 
     if (priv->client == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Could not create openwsman client"));
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR, "%s",
+                     _("Could not create openwsman client"));
         goto cleanup;
     }
 
     if (wsmc_transport_init(priv->client, NULL) != 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Could not initialize openwsman transport"));
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR, "%s",
+                     _("Could not initialize openwsman transport"));
         goto cleanup;
     }
 
@@ -188,17 +194,20 @@ hypervConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags
     }
 
     if (computerSystem == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("%s is not a Hyper-V server"), conn->uri->server);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("%s is not a Hyper-V server"), conn->uri->server);
         goto cleanup;
     }
 
     conn->privateData = priv;
-    priv = NULL;
+
     result = VIR_DRV_OPEN_SUCCESS;
 
   cleanup:
-    hypervFreePrivate(&priv);
+    if (result == VIR_DRV_OPEN_ERROR) {
+        hypervFreePrivate(&priv);
+    }
+
     VIR_FREE(username);
     VIR_FREE(password);
     hypervFreeObject(priv, (hypervObject *)computerSystem);
@@ -209,7 +218,7 @@ hypervConnectOpen(virConnectPtr conn, virConnectAuthPtr auth, unsigned int flags
 
 
 static int
-hypervConnectClose(virConnectPtr conn)
+hypervClose(virConnectPtr conn)
 {
     hypervPrivate *priv = conn->privateData;
 
@@ -223,7 +232,7 @@ hypervConnectClose(virConnectPtr conn)
 
 
 static const char *
-hypervConnectGetType(virConnectPtr conn ATTRIBUTE_UNUSED)
+hypervGetType(virConnectPtr conn ATTRIBUTE_UNUSED)
 {
     return "Hyper-V";
 }
@@ -231,7 +240,7 @@ hypervConnectGetType(virConnectPtr conn ATTRIBUTE_UNUSED)
 
 
 static char *
-hypervConnectGetHostname(virConnectPtr conn)
+hypervGetHostname(virConnectPtr conn)
 {
     char *hostname = NULL;
     hypervPrivate *priv = conn->privateData;
@@ -245,13 +254,18 @@ hypervConnectGetHostname(virConnectPtr conn)
     }
 
     if (computerSystem == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s"),
-                       "Win32_ComputerSystem");
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s"),
+                     "Win32_ComputerSystem");
         goto cleanup;
     }
 
-    ignore_value(VIR_STRDUP(hostname, computerSystem->data->DNSHostName));
+    hostname = strdup(computerSystem->data->DNSHostName);
+
+    if (hostname == NULL) {
+        virReportOOMError();
+        goto cleanup;
+    }
 
   cleanup:
     hypervFreeObject(priv, (hypervObject *)computerSystem);
@@ -282,9 +296,9 @@ hypervNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info)
     }
 
     if (computerSystem == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s"),
-                       "Win32_ComputerSystem");
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s"),
+                     "Win32_ComputerSystem");
         goto cleanup;
     }
 
@@ -301,9 +315,9 @@ hypervNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info)
     }
 
     if (processorList == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s"),
-                       "Win32_Processor");
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s"),
+                     "Win32_Processor");
         goto cleanup;
     }
 
@@ -328,9 +342,9 @@ hypervNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info)
     /* Fill struct */
     if (virStrncpy(info->model, processorList->data->Name,
                    sizeof(info->model) - 1, sizeof(info->model)) == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("CPU model %s too long for destination"),
-                       processorList->data->Name);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("CPU model %s too long for destination"),
+                     processorList->data->Name);
         goto cleanup;
     }
 
@@ -360,7 +374,7 @@ hypervNodeGetInfo(virConnectPtr conn, virNodeInfoPtr info)
 
 
 static int
-hypervConnectListDomains(virConnectPtr conn, int *ids, int maxids)
+hypervListDomains(virConnectPtr conn, int *ids, int maxids)
 {
     bool success = false;
     hypervPrivate *priv = conn->privateData;
@@ -404,7 +418,7 @@ hypervConnectListDomains(virConnectPtr conn, int *ids, int maxids)
 
 
 static int
-hypervConnectNumOfDomains(virConnectPtr conn)
+hypervNumberOfDomains(virConnectPtr conn)
 {
     bool success = false;
     hypervPrivate *priv = conn->privateData;
@@ -457,7 +471,7 @@ hypervDomainLookupByID(virConnectPtr conn, int id)
     }
 
     if (computerSystem == NULL) {
-        virReportError(VIR_ERR_NO_DOMAIN, _("No domain with ID %d"), id);
+        HYPERV_ERROR(VIR_ERR_NO_DOMAIN, _("No domain with ID %d"), id);
         goto cleanup;
     }
 
@@ -492,8 +506,8 @@ hypervDomainLookupByUUID(virConnectPtr conn, const unsigned char *uuid)
     }
 
     if (computerSystem == NULL) {
-        virReportError(VIR_ERR_NO_DOMAIN,
-                       _("No domain with UUID %s"), uuid_string);
+        HYPERV_ERROR(VIR_ERR_NO_DOMAIN,
+                     _("No domain with UUID %s"), uuid_string);
         goto cleanup;
     }
 
@@ -525,8 +539,8 @@ hypervDomainLookupByName(virConnectPtr conn, const char *name)
     }
 
     if (computerSystem == NULL) {
-        virReportError(VIR_ERR_NO_DOMAIN,
-                       _("No domain with name %s"), name);
+        HYPERV_ERROR(VIR_ERR_NO_DOMAIN,
+                     _("No domain with name %s"), name);
         goto cleanup;
     }
 
@@ -553,8 +567,8 @@ hypervDomainSuspend(virDomainPtr domain)
 
     if (computerSystem->data->EnabledState !=
         MSVM_COMPUTERSYSTEM_ENABLEDSTATE_ENABLED) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Domain is not active"));
+        HYPERV_ERROR(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("Domain is not active"));
         goto cleanup;
     }
 
@@ -582,8 +596,8 @@ hypervDomainResume(virDomainPtr domain)
 
     if (computerSystem->data->EnabledState !=
         MSVM_COMPUTERSYSTEM_ENABLEDSTATE_PAUSED) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Domain is not paused"));
+        HYPERV_ERROR(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("Domain is not paused"));
         goto cleanup;
     }
 
@@ -614,8 +628,8 @@ hypervDomainDestroyFlags(virDomainPtr domain, unsigned int flags)
 
     if (!hypervIsMsvmComputerSystemActive(computerSystem, &in_transition) ||
         in_transition) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Domain is not active or is in state transition"));
+        HYPERV_ERROR(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("Domain is not active or is in state transition"));
         goto cleanup;
     }
 
@@ -641,9 +655,13 @@ hypervDomainDestroy(virDomainPtr domain)
 static char *
 hypervDomainGetOSType(virDomainPtr domain ATTRIBUTE_UNUSED)
 {
-    char *osType;
+    char *osType = strdup("hvm");
 
-    ignore_value(VIR_STRDUP(osType, "hvm"));
+    if (osType == NULL) {
+        virReportOOMError();
+        return NULL;
+    }
+
     return osType;
 }
 
@@ -685,10 +703,10 @@ hypervDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
     }
 
     if (virtualSystemSettingData == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s for domain %s"),
-                       "Msvm_VirtualSystemSettingData",
-                       computerSystem->data->ElementName);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s for domain %s"),
+                     "Msvm_VirtualSystemSettingData",
+                     computerSystem->data->ElementName);
         goto cleanup;
     }
 
@@ -706,10 +724,10 @@ hypervDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
     }
 
     if (processorSettingData == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s for domain %s"),
-                       "Msvm_ProcessorSettingData",
-                       computerSystem->data->ElementName);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s for domain %s"),
+                     "Msvm_ProcessorSettingData",
+                     computerSystem->data->ElementName);
         goto cleanup;
     }
 
@@ -728,10 +746,10 @@ hypervDomainGetInfo(virDomainPtr domain, virDomainInfoPtr info)
 
 
     if (memorySettingData == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s for domain %s"),
-                       "Msvm_MemorySettingData",
-                       computerSystem->data->ElementName);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s for domain %s"),
+                     "Msvm_MemorySettingData",
+                     computerSystem->data->ElementName);
         goto cleanup;
     }
 
@@ -800,8 +818,10 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
 
     /* Flags checked by virDomainDefFormat */
 
-    if (VIR_ALLOC(def) < 0)
+    if (VIR_ALLOC(def) < 0) {
+        virReportOOMError();
         goto cleanup;
+    }
 
     virUUIDFormat(domain->uuid, uuid_string);
 
@@ -825,10 +845,10 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
     }
 
     if (virtualSystemSettingData == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s for domain %s"),
-                       "Msvm_VirtualSystemSettingData",
-                       computerSystem->data->ElementName);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s for domain %s"),
+                     "Msvm_VirtualSystemSettingData",
+                     computerSystem->data->ElementName);
         goto cleanup;
     }
 
@@ -846,10 +866,10 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
     }
 
     if (processorSettingData == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s for domain %s"),
-                       "Msvm_ProcessorSettingData",
-                       computerSystem->data->ElementName);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s for domain %s"),
+                     "Msvm_ProcessorSettingData",
+                     computerSystem->data->ElementName);
         goto cleanup;
     }
 
@@ -868,10 +888,10 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
 
 
     if (memorySettingData == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not lookup %s for domain %s"),
-                       "Msvm_MemorySettingData",
-                       computerSystem->data->ElementName);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not lookup %s for domain %s"),
+                     "Msvm_MemorySettingData",
+                     computerSystem->data->ElementName);
         goto cleanup;
     }
 
@@ -885,17 +905,27 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
     }
 
     if (virUUIDParse(computerSystem->data->Name, def->uuid) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Could not parse UUID from string '%s'"),
-                       computerSystem->data->Name);
+        HYPERV_ERROR(VIR_ERR_INTERNAL_ERROR,
+                     _("Could not parse UUID from string '%s'"),
+                     computerSystem->data->Name);
         return NULL;
     }
 
-    if (VIR_STRDUP(def->name, computerSystem->data->ElementName) < 0)
-        goto cleanup;
+    def->name = strdup(computerSystem->data->ElementName);
 
-    if (VIR_STRDUP(def->description, virtualSystemSettingData->data->Notes) < 0)
+    if (def->name == NULL) {
+        virReportOOMError();
         goto cleanup;
+    }
+
+    if (virtualSystemSettingData->data->Notes != NULL) {
+        def->description = strdup(virtualSystemSettingData->data->Notes);
+
+        if (def->description == NULL) {
+            virReportOOMError();
+            goto cleanup;
+        }
+    }
 
     def->mem.max_balloon = memorySettingData->data->Limit * 1024; /* megabyte to kilobyte */
     def->mem.cur_balloon = memorySettingData->data->VirtualQuantity * 1024; /* megabyte to kilobyte */
@@ -903,8 +933,12 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
     def->vcpus = processorSettingData->data->VirtualQuantity;
     def->maxvcpus = processorSettingData->data->VirtualQuantity;
 
-    if (VIR_STRDUP(def->os.type, "hvm") < 0)
+    def->os.type = strdup("hvm");
+
+    if (def->os.type == NULL) {
+        virReportOOMError();
         goto cleanup;
+    }
 
     /* FIXME: devices section is totally missing */
 
@@ -923,7 +957,7 @@ hypervDomainGetXMLDesc(virDomainPtr domain, unsigned int flags)
 
 
 static int
-hypervConnectListDefinedDomains(virConnectPtr conn, char **const names, int maxnames)
+hypervListDefinedDomains(virConnectPtr conn, char **const names, int maxnames)
 {
     bool success = false;
     hypervPrivate *priv = conn->privateData;
@@ -931,7 +965,7 @@ hypervConnectListDefinedDomains(virConnectPtr conn, char **const names, int maxn
     Msvm_ComputerSystem *computerSystemList = NULL;
     Msvm_ComputerSystem *computerSystem = NULL;
     int count = 0;
-    size_t i;
+    int i;
 
     if (maxnames == 0) {
         return 0;
@@ -950,8 +984,12 @@ hypervConnectListDefinedDomains(virConnectPtr conn, char **const names, int maxn
 
     for (computerSystem = computerSystemList; computerSystem != NULL;
          computerSystem = computerSystem->next) {
-        if (VIR_STRDUP(names[count], computerSystem->data->ElementName) < 0)
+        names[count] = strdup(computerSystem->data->ElementName);
+
+        if (names[count] == NULL) {
+            virReportOOMError();
             goto cleanup;
+        }
 
         ++count;
 
@@ -979,7 +1017,7 @@ hypervConnectListDefinedDomains(virConnectPtr conn, char **const names, int maxn
 
 
 static int
-hypervConnectNumOfDefinedDomains(virConnectPtr conn)
+hypervNumberOfDefinedDomains(virConnectPtr conn)
 {
     bool success = false;
     hypervPrivate *priv = conn->privateData;
@@ -1028,8 +1066,8 @@ hypervDomainCreateWithFlags(virDomainPtr domain, unsigned int flags)
     }
 
     if (hypervIsMsvmComputerSystemActive(computerSystem, NULL)) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Domain is already active or is in state transition"));
+        HYPERV_ERROR(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("Domain is already active or is in state transition"));
         goto cleanup;
     }
 
@@ -1053,7 +1091,7 @@ hypervDomainCreate(virDomainPtr domain)
 
 
 static int
-hypervConnectIsEncrypted(virConnectPtr conn)
+hypervIsEncrypted(virConnectPtr conn)
 {
     hypervPrivate *priv = conn->privateData;
 
@@ -1067,7 +1105,7 @@ hypervConnectIsEncrypted(virConnectPtr conn)
 
 
 static int
-hypervConnectIsSecure(virConnectPtr conn)
+hypervIsSecure(virConnectPtr conn)
 {
     hypervPrivate *priv = conn->privateData;
 
@@ -1081,7 +1119,7 @@ hypervConnectIsSecure(virConnectPtr conn)
 
 
 static int
-hypervConnectIsAlive(virConnectPtr conn)
+hypervIsAlive(virConnectPtr conn)
 {
     hypervPrivate *priv = conn->privateData;
 
@@ -1151,8 +1189,8 @@ hypervDomainManagedSave(virDomainPtr domain, unsigned int flags)
 
     if (!hypervIsMsvmComputerSystemActive(computerSystem, &in_transition) ||
         in_transition) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Domain is not active or is in state transition"));
+        HYPERV_ERROR(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("Domain is not active or is in state transition"));
         goto cleanup;
     }
 
@@ -1206,8 +1244,8 @@ hypervDomainManagedSaveRemove(virDomainPtr domain, unsigned int flags)
 
     if (computerSystem->data->EnabledState !=
         MSVM_COMPUTERSYSTEM_ENABLEDSTATE_SUSPENDED) {
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Domain has no managed save image"));
+        HYPERV_ERROR(VIR_ERR_OPERATION_INVALID, "%s",
+                     _("Domain has no managed save image"));
         goto cleanup;
     }
 
@@ -1221,151 +1259,17 @@ hypervDomainManagedSaveRemove(virDomainPtr domain, unsigned int flags)
 }
 
 
-#define MATCH(FLAG) (flags & (FLAG))
-static int
-hypervConnectListAllDomains(virConnectPtr conn,
-                            virDomainPtr **domains,
-                            unsigned int flags)
-{
-    hypervPrivate *priv = conn->privateData;
-    virBuffer query = VIR_BUFFER_INITIALIZER;
-    Msvm_ComputerSystem *computerSystemList = NULL;
-    Msvm_ComputerSystem *computerSystem = NULL;
-    size_t ndoms;
-    virDomainPtr domain;
-    virDomainPtr *doms = NULL;
-    int count = 0;
-    int ret = -1;
-    size_t i;
-
-    virCheckFlags(VIR_CONNECT_LIST_DOMAINS_FILTERS_ALL, -1);
-
-    /* check for filter combinations that return no results:
-     * persistent: all hyperv guests are persistent
-     * snapshot: the driver does not support snapshot management
-     * autostart: the driver does not support autostarting guests
-     */
-    if ((MATCH(VIR_CONNECT_LIST_DOMAINS_TRANSIENT) &&
-         !MATCH(VIR_CONNECT_LIST_DOMAINS_PERSISTENT)) ||
-        (MATCH(VIR_CONNECT_LIST_DOMAINS_AUTOSTART) &&
-         !MATCH(VIR_CONNECT_LIST_DOMAINS_NO_AUTOSTART)) ||
-        (MATCH(VIR_CONNECT_LIST_DOMAINS_HAS_SNAPSHOT) &&
-         !MATCH(VIR_CONNECT_LIST_DOMAINS_NO_SNAPSHOT))) {
-        if (domains && VIR_ALLOC_N(*domains, 1) < 0)
-            goto cleanup;
-
-        ret = 0;
-        goto cleanup;
-    }
-
-    virBufferAddLit(&query, MSVM_COMPUTERSYSTEM_WQL_SELECT);
-    virBufferAddLit(&query, "where ");
-    virBufferAddLit(&query, MSVM_COMPUTERSYSTEM_WQL_VIRTUAL);
-
-    /* construct query with filter depending on flags */
-    if (!(MATCH(VIR_CONNECT_LIST_DOMAINS_ACTIVE) &&
-          MATCH(VIR_CONNECT_LIST_DOMAINS_INACTIVE))) {
-        if (MATCH(VIR_CONNECT_LIST_DOMAINS_ACTIVE)) {
-            virBufferAddLit(&query, "and ");
-            virBufferAddLit(&query, MSVM_COMPUTERSYSTEM_WQL_ACTIVE);
-        }
-
-        if (MATCH(VIR_CONNECT_LIST_DOMAINS_INACTIVE)) {
-            virBufferAddLit(&query, "and ");
-            virBufferAddLit(&query, MSVM_COMPUTERSYSTEM_WQL_INACTIVE);
-        }
-    }
-
-    if (hypervGetMsvmComputerSystemList(priv, &query,
-                                        &computerSystemList) < 0)
-        goto cleanup;
-
-    if (domains) {
-        if (VIR_ALLOC_N(doms, 1) < 0)
-            goto cleanup;
-        ndoms = 1;
-    }
-
-    for (computerSystem = computerSystemList; computerSystem != NULL;
-         computerSystem = computerSystem->next) {
-
-        /* filter by domain state */
-        if (MATCH(VIR_CONNECT_LIST_DOMAINS_FILTERS_STATE)) {
-            int st = hypervMsvmComputerSystemEnabledStateToDomainState(computerSystem);
-            if (!((MATCH(VIR_CONNECT_LIST_DOMAINS_RUNNING) &&
-                   st == VIR_DOMAIN_RUNNING) ||
-                  (MATCH(VIR_CONNECT_LIST_DOMAINS_PAUSED) &&
-                   st == VIR_DOMAIN_PAUSED) ||
-                  (MATCH(VIR_CONNECT_LIST_DOMAINS_SHUTOFF) &&
-                   st == VIR_DOMAIN_SHUTOFF) ||
-                  (MATCH(VIR_CONNECT_LIST_DOMAINS_OTHER) &&
-                   (st != VIR_DOMAIN_RUNNING &&
-                    st != VIR_DOMAIN_PAUSED &&
-                    st != VIR_DOMAIN_SHUTOFF))))
-                continue;
-        }
-
-        /* managed save filter */
-        if (MATCH(VIR_CONNECT_LIST_DOMAINS_FILTERS_MANAGEDSAVE)) {
-            bool mansave = computerSystem->data->EnabledState ==
-                           MSVM_COMPUTERSYSTEM_ENABLEDSTATE_SUSPENDED;
-
-            if (!((MATCH(VIR_CONNECT_LIST_DOMAINS_MANAGEDSAVE) && mansave) ||
-                  (MATCH(VIR_CONNECT_LIST_DOMAINS_NO_MANAGEDSAVE) && !mansave)))
-                continue;
-        }
-
-        if (!doms) {
-            count++;
-            continue;
-        }
-
-        if (VIR_RESIZE_N(doms, ndoms, count, 2) < 0)
-            goto cleanup;
-
-        domain = NULL;
-
-        if (hypervMsvmComputerSystemToDomain(conn, computerSystem,
-                                             &domain) < 0)
-            goto cleanup;
-
-        doms[count++] = domain;
-    }
-
-    if (doms)
-        *domains = doms;
-    doms = NULL;
-    ret = count;
-
-cleanup:
-    if (doms) {
-        for (i = 0; i < count; ++i) {
-            virDomainFree(doms[i]);
-        }
-
-        VIR_FREE(doms);
-    }
-
-    hypervFreeObject(priv, (hypervObject *)computerSystemList);
-
-    return ret;
-}
-#undef MATCH
-
-
-
 
 static virDriver hypervDriver = {
     .no = VIR_DRV_HYPERV,
     .name = "Hyper-V",
-    .connectOpen = hypervConnectOpen, /* 0.9.5 */
-    .connectClose = hypervConnectClose, /* 0.9.5 */
-    .connectGetType = hypervConnectGetType, /* 0.9.5 */
-    .connectGetHostname = hypervConnectGetHostname, /* 0.9.5 */
+    .open = hypervOpen, /* 0.9.5 */
+    .close = hypervClose, /* 0.9.5 */
+    .type = hypervGetType, /* 0.9.5 */
+    .getHostname = hypervGetHostname, /* 0.9.5 */
     .nodeGetInfo = hypervNodeGetInfo, /* 0.9.5 */
-    .connectListDomains = hypervConnectListDomains, /* 0.9.5 */
-    .connectNumOfDomains = hypervConnectNumOfDomains, /* 0.9.5 */
-    .connectListAllDomains = hypervConnectListAllDomains, /* 0.10.2 */
+    .listDomains = hypervListDomains, /* 0.9.5 */
+    .numOfDomains = hypervNumberOfDomains, /* 0.9.5 */
     .domainLookupByID = hypervDomainLookupByID, /* 0.9.5 */
     .domainLookupByUUID = hypervDomainLookupByUUID, /* 0.9.5 */
     .domainLookupByName = hypervDomainLookupByName, /* 0.9.5 */
@@ -1377,19 +1281,19 @@ static virDriver hypervDriver = {
     .domainGetInfo = hypervDomainGetInfo, /* 0.9.5 */
     .domainGetState = hypervDomainGetState, /* 0.9.5 */
     .domainGetXMLDesc = hypervDomainGetXMLDesc, /* 0.9.5 */
-    .connectListDefinedDomains = hypervConnectListDefinedDomains, /* 0.9.5 */
-    .connectNumOfDefinedDomains = hypervConnectNumOfDefinedDomains, /* 0.9.5 */
+    .listDefinedDomains = hypervListDefinedDomains, /* 0.9.5 */
+    .numOfDefinedDomains = hypervNumberOfDefinedDomains, /* 0.9.5 */
     .domainCreate = hypervDomainCreate, /* 0.9.5 */
     .domainCreateWithFlags = hypervDomainCreateWithFlags, /* 0.9.5 */
-    .connectIsEncrypted = hypervConnectIsEncrypted, /* 0.9.5 */
-    .connectIsSecure = hypervConnectIsSecure, /* 0.9.5 */
+    .isEncrypted = hypervIsEncrypted, /* 0.9.5 */
+    .isSecure = hypervIsSecure, /* 0.9.5 */
     .domainIsActive = hypervDomainIsActive, /* 0.9.5 */
     .domainIsPersistent = hypervDomainIsPersistent, /* 0.9.5 */
     .domainIsUpdated = hypervDomainIsUpdated, /* 0.9.5 */
     .domainManagedSave = hypervDomainManagedSave, /* 0.9.5 */
     .domainHasManagedSaveImage = hypervDomainHasManagedSaveImage, /* 0.9.5 */
     .domainManagedSaveRemove = hypervDomainManagedSaveRemove, /* 0.9.5 */
-    .connectIsAlive = hypervConnectIsAlive, /* 0.9.8 */
+    .isAlive = hypervIsAlive, /* 0.9.8 */
 };
 
 

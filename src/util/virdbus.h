@@ -1,7 +1,7 @@
 /*
  * virdbus.h: helper for using DBus
  *
- * Copyright (C) 2012-2013 Red Hat, Inc.
+ * Copyright (C) 2012 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,39 +14,21 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
 #ifndef __VIR_DBUS_H__
 # define __VIR_DBUS_H__
 
-# ifdef WITH_DBUS
-#  undef interface /* Work around namespace pollution in mingw's rpc.h */
+# ifdef HAVE_DBUS
 #  include <dbus/dbus.h>
 # else
 #  define DBusConnection void
-#  define DBusMessage void
 # endif
 # include "internal.h"
 
-void virDBusSetSharedBus(bool shared);
-
 DBusConnection *virDBusGetSystemBus(void);
-bool virDBusHasSystemBus(void);
-void virDBusCloseSystemBus(void);
-DBusConnection *virDBusGetSessionBus(void);
 
-int virDBusCallMethod(DBusConnection *conn,
-                      DBusMessage **reply,
-                      const char *destination,
-                      const char *path,
-                      const char *iface,
-                      const char *member,
-                      const char *types, ...);
-int virDBusMessageRead(DBusMessage *msg,
-                       const char *types, ...);
-
-int virDBusIsServiceEnabled(const char *name);
 #endif /* __VIR_DBUS_H__ */

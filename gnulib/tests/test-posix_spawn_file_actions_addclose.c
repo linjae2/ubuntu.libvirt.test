@@ -1,5 +1,5 @@
 /* Test posix_spawn_file_actions_addclose() function.
-   Copyright (C) 2011-2014 Free Software Foundation, Inc.
+   Copyright (C) 2011-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,24 +23,8 @@ SIGNATURE_CHECK (posix_spawn_file_actions_addclose, int,
                  (posix_spawn_file_actions_t *, int));
 
 #include <errno.h>
-#include <limits.h>
-#include <unistd.h>
 
 #include "macros.h"
-
-/* Return a file descriptor that is too big to use.
-   Prefer the smallest such fd, except use OPEN_MAX if it is defined
-   and is greater than getdtablesize (), as that's how OS X works.  */
-static int
-big_fd (void)
-{
-  int fd = getdtablesize ();
-#ifdef OPEN_MAX
-  if (fd < OPEN_MAX)
-    fd = OPEN_MAX;
-#endif
-  return fd;
-}
 
 int
 main (void)
@@ -55,9 +39,8 @@ main (void)
     ASSERT (posix_spawn_file_actions_addclose (&actions, -1) == EBADF);
   }
   {
-    int bad_fd = big_fd ();
     errno = 0;
-    ASSERT (posix_spawn_file_actions_addclose (&actions, bad_fd) == EBADF);
+    ASSERT (posix_spawn_file_actions_addclose (&actions, 10000000) == EBADF);
   }
 
   return 0;

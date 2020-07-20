@@ -10,8 +10,8 @@
     <path>/var/lib/libvirt/images</path>
     <permissions>
       <mode>0700</mode>
-      <owner>-1</owner>
-      <group>-1</group>
+      <owner>0</owner>
+      <group>0</group>
       <label>some_label_t</label>
     </permissions>
   </target>

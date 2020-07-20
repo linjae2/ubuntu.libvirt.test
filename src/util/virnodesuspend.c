@@ -14,23 +14,28 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
 #include <config.h>
 #include "virnodesuspend.h"
 
-#include "vircommand.h"
-#include "virthread.h"
+#include "command.h"
+#include "threads.h"
 #include "datatypes.h"
 
-#include "viralloc.h"
-#include "virlog.h"
-#include "virerror.h"
+#include "memory.h"
+#include "logging.h"
+#include "virterror_internal.h"
 
 #define VIR_FROM_THIS VIR_FROM_NONE
+
+#define virNodeSuspendError(code, ...)                                     \
+        virReportErrorHelper(VIR_FROM_NONE, code, __FILE__,                \
+                             __FUNCTION__, __LINE__, __VA_ARGS__)
+
 
 #define SUSPEND_DELAY 10 /* in seconds */
 
@@ -59,18 +64,23 @@ static void virNodeSuspendUnlock(void)
 }
 
 
-static int virNodeSuspendOnceInit(void)
+/**
+ * virNodeSuspendInit:
+ *
+ * Get the system-wide sleep states supported by the host, such as
+ * Suspend-to-RAM, Suspend-to-Disk, or Hybrid-Suspend, so that a request
+ * to suspend/hibernate the host can be handled appropriately based on
+ * this information.
+ *
+ * Returns 0 if successful, and -1 in case of error.
+ */
+int virNodeSuspendInit(void)
 {
-    if (virMutexInit(&virNodeSuspendMutex) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Unable to initialize mutex"));
+    if (virMutexInit(&virNodeSuspendMutex) < 0)
         return -1;
-    }
 
     return 0;
 }
-
-VIR_ONCE_GLOBAL_INIT(virNodeSuspend)
 
 
 /**
@@ -85,8 +95,8 @@ static int virNodeSuspendSetNodeWakeup(unsigned long long alarmTime)
     virCommandPtr setAlarmCmd;
     int ret = -1;
 
-    if (alarmTime < MIN_TIME_REQ_FOR_SUSPEND) {
-        virReportError(VIR_ERR_INVALID_ARG, "%s", _("Suspend duration is too short"));
+    if (alarmTime <= MIN_TIME_REQ_FOR_SUSPEND) {
+        virNodeSuspendError(VIR_ERR_INVALID_ARG, "%s", _("Suspend duration is too short"));
         return -1;
     }
 
@@ -165,7 +175,8 @@ static void virNodeSuspend(void *cmdString)
  * -1 if suspending the node is not supported, or if a previous suspend
  * operation is still in progress.
  */
-int nodeSuspendForDuration(unsigned int target,
+int nodeSuspendForDuration(virConnectPtr conn ATTRIBUTE_UNUSED,
+                           unsigned int target,
                            unsigned long long duration,
                            unsigned int flags)
 {
@@ -175,9 +186,6 @@ int nodeSuspendForDuration(unsigned int target,
     unsigned int supported;
 
     virCheckFlags(0, -1);
-
-    if (virNodeSuspendInitialize() < 0)
-        return -1;
 
     if (virNodeSuspendGetTargetMask(&supported) < 0)
         return -1;
@@ -190,8 +198,8 @@ int nodeSuspendForDuration(unsigned int target,
 
     if (aboutToSuspend) {
         /* A suspend operation is already in progress */
-        virReportError(VIR_ERR_OPERATION_INVALID, "%s",
-                       _("Suspend operation already in progress"));
+        virNodeSuspendError(VIR_ERR_OPERATION_INVALID, "%s",
+                            _("Suspend operation already in progress"));
         goto cleanup;
     }
 
@@ -199,7 +207,7 @@ int nodeSuspendForDuration(unsigned int target,
     switch (target) {
     case VIR_NODE_SUSPEND_TARGET_MEM:
         if (!(supported & (1 << VIR_NODE_SUSPEND_TARGET_MEM))) {
-            virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s", _("Suspend-to-RAM"));
+            virNodeSuspendError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s", _("Suspend-to-RAM"));
             goto cleanup;
         }
         cmdString = "pm-suspend";
@@ -207,7 +215,7 @@ int nodeSuspendForDuration(unsigned int target,
 
     case VIR_NODE_SUSPEND_TARGET_DISK:
         if (!(supported & (1 << VIR_NODE_SUSPEND_TARGET_DISK))) {
-            virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s", _("Suspend-to-Disk"));
+            virNodeSuspendError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s", _("Suspend-to-Disk"));
             goto cleanup;
         }
         cmdString = "pm-hibernate";
@@ -215,14 +223,14 @@ int nodeSuspendForDuration(unsigned int target,
 
     case VIR_NODE_SUSPEND_TARGET_HYBRID:
         if (!(supported & (1 << VIR_NODE_SUSPEND_TARGET_HYBRID))) {
-            virReportError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s", _("Hybrid-Suspend"));
+            virNodeSuspendError(VIR_ERR_ARGUMENT_UNSUPPORTED, "%s", _("Hybrid-Suspend"));
             goto cleanup;
         }
         cmdString = "pm-suspend-hybrid";
         break;
 
     default:
-        virReportError(VIR_ERR_INVALID_ARG, "%s", _("Invalid suspend target"));
+        virNodeSuspendError(VIR_ERR_INVALID_ARG, "%s", _("Invalid suspend target"));
         goto cleanup;
     }
 
@@ -231,8 +239,8 @@ int nodeSuspendForDuration(unsigned int target,
         goto cleanup;
 
     if (virThreadCreate(&thread, false, virNodeSuspend, (void *)cmdString) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Failed to create thread to suspend the host"));
+        virNodeSuspendError(VIR_ERR_INTERNAL_ERROR, "%s",
+                        _("Failed to create thread to suspend the host\n"));
         goto cleanup;
     }
 
@@ -264,9 +272,6 @@ virNodeSuspendSupportsTarget(unsigned int target, bool *supported)
     virCommandPtr cmd;
     int status;
     int ret = -1;
-
-    if (virNodeSuspendInitialize() < 0)
-        return -1;
 
     *supported = false;
 

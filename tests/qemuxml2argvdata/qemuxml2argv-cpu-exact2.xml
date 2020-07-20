@@ -30,6 +30,6 @@
   <on_reboot>restart</on_reboot>
   <on_crash>destroy</on_crash>
   <devices>
-      <emulator>/usr/bin/qemu</emulator>
+      <emulator>/./qemu.sh</emulator>
   </devices>
 </domain>

@@ -3,13 +3,13 @@
  */
 
 /*
- * Copyright (C) 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2010-2011 Red Hat, Inc.
  * Copyright (C) 2008-2009 Sun Microsystems, Inc.
  *
  * This file is part of a free software library; you can redistribute
  * it and/or modify it under the terms of the GNU Lesser General
  * Public License version 2.1 as published by the Free Software
- * Foundation and shipped in the "COPYING.LESSER" file with this library.
+ * Foundation and shipped in the "COPYING" file with this library.
  * The library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY of any kind.
  *
@@ -29,16 +29,18 @@
 
 #include <config.h>
 
+#include <stdint.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #include "internal.h"
 
 #include "datatypes.h"
-#include "virlog.h"
+#include "logging.h"
 #include "vbox_driver.h"
 #include "vbox_glue.h"
-#include "virerror.h"
-#include "virutil.h"
+#include "virterror_internal.h"
+#include "util.h"
 
 #define VIR_FROM_THIS VIR_FROM_VBOX
 
@@ -61,16 +63,14 @@ extern virStorageDriver vbox40StorageDriver;
 extern virDriver vbox41Driver;
 extern virNetworkDriver vbox41NetworkDriver;
 extern virStorageDriver vbox41StorageDriver;
-extern virDriver vbox42Driver;
-extern virNetworkDriver vbox42NetworkDriver;
-extern virStorageDriver vbox42StorageDriver;
-extern virDriver vbox43Driver;
-extern virNetworkDriver vbox43NetworkDriver;
-extern virStorageDriver vbox43StorageDriver;
 
 static virDriver vboxDriverDummy;
 
 #define VIR_FROM_THIS VIR_FROM_VBOX
+
+#define vboxError(code, ...) \
+        virReportErrorHelper(VIR_FROM_VBOX, code, __FILE__, \
+                             __FUNCTION__, __LINE__, __VA_ARGS__)
 
 int vboxRegister(void) {
     virDriverPtr        driver;
@@ -130,16 +130,6 @@ int vboxRegister(void) {
             driver        = &vbox41Driver;
             networkDriver = &vbox41NetworkDriver;
             storageDriver = &vbox41StorageDriver;
-        } else if (uVersion >= 4001051 && uVersion < 4002051) {
-            VIR_DEBUG("VirtualBox API version: 4.2");
-            driver        = &vbox42Driver;
-            networkDriver = &vbox42NetworkDriver;
-            storageDriver = &vbox42StorageDriver;
-        } else if (uVersion >= 4002051 && uVersion < 4003051) {
-            VIR_DEBUG("VirtualBox API version: 4.3");
-            driver        = &vbox43Driver;
-            networkDriver = &vbox43NetworkDriver;
-            storageDriver = &vbox43StorageDriver;
         } else {
             VIR_DEBUG("Unsupported VirtualBox API version: %u", uVersion);
         }
@@ -157,48 +147,48 @@ int vboxRegister(void) {
     return 0;
 }
 
-static virDrvOpenStatus vboxConnectOpen(virConnectPtr conn,
-                                        virConnectAuthPtr auth ATTRIBUTE_UNUSED,
-                                        unsigned int flags)
+static virDrvOpenStatus vboxOpenDummy(virConnectPtr conn,
+                                      virConnectAuthPtr auth ATTRIBUTE_UNUSED,
+                                      unsigned int flags)
 {
-    uid_t uid = geteuid();
+    uid_t uid = getuid();
 
     virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
 
     if (conn->uri == NULL ||
         conn->uri->scheme == NULL ||
-        STRNEQ(conn->uri->scheme, "vbox") ||
+        STRNEQ (conn->uri->scheme, "vbox") ||
         conn->uri->server != NULL)
         return VIR_DRV_OPEN_DECLINED;
 
     if (conn->uri->path == NULL || STREQ(conn->uri->path, "")) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("no VirtualBox driver path specified (try vbox:///session)"));
+        vboxError(VIR_ERR_INTERNAL_ERROR, "%s",
+                  _("no VirtualBox driver path specified (try vbox:///session)"));
         return VIR_DRV_OPEN_ERROR;
     }
 
     if (uid != 0) {
-        if (STRNEQ(conn->uri->path, "/session")) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("unknown driver path '%s' specified (try vbox:///session)"), conn->uri->path);
+        if (STRNEQ (conn->uri->path, "/session")) {
+            vboxError(VIR_ERR_INTERNAL_ERROR,
+                      _("unknown driver path '%s' specified (try vbox:///session)"), conn->uri->path);
             return VIR_DRV_OPEN_ERROR;
         }
     } else { /* root */
-        if (STRNEQ(conn->uri->path, "/system") &&
-            STRNEQ(conn->uri->path, "/session")) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("unknown driver path '%s' specified (try vbox:///system)"), conn->uri->path);
+        if (STRNEQ (conn->uri->path, "/system") &&
+            STRNEQ (conn->uri->path, "/session")) {
+            vboxError(VIR_ERR_INTERNAL_ERROR,
+                      _("unknown driver path '%s' specified (try vbox:///system)"), conn->uri->path);
             return VIR_DRV_OPEN_ERROR;
         }
     }
 
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                   _("unable to initialize VirtualBox driver API"));
+    vboxError(VIR_ERR_INTERNAL_ERROR, "%s",
+              _("unable to initialize VirtualBox driver API"));
     return VIR_DRV_OPEN_ERROR;
 }
 
 static virDriver vboxDriverDummy = {
     VIR_DRV_VBOX,
     "VBOX",
-    .connectOpen = vboxConnectOpen,
+    .open = vboxOpenDummy,
 };

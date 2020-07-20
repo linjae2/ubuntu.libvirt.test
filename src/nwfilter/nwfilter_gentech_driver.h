@@ -1,7 +1,6 @@
 /*
  * nwfilter_gentech_driver.h: generic technology driver include file
  *
- * Copyright (C) 2013 Red Hat, Inc.
  * Copyright (C) 2010 IBM Corp.
  * Copyright (C) 2010 Stefan Berger
  *
@@ -16,15 +15,13 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Stefan Berger <stefanb@us.ibm.com>
  */
 #ifndef __NWFILTER_GENTECH_DRIVER_H
 # define __NWFILTER_GENTECH_DRIVER_H
-
-# include "nwfilter_conf.h"
 
 virNWFilterTechDriverPtr virNWFilterTechDriverForName(const char *name);
 
@@ -40,30 +37,31 @@ enum instCase {
 };
 
 
-int virNWFilterInstantiateFilter(virNWFilterDriverStatePtr driver,
+int virNWFilterInstantiateFilter(virConnectPtr conn,
                                  const unsigned char *vmuuid,
-                                 const virDomainNetDef *net);
-int virNWFilterUpdateInstantiateFilter(virNWFilterDriverStatePtr driver,
+                                 const virDomainNetDefPtr net);
+int virNWFilterUpdateInstantiateFilter(virConnectPtr conn,
                                        const unsigned char *vmuuid,
-                                       const virDomainNetDef *net,
+                                       const virDomainNetDefPtr net,
                                        bool *skipIface);
 
-int virNWFilterInstantiateFilterLate(virNWFilterDriverStatePtr driver,
-                                     const unsigned char *vmuuid,
+int virNWFilterInstantiateFilterLate(const unsigned char *vmuuid,
                                      const char *ifname,
                                      int ifindex,
                                      const char *linkdev,
                                      enum virDomainNetType nettype,
-                                     const virMacAddr *macaddr,
+                                     const unsigned char *macaddr,
                                      const char *filtername,
-                                     virNWFilterHashTablePtr filterparams);
+                                     virNWFilterHashTablePtr filterparams,
+                                     virNWFilterDriverStatePtr driver);
 
-int virNWFilterTeardownFilter(const virDomainNetDef *net);
+int virNWFilterTeardownFilter(const virDomainNetDefPtr net);
 
 virNWFilterHashTablePtr virNWFilterCreateVarHashmap(char *macaddr,
-                                       const virNWFilterVarValue *value);
+                                       const virNWFilterVarValuePtr);
 
-int virNWFilterDomainFWUpdateCB(virDomainObjPtr vm,
-                                void *data);
+void virNWFilterDomainFWUpdateCB(void *payload,
+                                 const void *name,
+                                 void *data);
 
 #endif

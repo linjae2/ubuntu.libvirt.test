@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Authors:
  *      Jiri Denemark <jdenemar@redhat.com>
@@ -23,11 +23,10 @@
 
 #include <config.h>
 
-#include "viralloc.h"
+#include "memory.h"
 #include "cpu.h"
 #include "cpu_map.h"
 #include "configmake.h"
-#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_CPU
 
@@ -87,21 +86,21 @@ int cpuMapLoad(const char *arch,
     const char *mapfile = (cpumap ? cpumap : CPUMAPFILE);
 
     if (arch == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       "%s", _("undefined hardware architecture"));
+        virCPUReportError(VIR_ERR_INTERNAL_ERROR,
+                          "%s", _("undefined hardware architecture"));
         return -1;
     }
 
     if (cb == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       "%s", _("no callback provided"));
+        virCPUReportError(VIR_ERR_INTERNAL_ERROR,
+                          "%s", _("no callback provided"));
         return -1;
     }
 
     if ((xml = xmlParseFile(mapfile)) == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("cannot parse CPU map file: %s"),
-                       mapfile);
+        virCPUReportError(VIR_ERR_INTERNAL_ERROR,
+                _("cannot parse CPU map file: %s"),
+                mapfile);
         goto cleanup;
     }
 
@@ -117,15 +116,15 @@ int cpuMapLoad(const char *arch,
     ctxt->node = xmlDocGetRootElement(xml);
 
     if ((ctxt->node = virXPathNode(xpath, ctxt)) == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("cannot find CPU map for %s architecture"), arch);
+        virCPUReportError(VIR_ERR_INTERNAL_ERROR,
+                _("cannot find CPU map for %s architecture"), arch);
         goto cleanup;
     }
 
     for (element = 0; element < CPU_MAP_ELEMENT_LAST; element++) {
         if (load(ctxt, element, cb, data) < 0) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("cannot parse CPU map for %s architecture"), arch);
+            virCPUReportError(VIR_ERR_INTERNAL_ERROR,
+                    _("cannot parse CPU map for %s architecture"), arch);
             goto cleanup;
         }
     }
@@ -150,7 +149,7 @@ cpuMapOverride(const char *path)
 {
     char *map;
 
-    if (VIR_STRDUP(map, path) < 0)
+    if (!(map = strdup(path)))
         return -1;
 
     VIR_FREE(cpumap);

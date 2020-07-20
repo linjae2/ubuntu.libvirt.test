@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -25,12 +25,16 @@
 
 #include "stream.h"
 #include "remote.h"
-#include "viralloc.h"
-#include "virlog.h"
+#include "memory.h"
+#include "logging.h"
 #include "virnetserverclient.h"
-#include "virerror.h"
+#include "virterror_internal.h"
 
 #define VIR_FROM_THIS VIR_FROM_STREAMS
+
+#define virNetError(code, ...)                                    \
+    virReportErrorHelper(VIR_FROM_THIS, code, __FILE__,           \
+                         __FUNCTION__, __LINE__, __VA_ARGS__)
 
 struct daemonClientStream {
     daemonClientPrivatePtr priv;
@@ -104,6 +108,14 @@ daemonStreamMessageFinished(virNetMessagePtr msg ATTRIBUTE_UNUSED,
 }
 
 
+static void
+daemonStreamEventFreeFunc(void *opaque)
+{
+    virNetServerClientPtr client = opaque;
+
+    virNetServerClientFree(client);
+}
+
 /*
  * Callback that gets invoked when a stream becomes writable/readable
  */
@@ -148,14 +160,6 @@ daemonStreamEvent(virStreamPtr st, int events, void *opaque)
             virNetServerClientClose(client);
             goto cleanup;
         }
-        /* If we detected EOF during read processing,
-         * then clear hangup/error conditions, since
-         * we want the client to see the EOF message
-         * we just sent them
-         */
-        if (stream->recvEOF)
-            events = events & ~(VIR_STREAM_EVENT_HANGUP |
-                                VIR_STREAM_EVENT_ERROR);
     }
 
     /* If we have a completion/abort message, always process it */
@@ -229,11 +233,11 @@ daemonStreamEvent(virStreamPtr st, int events, void *opaque)
         virStreamEventRemoveCallback(stream->st);
         virStreamAbort(stream->st);
         if (events & VIR_STREAM_EVENT_HANGUP)
-            virReportError(VIR_ERR_RPC,
-                           "%s", _("stream had unexpected termination"));
+            virNetError(VIR_ERR_RPC,
+                        "%s", _("stream had unexpected termination"));
         else
-            virReportError(VIR_ERR_RPC,
-                           "%s", _("stream had I/O failure"));
+            virNetError(VIR_ERR_RPC,
+                        "%s", _("stream had I/O failure"));
 
         msg = virNetMessageNew(false);
         if (!msg) {
@@ -325,16 +329,20 @@ daemonCreateClientStream(virNetServerClientPtr client,
     VIR_DEBUG("client=%p, proc=%d, serial=%d, st=%p",
               client, header->proc, header->serial, st);
 
-    if (VIR_ALLOC(stream) < 0)
+    if (VIR_ALLOC(stream) < 0) {
+        virReportOOMError();
         return NULL;
+    }
 
     stream->refs = 1;
     stream->priv = priv;
-    stream->prog = virObjectRef(prog);
+    stream->prog = prog;
     stream->procedure = header->proc;
     stream->serial = header->serial;
     stream->filterID = -1;
     stream->st = st;
+
+    virNetServerProgramRef(prog);
 
     return stream;
 }
@@ -361,7 +369,7 @@ int daemonFreeClientStream(virNetServerClientPtr client,
     VIR_DEBUG("client=%p, proc=%d, serial=%d",
               client, stream->procedure, stream->serial);
 
-    virObjectUnref(stream->prog);
+    virNetServerProgramFree(stream->prog);
 
     msg = stream->rx;
     while (msg) {
@@ -407,11 +415,10 @@ int daemonAddClientStream(virNetServerClientPtr client,
 
     if (virStreamEventAddCallback(stream->st, 0,
                                   daemonStreamEvent, client,
-                                  virObjectFreeCallback) < 0)
+                                  daemonStreamEventFreeFunc) < 0)
         return -1;
 
-    virObjectRef(client);
-
+    virNetServerClientRef(client);
     if ((stream->filterID = virNetServerClientAddFilter(client,
                                                         daemonStreamFilter,
                                                         stream)) < 0) {
@@ -611,13 +618,13 @@ daemonStreamHandleAbort(virNetServerClientPtr client,
     virStreamAbort(stream->st);
 
     if (msg->header.status == VIR_NET_ERROR)
-        virReportError(VIR_ERR_RPC,
-                       "%s", _("stream aborted at client request"));
+        virNetError(VIR_ERR_RPC,
+                    "%s", _("stream aborted at client request"));
     else {
         VIR_WARN("unexpected stream status %d", msg->header.status);
-        virReportError(VIR_ERR_RPC,
-                       _("stream aborted with unexpected status %d"),
-                       msg->header.status);
+        virNetError(VIR_ERR_RPC,
+                    _("stream aborted with unexpected status %d"),
+                    msg->header.status);
     }
 
     return virNetServerProgramSendReplyError(remoteProgram,
@@ -695,7 +702,7 @@ daemonStreamHandleWrite(virNetServerClientPtr client,
 
 /*
  * Invoked when a stream is signalled as having data
- * available to read. This reads up to one message
+ * available to read. This reads upto one message
  * worth of data, and then queues that for transmission
  * to the client.
  *
@@ -708,7 +715,7 @@ daemonStreamHandleRead(virNetServerClientPtr client,
                        daemonClientStream *stream)
 {
     char *buffer;
-    size_t bufferLen = VIR_NET_MESSAGE_LEGACY_PAYLOAD_MAX;
+    size_t bufferLen = VIR_NET_MESSAGE_PAYLOAD_MAX;
     int ret;
 
     VIR_DEBUG("client=%p, stream=%p tx=%d closed=%d",

@@ -5,11 +5,17 @@
 #include <string.h>
 #include <sys/utsname.h>
 
-#include "virstatslinux.h"
+#include "stats_linux.h"
 #include "internal.h"
 #include "xen/block_stats.h"
 #include "testutils.h"
-#include "vircommand.h"
+#include "command.h"
+
+static void testQuietError(void *userData ATTRIBUTE_UNUSED,
+                           virErrorPtr error ATTRIBUTE_UNUSED)
+{
+    /* nada */
+}
 
 static int testDevice(const char *path, int expect)
 {
@@ -61,13 +67,14 @@ mymain(void)
      * register a handler to stop error messages cluttering
      * up display
      */
-    virtTestQuiesceLibvirtErrors(false);
+    if (!virTestGetDebug())
+        virSetErrorFunc(NULL, testQuietError);
 
 #define DO_TEST(dev, num)                                              \
     do {                                                               \
         struct testInfo info = { dev, num };                           \
         if (virtTestRun("Device " dev " -> " # num,                    \
-                        testDeviceHelper, &info) < 0)                  \
+                        1, testDeviceHelper, &info) < 0)               \
             ret = -1;                                                  \
     } while (0)
 

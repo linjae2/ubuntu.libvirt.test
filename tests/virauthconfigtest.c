@@ -12,8 +12,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -24,9 +24,10 @@
 #include <signal.h>
 
 #include "testutils.h"
-#include "virerror.h"
-#include "viralloc.h"
-#include "virlog.h"
+#include "util.h"
+#include "virterror_internal.h"
+#include "memory.h"
+#include "logging.h"
 
 #include "virauthconfig.h"
 
@@ -96,7 +97,7 @@ mymain(void)
             config, hostname, service, credname, expect                 \
         };                                                              \
         if (virtTestRun("Test Lookup " hostname "-" service "-" credname, \
-                        testAuthLookup, &data) < 0)                     \
+                        1, testAuthLookup, &data) < 0)                   \
             ret = -1;                                                   \
     } while (0)
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2010-2012 Red Hat, Inc.
  * Copyright (C) 2010-2012 IBM Corporation
  *
  * This library is free software; you can redistribute it and/or
@@ -13,34 +13,27 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
 #ifndef __VIR_NETLINK_H__
 # define __VIR_NETLINK_H__
 
+# include "config.h"
 # include "internal.h"
-# include "virmacaddr.h"
+
+# include <stdint.h>
 
 # if defined(__linux__) && defined(HAVE_LIBNL)
 
-/* Work around a bug where older libnl-1 headers expected older gcc
- * semantics of 'extern inline' that conflict with C99 semantics.  */
-#  ifdef HAVE_LIBNL1
-#   define inline
-#  endif
 #  include <netlink/msg.h>
-#  ifdef HAVE_LIBNL1
-#   undef inline
-#  endif
 
 # else
 
 struct nl_msg;
 struct sockaddr_nl;
 struct nlattr;
-struct nlmsghdr;
 
 # endif /* __linux__ */
 
@@ -48,57 +41,43 @@ int virNetlinkStartup(void);
 void virNetlinkShutdown(void);
 
 int virNetlinkCommand(struct nl_msg *nl_msg,
-                      struct nlmsghdr **resp, unsigned int *respbuflen,
-                      uint32_t src_pid, uint32_t dst_pid,
-                      unsigned int protocol, unsigned int groups);
+                      unsigned char **respbuf, unsigned int *respbuflen,
+                      uint32_t src_port, uint32_t dst_port);
 
-typedef void (*virNetlinkEventHandleCallback)(struct nlmsghdr *,
-                                              unsigned int length,
-                                              struct sockaddr_nl *peer,
-                                              bool *handled,
-                                              void *opaque);
+typedef void (*virNetlinkEventHandleCallback)(unsigned char *msg, int length, struct sockaddr_nl *peer, bool *handled, void *opaque);
 
-typedef void (*virNetlinkEventRemoveCallback)(int watch,
-                                              const virMacAddr *macaddr,
-                                              void *opaque);
+typedef void (*virNetlinkEventRemoveCallback)(int watch, const unsigned char *macaddr, void *opaque);
 
 /**
  * stopNetlinkEventServer: stop the monitor to receive netlink messages for libvirtd
  */
-int virNetlinkEventServiceStop(unsigned int protocol);
-
-/**
- * stopNetlinkEventServerAll: stop all the monitors to receive netlink messages for libvirtd
- */
-int virNetlinkEventServiceStopAll(void);
+int virNetlinkEventServiceStop(void);
 
 /**
  * startNetlinkEventServer: start a monitor to receive netlink messages for libvirtd
  */
-int virNetlinkEventServiceStart(unsigned int protocol, unsigned int groups);
+int virNetlinkEventServiceStart(void);
 
 /**
  * virNetlinkEventServiceIsRunning: returns if the netlink event service is running.
  */
-bool virNetlinkEventServiceIsRunning(unsigned int protocol);
+bool virNetlinkEventServiceIsRunning(void);
 
 /**
  * virNetlinkEventServiceLocalPid: returns nl_pid used to bind() netlink socket
  */
-int virNetlinkEventServiceLocalPid(unsigned int protocol);
+int virNetlinkEventServiceLocalPid(void);
 
 /**
  * virNetlinkEventAddClient: register a callback for handling of netlink messages
  */
 int virNetlinkEventAddClient(virNetlinkEventHandleCallback handleCB,
                              virNetlinkEventRemoveCallback removeCB,
-                             void *opaque, const virMacAddr *macaddr,
-                             unsigned int protocol);
+                             void *opaque, const unsigned char *macaddr);
 
 /**
  * virNetlinkEventRemoveClient: unregister a callback from a netlink monitor
  */
-int virNetlinkEventRemoveClient(int watch, const virMacAddr *macaddr,
-                                unsigned int protocol);
+int virNetlinkEventRemoveClient(int watch, const unsigned char *macaddr);
 
 #endif /* __VIR_NETLINK_H__ */

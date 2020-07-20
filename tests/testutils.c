@@ -1,21 +1,9 @@
 /*
  * testutils.c: basic test utils
  *
- * Copyright (C) 2005-2013 Red Hat, Inc.
+ * Copyright (C) 2005-2012 Red Hat, Inc.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * See COPYING.LIB for the License of this software
  *
  * Karel Zak <kzak@redhat.com>
  */
@@ -27,31 +15,35 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
-#include <regex.h>
+#ifndef WIN32
+# include <sys/wait.h>
+#endif
+#ifdef HAVE_REGEX_H
+# include <regex.h>
+#endif
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
 #include <limits.h>
 #include "testutils.h"
 #include "internal.h"
-#include "viralloc.h"
-#include "virutil.h"
-#include "virthread.h"
-#include "virerror.h"
-#include "virbuffer.h"
-#include "virlog.h"
-#include "vircommand.h"
+#include "memory.h"
+#include "util.h"
+#include "threads.h"
+#include "virterror_internal.h"
+#include "buf.h"
+#include "logging.h"
+#include "command.h"
 #include "virrandom.h"
-#include "dirname.h"
 #include "virprocess.h"
-#include "virstring.h"
+
+#if TEST_OOM_TRACE
+# include <execinfo.h>
+#endif
 
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif
-
-#define VIR_FROM_THIS VIR_FROM_NONE
 
 #define GETTIMEOFDAY(T) gettimeofday(T, NULL)
 #define DIFF_MSEC(T, U)                                 \
@@ -62,13 +54,25 @@
 
 static unsigned int testDebug = -1;
 static unsigned int testVerbose = -1;
-static unsigned int testExpensive = -1;
 
-static size_t testCounter = 0;
-static size_t testStart = 0;
-static size_t testEnd = 0;
+static unsigned int testOOM = 0;
+static unsigned int testCounter = 0;
 
 char *progname;
+char *abs_srcdir;
+
+double
+virtTestCountAverage(double *items, int nitems)
+{
+    long double sum = 0;
+    int i;
+
+    for (i=1; i < nitems; i++)
+        sum += items[i];
+
+    return (double) (sum / nitems);
+}
+
 
 void virtTestResult(const char *name, int ret, const char *msg, ...)
 {
@@ -80,14 +84,14 @@ void virtTestResult(const char *name, int ret, const char *msg, ...)
 
     testCounter++;
     if (virTestGetVerbose()) {
-        fprintf(stderr, "%3zu) %-60s ", testCounter, name);
+        fprintf(stderr, "%3d) %-60s ", testCounter, name);
         if (ret == 0)
             fprintf(stderr, "OK\n");
         else {
             fprintf(stderr, "FAILED\n");
             if (msg) {
                 char *str;
-                if (virVasprintfQuiet(&str, msg, vargs) == 0) {
+                if (virVasprintf(&str, msg, vargs) == 0) {
                     fprintf(stderr, "%s", str);
                     VIR_FREE(str);
                 }
@@ -96,7 +100,7 @@ void virtTestResult(const char *name, int ret, const char *msg, ...)
     } else {
         if (testCounter != 1 &&
             !((testCounter-1) % 40)) {
-            fprintf(stderr, " %-3zu\n", (testCounter-1));
+            fprintf(stderr, " %-3d\n", (testCounter-1));
             fprintf(stderr, "      ");
         }
         if (ret == 0)
@@ -109,60 +113,79 @@ void virtTestResult(const char *name, int ret, const char *msg, ...)
 }
 
 /*
- * Runs test
+ * Runs test and count average time (if the nloops is grater than 1)
  *
  * returns: -1 = error, 0 = success
  */
 int
-virtTestRun(const char *title,
-            int (*body)(const void *data), const void *data)
+virtTestRun(const char *title, int nloops, int (*body)(const void *data), const void *data)
 {
-    int ret = 0;
+    int i, ret = 0;
+    double *ts = NULL;
 
     if (testCounter == 0 && !virTestGetVerbose())
         fprintf(stderr, "      ");
 
     testCounter++;
 
-
-    /* Skip tests if out of range */
-    if ((testStart != 0) &&
-        (testCounter < testStart ||
-         testCounter > testEnd))
-        return 0;
-
-    if (virTestGetVerbose())
-        fprintf(stderr, "%2zu) %-65s ... ", testCounter, title);
-
-    virResetLastError();
-    ret = body(data);
-    virErrorPtr err = virGetLastError();
-    if (err) {
-        if (virTestGetVerbose() || virTestGetDebug())
-            virDispatchError(NULL);
+    if (testOOM < 2) {
+        if (virTestGetVerbose())
+            fprintf(stderr, "%2d) %-65s ... ", testCounter, title);
     }
 
-    if (virTestGetVerbose()) {
-        if (ret == 0)
-            fprintf(stderr, "OK\n");
-        else if (ret == EXIT_AM_SKIP)
-            fprintf(stderr, "SKIP\n");
-        else
-            fprintf(stderr, "FAILED\n");
-    } else {
-        if (testCounter != 1 &&
-            !((testCounter-1) % 40)) {
-            fprintf(stderr, " %-3zu\n", (testCounter-1));
-            fprintf(stderr, "      ");
+    if (nloops > 1 && (VIR_ALLOC_N(ts, nloops) < 0))
+        return -1;
+
+    for (i=0; i < nloops; i++) {
+        struct timeval before, after;
+
+        if (ts)
+            GETTIMEOFDAY(&before);
+
+        virResetLastError();
+        ret = body(data);
+        virErrorPtr err = virGetLastError();
+        if (err) {
+            if (virTestGetVerbose() || virTestGetDebug())
+                virDispatchError(NULL);
+        }
+
+        if (ret != 0) {
+            break;
+        }
+
+        if (ts) {
+            GETTIMEOFDAY(&after);
+            ts[i] = DIFF_MSEC(&after, &before);
+        }
+    }
+    if (testOOM < 2) {
+        if (virTestGetVerbose()) {
+            if (ret == 0 && ts)
+                fprintf(stderr, "OK     [%.5f ms]\n",
+                        virtTestCountAverage(ts, nloops));
+            else if (ret == 0)
+                fprintf(stderr, "OK\n");
+            else if (ret == EXIT_AM_SKIP)
+                fprintf(stderr, "SKIP\n");
+            else
+                fprintf(stderr, "FAILED\n");
+        } else {
+            if (testCounter != 1 &&
+                !((testCounter-1) % 40)) {
+                fprintf(stderr, " %-3d\n", (testCounter-1));
+                fprintf(stderr, "      ");
             }
-        if (ret == 0)
+            if (ret == 0)
                 fprintf(stderr, ".");
-        else if (ret == EXIT_AM_SKIP)
-            fprintf(stderr, "_");
-        else
-            fprintf(stderr, "!");
+            else if (ret == EXIT_AM_SKIP)
+                fprintf(stderr, "_");
+            else
+                fprintf(stderr, "!");
+        }
     }
 
+    VIR_FREE(ts);
     return ret;
 }
 
@@ -178,12 +201,12 @@ virtTestLoadFile(const char *file, char **buf)
     int len, tmplen, buflen;
 
     if (!fp) {
-        fprintf(stderr, "%s: failed to open: %s\n", file, strerror(errno));
+        fprintf (stderr, "%s: failed to open: %s\n", file, strerror(errno));
         return -1;
     }
 
     if (fstat(fileno(fp), &st) < 0) {
-        fprintf(stderr, "%s: failed to fstat: %s\n", file, strerror(errno));
+        fprintf (stderr, "%s: failed to fstat: %s\n", file, strerror(errno));
         VIR_FORCE_FCLOSE(fp);
         return -1;
     }
@@ -191,7 +214,7 @@ virtTestLoadFile(const char *file, char **buf)
     tmplen = buflen = st.st_size + 1;
 
     if (VIR_ALLOC_N(*buf, buflen) < 0) {
-        fprintf(stderr, "%s: larger than available memory (> %d)\n", file, buflen);
+        fprintf (stderr, "%s: larger than available memory (> %d)\n", file, buflen);
         VIR_FORCE_FCLOSE(fp);
         return -1;
     }
@@ -215,7 +238,7 @@ virtTestLoadFile(const char *file, char **buf)
             tmplen -= len;
         }
         if (ferror(fp)) {
-            fprintf(stderr, "%s: read failed: %s\n", file, strerror(errno));
+            fprintf (stderr, "%s: read failed: %s\n", file, strerror(errno));
             VIR_FORCE_FCLOSE(fp);
             VIR_FREE(*buf);
             return -1;
@@ -230,7 +253,7 @@ virtTestLoadFile(const char *file, char **buf)
 static
 void virtTestCaptureProgramExecChild(const char *const argv[],
                                      int pipefd) {
-    size_t i;
+    int i;
     int open_max;
     int stdinfd = -1;
     const char *const env[] = {
@@ -244,15 +267,11 @@ void virtTestCaptureProgramExecChild(const char *const argv[],
     if ((stdinfd = open("/dev/null", O_RDONLY)) < 0)
         goto cleanup;
 
-    open_max = sysconf(_SC_OPEN_MAX);
-    if (open_max < 0)
-        goto cleanup;
-
+    open_max = sysconf (_SC_OPEN_MAX);
     for (i = 0; i < open_max; i++) {
         if (i != stdinfd &&
             i != pipefd) {
-            int tmpfd;
-            tmpfd = i;
+            int tmpfd = i;
             VIR_FORCE_CLOSE(tmpfd);
         }
     }
@@ -287,7 +306,7 @@ virtTestCaptureProgramOutput(const char *const argv[], char **buf, int maxlen)
         virtTestCaptureProgramExecChild(argv, pipefd[1]);
 
         VIR_FORCE_CLOSE(pipefd[1]);
-        _exit(EXIT_FAILURE);
+        _exit(1);
 
     case -1:
         return -1;
@@ -389,7 +408,7 @@ int virtTestDifferenceBin(FILE *stream,
 
     if (virTestGetDebug() < 2) {
         /* Skip to first character where they differ */
-        for (i = 0; i < length; i++) {
+        for (i = 0 ; i < length ; i++) {
             if (expect[i] != actual[i]) {
                 start = i;
                 break;
@@ -397,7 +416,7 @@ int virtTestDifferenceBin(FILE *stream,
         }
 
         /* Work backwards to last character where they differ */
-        for (i = (length -1); i >= 0; i--) {
+        for (i = (length -1) ; i >= 0 ; i--) {
             if (expect[i] != actual[i]) {
                 end = i;
                 break;
@@ -412,14 +431,14 @@ int virtTestDifferenceBin(FILE *stream,
 
     /* Show the trimmed differences */
     fprintf(stream, "\nExpect [ Region %d-%d", (int)start, (int)end);
-    for (i = start; i < end; i++) {
+    for (i = start; i < end ; i++) {
         if ((i % 4) == 0)
             fprintf(stream, "\n    ");
         fprintf(stream, "0x%02x, ", ((int)expect[i])&0xff);
     }
     fprintf(stream, "]\n");
     fprintf(stream, "Actual [ Region %d-%d", (int)start, (int)end);
-    for (i = start; i < end; i++) {
+    for (i = start; i < end ; i++) {
         if ((i % 4) == 0)
             fprintf(stream, "\n    ");
         fprintf(stream, "0x%02x, ", ((int)actual[i])&0xff);
@@ -432,19 +451,12 @@ int virtTestDifferenceBin(FILE *stream,
     return 0;
 }
 
+#if TEST_OOM
 static void
 virtTestErrorFuncQuiet(void *data ATTRIBUTE_UNUSED,
                        virErrorPtr err ATTRIBUTE_UNUSED)
 { }
-
-
-/* register an error handler in tests when using connections */
-void
-virtTestQuiesceLibvirtErrors(bool always)
-{
-    if (always || !virTestGetVerbose())
-        virSetErrorFunc(NULL, virtTestErrorFuncQuiet);
-}
+#endif
 
 struct virtTestLogData {
     virBuffer buf;
@@ -452,22 +464,18 @@ struct virtTestLogData {
 
 static struct virtTestLogData testLog = { VIR_BUFFER_INITIALIZER };
 
-static void
-virtTestLogOutput(virLogSource source ATTRIBUTE_UNUSED,
-                  virLogPriority priority ATTRIBUTE_UNUSED,
-                  const char *filename ATTRIBUTE_UNUSED,
-                  int lineno ATTRIBUTE_UNUSED,
+static int
+virtTestLogOutput(const char *category ATTRIBUTE_UNUSED,
+                  int priority ATTRIBUTE_UNUSED,
                   const char *funcname ATTRIBUTE_UNUSED,
+                  long long lineno ATTRIBUTE_UNUSED,
                   const char *timestamp,
-                  virLogMetadataPtr metadata ATTRIBUTE_UNUSED,
-                  unsigned int flags,
-                  const char *rawstr ATTRIBUTE_UNUSED,
                   const char *str,
                   void *data)
 {
     struct virtTestLogData *log = data;
-    virCheckFlags(VIR_LOG_STACK_TRACE,);
     virBufferAsprintf(&log->buf, "%s: %s", timestamp, str);
+    return strlen(timestamp) + 2 + strlen(str);
 }
 
 static void
@@ -488,11 +496,30 @@ virtTestLogContentAndReset(void)
     if (virBufferError(&testLog.buf))
         return NULL;
     ret = virBufferContentAndReset(&testLog.buf);
-    if (!ret)
-        ignore_value(VIR_STRDUP(ret, ""));
-    return ret;
+    return ret ? ret : strdup("");
 }
 
+#if TEST_OOM_TRACE
+static void
+virtTestErrorHook(int n, void *data ATTRIBUTE_UNUSED)
+{
+    void *trace[30];
+    int ntrace = ARRAY_CARDINALITY(trace);
+    int i;
+    char **symbols = NULL;
+
+    ntrace = backtrace(trace, ntrace);
+    symbols = backtrace_symbols(trace, ntrace);
+    if (symbols) {
+        fprintf(stderr, "Failing allocation %d at:\n", n);
+        for (i = 0 ; i < ntrace ; i++) {
+            if (symbols[i])
+                fprintf(stderr, "  TRACE:  %s\n", symbols[i]);
+        }
+        VIR_FREE(symbols);
+    }
+}
+#endif
 
 static unsigned int
 virTestGetFlag(const char *name) {
@@ -522,26 +549,33 @@ virTestGetVerbose(void) {
     return testVerbose || virTestGetDebug();
 }
 
-unsigned int
-virTestGetExpensive(void) {
-    if (testExpensive == -1)
-        testExpensive = virTestGetFlag("VIR_TEST_EXPENSIVE");
-    return testExpensive;
-}
-
 int virtTestMain(int argc,
                  char **argv,
                  int (*func)(void))
 {
     int ret;
-    char *testRange = NULL;
+    bool abs_srcdir_cleanup = false;
+#if TEST_OOM
+    int approxAlloc = 0;
+    int n;
+    char *oomStr = NULL;
+    int oomCount;
+    int mp = 0;
+    pid_t *workers;
+    int worker = 0;
+#endif
 
-    if (!virFileExists(abs_srcdir))
-        return EXIT_AM_HARDFAIL;
+    abs_srcdir = getenv("abs_srcdir");
+    if (!abs_srcdir) {
+        abs_srcdir = getcwd(NULL, 0);
+        abs_srcdir_cleanup = true;
+    }
+    if (!abs_srcdir)
+        exit(EXIT_AM_HARDFAIL);
 
-    progname = last_component(argv[0]);
-    if (STRPREFIX(progname, "lt-"))
-        progname += 3;
+    progname = argv[0];
+    if (STRPREFIX(progname, "./"))
+        progname += 2;
     if (argc > 1) {
         fprintf(stderr, "Usage: %s\n", argv[0]);
         fputs("effective environment variables:\n"
@@ -553,55 +587,137 @@ int virtTestMain(int argc,
     fprintf(stderr, "TEST: %s\n", progname);
 
     if (virThreadInitialize() < 0 ||
-        virErrorInitialize() < 0)
-        return EXIT_FAILURE;
+        virErrorInitialize() < 0 ||
+        virRandomInitialize(time(NULL) ^ getpid()))
+        return 1;
 
     virLogSetFromEnv();
     if (!getenv("LIBVIRT_DEBUG") && !virLogGetNbOutputs()) {
         if (virLogDefineOutput(virtTestLogOutput, virtTestLogClose, &testLog,
-                               VIR_LOG_DEBUG, VIR_LOG_TO_STDERR, NULL, 0) < 0)
-            return EXIT_FAILURE;
+                               0, 0, NULL, 0) < 0)
+            return 1;
     }
 
-    if ((testRange = getenv("VIR_TEST_RANGE")) != NULL) {
-        char *end = NULL;
-        unsigned int iv;
-        if (virStrToLong_ui(testRange, &end, 10, &iv) < 0) {
-            fprintf(stderr, "Cannot parse range %s\n", testRange);
-            return EXIT_FAILURE;
-        }
-        testStart = testEnd = iv;
-        if (end && *end) {
-            if (*end != '-') {
-                fprintf(stderr, "Cannot parse range %s\n", testRange);
-                return EXIT_FAILURE;
-            }
-            end++;
-            if (virStrToLong_ui(end, NULL, 10, &iv) < 0) {
-                fprintf(stderr, "Cannot parse range %s\n", testRange);
-                return EXIT_FAILURE;
-            }
-            testEnd = iv;
+#if TEST_OOM
+    if ((oomStr = getenv("VIR_TEST_OOM")) != NULL) {
+        if (virStrToLong_i(oomStr, NULL, 10, &oomCount) < 0)
+            oomCount = 0;
 
-            if (testEnd < testStart) {
-                fprintf(stderr, "Test range end %zu must be >= %zu\n", testEnd, testStart);
-                return EXIT_FAILURE;
-            }
+        if (oomCount < 0)
+            oomCount = 0;
+        if (oomCount)
+            testOOM = 1;
+    }
+
+    if (getenv("VIR_TEST_MP") != NULL) {
+        mp = sysconf(_SC_NPROCESSORS_ONLN);
+        fprintf(stderr, "Using %d worker processes\n", mp);
+        if (VIR_ALLOC_N(workers, mp) < 0) {
+            ret = EXIT_FAILURE;
+            goto cleanup;
         }
     }
 
+    /* Run once to prime any static allocations & ensure it passes */
     ret = (func)();
+    if (ret != EXIT_SUCCESS)
+        goto cleanup;
 
+# if TEST_OOM_TRACE
+    if (virTestGetDebug())
+        virAllocTestHook(virtTestErrorHook, NULL);
+# endif
+
+    if (testOOM) {
+        /* Makes next test runs quiet... */
+        testOOM++;
+        virSetErrorFunc(NULL, virtTestErrorFuncQuiet);
+
+        virAllocTestInit();
+
+        /* Run again to count allocs, and ensure it passes :-) */
+        ret = (func)();
+        if (ret != EXIT_SUCCESS)
+            goto cleanup;
+
+        approxAlloc = virAllocTestCount();
+        testCounter++;
+        if (virTestGetDebug())
+            fprintf(stderr, "%d) OOM...\n", testCounter);
+        else
+            fprintf(stderr, "%d) OOM of %d allocs ", testCounter, approxAlloc);
+
+        if (mp) {
+            int i;
+            for (i = 0 ; i < mp ; i++) {
+                workers[i] = fork();
+                if (workers[i] == 0) {
+                    worker = i + 1;
+                    break;
+                }
+            }
+        }
+
+        /* Run once for each alloc, failing a different one
+           and validating that the test case failed */
+        for (n = 0; n < approxAlloc && (!mp || worker) ; n++) {
+            if (mp &&
+                (n % mp) != (worker - 1))
+                continue;
+            if (!virTestGetDebug()) {
+                if (mp)
+                    fprintf(stderr, "%d", worker);
+                else
+                    fprintf(stderr, ".");
+                fflush(stderr);
+            }
+            virAllocTestOOM(n+1, oomCount);
+
+            if (((func)()) != EXIT_FAILURE) {
+                ret = EXIT_FAILURE;
+                break;
+            }
+        }
+
+        if (mp) {
+            if (worker) {
+                _exit(ret);
+            } else {
+                int i, status;
+                for (i = 0 ; i < mp ; i++) {
+                    if (virProcessWait(workers[i], NULL) < 0)
+                        ret = EXIT_FAILURE;
+                }
+                VIR_FREE(workers);
+            }
+        }
+
+        if (virTestGetDebug())
+            fprintf(stderr, " ... OOM of %d allocs", approxAlloc);
+
+        if (ret == EXIT_SUCCESS)
+            fprintf(stderr, " OK\n");
+        else
+            fprintf(stderr, " FAILED\n");
+    }
+cleanup:
+#else
+    ret = (func)();
+#endif
+
+    if (abs_srcdir_cleanup)
+        VIR_FREE(abs_srcdir);
     virResetLastError();
     if (!virTestGetVerbose() && ret != EXIT_AM_SKIP) {
         if (testCounter == 0 || testCounter % 40)
-            fprintf(stderr, "%*s", 40 - (int)(testCounter % 40), "");
-        fprintf(stderr, " %-3zu %s\n", testCounter, ret == 0 ? "OK" : "FAIL");
+            fprintf(stderr, "%*s", 40 - (testCounter % 40), "");
+        fprintf(stderr, " %-3d %s\n", testCounter, ret == 0 ? "OK" : "FAIL");
     }
     return ret;
 }
 
 
+#ifdef HAVE_REGEX_H
 int virtTestClearLineRegex(const char *pattern,
                            char *str)
 {
@@ -645,3 +761,10 @@ int virtTestClearLineRegex(const char *pattern,
 
     return 0;
 }
+#else
+int virtTestClearLineRegex(const char *pattern ATTRIBUTE_UNUSED,
+                           char *str ATTRIBUTE_UNUSED)
+{
+    return 0;
+}
+#endif

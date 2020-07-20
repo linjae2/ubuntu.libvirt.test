@@ -1,7 +1,7 @@
 /*
  * virnetserverclient.c: generic network RPC server client
  *
- * Copyright (C) 2006-2013 Red Hat, Inc.
+ * Copyright (C) 2006-2011 Red Hat, Inc.
  * Copyright (C) 2006 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -15,30 +15,30 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
 
 #include <config.h>
 
-#include "internal.h"
-#if WITH_SASL
+#if HAVE_SASL
 # include <sasl/sasl.h>
 #endif
 
 #include "virnetserverclient.h"
 
-#include "virlog.h"
-#include "virerror.h"
-#include "viralloc.h"
-#include "virthread.h"
+#include "logging.h"
+#include "virterror_internal.h"
+#include "memory.h"
+#include "threads.h"
 #include "virkeepalive.h"
-#include "virstring.h"
-#include "virutil.h"
 
 #define VIR_FROM_THIS VIR_FROM_RPC
+#define virNetError(code, ...)                                    \
+    virReportErrorHelper(VIR_FROM_THIS, code, __FILE__,           \
+                         __FUNCTION__, __LINE__, __VA_ARGS__)
 
 /* Allow for filtering of incoming messages to a custom
  * dispatch processing queue, instead of the workers.
@@ -60,25 +60,21 @@ struct _virNetServerClientFilter {
 
 struct _virNetServerClient
 {
-    virObjectLockable parent;
-
+    int refs;
     bool wantClose;
     bool delayedClose;
+    virMutex lock;
     virNetSocketPtr sock;
     int auth;
     bool readonly;
-#if WITH_GNUTLS
+    char *identity;
     virNetTLSContextPtr tlsCtxt;
     virNetTLSSessionPtr tls;
-#endif
-#if WITH_SASL
+#if HAVE_SASL
     virNetSASLSessionPtr sasl;
 #endif
     int sockTimer; /* Timer to be fired upon cached data,
                     * so we jump out from poll() immediately */
-
-
-    virIdentityPtr identity;
 
     /* Count of messages in the 'tx' queue,
      * and the server worker pool queue
@@ -103,36 +99,28 @@ struct _virNetServerClient
     void *dispatchOpaque;
 
     void *privateData;
-    virFreeCallback privateDataFreeFunc;
-    virNetServerClientPrivPreExecRestart privateDataPreExecRestart;
+    virNetServerClientFreeFunc privateDataFreeFunc;
     virNetServerClientCloseFunc privateDataCloseFunc;
 
     virKeepAlivePtr keepalive;
+    int keepaliveFilter;
 };
-
-
-static virClassPtr virNetServerClientClass;
-static void virNetServerClientDispose(void *obj);
-
-static int virNetServerClientOnceInit(void)
-{
-    if (!(virNetServerClientClass = virClassNew(virClassForObjectLockable(),
-                                                "virNetServerClient",
-                                                sizeof(virNetServerClient),
-                                                virNetServerClientDispose)))
-        return -1;
-
-    return 0;
-}
-
-VIR_ONCE_GLOBAL_INIT(virNetServerClient)
 
 
 static void virNetServerClientDispatchEvent(virNetSocketPtr sock, int events, void *opaque);
 static void virNetServerClientUpdateEvent(virNetServerClientPtr client);
 static void virNetServerClientDispatchRead(virNetServerClientPtr client);
-static int virNetServerClientSendMessageLocked(virNetServerClientPtr client,
-                                               virNetMessagePtr msg);
+
+static void virNetServerClientLock(virNetServerClientPtr client)
+{
+    virMutexLock(&client->lock);
+}
+
+static void virNetServerClientUnlock(virNetServerClientPtr client)
+{
+    virMutexUnlock(&client->lock);
+}
+
 
 /*
  * @client: a locked client object
@@ -143,18 +131,13 @@ virNetServerClientCalculateHandleMode(virNetServerClientPtr client) {
 
 
     VIR_DEBUG("tls=%p hs=%d, rx=%p tx=%p",
-#ifdef WITH_GNUTLS
               client->tls,
               client->tls ? virNetTLSSessionGetHandshakeStatus(client->tls) : -1,
-#else
-              NULL, -1,
-#endif
               client->rx,
               client->tx);
     if (!client->sock || client->wantClose)
         return 0;
 
-#if WITH_GNUTLS
     if (client->tls) {
         switch (virNetTLSSessionGetHandshakeStatus(client->tls)) {
         case VIR_NET_TLS_HANDSHAKE_RECVING:
@@ -171,22 +154,25 @@ virNetServerClientCalculateHandleMode(virNetServerClientPtr client) {
                 mode |= VIR_EVENT_HANDLE_WRITABLE;
         }
     } else {
-#endif
-        /* If there is a message on the rx queue, and
-         * we're not in middle of a delayedClose, then
+        /* If there is a message on the rx queue then
          * we're wanting more input */
-        if (client->rx && !client->delayedClose)
+        if (client->rx)
             mode |= VIR_EVENT_HANDLE_READABLE;
 
         /* If there are one or more messages to send back to client,
            then monitor for writability on socket */
         if (client->tx)
             mode |= VIR_EVENT_HANDLE_WRITABLE;
-#if WITH_GNUTLS
     }
-#endif
     VIR_DEBUG("mode=%o", mode);
     return mode;
+}
+
+static void virNetServerClientEventFree(void *opaque)
+{
+    virNetServerClientPtr client = opaque;
+
+    virNetServerClientFree(client);
 }
 
 /*
@@ -197,17 +183,15 @@ static int virNetServerClientRegisterEvent(virNetServerClientPtr client)
 {
     int mode = virNetServerClientCalculateHandleMode(client);
 
-    if (!client->sock)
-        return -1;
-
-    virObjectRef(client);
+    client->refs++;
     VIR_DEBUG("Registering client event callback %d", mode);
-    if (virNetSocketAddIOCallback(client->sock,
+    if (!client->sock ||
+        virNetSocketAddIOCallback(client->sock,
                                   mode,
                                   virNetServerClientDispatchEvent,
                                   client,
-                                  virObjectFreeCallback) < 0) {
-        virObjectUnref(client);
+                                  virNetServerClientEventFree) < 0) {
+        client->refs--;
         return -1;
     }
 
@@ -233,18 +217,19 @@ static void virNetServerClientUpdateEvent(virNetServerClientPtr client)
 }
 
 
-int virNetServerClientAddFilter(virNetServerClientPtr client,
-                                virNetServerClientFilterFunc func,
-                                void *opaque)
+static int
+virNetServerClientAddFilterLocked(virNetServerClientPtr client,
+                                  virNetServerClientFilterFunc func,
+                                  void *opaque)
 {
     virNetServerClientFilterPtr filter;
     virNetServerClientFilterPtr *place;
-    int ret;
+    int ret = -1;
 
-    if (VIR_ALLOC(filter) < 0)
-        return -1;
-
-    virObjectLock(client);
+    if (VIR_ALLOC(filter) < 0) {
+        virReportOOMError();
+        goto cleanup;
+    }
 
     filter->id = client->nextFilterID++;
     filter->func = func;
@@ -257,17 +242,27 @@ int virNetServerClientAddFilter(virNetServerClientPtr client,
 
     ret = filter->id;
 
-    virObjectUnlock(client);
-
+cleanup:
     return ret;
 }
 
-void virNetServerClientRemoveFilter(virNetServerClientPtr client,
-                                    int filterID)
+int virNetServerClientAddFilter(virNetServerClientPtr client,
+                                virNetServerClientFilterFunc func,
+                                void *opaque)
+{
+    int ret;
+
+    virNetServerClientLock(client);
+    ret = virNetServerClientAddFilterLocked(client, func, opaque);
+    virNetServerClientUnlock(client);
+    return ret;
+}
+
+static void
+virNetServerClientRemoveFilterLocked(virNetServerClientPtr client,
+                                     int filterID)
 {
     virNetServerClientFilterPtr tmp, prev;
-
-    virObjectLock(client);
 
     prev = NULL;
     tmp = client->filters;
@@ -284,12 +279,17 @@ void virNetServerClientRemoveFilter(virNetServerClientPtr client,
         prev = tmp;
         tmp = tmp->next;
     }
+}
 
-    virObjectUnlock(client);
+void virNetServerClientRemoveFilter(virNetServerClientPtr client,
+                                    int filterID)
+{
+    virNetServerClientLock(client);
+    virNetServerClientRemoveFilterLocked(client, filterID);
+    virNetServerClientUnlock(client);
 }
 
 
-#ifdef WITH_GNUTLS
 /* Check the client's access. */
 static int
 virNetServerClientCheckAccess(virNetServerClientPtr client)
@@ -313,10 +313,6 @@ virNetServerClientCheckAccess(virNetServerClientPtr client)
      * (NB. The '\1' byte is sent in an encrypted record).
      */
     confirm->bufferLength = 1;
-    if (VIR_ALLOC_N(confirm->buffer, confirm->bufferLength) < 0) {
-        virNetMessageFree(confirm);
-        return -1;
-    }
     confirm->bufferOffset = 0;
     confirm->buffer[0] = '\1';
 
@@ -324,70 +320,18 @@ virNetServerClientCheckAccess(virNetServerClientPtr client)
 
     return 0;
 }
-#endif
-
 
 static void virNetServerClientSockTimerFunc(int timer,
                                             void *opaque)
 {
     virNetServerClientPtr client = opaque;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     virEventUpdateTimeout(timer, -1);
     /* Although client->rx != NULL when this timer is enabled, it might have
      * changed since the client was unlocked in the meantime. */
     if (client->rx)
         virNetServerClientDispatchRead(client);
-    virObjectUnlock(client);
-}
-
-
-static virNetServerClientPtr
-virNetServerClientNewInternal(virNetSocketPtr sock,
-                              int auth,
-#ifdef WITH_GNUTLS
-                              virNetTLSContextPtr tls,
-#endif
-                              bool readonly,
-                              size_t nrequests_max)
-{
-    virNetServerClientPtr client;
-
-    if (virNetServerClientInitialize() < 0)
-        return NULL;
-
-    if (!(client = virObjectLockableNew(virNetServerClientClass)))
-        return NULL;
-
-    client->sock = virObjectRef(sock);
-    client->auth = auth;
-    client->readonly = readonly;
-#ifdef WITH_GNUTLS
-    client->tlsCtxt = virObjectRef(tls);
-#endif
-    client->nrequests_max = nrequests_max;
-
-    client->sockTimer = virEventAddTimeout(-1, virNetServerClientSockTimerFunc,
-                                           client, NULL);
-    if (client->sockTimer < 0)
-        goto error;
-
-    /* Prepare one for packet receive */
-    if (!(client->rx = virNetMessageNew(true)))
-        goto error;
-    client->rx->bufferLength = VIR_NET_MESSAGE_LEN_MAX;
-    if (VIR_ALLOC_N(client->rx->buffer, client->rx->bufferLength) < 0)
-        goto error;
-    client->nrequests = 1;
-
-    PROBE(RPC_SERVER_CLIENT_NEW,
-          "client=%p sock=%p",
-          client, client->sock);
-
-    return client;
-
-error:
-    virObjectUnref(client);
-    return NULL;
+    virNetServerClientUnlock(client);
 }
 
 
@@ -395,419 +339,125 @@ virNetServerClientPtr virNetServerClientNew(virNetSocketPtr sock,
                                             int auth,
                                             bool readonly,
                                             size_t nrequests_max,
-#ifdef WITH_GNUTLS
-                                            virNetTLSContextPtr tls,
-#endif
-                                            virNetServerClientPrivNew privNew,
-                                            virNetServerClientPrivPreExecRestart privPreExecRestart,
-                                            virFreeCallback privFree,
-                                            void *privOpaque)
+                                            virNetTLSContextPtr tls)
 {
     virNetServerClientPtr client;
 
-    VIR_DEBUG("sock=%p auth=%d tls=%p", sock, auth,
-#ifdef WITH_GNUTLS
-              tls
-#else
-              NULL
-#endif
-        );
+    VIR_DEBUG("sock=%p auth=%d tls=%p", sock, auth, tls);
 
-    if (!(client = virNetServerClientNewInternal(sock, auth,
-#ifdef WITH_GNUTLS
-                                                 tls,
-#endif
-                                                 readonly, nrequests_max)))
-        return NULL;
-
-    if (privNew) {
-        if (!(client->privateData = privNew(client, privOpaque))) {
-            virObjectUnref(client);
-            return NULL;
-        }
-        client->privateDataFreeFunc = privFree;
-        client->privateDataPreExecRestart = privPreExecRestart;
-    }
-
-    return client;
-}
-
-
-virNetServerClientPtr virNetServerClientNewPostExecRestart(virJSONValuePtr object,
-                                                           virNetServerClientPrivNewPostExecRestart privNew,
-                                                           virNetServerClientPrivPreExecRestart privPreExecRestart,
-                                                           virFreeCallback privFree,
-                                                           void *privOpaque)
-{
-    virJSONValuePtr child;
-    virNetServerClientPtr client = NULL;
-    virNetSocketPtr sock;
-    int auth;
-    bool readonly;
-    unsigned int nrequests_max;
-
-    if (virJSONValueObjectGetNumberInt(object, "auth", &auth) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Missing auth field in JSON state document"));
-        return NULL;
-    }
-    if (virJSONValueObjectGetBoolean(object, "readonly", &readonly) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Missing readonly field in JSON state document"));
-        return NULL;
-    }
-    if (virJSONValueObjectGetNumberUint(object, "nrequests_max",
-                                        (unsigned int *)&nrequests_max) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Missing nrequests_client_max field in JSON state document"));
+    if (VIR_ALLOC(client) < 0) {
+        virReportOOMError();
         return NULL;
     }
 
-    if (!(child = virJSONValueObjectGet(object, "sock"))) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Missing sock field in JSON state document"));
-        return NULL;
-    }
+    if (virMutexInit(&client->lock) < 0)
+        goto error;
 
-    if (!(sock = virNetSocketNewPostExecRestart(child))) {
-        virObjectUnref(sock);
-        return NULL;
-    }
+    client->refs = 1;
+    client->sock = sock;
+    client->auth = auth;
+    client->readonly = readonly;
+    client->tlsCtxt = tls;
+    client->nrequests_max = nrequests_max;
+    client->keepaliveFilter = -1;
 
-    if (!(client = virNetServerClientNewInternal(sock,
-                                                 auth,
-#ifdef WITH_GNUTLS
-                                                 NULL,
-#endif
-                                                 readonly,
-                                                 nrequests_max))) {
-        virObjectUnref(sock);
-        return NULL;
-    }
-    virObjectUnref(sock);
+    client->sockTimer = virEventAddTimeout(-1, virNetServerClientSockTimerFunc,
+                                           client, NULL);
+    if (client->sockTimer < 0)
+        goto error;
 
-    if (privNew) {
-        if (!(child = virJSONValueObjectGet(object, "privateData"))) {
-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                           _("Missing privateData field in JSON state document"));
-            goto error;
-        }
-        if (!(client->privateData = privNew(client, child, privOpaque))) {
-            goto error;
-        }
-        client->privateDataFreeFunc = privFree;
-        client->privateDataPreExecRestart = privPreExecRestart;
-    }
+    if (tls)
+        virNetTLSContextRef(tls);
 
+    /* Prepare one for packet receive */
+    if (!(client->rx = virNetMessageNew(true)))
+        goto error;
+    client->rx->bufferLength = VIR_NET_MESSAGE_LEN_MAX;
+    client->nrequests = 1;
+
+    PROBE(RPC_SERVER_CLIENT_NEW,
+          "client=%p refs=%d sock=%p",
+          client, client->refs, client->sock);
 
     return client;
 
 error:
-    virObjectUnref(client);
+    /* XXX ref counting is better than this */
+    client->sock = NULL; /* Caller owns 'sock' upon failure */
+    virNetServerClientFree(client);
     return NULL;
 }
 
-
-virJSONValuePtr virNetServerClientPreExecRestart(virNetServerClientPtr client)
+void virNetServerClientRef(virNetServerClientPtr client)
 {
-    virJSONValuePtr object = virJSONValueNewObject();
-    virJSONValuePtr child;
-
-    if (!object)
-        return NULL;
-
-    virObjectLock(client);
-
-    if (virJSONValueObjectAppendNumberInt(object, "auth", client->auth) < 0)
-        goto error;
-    if (virJSONValueObjectAppendBoolean(object, "readonly", client->readonly) < 0)
-        goto error;
-    if (virJSONValueObjectAppendNumberUint(object, "nrequests_max", client->nrequests_max) < 0)
-        goto error;
-
-    if (!(child = virNetSocketPreExecRestart(client->sock)))
-        goto error;
-
-    if (virJSONValueObjectAppend(object, "sock", child) < 0) {
-        virJSONValueFree(child);
-        goto error;
-    }
-
-    if (client->privateData && client->privateDataPreExecRestart &&
-        !(child = client->privateDataPreExecRestart(client, client->privateData)))
-        goto error;
-
-    if (virJSONValueObjectAppend(object, "privateData", child) < 0) {
-        virJSONValueFree(child);
-        goto error;
-    }
-
-    virObjectUnlock(client);
-    return object;
-
-error:
-    virObjectUnlock(client);
-    virJSONValueFree(object);
-    return NULL;
+    virNetServerClientLock(client);
+    client->refs++;
+    PROBE(RPC_SERVER_CLIENT_REF,
+          "client=%p refs=%d",
+          client, client->refs);
+    virNetServerClientUnlock(client);
 }
 
 
 int virNetServerClientGetAuth(virNetServerClientPtr client)
 {
     int auth;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     auth = client->auth;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return auth;
-}
-
-void virNetServerClientSetAuth(virNetServerClientPtr client, int auth)
-{
-    virObjectLock(client);
-    client->auth = auth;
-    virObjectUnlock(client);
 }
 
 bool virNetServerClientGetReadonly(virNetServerClientPtr client)
 {
     bool readonly;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     readonly = client->readonly;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return readonly;
 }
 
 
-#ifdef WITH_GNUTLS
 bool virNetServerClientHasTLSSession(virNetServerClientPtr client)
 {
     bool has;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     has = client->tls ? true : false;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return has;
-}
-
-
-virNetTLSSessionPtr virNetServerClientGetTLSSession(virNetServerClientPtr client)
-{
-    virNetTLSSessionPtr tls;
-    virObjectLock(client);
-    tls = client->tls;
-    virObjectUnlock(client);
-    return tls;
 }
 
 int virNetServerClientGetTLSKeySize(virNetServerClientPtr client)
 {
     int size = 0;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     if (client->tls)
         size = virNetTLSSessionGetKeySize(client->tls);
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return size;
 }
-#endif
 
 int virNetServerClientGetFD(virNetServerClientPtr client)
 {
     int fd = -1;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     if (client->sock)
         fd = virNetSocketGetFD(client->sock);
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return fd;
 }
-
-
-bool virNetServerClientIsLocal(virNetServerClientPtr client)
-{
-    bool local = false;
-    virObjectLock(client);
-    if (client->sock)
-        local = virNetSocketIsLocal(client->sock);
-    virObjectUnlock(client);
-    return local;
-}
-
 
 int virNetServerClientGetUNIXIdentity(virNetServerClientPtr client,
                                       uid_t *uid, gid_t *gid, pid_t *pid,
                                       unsigned long long *timestamp)
 {
     int ret = -1;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     if (client->sock)
         ret = virNetSocketGetUNIXIdentity(client->sock,
                                           uid, gid, pid,
                                           timestamp);
-    virObjectUnlock(client);
-    return ret;
-}
-
-
-static virIdentityPtr
-virNetServerClientCreateIdentity(virNetServerClientPtr client)
-{
-    char *processid = NULL;
-    char *processtime = NULL;
-    char *username = NULL;
-    char *userid = NULL;
-    char *groupname = NULL;
-    char *groupid = NULL;
-#if WITH_SASL
-    char *saslname = NULL;
-#endif
-#if WITH_GNUTLS
-    char *x509dname = NULL;
-#endif
-    char *seccontext = NULL;
-    virIdentityPtr ret = NULL;
-
-    if (client->sock && virNetSocketIsLocal(client->sock)) {
-        gid_t gid;
-        uid_t uid;
-        pid_t pid;
-        unsigned long long timestamp;
-        if (virNetSocketGetUNIXIdentity(client->sock,
-                                        &uid, &gid, &pid,
-                                        &timestamp) < 0)
-            goto cleanup;
-
-        if (!(username = virGetUserName(uid)))
-            goto cleanup;
-        if (virAsprintf(&userid, "%d", (int)uid) < 0)
-            goto cleanup;
-        if (!(groupname = virGetGroupName(gid)))
-            goto cleanup;
-        if (virAsprintf(&groupid, "%d", (int)gid) < 0)
-            goto cleanup;
-        if (virAsprintf(&processid, "%llu",
-                        (unsigned long long)pid) < 0)
-            goto cleanup;
-        if (virAsprintf(&processtime, "%llu",
-                        timestamp) < 0)
-            goto cleanup;
-    }
-
-#if WITH_SASL
-    if (client->sasl) {
-        const char *identity = virNetSASLSessionGetIdentity(client->sasl);
-        if (VIR_STRDUP(saslname, identity) < 0)
-            goto cleanup;
-    }
-#endif
-
-#if WITH_GNUTLS
-    if (client->tls) {
-        const char *identity = virNetTLSSessionGetX509DName(client->tls);
-        if (VIR_STRDUP(x509dname, identity) < 0)
-            goto cleanup;
-    }
-#endif
-
-    if (client->sock &&
-        virNetSocketGetSELinuxContext(client->sock, &seccontext) < 0)
-        goto cleanup;
-
-    if (!(ret = virIdentityNew()))
-        goto cleanup;
-
-    if (username &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_UNIX_USER_NAME,
-                           username) < 0)
-        goto error;
-    if (userid &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_UNIX_USER_ID,
-                           userid) < 0)
-        goto error;
-    if (groupname &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_UNIX_GROUP_NAME,
-                           groupname) < 0)
-        goto error;
-    if (groupid &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_UNIX_GROUP_ID,
-                           groupid) < 0)
-        goto error;
-    if (processid &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_UNIX_PROCESS_ID,
-                           processid) < 0)
-        goto error;
-    if (processtime &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_UNIX_PROCESS_TIME,
-                           processtime) < 0)
-        goto error;
-#if WITH_SASL
-    if (saslname &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_SASL_USER_NAME,
-                           saslname) < 0)
-        goto error;
-#endif
-#if WITH_GNUTLS
-    if (x509dname &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_X509_DISTINGUISHED_NAME,
-                           x509dname) < 0)
-        goto error;
-#endif
-    if (seccontext &&
-        virIdentitySetAttr(ret,
-                           VIR_IDENTITY_ATTR_SELINUX_CONTEXT,
-                           seccontext) < 0)
-        goto error;
-
-cleanup:
-    VIR_FREE(username);
-    VIR_FREE(userid);
-    VIR_FREE(groupname);
-    VIR_FREE(groupid);
-    VIR_FREE(processid);
-    VIR_FREE(processtime);
-    VIR_FREE(seccontext);
-#if WITH_SASL
-    VIR_FREE(saslname);
-#endif
-#if WITH_GNUTLS
-    VIR_FREE(x509dname);
-#endif
-    return ret;
-
-error:
-    virObjectUnref(ret);
-    ret = NULL;
-    goto cleanup;
-}
-
-
-virIdentityPtr virNetServerClientGetIdentity(virNetServerClientPtr client)
-{
-    virIdentityPtr ret = NULL;
-    virObjectLock(client);
-    if (!client->identity)
-        client->identity = virNetServerClientCreateIdentity(client);
-    if (client->identity)
-        ret = virObjectRef(client->identity);
-    virObjectUnlock(client);
-    return ret;
-}
-
-
-int virNetServerClientGetSELinuxContext(virNetServerClientPtr client,
-                                        char **context)
-{
-    int ret = 0;
-    *context = NULL;
-    virObjectLock(client);
-    if (client->sock)
-        ret = virNetSocketGetSELinuxContext(client->sock, context);
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return ret;
 }
 
@@ -815,23 +465,21 @@ int virNetServerClientGetSELinuxContext(virNetServerClientPtr client,
 bool virNetServerClientIsSecure(virNetServerClientPtr client)
 {
     bool secure = false;
-    virObjectLock(client);
-#if WITH_GNUTLS
+    virNetServerClientLock(client);
     if (client->tls)
         secure = true;
-#endif
-#if WITH_SASL
+#if HAVE_SASL
     if (client->sasl)
         secure = true;
 #endif
     if (client->sock && virNetSocketIsLocal(client->sock))
         secure = true;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return secure;
 }
 
 
-#if WITH_SASL
+#if HAVE_SASL
 void virNetServerClientSetSASLSession(virNetServerClientPtr client,
                                       virNetSASLSessionPtr sasl)
 {
@@ -840,29 +488,62 @@ void virNetServerClientSetSASLSession(virNetServerClientPtr client,
      * in the clear. Only once we complete the next 'tx'
      * operation do we switch to SASL mode
      */
-    virObjectLock(client);
-    client->sasl = virObjectRef(sasl);
-    virObjectUnlock(client);
-}
-
-
-virNetSASLSessionPtr virNetServerClientGetSASLSession(virNetServerClientPtr client)
-{
-    virNetSASLSessionPtr sasl;
-    virObjectLock(client);
-    sasl = client->sasl;
-    virObjectUnlock(client);
-    return sasl;
+    virNetServerClientLock(client);
+    client->sasl = sasl;
+    virNetSASLSessionRef(sasl);
+    virNetServerClientUnlock(client);
 }
 #endif
+
+
+int virNetServerClientSetIdentity(virNetServerClientPtr client,
+                                  const char *identity)
+{
+    int ret = -1;
+    virNetServerClientLock(client);
+    if (!(client->identity = strdup(identity))) {
+        virReportOOMError();
+        goto error;
+    }
+    ret = 0;
+
+error:
+    virNetServerClientUnlock(client);
+    return ret;
+}
+
+const char *virNetServerClientGetIdentity(virNetServerClientPtr client)
+{
+    const char *identity;
+    virNetServerClientLock(client);
+    identity = client->identity;
+    virNetServerClientLock(client);
+    return identity;
+}
+
+void virNetServerClientSetPrivateData(virNetServerClientPtr client,
+                                      void *opaque,
+                                      virNetServerClientFreeFunc ff)
+{
+    virNetServerClientLock(client);
+
+    if (client->privateData &&
+        client->privateDataFreeFunc)
+        client->privateDataFreeFunc(client->privateData);
+
+    client->privateData = opaque;
+    client->privateDataFreeFunc = ff;
+
+    virNetServerClientUnlock(client);
+}
 
 
 void *virNetServerClientGetPrivateData(virNetServerClientPtr client)
 {
     void *data;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     data = client->privateData;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return data;
 }
 
@@ -870,9 +551,9 @@ void *virNetServerClientGetPrivateData(virNetServerClientPtr client)
 void virNetServerClientSetCloseHook(virNetServerClientPtr client,
                                     virNetServerClientCloseFunc cf)
 {
-    virObjectLock(client);
+    virNetServerClientLock(client);
     client->privateDataCloseFunc = cf;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
 }
 
 
@@ -880,10 +561,10 @@ void virNetServerClientSetDispatcher(virNetServerClientPtr client,
                                      virNetServerClientDispatchFunc func,
                                      void *opaque)
 {
-    virObjectLock(client);
+    virNetServerClientLock(client);
     client->dispatchFunc = func;
     client->dispatchOpaque = opaque;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
 }
 
 
@@ -903,30 +584,38 @@ const char *virNetServerClientRemoteAddrString(virNetServerClientPtr client)
 }
 
 
-void virNetServerClientDispose(void *obj)
+void virNetServerClientFree(virNetServerClientPtr client)
 {
-    virNetServerClientPtr client = obj;
+    if (!client)
+        return;
 
-    PROBE(RPC_SERVER_CLIENT_DISPOSE,
-          "client=%p", client);
+    virNetServerClientLock(client);
+    PROBE(RPC_SERVER_CLIENT_FREE,
+          "client=%p refs=%d",
+          client, client->refs);
 
-    virObjectUnref(client->identity);
+    client->refs--;
+    if (client->refs > 0) {
+        virNetServerClientUnlock(client);
+        return;
+    }
 
     if (client->privateData &&
         client->privateDataFreeFunc)
         client->privateDataFreeFunc(client->privateData);
 
-#if WITH_SASL
-    virObjectUnref(client->sasl);
+    VIR_FREE(client->identity);
+#if HAVE_SASL
+    virNetSASLSessionFree(client->sasl);
 #endif
     if (client->sockTimer > 0)
         virEventRemoveTimeout(client->sockTimer);
-#if WITH_GNUTLS
-    virObjectUnref(client->tls);
-    virObjectUnref(client->tlsCtxt);
-#endif
-    virObjectUnref(client->sock);
-    virObjectUnlock(client);
+    virNetTLSSessionFree(client->tls);
+    virNetTLSContextFree(client->tlsCtxt);
+    virNetSocketFree(client->sock);
+    virNetServerClientUnlock(client);
+    virMutexDestroy(&client->lock);
+    VIR_FREE(client);
 }
 
 
@@ -943,31 +632,34 @@ void virNetServerClientClose(virNetServerClientPtr client)
     virNetServerClientCloseFunc cf;
     virKeepAlivePtr ka;
 
-    virObjectLock(client);
-    VIR_DEBUG("client=%p", client);
+    virNetServerClientLock(client);
+    VIR_DEBUG("client=%p refs=%d", client, client->refs);
     if (!client->sock) {
-        virObjectUnlock(client);
+        virNetServerClientUnlock(client);
         return;
     }
+
+    if (client->keepaliveFilter >= 0)
+        virNetServerClientRemoveFilterLocked(client, client->keepaliveFilter);
 
     if (client->keepalive) {
         virKeepAliveStop(client->keepalive);
         ka = client->keepalive;
         client->keepalive = NULL;
-        virObjectRef(client);
-        virObjectUnlock(client);
-        virObjectUnref(ka);
-        virObjectLock(client);
-        virObjectUnref(client);
+        client->refs++;
+        virNetServerClientUnlock(client);
+        virKeepAliveFree(ka);
+        virNetServerClientLock(client);
+        client->refs--;
     }
 
     if (client->privateDataCloseFunc) {
         cf = client->privateDataCloseFunc;
-        virObjectRef(client);
-        virObjectUnlock(client);
+        client->refs++;
+        virNetServerClientUnlock(client);
         (cf)(client);
-        virObjectLock(client);
-        virObjectUnref(client);
+        virNetServerClientLock(client);
+        client->refs--;
     }
 
     /* Do now, even though we don't close the socket
@@ -976,12 +668,10 @@ void virNetServerClientClose(virNetServerClientPtr client)
     if (client->sock)
         virNetSocketRemoveIOCallback(client->sock);
 
-#if WITH_GNUTLS
     if (client->tls) {
-        virObjectUnref(client->tls);
+        virNetTLSSessionFree(client->tls);
         client->tls = NULL;
     }
-#endif
     client->wantClose = true;
 
     while (client->rx) {
@@ -996,58 +686,55 @@ void virNetServerClientClose(virNetServerClientPtr client)
     }
 
     if (client->sock) {
-        virObjectUnref(client->sock);
+        virNetSocketFree(client->sock);
         client->sock = NULL;
     }
 
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
 }
 
 
 bool virNetServerClientIsClosed(virNetServerClientPtr client)
 {
     bool closed;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     closed = client->sock == NULL ? true : false;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return closed;
 }
 
 void virNetServerClientDelayedClose(virNetServerClientPtr client)
 {
-    virObjectLock(client);
+    virNetServerClientLock(client);
     client->delayedClose = true;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
 }
 
 void virNetServerClientImmediateClose(virNetServerClientPtr client)
 {
-    virObjectLock(client);
+    virNetServerClientLock(client);
     client->wantClose = true;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
 }
 
 bool virNetServerClientWantClose(virNetServerClientPtr client)
 {
     bool wantClose;
-    virObjectLock(client);
+    virNetServerClientLock(client);
     wantClose = client->wantClose;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return wantClose;
 }
 
 
 int virNetServerClientInit(virNetServerClientPtr client)
 {
-    virObjectLock(client);
+    virNetServerClientLock(client);
 
-#if WITH_GNUTLS
     if (!client->tlsCtxt) {
-#endif
         /* Plain socket, so prepare to read first message */
         if (virNetServerClientRegisterEvent(client) < 0)
             goto error;
-#if WITH_GNUTLS
     } else {
         int ret;
 
@@ -1076,14 +763,13 @@ int virNetServerClientInit(virNetServerClientPtr client)
             goto error;
         }
     }
-#endif
 
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return 0;
 
 error:
     client->wantClose = true;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return -1;
 }
 
@@ -1102,9 +788,9 @@ static ssize_t virNetServerClientRead(virNetServerClientPtr client)
     ssize_t ret;
 
     if (client->rx->bufferLength <= client->rx->bufferOffset) {
-        virReportError(VIR_ERR_RPC,
-                       _("unexpected zero/negative length request %lld"),
-                       (long long int)(client->rx->bufferLength - client->rx->bufferOffset));
+        virNetError(VIR_ERR_RPC,
+                    _("unexpected zero/negative length request %lld"),
+                    (long long int)(client->rx->bufferLength - client->rx->bufferOffset));
         client->wantClose = true;
         return -1;
     }
@@ -1153,7 +839,6 @@ readmore:
     } else {
         /* Grab the completed message */
         virNetMessagePtr msg = client->rx;
-        virNetMessagePtr response = NULL;
         virNetServerClientFilterPtr filter;
         size_t i;
 
@@ -1176,7 +861,7 @@ readmore:
         }
 
         /* Try getting the file descriptors (may fail if blocking) */
-        for (i = msg->donefds; i < msg->nfds; i++) {
+        for (i = msg->donefds ; i < msg->nfds ; i++) {
             int rv;
             if ((rv = virNetSocketRecvFD(client->sock, &(msg->fds[i]))) < 0) {
                 virNetMessageQueueServe(&client->rx);
@@ -1207,45 +892,33 @@ readmore:
               msg->header.prog, msg->header.vers, msg->header.proc,
               msg->header.type, msg->header.status, msg->header.serial);
 
-        if (virKeepAliveCheckMessage(client->keepalive, msg, &response)) {
-            virNetMessageFree(msg);
-            client->nrequests--;
-            msg = NULL;
-
-            if (response &&
-                virNetServerClientSendMessageLocked(client, response) < 0)
-                virNetMessageFree(response);
-        }
-
         /* Maybe send off for queue against a filter */
-        if (msg) {
-            filter = client->filters;
-            while (filter) {
-                int ret = filter->func(client, msg, filter->opaque);
-                if (ret < 0) {
-                    virNetMessageFree(msg);
-                    msg = NULL;
-                    if (ret < 0)
-                        client->wantClose = true;
-                    break;
-                }
-                if (ret > 0) {
-                    msg = NULL;
-                    break;
-                }
-
-                filter = filter->next;
+        filter = client->filters;
+        while (filter) {
+            int ret = filter->func(client, msg, filter->opaque);
+            if (ret < 0) {
+                virNetMessageFree(msg);
+                msg = NULL;
+                if (ret < 0)
+                    client->wantClose = true;
+                break;
             }
+            if (ret > 0) {
+                msg = NULL;
+                break;
+            }
+
+            filter = filter->next;
         }
 
         /* Send off to for normal dispatch to workers */
         if (msg) {
-            virObjectRef(client);
+            client->refs++;
             if (!client->dispatchFunc ||
                 client->dispatchFunc(client, msg, client->dispatchOpaque) < 0) {
                 virNetMessageFree(msg);
                 client->wantClose = true;
-                virObjectUnref(client);
+                client->refs--;
                 return;
             }
         }
@@ -1256,12 +929,7 @@ readmore:
                 client->wantClose = true;
             } else {
                 client->rx->bufferLength = VIR_NET_MESSAGE_LEN_MAX;
-                if (VIR_ALLOC_N(client->rx->buffer,
-                                client->rx->bufferLength) < 0) {
-                    client->wantClose = true;
-                } else {
-                    client->nrequests++;
-                }
+                client->nrequests++;
             }
         }
         virNetServerClientUpdateEvent(client);
@@ -1282,9 +950,9 @@ static ssize_t virNetServerClientWrite(virNetServerClientPtr client)
     ssize_t ret;
 
     if (client->tx->bufferLength < client->tx->bufferOffset) {
-        virReportError(VIR_ERR_RPC,
-                       _("unexpected zero/negative length request %lld"),
-                       (long long int)(client->tx->bufferLength - client->tx->bufferOffset));
+        virNetError(VIR_ERR_RPC,
+                    _("unexpected zero/negative length request %lld"),
+                    (long long int)(client->tx->bufferLength - client->tx->bufferOffset));
         client->wantClose = true;
         return -1;
     }
@@ -1326,7 +994,7 @@ virNetServerClientDispatchWrite(virNetServerClientPtr client)
             virNetMessagePtr msg;
             size_t i;
 
-            for (i = client->tx->donefds; i < client->tx->nfds; i++) {
+            for (i = client->tx->donefds ; i < client->tx->nfds ; i++) {
                 int rv;
                 if ((rv = virNetSocketSendFD(client->sock, client->tx->fds[i])) < 0) {
                     client->wantClose = true;
@@ -1337,13 +1005,13 @@ virNetServerClientDispatchWrite(virNetServerClientPtr client)
                 client->tx->donefds++;
             }
 
-#if WITH_SASL
+#if HAVE_SASL
             /* Completed this 'tx' operation, so now read for all
              * future rx/tx to be under a SASL SSF layer
              */
             if (client->sasl) {
                 virNetSocketSetSASLSession(client->sock, client->sasl);
-                virObjectUnref(client->sasl);
+                virNetSASLSessionFree(client->sasl);
                 client->sasl = NULL;
             }
 #endif
@@ -1358,12 +1026,8 @@ virNetServerClientDispatchWrite(virNetServerClientPtr client)
                     client->nrequests < client->nrequests_max) {
                     /* Ready to recv more messages */
                     virNetMessageClear(msg);
-                    msg->bufferLength = VIR_NET_MESSAGE_LEN_MAX;
-                    if (VIR_ALLOC_N(msg->buffer, msg->bufferLength) < 0) {
-                        virNetMessageFree(msg);
-                        return;
-                    }
                     client->rx = msg;
+                    client->rx->bufferLength = VIR_NET_MESSAGE_LEN_MAX;
                     msg = NULL;
                     client->nrequests++;
                 }
@@ -1379,8 +1043,6 @@ virNetServerClientDispatchWrite(virNetServerClientPtr client)
     }
 }
 
-
-#if WITH_GNUTLS
 static void
 virNetServerClientDispatchHandshake(virNetServerClientPtr client)
 {
@@ -1397,44 +1059,39 @@ virNetServerClientDispatchHandshake(virNetServerClientPtr client)
         /* Carry on waiting for more handshake. Update
            the events just in case handshake data flow
            direction has changed */
-        virNetServerClientUpdateEvent(client);
+        virNetServerClientUpdateEvent (client);
     } else {
         /* Fatal error in handshake */
         client->wantClose = true;
     }
 }
-#endif
 
 static void
 virNetServerClientDispatchEvent(virNetSocketPtr sock, int events, void *opaque)
 {
     virNetServerClientPtr client = opaque;
 
-    virObjectLock(client);
+    virNetServerClientLock(client);
 
     if (client->sock != sock) {
         virNetSocketRemoveIOCallback(sock);
-        virObjectUnlock(client);
+        virNetServerClientUnlock(client);
         return;
     }
 
     if (events & (VIR_EVENT_HANDLE_WRITABLE |
                   VIR_EVENT_HANDLE_READABLE)) {
-#if WITH_GNUTLS
         if (client->tls &&
             virNetTLSSessionGetHandshakeStatus(client->tls) !=
             VIR_NET_TLS_HANDSHAKE_COMPLETE) {
             virNetServerClientDispatchHandshake(client);
         } else {
-#endif
             if (events & VIR_EVENT_HANDLE_WRITABLE)
                 virNetServerClientDispatchWrite(client);
             if (events & VIR_EVENT_HANDLE_READABLE &&
                 client->rx)
                 virNetServerClientDispatchRead(client);
-#if WITH_GNUTLS
         }
-#endif
     }
 
     /* NB, will get HANGUP + READABLE at same time upon
@@ -1443,18 +1100,19 @@ virNetServerClientDispatchEvent(virNetSocketPtr sock, int events, void *opaque)
                   VIR_EVENT_HANDLE_HANGUP))
         client->wantClose = true;
 
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
 }
 
 
-static int
-virNetServerClientSendMessageLocked(virNetServerClientPtr client,
-                                    virNetMessagePtr msg)
+int virNetServerClientSendMessage(virNetServerClientPtr client,
+                                  virNetMessagePtr msg)
 {
     int ret = -1;
     VIR_DEBUG("msg=%p proc=%d len=%zu offset=%zu",
               msg, msg->header.proc,
               msg->bufferLength, msg->bufferOffset);
+
+    virNetServerClientLock(client);
 
     msg->donefds = 0;
     if (client->sock && !client->wantClose) {
@@ -1469,17 +1127,7 @@ virNetServerClientSendMessageLocked(virNetServerClientPtr client,
         ret = 0;
     }
 
-    return ret;
-}
-
-int virNetServerClientSendMessage(virNetServerClientPtr client,
-                                  virNetMessagePtr msg)
-{
-    int ret;
-
-    virObjectLock(client);
-    ret = virNetServerClientSendMessageLocked(client, msg);
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
 
     return ret;
 }
@@ -1488,10 +1136,10 @@ int virNetServerClientSendMessage(virNetServerClientPtr client,
 bool virNetServerClientNeedAuth(virNetServerClientPtr client)
 {
     bool need = false;
-    virObjectLock(client);
-    if (client->auth)
+    virNetServerClientLock(client);
+    if (client->auth && !client->identity)
         need = true;
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return need;
 }
 
@@ -1509,6 +1157,25 @@ virNetServerClientKeepAliveSendCB(void *opaque,
     return virNetServerClientSendMessage(opaque, msg);
 }
 
+static void
+virNetServerClientFreeCB(void *opaque)
+{
+    virNetServerClientFree(opaque);
+}
+
+static int
+virNetServerClientKeepAliveFilter(virNetServerClientPtr client,
+                                  virNetMessagePtr msg,
+                                  void *opaque ATTRIBUTE_UNUSED)
+{
+    if (virKeepAliveCheckMessage(client->keepalive, msg)) {
+        virNetMessageFree(msg);
+        client->nrequests--;
+        return 1;
+    }
+
+    return 0;
+}
 
 int
 virNetServerClientInitKeepAlive(virNetServerClientPtr client,
@@ -1518,20 +1185,31 @@ virNetServerClientInitKeepAlive(virNetServerClientPtr client,
     virKeepAlivePtr ka;
     int ret = -1;
 
-    virObjectLock(client);
+    virNetServerClientLock(client);
 
     if (!(ka = virKeepAliveNew(interval, count, client,
                                virNetServerClientKeepAliveSendCB,
                                virNetServerClientKeepAliveDeadCB,
-                               virObjectFreeCallback)))
+                               virNetServerClientFreeCB)))
         goto cleanup;
     /* keepalive object has a reference to client */
-    virObjectRef(client);
+    client->refs++;
+
+    client->keepaliveFilter =
+        virNetServerClientAddFilterLocked(client,
+                                          virNetServerClientKeepAliveFilter,
+                                          NULL);
+    if (client->keepaliveFilter < 0)
+        goto cleanup;
 
     client->keepalive = ka;
+    ka = NULL;
 
 cleanup:
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
+    if (ka)
+        virKeepAliveStop(ka);
+    virKeepAliveFree(ka);
 
     return ret;
 }
@@ -1541,7 +1219,7 @@ virNetServerClientStartKeepAlive(virNetServerClientPtr client)
 {
     int ret = -1;
 
-    virObjectLock(client);
+    virNetServerClientLock(client);
 
     /* The connection might have been closed before we got here and thus the
      * keepalive object could have been removed too.
@@ -1555,6 +1233,6 @@ virNetServerClientStartKeepAlive(virNetServerClientPtr client)
     ret = virKeepAliveStart(client->keepalive, 0, 0);
 
 cleanup:
-    virObjectUnlock(client);
+    virNetServerClientUnlock(client);
     return ret;
 }

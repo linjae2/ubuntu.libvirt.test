@@ -16,19 +16,20 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
 #include <config.h>
 
 #include "internal.h"
-#include "virerror.h"
+#include "virterror_internal.h"
 #include "datatypes.h"
-#include "viralloc.h"
-#include "virlog.h"
-#include "viruuid.h"
+#include "util.h"
+#include "memory.h"
+#include "logging.h"
+#include "uuid.h"
 #include "hyperv_device_monitor.h"
 
 #define VIR_FROM_THIS VIR_FROM_HYPERV
@@ -36,9 +37,9 @@
 
 
 static virDrvOpenStatus
-hypervNodeDeviceOpen(virConnectPtr conn,
-                     virConnectAuthPtr auth ATTRIBUTE_UNUSED,
-                     unsigned int flags)
+hypervDeviceOpen(virConnectPtr conn,
+                 virConnectAuthPtr auth ATTRIBUTE_UNUSED,
+                 unsigned int flags)
 {
     virCheckFlags(VIR_CONNECT_RO, VIR_DRV_OPEN_ERROR);
 
@@ -46,7 +47,7 @@ hypervNodeDeviceOpen(virConnectPtr conn,
         return VIR_DRV_OPEN_DECLINED;
     }
 
-    conn->nodeDevicePrivateData = conn->privateData;
+    conn->devMonPrivateData = conn->privateData;
 
     return VIR_DRV_OPEN_SUCCESS;
 }
@@ -54,19 +55,19 @@ hypervNodeDeviceOpen(virConnectPtr conn,
 
 
 static int
-hypervNodeDeviceClose(virConnectPtr conn)
+hypervDeviceClose(virConnectPtr conn)
 {
-    conn->nodeDevicePrivateData = NULL;
+    conn->devMonPrivateData = NULL;
 
     return 0;
 }
 
 
 
-static virNodeDeviceDriver hypervNodeDeviceDriver = {
+static virDeviceMonitor hypervDeviceMonitor = {
     "Hyper-V",
-    .nodeDeviceOpen = hypervNodeDeviceOpen, /* 0.9.5 */
-    .nodeDeviceClose = hypervNodeDeviceClose, /* 0.9.5 */
+    .open = hypervDeviceOpen, /* 0.9.5 */
+    .close = hypervDeviceClose, /* 0.9.5 */
 };
 
 
@@ -74,5 +75,5 @@ static virNodeDeviceDriver hypervNodeDeviceDriver = {
 int
 hypervDeviceRegister(void)
 {
-    return virRegisterNodeDeviceDriver(&hypervNodeDeviceDriver);
+    return virRegisterDeviceMonitor(&hypervDeviceMonitor);
 }

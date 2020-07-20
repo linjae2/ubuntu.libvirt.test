@@ -7,9 +7,7 @@
   <source>
     <host name='iscsi.example.com'/>
     <device path='demo-target'/>
-    <auth type='chap' username='admin'>
-      <secret uuid='2ec115d7-3a88-3ceb-bc12-0ac909a6fd87'/>
-    </auth>
+    <auth type='chap' login='foobar' passwd='frobbar'/>
     <vendor name='test-vendor'/>
     <product name='test-product'/>
   </source>

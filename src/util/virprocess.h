@@ -1,7 +1,7 @@
 /*
  * virprocess.h: interaction with processes
  *
- * Copyright (C) 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2010-2012 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,7 +25,6 @@
 # include <sys/types.h>
 
 # include "internal.h"
-# include "virbitmap.h"
 
 char *
 virProcessTranslateStatus(int status);
@@ -39,25 +38,8 @@ virProcessWait(pid_t pid, int *exitstatus)
 
 int virProcessKill(pid_t pid, int sig);
 
-int virProcessKillPainfully(pid_t pid, bool force);
-
-int virProcessSetAffinity(pid_t pid, virBitmapPtr map);
-
-int virProcessGetAffinity(pid_t pid,
-                          virBitmapPtr *map,
-                          int maxcpu);
 
 int virProcessGetStartTime(pid_t pid,
                            unsigned long long *timestamp);
 
-int virProcessGetNamespaces(pid_t pid,
-                            size_t *nfdlist,
-                            int **fdlist);
-
-int virProcessSetNamespaces(size_t nfdlist,
-                            int *fdlist);
-
-int virProcessSetMaxMemLock(pid_t pid, unsigned long long bytes);
-int virProcessSetMaxProcesses(pid_t pid, unsigned int procs);
-int virProcessSetMaxFiles(pid_t pid, unsigned int files);
 #endif /* __VIR_PROCESS_H__ */

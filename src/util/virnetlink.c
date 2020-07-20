@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2010-2012 Red Hat, Inc.
  * Copyright (C) 2010-2012 IBM Corporation
  *
  * This library is free software; you can redistribute it and/or
@@ -13,8 +13,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Authors:
  *     Stefan Berger <stefanb@us.ibm.com>
@@ -33,22 +33,21 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 
 #include "virnetlink.h"
-#include "virlog.h"
-#include "viralloc.h"
-#include "virthread.h"
+#include "logging.h"
+#include "memory.h"
+#include "threads.h"
 #include "virmacaddr.h"
-#include "virerror.h"
-
-#ifndef SOL_NETLINK
-# define SOL_NETLINK 270
-#endif
+#include "virterror_internal.h"
 
 #define VIR_FROM_THIS VIR_FROM_NET
 
-#define NETLINK_ACK_TIMEOUT_S  (2*1000)
+#define netlinkError(code, ...)                                           \
+        virReportErrorHelper(VIR_FROM_NET, code, __FILE__,                 \
+                             __FUNCTION__, __LINE__, __VA_ARGS__)
+
+#define NETLINK_ACK_TIMEOUT_S  2
 
 #if defined(__linux__) && defined(HAVE_LIBNL)
 /* State for a single netlink event handle */
@@ -57,7 +56,7 @@ struct virNetlinkEventHandle {
     virNetlinkEventHandleCallback handleCB;
     virNetlinkEventRemoveCallback removeCB;
     void *opaque;
-    virMacAddr macaddr;
+    unsigned char macaddr[VIR_MAC_BUFLEN];
     int deleted;
 };
 
@@ -98,9 +97,7 @@ static int nextWatch = 1;
  records in this multiple */
 # define NETLINK_EVENT_ALLOC_EXTENT 10
 
-/* Linux kernel supports up to MAX_LINKS (32 at the time) individual
- * netlink protocols. */
-static virNetlinkEventSrvPrivatePtr server[MAX_LINKS] = {NULL};
+static virNetlinkEventSrvPrivatePtr server = NULL;
 static virNetlinkHandle *placeholder_nlhandle = NULL;
 
 /* Function definitions */
@@ -133,7 +130,6 @@ virNetlinkStartup(void)
 {
     if (placeholder_nlhandle)
         return 0;
-    VIR_DEBUG("Running global netlink initialization");
     placeholder_nlhandle = virNetlinkAlloc();
     if (!placeholder_nlhandle) {
         virReportSystemError(errno, "%s",
@@ -164,19 +160,15 @@ virNetlinkShutdown(void)
  * @respbuf: pointer to pointer where response buffer will be allocated
  * @respbuflen: pointer to integer holding the size of the response buffer
  *      on return of the function.
- * @src_pid: the pid of the process to send a message
- * @dst_pid: the pid of the process to talk to, i.e., pid = 0 for kernel
- * @protocol: netlink protocol
- * @groups: the group identifier
+ * @nl_pid: the pid of the process to talk to, i.e., pid = 0 for kernel
  *
  * Send the given message to the netlink layer and receive response.
  * Returns 0 on success, -1 on error. In case of error, no response
  * buffer will be returned.
  */
 int virNetlinkCommand(struct nl_msg *nl_msg,
-                      struct nlmsghdr **resp, unsigned int *respbuflen,
-                      uint32_t src_pid, uint32_t dst_pid,
-                      unsigned int protocol, unsigned int groups)
+                      unsigned char **respbuf, unsigned int *respbuflen,
+                      uint32_t src_pid, uint32_t dst_pid)
 {
     int rc = 0;
     struct sockaddr_nl nladdr = {
@@ -185,44 +177,24 @@ int virNetlinkCommand(struct nl_msg *nl_msg,
             .nl_groups = 0,
     };
     ssize_t nbytes;
-    struct pollfd fds[1];
+    struct timeval tv = {
+        .tv_sec = NETLINK_ACK_TIMEOUT_S,
+    };
+    fd_set readfds;
     int fd;
     int n;
     struct nlmsghdr *nlmsg = nlmsg_hdr(nl_msg);
-    virNetlinkHandle *nlhandle = NULL;
+    virNetlinkHandle *nlhandle = virNetlinkAlloc();
 
-    if (protocol >= MAX_LINKS) {
-        virReportSystemError(EINVAL,
-                             _("invalid protocol argument: %d"), protocol);
-        return -EINVAL;
-    }
-
-    nlhandle = virNetlinkAlloc();
     if (!nlhandle) {
         virReportSystemError(errno,
                              "%s", _("cannot allocate nlhandle for netlink"));
         return -1;
     }
 
-    if (nl_connect(nlhandle, protocol) < 0) {
+    if (nl_connect(nlhandle, NETLINK_ROUTE) < 0) {
         virReportSystemError(errno,
-                        _("cannot connect to netlink socket with protocol %d"),
-                             protocol);
-        rc = -1;
-        goto error;
-    }
-
-    fd = nl_socket_get_fd(nlhandle);
-    if (fd < 0) {
-        virReportSystemError(errno,
-                             "%s", _("cannot get netlink socket fd"));
-        rc = -1;
-        goto error;
-    }
-
-    if (groups && nl_socket_add_membership(nlhandle, groups) < 0) {
-        virReportSystemError(errno,
-                             "%s", _("cannot add netlink membership"));
+                             "%s", _("cannot connect to netlink socket"));
         rc = -1;
         goto error;
     }
@@ -239,15 +211,16 @@ int virNetlinkCommand(struct nl_msg *nl_msg,
         goto error;
     }
 
-    memset(fds, 0, sizeof(fds));
-    fds[0].fd = fd;
-    fds[0].events = POLLIN;
+    fd = nl_socket_get_fd(nlhandle);
 
-    n = poll(fds, ARRAY_CARDINALITY(fds), NETLINK_ACK_TIMEOUT_S);
+    FD_ZERO(&readfds);
+    FD_SET(fd, &readfds);
+
+    n = select(fd + 1, &readfds, NULL, NULL, &tv);
     if (n <= 0) {
         if (n < 0)
             virReportSystemError(errno, "%s",
-                                 _("error in poll call"));
+                                 _("error in select call"));
         if (n == 0)
             virReportSystemError(ETIMEDOUT, "%s",
                                  _("no valid netlink response was received"));
@@ -255,8 +228,7 @@ int virNetlinkCommand(struct nl_msg *nl_msg,
         goto error;
     }
 
-    *respbuflen = nl_recv(nlhandle, &nladdr,
-                          (unsigned char **)resp, NULL);
+    *respbuflen = nl_recv(nlhandle, &nladdr, respbuf, NULL);
     if (*respbuflen <= 0) {
         virReportSystemError(errno,
                              "%s", _("nl_recv failed"));
@@ -264,8 +236,8 @@ int virNetlinkCommand(struct nl_msg *nl_msg,
     }
 error:
     if (rc == -1) {
-        VIR_FREE(*resp);
-        *resp = NULL;
+        VIR_FREE(*respbuf);
+        *respbuf = NULL;
         *respbuflen = 0;
     }
 
@@ -289,7 +261,6 @@ virNetlinkEventServerUnlock(virNetlinkEventSrvPrivatePtr driver)
  * virNetlinkEventRemoveClientPrimitive:
  *
  * @i: index of the client to remove from the table
- * @protocol: netlink protocol
  *
  * This static function does the low level removal of a client from
  * the table once its index is known, including calling the remove
@@ -299,21 +270,17 @@ virNetlinkEventServerUnlock(virNetlinkEventSrvPrivatePtr driver)
  *
  * assumes success, returns nothing.
  */
-static int
-virNetlinkEventRemoveClientPrimitive(size_t i, unsigned int protocol)
+static void
+virNetlinkEventRemoveClientPrimitive(size_t i)
 {
-    if (protocol >= MAX_LINKS)
-        return -EINVAL;
-
-    virNetlinkEventRemoveCallback removeCB = server[protocol]->handles[i].removeCB;
+    virNetlinkEventRemoveCallback removeCB = server->handles[i].removeCB;
 
     if (removeCB) {
-        (removeCB)(server[protocol]->handles[i].watch,
-                   &server[protocol]->handles[i].macaddr,
-                   server[protocol]->handles[i].opaque);
+        (removeCB)(server->handles[i].watch,
+                   server->handles[i].macaddr,
+                   server->handles[i].opaque);
     }
-    server[protocol]->handles[i].deleted = VIR_NETLINK_HANDLE_DELETED;
-    return 0;
+    server->handles[i].deleted = VIR_NETLINK_HANDLE_DELETED;
 }
 
 static void
@@ -323,15 +290,13 @@ virNetlinkEventCallback(int watch,
                         void *opaque)
 {
     virNetlinkEventSrvPrivatePtr srv = opaque;
-    struct nlmsghdr *msg;
+    unsigned char *msg;
     struct sockaddr_nl peer;
     struct ucred *creds = NULL;
-    size_t i;
-    int length;
+    int i, length;
     bool handled = false;
 
-    length = nl_recv(srv->netlinknh, &peer,
-                     (unsigned char **)&msg, &creds);
+    length = nl_recv(srv->netlinknh, &peer, &msg, &creds);
 
     if (length == 0)
         return;
@@ -350,7 +315,7 @@ virNetlinkEventCallback(int watch,
         if (srv->handles[i].deleted != VIR_NETLINK_HANDLE_VALID)
             continue;
 
-        VIR_DEBUG("dispatching client %zu.", i);
+        VIR_DEBUG("dispatching client %d.", i);
 
         (srv->handles[i].handleCB)(msg, length, &peer, &handled,
                                    srv->handles[i].opaque);
@@ -368,22 +333,17 @@ virNetlinkEventCallback(int watch,
  * stop the monitor to receive netlink messages for libvirtd.
  * This removes the netlink socket fd from the event handler.
  *
- * @protocol: netlink protocol
- *
  * Returns -1 if the monitor cannot be unregistered, 0 upon success
  */
 int
-virNetlinkEventServiceStop(unsigned int protocol)
+virNetlinkEventServiceStop(void)
 {
-    if (protocol >= MAX_LINKS)
-        return -EINVAL;
-
-    virNetlinkEventSrvPrivatePtr srv = server[protocol];
-    size_t i;
+    virNetlinkEventSrvPrivatePtr srv = server;
+    int i;
 
     VIR_INFO("stopping netlink event service");
 
-    if (!server[protocol])
+    if (!server)
         return 0;
 
     virNetlinkEventServerLock(srv);
@@ -394,10 +354,10 @@ virNetlinkEventServiceStop(unsigned int protocol)
     /* free any remaining clients on the list */
     for (i = 0; i < srv->handlesCount; i++) {
         if (srv->handles[i].deleted == VIR_NETLINK_HANDLE_VALID)
-            virNetlinkEventRemoveClientPrimitive(i, protocol);
+            virNetlinkEventRemoveClientPrimitive(i);
     }
 
-    server[protocol] = NULL;
+    server = 0;
     virNetlinkEventServerUnlock(srv);
 
     virMutexDestroy(&srv->lock);
@@ -406,86 +366,33 @@ virNetlinkEventServiceStop(unsigned int protocol)
 }
 
 /**
- * virNetlinkEventServiceStopAll:
- *
- * Stop all the monitors to receive netlink messages for libvirtd.
- *
- * Returns -1 if any monitor cannot be unregistered, 0 upon success
- */
-int
-virNetlinkEventServiceStopAll(void)
-{
-    size_t i, j;
-    virNetlinkEventSrvPrivatePtr srv = NULL;
-
-    VIR_INFO("stopping all netlink event services");
-
-    for (i = 0; i < MAX_LINKS; i++) {
-        srv = server[i];
-        if (!srv)
-            continue;
-
-        virNetlinkEventServerLock(srv);
-        nl_close(srv->netlinknh);
-        virNetlinkFree(srv->netlinknh);
-        virEventRemoveHandle(srv->eventwatch);
-
-        for (j = 0; j < srv->handlesCount; j++) {
-            if (srv->handles[j].deleted == VIR_NETLINK_HANDLE_VALID)
-                virNetlinkEventRemoveClientPrimitive(j, i);
-        }
-
-        server[i] = NULL;
-        virNetlinkEventServerUnlock(srv);
-
-        virMutexDestroy(&srv->lock);
-        VIR_FREE(srv);
-    }
-
-    return 0;
-}
-
-/**
  * virNetlinkEventServiceIsRunning:
  *
  * Returns if the netlink event service is running.
  *
- * @protocol: netlink protocol
- *
  * Returns 'true' if the service is running, 'false' if stopped.
  */
 bool
-virNetlinkEventServiceIsRunning(unsigned int protocol)
+virNetlinkEventServiceIsRunning(void)
 {
-    if (protocol >= MAX_LINKS) {
-        virReportSystemError(EINVAL,
-                             _("invalid protocol argument: %d"), protocol);
-        return false;
-    }
-
-    return server[protocol] != NULL;
+    return server != NULL;
 }
 
 /**
  * virNetlinkEventServiceLocalPid:
  *
- * @protocol: netlink protocol
- *
  * Returns the nl_pid value that was used to bind() the netlink socket
  * used by the netlink event service, or -1 on error (netlink
  * guarantees that this value will always be > 0).
  */
-int virNetlinkEventServiceLocalPid(unsigned int protocol)
+int virNetlinkEventServiceLocalPid(void)
 {
-    if (protocol >= MAX_LINKS)
-        return -EINVAL;
-
-    if (!(server[protocol] && server[protocol]->netlinknh)) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("netlink event service not running"));
+    if (!(server && server->netlinknh)) {
+        netlinkError(VIR_ERR_INTERNAL_ERROR, "%s",
+                     _("netlink event service not running"));
         return -1;
     }
-    return (int)nl_socket_get_local_port(server[protocol]->netlinknh);
+    return (int)nl_socket_get_local_port(server->netlinknh);
 }
 
 
@@ -495,30 +402,24 @@ int virNetlinkEventServiceLocalPid(unsigned int protocol)
  * start a monitor to receive netlink messages for libvirtd.
  * This registers a netlink socket with the event interface.
  *
- * @protocol: netlink protocol
- * @groups: broadcast groups to join in
  * Returns -1 if the monitor cannot be registered, 0 upon success
  */
 int
-virNetlinkEventServiceStart(unsigned int protocol, unsigned int groups)
+virNetlinkEventServiceStart(void)
 {
     virNetlinkEventSrvPrivatePtr srv;
     int fd;
     int ret = -1;
 
-    if (protocol >= MAX_LINKS) {
-        virReportSystemError(EINVAL,
-                             _("invalid protocol argument: %d"), protocol);
-        return -EINVAL;
-    }
-
-    if (server[protocol])
+    if (server)
         return 0;
 
-    VIR_INFO("starting netlink event service with protocol %d", protocol);
+    VIR_INFO("starting netlink event service");
 
-    if (VIR_ALLOC(srv) < 0)
+    if (VIR_ALLOC(srv) < 0) {
+        virReportOOMError();
         return -1;
+    }
 
     if (virMutexInit(&srv->lock) < 0) {
         VIR_FREE(srv);
@@ -536,22 +437,17 @@ virNetlinkEventServiceStart(unsigned int protocol, unsigned int groups)
         goto error_locked;
     }
 
-    if (nl_connect(srv->netlinknh, protocol) < 0) {
+    if (nl_connect(srv->netlinknh, NETLINK_ROUTE) < 0) {
         virReportSystemError(errno,
-                             _("cannot connect to netlink socket with protocol %d"), protocol);
+                             "%s", _("cannot connect to netlink socket"));
         goto error_server;
     }
 
     fd = nl_socket_get_fd(srv->netlinknh);
+
     if (fd < 0) {
         virReportSystemError(errno,
                              "%s", _("cannot get netlink socket fd"));
-        goto error_server;
-    }
-
-    if (groups && nl_socket_add_membership(srv->netlinknh, groups) < 0) {
-        virReportSystemError(errno,
-                             "%s", _("cannot add netlink membership"));
         goto error_server;
     }
 
@@ -565,8 +461,8 @@ virNetlinkEventServiceStart(unsigned int protocol, unsigned int groups)
                                              VIR_EVENT_HANDLE_READABLE,
                                              virNetlinkEventCallback,
                                              srv, NULL)) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Failed to add netlink event handle watch"));
+        netlinkError(VIR_ERR_INTERNAL_ERROR, "%s",
+                     _("Failed to add netlink event handle watch"));
         goto error_server;
     }
 
@@ -574,7 +470,7 @@ virNetlinkEventServiceStart(unsigned int protocol, unsigned int groups)
     VIR_DEBUG("netlink event listener on fd: %i running", fd);
 
     ret = 0;
-    server[protocol] = srv;
+    server = srv;
 
 error_server:
     if (ret < 0) {
@@ -598,7 +494,6 @@ error_locked:
  * @opaque: user data to pass to callback
  * @macaddr: macaddr to store with the data. Used to identify callers.
  *           May be null.
- * @protocol: netlink protocol
  *
  * register a callback for handling of netlink messages. The
  * registered function receives the entire netlink message and
@@ -610,21 +505,14 @@ error_locked:
 int
 virNetlinkEventAddClient(virNetlinkEventHandleCallback handleCB,
                          virNetlinkEventRemoveCallback removeCB,
-                         void *opaque, const virMacAddr *macaddr,
-                         unsigned int protocol)
+                         void *opaque, const unsigned char *macaddr)
 {
-    size_t i;
-    int r, ret = -1;
-    virNetlinkEventSrvPrivatePtr srv = NULL;
-
-    if (protocol >= MAX_LINKS)
-        return -EINVAL;
-
-    srv = server[protocol];
+    int i, r, ret = -1;
+    virNetlinkEventSrvPrivatePtr srv = server;
 
     if (handleCB == NULL) {
-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                       _("Invalid NULL callback provided"));
+        netlinkError(VIR_ERR_INTERNAL_ERROR, "%s",
+                     _("Invalid NULL callback provided"));
         return -1;
     }
 
@@ -645,8 +533,10 @@ virNetlinkEventAddClient(virNetlinkEventHandleCallback handleCB,
         VIR_DEBUG("Used %zu handle slots, adding at least %d more",
                   srv->handlesAlloc, NETLINK_EVENT_ALLOC_EXTENT);
         if (VIR_RESIZE_N(srv->handles, srv->handlesAlloc,
-                        srv->handlesCount, NETLINK_EVENT_ALLOC_EXTENT) < 0)
+                        srv->handlesCount, NETLINK_EVENT_ALLOC_EXTENT) < 0) {
+            virReportOOMError();
             goto error;
+        }
     }
     r = srv->handlesCount++;
 
@@ -657,10 +547,9 @@ addentry:
     srv->handles[r].opaque   = opaque;
     srv->handles[r].deleted  = VIR_NETLINK_HANDLE_VALID;
     if (macaddr)
-        virMacAddrSet(&srv->handles[r].macaddr, macaddr);
+        memcpy(srv->handles[r].macaddr, macaddr, VIR_MAC_BUFLEN);
     else
-        virMacAddrSetRaw(&srv->handles[r].macaddr,
-                         (unsigned char[VIR_MAC_BUFLEN]){0, 0, 0, 0, 0, 0});
+        memset(srv->handles[r].macaddr, 0, VIR_MAC_BUFLEN);
 
     VIR_DEBUG("added client to loop slot: %d. with macaddr ptr=%p", r, macaddr);
 
@@ -675,7 +564,6 @@ error:
  *
  * @watch: watch whose handle to remove
  * @macaddr: macaddr whose handle to remove
- * @protocol: netlink protocol
  *
  * Unregister a callback from a netlink monitor.
  * The handler function referenced will no longer receive netlink messages.
@@ -684,17 +572,11 @@ error:
  * Returns -1 if the file handle was not registered, 0 upon success
  */
 int
-virNetlinkEventRemoveClient(int watch, const virMacAddr *macaddr,
-                            unsigned int protocol)
+virNetlinkEventRemoveClient(int watch, const unsigned char *macaddr)
 {
-    size_t i;
+    int i;
     int ret = -1;
-    virNetlinkEventSrvPrivatePtr srv = NULL;
-
-    if (protocol >= MAX_LINKS)
-        return -EINVAL;
-
-    srv = server[protocol];
+    virNetlinkEventSrvPrivatePtr srv = server;
 
     VIR_DEBUG("removing client watch=%d, mac=%p.", watch, macaddr);
 
@@ -711,11 +593,11 @@ virNetlinkEventRemoveClient(int watch, const virMacAddr *macaddr,
 
         if ((watch && srv->handles[i].watch == watch) ||
             (!watch &&
-             virMacAddrCmp(macaddr, &srv->handles[i].macaddr) == 0)) {
+             memcmp(macaddr, srv->handles[i].macaddr, VIR_MAC_BUFLEN) == 0)) {
 
             VIR_DEBUG("removed client: %d by %s.",
                       srv->handles[i].watch, watch ? "index" : "mac");
-            virNetlinkEventRemoveClientPrimitive(i, protocol);
+            virNetlinkEventRemoveClientPrimitive(i);
             ret = 0;
             goto cleanup;
         }
@@ -748,14 +630,12 @@ virNetlinkShutdown(void)
 }
 
 int virNetlinkCommand(struct nl_msg *nl_msg ATTRIBUTE_UNUSED,
-                      struct nlmsghdr **resp ATTRIBUTE_UNUSED,
+                      unsigned char **respbuf ATTRIBUTE_UNUSED,
                       unsigned int *respbuflen ATTRIBUTE_UNUSED,
                       uint32_t src_pid ATTRIBUTE_UNUSED,
-                      uint32_t dst_pid ATTRIBUTE_UNUSED,
-                      unsigned int protocol ATTRIBUTE_UNUSED,
-                      unsigned int groups ATTRIBUTE_UNUSED)
+                      uint32_t dst_pid ATTRIBUTE_UNUSED)
 {
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
+    netlinkError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
     return -1;
 }
 
@@ -763,17 +643,7 @@ int virNetlinkCommand(struct nl_msg *nl_msg ATTRIBUTE_UNUSED,
  * stopNetlinkEventServer: stop the monitor to receive netlink
  * messages for libvirtd
  */
-int virNetlinkEventServiceStop(unsigned int protocol ATTRIBUTE_UNUSED)
-{
-    VIR_DEBUG("%s", _(unsupported));
-    return 0;
-}
-
-/**
- * stopNetlinkEventServerAll: stop all the monitors to receive netlink
- * messages for libvirtd
- */
-int virNetlinkEventServiceStopAll(void)
+int virNetlinkEventServiceStop(void)
 {
     VIR_DEBUG("%s", _(unsupported));
     return 0;
@@ -783,8 +653,7 @@ int virNetlinkEventServiceStopAll(void)
  * startNetlinkEventServer: start a monitor to receive netlink
  * messages for libvirtd
  */
-int virNetlinkEventServiceStart(unsigned int protocol ATTRIBUTE_UNUSED,
-                                unsigned int groups ATTRIBUTE_UNUSED)
+int virNetlinkEventServiceStart(void)
 {
     VIR_DEBUG("%s", _(unsupported));
     return 0;
@@ -794,16 +663,10 @@ int virNetlinkEventServiceStart(unsigned int protocol ATTRIBUTE_UNUSED,
  * virNetlinkEventServiceIsRunning: returns if the netlink event
  * service is running.
  */
-bool virNetlinkEventServiceIsRunning(unsigned int protocol ATTRIBUTE_UNUSED)
+bool virNetlinkEventServiceIsRunning(void)
 {
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
+    netlinkError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
     return 0;
-}
-
-int virNetlinkEventServiceLocalPid(unsigned int protocol ATTRIBUTE_UNUSED)
-{
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
-    return -1;
 }
 
 /**
@@ -813,10 +676,9 @@ int virNetlinkEventServiceLocalPid(unsigned int protocol ATTRIBUTE_UNUSED)
 int virNetlinkEventAddClient(virNetlinkEventHandleCallback handleCB ATTRIBUTE_UNUSED,
                              virNetlinkEventRemoveCallback removeCB ATTRIBUTE_UNUSED,
                              void *opaque ATTRIBUTE_UNUSED,
-                             const virMacAddr *macaddr ATTRIBUTE_UNUSED,
-                             unsigned int protocol ATTRIBUTE_UNUSED)
+                             const unsigned char *macaddr ATTRIBUTE_UNUSED)
 {
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
+    netlinkError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
     return -1;
 }
 
@@ -824,10 +686,9 @@ int virNetlinkEventAddClient(virNetlinkEventHandleCallback handleCB ATTRIBUTE_UN
  * virNetlinkEventRemoveClient: unregister a callback from a netlink monitor
  */
 int virNetlinkEventRemoveClient(int watch ATTRIBUTE_UNUSED,
-                                const virMacAddr *macaddr ATTRIBUTE_UNUSED,
-                                unsigned int protocol ATTRIBUTE_UNUSED)
+                                const unsigned char *macaddr ATTRIBUTE_UNUSED)
 {
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
+    netlinkError(VIR_ERR_INTERNAL_ERROR, "%s", _(unsupported));
     return -1;
 }
 

@@ -1,6 +1,5 @@
 /* This file contains trivial example code to connect to the running
- * hypervisor and gather a few bits of information about domains.
- * Similar API's exist for storage pools, networks, and interfaces. */
+ * hypervisor and gather a few bits of information.  */
 
 #include <config.h>
 
@@ -8,6 +7,42 @@
 #include <stdlib.h>
 #include <libvirt/libvirt.h>
 #include <libvirt/virterror.h>
+
+static void
+showError(virConnectPtr conn)
+{
+    int ret;
+    virErrorPtr err;
+
+    err = malloc(sizeof(*err));
+    if (NULL == err) {
+        printf("Could not allocate memory for error data\n");
+        goto out;
+    }
+
+    ret = virConnCopyLastError(conn, err);
+
+    switch (ret) {
+    case 0:
+        printf("No error found\n");
+        break;
+
+    case -1:
+        printf("Parameter error when attempting to get last error\n");
+        break;
+
+    default:
+        printf("libvirt reported: \"%s\"\n", err->message);
+        break;
+    }
+
+    virResetError(err);
+    free(err);
+
+out:
+    return;
+}
+
 
 static int
 showHypervisorInfo(virConnectPtr conn)
@@ -21,17 +56,17 @@ showHypervisorInfo(virConnectPtr conn)
      * to fail if, for example, there is no connection to a
      * hypervisor, so check what it returns. */
     hvType = virConnectGetType(conn);
-    if (!hvType) {
+    if (NULL == hvType) {
         ret = 1;
-        printf("Failed to get hypervisor type: %s\n",
-               virGetLastErrorMessage());
+        printf("Failed to get hypervisor type\n");
+        showError(conn);
         goto out;
     }
 
     if (0 != virConnectGetVersion(conn, &hvVer)) {
         ret = 1;
-        printf("Failed to get hypervisor version: %s\n",
-               virGetLastErrorMessage());
+        printf("Failed to get hypervisor version\n");
+        showError(conn);
         goto out;
     }
 
@@ -54,60 +89,61 @@ out:
 static int
 showDomains(virConnectPtr conn)
 {
-    int ret = 0, numNames, numInactiveDomains, numActiveDomains;
-    size_t i;
-    int flags = VIR_CONNECT_LIST_DOMAINS_ACTIVE |
-                VIR_CONNECT_LIST_DOMAINS_INACTIVE;
-    virDomainPtr *nameList = NULL;
+    int ret = 0, i, numNames, numInactiveDomains, numActiveDomains;
+    char **nameList = NULL;
 
-    /* NB: The return from the virConnectNum*() APIs is only useful for
-     * the current call.  A domain could be started or stopped and any
-     * assumptions made purely on these return values could result in
-     * unexpected results */
     numActiveDomains = virConnectNumOfDomains(conn);
-    if (numActiveDomains == -1) {
+    if (-1 == numActiveDomains) {
         ret = 1;
-        printf("Failed to get number of active domains: %s\n",
-               virGetLastErrorMessage());
+        printf("Failed to get number of active domains\n");
+        showError(conn);
         goto out;
     }
 
     numInactiveDomains = virConnectNumOfDefinedDomains(conn);
-    if (numInactiveDomains == -1) {
+    if (-1 == numInactiveDomains) {
         ret = 1;
-        printf("Failed to get number of inactive domains: %s\n",
-               virGetLastErrorMessage());
+        printf("Failed to get number of inactive domains\n");
+        showError(conn);
         goto out;
     }
 
     printf("There are %d active and %d inactive domains\n",
            numActiveDomains, numInactiveDomains);
 
-    /* Return a list of all active and inactive domains. Using this API
-     * instead of virConnectListDomains() and virConnectListDefinedDomains()
-     * is preferred since it "solves" an inherit race between separated API
-     * calls if domains are started or stopped between calls */
-    numNames = virConnectListAllDomains(conn,
-                                        &nameList,
-                                        flags);
-    if (numNames == -1) {
+    nameList = malloc(sizeof(*nameList) * numInactiveDomains);
+
+    if (NULL == nameList) {
         ret = 1;
-        printf("Failed to get a list of all domains: %s\n",
-               virGetLastErrorMessage());
+        printf("Could not allocate memory for list of inactive domains\n");
         goto out;
     }
 
-    for (i = 0; i < numNames; i++) {
-        int active = virDomainIsActive(nameList[i]);
-        printf("  %8s (%s)\n",
-               virDomainGetName(nameList[i]),
-               (active == 1 ? "active" : "non-active"));
-        /* must free the returned named per the API documentation */
-        virDomainFree(nameList[i]);
+    numNames = virConnectListDefinedDomains(conn,
+                                            nameList,
+                                            numInactiveDomains);
+
+    if (-1 == numNames) {
+        ret = 1;
+        printf("Could not get list of defined domains from hypervisor\n");
+        showError(conn);
+        goto out;
     }
-    free(nameList);
+
+    if (numNames > 0) {
+        printf("Inactive domains:\n");
+    }
+
+    for (i = 0 ; i < numNames ; i++) {
+        printf("  %s\n", *(nameList + i));
+        /* The API documentation doesn't say so, but the names
+         * returned by virConnectListDefinedDomains are strdup'd and
+         * must be freed here.  */
+        free(*(nameList + i));
+    }
 
 out:
+    free(nameList);
     return ret;
 }
 
@@ -127,18 +163,18 @@ main(int argc, char *argv[])
      * except, possibly, the URI of the hypervisor. */
     conn = virConnectOpenAuth(uri, virConnectAuthPtrDefault, 0);
 
-    if (!conn) {
+    if (NULL == conn) {
         ret = 1;
-        printf("No connection to hypervisor: %s\n",
-               virGetLastErrorMessage());
+        printf("No connection to hypervisor\n");
+        showError(conn);
         goto out;
     }
 
     uri = virConnectGetURI(conn);
-    if (!uri) {
+    if (NULL == uri) {
         ret = 1;
-        printf("Failed to get URI for hypervisor connection: %s\n",
-               virGetLastErrorMessage());
+        printf("Failed to get URI for hypervisor connection\n");
+        showError(conn);
         goto disconnect;
     }
 
@@ -157,8 +193,8 @@ main(int argc, char *argv[])
 
 disconnect:
     if (0 != virConnectClose(conn)) {
-        printf("Failed to disconnect from hypervisor: %s\n",
-               virGetLastErrorMessage());
+        printf("Failed to disconnect from hypervisor\n");
+        showError(conn);
         ret = 1;
     } else {
         printf("Disconnected from hypervisor\n");

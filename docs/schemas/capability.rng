@@ -1,4 +1,3 @@
-<?xml version="1.0"?>
 <!-- A Relax NG schema for the libvirt capabilities XML format -->
 <grammar xmlns="http://relaxng.org/ns/structure/1.0"
     datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
@@ -45,30 +44,20 @@
       <optional>
         <ref name='topology'/>
       </optional>
-      <zeroOrMore>
+      <optional>
         <ref name='secmodel'/>
-      </zeroOrMore>
+      </optional>
     </element>
   </define>
 
   <define name='secmodel'>
     <element name='secmodel'>
-      <interleave>
-          <element name='model'>
-            <text/>
-          </element>
-          <element name='doi'>
-            <text/>
-          </element>
-          <zeroOrMore>
-            <element name='baselabel'>
-              <attribute name='type'>
-                <text/>
-              </attribute>
-              <text/>
-            </element>
-          </zeroOrMore>
-       </interleave>
+      <element name='model'>
+        <text/>
+      </element>
+      <element name='doi'>
+        <text/>
+      </element>
     </element>
   </define>
 
@@ -185,10 +174,6 @@
       </attribute>
 
       <optional>
-        <ref name='memory'/>
-      </optional>
-
-      <optional>
         <element name='cpus'>
           <attribute name='num'>
             <ref name='unsignedInt'/>
@@ -201,28 +186,11 @@
     </element>
   </define>
 
-  <define name='memory'>
-    <element name='memory'>
-      <ref name='scaledInteger'/>
-    </element>
-  </define>
-
   <define name='cpu'>
     <element name='cpu'>
       <attribute name='id'>
         <ref name='unsignedInt'/>
       </attribute>
-      <optional>
-        <attribute name='socket_id'>
-          <ref name='unsignedInt'/>
-        </attribute>
-        <attribute name='core_id'>
-          <ref name='unsignedInt'/>
-        </attribute>
-        <attribute name='siblings'>
-          <ref name='cpuset'/>
-        </attribute>
-      </optional>
     </element>
   </define>
 
@@ -298,11 +266,6 @@
           <text/>
         </attribute>
       </optional>
-      <optional>
-        <attribute name='maxCpus'>
-          <ref name='unsignedInt'/>
-        </attribute>
-      </optional>
       <text/>
     </element>
   </define>
@@ -333,45 +296,43 @@
 
   <define name='features'>
     <element name='features'>
-      <interleave>
-        <optional>
-          <element name='pae'>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name='nonpae'>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name='ia64_be'>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name='acpi'>
-            <ref name='featuretoggle'/>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name='apic'>
-            <ref name='featuretoggle'/>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name='cpuselection'>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name='deviceboot'>
-            <empty/>
-          </element>
-        </optional>
-      </interleave>
+      <optional>
+        <element name='pae'>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name='nonpae'>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name='ia64_be'>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name='acpi'>
+          <ref name='featuretoggle'/>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name='apic'>
+          <ref name='featuretoggle'/>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name='cpuselection'>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name='deviceboot'>
+          <empty/>
+        </element>
+      </optional>
     </element>
   </define>
 
@@ -388,6 +349,23 @@
         <value>off</value>
       </choice>
     </attribute>
+  </define>
+
+  <define name='archnames'>
+    <choice>
+      <value>arm</value>
+      <value>i686</value>
+      <value>ia64</value>
+      <value>microblaze</value>
+      <value>microblazeel</value>
+      <value>mips</value>
+      <value>mipsel</value>
+      <value>ppc64</value>
+      <value>ppc</value>
+      <value>s390</value>
+      <value>sparc</value>
+      <value>x86_64</value>
+    </choice>
   </define>
 
   <define name='featureName'>

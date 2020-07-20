@@ -1,7 +1,5 @@
 #include <config.h>
 
-#include "testutils.h"
-
 #ifdef WITH_ESX
 
 # include <stdio.h>
@@ -9,10 +7,22 @@
 # include <unistd.h>
 
 # include "internal.h"
-# include "viralloc.h"
+# include "memory.h"
+# include "testutils.h"
+# include "util.h"
 # include "vmx/vmx.h"
 # include "esx/esx_util.h"
 # include "esx/esx_vi_types.h"
+
+
+static void
+testQuietError(void *userData ATTRIBUTE_UNUSED,
+               virErrorPtr error ATTRIBUTE_UNUSED)
+{
+    /* nothing */
+}
+
+
 
 struct testPath {
     const char *datastorePath;
@@ -37,8 +47,7 @@ static struct testPath paths[] = {
 static int
 testParseDatastorePath(const void *data ATTRIBUTE_UNUSED)
 {
-    int result = 0;
-    size_t i;
+    int i, result = 0;
     char *datastoreName = NULL;
     char *directoryName = NULL;
     char *directoryAndFileName = NULL;
@@ -126,7 +135,7 @@ static struct testDateTime times[] = {
 static int
 testConvertDateTimeToCalendarTime(const void *data ATTRIBUTE_UNUSED)
 {
-    size_t i;
+    int i;
     esxVI_DateTime dateTime;
     long long calendarTime;
 
@@ -178,7 +187,7 @@ static struct testDatastoreItem datastoreItems[] = {
 static int
 testEscapeDatastoreItem(const void *data ATTRIBUTE_UNUSED)
 {
-    size_t i;
+    int i;
     char *escaped = NULL;
 
     for (i = 0; i < ARRAY_CARDINALITY(datastoreItems); ++i) {
@@ -219,7 +228,7 @@ static struct testWindows1252ToUTF8 windows1252ToUTF8[] = {
 static int
 testConvertWindows1252ToUTF8(const void *data ATTRIBUTE_UNUSED)
 {
-    size_t i;
+    int i;
     char *utf8 = NULL;
 
     for (i = 0; i < ARRAY_CARDINALITY(windows1252ToUTF8); ++i) {
@@ -249,11 +258,11 @@ mymain(void)
 {
     int result = 0;
 
-    virtTestQuiesceLibvirtErrors(true);
+    virSetErrorFunc(NULL, testQuietError);
 
 # define DO_TEST(_name)                                                       \
         do {                                                                  \
-            if (virtTestRun("VMware "#_name, test##_name,                     \
+            if (virtTestRun("VMware "#_name, 1, test##_name,                  \
                             NULL) < 0) {                                      \
                 result = -1;                                                  \
             }                                                                 \
@@ -270,6 +279,7 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
+# include "testutils.h"
 
 int main(void)
 {

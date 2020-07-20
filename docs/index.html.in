@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<?xml version="1.0"?>
+<html>
   <body>
     <h1>The virtualization API</h1>
 
@@ -62,12 +61,6 @@
       </li>
       <li>
         The <a href="http://libvirt.org/drvhyperv.html">Microsoft Hyper-V</a> hypervisor
-      </li>
-      <li>
-        The <a href="http://libvirt.org/drvphyp.html">IBM PowerVM</a> hypervisor
-      </li>
-      <li>
-        The <a href="http://libvirt.org/drvparallels.html">Parallels</a> hypervisor
       </li>
       <li>
         Virtual networks using bridging, NAT, VEPA and VN-LINK.

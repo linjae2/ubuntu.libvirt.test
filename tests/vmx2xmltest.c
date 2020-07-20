@@ -1,7 +1,5 @@
 #include <config.h>
 
-#include "testutils.h"
-
 #ifdef WITH_VMX
 
 # include <stdio.h>
@@ -9,35 +7,39 @@
 # include <unistd.h>
 
 # include "internal.h"
-# include "viralloc.h"
+# include "memory.h"
+# include "testutils.h"
 # include "vmx/vmx.h"
-# include "virstring.h"
-
-# define VIR_FROM_THIS VIR_FROM_VMWARE
 
 static virCapsPtr caps;
-static virDomainXMLOptionPtr xmlopt;
 static virVMXContext ctx;
 
+static int testDefaultConsoleType(const char *ostype ATTRIBUTE_UNUSED)
+{
+    return VIR_DOMAIN_CHR_CONSOLE_TARGET_TYPE_SERIAL;
+}
 
 static void
 testCapsInit(void)
 {
     virCapsGuestPtr guest = NULL;
 
-    caps = virCapabilitiesNew(VIR_ARCH_I686, 1, 1);
+    caps = virCapabilitiesNew("i686", 1, 1);
 
     if (caps == NULL) {
         return;
     }
 
+    caps->defaultConsoleTargetType = testDefaultConsoleType;
+
+    virCapabilitiesSetMacPrefix(caps, (unsigned char[]){ 0x00, 0x0c, 0x29 });
     virCapabilitiesAddHostMigrateTransport(caps, "esx");
+
+    caps->hasWideScsiBus = true;
 
     /* i686 guest */
     guest =
-      virCapabilitiesAddGuest(caps, "hvm",
-                              VIR_ARCH_I686,
-                              NULL, NULL, 0, NULL);
+      virCapabilitiesAddGuest(caps, "hvm", "i686", 32, NULL, NULL, 0, NULL);
 
     if (guest == NULL) {
         goto failure;
@@ -50,9 +52,7 @@ testCapsInit(void)
 
     /* x86_64 guest */
     guest =
-      virCapabilitiesAddGuest(caps, "hvm",
-                              VIR_ARCH_X86_64,
-                              NULL, NULL, 0, NULL);
+      virCapabilitiesAddGuest(caps, "hvm", "x86_64", 64, NULL, NULL, 0, NULL);
 
     if (guest == NULL) {
         goto failure;
@@ -66,50 +66,58 @@ testCapsInit(void)
     return;
 
   failure:
-    virObjectUnref(caps);
+    virCapabilitiesFree(caps);
     caps = NULL;
 }
 
 static int
 testCompareFiles(const char *vmx, const char *xml)
 {
-    int ret = -1;
+    int result = -1;
     char *vmxData = NULL;
     char *xmlData = NULL;
     char *formatted = NULL;
     virDomainDefPtr def = NULL;
+    virErrorPtr err = NULL;
 
-    if (virtTestLoadFile(vmx, &vmxData) < 0)
-        goto cleanup;
-
-    if (virtTestLoadFile(xml, &xmlData) < 0)
-        goto cleanup;
-
-    if (!(def = virVMXParseConfig(&ctx, xmlopt, vmxData)))
-        goto cleanup;
-
-    if (!virDomainDefCheckABIStability(def, def)) {
-        fprintf(stderr, "ABI stability check failed on %s", vmx);
-        goto cleanup;
+    if (virtTestLoadFile(vmx, &vmxData) < 0) {
+        goto failure;
     }
 
-    if (!(formatted = virDomainDefFormat(def, VIR_DOMAIN_XML_SECURE)))
-        goto cleanup;
+    if (virtTestLoadFile(xml, &xmlData) < 0) {
+        goto failure;
+    }
+
+    def = virVMXParseConfig(&ctx, caps, vmxData);
+
+    if (def == NULL) {
+        err = virGetLastError();
+        fprintf(stderr, "ERROR: %s\n", err != NULL ? err->message : "<unknown>");
+        goto failure;
+    }
+
+    formatted = virDomainDefFormat(def, VIR_DOMAIN_XML_SECURE);
+
+    if (formatted == NULL) {
+        err = virGetLastError();
+        fprintf(stderr, "ERROR: %s\n", err != NULL ? err->message : "<unknown>");
+        goto failure;
+    }
 
     if (STRNEQ(xmlData, formatted)) {
         virtTestDifference(stderr, xmlData, formatted);
-        goto cleanup;
+        goto failure;
     }
 
-    ret = 0;
+    result = 0;
 
-  cleanup:
+  failure:
     VIR_FREE(vmxData);
     VIR_FREE(xmlData);
     VIR_FREE(formatted);
     virDomainDefFree(def);
 
-    return ret;
+    return result;
 }
 
 struct testInfo {
@@ -120,7 +128,7 @@ struct testInfo {
 static int
 testCompareHelper(const void *data)
 {
-    int ret = -1;
+    int result = -1;
     const struct testInfo *info = data;
     char *vmx = NULL;
     char *xml = NULL;
@@ -132,13 +140,13 @@ testCompareHelper(const void *data)
         goto cleanup;
     }
 
-    ret = testCompareFiles(vmx, xml);
+    result = testCompareFiles(vmx, xml);
 
   cleanup:
     VIR_FREE(vmx);
     VIR_FREE(xml);
 
-    return ret;
+    return result;
 }
 
 static char *
@@ -153,8 +161,11 @@ testParseVMXFileName(const char *fileName, void *opaque ATTRIBUTE_UNUSED)
 
     if (STRPREFIX(fileName, "/vmfs/volumes/")) {
         /* Found absolute path referencing a file inside a datastore */
-        if (VIR_STRDUP(copyOfFileName, fileName) < 0)
+        copyOfFileName = strdup(fileName);
+
+        if (copyOfFileName == NULL) {
             goto cleanup;
+        }
 
         /* Expected format: '/vmfs/volumes/<datastore>/<path>' */
         if ((tmp = STRSKIP(copyOfFileName, "/vmfs/volumes/")) == NULL ||
@@ -163,19 +174,16 @@ testParseVMXFileName(const char *fileName, void *opaque ATTRIBUTE_UNUSED)
             goto cleanup;
         }
 
-        if (virAsprintf(&src, "[%s] %s", datastoreName,
-                        directoryAndFileName) < 0)
-            goto cleanup;
+        virAsprintf(&src, "[%s] %s", datastoreName, directoryAndFileName);
     } else if (STRPREFIX(fileName, "/")) {
         /* Found absolute path referencing a file outside a datastore */
-        ignore_value(VIR_STRDUP(src, fileName));
+        src = strdup(fileName);
     } else if (strchr(fileName, '/') != NULL) {
         /* Found relative path, this is not supported */
         src = NULL;
     } else {
         /* Found single file name referencing a file inside a datastore */
-        if (virAsprintf(&src, "[datastore] directory/%s", fileName) < 0)
-            goto cleanup;
+        virAsprintf(&src, "[datastore] directory/%s", fileName);
     }
 
   cleanup:
@@ -187,15 +195,15 @@ testParseVMXFileName(const char *fileName, void *opaque ATTRIBUTE_UNUSED)
 static int
 mymain(void)
 {
-    int ret = 0;
+    int result = 0;
 
 # define DO_TEST(_in, _out)                                                   \
         do {                                                                  \
             struct testInfo info = { _in, _out };                             \
             virResetLastError();                                              \
-            if (virtTestRun("VMware VMX-2-XML "_in" -> "_out,                 \
+            if (virtTestRun("VMware VMX-2-XML "_in" -> "_out, 1,              \
                             testCompareHelper, &info) < 0) {                  \
-                ret = -1;                                                     \
+                result = -1;                                                  \
             }                                                                 \
         } while (0)
 
@@ -204,9 +212,6 @@ mymain(void)
     if (caps == NULL) {
         return EXIT_FAILURE;
     }
-
-    if (!(xmlopt = virVMXDomainXMLConfInit()))
-        return EXIT_FAILURE;
 
     ctx.opaque = NULL;
     ctx.parseFileName = testParseVMXFileName;
@@ -229,17 +234,11 @@ mymain(void)
 
     DO_TEST("cdrom-scsi-file", "cdrom-scsi-file");
     DO_TEST("cdrom-scsi-device", "cdrom-scsi-device");
-    DO_TEST("cdrom-scsi-raw-device", "cdrom-scsi-raw-device");
-    DO_TEST("cdrom-scsi-raw-auto-detect", "cdrom-scsi-raw-auto-detect");
     DO_TEST("cdrom-ide-file", "cdrom-ide-file");
     DO_TEST("cdrom-ide-device", "cdrom-ide-device");
-    DO_TEST("cdrom-ide-raw-device", "cdrom-ide-raw-device");
-    DO_TEST("cdrom-ide-raw-auto-detect", "cdrom-ide-raw-auto-detect");
 
     DO_TEST("floppy-file", "floppy-file");
     DO_TEST("floppy-device", "floppy-device");
-
-    DO_TEST("sharedfolder", "sharedfolder");
 
     DO_TEST("ethernet-e1000", "ethernet-e1000");
     DO_TEST("ethernet-vmxnet2", "ethernet-vmxnet2");
@@ -280,23 +279,21 @@ mymain(void)
     DO_TEST("ws-in-the-wild-1", "ws-in-the-wild-1");
     DO_TEST("ws-in-the-wild-2", "ws-in-the-wild-2");
 
-    DO_TEST("fusion-in-the-wild-1", "fusion-in-the-wild-1");
-
     DO_TEST("annotation", "annotation");
 
     DO_TEST("smbios", "smbios");
 
     DO_TEST("svga", "svga");
 
-    virObjectUnref(caps);
-    virObjectUnref(xmlopt);
+    virCapabilitiesFree(caps);
 
-    return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return result == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 VIRT_TEST_MAIN(mymain)
 
 #else
+# include "testutils.h"
 
 int main(void)
 {

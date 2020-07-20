@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  *
@@ -34,13 +34,9 @@
 #include "xenxs/xen_xm.h"
 #include "testutils.h"
 #include "testutilsxen.h"
-#include "viralloc.h"
-#include "virstring.h"
-
-#define VIR_FROM_THIS VIR_FROM_NONE
+#include "memory.h"
 
 static virCapsPtr caps;
-static virDomainXMLOptionPtr xmlopt;
 
 static int
 testCompareParseXML(const char *xmcfg, const char *xml, int xendConfigVersion)
@@ -72,15 +68,9 @@ testCompareParseXML(const char *xmcfg, const char *xml, int xendConfigVersion)
     priv.caps = caps;
     conn->privateData = &priv;
 
-    if (!(def = virDomainDefParseString(xmlData, caps, xmlopt,
-                                        1 << VIR_DOMAIN_VIRT_XEN,
+    if (!(def = virDomainDefParseString(caps, xmlData, 1 << VIR_DOMAIN_VIRT_XEN,
                                         VIR_DOMAIN_XML_INACTIVE)))
         goto fail;
-
-    if (!virDomainDefCheckABIStability(def, def)) {
-        fprintf(stderr, "ABI stability check failed on %s", xml);
-        goto fail;
-    }
 
     if (!(conf = xenFormatXM(conn, def, xendConfigVersion)))
         goto fail;
@@ -103,7 +93,7 @@ testCompareParseXML(const char *xmcfg, const char *xml, int xendConfigVersion)
     if (conf)
         virConfFree(conf);
     virDomainDefFree(def);
-    virObjectUnref(conn);
+    virUnrefConnect(conn);
 
     return ret;
 }
@@ -157,7 +147,7 @@ testCompareFormatXML(const char *xmcfg, const char *xml, int xendConfigVersion)
     VIR_FREE(xmcfgData);
     VIR_FREE(gotxml);
     virDomainDefFree(def);
-    virObjectUnref(conn);
+    virUnrefConnect(conn);
 
     return ret;
 }
@@ -204,18 +194,15 @@ mymain(void)
     if (!(caps = testXenCapsInit()))
         return EXIT_FAILURE;
 
-    if (!(xmlopt = xenDomainXMLConfInit()))
-        return EXIT_FAILURE;
-
 #define DO_TEST(name, version)                                          \
     do {                                                                \
         struct testInfo info0 = { name, version, 0 };                   \
         struct testInfo info1 = { name, version, 1 };                   \
         if (virtTestRun("Xen XM-2-XML Parse  " name,                    \
-                        testCompareHelper, &info0) < 0)                 \
+                        1, testCompareHelper, &info0) < 0)              \
             ret = -1;                                                   \
         if (virtTestRun("Xen XM-2-XML Format " name,                    \
-                        testCompareHelper, &info1) < 0)                 \
+                        1, testCompareHelper, &info1) < 0)              \
             ret = -1;                                                   \
     } while (0)
 
@@ -258,8 +245,7 @@ mymain(void)
     DO_TEST("no-source-cdrom", 2);
     DO_TEST("pci-devs", 2);
 
-    virObjectUnref(caps);
-    virObjectUnref(xmlopt);
+    virCapabilitiesFree(caps);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

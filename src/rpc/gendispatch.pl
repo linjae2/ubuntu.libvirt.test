@@ -1,21 +1,5 @@
 #!/usr/bin/perl -w
 #
-# Copyright (C) 2010-2013 Red Hat, Inc.
-#
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library.  If not, see
-# <http://www.gnu.org/licenses/>.
-#
 # This script parses remote_protocol.x or qemu_protocol.x and produces lots of
 # boilerplate code for both ends of the remote connection.
 #
@@ -33,79 +17,36 @@
 
 use strict;
 
-use Getopt::Long;
+use Getopt::Std;
 
-my $mode = "debug";
-my $res = GetOptions("mode=s" => \$mode);
+# Command line options.
+our ($opt_p, $opt_t, $opt_a, $opt_r, $opt_d, $opt_b, $opt_k);
+getopts ('ptardbk');
 
-die "cannot parse command line options" unless $res;
-
-die "unknown mode '$mode', expecting 'client', 'server', " .
-    "'aclheader', 'aclbody', 'aclsym', 'aclapi' or 'debug'"
-    unless $mode =~ /^(client|server|aclheader|aclbody|aclsym|aclapi|debug)$/;
-
-my $structprefix = shift or die "missing struct prefix argument";
-my $procprefix = shift or die "missing procedure prefix argument";
+my $structprefix = shift or die "missing prefix argument";
 my $protocol = shift or die "missing protocol argument";
 my @autogen;
 
-
-sub fixup_name {
-    my $name = shift;
-
-    $name =~ s/Nwfilter/NWFilter/;
-    $name =~ s/Xml$/XML/;
-    $name =~ s/Uri$/URI/;
-    $name =~ s/Uuid$/UUID/;
-    $name =~ s/Id$/ID/;
-    $name =~ s/Mac$/MAC/;
-    $name =~ s/Cpu$/CPU/;
-    $name =~ s/Os$/OS/;
-    $name =~ s/Nmi$/NMI/;
-    $name =~ s/Pm/PM/;
-    $name =~ s/Fstrim$/FSTrim/;
-    $name =~ s/Scsi/SCSI/;
-    $name =~ s/Wwn$/WWN/;
-
-    return $name;
-}
+my $procprefix = uc $structprefix;
 
 # Convert name_of_call to NameOfCall.
 sub name_to_ProcName {
     my $name = shift;
-
-    my @elems;
-    if ($name =~ /_/ || (lc $name) eq "open" || (lc $name) eq "close") {
-        @elems = split /_/, $name;
-        @elems = map lc, @elems;
-        @elems = map ucfirst, @elems;
-    } else {
-        @elems = $name;
-    }
-    @elems = map { fixup_name($_) } @elems;
-    my $procname = join "", @elems;
-
-    return $procname;
-}
-
-sub name_to_TypeName {
-    my $name = shift;
-
     my @elems = split /_/, $name;
-    @elems = map lc, @elems;
     @elems = map ucfirst, @elems;
-    @elems = map { fixup_name($_) } @elems;
-    my $typename = join "", @elems;
-    return $typename;
+    @elems = map { $_ =~ s/Nwfilter/NWFilter/; $_ =~ s/Xml$/XML/;
+                   $_ =~ s/Uri$/URI/; $_ =~ s/Uuid$/UUID/; $_ =~ s/Id$/ID/;
+                   $_ =~ s/Mac$/MAC/; $_ =~ s/Cpu$/CPU/; $_ =~ s/Os$/OS/;
+                   $_ =~ s/Nmi$/NMI/; $_ =~ s/Pm/PM/; $_ } @elems;
+    join "", @elems
 }
 
 # Read the input file (usually remote_protocol.x) and form an
 # opinion about the name, args and return type of each RPC.
-my ($name, $ProcName, $id, $flags, %calls, @calls, %opts);
+my ($name, $ProcName, $id, $flags, %calls, @calls);
 
 my $collect_args_members = 0;
 my $collect_ret_members = 0;
-my $collect_opts = 0;
 my $last_name;
 
 open PROTOCOL, "<$protocol" or die "cannot open $protocol: $!";
@@ -123,39 +64,18 @@ while (<PROTOCOL>) {
         } elsif ($_ =~ m/^\s*(.*\S)\s*$/) {
             push(@{$calls{$name}->{ret_members}}, $1);
         }
-    } elsif ($collect_opts) {
-        if (m,^\s*\*\s*\@(\w+)\s*:\s*((?:\w|:|\!|\|)+)\s*$,) {
-            if ($1 eq "acl" ||
-                $1 eq "aclfilter") {
-                $opts{$1} = [] unless exists $opts{$1};
-                push @{$opts{$1}}, $2;
-            } else {
-                $opts{$1} = $2;
-            }
-        } elsif (m,^\s*\*/\s*$,) {
-            $collect_opts = 0;
-        } elsif (m,^\s*\*\s*$,) {
-            # pass
-        } else {
-            die "cannot parse $_";
-        }
-    } elsif (m,/\*\*,) {
-        %opts = ();
-        $collect_opts = 1;
-    } elsif (/^struct (${structprefix}_(.*)_args)/ ||
-             /^struct (${structprefix}(.*)Args)/) {
-        my $structname = $1;
-        $name = $2;
+    } elsif (/^struct ${structprefix}_(.*)_args/) {
+        $name = $1;
         $ProcName = name_to_ProcName ($name);
-        $name = lc $name;
-        $name =~ s/_//g;
-        die "duplicate definition of $_"
+
+        die "duplicate definition of ${structprefix}_${name}_args"
             if exists $calls{$name};
 
         $calls{$name} = {
             name => $name,
             ProcName => $ProcName,
-            args => $structname,
+            UC_NAME => uc $name,
+            args => "${structprefix}_${name}_args",
             args_members => [],
             ret => "void"
         };
@@ -163,28 +83,25 @@ while (<PROTOCOL>) {
         $collect_args_members = 1;
         $collect_ret_members = 0;
         $last_name = $name;
-    } elsif (/^struct (${structprefix}_(.*)_ret)\s+{(.*)$/ ||
-             /^struct (${structprefix}(.*)Ret)\s+{(.*)$/) {
-        my $structname = $1;
-        $name = $2;
-        $flags = $3;
+    } elsif (/^struct ${structprefix}_(.*)_ret\s+{(.*)$/) {
+        $name = $1;
+        $flags = $2;
         $ProcName = name_to_ProcName ($name);
-        $name = lc $name;
-        $name =~ s/_//g;
 
         if (exists $calls{$name}) {
-            $calls{$name}->{ret} = $structname;
+            $calls{$name}->{ret} = "${structprefix}_${name}_ret";
         } else {
             $calls{$name} = {
                 name => $name,
                 ProcName => $ProcName,
+                UC_NAME => uc $name,
                 args => "void",
-                ret => $structname,
+                ret => "${structprefix}_${name}_ret",
                 ret_members => []
             }
         }
 
-        if ($flags ne "") {
+        if ($flags ne "" and ($opt_b or $opt_k)) {
             if (!($flags =~ m/^\s*\/\*\s*insert@(\d+)\s*\*\/\s*$/)) {
                 die "invalid generator flags for $calls{$name}->{ret}";
             }
@@ -195,28 +112,24 @@ while (<PROTOCOL>) {
         $collect_args_members = 0;
         $collect_ret_members = 1;
         $last_name = $name;
-    } elsif (/^struct (${structprefix}_(.*)_msg)/ ||
-             /^struct (${structprefix}(.*)Msg)/) {
-        my $structname = $1;
-        $name = $2;
+    } elsif (/^struct ${structprefix}_(.*)_msg/) {
+        $name = $1;
         $ProcName = name_to_ProcName ($name);
-        $name = lc $name;
-        $name =~ s/_//g;
+
         $calls{$name} = {
             name => $name,
             ProcName => $ProcName,
-            msg => $structname,
+            UC_NAME => uc $name,
+            msg => "${structprefix}_${name}_msg"
         };
 
         $collect_args_members = 0;
         $collect_ret_members = 0;
-    } elsif (/^\s*(${procprefix}_PROC_(.*?))\s*=\s*(\d+)\s*,?\s*$/) {
-        my $constname = $1;
-        $name = $2;
-        $id = $3;
+    } elsif (/^\s*${procprefix}_PROC_(.*?)\s*=\s*(\d+)\s*,?(.*)$/) {
+        $name = lc $1;
+        $id = $2;
+        $flags = $3;
         $ProcName = name_to_ProcName ($name);
-        $name = lc $name;
-        $name =~ s/_//g;
 
         if (!exists $calls{$name}) {
             # that the argument and return value cases have not yet added
@@ -226,53 +139,49 @@ while (<PROTOCOL>) {
             $calls{$name} = {
                 name => $name,
                 ProcName => $ProcName,
+                UC_NAME => uc $name,
                 args => "void",
                 ret => "void"
             }
         }
-        $calls{$name}->{constname} = $constname;
 
-        if (!exists $opts{generate}) {
-            die "'\@generate' annotation missing for $constname";
-        }
+        if ($opt_b or $opt_k) {
+            if (!($flags =~ m/^\s*\/\*\s*(\S+)\s+(\S+)\s*(\|.*)?\s+(priority:(\S+))?\s*\*\/\s*$/)) {
+                die "invalid generator flags for ${procprefix}_PROC_${name}"
+            }
 
-        if ($opts{generate} !~ /^(both|server|client|none)$/) {
-            die "'\@generate' annotation value '$opts{generate}' invalid";
-        }
+            my $genmode = $opt_b ? $1 : $2;
+            my $genflags = $3;
+            my $priority = defined $5 ? $5 : "low";
 
-        if ($opts{generate} eq "both") {
-            push(@autogen, $ProcName);
-        } elsif ($mode eq "server" && ($opts{generate} eq "server")) {
-            push(@autogen, $ProcName);
-        } elsif ($mode eq "client" && ($opts{generate} eq "client")) {
-            push(@autogen, $ProcName);
-        }
+            if ($genmode eq "autogen") {
+                push(@autogen, $ProcName);
+            } elsif ($genmode eq "skipgen") {
+                # ignore it
+            } else {
+                die "invalid generator flags for ${procprefix}_PROC_${name}"
+            }
 
-        if (exists $opts{readstream}) {
-            $calls{$name}->{streamflag} = "read";
-            $calls{$name}->{streamoffset} = int($opts{readstream});
-        } elsif (exists $opts{writestream}) {
-            $calls{$name}->{streamflag} = "write";
-            $calls{$name}->{streamoffset} = int($opts{writestream});
-        } else {
-            $calls{$name}->{streamflag} = "none";
-        }
+            if (defined $genflags and $genflags ne "") {
+                if ($genflags =~ m/^\|\s*(read|write)stream@(\d+)\s*$/) {
+                    $calls{$name}->{streamflag} = $1;
+                    $calls{$name}->{streamoffset} = int($2);
+                } else {
+                    die "invalid generator flags for ${procprefix}_PROC_${name}"
+                }
+            } else {
+                $calls{$name}->{streamflag} = "none";
+            }
 
-        $calls{$name}->{acl} = $opts{acl};
-        $calls{$name}->{aclfilter} = $opts{aclfilter};
-
-        # for now, we distinguish only two levels of priority:
-        # low (0) and high (1)
-        if (exists $opts{priority}) {
-            if ($opts{priority} eq "high") {
+            # for now, we distinguish only two levels of prioroty:
+            # low (0) and high (1)
+            if ($priority eq "high") {
                 $calls{$name}->{priority} = 1;
-            } elsif ($opts{priority} eq "low") {
+            } elsif ($priority eq "low") {
                 $calls{$name}->{priority} = 0;
             } else {
-                die "\@priority annotation value '$opts{priority}' invalid for $constname"
+                die "invalid priority ${priority} for ${procprefix}_PROC_${name}"
             }
-        } else {
-            $calls{$name}->{priority} = 0;
         }
 
         $calls[$id] = $calls{$name};
@@ -318,10 +227,9 @@ my $long_legacy = {
     DomainSetMaxMemory          => { arg => { memory => 1 } },
     DomainSetMemory             => { arg => { memory => 1 } },
     DomainSetMemoryFlags        => { arg => { memory => 1 } },
-    ConnectGetLibVersion        => { ret => { lib_ver => 1 } },
-    ConnectGetVersion           => { ret => { hv_ver => 1 } },
+    GetLibVersion               => { ret => { lib_ver => 1 } },
+    GetVersion                  => { ret => { hv_ver => 1 } },
     NodeGetInfo                 => { ret => { memory => 1 } },
-    DomainBlockCommit           => { arg => { bandwidth => 1 } },
     DomainBlockPull             => { arg => { bandwidth => 1 } },
     DomainBlockRebase           => { arg => { bandwidth => 1 } },
     DomainBlockJobSetSpeed      => { arg => { bandwidth => 1 } },
@@ -346,28 +254,18 @@ sub hyper_to_long
 #----------------------------------------------------------------------
 # Output
 
-if ($mode eq "aclsym") {
-    print <<__EOF__;
-# Automatically generated from $protocol by gendispatch.pl.
-# Do not edit this file.  Any changes you make will be lost.
-__EOF__
-} elsif ($mode eq "aclapi") {
-    print <<__EOF__;
-<!--
-  -  Automatically generated from $protocol by gendispatch.pl.
-  -  Do not edit this file.  Any changes you make will be lost.
-  -->
-__EOF__
-} else {
-    print <<__EOF__;
-/* Automatically generated from $protocol by gendispatch.pl.
+print <<__EOF__;
+/* Automatically generated by gendispatch.pl.
  * Do not edit this file.  Any changes you make will be lost.
  */
 __EOF__
+
+if (!$opt_b and !$opt_k) {
+    print "\n";
 }
 
 # Debugging.
-if ($mode eq "debug") {
+if ($opt_d) {
     my @keys = sort (keys %calls);
     foreach (@keys) {
         print "$_:\n";
@@ -378,7 +276,7 @@ if ($mode eq "debug") {
 }
 
 # Bodies for dispatch functions ("remote_dispatch_bodies.h").
-elsif ($mode eq "server") {
+elsif ($opt_b) {
     my %generate = map { $_ => 1 } @autogen;
     my @keys = sort (keys %calls);
 
@@ -388,53 +286,53 @@ elsif ($mode eq "server") {
         # skip things which are REMOTE_MESSAGE
         next if $call->{msg};
 
-        my $name = $structprefix . "Dispatch" . $call->{ProcName};
-        my $argtype = $call->{args};
-        my $rettype = $call->{ret};
+	my $name = $structprefix . "Dispatch" . $call->{ProcName};
+	my $argtype = $call->{args};
+	my $rettype = $call->{ret};
 
-        my $argann = $argtype ne "void" ? "" : " ATTRIBUTE_UNUSED";
-        my $retann = $rettype ne "void" ? "" : " ATTRIBUTE_UNUSED";
+	my $argann = $argtype ne "void" ? "" : " ATTRIBUTE_UNUSED";
+	my $retann = $rettype ne "void" ? "" : " ATTRIBUTE_UNUSED";
 
-        # First we print out a function declaration for the
-        # real dispatcher body
-        print "static int ${name}(\n";
-        print "    virNetServerPtr server,\n";
-        print "    virNetServerClientPtr client,\n";
-        print "    virNetMessagePtr msg,\n";
-        print "    virNetMessageErrorPtr rerr";
-        if ($argtype ne "void") {
-            print ",\n    $argtype *args";
-        }
-        if ($rettype ne "void") {
-            print ",\n    $rettype *ret";
-        }
-        print ");\n";
+	# First we print out a function declaration for the
+	# real dispatcher body
+	print "static int ${name}(\n";
+	print "    virNetServerPtr server,\n";
+	print "    virNetServerClientPtr client,\n";
+	print "    virNetMessagePtr msg,\n";
+	print "    virNetMessageErrorPtr rerr";
+	if ($argtype ne "void") {
+	    print ",\n    $argtype *args";
+	}
+	if ($rettype ne "void") {
+	    print ",\n    $rettype *ret";
+	}
+	print ");\n";
 
 
-        # Next we print out a generic wrapper method which has
-        # fixed function signature, for use in the dispatcher
-        # table. This simply callers the real dispatcher method
-        print "static int ${name}Helper(\n";
-        print "    virNetServerPtr server,\n";
-        print "    virNetServerClientPtr client,\n";
-        print "    virNetMessagePtr msg,\n";
-        print "    virNetMessageErrorPtr rerr,\n";
-        print "    void *args$argann,\n";
-        print "    void *ret$retann)\n";
-        print "{\n";
-        print "  VIR_DEBUG(\"server=%p client=%p msg=%p rerr=%p args=%p ret=%p\", server, client, msg, rerr, args, ret);\n";
-        print "  return $name(server, client, msg, rerr";
-        if ($argtype ne "void") {
-            print ", args";
-        }
-        if ($rettype ne "void") {
-            print ", ret";
-        }
-        print ");\n";
-        print "}\n";
+	# Next we print out a generic wrapper method which has
+	# fixed function signature, for use in the dispatcher
+	# table. This simply callers the real dispatcher method
+	print "static int ${name}Helper(\n";
+	print "    virNetServerPtr server,\n";
+	print "    virNetServerClientPtr client,\n";
+	print "    virNetMessagePtr msg,\n";
+	print "    virNetMessageErrorPtr rerr,\n";
+	print "    void *args$argann,\n";
+	print "    void *ret$retann)\n";
+	print "{\n";
+	print "  VIR_DEBUG(\"server=%p client=%p msg=%p rerr=%p args=%p ret=%p\", server, client, msg, rerr, args, ret);\n";
+	print "  return $name(server, client, msg, rerr";
+	if ($argtype ne "void") {
+	    print ", args";
+	}
+	if ($rettype ne "void") {
+	    print ", ret";
+	}
+	print ");\n";
+	print "}\n";
 
-        # Finally we print out the dispatcher method body impl
-        # (if possible)
+	# Finally we print out the dispatcher method body impl
+	# (if possible)
         if (!exists($generate{$call->{ProcName}})) {
             print "/* ${structprefix}Dispatch$call->{ProcName} body has " .
                   "to be implemented manually */\n\n\n\n";
@@ -456,8 +354,7 @@ elsif ($mode eq "server") {
             # node device is special, as it's identified by name
             if ($argtype =~ m/^remote_node_device_/ and
                 !($argtype =~ m/^remote_node_device_lookup_by_name_/) and
-                !($argtype =~ m/^remote_node_device_create_xml_/) and
-                !($argtype =~ m/^remote_node_device_lookup_scsi_host_by_wwn_/)) {
+                !($argtype =~ m/^remote_node_device_create_xml_/)) {
                 $has_node_device = 1;
                 push(@vars_list, "virNodeDevicePtr dev = NULL");
                 push(@getters_list,
@@ -474,7 +371,7 @@ elsif ($mode eq "server") {
                     # ignore the name arg for node devices
                     next
                 } elsif ($args_member =~ m/^remote_nonnull_(domain|network|storage_pool|storage_vol|interface|secret|nwfilter) (\S+);/) {
-                    my $type_name = name_to_TypeName($1);
+                    my $type_name = name_to_ProcName($1);
 
                     push(@vars_list, "vir${type_name}Ptr $2 = NULL");
                     push(@getters_list,
@@ -534,10 +431,7 @@ elsif ($mode eq "server") {
                     push(@args_list, "args->$1.$1_len");
                 } elsif ($args_member =~ m/^remote_typed_param (\S+)<(\S+)>;/) {
                     push(@vars_list, "virTypedParameterPtr $1 = NULL");
-                    push(@vars_list, "int n$1 = 0;");
-                    if ($call->{ProcName} eq "NodeSetMemoryParameters") {
-                        push(@args_list, "priv->conn");
-                    }
+                    push(@vars_list, "int n$1");
                     push(@args_list, "$1");
                     push(@args_list, "n$1");
                     push(@getters_list, "    if (($1 = remoteDeserializeTypedParameters(args->$1.$1_val,\n" .
@@ -545,7 +439,8 @@ elsif ($mode eq "server") {
                                         "                                                   $2,\n" .
                                         "                                                   &n$1)) == NULL)\n" .
                                         "        goto cleanup;\n");
-                    push(@free_list, "    virTypedParamsFree($1, n$1);");
+                    push(@free_list, "    virTypedParameterArrayClear($1, n$1);");
+                    push(@free_list, "    VIR_FREE($1);");
                 } elsif ($args_member =~ m/<\S+>;/ or $args_member =~ m/\[\S+\];/) {
                     # just make all other array types fail
                     die "unhandled type for argument value: $args_member";
@@ -645,14 +540,16 @@ elsif ($mode eq "server") {
                     # error out on unannotated arrays
                     die "remote_nonnull_string array without insert@<offset> annotation: $ret_member";
                 } elsif ($ret_member =~ m/^remote_nonnull_string (\S+);/) {
-                    if ($call->{ProcName} eq "ConnectGetType") {
+                    if ($call->{ProcName} eq "GetType") {
                         # SPECIAL: virConnectGetType returns a constant string that must
                         #          not be freed. Therefore, duplicate the string here.
                         push(@vars_list, "const char *$1");
-                        push(@ret_list, "/* We have to VIR_STRDUP because remoteDispatchClientRequest will");
+                        push(@ret_list, "/* We have to strdup because remoteDispatchClientRequest will");
                         push(@ret_list, " * free this string after it's been serialised. */");
-                        push(@ret_list, "if (VIR_STRDUP(ret->type, type) < 0)");
+                        push(@ret_list, "if (!(ret->type = strdup(type))) {");
+                        push(@ret_list, "    virReportOOMError();");
                         push(@ret_list, "    goto cleanup;");
+                        push(@ret_list, "}");
                     } else {
                         push(@vars_list, "char *$1");
                         push(@ret_list, "ret->$1 = $1;");
@@ -668,17 +565,22 @@ elsif ($mode eq "server") {
                     push(@free_list, "    VIR_FREE($1);");
                     push(@free_list_on_error, "VIR_FREE($1_p);");
                     push(@prepare_ret_list,
-                         "if (VIR_ALLOC($1_p) < 0)\n" .
+                         "if (VIR_ALLOC($1_p) < 0) {\n" .
+                         "        virReportOOMError();\n" .
                          "        goto cleanup;\n" .
+                         "    }\n" .
                          "    \n" .
-                         "    if (VIR_STRDUP(*$1_p, $1) < 0)\n".
-                         "        goto cleanup;\n");
+                         "    *$1_p = strdup($1);\n" .
+                         "    if (*$1_p == NULL) {\n" .
+                         "        virReportOOMError();\n" .
+                         "        goto cleanup;\n" .
+                         "    }\n");
 
                     $single_ret_var = $1;
                     $single_ret_by_ref = 0;
                     $single_ret_check = " == NULL";
                 } elsif ($ret_member =~ m/^remote_nonnull_(domain|network|storage_pool|storage_vol|interface|node_device|secret|nwfilter|domain_snapshot) (\S+);/) {
-                    my $type_name = name_to_TypeName($1);
+                    my $type_name = name_to_ProcName($1);
 
                     if ($call->{ProcName} eq "DomainCreateWithFlags") {
                         # SPECIAL: virDomainCreateWithFlags updates the given
@@ -846,18 +748,18 @@ elsif ($mode eq "server") {
         }
 
         # print functions signature
-        print "static int $name(\n";
-        print "    virNetServerPtr server ATTRIBUTE_UNUSED,\n";
-        print "    virNetServerClientPtr client,\n";
-        print "    virNetMessagePtr msg ATTRIBUTE_UNUSED,\n";
-        print "    virNetMessageErrorPtr rerr";
+	print "static int $name(\n";
+	print "    virNetServerPtr server ATTRIBUTE_UNUSED,\n";
+	print "    virNetServerClientPtr client,\n";
+	print "    virNetMessagePtr msg ATTRIBUTE_UNUSED,\n";
+	print "    virNetMessageErrorPtr rerr";
         if ($argtype ne "void") {
-            print ",\n    $argtype *args";
-        }
+	    print ",\n    $argtype *args";
+	}
         if ($rettype ne "void") {
-            print ",\n    $rettype *ret";
-        }
-        print ")\n";
+	    print ",\n    $rettype *ret";
+	}
+	print ")\n";
 
         # print function body
         print "{\n";
@@ -866,7 +768,7 @@ elsif ($mode eq "server") {
         foreach my $var (@vars_list) {
             print "    $var;\n";
         }
-        print "    struct daemonClientPrivate *priv =\n";
+	print "    struct daemonClientPrivate *priv =\n";
         print "        virNetServerClientGetPrivateData(client);\n";
 
         if ($call->{streamflag} ne "none") {
@@ -876,15 +778,15 @@ elsif ($mode eq "server") {
 
         print "\n";
         print "    if (!priv->conn) {\n";
-        print "        virReportError(VIR_ERR_INTERNAL_ERROR, \"%s\", _(\"connection not open\"));\n";
+        print "        virNetError(VIR_ERR_INTERNAL_ERROR, \"%s\", _(\"connection not open\"));\n";
         print "        goto cleanup;\n";
         print "    }\n";
         print "\n";
 
         if ($single_ret_as_list) {
             print "    if (args->$single_ret_list_max_var > $single_ret_list_max_define) {\n";
-            print "        virReportError(VIR_ERR_INTERNAL_ERROR,\n";
-            print "                       \"%s\", _(\"max$single_ret_list_name > $single_ret_list_max_define\"));\n";
+            print "        virNetError(VIR_ERR_INTERNAL_ERROR,\n";
+            print "                    \"%s\", _(\"max$single_ret_list_name > $single_ret_list_max_define\"));\n";
             print "        goto cleanup;\n";
             print "    }\n";
             print "\n";
@@ -925,20 +827,36 @@ elsif ($mode eq "server") {
 
             if (! @args_list) {
                 push(@args_list, "priv->conn");
+
+                if ($call->{ProcName} ne "NodeGetFreeMemory") {
+                    $prefix = "Connect"
+                }
             }
 
-            if ($structprefix eq "qemu" && $call->{ProcName} =~ /^Domain/) {
+            if ($call->{ProcName} eq "GetSysinfo" or
+                $call->{ProcName} eq "GetMaxVcpus" or
+                $call->{ProcName} eq "DomainXMLFromNative" or
+                $call->{ProcName} eq "DomainXMLToNative" or
+                $call->{ProcName} eq "FindStoragePoolSources" or
+                $call->{ProcName} =~ m/^List/) {
+                $prefix = "Connect"
+            } elsif ($call->{ProcName} eq "SupportsFeature") {
+                $prefix = "Drv"
+            } elsif ($call->{ProcName} eq "CPUBaseline") {
+                $proc_name = "ConnectBaselineCPU"
+            } elsif ($call->{ProcName} eq "CPUCompare") {
+                $proc_name = "ConnectCompareCPU"
+            } elsif ($structprefix eq "qemu" && $call->{ProcName} =~ /^Domain/) {
                 $proc_name =~ s/^(Domain)/${1}Qemu/;
-            }
-            if ($structprefix eq "lxc" && $call->{ProcName} =~ /^Domain/) {
-                $proc_name =~ s/^(Domain)/${1}Lxc/;
             }
 
             if ($single_ret_as_list) {
                 print "    /* Allocate return buffer. */\n";
                 print "    if (VIR_ALLOC_N(ret->$single_ret_list_name.${single_ret_list_name}_val," .
-                      " args->$single_ret_list_max_var) < 0)\n";
+                      " args->$single_ret_list_max_var) < 0) {\n";
+                print "        virReportOOMError();\n";
                 print "        goto cleanup;\n";
+                print "    }\n";
                 print "\n";
             }
 
@@ -1030,39 +948,39 @@ elsif ($mode eq "server") {
 
     print "virNetServerProgramProc ${structprefix}Procs[] = {\n";
     for ($id = 0 ; $id <= $#calls ; $id++) {
-        my ($comment, $name, $argtype, $arglen, $argfilter, $retlen, $retfilter, $priority);
+	my ($comment, $name, $argtype, $arglen, $argfilter, $retlen, $retfilter, $priority);
 
-        if (defined $calls[$id] && !$calls[$id]->{msg}) {
-            $comment = "/* Method $calls[$id]->{ProcName} => $id */";
-            $name = $structprefix . "Dispatch" . $calls[$id]->{ProcName} . "Helper";
-            my $argtype = $calls[$id]->{args};
-            my $rettype = $calls[$id]->{ret};
-            $arglen = $argtype ne "void" ? "sizeof($argtype)" : "0";
-            $retlen = $rettype ne "void" ? "sizeof($rettype)" : "0";
-            $argfilter = $argtype ne "void" ? "xdr_$argtype" : "xdr_void";
-            $retfilter = $rettype ne "void" ? "xdr_$rettype" : "xdr_void";
-        } else {
-            if ($calls[$id]->{msg}) {
-                $comment = "/* Async event $calls[$id]->{ProcName} => $id */";
-            } else {
-                $comment = "/* Unused $id */";
-            }
-            $name = "NULL";
-            $arglen = $retlen = 0;
-            $argfilter = "xdr_void";
-            $retfilter = "xdr_void";
-        }
+	if (defined $calls[$id] && !$calls[$id]->{msg}) {
+	    $comment = "/* Method $calls[$id]->{ProcName} => $id */";
+	    $name = $structprefix . "Dispatch" . $calls[$id]->{ProcName} . "Helper";
+	    my $argtype = $calls[$id]->{args};
+	    my $rettype = $calls[$id]->{ret};
+	    $arglen = $argtype ne "void" ? "sizeof($argtype)" : "0";
+	    $retlen = $rettype ne "void" ? "sizeof($rettype)" : "0";
+	    $argfilter = $argtype ne "void" ? "xdr_$argtype" : "xdr_void";
+	    $retfilter = $rettype ne "void" ? "xdr_$rettype" : "xdr_void";
+	} else {
+	    if ($calls[$id]->{msg}) {
+		$comment = "/* Async event $calls[$id]->{ProcName} => $id */";
+	    } else {
+		$comment = "/* Unused $id */";
+	    }
+	    $name = "NULL";
+	    $arglen = $retlen = 0;
+	    $argfilter = "xdr_void";
+	    $retfilter = "xdr_void";
+	}
 
     $priority = defined $calls[$id]->{priority} ? $calls[$id]->{priority} : 0;
 
-        print "{ $comment\n   ${name},\n   $arglen,\n   (xdrproc_t)$argfilter,\n   $retlen,\n   (xdrproc_t)$retfilter,\n   true,\n   $priority\n},\n";
+	print "{ $comment\n   ${name},\n   $arglen,\n   (xdrproc_t)$argfilter,\n   $retlen,\n   (xdrproc_t)$retfilter,\n   true,\n   $priority\n},\n";
     }
     print "};\n";
     print "size_t ${structprefix}NProcs = ARRAY_CARDINALITY(${structprefix}Procs);\n";
 }
 
 # Bodies for client functions ("remote_client_bodies.h").
-elsif ($mode eq "client") {
+elsif ($opt_k) {
     my %generate = map { $_ => 1 } @autogen;
     my @keys = sort (keys %calls);
 
@@ -1075,8 +993,8 @@ elsif ($mode eq "client") {
         # skip procedures not on generate list
         next if ! exists($generate{$call->{ProcName}});
 
-        my $argtype = $call->{args};
-        my $rettype = $call->{ret};
+	my $argtype = $call->{args};
+	my $rettype = $call->{ret};
 
         # handle arguments to the function
         my @args_list = ();
@@ -1102,7 +1020,7 @@ elsif ($mode eq "client") {
                 !($argtype =~ m/^remote_node_device_lookup_by_name_/) and
                 !($argtype =~ m/^remote_node_device_create_xml_/)) {
                 $has_node_device = 1;
-                $priv_name = "nodeDevicePrivateData";
+                $priv_name = "devMonPrivateData";
             }
 
             foreach my $args_member (@{$call->{args_members}}) {
@@ -1113,7 +1031,7 @@ elsif ($mode eq "client") {
                 } elsif ($args_member =~ m/^remote_nonnull_(domain|network|storage_pool|storage_vol|interface|secret|nwfilter|domain_snapshot) (\S+);/) {
                     my $name = $1;
                     my $arg_name = $2;
-                    my $type_name = name_to_TypeName($name);
+                    my $type_name = name_to_ProcName($name);
 
                     if ($is_first_arg) {
                         if ($name eq "domain_snapshot") {
@@ -1336,10 +1254,10 @@ elsif ($mode eq "client") {
                 } elsif ($ret_member =~ m/^remote_nonnull_(domain|network|storage_pool|storage_vol|node_device|interface|secret|nwfilter|domain_snapshot) (\S+);/) {
                     my $name = $1;
                     my $arg_name = $2;
-                    my $type_name = name_to_TypeName($name);
+                    my $type_name = name_to_ProcName($name);
 
                     if ($name eq "node_device") {
-                        $priv_name = "nodeDevicePrivateData";
+                        $priv_name = "devMonPrivateData";
                     } elsif ($name =~ m/^storage_/) {
                         $priv_name = "storagePrivateData";
                     } elsif (!($name =~ m/^domain/)) {
@@ -1372,7 +1290,7 @@ elsif ($mode eq "client") {
                     push(@ret_list2, "if (remoteDeserializeTypedParameters(ret.$1.$1_val,\n" .
                                      "                                         ret.$1.$1_len,\n" .
                                      "                                         $2,\n" .
-                                     "                                         &$1,\n" .
+                                     "                                         $1,\n" .
                                      "                                         n$1) < 0)\n" .
                                      "        goto cleanup;\n");
                     $single_ret_cleanup = 1;
@@ -1456,15 +1374,7 @@ elsif ($mode eq "client") {
         # print function
         print "\n";
         print "static $single_ret_type\n";
-        if ($structprefix eq "remote") {
-            print "$structprefix$call->{ProcName}(";
-        } else {
-            my $proc = $call->{ProcName};
-            my $extra = $structprefix;
-            $extra =~ s/^(\w)/uc $1/e;
-            $proc =~ s/^(Domain)(.*)/$1 . $extra . $2/e;
-            print "remote$proc(";
-        }
+        print "$structprefix$call->{ProcName}(";
 
         print join(", ", @args_list);
 
@@ -1478,7 +1388,7 @@ elsif ($mode eq "client") {
         }
 
         if ($single_ret_as_list) {
-            print "    size_t i;\n";
+            print "    int i;\n";
         }
 
         if ($call->{streamflag} ne "none") {
@@ -1490,11 +1400,11 @@ elsif ($mode eq "client") {
 
         if ($call->{streamflag} ne "none") {
             print "\n";
-            print "    if (!(netst = virNetClientStreamNew(priv->remoteProgram, $call->{constname}, priv->counter)))\n";
+            print "    if (!(netst = virNetClientStreamNew(priv->remoteProgram, REMOTE_PROC_$call->{UC_NAME}, priv->counter)))\n";
             print "        goto done;\n";
             print "\n";
             print "    if (virNetClientAddStream(priv->client, netst) < 0) {\n";
-            print "        virObjectUnref(netst);\n";
+            print "        virNetClientStreamFree(netst);\n";
             print "        goto done;\n";
             print "    }";
             print "\n";
@@ -1514,9 +1424,9 @@ elsif ($mode eq "client") {
         foreach my $args_check (@args_check_list) {
             print "\n";
             print "    if ($args_check->{arg} > $args_check->{limit}) {\n";
-            print "        virReportError(VIR_ERR_RPC,\n";
-            print "                       _(\"%s length greater than maximum: %d > %d\"),\n";
-            print "                       $args_check->{name}, (int)$args_check->{arg}, $args_check->{limit});\n";
+            print "        remoteError(VIR_ERR_RPC,\n";
+            print "                    _(\"%s length greater than maximum: %d > %d\"),\n";
+            print "                    $args_check->{name}, (int)$args_check->{arg}, $args_check->{limit});\n";
             print "        goto done;\n";
             print "    }\n";
         }
@@ -1524,9 +1434,9 @@ elsif ($mode eq "client") {
         if ($single_ret_as_list) {
             print "\n";
             print "    if ($single_ret_list_max_var > $single_ret_list_max_define) {\n";
-            print "        virReportError(VIR_ERR_RPC,\n";
-            print "                       _(\"too many remote ${single_ret_list_error_msg_type}s: %d > %d\"),\n";
-            print "                       $single_ret_list_max_var, $single_ret_list_max_define);\n";
+            print "        remoteError(VIR_ERR_RPC,\n";
+            print "                    _(\"too many remote ${single_ret_list_error_msg_type}s: %d > %d\"),\n";
+            print "                    $single_ret_list_max_var, $single_ret_list_max_define);\n";
             print "        goto done;\n";
             print "    }\n";
         }
@@ -1562,18 +1472,15 @@ elsif ($mode eq "client") {
         if ($structprefix eq "qemu") {
             $callflags = "REMOTE_CALL_QEMU";
         }
-        if ($structprefix eq "lxc") {
-            $callflags = "REMOTE_CALL_LXC";
-        }
 
         print "\n";
-        print "    if (call($priv_src, priv, $callflags, $call->{constname},\n";
+        print "    if (call($priv_src, priv, $callflags, ${procprefix}_PROC_$call->{UC_NAME},\n";
         print "             (xdrproc_t)xdr_$argtype, (char *)$call_args,\n";
         print "             (xdrproc_t)xdr_$rettype, (char *)$call_ret) == -1) {\n";
 
         if ($call->{streamflag} ne "none") {
             print "        virNetClientRemoveStream(priv->client, netst);\n";
-            print "        virObjectUnref(netst);\n";
+            print "        virNetClientStreamFree(netst);\n";
             print "        st->driver = NULL;\n";
             print "        st->privateData = NULL;\n";
         }
@@ -1584,23 +1491,24 @@ elsif ($mode eq "client") {
 
         if ($single_ret_as_list) {
             print "    if (ret.$single_ret_list_name.${single_ret_list_name}_len > $single_ret_list_max_var) {\n";
-            print "        virReportError(VIR_ERR_RPC,\n";
-            print "                       _(\"too many remote ${single_ret_list_error_msg_type}s: %d > %d\"),\n";
-            print "                       ret.$single_ret_list_name.${single_ret_list_name}_len, $single_ret_list_max_var);\n";
+            print "        remoteError(VIR_ERR_RPC,\n";
+            print "                    _(\"too many remote ${single_ret_list_error_msg_type}s: %d > %d\"),\n";
+            print "                    ret.$single_ret_list_name.${single_ret_list_name}_len, $single_ret_list_max_var);\n";
             print "        goto cleanup;\n";
             print "    }\n";
             print "\n";
             print "    /* This call is caller-frees (although that isn't clear from\n";
             print "     * the documentation).  However xdr_free will free up both the\n";
-            print "     * names and the list of pointers, so we have to VIR_STRDUP the\n";
+            print "     * names and the list of pointers, so we have to strdup the\n";
             print "     * names here. */\n";
             print "    for (i = 0; i < ret.$single_ret_list_name.${single_ret_list_name}_len; ++i) {\n";
-            print "        if (VIR_STRDUP(${single_ret_list_name}[i],\n";
-            print "                       ret.$single_ret_list_name.${single_ret_list_name}_val[i]) < 0) {\n";
-            print "            size_t j;\n";
-            print "            for (j = 0; j < i; j++)\n";
-            print "                VIR_FREE(${single_ret_list_name}[j]);\n";
+            print "        ${single_ret_list_name}[i] = strdup(ret.$single_ret_list_name.${single_ret_list_name}_val[i]);\n";
             print "\n";
+            print "        if (${single_ret_list_name}[i] == NULL) {\n";
+            print "            for (--i; i >= 0; --i)\n";
+            print "                VIR_FREE(${single_ret_list_name}[i]);\n";
+            print "\n";
+            print "            virReportOOMError();\n";
             print "            goto cleanup;\n";
             print "        }\n";
             print "    }\n";
@@ -1620,10 +1528,10 @@ elsif ($mode eq "client") {
         }
 
         if ($call->{ProcName} eq "DomainDestroy" ||
-            $call->{ProcName} eq "DomainSave" ||
-            $call->{ProcName} eq "DomainManagedSave") {
+	    $call->{ProcName} eq "DomainSave" ||
+	    $call->{ProcName} eq "DomainManagedSave") {
             # SPECIAL: virDomain{Destroy|Save|ManagedSave} need to reset
-            # the domain id explicitly on success
+	    # the domain id explicitly on success
             print "    dom->id = -1;\n";
         }
 
@@ -1634,7 +1542,7 @@ elsif ($mode eq "client") {
         if ($single_ret_as_list or $single_ret_cleanup) {
             print "\n";
             print "cleanup:\n";
-            print "    xdr_free((xdrproc_t)xdr_$call->{ret}, (char *)&ret);\n";
+            print "    xdr_free((xdrproc_t)xdr_remote_$call->{name}_ret, (char *)&ret);\n";
         }
 
         print "\n";
@@ -1645,246 +1553,5 @@ elsif ($mode eq "client") {
         print "    remoteDriverUnlock(priv);\n";
         print "    return rv;\n";
         print "}\n";
-    }
-} elsif ($mode eq "aclheader" ||
-         $mode eq "aclbody" ||
-         $mode eq "aclsym" ||
-         $mode eq "aclapi") {
-    my %generate = map { $_ => 1 } @autogen;
-    my @keys = keys %calls;
-
-    if ($mode eq "aclsym") {
-        @keys = sort { my $c = $a . "ensureacl";
-                       my $d = $b . "ensureacl";
-                       $c cmp $d } @keys;
-    } else {
-        @keys = sort { $a cmp $b } @keys;
-    }
-
-    if ($mode eq "aclheader") {
-        my @headers = (
-            "internal.h",
-            "domain_conf.h",
-            "network_conf.h",
-            "secret_conf.h",
-            "storage_conf.h",
-            "nwfilter_conf.h",
-            "node_device_conf.h",
-            "interface_conf.h"
-            );
-        foreach my $hdr (@headers) {
-            print "#include \"$hdr\"\n";
-        }
-        print "\n";
-    } elsif ($mode eq "aclbody") {
-        my $header = shift;
-        print "#include <config.h>\n";
-        print "#include \"$header\"\n";
-        print "#include \"access/viraccessmanager.h\"\n";
-        print "#include \"datatypes.h\"\n";
-        print "#include \"virerror.h\"\n";
-        print "\n";
-        print "#define VIR_FROM_THIS VIR_FROM_ACCESS\n";
-        print "\n";
-    } elsif ($mode eq "aclapi") {
-        print "<aclinfo>\n";
-    } else {
-        print "\n";
-    }
-
-    foreach (@keys) {
-        my $call = $calls{$_};
-
-        die "missing 'acl' option for $call->{ProcName}"
-            unless exists $call->{acl} &&
-            $#{$call->{acl}} != -1;
-
-        next if $call->{acl}->[0] eq "none";
-
-        if ($mode eq "aclsym") {
-            my $apiname = "vir" . $call->{ProcName};
-            if ($structprefix eq "qemu") {
-                $apiname =~ s/virDomain/virDomainQemu/;
-            } elsif ($structprefix eq "lxc") {
-                $apiname =~ s/virDomain/virDomainLxc/;
-            }
-            if (defined $call->{aclfilter}) {
-                print $apiname . "CheckACL;\n";
-            }
-            print $apiname . "EnsureACL;\n";
-        } elsif ($mode eq "aclapi") {
-            &generate_aclapi($call);
-        } else {
-            &generate_acl($call, $call->{acl}, "Ensure");
-            if (defined $call->{aclfilter}) {
-                &generate_acl($call, $call->{aclfilter}, "Check");
-            }
-        }
-
-        sub generate_acl {
-            my $call = shift;
-            my $acl = shift;
-            my $action = shift;
-
-            my @acl;
-            foreach (@{$acl}) {
-                my @bits = split /:/;
-                push @acl, { object => $bits[0], perm => $bits[1], flags => $bits[2] }
-            }
-
-            my $checkflags = 0;
-            for (my $i = 1 ; $i <= $#acl ; $i++) {
-                if ($acl[$i]->{object} ne $acl[0]->{object}) {
-                    die "acl for '$call->{ProcName}' cannot check different objects";
-                }
-                if (defined $acl[$i]->{flags}) {
-                    $checkflags = 1;
-                }
-            }
-
-            my $apiname = "vir" . $call->{ProcName};
-            if ($structprefix eq "qemu") {
-                $apiname =~ s/virDomain/virDomainQemu/;
-            } elsif ($structprefix eq "lxc") {
-                $apiname =~ s/virDomain/virDomainLxc/;
-            }
-
-            my $object = $acl[0]->{object};
-            my $arg = $acl[0]->{object};
-            $arg =~ s/^.*_(\w+)$/$1/;
-            $object =~ s/^(\w)/uc $1/e;
-            $object =~ s/_(\w)/uc $1/e;
-            $object =~ s/Nwfilter/NWFilter/;
-            my $objecttype = "vir" . $object . "DefPtr";
-            $apiname .= $action . "ACL";
-
-            if ($arg eq "interface") {
-                $arg = "iface";
-            }
-
-            my @argdecls;
-            push @argdecls, "virConnectPtr conn";
-            if ($object ne "Connect") {
-                if ($object eq "StorageVol") {
-                    push @argdecls, "virStoragePoolDefPtr pool";
-                }
-                push @argdecls, "$objecttype $arg";
-            }
-            if ($checkflags) {
-                push @argdecls, "unsigned int flags";
-            }
-
-            my $ret;
-            my $pass;
-            my $fail;
-            if ($action eq "Check") {
-                $ret = "bool";
-                $pass = "true";
-                $fail = "false";
-            } else {
-                $ret = "int";
-                $pass = "0";
-                $fail = "-1";
-            }
-
-            if ($mode eq "aclheader") {
-                print "extern $ret $apiname(" . join(", ", @argdecls) . ");\n";
-            } else {
-                my @argvars;
-                push @argvars, "mgr";
-                push @argvars, "conn->driver->name";
-                if ($object ne "Connect") {
-                    if ($object eq "StorageVol") {
-                        push @argvars, "pool";
-                    }
-                    push @argvars, $arg;
-                }
-
-                print "/* Returns: $fail on error/denied, $pass on allowed */\n";
-                print "$ret $apiname(" . join(", ", @argdecls) . ")\n";
-                print "{\n";
-                print "    virAccessManagerPtr mgr;\n";
-                print "    int rv;\n";
-                print "\n";
-                print "    if (!(mgr = virAccessManagerGetDefault())) {\n";
-                if ($action eq "Check") {
-                    print "        virResetLastError();\n";
-                }
-                print "        return $fail;\n";
-                print "    }\n";
-                print "\n";
-
-                foreach my $acl (@acl) {
-                    my $perm = "vir_access_perm_" . $acl->{object} . "_" . $acl->{perm};
-                    $perm =~ tr/a-z/A-Z/;
-
-                    my $method = "virAccessManagerCheck" . $object;
-                    my $space = ' ' x length($method);
-                    print "    if (";
-                    if (defined $acl->{flags}) {
-                        my $flags = $acl->{flags};
-                        if ($flags =~ /^\!/) {
-                            $flags = substr $flags, 1;
-                            print "((flags & ($flags)) == 0) &&\n";
-                        } else {
-                            print "((flags & ($flags)) == ($flags)) &&\n";
-                        }
-                        print "        ";
-                    }
-                    print "(rv = $method(" . join(", ", @argvars, $perm) . ")) <= 0) {\n";
-                    print "        virObjectUnref(mgr);\n";
-                    if ($action eq "Ensure") {
-                        print "        if (rv == 0)\n";
-                        print "            virReportError(VIR_ERR_ACCESS_DENIED, NULL);\n";
-                        print "        return $fail;\n";
-                    } else {
-                        print "        virResetLastError();\n";
-                        print "        return $fail;\n";
-                    }
-                    print "    }";
-                    print "\n";
-                }
-
-                print "    virObjectUnref(mgr);\n";
-                print "    return $pass;\n";
-                print "}\n\n";
-            }
-        }
-
-        sub generate_aclapi {
-            my $call = shift;
-
-            my $apiname = "vir" . $call->{ProcName};
-            if ($structprefix eq "qemu") {
-                $apiname =~ s/virDomain/virDomainQemu/;
-            } elsif ($structprefix eq "lxc") {
-                $apiname =~ s/virDomain/virDomainLxc/;
-            }
-
-            print "  <api name='$apiname'>\n";
-
-            my $acl = $call->{acl};
-            foreach (@{$acl}) {
-                my @bits = split /:/;
-                print "    <check object='$bits[0]' perm='$bits[1]'";
-                if (defined $bits[2]) {
-                    print " flags='$bits[2]'";
-                }
-                print "/>\n";
-            }
-
-            my $aclfilter = $call->{aclfilter};
-            foreach (@{$aclfilter}) {
-                my @bits = split /:/;
-                print "    <filter object='$bits[0]' perm='$bits[1]'/>\n";
-            }
-
-            print "  </api>\n";
-        }
-
-    }
-
-    if ($mode eq "aclapi") {
-        print "</aclinfo>\n";
     }
 }

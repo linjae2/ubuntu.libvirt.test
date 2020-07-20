@@ -1,8 +1,8 @@
 /*
- * node_device_linux_sysfs.c: Linux specific code to gather device data
+ * node_device_hal_linuc.c: Linux specific code to gather device data
  * not available through HAL.
  *
- * Copyright (C) 2009-2013 Red Hat, Inc.
+ * Copyright (C) 2009-2011 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -28,112 +28,189 @@
 
 #include "node_device_driver.h"
 #include "node_device_hal.h"
-#include "virerror.h"
-#include "viralloc.h"
-#include "virlog.h"
+#include "virterror_internal.h"
+#include "memory.h"
+#include "logging.h"
 #include "virfile.h"
-#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_NODEDEV
 
 #ifdef __linux__
 
-int
-detect_scsi_host_caps(union _virNodeDevCapData *d)
+static int open_wwn_file(const char *prefix,
+                         int host,
+                         const char *file,
+                         int *fd)
 {
-    char *max_vports = NULL;
-    char *vports = NULL;
-    int ret = -1;
+    int retval = 0;
+    char *wwn_path = NULL;
+
+    if (virAsprintf(&wwn_path, "%s/host%d/%s", prefix, host, file) < 0) {
+        virReportOOMError();
+        retval = -1;
+        goto out;
+    }
+
+    /* fd will be closed by caller */
+    if ((*fd = open(wwn_path, O_RDONLY)) != -1) {
+        VIR_DEBUG("Opened WWN path '%s' for reading",
+                  wwn_path);
+    } else {
+        VIR_ERROR(_("Failed to open WWN path '%s' for reading"),
+                  wwn_path);
+    }
+
+out:
+    VIR_FREE(wwn_path);
+    return retval;
+}
+
+
+int read_wwn_linux(int host, const char *file, char **wwn)
+{
+    char *p = NULL;
+    int fd = -1, retval = 0;
+    char buf[65] = "";
+
+    if (open_wwn_file(LINUX_SYSFS_FC_HOST_PREFIX, host, file, &fd) < 0) {
+        goto out;
+    }
+
+    if (saferead(fd, buf, sizeof(buf) - 1) < 0) {
+        retval = -1;
+        VIR_DEBUG("Failed to read WWN for host%d '%s'",
+                  host, file);
+        goto out;
+    }
+
+    p = strstr(buf, "0x");
+    if (p != NULL) {
+        p += strlen("0x");
+    } else {
+        p = buf;
+    }
+
+    *wwn = strndup(p, sizeof(buf));
+    if (*wwn == NULL) {
+        virReportOOMError();
+        retval = -1;
+        goto out;
+    }
+
+    p = strchr(*wwn, '\n');
+    if (p != NULL) {
+        *p = '\0';
+    }
+
+out:
+    VIR_FORCE_CLOSE(fd);
+    return retval;
+}
+
+
+int check_fc_host_linux(union _virNodeDevCapData *d)
+{
+    char *sysfs_path = NULL;
+    int retval = 0;
+    struct stat st;
 
     VIR_DEBUG("Checking if host%d is an FC HBA", d->scsi_host.host);
 
-    if (virIsCapableFCHost(NULL, d->scsi_host.host)) {
-        d->scsi_host.flags |= VIR_NODE_DEV_CAP_FLAG_HBA_FC_HOST;
-
-        if (virReadFCHost(NULL,
-                          d->scsi_host.host,
-                          "port_name",
-                          &d->scsi_host.wwpn) < 0) {
-            VIR_ERROR(_("Failed to read WWPN for host%d"), d->scsi_host.host);
-            goto cleanup;
-        }
-
-        if (virReadFCHost(NULL,
-                          d->scsi_host.host,
-                          "node_name",
-                          &d->scsi_host.wwnn) < 0) {
-            VIR_ERROR(_("Failed to read WWNN for host%d"), d->scsi_host.host);
-            goto cleanup;
-        }
-
-        if (virReadFCHost(NULL,
-                          d->scsi_host.host,
-                          "fabric_name",
-                          &d->scsi_host.fabric_wwn) < 0) {
-            VIR_ERROR(_("Failed to read fabric WWN for host%d"),
-                      d->scsi_host.host);
-            goto cleanup;
-        }
+    if (virAsprintf(&sysfs_path, "%shost%d",
+                    LINUX_SYSFS_FC_HOST_PREFIX,
+                    d->scsi_host.host) < 0) {
+        virReportOOMError();
+        retval = -1;
+        goto out;
     }
 
-    if (virIsCapableVport(NULL, d->scsi_host.host)) {
-        d->scsi_host.flags |= VIR_NODE_DEV_CAP_FLAG_HBA_VPORT_OPS;
-
-        if (virReadFCHost(NULL,
-                          d->scsi_host.host,
-                          "max_npiv_vports",
-                          &max_vports) < 0) {
-            VIR_ERROR(_("Failed to read max_npiv_vports for host%d"),
-                      d->scsi_host.host);
-            goto cleanup;
-        }
-
-         if (virReadFCHost(NULL,
-                          d->scsi_host.host,
-                          "npiv_vports_inuse",
-                          &vports) < 0) {
-            VIR_ERROR(_("Failed to read npiv_vports_inuse for host%d"),
-                      d->scsi_host.host);
-            goto cleanup;
-        }
-
-        if (virStrToLong_i(max_vports, NULL, 10,
-                           &d->scsi_host.max_vports) < 0) {
-            VIR_ERROR(_("Failed to parse value of max_npiv_vports '%s'"),
-                      max_vports);
-            goto cleanup;
-        }
-
-        if (virStrToLong_i(vports, NULL, 10,
-                           &d->scsi_host.vports) < 0) {
-            VIR_ERROR(_("Failed to parse value of npiv_vports_inuse '%s'"),
-                      vports);
-            goto cleanup;
-        }
+    if (stat(sysfs_path, &st) != 0) {
+        /* Not an FC HBA; not an error, either. */
+        goto out;
     }
 
-    ret = 0;
-cleanup:
-    if (ret < 0) {
-        /* Clear the two flags in case of producing confusing XML output */
-        d->scsi_host.flags &= ~(VIR_NODE_DEV_CAP_FLAG_HBA_FC_HOST |
-                                VIR_NODE_DEV_CAP_FLAG_HBA_VPORT_OPS);
+    d->scsi_host.flags |= VIR_NODE_DEV_CAP_FLAG_HBA_FC_HOST;
 
+    if (read_wwn(d->scsi_host.host,
+                 "port_name",
+                 &d->scsi_host.wwpn) == -1) {
+        VIR_ERROR(_("Failed to read WWPN for host%d"),
+                  d->scsi_host.host);
+        retval = -1;
+        goto out;
+    }
+
+    if (read_wwn(d->scsi_host.host,
+                 "node_name",
+                 &d->scsi_host.wwnn) == -1) {
+        VIR_ERROR(_("Failed to read WWNN for host%d"),
+                  d->scsi_host.host);
+        retval = -1;
+    }
+
+    if (read_wwn(d->scsi_host.host,
+                 "fabric_name",
+                 &d->scsi_host.fabric_wwn) == -1) {
+        VIR_ERROR(_("Failed to read fabric WWN for host%d"),
+                  d->scsi_host.host);
+        retval = -1;
+        goto out;
+    }
+
+out:
+    if (retval == -1) {
         VIR_FREE(d->scsi_host.wwnn);
         VIR_FREE(d->scsi_host.wwpn);
         VIR_FREE(d->scsi_host.fabric_wwn);
     }
-    VIR_FREE(max_vports);
-    VIR_FREE(vports);
-    return ret;
+    VIR_FREE(sysfs_path);
+    return retval;
 }
 
-#else
 
-int
-detect_scsi_host_caps(union _virNodeDevCapData *d ATTRIBUTE_UNUSED)
+int check_vport_capable_linux(union _virNodeDevCapData *d)
 {
-    return -1;
+    char *sysfs_path = NULL;
+    struct stat st;
+    int retval = 0;
+
+    if (virAsprintf(&sysfs_path,
+                    "%shost%d%s",
+                    LINUX_SYSFS_FC_HOST_PREFIX,
+                    d->scsi_host.host,
+                    LINUX_SYSFS_VPORT_CREATE_POSTFIX) < 0) {
+        virReportOOMError();
+        retval = -1;
+        goto out;
+    }
+
+    if (stat(sysfs_path, &st) == 0) {
+        d->scsi_host.flags |= VIR_NODE_DEV_CAP_FLAG_HBA_VPORT_OPS;
+        goto out;
+    }
+
+    VIR_FREE(sysfs_path);
+    if (virAsprintf(&sysfs_path,
+                    "%shost%d%s",
+                    LINUX_SYSFS_SCSI_HOST_PREFIX,
+                    d->scsi_host.host,
+                    LINUX_SYSFS_VPORT_CREATE_POSTFIX) < 0) {
+        virReportOOMError();
+        retval = -1;
+        goto out;
+    }
+
+    if (stat(sysfs_path, &st) == 0) {
+        d->scsi_host.flags |= VIR_NODE_DEV_CAP_FLAG_HBA_VPORT_OPS;
+    } else {
+        /* Not a vport capable HBA; not an error, either. */
+        VIR_DEBUG("No vport operation path found for host%d",
+                  d->scsi_host.host);
+    }
+
+out:
+    VIR_FREE(sysfs_path);
+    return retval;
 }
 
 #endif /* __linux__ */

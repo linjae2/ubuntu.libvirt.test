@@ -5,11 +5,9 @@
 #include <unistd.h>
 
 #include "internal.h"
-#include "virxml.h"
+#include "xml.h"
+#include "util.h"
 #include "testutils.h"
-#include "virstring.h"
-
-#define VIR_FROM_THIS VIR_FROM_NONE
 
 #ifdef WIN32
 
@@ -34,7 +32,7 @@ Max memory:     261072 KiB\n\
 Used memory:    131072 KiB\n\
 Persistent:     yes\n\
 Autostart:      disable\n\
-Managed save:   no\n\
+Managed save:   unknown\n\
 \n";
 static const char *domuuid_fc4 = DOM_UUID "\n\n";
 static const char *domid_fc4 = "2\n\n";
@@ -241,77 +239,77 @@ mymain(void)
         return EXIT_FAILURE;
 
     if (virtTestRun("virsh list (default)",
-                    testCompareListDefault, NULL) != 0)
+                    1, testCompareListDefault, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh list (custom)",
-                    testCompareListCustom, NULL) != 0)
+                    1, testCompareListCustom, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh nodeinfo (default)",
-                    testCompareNodeinfoDefault, NULL) != 0)
+                    1, testCompareNodeinfoDefault, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh nodeinfo (custom)",
-                    testCompareNodeinfoCustom, NULL) != 0)
+                    1, testCompareNodeinfoCustom, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh dominfo (by id)",
-                    testCompareDominfoByID, NULL) != 0)
+                    1, testCompareDominfoByID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh dominfo (by uuid)",
-                    testCompareDominfoByUUID, NULL) != 0)
+                    1, testCompareDominfoByUUID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh dominfo (by name)",
-                    testCompareDominfoByName, NULL) != 0)
+                    1, testCompareDominfoByName, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domid (by name)",
-                    testCompareDomidByName, NULL) != 0)
+                    1, testCompareDomidByName, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domid (by uuid)",
-                    testCompareDomidByUUID, NULL) != 0)
+                    1, testCompareDomidByUUID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domuuid (by id)",
-                    testCompareDomuuidByID, NULL) != 0)
+                    1, testCompareDomuuidByID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domuuid (by name)",
-                    testCompareDomuuidByName, NULL) != 0)
+                    1, testCompareDomuuidByName, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domname (by id)",
-                    testCompareDomnameByID, NULL) != 0)
+                    1, testCompareDomnameByID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domname (by uuid)",
-                    testCompareDomnameByUUID, NULL) != 0)
+                    1, testCompareDomnameByUUID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domstate (by id)",
-                    testCompareDomstateByID, NULL) != 0)
+                    1, testCompareDomstateByID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domstate (by uuid)",
-                    testCompareDomstateByUUID, NULL) != 0)
+                    1, testCompareDomstateByUUID, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("virsh domstate (by name)",
-                    testCompareDomstateByName, NULL) != 0)
+                    1, testCompareDomstateByName, NULL) != 0)
         ret = -1;
 
     /* It's a bit awkward listing result before argument, but that's a
      * limitation of C99 vararg macros.  */
-# define DO_TEST(i, result, ...)                                        \
+# define DO_TEST(i, result, ...)                                         \
     do {                                                                \
         const char *myargv[] = { VIRSH_DEFAULT, __VA_ARGS__, NULL };    \
         const struct testInfo info = { myargv, result };                \
         if (virtTestRun("virsh echo " #i,                               \
-                        testCompareEcho, &info) < 0)                    \
+                        1, testCompareEcho, &info) < 0)                 \
             ret = -1;                                                   \
     } while (0)
 
@@ -393,7 +391,6 @@ mymain(void)
     DO_TEST(32, "hello\n", "echo --string hello");
     DO_TEST(33, "hello\n", "echo", "--str", "hello");
     DO_TEST(34, "hello\n", "echo --str hello");
-    DO_TEST(35, "hello\n", "echo --hi");
 
 # undef DO_TEST
 

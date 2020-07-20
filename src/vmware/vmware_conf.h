@@ -1,6 +1,5 @@
 /*---------------------------------------------------------------------------*/
 /* Copyright 2010, diateam (www.diateam.net)
- * Copyright (c) 2013, Doug Goldstein (cardoe@cardoe.com)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -13,42 +12,38 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 /*---------------------------------------------------------------------------*/
 
 #ifndef VMWARE_CONF_H
 # define VMWARE_CONF_H
 
+# define VMRUN "vmrun"
 # define NOGUI "nogui"
 
 # include "internal.h"
 # include "domain_conf.h"
-# include "virthread.h"
+# include "threads.h"
 
 # define VIR_FROM_THIS VIR_FROM_VMWARE
-# define PROGRAM_SENTINEL ((char *)0x1)
+# define PROGRAM_SENTINAL ((char *)0x1)
 
-enum vmwareDriverType {
-    VMWARE_DRIVER_PLAYER      = 0, /* VMware Player */
-    VMWARE_DRIVER_WORKSTATION = 1, /* VMware Workstation */
-    VMWARE_DRIVER_FUSION      = 2, /* VMware Fusion */
+# define vmwareError(code, ...) \
+         virReportErrorHelper(VIR_FROM_VMWARE, code, __FILE__, \
+                              __FUNCTION__, __LINE__, __VA_ARGS__)
 
-    VMWARE_DRIVER_LAST,            /* required last item */
-};
-
-VIR_ENUM_DECL(vmwareDriver)
+# define TYPE_PLAYER        0
+# define TYPE_WORKSTATION   1
 
 struct vmware_driver {
     virMutex lock;
     virCapsPtr caps;
-    virDomainXMLOptionPtr xmlopt;
 
-    virDomainObjListPtr domains;
+    virDomainObjList domains;
     int version;
     int type;
-    char *vmrun;
 };
 
 typedef struct _vmwareDomain {
@@ -66,8 +61,6 @@ int vmwareLoadDomains(struct vmware_driver *driver);
 void vmwareSetSentinal(const char **prog, const char *key);
 
 int vmwareExtractVersion(struct vmware_driver *driver);
-
-int vmwareParseVersionStr(int type, const char *buf, unsigned long *version);
 
 int vmwareDomainConfigDisplay(vmwareDomainPtr domain, virDomainDefPtr vmdef);
 

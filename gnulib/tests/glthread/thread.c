@@ -1,5 +1,5 @@
 /* Creating and controlling threads.
-   Copyright (C) 2005-2014 Free Software Foundation, Inc.
+   Copyright (C) 2005-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #include <config.h>
 
 /* Specification.  */
-# define _GLTHREAD_THREAD_INLINE _GL_EXTERN_INLINE
 #include "glthread/thread.h"
 
 #include <stdlib.h>
@@ -86,7 +85,7 @@ struct gl_thread_struct
 };
 
 /* Return a real HANDLE object for the current thread.  */
-static HANDLE
+static inline HANDLE
 get_current_thread_handle (void)
 {
   HANDLE this_handle;

@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -25,7 +25,6 @@
 # define __VIR_NET_SERVER_SERVICE_H__
 
 # include "virnetserverprogram.h"
-# include "virobject.h"
 
 enum {
     VIR_NET_SERVER_SERVICE_AUTH_NONE = 0,
@@ -34,52 +33,35 @@ enum {
 };
 
 typedef int (*virNetServerServiceDispatchFunc)(virNetServerServicePtr svc,
-                                               virNetSocketPtr sock,
+                                               virNetServerClientPtr client,
                                                void *opaque);
 
 virNetServerServicePtr virNetServerServiceNewTCP(const char *nodename,
                                                  const char *service,
                                                  int auth,
-# if WITH_GNUTLS
-                                                 virNetTLSContextPtr tls,
-# endif
                                                  bool readonly,
-                                                 size_t max_queued_clients,
-                                                 size_t nrequests_client_max);
+                                                 size_t nrequests_client_max,
+                                                 virNetTLSContextPtr tls);
 virNetServerServicePtr virNetServerServiceNewUNIX(const char *path,
                                                   mode_t mask,
                                                   gid_t grp,
                                                   int auth,
-# if WITH_GNUTLS
-                                                  virNetTLSContextPtr tls,
-# endif
                                                   bool readonly,
-                                                  size_t max_queued_clients,
-                                                  size_t nrequests_client_max);
-virNetServerServicePtr virNetServerServiceNewFD(int fd,
-                                                int auth,
-# if WITH_GNUTLS
-                                                virNetTLSContextPtr tls,
-# endif
-                                                bool readonly,
-                                                size_t nrequests_client_max);
-
-virNetServerServicePtr virNetServerServiceNewPostExecRestart(virJSONValuePtr object);
-
-virJSONValuePtr virNetServerServicePreExecRestart(virNetServerServicePtr service);
+                                                  size_t nrequests_client_max,
+                                                  virNetTLSContextPtr tls);
 
 int virNetServerServiceGetPort(virNetServerServicePtr svc);
 
 int virNetServerServiceGetAuth(virNetServerServicePtr svc);
 bool virNetServerServiceIsReadonly(virNetServerServicePtr svc);
-size_t virNetServerServiceGetMaxRequests(virNetServerServicePtr svc);
-# ifdef WITH_GNUTLS
-virNetTLSContextPtr virNetServerServiceGetTLSContext(virNetServerServicePtr svc);
-# endif
+
+void virNetServerServiceRef(virNetServerServicePtr svc);
 
 void virNetServerServiceSetDispatcher(virNetServerServicePtr svc,
                                       virNetServerServiceDispatchFunc func,
                                       void *opaque);
+
+void virNetServerServiceFree(virNetServerServicePtr svc);
 
 void virNetServerServiceToggle(virNetServerServicePtr svc,
                                bool enabled);

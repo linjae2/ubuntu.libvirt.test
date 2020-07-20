@@ -1,4 +1,4 @@
-/* Copyright (C) 2011-2014 Free Software Foundation, Inc.
+/* Copyright (C) 2011-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
@@ -31,7 +31,7 @@
 #include "cloexec.h"
 
 /* The code that uses CMSG_FIRSTHDR is enabled on
-   Linux, Mac OS X, FreeBSD, OpenBSD, NetBSD, AIX, OSF/1, Cygwin.
+   Linux, MacOS X, FreeBSD, OpenBSD, NetBSD, AIX, OSF/1, Cygwin.
    The code that uses HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS is enabled on
    HP-UX, IRIX, Solaris.  */
 
@@ -101,7 +101,7 @@ sendfd (int sock _GL_UNUSED, int fd _GL_UNUSED)
 /* recvfd receives a file descriptor through the socket.
    The flags are a bitmask, possibly including O_CLOEXEC (defined in <fcntl.h>).
 
-   Return the fd on success, or -1 with errno set in case of error.
+   Return 0 on success, or -1 with errno set in case of error.
 */
 int
 recvfd (int sock, int flags)
@@ -110,7 +110,6 @@ recvfd (int sock, int flags)
   struct iovec iov;
   struct msghdr msg;
   int fd = -1;
-  ssize_t len;
 # ifdef CMSG_FIRSTHDR
   struct cmsghdr *cmsg;
   char buf[CMSG_SPACE (sizeof fd)];
@@ -143,17 +142,16 @@ recvfd (int sock, int flags)
   memcpy (CMSG_DATA (cmsg), &fd, sizeof fd);
   msg.msg_controllen = cmsg->cmsg_len;
 
-  len = recvmsg (sock, &msg, flags_recvmsg);
-  if (len < 0)
+  if (recvmsg (sock, &msg, flags_recvmsg) < 0)
     return -1;
 
   cmsg = CMSG_FIRSTHDR (&msg);
   /* be paranoiac */
-  if (len == 0 || cmsg == NULL || cmsg->cmsg_len != CMSG_LEN (sizeof fd)
+  if (cmsg == NULL || cmsg->cmsg_len != CMSG_LEN (sizeof fd)
       || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
     {
       /* fake errno: at end the file is not available */
-      errno = len ? EACCES : ENOTCONN;
+      errno = EACCES;
       return -1;
     }
 

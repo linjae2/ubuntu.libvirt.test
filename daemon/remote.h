@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Richard W.M. Jones <rjones@redhat.com>
  * Author: Daniel P. Berrange <berrange@redhat.com>
@@ -32,14 +32,10 @@
 extern virNetServerProgramProc remoteProcs[];
 extern size_t remoteNProcs;
 
-extern virNetServerProgramProc lxcProcs[];
-extern size_t lxcNProcs;
-
 extern virNetServerProgramProc qemuProcs[];
 extern size_t qemuNProcs;
 
-void remoteClientFreeFunc(void *data);
-void *remoteClientInitHook(virNetServerClientPtr client,
-                           void *opaque);
+int remoteClientInitHook(virNetServerPtr srv,
+                         virNetServerClientPtr client);
 
 #endif /* __LIBVIRTD_REMOTE_H__ */

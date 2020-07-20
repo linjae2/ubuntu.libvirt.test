@@ -10,14 +10,11 @@
 
 #include "internal.h"
 #include "testutils.h"
-#include "virxml.h"
-#include "virthread.h"
+#include "xml.h"
+#include "threads.h"
 #include "nwfilter_params.h"
 #include "nwfilter_conf.h"
 #include "testutilsqemu.h"
-#include "virstring.h"
-
-#define VIR_FROM_THIS VIR_FROM_NONE
 
 static int
 testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
@@ -36,12 +33,15 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
 
     virResetLastError();
 
-    if (!(dev = virNWFilterDefParseString(inXmlData))) {
-        if (expect_error) {
-            virResetLastError();
-            goto done;
-        }
+    if (!(dev = virNWFilterDefParseString(NULL, inXmlData)))
         goto fail;
+
+    if (!!virGetLastError() != expect_error)
+        goto fail;
+
+    if (expect_error) {
+        /* need to suppress the errors */
+        virResetLastError();
     }
 
     if (!(actual = virNWFilterDefFormat(dev)))
@@ -52,7 +52,6 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
         goto fail;
     }
 
- done:
     ret = 0;
 
  fail:
@@ -104,7 +103,7 @@ mymain(void)
             .expect_warning = EXPECT_WARN,                        \
         };                                                        \
         if (virtTestRun("NWFilter XML-2-XML " NAME,               \
-                        testCompareXMLToXMLHelper, (&tp)) < 0)    \
+                        1, testCompareXMLToXMLHelper, (&tp)) < 0) \
             ret = -1;                                             \
     } while (0)
 
@@ -157,8 +156,6 @@ mymain(void)
     DO_TEST("iter-test1", false);
     DO_TEST("iter-test2", false);
     DO_TEST("iter-test3", false);
-
-    DO_TEST("ipset-test", false);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

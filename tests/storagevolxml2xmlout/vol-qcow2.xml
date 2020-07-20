@@ -1,6 +1,6 @@
-<volume type='file'>
+<volume>
   <name>OtherDemo.img</name>
-  <key>/var/lib/libvirt/images/OtherDemo.img</key>
+  <key>(null)</key>
   <source>
   </source>
   <capacity unit='bytes'>5368709120</capacity>
@@ -19,7 +19,7 @@
     </encryption>
   </target>
   <backingStore>
-    <path>/dev/null</path>
+    <path>/var/lib/libvirt/images/BaseDemo.img</path>
     <format type='raw'/>
     <permissions>
       <mode>0644</mode>

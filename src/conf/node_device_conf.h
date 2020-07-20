@@ -1,7 +1,7 @@
 /*
  * node_device_conf.h: config handling for node devices
  *
- * Copyright (C) 2009-2013 Red Hat, Inc.
+ * Copyright (C) 2010-2011 Red Hat, Inc.
  * Copyright (C) 2008 Virtual Iron Software, Inc.
  * Copyright (C) 2008 David F. Lively
  *
@@ -16,8 +16,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: David F. Lively <dlively@virtualiron.com>
  */
@@ -26,9 +26,8 @@
 # define __VIR_NODE_DEVICE_CONF_H__
 
 # include "internal.h"
-# include "virutil.h"
-# include "virthread.h"
-# include "virpci.h"
+# include "util.h"
+# include "threads.h"
 
 # include <libxml/tree.h>
 
@@ -46,10 +45,6 @@ enum virNodeDevCapType {
     VIR_NODE_DEV_CAP_SCSI_TARGET,	/* SCSI Target */
     VIR_NODE_DEV_CAP_SCSI,		/* SCSI device */
     VIR_NODE_DEV_CAP_STORAGE,		/* Storage device */
-    VIR_NODE_DEV_CAP_FC_HOST,		/* FC Host Bus Adapter */
-    VIR_NODE_DEV_CAP_VPORTS,		/* HBA which is capable of vports */
-    VIR_NODE_DEV_CAP_SCSI_GENERIC,      /* SCSI generic device */
-
     VIR_NODE_DEV_CAP_LAST
 };
 
@@ -60,8 +55,16 @@ enum virNodeDevNetCapType {
     VIR_NODE_DEV_CAP_NET_LAST
 };
 
+enum virNodeDevHBACapType {
+    /* Keep in sync with VIR_ENUM_IMPL in node_device_conf.c */
+    VIR_NODE_DEV_CAP_HBA_FC_HOST,	/* fibre channel HBA */
+    VIR_NODE_DEV_CAP_HBA_VPORT_OPS,	/* capable of vport operations */
+    VIR_NODE_DEV_CAP_HBA_LAST
+};
+
 VIR_ENUM_DECL(virNodeDevCap)
 VIR_ENUM_DECL(virNodeDevNetCap)
+VIR_ENUM_DECL(virNodeDevHBACap)
 
 enum virNodeDevStorageCapFlags {
     VIR_NODE_DEV_CAP_STORAGE_REMOVABLE			= (1 << 0),
@@ -108,13 +111,10 @@ struct _virNodeDevCapsDef {
             unsigned int class;
             char *product_name;
             char *vendor_name;
-            virPCIDeviceAddressPtr physical_function;
-            virPCIDeviceAddressPtr *virtual_functions;
-            size_t num_virtual_functions;
+            struct pci_config_address *physical_function;
+            struct pci_config_address **virtual_functions;
+            unsigned int num_virtual_functions;
             unsigned int flags;
-            virPCIDeviceAddressPtr *iommuGroupDevices;
-            size_t nIommuGroupDevices;
-            unsigned int iommuGroupNumber;
         } pci_dev;
         struct {
             unsigned int bus;
@@ -143,8 +143,6 @@ struct _virNodeDevCapsDef {
             char *wwpn;
             char *fabric_wwn;
             unsigned int flags;
-            int max_vports;
-            int vports;
         } scsi_host;
         struct {
             char *name;
@@ -170,9 +168,6 @@ struct _virNodeDevCapsDef {
             char *media_label;
             unsigned int flags;	/* virNodeDevStorageCapFlags bits */
         } storage;
-        struct {
-            char *path;
-        } sg; /* SCSI generic device */
     } data;
     virNodeDevCapsDefPtr next;          /* next capability */
 };
@@ -208,32 +203,35 @@ struct _virNodeDeviceObjList {
     virNodeDeviceObjPtr *objs;
 };
 
-typedef struct _virNodeDeviceDriverState virNodeDeviceDriverState;
-typedef virNodeDeviceDriverState *virNodeDeviceDriverStatePtr;
-struct _virNodeDeviceDriverState {
+typedef struct _virDeviceMonitorState virDeviceMonitorState;
+typedef virDeviceMonitorState *virDeviceMonitorStatePtr;
+struct _virDeviceMonitorState {
     virMutex lock;
 
     virNodeDeviceObjList devs;		/* currently-known devices */
     void *privateData;			/* driver-specific private data */
 };
 
+# define virNodeDeviceReportError(code, ...)                             \
+    virReportErrorHelper(VIR_FROM_NODEDEV, code, __FILE__,               \
+                         __FUNCTION__, __LINE__, __VA_ARGS__)
 
-int virNodeDeviceHasCap(const virNodeDeviceObj *dev, const char *cap);
+int virNodeDeviceHasCap(const virNodeDeviceObjPtr dev, const char *cap);
 
-virNodeDeviceObjPtr virNodeDeviceFindByName(virNodeDeviceObjListPtr devs,
+virNodeDeviceObjPtr virNodeDeviceFindByName(const virNodeDeviceObjListPtr devs,
                                             const char *name);
 virNodeDeviceObjPtr
-virNodeDeviceFindBySysfsPath(virNodeDeviceObjListPtr devs,
+virNodeDeviceFindBySysfsPath(const virNodeDeviceObjListPtr devs,
                              const char *sysfs_path)
     ATTRIBUTE_NONNULL(2);
 
 virNodeDeviceObjPtr virNodeDeviceAssignDef(virNodeDeviceObjListPtr devs,
-                                           virNodeDeviceDefPtr def);
+                                           const virNodeDeviceDefPtr def);
 
 void virNodeDeviceObjRemove(virNodeDeviceObjListPtr devs,
-                            virNodeDeviceObjPtr dev);
+                            const virNodeDeviceObjPtr dev);
 
-char *virNodeDeviceDefFormat(const virNodeDeviceDef *def);
+char *virNodeDeviceDefFormat(const virNodeDeviceDefPtr def);
 
 virNodeDeviceDefPtr virNodeDeviceDefParseString(const char *str,
                                                 int create,
@@ -250,7 +248,7 @@ int virNodeDeviceGetWWNs(virNodeDeviceDefPtr def,
                          char **wwnn,
                          char **wwpn);
 
-int virNodeDeviceGetParentHost(virNodeDeviceObjListPtr devs,
+int virNodeDeviceGetParentHost(const virNodeDeviceObjListPtr devs,
                                const char *dev_name,
                                const char *parent_name,
                                int *parent_host);
@@ -265,28 +263,5 @@ void virNodeDevCapsDefFree(virNodeDevCapsDefPtr caps);
 
 void virNodeDeviceObjLock(virNodeDeviceObjPtr obj);
 void virNodeDeviceObjUnlock(virNodeDeviceObjPtr obj);
-
-# define VIR_CONNECT_LIST_NODE_DEVICES_FILTERS_CAP \
-                (VIR_CONNECT_LIST_NODE_DEVICES_CAP_SYSTEM        | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_PCI_DEV       | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_USB_DEV       | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_USB_INTERFACE | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_NET           | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_SCSI_HOST     | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_SCSI_TARGET   | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_SCSI          | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_STORAGE       | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_FC_HOST       | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_VPORTS        | \
-                 VIR_CONNECT_LIST_NODE_DEVICES_CAP_SCSI_GENERIC)
-
-typedef bool (*virNodeDeviceObjListFilter)(virConnectPtr conn,
-                                           virNodeDeviceDefPtr def);
-
-int virNodeDeviceObjListExport(virConnectPtr conn,
-                               virNodeDeviceObjList devobjs,
-                               virNodeDevicePtr **devices,
-                               virNodeDeviceObjListFilter filter,
-                               unsigned int flags);
 
 #endif /* __VIR_NODE_DEVICE_CONF_H__ */

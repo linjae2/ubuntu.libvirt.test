@@ -1,7 +1,7 @@
 /*
  * interface_conf.h: interface XML handling entry points
  *
- * Copyright (C) 2006-2009, 2013 Red Hat, Inc.
+ * Copyright (C) 2006-2009 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel Veillard <veillard@redhat.com>
  *         Laine Stump <laine@redhat.com>
@@ -29,8 +29,8 @@
 # include <libxml/xpath.h>
 
 # include "internal.h"
-# include "virutil.h"
-# include "virthread.h"
+# include "util.h"
+# include "threads.h"
 
 /* There is currently 3 types of interfaces */
 
@@ -164,7 +164,7 @@ typedef virInterfaceObj *virInterfaceObjPtr;
 struct _virInterfaceObj {
     virMutex lock;
 
-    bool active;           /* true if interface is active (up) */
+    unsigned int active:1;           /* 1 if interface is active (up) */
     virInterfaceDefPtr def; /* The interface definition */
 };
 
@@ -175,16 +175,17 @@ struct _virInterfaceObjList {
     virInterfaceObjPtr *objs;
 };
 
-static inline bool
-virInterfaceObjIsActive(const virInterfaceObj *iface)
+static inline int
+virInterfaceObjIsActive(const virInterfaceObjPtr iface)
 {
     return iface->active;
 }
 
-int virInterfaceFindByMACString(virInterfaceObjListPtr interfaces,
+int virInterfaceFindByMACString(const virInterfaceObjListPtr interfaces,
                                 const char *mac,
                                 virInterfaceObjPtr *matches, int maxmatches);
-virInterfaceObjPtr virInterfaceFindByName(virInterfaceObjListPtr interfaces,
+virInterfaceObjPtr virInterfaceFindByName(const virInterfaceObjListPtr
+                                          interfaces,
                                           const char *name);
 
 
@@ -196,25 +197,18 @@ int virInterfaceObjListClone(virInterfaceObjListPtr src,
 
 
 virInterfaceObjPtr virInterfaceAssignDef(virInterfaceObjListPtr interfaces,
-                                         virInterfaceDefPtr def);
+                                         const virInterfaceDefPtr def);
 void virInterfaceRemove(virInterfaceObjListPtr interfaces,
-                        virInterfaceObjPtr iface);
+                        const virInterfaceObjPtr iface);
 
 virInterfaceDefPtr virInterfaceDefParseString(const char *xmlStr);
 virInterfaceDefPtr virInterfaceDefParseFile(const char *filename);
 virInterfaceDefPtr virInterfaceDefParseNode(xmlDocPtr xml,
                                             xmlNodePtr root);
 
-char *virInterfaceDefFormat(const virInterfaceDef *def);
+char *virInterfaceDefFormat(const virInterfaceDefPtr def);
 
 void virInterfaceObjLock(virInterfaceObjPtr obj);
 void virInterfaceObjUnlock(virInterfaceObjPtr obj);
-
-typedef bool (*virInterfaceObjListFilter)(virConnectPtr conn,
-                                          virInterfaceDefPtr def);
-
-# define VIR_CONNECT_LIST_INTERFACES_FILTERS_ACTIVE   \
-                (VIR_CONNECT_LIST_INTERFACES_ACTIVE | \
-                 VIR_CONNECT_LIST_INTERFACES_INACTIVE)
 
 #endif /* __INTERFACE_CONF_H__ */

@@ -6,13 +6,17 @@
 
 #include "internal.h"
 #include "testutils.h"
-#include "vircommand.h"
+#include "command.h"
+
+static void errorHandler(void *userData ATTRIBUTE_UNUSED,
+                         virErrorPtr error ATTRIBUTE_UNUSED) {
+}
 
 static int
 mymain(void)
 {
     int id = 0;
-    bool ro = false;
+    int ro = 0;
     virConnectPtr conn;
     virDomainPtr dom;
     int status;
@@ -32,11 +36,11 @@ mymain(void)
     }
     virCommandFree(cmd);
 
-    virtTestQuiesceLibvirtErrors(true);
+    virSetErrorFunc(NULL, errorHandler);
 
     conn = virConnectOpen(NULL);
     if (conn == NULL) {
-        ro = true;
+        ro = 1;
         conn = virConnectOpenReadOnly(NULL);
     }
     if (conn == NULL) {
@@ -50,7 +54,7 @@ mymain(void)
     }
     virDomainFree(dom);
     virConnectClose(conn);
-    if (ro)
+    if (ro == 1)
         conn = virConnectOpenReadOnly(NULL);
     else
         conn = virConnectOpen(NULL);

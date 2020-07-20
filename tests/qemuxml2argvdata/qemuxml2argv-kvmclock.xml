@@ -8,9 +8,6 @@
     <type arch='i686' machine='pc'>hvm</type>
     <boot dev='network'/>
   </os>
-  <features>
-    <pae/>
-  </features>
   <clock offset='utc'>
     <timer name='kvmclock' present='no'/>
   </clock>
@@ -20,7 +17,6 @@
   <devices>
     <emulator>/usr/bin/kvm</emulator>
     <controller type='usb' index='0'/>
-    <controller type='pci' index='0' model='pci-root'/>
     <memballoon model='virtio'/>
   </devices>
 </domain>

@@ -1,7 +1,7 @@
 /*
  * cpu_conf.h: CPU XML handling
  *
- * Copyright (C) 2009-2011, 2013 Red Hat, Inc.
+ * Copyright (C) 2009-2011 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Authors:
  *      Jiri Denemark <jdenemar@redhat.com>
@@ -24,13 +24,9 @@
 #ifndef __VIR_CPU_CONF_H__
 # define __VIR_CPU_CONF_H__
 
-# include "virutil.h"
-# include "virbuffer.h"
-# include "virxml.h"
-# include "virbitmap.h"
-# include "virarch.h"
-
-# define VIR_CPU_VENDOR_ID_LENGTH 12
+# include "util.h"
+# include "buf.h"
+# include "xml.h"
 
 enum virCPUType {
     VIR_CPU_TYPE_HOST,
@@ -94,7 +90,7 @@ typedef struct _virCellDef virCellDef;
 typedef virCellDef *virCellDefPtr;
 struct _virCellDef {
    int cellid;
-   virBitmapPtr cpumask;	/* CPUs that are part of this node */
+   char *cpumask;	/* CPUs that are part of this node */
    char *cpustr;	/* CPUs stored in string form for dumpxml */
    unsigned int mem;	/* Node memory in kB */
 };
@@ -105,9 +101,8 @@ struct _virCPUDef {
     int type;           /* enum virCPUType */
     int mode;           /* enum virCPUMode */
     int match;          /* enum virCPUMatch */
-    virArch arch;
+    char *arch;
     char *model;
-    char *vendor_id;    /* vendor id returned by CPUID in the guest */
     int fallback;       /* enum virCPUFallback */
     char *vendor;
     unsigned int sockets;
@@ -131,14 +126,14 @@ virCPUDefFree(virCPUDefPtr def);
 
 int ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
 virCPUDefCopyModel(virCPUDefPtr dst,
-                   const virCPUDef *src,
+                   const virCPUDefPtr src,
                    bool resetPolicy);
 
 virCPUDefPtr
-virCPUDefCopy(const virCPUDef *cpu);
+virCPUDefCopy(const virCPUDefPtr cpu);
 
 virCPUDefPtr
-virCPUDefParseXML(xmlNodePtr node,
+virCPUDefParseXML(const xmlNodePtr node,
                   xmlXPathContextPtr ctxt,
                   enum virCPUType mode);
 
@@ -163,10 +158,5 @@ int
 virCPUDefAddFeature(virCPUDefPtr cpu,
                     const char *name,
                     int policy);
-
-int
-virCPUDefUpdateFeature(virCPUDefPtr cpu,
-                       const char *name,
-                       int policy);
 
 #endif /* __VIR_CPU_CONF_H__ */

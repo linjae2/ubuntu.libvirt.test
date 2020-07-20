@@ -2,7 +2,6 @@
  * nwfilter_learnipaddr.h: support for learning IP address used by a VM
  *                         on an interface
  *
- * Copyright (C) 2012-2013 Red Hat, Inc.
  * Copyright (C) 2010 IBM Corp.
  * Copyright (C) 2010 Stefan Berger
  *
@@ -17,8 +16,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Stefan Berger <stefanb@us.ibm.com>
  */
@@ -27,7 +26,6 @@
 # define __NWFILTER_LEARNIPADDR_H
 
 # include "conf/nwfilter_params.h"
-# include <net/if.h>
 
 enum howDetect {
   DETECT_DHCP = 1,
@@ -42,7 +40,7 @@ struct _virNWFilterIPAddrLearnReq {
     int ifindex;
     char linkdev[IF_NAMESIZE];
     enum virDomainNetType nettype;
-    virMacAddr macaddr;
+    unsigned char macaddr[VIR_MAC_BUFLEN];
     char *filtername;
     virNWFilterHashTablePtr filterparams;
     virNWFilterDriverStatePtr driver;
@@ -58,7 +56,7 @@ int virNWFilterLearnIPAddress(virNWFilterTechDriverPtr techdriver,
                               int ifindex,
                               const char *linkdev,
                               enum virDomainNetType nettype,
-                              const virMacAddr *macaddr,
+                              const unsigned char *macaddr,
                               const char *filtername,
                               virNWFilterHashTablePtr filterparams,
                               virNWFilterDriverStatePtr driver,
@@ -66,6 +64,9 @@ int virNWFilterLearnIPAddress(virNWFilterTechDriverPtr techdriver,
 
 virNWFilterIPAddrLearnReqPtr virNWFilterLookupLearnReq(int ifindex);
 int virNWFilterTerminateLearnReq(const char *ifname);
+
+int virNWFilterDelIpAddrForIfname(const char *ifname, const char *ipaddr);
+virNWFilterVarValuePtr virNWFilterGetIpAddrForIfname(const char *ifname);
 
 int virNWFilterLockIface(const char *ifname) ATTRIBUTE_RETURN_CHECK;
 void virNWFilterUnlockIface(const char *ifname);

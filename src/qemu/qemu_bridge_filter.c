@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2007-2009, 2013 Red Hat, Inc.
  * Copyright (C) 2009 IBM Corp.
+ * Copyright (C) 2007-2009 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -13,8 +13,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Authors:
  *     Gerhard Stenzel <gerhard.stenzel@de.ibm.com>
@@ -22,18 +22,19 @@
 
 #include <config.h>
 
-#include "virebtables.h"
+#include "ebtables.h"
 #include "qemu_conf.h"
 #include "qemu_driver.h"
-#include "virerror.h"
-#include "virlog.h"
+#include "util.h"
+#include "virterror_internal.h"
+#include "logging.h"
 
 #include "qemu_bridge_filter.h"
 
 #define VIR_FROM_THIS VIR_FROM_QEMU
 
 int
-networkAddEbtablesRules(virQEMUDriverPtr driver) {
+networkAddEbtablesRules(struct qemud_driver *driver) {
     int err;
 
     /* Set forward policy to DROP */
@@ -49,7 +50,7 @@ networkAddEbtablesRules(virQEMUDriverPtr driver) {
 
 
 int
-networkDisableAllFrames(virQEMUDriverPtr driver) {
+networkDisableAllFrames(struct qemud_driver *driver) {
     int err;
 
     /* add default rules */
@@ -63,10 +64,10 @@ networkDisableAllFrames(virQEMUDriverPtr driver) {
 }
 
 int
-networkAllowMacOnPort(virQEMUDriverPtr driver,
+networkAllowMacOnPort(struct qemud_driver *driver,
                       const char * ifname,
-                      const virMacAddr *mac)
-{
+                      const unsigned char * mac) {
+
     int err;
 
     /* allow this combination of macaddr and ifname */
@@ -84,10 +85,10 @@ networkAllowMacOnPort(virQEMUDriverPtr driver,
 
 
 int
-networkDisallowMacOnPort(virQEMUDriverPtr driver,
+networkDisallowMacOnPort(struct qemud_driver *driver,
                          const char * ifname,
-                         const virMacAddr *mac)
-{
+                         const unsigned char * mac) {
+
     int err;
 
     /* disallow this combination of macaddr and ifname */

@@ -1,7 +1,5 @@
 #include <config.h>
 
-#include "testutils.h"
-
 #ifdef WITH_OPENVZ
 
 # include <stdio.h>
@@ -9,11 +7,10 @@
 # include <unistd.h>
 
 # include "internal.h"
-# include "viralloc.h"
+# include "memory.h"
+# include "testutils.h"
+# include "util.h"
 # include "openvz/openvz_conf.h"
-# include "virstring.h"
-
-# define VIR_FROM_THIS VIR_FROM_OPENVZ
 
 static int
 testLocateConfFile(int vpsid ATTRIBUTE_UNUSED, char **conffile,
@@ -38,7 +35,7 @@ static int
 testReadConfigParam(const void *data ATTRIBUTE_UNUSED)
 {
     int result = -1;
-    size_t i;
+    int i;
     char *conf = NULL;
     char *value = NULL;
 
@@ -105,8 +102,8 @@ testReadNetworkConf(const void *data ATTRIBUTE_UNUSED)
         "</domain>\n";
 
     if (VIR_ALLOC(def) < 0 ||
-        VIR_STRDUP(def->os.type, "exe") < 0 ||
-        VIR_STRDUP(def->os.init, "/sbin/init") < 0)
+        !(def->os.type = strdup("exe")) ||
+        !(def->os.init = strdup("/sbin/init")))
         goto cleanup;
 
     def->virtType = VIR_DOMAIN_VIRT_OPENVZ;
@@ -148,7 +145,7 @@ mymain(void)
 
 # define DO_TEST(_name)                                                       \
         do {                                                                  \
-            if (virtTestRun("OpenVZ "#_name, test##_name,                     \
+            if (virtTestRun("OpenVZ "#_name, 1, test##_name,                  \
                             NULL) < 0) {                                      \
                 result = -1;                                                  \
             }                                                                 \
@@ -163,6 +160,7 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
+# include "testutils.h"
 
 int main(void)
 {

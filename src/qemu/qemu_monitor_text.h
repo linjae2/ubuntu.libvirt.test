@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -90,7 +90,7 @@ int qemuMonitorTextExpirePassword(qemuMonitorPtr mon,
                                   const char *expire_time);
 int qemuMonitorTextSetBalloon(qemuMonitorPtr mon,
                               unsigned long newmem);
-int qemuMonitorTextSetCPU(qemuMonitorPtr mon, int cpu, bool online);
+int qemuMonitorTextSetCPU(qemuMonitorPtr mon, int cpu, int online);
 
 int qemuMonitorTextEjectMedia(qemuMonitorPtr mon,
                               const char *dev_name,
@@ -117,7 +117,10 @@ int qemuMonitorTextSetMigrationDowntime(qemuMonitorPtr mon,
                                         unsigned long long downtime);
 
 int qemuMonitorTextGetMigrationStatus(qemuMonitorPtr mon,
-                                      qemuMonitorMigrationStatusPtr status);
+                                      int *status,
+                                      unsigned long long *transferred,
+                                      unsigned long long *remaining,
+                                      unsigned long long *total);
 
 int qemuMonitorTextMigrate(qemuMonitorPtr mon,
                            unsigned int flags,
@@ -144,20 +147,20 @@ int qemuMonitorTextAddUSBDeviceMatch(qemuMonitorPtr mon,
 
 
 int qemuMonitorTextAddPCIHostDevice(qemuMonitorPtr mon,
-                                    virDevicePCIAddress *hostAddr,
-                                    virDevicePCIAddress *guestAddr);
+                                    virDomainDevicePCIAddress *hostAddr,
+                                    virDomainDevicePCIAddress *guestAddr);
 
 int qemuMonitorTextAddPCIDisk(qemuMonitorPtr mon,
                               const char *path,
                               const char *bus,
-                              virDevicePCIAddress *guestAddr);
+                              virDomainDevicePCIAddress *guestAddr);
 
 int qemuMonitorTextAddPCINetwork(qemuMonitorPtr mon,
                                  const char *nicstr,
-                                 virDevicePCIAddress *guestAddr);
+                                 virDomainDevicePCIAddress *guestAddr);
 
 int qemuMonitorTextRemovePCIDevice(qemuMonitorPtr mon,
-                                   virDevicePCIAddress *guestAddr);
+                                   virDomainDevicePCIAddress *guestAddr);
 
 int qemuMonitorTextSendFileHandle(qemuMonitorPtr mon,
                                   const char *fdname,
@@ -184,11 +187,11 @@ int qemuMonitorTextGetPtyPaths(qemuMonitorPtr mon,
 
 int qemuMonitorTextAttachPCIDiskController(qemuMonitorPtr mon,
                                            const char *bus,
-                                           virDevicePCIAddress *guestAddr);
+                                           virDomainDevicePCIAddress *guestAddr);
 
 int qemuMonitorTextAttachDrive(qemuMonitorPtr mon,
                                const char *drivestr,
-                               virDevicePCIAddress *controllerAddr,
+                               virDomainDevicePCIAddress *controllerAddr,
                                virDomainDeviceDriveAddress *driveAddr);
 
 int qemuMonitorTextGetAllPCIAddresses(qemuMonitorPtr mon,
@@ -213,6 +216,10 @@ int qemuMonitorTextSetDrivePassphrase(qemuMonitorPtr mon,
 int qemuMonitorTextCreateSnapshot(qemuMonitorPtr mon, const char *name);
 int qemuMonitorTextLoadSnapshot(qemuMonitorPtr mon, const char *name);
 int qemuMonitorTextDeleteSnapshot(qemuMonitorPtr mon, const char *name);
+
+int qemuMonitorTextDiskSnapshot(qemuMonitorPtr mon,
+                                const char *device,
+                                const char *file);
 
 int qemuMonitorTextArbitraryCommand(qemuMonitorPtr mon, const char *cmd,
                                     char **reply);

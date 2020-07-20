@@ -1,5 +1,5 @@
 /* fstat() replacement.
-   Copyright (C) 2011-2014 Free Software Foundation, Inc.
+   Copyright (C) 2011-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
@@ -24,14 +24,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #if _GL_WINDOWS_64_BIT_ST_SIZE
-# undef stat /* avoid warning on mingw64 with _FILE_OFFSET_BITS=64 */
 # define stat _stati64
-# undef fstat /* avoid warning on mingw64 with _FILE_OFFSET_BITS=64 */
 # define fstat _fstati64
 #endif
 #undef __need_system_sys_stat_h
 
-static int
+static inline int
 orig_fstat (int fd, struct stat *buf)
 {
   return fstat (fd, buf);
@@ -51,7 +49,7 @@ orig_fstat (int fd, struct stat *buf)
 #endif
 
 #if HAVE_MSVC_INVALID_PARAMETER_HANDLER
-static int
+static inline int
 fstat_nothrow (int fd, struct stat *buf)
 {
   int result;

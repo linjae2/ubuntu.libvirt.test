@@ -8,13 +8,6 @@ set -v
 test -n "$1" && RESULTS=$1 || RESULTS=results.log
 : ${AUTOBUILD_INSTALL_ROOT=$HOME/builder}
 
-# If run under the autobuilder, we must use --nodeps with rpmbuild;
-# but this can lead to odd error diagnosis for normal development.
-nodeps=
-if test "${AUTOBUILD_COUNTER+set}"; then
-  nodeps=--nodeps
-fi
-
 test -f Makefile && make -k distclean || :
 rm -rf coverage
 
@@ -25,11 +18,9 @@ cd build
 # Run with options not normally exercised by the rpm build, for
 # more complete code coverage.
 ../autogen.sh --prefix="$AUTOBUILD_INSTALL_ROOT" \
-  --enable-expensive-tests \
   --enable-test-coverage \
   --disable-nls \
-  --enable-werror \
-  --enable-static
+  --enable-werror
 
 # If the MAKEFLAGS envvar does not yet include a -j option,
 # add -jN where N depends on the number of processors.
@@ -59,66 +50,44 @@ test -x /usr/bin/lcov && make cov
 rm -f *.tar.gz
 make dist
 
-if test -n "$AUTOBUILD_COUNTER" ; then
+if [ -n "$AUTOBUILD_COUNTER" ]; then
   EXTRA_RELEASE=".auto$AUTOBUILD_COUNTER"
 else
   NOW=`date +"%s"`
   EXTRA_RELEASE=".$USER$NOW"
 fi
 
-if test -f /usr/bin/rpmbuild ; then
-  rpmbuild $nodeps \
+if [ -f /usr/bin/rpmbuild ]; then
+  rpmbuild --nodeps \
      --define "extra_release $EXTRA_RELEASE" \
      --define "_sourcedir `pwd`" \
      -ba --clean libvirt.spec
 fi
 
-# Test mingw32 cross-compile
-if test -x /usr/bin/i686-w64-mingw32-gcc ; then
+# Test mingw cross-compile
+if [ -x /usr/bin/i686-pc-mingw32-gcc ]; then
   make distclean
 
-  PKG_CONFIG_LIBDIR="/usr/i686-w64-mingw32/sys-root/mingw/lib/pkgconfig:/usr/i686-w64-mingw32/sys-root/mingw/share/pkgconfig" \
-  PKG_CONFIG_PATH="$AUTOBUILD_INSTALL_ROOT/i686-w64-mingw32/sys-root/mingw/lib/pkgconfig" \
-  CC="i686-w64-mingw32-gcc" \
+  PKG_CONFIG_PATH="$AUTOBUILD_INSTALL_ROOT/i686-pc-mingw32/sys-root/mingw/lib/pkgconfig" \
+  CC="i686-pc-mingw32-gcc" \
   ../configure \
-    --build=$(uname -m)-w64-linux \
-    --host=i686-w64-mingw32 \
-    --prefix="$AUTOBUILD_INSTALL_ROOT/i686-w64-mingw32/sys-root/mingw" \
-    --enable-expensive-tests \
+    --build=$(uname -m)-pc-linux \
+    --host=i686-pc-mingw32 \
+    --prefix="$AUTOBUILD_INSTALL_ROOT/i686-pc-mingw32/sys-root/mingw" \
     --enable-werror \
-    --without-libvirtd
+    --without-libvirtd \
+    --without-python
 
   make
   make install
 
-fi
+  #set -o pipefail
+  #make check 2>&1 | tee "$RESULTS"
 
-# Test mingw64 cross-compile
-if test -x /usr/bin/x86_64-w64-mingw32-gcc ; then
-  make distclean
-
-  PKG_CONFIG_LIBDIR="/usr/x86_64-w64-mingw32/sys-root/mingw/lib/pkgconfig:/usr/x86_64-w64-mingw32/sys-root/mingw/share/pkgconfig" \
-  PKG_CONFIG_PATH="$AUTOBUILD_INSTALL_ROOT/x86_64-w64-mingw32/sys-root/mingw/lib/pkgconfig" \
-  CC="x86_64-w64-mingw32-gcc" \
-  ../configure \
-    --build=$(uname -m)-w64-linux \
-    --host=x86_64-w64-mingw32 \
-    --prefix="$AUTOBUILD_INSTALL_ROOT/x86_64-w64-mingw32/sys-root/mingw" \
-    --enable-expensive-tests \
-    --enable-werror \
-    --without-libvirtd
-
-  make
-  make install
-
-fi
-
-
-if test -x /usr/bin/i686-w64-mingw32-gcc && test -x /usr/bin/x86_64-w64-mingw32-gcc ; then
-  if test -f /usr/bin/rpmbuild ; then
-    rpmbuild $nodeps \
+  if [ -f /usr/bin/rpmbuild ]; then
+    rpmbuild --nodeps \
        --define "extra_release $EXTRA_RELEASE" \
        --define "_sourcedir `pwd`" \
-       -ba --clean mingw-libvirt.spec
+       -ba --clean mingw32-libvirt.spec
   fi
 fi

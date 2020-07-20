@@ -8,21 +8,9 @@
 # actually fixes for 64 bit, so this file is necessary.  Arguably
 # so is the type-punning fix.
 #
-# Copyright (C) 2007, 2011-2013 Red Hat, Inc.
+# Copyright (C) 2007, 2011-2012 Red Hat, Inc.
 #
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library.  If not, see
-# <http://www.gnu.org/licenses/>.
+# See COPYING for the license of this software.
 #
 # Richard Jones <rjones@redhat.com>
 
@@ -43,7 +31,7 @@ open RPCGEN, "-|", $rpcgen, $mode, $xdrdef
 open TARGET, ">$target"
     or die "cannot create $target: $!";
 
-my $fixup = $^O eq "linux" || $^O eq "cygwin" || $^O eq "gnukfreebsd" || $^O eq "freebsd";
+my $fixup = $^O eq "linux" || $^O eq "cygwin";
 
 if ($mode eq "-c") {
     print TARGET "#include <config.h>\n";
@@ -53,14 +41,14 @@ while (<RPCGEN>) {
     # We only want to fixup the GLibc rpcgen output
     # So just print data unchanged, if non-Linux
     unless ($fixup) {
-        print TARGET;
-        next;
+	print TARGET;
+	next;
     }
 
     if (m/^{/) {
-        $in_function = 1;
-        print TARGET;
-        next;
+	$in_function = 1;
+	print TARGET;
+	next;
     }
 
     s/\t/        /g;
@@ -76,58 +64,58 @@ while (<RPCGEN>) {
     s/(?<!IXDR_GET_INT32 )IXDR_GET_LONG/IXDR_GET_INT32/g;
 
     if (m/^}/) {
-        $in_function = 0;
+	$in_function = 0;
 
-        # Note: The body of the function is in @function.
+	# Note: The body of the function is in @function.
 
-        # Remove decl of buf, if buf isn't used in the function.
-        my @uses = grep /[^.>]\bbuf\b/, @function;
-        @function = grep !/[^.>]\bbuf\b/, @function if @uses == 1;
+	# Remove decl of buf, if buf isn't used in the function.
+	my @uses = grep /[^.>]\bbuf\b/, @function;
+	@function = grep !/[^.>]\bbuf\b/, @function if @uses == 1;
 
-        # Remove decl of i, if i isn't used in the function.
-        @uses = grep /[^.>]\bi\b/, @function;
-        @function = grep !/[^.>]\bi\b/, @function if @uses == 1;
+	# Remove decl of i, if i isn't used in the function.
+	@uses = grep /[^.>]\bi\b/, @function;
+	@function = grep !/[^.>]\bi\b/, @function if @uses == 1;
 
-        # (char **)&objp->... gives:
-        # warning: dereferencing type-punned pointer will break
-        #   strict-aliasing rules
-        # so rewrite it.
-        my %uses = ();
-        my $i = 0;
-        foreach (@function) {
-            $uses{$1} = $i++ if m/\(char \*\*\)\&(objp->[a-z_.]+_val)/i;
-        }
-        if (keys %uses >= 1) {
-            my $i = 1;
+	# (char **)&objp->... gives:
+	# warning: dereferencing type-punned pointer will break
+	#   strict-aliasing rules
+	# so rewrite it.
+	my %uses = ();
+	my $i = 0;
+	foreach (@function) {
+	    $uses{$1} = $i++ if m/\(char \*\*\)\&(objp->[a-z_.]+_val)/i;
+	}
+	if (keys %uses >= 1) {
+	    my $i = 1;
 
-            foreach (keys %uses) {
-                $i = $uses{$_};
-                unshift @function,
-                ("        char **objp_cpp$i = (char **) (void *) &$_;\n");
-                $i++;
-            }
-            @function =
-                map { s{\(char \*\*\)\&(objp->[a-z_.]+_val)}
-                       {objp_cpp$uses{$1}}gi; $_ } @function;
-        }
+	    foreach (keys %uses) {
+		$i = $uses{$_};
+		unshift @function,
+		("        char **objp_cpp$i = (char **) (void *) &$_;\n");
+		$i++;
+	    }
+	    @function =
+		map { s{\(char \*\*\)\&(objp->[a-z_.]+_val)}
+		       {objp_cpp$uses{$1}}gi; $_ } @function;
+	}
 
-        # The code uses 'IXDR_PUT_{U_,}LONG' but it's wrong in two
-        # ways: Firstly these functions are deprecated and don't
-        # work on 64 bit platforms.  Secondly the return value should
-        # be ignored.  Correct both these mistakes.
-        @function =
-            map { s/\bIXDR_PUT_((U_)?)LONG\b/(void)IXDR_PUT_$1INT32/; $_ }
-            map { s/\bXDR_INLINE\b/(int32_t*)XDR_INLINE/; $_ }
-            @function;
+	# The code uses 'IXDR_PUT_{U_,}LONG' but it's wrong in two
+	# ways: Firstly these functions are deprecated and don't
+	# work on 64 bit platforms.  Secondly the return value should
+	# be ignored.  Correct both these mistakes.
+	@function =
+	    map { s/\bIXDR_PUT_((U_)?)LONG\b/(void)IXDR_PUT_$1INT32/; $_ }
+	    map { s/\bXDR_INLINE\b/(int32_t*)XDR_INLINE/; $_ }
+	    @function;
 
-        print TARGET (join ("", @function));
-        @function = ();
+	print TARGET (join ("", @function));
+	@function = ();
     }
 
     unless ($in_function) {
-        print TARGET;
+	print TARGET;
     } else {
-        push @function, $_;
+	push @function, $_;
     }
 }
 

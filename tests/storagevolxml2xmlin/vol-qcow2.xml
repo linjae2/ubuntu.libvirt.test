@@ -19,7 +19,7 @@
     </encryption>
   </target>
   <backingStore>
-    <path>/dev/null</path>
+    <path>/var/lib/libvirt/images/BaseDemo.img</path>
     <format type='raw'/>
     <permissions>
       <mode>0644</mode>

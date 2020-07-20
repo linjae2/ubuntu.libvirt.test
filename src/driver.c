@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -25,11 +25,10 @@
 #include <unistd.h>
 
 #include "driver.h"
-#include "viralloc.h"
-#include "virlog.h"
-#include "virutil.h"
+#include "memory.h"
+#include "logging.h"
+#include "util.h"
 #include "configmake.h"
-#include "virstring.h"
 
 #define DEFAULT_DRIVER_DIR LIBDIR "/libvirt/connection-driver"
 
@@ -39,34 +38,20 @@
 
 # include <dlfcn.h>
 
-static const char *moddir = NULL;
-
-void
-virDriverModuleInitialize(const char *defmoddir)
-{
-    const char *custommoddir = virGetEnvBlockSUID("LIBVIRT_DRIVER_DIR");
-    if (custommoddir)
-        moddir = custommoddir;
-    else if (defmoddir)
-        moddir = defmoddir;
-    else
-        moddir = DEFAULT_DRIVER_DIR;
-    VIR_DEBUG("Module dir %s", moddir);
-}
-
 void *
 virDriverLoadModule(const char *name)
 {
+    const char *moddir = getenv("LIBVIRT_DRIVER_DIR");
     char *modfile = NULL, *regfunc = NULL;
     void *handle = NULL;
     int (*regsym)(void);
 
     if (moddir == NULL)
-        virDriverModuleInitialize(NULL);
+        moddir = DEFAULT_DRIVER_DIR;
 
     VIR_DEBUG("Module load %s", name);
 
-    if (virAsprintfQuiet(&modfile, "%s/libvirt_driver_%s.so", moddir, name) < 0)
+    if (virAsprintf(&modfile, "%s/libvirt_driver_%s.so", moddir, name) < 0)
         return NULL;
 
     if (access(modfile, R_OK) < 0) {
@@ -74,13 +59,13 @@ virDriverLoadModule(const char *name)
         goto cleanup;
     }
 
-    handle = dlopen(modfile, RTLD_NOW | RTLD_GLOBAL);
+    handle = dlopen(modfile, RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
         VIR_ERROR(_("failed to load module %s %s"), modfile, dlerror());
         goto cleanup;
     }
 
-    if (virAsprintfQuiet(&regfunc, "%sRegister", name) < 0) {
+    if (virAsprintf(&regfunc, "%sRegister", name) < 0) {
         goto cleanup;
     }
 

@@ -12,8 +12,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -24,9 +24,10 @@
 #include <signal.h>
 
 #include "testutils.h"
-#include "virerror.h"
-#include "viralloc.h"
-#include "virlog.h"
+#include "util.h"
+#include "virterror_internal.h"
+#include "memory.h"
+#include "logging.h"
 
 #include "viruri.h"
 
@@ -92,7 +93,7 @@ static int testURIParse(const void *args)
         goto cleanup;
     }
 
-    for (i = 0; data->params && data->params[i].name && i < uri->paramsCount; i++) {
+    for (i = 0 ; data->params && data->params[i].name && i < uri->paramsCount ; i++) {
         if (!STREQ_NULLABLE(data->params[i].name, uri->params[i].name)) {
             VIR_DEBUG("Expected param name %zu '%s', actual '%s'",
                       i, data->params[i].name, uri->params[i].name);
@@ -149,7 +150,7 @@ mymain(void)
             uri, (uri_out) ? (uri_out) : (uri), scheme, server, port,   \
             path, query, fragment, user, params                         \
         };                                                              \
-        if (virtTestRun("Test URI " # uri, testURIParse, &data) < 0)    \
+        if (virtTestRun("Test URI " # uri,  1, testURIParse, &data) < 0) \
             ret = -1;                                                   \
     } while (0)
 #define TEST_PARSE(uri, scheme, server, port, path, query, fragment, user, params) \
@@ -182,23 +183,19 @@ mymain(void)
         { (char*)"foo", (char*)"two", false },
         { NULL, NULL, false },
     };
-#ifdef HAVE_XMLURI_QUERY_RAW
     virURIParam params3[] = {
         { (char*)"foo", (char*)"&one", false },
         { (char*)"bar", (char*)"&two", false },
         { NULL, NULL, false },
     };
-#endif
     virURIParam params4[] = {
         { (char*)"foo", (char*)"", false },
         { NULL, NULL, false },
     };
-#ifdef HAVE_XMLURI_QUERY_RAW
     virURIParam params5[] = {
         { (char*)"foo", (char*)"one two", false },
         { NULL, NULL, false },
     };
-#endif
     virURIParam params6[] = {
         { (char*)"foo", (char*)"one", false },
         { NULL, NULL, false },
@@ -208,16 +205,12 @@ mymain(void)
     TEST_PARAMS("foo=one&foo=two", "", params2);
     TEST_PARAMS("foo=one&&foo=two", "foo=one&foo=two", params2);
     TEST_PARAMS("foo=one;foo=two", "foo=one&foo=two", params2);
-#ifdef HAVE_XMLURI_QUERY_RAW
     TEST_PARAMS("foo=%26one&bar=%26two", "", params3);
-#endif
     TEST_PARAMS("foo", "foo=", params4);
     TEST_PARAMS("foo=", "", params4);
     TEST_PARAMS("foo=&", "foo=", params4);
     TEST_PARAMS("foo=&&", "foo=", params4);
-#ifdef HAVE_XMLURI_QUERY_RAW
     TEST_PARAMS("foo=one%20two", "", params5);
-#endif
     TEST_PARAMS("=bogus&foo=one", "foo=one", params6);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;

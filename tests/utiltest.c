@@ -6,9 +6,19 @@
 #include <unistd.h>
 
 #include "internal.h"
-#include "viralloc.h"
+#include "memory.h"
 #include "testutils.h"
-#include "virutil.h"
+#include "util.h"
+
+
+static void
+testQuietError(void *userData ATTRIBUTE_UNUSED,
+               virErrorPtr error ATTRIBUTE_UNUSED)
+{
+    /* nothing */
+}
+
+
 
 static const char* diskNames[] = {
     "sda",  "sdb",  "sdc",  "sdd",  "sde",  "sdf",  "sdg",  "sdh",  "sdi",  "sdj",  "sdk",  "sdl",  "sdm",  "sdn",  "sdo",  "sdp",  "sdq",  "sdr",  "sds",  "sdt",  "sdu",  "sdv",  "sdw",  "sdx",  "sdy",  "sdz",
@@ -26,7 +36,7 @@ static const char* diskNames[] = {
 static int
 testIndexToDiskName(const void *data ATTRIBUTE_UNUSED)
 {
-    size_t i;
+    int i;
     char *diskName = NULL;
 
     for (i = 0; i < ARRAY_CARDINALITY(diskNames); ++i) {
@@ -52,20 +62,19 @@ testIndexToDiskName(const void *data ATTRIBUTE_UNUSED)
 static int
 testDiskNameToIndex(const void *data ATTRIBUTE_UNUSED)
 {
-    size_t i;
-    int idx;
+    int i, k;
     char *diskName = NULL;
 
     for (i = 0; i < 100000; ++i) {
         VIR_FREE(diskName);
 
         diskName = virIndexToDiskName(i, "sd");
-        idx = virDiskNameToIndex(diskName);
+        k = virDiskNameToIndex(diskName);
 
-        if (idx < 0 || idx != i) {
+        if (k != i) {
             if (virTestGetDebug() > 0) {
-                fprintf(stderr, "\nExpect [%zu]\n", i);
-                fprintf(stderr, "Actual [%d]\n", idx);
+                fprintf(stderr, "\nExpect [%d]\n", i);
+                fprintf(stderr, "Actual [%d]\n", k);
             }
 
             VIR_FREE(diskName);
@@ -106,8 +115,7 @@ static struct testVersionString versions[] = {
 static int
 testParseVersionString(const void *data ATTRIBUTE_UNUSED)
 {
-    int result;
-    size_t i;
+    int i, result;
     unsigned long version;
 
     for (i = 0; i < ARRAY_CARDINALITY(versions); ++i) {
@@ -150,11 +158,11 @@ mymain(void)
 {
     int result = 0;
 
-    virtTestQuiesceLibvirtErrors(true);
+    virSetErrorFunc(NULL, testQuietError);
 
-#define DO_TEST(_name)                                                        \
+#define DO_TEST(_name)                                                  \
         do {                                                                  \
-            if (virtTestRun("Util "#_name, test##_name,                       \
+            if (virtTestRun("Util "#_name, 1, test##_name,                    \
                             NULL) < 0) {                                      \
                 result = -1;                                                  \
             }                                                                 \

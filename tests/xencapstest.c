@@ -6,16 +6,13 @@
 #include <unistd.h>
 
 #include "internal.h"
-#include "virxml.h"
+#include "xml.h"
 #include "testutils.h"
 #include "xen/xen_hypervisor.h"
 #include "virfile.h"
-#include "virstring.h"
-
-#define VIR_FROM_THIS VIR_FROM_NONE
 
 static int
-testCompareFiles(virArch hostmachine, const char *xml_rel,
+testCompareFiles(const char *hostmachine, const char *xml_rel,
                  const char *cpuinfo_rel, const char *capabilities_rel)
 {
   char *expectxml = NULL;
@@ -65,36 +62,36 @@ testCompareFiles(virArch hostmachine, const char *xml_rel,
   VIR_FORCE_FCLOSE(fp1);
   VIR_FORCE_FCLOSE(fp2);
 
-  virObjectUnref(caps);
+  virCapabilitiesFree(caps);
   return ret;
 }
 
 static int testXeni686(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_I686,
-                            "xencapsdata/xen-i686.xml",
-                            "xencapsdata/xen-i686.cpuinfo",
-                            "xencapsdata/xen-i686.caps");
+  return testCompareFiles("i686",
+                          "xencapsdata/xen-i686.xml",
+                          "xencapsdata/xen-i686.cpuinfo",
+                          "xencapsdata/xen-i686.caps");
 }
 
 static int testXeni686PAE(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_I686,
-                            "xencapsdata/xen-i686-pae.xml",
-                            "xencapsdata/xen-i686-pae.cpuinfo",
-                            "xencapsdata/xen-i686-pae.caps");
+  return testCompareFiles("i686",
+                          "xencapsdata/xen-i686-pae.xml",
+                          "xencapsdata/xen-i686-pae.cpuinfo",
+                          "xencapsdata/xen-i686-pae.caps");
 }
 
 static int testXeni686PAEHVM(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_I686,
-                            "xencapsdata/xen-i686-pae-hvm.xml",
-                            "xencapsdata/xen-i686-pae-hvm.cpuinfo",
-                            "xencapsdata/xen-i686-pae-hvm.caps");
+  return testCompareFiles("i686",
+                          "xencapsdata/xen-i686-pae-hvm.xml",
+                          "xencapsdata/xen-i686-pae-hvm.cpuinfo",
+                          "xencapsdata/xen-i686-pae-hvm.caps");
 }
 
 /* No PAE + HVM is non-sensical - all VMX capable
    CPUs have PAE */
 /*
 static int testXeni686HVM(const void *data ATTRIBUTE_UNUSED) {
-  return testCompareFiles(VIR_ARCH_I686,
+  return testCompareFiles("i686",
                           "xencapsdata/xen-i686-hvm.xml",
                           "xencapsdata/xen-i686.cpuinfo",
                           "xencapsdata/xen-i686-hvm.caps");
@@ -102,49 +99,49 @@ static int testXeni686HVM(const void *data ATTRIBUTE_UNUSED) {
 */
 
 static int testXenx86_64(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_X86_64,
-                            "xencapsdata/xen-x86_64.xml",
-                            "xencapsdata/xen-x86_64.cpuinfo",
-                            "xencapsdata/xen-x86_64.caps");
+  return testCompareFiles("x86_64",
+                          "xencapsdata/xen-x86_64.xml",
+                          "xencapsdata/xen-x86_64.cpuinfo",
+                          "xencapsdata/xen-x86_64.caps");
 }
 static int testXenx86_64HVM(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_X86_64,
-                            "xencapsdata/xen-x86_64-hvm.xml",
-                            "xencapsdata/xen-x86_64-hvm.cpuinfo",
-                            "xencapsdata/xen-x86_64-hvm.caps");
+  return testCompareFiles("x86_64",
+                          "xencapsdata/xen-x86_64-hvm.xml",
+                          "xencapsdata/xen-x86_64-hvm.cpuinfo",
+                          "xencapsdata/xen-x86_64-hvm.caps");
 }
 
 static int testXenia64(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_ITANIUM,
-                            "xencapsdata/xen-ia64.xml",
-                            "xencapsdata/xen-ia64.cpuinfo",
-                            "xencapsdata/xen-ia64.caps");
+  return testCompareFiles("ia64",
+                          "xencapsdata/xen-ia64.xml",
+                          "xencapsdata/xen-ia64.cpuinfo",
+                          "xencapsdata/xen-ia64.caps");
 }
 static int testXenia64BE(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_ITANIUM,
-                            "xencapsdata/xen-ia64-be.xml",
-                            "xencapsdata/xen-ia64-be.cpuinfo",
-                            "xencapsdata/xen-ia64-be.caps");
+  return testCompareFiles("ia64",
+                          "xencapsdata/xen-ia64-be.xml",
+                          "xencapsdata/xen-ia64-be.cpuinfo",
+                          "xencapsdata/xen-ia64-be.caps");
 }
 
 static int testXenia64HVM(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_ITANIUM,
-                            "xencapsdata/xen-ia64-hvm.xml",
-                            "xencapsdata/xen-ia64-hvm.cpuinfo",
-                            "xencapsdata/xen-ia64-hvm.caps");
+  return testCompareFiles("ia64",
+                          "xencapsdata/xen-ia64-hvm.xml",
+                          "xencapsdata/xen-ia64-hvm.cpuinfo",
+                          "xencapsdata/xen-ia64-hvm.caps");
 }
 static int testXenia64BEHVM(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_ITANIUM,
-                            "xencapsdata/xen-ia64-be-hvm.xml",
-                            "xencapsdata/xen-ia64-be-hvm.cpuinfo",
-                            "xencapsdata/xen-ia64-be-hvm.caps");
+  return testCompareFiles("ia64",
+                          "xencapsdata/xen-ia64-be-hvm.xml",
+                          "xencapsdata/xen-ia64-be-hvm.cpuinfo",
+                          "xencapsdata/xen-ia64-be-hvm.caps");
 }
 
 static int testXenppc64(const void *data ATTRIBUTE_UNUSED) {
-    return testCompareFiles(VIR_ARCH_PPC64,
-                            "xencapsdata/xen-ppc64.xml",
-                            "xencapsdata/xen-ppc64.cpuinfo",
-                            "xencapsdata/xen-ppc64.caps");
+  return testCompareFiles("ppc64",
+                          "xencapsdata/xen-ppc64.xml",
+                          "xencapsdata/xen-ppc64.cpuinfo",
+                          "xencapsdata/xen-ppc64.caps");
 }
 
 
@@ -163,54 +160,53 @@ mymain(void)
     int ret = 0;
 
     xenHypervisorInit(&hv_versions);
-    if (virInitialize() < 0)
-        return EXIT_FAILURE;
+    virInitialize();
 
     if (virtTestRun("Capabilities for i686, no PAE, no HVM",
-                    testXeni686, NULL) != 0)
+                    1, testXeni686, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for i686, PAE, no HVM",
-                    testXeni686PAE, NULL) != 0)
+                    1, testXeni686PAE, NULL) != 0)
         ret = -1;
 
     /* No PAE + HVM is non-sensical - all VMX capable
        CPUs have PAE */
     /*if (virtTestRun("Capabilities for i686, no PAE, HVM",
-                    testXeni686HVM, NULL) != 0)
+                    1, testXeni686HVM, NULL) != 0)
         ret = -1;
     */
 
     if (virtTestRun("Capabilities for i686, PAE, HVM",
-                    testXeni686PAEHVM, NULL) != 0)
+                    1, testXeni686PAEHVM, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for x86_64, no HVM",
-                    testXenx86_64, NULL) != 0)
+                    1, testXenx86_64, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for x86_64, HVM",
-                    testXenx86_64HVM, NULL) != 0)
+                    1, testXenx86_64HVM, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for ia64, no HVM, LE",
-                    testXenia64, NULL) != 0)
+                    1, testXenia64, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for ia64, HVM, LE",
-                    testXenia64HVM, NULL) != 0)
+                    1, testXenia64HVM, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for ia64, no HVM, BE",
-                    testXenia64BE, NULL) != 0)
+                    1, testXenia64BE, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for ia64, HVM, BE",
-                    testXenia64BEHVM, NULL) != 0)
+                    1, testXenia64BEHVM, NULL) != 0)
         ret = -1;
 
     if (virtTestRun("Capabilities for ppc64",
-                    testXenppc64, NULL) != 0)
+                    1, testXenppc64, NULL) != 0)
         ret = -1;
 
 

@@ -10,16 +10,11 @@
 
 #include "internal.h"
 #include "xen/xend_internal.h"
-#include "xen/xen_driver.h"
 #include "xenxs/xen_sxpr.h"
 #include "testutils.h"
 #include "testutilsxen.h"
-#include "virstring.h"
-
-#define VIR_FROM_THIS VIR_FROM_NONE
 
 static virCapsPtr caps;
-static virDomainXMLOptionPtr xmlopt;
 
 static int
 testCompareFiles(const char *xml, const char *sexpr, int xendConfigVersion)
@@ -36,15 +31,9 @@ testCompareFiles(const char *xml, const char *sexpr, int xendConfigVersion)
   if (virtTestLoadFile(sexpr, &sexprData) < 0)
       goto fail;
 
-  if (!(def = virDomainDefParseString(xmlData, caps, xmlopt,
-                                      1 << VIR_DOMAIN_VIRT_XEN,
+  if (!(def = virDomainDefParseString(caps, xmlData, 1 << VIR_DOMAIN_VIRT_XEN,
                                       VIR_DOMAIN_XML_INACTIVE)))
       goto fail;
-
-  if (!virDomainDefCheckABIStability(def, def)) {
-      fprintf(stderr, "ABI stability check failed on %s", xml);
-      goto fail;
-  }
 
   if (!(gotsexpr = xenFormatSxpr(NULL, def, xendConfigVersion)))
       goto fail;
@@ -106,14 +95,11 @@ mymain(void)
         struct testInfo info = { in, out, name, version };             \
         virResetLastError();                                           \
         if (virtTestRun("Xen XML-2-SEXPR " in " -> " out,              \
-                        testCompareHelper, &info) < 0)                 \
+                        1, testCompareHelper, &info) < 0)     \
             ret = -1;                                                  \
     } while (0)
 
     if (!(caps = testXenCapsInit()))
-        return EXIT_FAILURE;
-
-    if (!(xmlopt = xenDomainXMLConfInit()))
         return EXIT_FAILURE;
 
     DO_TEST("pv", "pv", "pvtest", 1);
@@ -182,8 +168,7 @@ mymain(void)
     DO_TEST("boot-grub", "boot-grub", "fvtest", 1);
     DO_TEST("escape", "escape", "fvtest", 1);
 
-    virObjectUnref(caps);
-    virObjectUnref(xmlopt);
+    virCapabilitiesFree(caps);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

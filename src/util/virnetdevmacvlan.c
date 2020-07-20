@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Red Hat, Inc.
+ * Copyright (C) 2010-2012 Red Hat, Inc.
  * Copyright (C) 2010-2012 IBM Corporation
  *
  * This library is free software; you can redistribute it and/or
@@ -13,8 +13,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Authors:
  *     Stefan Berger <stefanb@us.ibm.com>
@@ -29,11 +29,15 @@
 
 #include "virnetdevmacvlan.h"
 #include "virmacaddr.h"
-#include "virerror.h"
-#include "virthread.h"
-#include "virstring.h"
+#include "util.h"
+#include "virterror_internal.h"
 
 #define VIR_FROM_THIS VIR_FROM_NET
+
+#define virNetDevError(code, ...)                                       \
+    virReportErrorHelper(VIR_FROM_NET, code, __FILE__,                  \
+                         __FUNCTION__, __LINE__, __VA_ARGS__)
+
 
 VIR_ENUM_IMPL(virNetDevMacVLanMode, VIR_NETDEV_MACVLAN_MODE_LAST,
               "vepa",
@@ -49,7 +53,7 @@ VIR_ENUM_IMPL(virNetDevMacVLanMode, VIR_NETDEV_MACVLAN_MODE_LAST,
 # include <sys/socket.h>
 # include <sys/ioctl.h>
 
-# include <net/if.h>
+# include <linux/if.h>
 # include <linux/if_tun.h>
 
 /* Older kernels lacked this enum value.  */
@@ -57,9 +61,9 @@ VIR_ENUM_IMPL(virNetDevMacVLanMode, VIR_NETDEV_MACVLAN_MODE_LAST,
 #  define MACVLAN_MODE_PASSTHRU 8
 # endif
 
-# include "viralloc.h"
-# include "virlog.h"
-# include "viruuid.h"
+# include "memory.h"
+# include "logging.h"
+# include "uuid.h"
 # include "virfile.h"
 # include "virnetlink.h"
 # include "virnetdev.h"
@@ -71,19 +75,6 @@ VIR_ENUM_IMPL(virNetDevMacVLanMode, VIR_NETDEV_MACVLAN_MODE_LAST,
 
 # define MACVLAN_NAME_PREFIX	"macvlan"
 # define MACVLAN_NAME_PATTERN	"macvlan%d"
-
-virMutex virNetDevMacVLanCreateMutex;
-
-static int virNetDevMacVLanCreateMutexOnceInit(void)
-{
-    if (virMutexInit(&virNetDevMacVLanCreateMutex) < 0) {
-        virReportSystemError(errno, "%s", _("unable to init mutex"));
-        return -1;
-    }
-    return 0;
-}
-
-VIR_ONCE_GLOBAL_INIT(virNetDevMacVLanCreateMutex);
 
 /**
  * virNetDevMacVLanCreate:
@@ -104,16 +95,17 @@ VIR_ONCE_GLOBAL_INIT(virNetDevMacVLanCreateMutex);
 int
 virNetDevMacVLanCreate(const char *ifname,
                        const char *type,
-                       const virMacAddr *macaddress,
+                       const unsigned char *macaddress,
                        const char *srcdev,
                        uint32_t macvlan_mode,
                        int *retry)
 {
     int rc = -1;
-    struct nlmsghdr *resp = NULL;
+    struct nlmsghdr *resp;
     struct nlmsgerr *err;
     struct ifinfomsg ifinfo = { .ifi_family = AF_UNSPEC };
     int ifindex;
+    unsigned char *recvbuf = NULL;
     unsigned int recvbuflen;
     struct nl_msg *nl_msg;
     struct nlattr *linkinfo, *info_data;
@@ -162,13 +154,14 @@ virNetDevMacVLanCreate(const char *ifname,
 
     nla_nest_end(nl_msg, linkinfo);
 
-    if (virNetlinkCommand(nl_msg, &resp, &recvbuflen, 0, 0,
-                          NETLINK_ROUTE, 0) < 0) {
+    if (virNetlinkCommand(nl_msg, &recvbuf, &recvbuflen, 0, 0) < 0) {
         goto cleanup;
     }
 
-    if (recvbuflen < NLMSG_LENGTH(0) || resp == NULL)
+    if (recvbuflen < NLMSG_LENGTH(0) || recvbuf == NULL)
         goto malformed_resp;
+
+    resp = (struct nlmsghdr *)recvbuf;
 
     switch (resp->nlmsg_type) {
     case NLMSG_ERROR:
@@ -187,8 +180,8 @@ virNetDevMacVLanCreate(const char *ifname,
 
         default:
             virReportSystemError(-err->error,
-                                 _("error creating %s type of interface attach to %s"),
-                                 type, srcdev);
+                                 _("error creating %s type of interface"),
+                                 type);
             goto cleanup;
         }
         break;
@@ -203,16 +196,16 @@ virNetDevMacVLanCreate(const char *ifname,
     rc = 0;
 cleanup:
     nlmsg_free(nl_msg);
-    VIR_FREE(resp);
+    VIR_FREE(recvbuf);
     return rc;
 
 malformed_resp:
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+    virNetDevError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("malformed netlink response message"));
     goto cleanup;
 
 buffer_too_small:
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+    virNetDevError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("allocated netlink buffer is too small"));
     goto cleanup;
 }
@@ -229,9 +222,10 @@ buffer_too_small:
 int virNetDevMacVLanDelete(const char *ifname)
 {
     int rc = -1;
-    struct nlmsghdr *resp = NULL;
+    struct nlmsghdr *resp;
     struct nlmsgerr *err;
     struct ifinfomsg ifinfo = { .ifi_family = AF_UNSPEC };
+    unsigned char *recvbuf = NULL;
     unsigned int recvbuflen;
     struct nl_msg *nl_msg;
 
@@ -248,13 +242,14 @@ int virNetDevMacVLanDelete(const char *ifname)
     if (nla_put(nl_msg, IFLA_IFNAME, strlen(ifname)+1, ifname) < 0)
         goto buffer_too_small;
 
-    if (virNetlinkCommand(nl_msg, &resp, &recvbuflen, 0, 0,
-                          NETLINK_ROUTE, 0) < 0) {
+    if (virNetlinkCommand(nl_msg, &recvbuf, &recvbuflen, 0, 0) < 0) {
         goto cleanup;
     }
 
-    if (recvbuflen < NLMSG_LENGTH(0) || resp == NULL)
+    if (recvbuflen < NLMSG_LENGTH(0) || recvbuf == NULL)
         goto malformed_resp;
+
+    resp = (struct nlmsghdr *)recvbuf;
 
     switch (resp->nlmsg_type) {
     case NLMSG_ERROR:
@@ -280,16 +275,16 @@ int virNetDevMacVLanDelete(const char *ifname)
     rc = 0;
 cleanup:
     nlmsg_free(nl_msg);
-    VIR_FREE(resp);
+    VIR_FREE(recvbuf);
     return rc;
 
 malformed_resp:
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+    virNetDevError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("malformed netlink response message"));
     goto cleanup;
 
 buffer_too_small:
-    virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+    virNetDevError(VIR_ERR_INTERNAL_ERROR, "%s",
                    _("allocated netlink buffer is too small"));
     goto cleanup;
 }
@@ -332,7 +327,7 @@ int virNetDevMacVLanTapOpen(const char *ifname,
 
     if (fscanf(file, "%d", &ifindex) != 1) {
         virReportSystemError(errno,
-                             "%s", _("cannot determine macvtap's tap device "
+                             "%s",_("cannot determine macvtap's tap device "
                              "interface index"));
         VIR_FORCE_FCLOSE(file);
         return -1;
@@ -440,7 +435,7 @@ static const uint32_t modeMap[VIR_NETDEV_MACVLAN_MODE_LAST] = {
 struct virNetlinkCallbackData {
     char *cr_ifname;
     virNetDevVPortProfilePtr virtPortProfile;
-    virMacAddr macaddress;
+    unsigned char macaddress[VIR_MAC_BUFLEN];
     char *linkdev;
     int vf;
     unsigned char vmuuid[VIR_UUID_BUFLEN];
@@ -471,7 +466,7 @@ static int instance2str(const unsigned char *p, char *dst, size_t size)
 /**
  * virNetDevMacVLanVPortProfileCallback:
  *
- * @hdr: The buffer containing the received netlink header + payload
+ * @msg: The buffer containing the received netlink message
  * @length: The length of the received netlink message.
  * @peer: The netling sockaddr containing the peer information
  * @handled: Contains information if the message has been replied to yet
@@ -483,8 +478,8 @@ static int instance2str(const unsigned char *p, char *dst, size_t size)
  */
 
 static void
-virNetDevMacVLanVPortProfileCallback(struct nlmsghdr *hdr,
-                                     unsigned int length,
+virNetDevMacVLanVPortProfileCallback(unsigned char *msg,
+                                     int length,
                                      struct sockaddr_nl *peer,
                                      bool *handled,
                                      void *opaque)
@@ -504,6 +499,7 @@ virNetDevMacVLanVPortProfileCallback(struct nlmsghdr *hdr,
         *tb_vfinfo[IFLA_VF_MAX + 1], *tb_vfinfo_list;
 
     struct ifinfomsg ifinfo;
+    struct nlmsghdr *hdr;
     void *data;
     int rem;
     char *ifname;
@@ -511,8 +507,8 @@ virNetDevMacVLanVPortProfileCallback(struct nlmsghdr *hdr,
     virNetlinkCallbackDataPtr calld = opaque;
     pid_t lldpad_pid = 0;
     pid_t virip_pid = 0;
-    char macaddr[VIR_MAC_STRING_BUFLEN];
 
+    hdr = (struct nlmsghdr *) msg;
     data = nlmsg_data(hdr);
 
     /* Quickly decide if we want this or not */
@@ -593,13 +589,13 @@ virNetDevMacVLanVPortProfileCallback(struct nlmsghdr *hdr,
             VIR_DEBUG("IFLA_VF_MAC = %2x:%2x:%2x:%2x:%2x:%2x",
                       m[0], m[1], m[2], m[3], m[4], m[5]);
 
-            if (virMacAddrCmpRaw(&calld->macaddress, mac->mac))
+            if (memcmp(calld->macaddress, m, VIR_MAC_BUFLEN))
             {
                 /* Repeat the same check for a broadcast mac */
-                size_t i;
+                int i;
 
-                for (i = 0; i < VIR_MAC_BUFLEN; i++) {
-                    if (calld->macaddress.addr[i] != 0xff) {
+                for (i = 0;i < VIR_MAC_BUFLEN; i++) {
+                    if (calld->macaddress[i] != 0xff) {
                         VIR_DEBUG("MAC address match failed (wasn't broadcast)");
                         return;
                     }
@@ -700,10 +696,14 @@ virNetDevMacVLanVPortProfileCallback(struct nlmsghdr *hdr,
     VIR_INFO("Re-send 802.1qbg associate request:");
     VIR_INFO("  if: %s", calld->cr_ifname);
     VIR_INFO("  lf: %s", calld->linkdev);
-    VIR_INFO(" mac: %s", virMacAddrFormat(&calld->macaddress, macaddr));
+    VIR_INFO(" mac: %02x:%02x:%02x:%02x:%02x:%02x",
+             calld->macaddress[0], calld->macaddress[1],
+             calld->macaddress[2], calld->macaddress[3],
+             calld->macaddress[4], calld->macaddress[5]);
+
     ignore_value(virNetDevVPortProfileAssociate(calld->cr_ifname,
                                                 calld->virtPortProfile,
-                                                &calld->macaddress,
+                                                calld->macaddress,
                                                 calld->linkdev,
                                                 calld->vf,
                                                 calld->vmuuid,
@@ -746,7 +746,7 @@ virNetlinkCallbackDataFree(virNetlinkCallbackDataPtr calld)
  */
 static void
 virNetDevMacVLanVPortProfileDestroyCallback(int watch ATTRIBUTE_UNUSED,
-                                            const virMacAddr *macaddr ATTRIBUTE_UNUSED,
+                                            const unsigned char *macaddr ATTRIBUTE_UNUSED,
                                             void *opaque)
 {
     virNetlinkCallbackDataFree((virNetlinkCallbackDataPtr)opaque);
@@ -754,7 +754,7 @@ virNetDevMacVLanVPortProfileDestroyCallback(int watch ATTRIBUTE_UNUSED,
 
 int
 virNetDevMacVLanVPortProfileRegisterCallback(const char *ifname,
-                                             const virMacAddr *macaddress,
+                                             const unsigned char *macaddress,
                                              const char *linkdev,
                                              const unsigned char *vmuuid,
                                              virNetDevVPortProfilePtr virtPortProfile,
@@ -762,29 +762,31 @@ virNetDevMacVLanVPortProfileRegisterCallback(const char *ifname,
 {
     virNetlinkCallbackDataPtr calld = NULL;
 
-    if (virtPortProfile && virNetlinkEventServiceIsRunning(NETLINK_ROUTE)) {
+    if (virtPortProfile && virNetlinkEventServiceIsRunning()) {
         if (VIR_ALLOC(calld) < 0)
-            goto error;
-        if (VIR_STRDUP(calld->cr_ifname, ifname) < 0)
-            goto error;
+            goto memory_error;
+        if ((calld->cr_ifname = strdup(ifname)) == NULL)
+            goto memory_error;
         if (VIR_ALLOC(calld->virtPortProfile) < 0)
-            goto error;
+            goto memory_error;
         memcpy(calld->virtPortProfile, virtPortProfile, sizeof(*virtPortProfile));
-        virMacAddrSet(&calld->macaddress, macaddress);
-        if (VIR_STRDUP(calld->linkdev, linkdev) < 0)
-            goto error;
+        memcpy(calld->macaddress, macaddress, sizeof(calld->macaddress));
+        if ((calld->linkdev = strdup(linkdev)) == NULL)
+            goto  memory_error;
         memcpy(calld->vmuuid, vmuuid, sizeof(calld->vmuuid));
 
         calld->vmOp = vmOp;
 
         if (virNetlinkEventAddClient(virNetDevMacVLanVPortProfileCallback,
                                      virNetDevMacVLanVPortProfileDestroyCallback,
-                                     calld, macaddress, NETLINK_ROUTE) < 0)
+                                     calld, macaddress) < 0)
             goto error;
     }
 
     return 0;
 
+memory_error:
+    virReportOOMError();
 error:
     virNetlinkCallbackDataFree(calld);
     return -1;
@@ -811,7 +813,7 @@ error:
  * otherwise returns 0; returns -1 on error.
  */
 int virNetDevMacVLanCreateWithVPortProfile(const char *tgifname,
-                                           const virMacAddr *macaddress,
+                                           const unsigned char *macaddress,
                                            const char *linkdev,
                                            enum virNetDevMacVLanMode mode,
                                            bool withTap,
@@ -830,7 +832,7 @@ int virNetDevMacVLanCreateWithVPortProfile(const char *tgifname,
     char ifname[IFNAMSIZ];
     int retries, do_retry = 0;
     uint32_t macvtapMode;
-    const char *cr_ifname = NULL;
+    const char *cr_ifname;
     int ret;
     int vf = -1;
 
@@ -872,32 +874,22 @@ int virNetDevMacVLanCreateWithVPortProfile(const char *tgifname,
     } else {
 create_name:
         retries = 5;
-        if (virNetDevMacVLanCreateMutexInitialize() < 0)
-            return -1;
-        virMutexLock(&virNetDevMacVLanCreateMutex);
         for (c = 0; c < 8192; c++) {
             snprintf(ifname, sizeof(ifname), pattern, c);
-            if ((ret = virNetDevExists(ifname)) < 0) {
-                virMutexUnlock(&virNetDevMacVLanCreateMutex);
+            if ((ret = virNetDevExists(ifname)) < 0)
                 return -1;
-            }
             if (!ret) {
                 rc = virNetDevMacVLanCreate(ifname, type, macaddress, linkdev,
                                             macvtapMode, &do_retry);
-                if (rc == 0) {
-                    cr_ifname = ifname;
+                if (rc == 0)
                     break;
-                }
 
                 if (do_retry && --retries)
                     continue;
-                break;
+                return -1;
             }
         }
-
-        virMutexUnlock(&virNetDevMacVLanCreateMutex);
-        if (!cr_ifname)
-            return -1;
+        cr_ifname = ifname;
     }
 
     if (virNetDevVPortProfileAssociate(cr_ifname,
@@ -923,18 +915,21 @@ create_name:
             VIR_FORCE_CLOSE(rc); /* sets rc to -1 */
             goto disassociate_exit;
         }
-        if (VIR_STRDUP(*res_ifname, cr_ifname) < 0) {
+        if (!(*res_ifname = strdup(cr_ifname))) {
             VIR_FORCE_CLOSE(rc); /* sets rc to -1 */
+            virReportOOMError();
             goto disassociate_exit;
         }
     } else {
-        if (VIR_STRDUP(*res_ifname, cr_ifname) < 0)
+        if (!(*res_ifname = strdup(cr_ifname))) {
+            virReportOOMError();
             goto disassociate_exit;
+        }
         rc = 0;
     }
 
-    if (virNetDevBandwidthSet(cr_ifname, bandwidth, false) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
+    if (virNetDevBandwidthSet(cr_ifname, bandwidth) < 0) {
+        virNetDevError(VIR_ERR_INTERNAL_ERROR,
                        _("cannot set bandwidth limits on %s"),
                        cr_ifname);
         if (withTap)
@@ -953,7 +948,7 @@ create_name:
         if (virNetDevMacVLanVPortProfileRegisterCallback(cr_ifname, macaddress,
                                                          linkdev, vmuuid,
                                                          virtPortProfile,
-                                                         vmOp) < 0)
+                                                         vmOp) < 0 )
         goto disassociate_exit;
     }
 
@@ -985,7 +980,7 @@ link_del_exit:
  * were provided.
  */
 int virNetDevMacVLanDeleteWithVPortProfile(const char *ifname,
-                                           const virMacAddr *macaddr,
+                                           const unsigned char *macaddr,
                                            const char *linkdev,
                                            int mode,
                                            virNetDevVPortProfilePtr virtPortProfile,
@@ -1010,7 +1005,7 @@ int virNetDevMacVLanDeleteWithVPortProfile(const char *ifname,
             ret = -1;
     }
 
-    virNetlinkEventRemoveClient(0, macaddr, NETLINK_ROUTE);
+    virNetlinkEventRemoveClient(0, macaddr);
 
     return ret;
 }
@@ -1030,7 +1025,7 @@ int virNetDevMacVLanDeleteWithVPortProfile(const char *ifname,
  * Returns 0; returns -1 on error.
  */
 int virNetDevMacVLanRestartWithVPortProfile(const char *cr_ifname,
-                                           const virMacAddr *macaddress,
+                                           const unsigned char *macaddress,
                                            const char *linkdev,
                                            const unsigned char *vmuuid,
                                            virNetDevVPortProfilePtr virtPortProfile,
@@ -1060,7 +1055,7 @@ error:
 #else /* ! WITH_MACVTAP */
 int virNetDevMacVLanCreate(const char *ifname ATTRIBUTE_UNUSED,
                            const char *type ATTRIBUTE_UNUSED,
-                           const virMacAddr *macaddress ATTRIBUTE_UNUSED,
+                           const unsigned char *macaddress ATTRIBUTE_UNUSED,
                            const char *srcdev ATTRIBUTE_UNUSED,
                            uint32_t macvlan_mode ATTRIBUTE_UNUSED,
                            int *retry ATTRIBUTE_UNUSED)
@@ -1078,7 +1073,7 @@ int virNetDevMacVLanDelete(const char *ifname ATTRIBUTE_UNUSED)
 }
 
 int virNetDevMacVLanCreateWithVPortProfile(const char *ifname ATTRIBUTE_UNUSED,
-                                           const virMacAddr *macaddress ATTRIBUTE_UNUSED,
+                                           const unsigned char *macaddress ATTRIBUTE_UNUSED,
                                            const char *linkdev ATTRIBUTE_UNUSED,
                                            enum virNetDevMacVLanMode mode ATTRIBUTE_UNUSED,
                                            bool withTap ATTRIBUTE_UNUSED,
@@ -1096,7 +1091,7 @@ int virNetDevMacVLanCreateWithVPortProfile(const char *ifname ATTRIBUTE_UNUSED,
 }
 
 int virNetDevMacVLanDeleteWithVPortProfile(const char *ifname ATTRIBUTE_UNUSED,
-                                           const virMacAddr *macaddress ATTRIBUTE_UNUSED,
+                                           const unsigned char *macaddress ATTRIBUTE_UNUSED,
                                            const char *linkdev ATTRIBUTE_UNUSED,
                                            int mode ATTRIBUTE_UNUSED,
                                            virNetDevVPortProfilePtr virtPortProfile ATTRIBUTE_UNUSED,
@@ -1108,7 +1103,7 @@ int virNetDevMacVLanDeleteWithVPortProfile(const char *ifname ATTRIBUTE_UNUSED,
 }
 
 int virNetDevMacVLanRestartWithVPortProfile(const char *cr_ifname ATTRIBUTE_UNUSED,
-                                           const virMacAddr *macaddress ATTRIBUTE_UNUSED,
+                                           const unsigned char *macaddress ATTRIBUTE_UNUSED,
                                            const char *linkdev ATTRIBUTE_UNUSED,
                                            const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                            virNetDevVPortProfilePtr virtPortProfile ATTRIBUTE_UNUSED,
@@ -1120,7 +1115,7 @@ int virNetDevMacVLanRestartWithVPortProfile(const char *cr_ifname ATTRIBUTE_UNUS
 }
 
 int virNetDevMacVLanVPortProfileRegisterCallback(const char *ifname ATTRIBUTE_UNUSED,
-                                             const virMacAddr *macaddress ATTRIBUTE_UNUSED,
+                                             const unsigned char *macaddress ATTRIBUTE_UNUSED,
                                              const char *linkdev ATTRIBUTE_UNUSED,
                                              const unsigned char *vmuuid ATTRIBUTE_UNUSED,
                                              virNetDevVPortProfilePtr virtPortProfile ATTRIBUTE_UNUSED,

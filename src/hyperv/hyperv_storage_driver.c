@@ -16,19 +16,20 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
 #include <config.h>
 
 #include "internal.h"
-#include "virerror.h"
+#include "virterror_internal.h"
 #include "datatypes.h"
-#include "viralloc.h"
-#include "virlog.h"
-#include "viruuid.h"
+#include "util.h"
+#include "memory.h"
+#include "logging.h"
+#include "uuid.h"
 #include "hyperv_storage_driver.h"
 
 #define VIR_FROM_THIS VIR_FROM_HYPERV
@@ -65,8 +66,8 @@ hypervStorageClose(virConnectPtr conn)
 
 static virStorageDriver hypervStorageDriver = {
     .name = "Hyper-V",
-    .storageOpen = hypervStorageOpen, /* 0.9.5*/
-    .storageClose = hypervStorageClose, /* 0.9.5 */
+    .open = hypervStorageOpen, /* 0.9.5*/
+    .close = hypervStorageClose, /* 0.9.5 */
 };
 
 

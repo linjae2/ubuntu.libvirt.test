@@ -12,8 +12,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -22,57 +22,51 @@
 #include <string.h>
 #include <stddef.h>
 
+#define getfield(object, field_type, field_offset) \
+    (*(typeof(field_type) *)((char *)(object) + field_offset))
+
+struct keycode {
+    const char *linux_name;
+    const char *os_x_name;
+    const char *win32_name;
+    unsigned short linux_keycode;
+    unsigned short os_x;
+    unsigned short atset1;
+    unsigned short atset2;
+    unsigned short atset3;
+    unsigned short xt;
+    unsigned short xt_kbd;
+    unsigned short usb;
+    unsigned short win32;
+    unsigned short rfb;
+};
 
 #define VIRT_KEY_INTERNAL
 #include "virkeymaps.h"
 
-static const char **virKeymapNames[] = {
+static unsigned int codeOffset[] = {
     [VIR_KEYCODE_SET_LINUX] =
-      virKeymapNames_linux,
+        offsetof(struct keycode, linux_keycode),
     [VIR_KEYCODE_SET_XT] =
-      NULL,
+        offsetof(struct keycode, xt),
     [VIR_KEYCODE_SET_ATSET1] =
-      NULL,
+        offsetof(struct keycode, atset1),
     [VIR_KEYCODE_SET_ATSET2] =
-      NULL,
+        offsetof(struct keycode, atset2),
     [VIR_KEYCODE_SET_ATSET3] =
-      NULL,
+        offsetof(struct keycode, atset3),
     [VIR_KEYCODE_SET_OSX] =
-      virKeymapNames_os_x,
+        offsetof(struct keycode, os_x),
     [VIR_KEYCODE_SET_XT_KBD] =
-      NULL,
+        offsetof(struct keycode, xt_kbd),
     [VIR_KEYCODE_SET_USB] =
-      NULL,
+        offsetof(struct keycode, usb),
     [VIR_KEYCODE_SET_WIN32] =
-      virKeymapNames_win32,
+        offsetof(struct keycode, win32),
     [VIR_KEYCODE_SET_RFB] =
-      NULL,
+        offsetof(struct keycode, rfb),
 };
-verify(ARRAY_CARDINALITY(virKeymapNames) == VIR_KEYCODE_SET_LAST);
-
-static int *virKeymapValues[] = {
-    [VIR_KEYCODE_SET_LINUX] =
-      virKeymapValues_linux,
-    [VIR_KEYCODE_SET_XT] =
-      virKeymapValues_xt,
-    [VIR_KEYCODE_SET_ATSET1] =
-      virKeymapValues_atset1,
-    [VIR_KEYCODE_SET_ATSET2] =
-      virKeymapValues_atset2,
-    [VIR_KEYCODE_SET_ATSET3] =
-      virKeymapValues_atset3,
-    [VIR_KEYCODE_SET_OSX] =
-      virKeymapValues_os_x,
-    [VIR_KEYCODE_SET_XT_KBD] =
-      virKeymapValues_xt_kbd,
-    [VIR_KEYCODE_SET_USB] =
-      virKeymapValues_usb,
-    [VIR_KEYCODE_SET_WIN32] =
-      virKeymapValues_win32,
-    [VIR_KEYCODE_SET_RFB] =
-      virKeymapValues_rfb,
-};
-verify(ARRAY_CARDINALITY(virKeymapValues) == VIR_KEYCODE_SET_LAST);
+verify(ARRAY_CARDINALITY(codeOffset) == VIR_KEYCODE_SET_LAST);
 
 VIR_ENUM_IMPL(virKeycodeSet, VIR_KEYCODE_SET_LAST,
     "linux",
@@ -87,40 +81,68 @@ VIR_ENUM_IMPL(virKeycodeSet, VIR_KEYCODE_SET_LAST,
     "rfb",
 );
 
-int virKeycodeValueFromString(virKeycodeSet codeset,
-                              const char *keyname)
+static int __virKeycodeValueFromString(unsigned int name_offset,
+                                           unsigned int code_offset,
+                                           const char *keyname)
 {
-    size_t i;
+    int i;
 
-    for (i = 0; i < VIR_KEYMAP_ENTRY_MAX; i++) {
-        if (!virKeymapNames[codeset] ||
-            !virKeymapValues[codeset])
-            continue;
+    for (i = 0; i < ARRAY_CARDINALITY(virKeycodes); i++) {
+        const char *name = getfield(virKeycodes + i, const char *, name_offset);
 
-        const char *name = virKeymapNames[codeset][i];
-
-        if (name && STREQ_NULLABLE(name, keyname))
-            return virKeymapValues[codeset][i];
+        if (name && STREQ(name, keyname))
+            return getfield(virKeycodes + i, unsigned short, code_offset);
     }
 
     return -1;
 }
 
+int virKeycodeValueFromString(virKeycodeSet codeset, const char *keyname)
+{
+    switch (codeset) {
+    case VIR_KEYCODE_SET_LINUX:
+        return __virKeycodeValueFromString(offsetof(struct keycode, linux_name),
+                                           offsetof(struct keycode, linux_keycode),
+                                           keyname);
+    case VIR_KEYCODE_SET_OSX:
+        return __virKeycodeValueFromString(offsetof(struct keycode, os_x_name),
+                                           offsetof(struct keycode, os_x),
+                                           keyname);
+    case VIR_KEYCODE_SET_WIN32:
+        return __virKeycodeValueFromString(offsetof(struct keycode, win32_name),
+                                           offsetof(struct keycode, win32),
+                                           keyname);
+    default:
+        return -1;
+    }
+}
+
+static int __virKeycodeValueTranslate(unsigned int from_offset,
+                                      unsigned int to_offset,
+                                      int key_value)
+{
+    int i;
+
+    for (i = 0; i < ARRAY_CARDINALITY(virKeycodes); i++) {
+        if (getfield(virKeycodes + i, unsigned short, from_offset) == key_value)
+            return getfield(virKeycodes + i, unsigned short, to_offset);
+    }
+
+    return -1;
+}
 
 int virKeycodeValueTranslate(virKeycodeSet from_codeset,
                              virKeycodeSet to_codeset,
                              int key_value)
 {
-    size_t i;
-
-    if (key_value < 0)
+    if (key_value <= 0)
         return -1;
 
+    key_value = __virKeycodeValueTranslate(codeOffset[from_codeset],
+                                           codeOffset[to_codeset],
+                                           key_value);
+    if (key_value <= 0)
+        return -1;
 
-    for (i = 0; i < VIR_KEYMAP_ENTRY_MAX; i++) {
-        if (virKeymapValues[from_codeset][i] == key_value)
-            return virKeymapValues[to_codeset][i];
-    }
-
-    return -1;
+    return key_value;
 }

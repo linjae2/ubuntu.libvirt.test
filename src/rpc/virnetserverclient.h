@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -24,11 +24,8 @@
 #ifndef __VIR_NET_SERVER_CLIENT_H__
 # define __VIR_NET_SERVER_CLIENT_H__
 
-# include "viridentity.h"
 # include "virnetsocket.h"
 # include "virnetmessage.h"
-# include "virobject.h"
-# include "virjson.h"
 
 typedef struct _virNetServerClient virNetServerClient;
 typedef virNetServerClient *virNetServerClientPtr;
@@ -41,33 +38,11 @@ typedef int (*virNetServerClientFilterFunc)(virNetServerClientPtr client,
                                             virNetMessagePtr msg,
                                             void *opaque);
 
-typedef virJSONValuePtr (*virNetServerClientPrivPreExecRestart)(virNetServerClientPtr client,
-                                                                void *data);
-typedef void *(*virNetServerClientPrivNewPostExecRestart)(virNetServerClientPtr client,
-                                                          virJSONValuePtr object,
-                                                          void *opaque);
-typedef void *(*virNetServerClientPrivNew)(virNetServerClientPtr client,
-                                           void *opaque);
-
 virNetServerClientPtr virNetServerClientNew(virNetSocketPtr sock,
                                             int auth,
                                             bool readonly,
                                             size_t nrequests_max,
-# ifdef WITH_GNUTLS
-                                            virNetTLSContextPtr tls,
-# endif
-                                            virNetServerClientPrivNew privNew,
-                                            virNetServerClientPrivPreExecRestart privPreExecRestart,
-                                            virFreeCallback privFree,
-                                            void *privOpaque);
-
-virNetServerClientPtr virNetServerClientNewPostExecRestart(virJSONValuePtr object,
-                                                           virNetServerClientPrivNewPostExecRestart privNew,
-                                                           virNetServerClientPrivPreExecRestart privPreExecRestart,
-                                                           virFreeCallback privFree,
-                                                           void *privOpaque);
-
-virJSONValuePtr virNetServerClientPreExecRestart(virNetServerClientPtr client);
+                                            virNetTLSContextPtr tls);
 
 int virNetServerClientAddFilter(virNetServerClientPtr client,
                                 virNetServerClientFilterFunc func,
@@ -77,36 +52,35 @@ void virNetServerClientRemoveFilter(virNetServerClientPtr client,
                                     int filterID);
 
 int virNetServerClientGetAuth(virNetServerClientPtr client);
-void virNetServerClientSetAuth(virNetServerClientPtr client, int auth);
 bool virNetServerClientGetReadonly(virNetServerClientPtr client);
 
-# ifdef WITH_GNUTLS
 bool virNetServerClientHasTLSSession(virNetServerClientPtr client);
-virNetTLSSessionPtr virNetServerClientGetTLSSession(virNetServerClientPtr client);
 int virNetServerClientGetTLSKeySize(virNetServerClientPtr client);
-# endif
 
-# ifdef WITH_SASL
+# ifdef HAVE_SASL
 void virNetServerClientSetSASLSession(virNetServerClientPtr client,
                                       virNetSASLSessionPtr sasl);
-virNetSASLSessionPtr virNetServerClientGetSASLSession(virNetServerClientPtr client);
 # endif
 
 int virNetServerClientGetFD(virNetServerClientPtr client);
 
 bool virNetServerClientIsSecure(virNetServerClientPtr client);
 
-bool virNetServerClientIsLocal(virNetServerClientPtr client);
+int virNetServerClientSetIdentity(virNetServerClientPtr client,
+                                  const char *identity);
+const char *virNetServerClientGetIdentity(virNetServerClientPtr client);
 
 int virNetServerClientGetUNIXIdentity(virNetServerClientPtr client,
                                       uid_t *uid, gid_t *gid, pid_t *pid,
                                       unsigned long long *timestamp);
 
-int virNetServerClientGetSELinuxContext(virNetServerClientPtr client,
-                                        char **context);
+void virNetServerClientRef(virNetServerClientPtr client);
 
-virIdentityPtr virNetServerClientGetIdentity(virNetServerClientPtr client);
+typedef void (*virNetServerClientFreeFunc)(void *data);
 
+void virNetServerClientSetPrivateData(virNetServerClientPtr client,
+                                      void *opaque,
+                                      virNetServerClientFreeFunc ff);
 void *virNetServerClientGetPrivateData(virNetServerClientPtr client);
 
 typedef void (*virNetServerClientCloseFunc)(virNetServerClientPtr client);
@@ -140,6 +114,8 @@ int virNetServerClientSendMessage(virNetServerClientPtr client,
                                   virNetMessagePtr msg);
 
 bool virNetServerClientNeedAuth(virNetServerClientPtr client);
+
+void virNetServerClientFree(virNetServerClientPtr client);
 
 
 #endif /* __VIR_NET_SERVER_CLIENT_H__ */

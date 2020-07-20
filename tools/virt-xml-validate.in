@@ -10,55 +10,29 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library.  If not, see
-# <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 set -e
-
-case $1 in
-  -h | --h | --he | --hel | --help)
-    cat <<EOF
-Usage:
-  $0 XML-FILE [SCHEMA-NAME]
-  $0 OPTION
-
-Options:
-  -h | --help        Display program help
-  -V | --version     Display program version
-EOF
-    exit ;;
-  -V | --v | --ve | --ver | --vers | --versi | --versio | --version)
-    cat <<EOF
-$0 (libvirt) @VERSION@
-EOF
-    exit ;;
-  --) shift ;;
-  -*)
-    echo "$0: unrecognized option '$1'" >&2
-    exit 1 ;;
-esac
 
 XMLFILE="$1"
 TYPE="$2"
 
 if [ -z "$XMLFILE" ]; then
-  echo "syntax: $0 XMLFILE [TYPE]" >&2
+  echo "syntax: $0 XMLFILE [TYPE]"
   exit 1
 fi
 
 if [ ! -f "$XMLFILE" ]; then
-  echo "$0: document $XMLFILE does not exist" >&2
+  echo "$0: document $XMLFILE does not exist"
   exit 2
 fi
 
 if [ -z "$TYPE" ]; then
   ROOT=`xmllint --stream --debug "$XMLFILE" 2>/dev/null | grep "^0 1 " | awk '{ print $3 }'`
   case "$ROOT" in
-     *domainsnapshot*) # Must come first, since *domain* is a substring
-        TYPE="domainsnapshot"
-        ;;
      *domain*)
         TYPE="domain"
         ;;
@@ -77,31 +51,22 @@ if [ -z "$TYPE" ]; then
      *device*)
         TYPE="nodedev"
         ;;
-     *filter*)
-        TYPE="nwfilter"
-        ;;
-     *secret*)
-        TYPE="secret"
-        ;;
-     *interface*)
-        TYPE="interface"
-        ;;
      *)
-       echo "$0: cannot determine schema type for $XMLFILE" >&2
+       echo "$0: cannot determine schema type for $XMLFILE"
        exit 3
   esac
 fi
 
-SCHEMA="@schemadir@/${TYPE}.rng"
+SCHEMA="@SCHEMADIR@/${TYPE}.rng"
 
 if [ ! -f "$SCHEMA" ]; then
-  echo "$0: schema $SCHEMA does not exist" >&2
+  echo "$0: schema $SCHEMA does not exist"
   exit 4
 fi
 
 xmllint --noout --relaxng "$SCHEMA" "$XMLFILE"
 
-exit
+exit 0
 
 : <<=cut
 =pod
@@ -113,7 +78,6 @@ exit
 =head1 SYNOPSIS
 
   virt-xml-validate XML-FILE [SCHEMA-NAME]
-  virt-xml-validate OPTION
 
 =head1 DESCRIPTION
 
@@ -126,10 +90,6 @@ from the name of the root element in the XML document.
 Valid schema names currently include
 
 =over 4
-
-=item C<domainsnapshot>
-
-The schema for the XML format used by domain snapshot configuration
 
 =item C<domain>
 
@@ -155,32 +115,6 @@ The schema for the XML format used by node device descriptions
 
 The schema for the XML format used to declare driver capabilities
 
-=item C<nwfilter>
-
-The schema for the XML format used by network traffic filters
-
-=item C<secret>
-
-The schema for the XML format used by secrets descriptions
-
-=item C<interface>
-
-The schema for the XML format used by physical host interfaces
-
-=back
-
-=head1 OPTIONS
-
-=over
-
-=item B<-h, --help>
-
-Display command line help usage then exit.
-
-=item B<-V, --version>
-
-Display version information then exit.
-
 =back
 
 =head1 EXIT STATUS
@@ -200,7 +134,7 @@ Alternatively report bugs to your software distributor / vendor.
 
 =head1 COPYRIGHT
 
-Copyright (C) 2009-2013 by Red Hat, Inc.
+Copyright (C) 2009-2010 by Red Hat, Inc.
 Copyright (C) 2009 by Daniel P. Berrange
 
 =head1 LICENSE

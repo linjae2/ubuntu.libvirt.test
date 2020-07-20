@@ -1,7 +1,7 @@
 /*
  * storage_backend.h: internal storage driver backend contract
  *
- * Copyright (C) 2007-2010, 2012-2014 Red Hat, Inc.
+ * Copyright (C) 2007-2010 Red Hat, Inc.
  * Copyright (C) 2007-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -24,48 +24,25 @@
 #ifndef __VIR_STORAGE_BACKEND_H__
 # define __VIR_STORAGE_BACKEND_H__
 
-# include <sys/stat.h>
-
+# include <stdint.h>
 # include "internal.h"
 # include "storage_conf.h"
-# include "vircommand.h"
 
-typedef char * (*virStorageBackendFindPoolSources)(virConnectPtr conn,
-                                                   const char *srcSpec,
-                                                   unsigned int flags);
-typedef int (*virStorageBackendCheckPool)(virConnectPtr conn,
-                                          virStoragePoolObjPtr pool,
-                                          bool *active);
-typedef int (*virStorageBackendStartPool)(virConnectPtr conn,
-                                          virStoragePoolObjPtr pool);
-typedef int (*virStorageBackendBuildPool)(virConnectPtr conn,
-                                          virStoragePoolObjPtr pool,
-                                          unsigned int flags);
-typedef int (*virStorageBackendRefreshPool)(virConnectPtr conn,
-                                            virStoragePoolObjPtr pool);
-typedef int (*virStorageBackendStopPool)(virConnectPtr conn,
-                                         virStoragePoolObjPtr pool);
-typedef int (*virStorageBackendDeletePool)(virConnectPtr conn,
-                                           virStoragePoolObjPtr pool,
-                                           unsigned int flags);
+typedef char * (*virStorageBackendFindPoolSources)(virConnectPtr conn, const char *srcSpec, unsigned int flags);
+typedef int (*virStorageBackendCheckPool)(virConnectPtr conn, virStoragePoolObjPtr pool, bool *active);
+typedef int (*virStorageBackendStartPool)(virConnectPtr conn, virStoragePoolObjPtr pool);
+typedef int (*virStorageBackendBuildPool)(virConnectPtr conn, virStoragePoolObjPtr pool, unsigned int flags);
+typedef int (*virStorageBackendRefreshPool)(virConnectPtr conn, virStoragePoolObjPtr pool);
+typedef int (*virStorageBackendStopPool)(virConnectPtr conn, virStoragePoolObjPtr pool);
+typedef int (*virStorageBackendDeletePool)(virConnectPtr conn, virStoragePoolObjPtr pool, unsigned int flags);
+
 typedef int (*virStorageBackendBuildVol)(virConnectPtr conn,
-                                         virStoragePoolObjPtr pool,
-                                         virStorageVolDefPtr vol,
-                                         unsigned int flags);
-typedef int (*virStorageBackendCreateVol)(virConnectPtr conn,
-                                          virStoragePoolObjPtr pool,
-                                          virStorageVolDefPtr vol);
-typedef int (*virStorageBackendRefreshVol)(virConnectPtr conn,
-                                           virStoragePoolObjPtr pool,
-                                           virStorageVolDefPtr vol);
-typedef int (*virStorageBackendDeleteVol)(virConnectPtr conn,
-                                          virStoragePoolObjPtr pool,
-                                          virStorageVolDefPtr vol,
-                                          unsigned int flags);
-typedef int (*virStorageBackendBuildVolFrom)(virConnectPtr conn,
-                                             virStoragePoolObjPtr pool,
-                                             virStorageVolDefPtr origvol,
-                                             virStorageVolDefPtr newvol,
+                                         virStoragePoolObjPtr pool, virStorageVolDefPtr vol);
+typedef int (*virStorageBackendCreateVol)(virConnectPtr conn, virStoragePoolObjPtr pool, virStorageVolDefPtr vol);
+typedef int (*virStorageBackendRefreshVol)(virConnectPtr conn, virStoragePoolObjPtr pool, virStorageVolDefPtr vol);
+typedef int (*virStorageBackendDeleteVol)(virConnectPtr conn, virStoragePoolObjPtr pool, virStorageVolDefPtr vol, unsigned int flags);
+typedef int (*virStorageBackendBuildVolFrom)(virConnectPtr conn, virStoragePoolObjPtr pool,
+                                             virStorageVolDefPtr origvol, virStorageVolDefPtr newvol,
                                              unsigned int flags);
 typedef int (*virStorageBackendVolumeResize)(virConnectPtr conn,
                                              virStoragePoolObjPtr pool,
@@ -90,8 +67,6 @@ virStorageBackendFSImageToolTypeToFunc(int tool_type);
 typedef struct _virStorageBackend virStorageBackend;
 typedef virStorageBackend *virStorageBackendPtr;
 
-/* Callbacks are optional unless documented otherwise; but adding more
- * callbacks provides better pool support.  */
 struct _virStorageBackend {
     int type;
 
@@ -99,7 +74,7 @@ struct _virStorageBackend {
     virStorageBackendCheckPool checkPool;
     virStorageBackendStartPool startPool;
     virStorageBackendBuildPool buildPool;
-    virStorageBackendRefreshPool refreshPool; /* Must be non-NULL */
+    virStorageBackendRefreshPool refreshPool;
     virStorageBackendStopPool stopPool;
     virStorageBackendDeletePool deletePool;
 
@@ -132,13 +107,13 @@ enum {
                                        VIR_STORAGE_VOL_OPEN_CHAR     |\
                                        VIR_STORAGE_VOL_OPEN_BLOCK)
 
-int virStorageBackendVolOpenCheckMode(const char *path, struct stat *sb,
-                                      unsigned int flags)
-    ATTRIBUTE_RETURN_CHECK
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+int virStorageBackendVolOpenCheckMode(const char *path, unsigned int flags)
+ATTRIBUTE_RETURN_CHECK
+ATTRIBUTE_NONNULL(1);
 
 int virStorageBackendUpdateVolInfo(virStorageVolDefPtr vol,
                                    int withCapacity);
+
 int virStorageBackendUpdateVolInfoFlags(virStorageVolDefPtr vol,
                                         int withCapacity,
                                         unsigned int openflags);
@@ -148,15 +123,14 @@ int virStorageBackendUpdateVolTargetInfo(virStorageVolTargetPtr target,
                                          unsigned int openflags);
 int virStorageBackendUpdateVolTargetInfoFD(virStorageVolTargetPtr target,
                                            int fd,
-                                           struct stat *sb,
                                            unsigned long long *allocation,
                                            unsigned long long *capacity);
-int virStorageBackendDetectBlockVolFormatFD(virStorageVolTargetPtr target,
-                                            int fd);
+int
+virStorageBackendDetectBlockVolFormatFD(virStorageVolTargetPtr target,
+                                        int fd);
 
 char *virStorageBackendStablePath(virStoragePoolObjPtr pool,
-                                  const char *devpath,
-                                  bool loop);
+                                  const char *devpath);
 
 typedef int (*virStorageBackendListVolRegexFunc)(virStoragePoolObjPtr pool,
                                                  char **const groups,
@@ -167,7 +141,7 @@ typedef int (*virStorageBackendListVolNulFunc)(virStoragePoolObjPtr pool,
                                                void *data);
 
 int virStorageBackendRunProgRegex(virStoragePoolObjPtr pool,
-                                  virCommandPtr cmd,
+                                  const char *const*prog,
                                   int nregex,
                                   const char **regex,
                                   int *nvars,
@@ -175,18 +149,10 @@ int virStorageBackendRunProgRegex(virStoragePoolObjPtr pool,
                                   void *data, const char *cmd_to_ignore);
 
 int virStorageBackendRunProgNul(virStoragePoolObjPtr pool,
-                                virCommandPtr cmd,
+                                const char **prog,
                                 size_t n_columns,
                                 virStorageBackendListVolNulFunc func,
                                 void *data);
 
-virCommandPtr
-virStorageBackendCreateQemuImgCmd(virConnectPtr conn,
-                                  virStoragePoolObjPtr pool,
-                                  virStorageVolDefPtr vol,
-                                  virStorageVolDefPtr inputvol,
-                                  unsigned int flags,
-                                  const char *create_tool,
-                                  int imgformat);
 
 #endif /* __VIR_STORAGE_BACKEND_H__ */

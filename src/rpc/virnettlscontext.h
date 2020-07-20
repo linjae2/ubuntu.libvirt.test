@@ -14,15 +14,14 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
 #ifndef __VIR_NET_TLS_CONTEXT_H__
 # define __VIR_NET_TLS_CONTEXT_H__
 
 # include "internal.h"
-# include "virobject.h"
 
 typedef struct _virNetTLSContext virNetTLSContext;
 typedef virNetTLSContext *virNetTLSContextPtr;
@@ -59,8 +58,12 @@ virNetTLSContextPtr virNetTLSContextNewClient(const char *cacert,
                                               bool sanityCheckCert,
                                               bool requireValidCert);
 
+void virNetTLSContextRef(virNetTLSContextPtr ctxt);
+
 int virNetTLSContextCheckCertificate(virNetTLSContextPtr ctxt,
                                      virNetTLSSessionPtr sess);
+
+void virNetTLSContextFree(virNetTLSContextPtr ctxt);
 
 
 typedef ssize_t (*virNetTLSSessionWriteFunc)(const char *buf, size_t len,
@@ -75,6 +78,8 @@ void virNetTLSSessionSetIOCallbacks(virNetTLSSessionPtr sess,
                                     virNetTLSSessionWriteFunc writeFunc,
                                     virNetTLSSessionReadFunc readFunc,
                                     void *opaque);
+
+void virNetTLSSessionRef(virNetTLSSessionPtr sess);
 
 ssize_t virNetTLSSessionWrite(virNetTLSSessionPtr sess,
                               const char *buf, size_t len);
@@ -94,6 +99,7 @@ virNetTLSSessionGetHandshakeStatus(virNetTLSSessionPtr sess);
 
 int virNetTLSSessionGetKeySize(virNetTLSSessionPtr sess);
 
-const char *virNetTLSSessionGetX509DName(virNetTLSSessionPtr sess);
+void virNetTLSSessionFree(virNetTLSSessionPtr sess);
+
 
 #endif

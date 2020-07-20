@@ -1,7 +1,7 @@
 /*
  * storage_backend_scsi.c: storage backend for SCSI handling
  *
- * Copyright (C) 2007-2008, 2013 Red Hat, Inc.
+ * Copyright (C) 2007-2008 Red Hat, Inc.
  * Copyright (C) 2007-2008 Daniel P. Berrange
  *
  * This library is free software; you can redistribute it and/or
@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange redhat com>
  */
@@ -28,13 +28,12 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-#include "virerror.h"
+#include "virterror_internal.h"
 #include "storage_backend_scsi.h"
-#include "viralloc.h"
-#include "virlog.h"
+#include "memory.h"
+#include "logging.h"
 #include "virfile.h"
-#include "vircommand.h"
-#include "virstring.h"
+#include "command.h"
 
 #define VIR_FROM_THIS VIR_FROM_STORAGE
 
@@ -56,8 +55,10 @@ getDeviceType(uint32_t host,
     int retval = 0;
 
     if (virAsprintf(&type_path, "/sys/bus/scsi/devices/%u:%u:%u:%u/type",
-                    host, bus, target, lun) < 0)
+                    host, bus, target, lun) < 0) {
+        virReportOOMError();
         goto out;
+    }
 
     typefile = fopen(type_path, "r");
     if (typefile == NULL) {
@@ -85,9 +86,9 @@ getDeviceType(uint32_t host,
      * character is not \0, virStrToLong_i complains
      */
     if (virStrToLong_i(typestr, &p, 10, type) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Device type '%s' is not an integer"),
-                       typestr);
+        virStorageReportError(VIR_ERR_INTERNAL_ERROR,
+                              _("Device type '%s' is not an integer"),
+                              typestr);
         /* Hm, type wasn't an integer; seems strange */
         retval = -1;
         goto out;
@@ -138,16 +139,13 @@ virStorageBackendSCSIUpdateVolTargetInfo(virStorageVolTargetPtr target,
 {
     int fdret, fd = -1;
     int ret = -1;
-    struct stat sb;
 
-    if ((fdret = virStorageBackendVolOpenCheckMode(target->path, &sb,
-                                                   VIR_STORAGE_VOL_OPEN_DEFAULT)) < 0)
+    if ((fdret = virStorageBackendVolOpen(target->path)) < 0)
         goto cleanup;
     fd = fdret;
 
     if (virStorageBackendUpdateVolTargetInfoFD(target,
                                                fd,
-                                               &sb,
                                                allocation,
                                                capacity) < 0)
         goto cleanup;
@@ -168,7 +166,7 @@ static char *
 virStorageBackendSCSISerial(const char *dev)
 {
     char *serial = NULL;
-#ifdef WITH_UDEV
+#ifdef HAVE_UDEV
     virCommandPtr cmd = virCommandNewArgList(
         "/lib/udev/scsi_id",
         "--replace-whitespace",
@@ -189,10 +187,11 @@ virStorageBackendSCSISerial(const char *dev)
             *nl = '\0';
     } else {
         VIR_FREE(serial);
-        ignore_value(VIR_STRDUP(serial, dev));
+        if (!(serial = strdup(dev)))
+            virReportOOMError();
     }
 
-#ifdef WITH_UDEV
+#ifdef HAVE_UDEV
 cleanup:
     virCommandFree(cmd);
 #endif
@@ -214,6 +213,7 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
     int retval = 0;
 
     if (VIR_ALLOC(vol) < 0) {
+        virReportOOMError();
         retval = -1;
         goto out;
     }
@@ -226,11 +226,13 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
      * just leave 'host' out
      */
     if (virAsprintf(&(vol->name), "unit:%u:%u:%u", bus, target, lun) < 0) {
+        virReportOOMError();
         retval = -1;
         goto free_vol;
     }
 
     if (virAsprintf(&devpath, "/dev/%s", dev) < 0) {
+        virReportOOMError();
         retval = -1;
         goto free_vol;
     }
@@ -244,13 +246,12 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
      * way of doing this...
      */
     if ((vol->target.path = virStorageBackendStablePath(pool,
-                                                        devpath,
-                                                        true)) == NULL) {
+                                                        devpath)) == NULL) {
         retval = -1;
         goto free_vol;
     }
 
-    if (STREQ(devpath, vol->target.path) &&
+    if (STREQLEN(devpath, vol->target.path, PATH_MAX) &&
         !(STREQ(pool->def->target.path, "/dev") ||
           STREQ(pool->def->target.path, "/dev/"))) {
 
@@ -265,9 +266,9 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
                                                  &vol->allocation,
                                                  &vol->capacity) < 0) {
 
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Failed to update volume for '%s'"),
-                       devpath);
+        virStorageReportError(VIR_ERR_INTERNAL_ERROR,
+                              _("Failed to update volume for '%s'"),
+                              devpath);
         retval = -1;
         goto free_vol;
     }
@@ -282,6 +283,7 @@ virStorageBackendSCSINewLun(virStoragePoolObjPtr pool,
 
     if (VIR_REALLOC_N(pool->volumes.objs,
                       pool->volumes.count + 1) < 0) {
+        virReportOOMError();
         retval = -1;
         goto free_vol;
     }
@@ -307,8 +309,10 @@ getNewStyleBlockDevice(const char *lun_path,
     struct dirent *block_dirent = NULL;
     int retval = 0;
 
-    if (virAsprintf(&block_path, "%s/block", lun_path) < 0)
+    if (virAsprintf(&block_path, "%s/block", lun_path) < 0) {
+        virReportOOMError();
         goto out;
+    }
 
     VIR_DEBUG("Looking for block device in '%s'", block_path);
 
@@ -327,7 +331,10 @@ getNewStyleBlockDevice(const char *lun_path,
             continue;
         }
 
-        if (VIR_STRDUP(*block_device, block_dirent->d_name) < 0) {
+        *block_device = strdup(block_dirent->d_name);
+
+        if (*block_device == NULL) {
+            virReportOOMError();
             closedir(block_dir);
             retval = -1;
             goto out;
@@ -358,13 +365,16 @@ getOldStyleBlockDevice(const char *lun_path ATTRIBUTE_UNUSED,
     blockp = strrchr(block_name, ':');
     if (blockp == NULL) {
         /* Hm, wasn't what we were expecting; have to give up */
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Failed to parse block name %s"),
-                       block_name);
+        virStorageReportError(VIR_ERR_INTERNAL_ERROR,
+                              _("Failed to parse block name %s"),
+                              block_name);
         retval = -1;
     } else {
         blockp++;
-        if (VIR_STRDUP(*block_device, blockp) < 0) {
+        *block_device = strdup(blockp);
+
+        if (*block_device == NULL) {
+            virReportOOMError();
             retval = -1;
             goto out;
         }
@@ -390,8 +400,10 @@ getBlockDevice(uint32_t host,
     int retval = 0;
 
     if (virAsprintf(&lun_path, "/sys/bus/scsi/devices/%u:%u:%u:%u",
-                    host, bus, target, lun) < 0)
+                    host, bus, target, lun) < 0) {
+        virReportOOMError();
         goto out;
+    }
 
     lun_dir = opendir(lun_path);
     if (lun_dir == NULL) {
@@ -441,9 +453,9 @@ processLU(virStoragePoolObjPtr pool,
               host, bus, target, lun);
 
     if (getDeviceType(host, bus, target, lun, &device_type) < 0) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Failed to determine if %u:%u:%u:%u is a Direct-Access LUN"),
-                       host, bus, target, lun);
+        virStorageReportError(VIR_ERR_INTERNAL_ERROR,
+                              _("Failed to determine if %u:%u:%u:%u is a Direct-Access LUN"),
+                              host, bus, target, lun);
         retval = -1;
         goto out;
     }
@@ -491,7 +503,7 @@ virStorageBackendSCSIFindLUs(virStoragePoolObjPtr pool,
 {
     int retval = 0;
     uint32_t bus, target, lun;
-    const char *device_path = "/sys/bus/scsi/devices";
+    char *device_path = NULL;
     DIR *devicedir = NULL;
     struct dirent *lun_dirent = NULL;
     char devicepattern[64];
@@ -500,12 +512,18 @@ virStorageBackendSCSIFindLUs(virStoragePoolObjPtr pool,
 
     virFileWaitForDevices();
 
+    if (virAsprintf(&device_path, "/sys/bus/scsi/devices") < 0) {
+        virReportOOMError();
+        goto out;
+    }
+
     devicedir = opendir(device_path);
 
     if (devicedir == NULL) {
         virReportSystemError(errno,
                              _("Failed to opendir path '%s'"), device_path);
-        return -1;
+        retval = -1;
+        goto out;
     }
 
     snprintf(devicepattern, sizeof(devicepattern), "%u:%%u:%%u:%%u\n", scanhost);
@@ -523,8 +541,49 @@ virStorageBackendSCSIFindLUs(virStoragePoolObjPtr pool,
 
     closedir(devicedir);
 
+out:
+    VIR_FREE(device_path);
     return retval;
 }
+
+
+int
+virStorageBackendSCSIGetHostNumber(const char *sysfs_path,
+                                   uint32_t *host)
+{
+    int retval = 0;
+    DIR *sysdir = NULL;
+    struct dirent *dirent = NULL;
+
+    VIR_DEBUG("Finding host number from '%s'", sysfs_path);
+
+    virFileWaitForDevices();
+
+    sysdir = opendir(sysfs_path);
+
+    if (sysdir == NULL) {
+        virReportSystemError(errno,
+                             _("Failed to opendir path '%s'"), sysfs_path);
+        retval = -1;
+        goto out;
+    }
+
+    while ((dirent = readdir(sysdir))) {
+        if (STREQLEN(dirent->d_name, "target", strlen("target"))) {
+            if (sscanf(dirent->d_name,
+                       "target%u:", host) != 1) {
+                VIR_DEBUG("Failed to parse target '%s'", dirent->d_name);
+                retval = -1;
+                break;
+            }
+        }
+    }
+
+    closedir(sysdir);
+out:
+    return retval;
+}
+
 
 static int
 virStorageBackendSCSITriggerRescan(uint32_t host)
@@ -536,6 +595,7 @@ virStorageBackendSCSITriggerRescan(uint32_t host)
     VIR_DEBUG("Triggering rescan of host %d", host);
 
     if (virAsprintf(&path, "/sys/class/scsi_host/host%u/scan", host) < 0) {
+        virReportOOMError();
         retval = -1;
         goto out;
     }
@@ -571,205 +631,59 @@ out:
 }
 
 static int
-getHostNumber(const char *adapter_name,
-              unsigned int *result)
-{
-    char *host = (char *)adapter_name;
-
-    /* Specifying adapter like 'host5' is still supported for
-     * back-compat reason.
-     */
-    if (STRPREFIX(host, "scsi_host")) {
-        host += strlen("scsi_host");
-    } else if (STRPREFIX(host, "fc_host")) {
-        host += strlen("fc_host");
-    } else if (STRPREFIX(host, "host")) {
-        host += strlen("host");
-    } else {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Invalid adapter name '%s' for SCSI pool"),
-                       adapter_name);
-        return -1;
-    }
-
-    if (result && virStrToLong_ui(host, NULL, 10, result) == -1) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
-                       _("Invalid adapter name '%s' for SCSI pool"),
-                       adapter_name);
-        return -1;
-    }
-
-    return 0;
-}
-
-static char *
-getAdapterName(virStoragePoolSourceAdapter adapter)
-{
-    char *name = NULL;
-
-    if (adapter.type != VIR_STORAGE_POOL_SOURCE_ADAPTER_TYPE_FC_HOST) {
-        ignore_value(VIR_STRDUP(name, adapter.data.name));
-        return name;
-    }
-
-    if (!(name = virGetFCHostNameByWWN(NULL,
-                                       adapter.data.fchost.wwnn,
-                                       adapter.data.fchost.wwpn))) {
-        virReportError(VIR_ERR_XML_ERROR,
-                       _("Failed to find SCSI host with wwnn='%s', "
-                         "wwpn='%s'"), adapter.data.fchost.wwnn,
-                       adapter.data.fchost.wwpn);
-    }
-
-    return name;
-}
-
-static int
-createVport(virStoragePoolSourceAdapter adapter)
-{
-    unsigned int parent_host;
-    char *name = NULL;
-
-    if (adapter.type != VIR_STORAGE_POOL_SOURCE_ADAPTER_TYPE_FC_HOST)
-        return 0;
-
-    /* This filters either HBA or already created vHBA */
-    if ((name = virGetFCHostNameByWWN(NULL, adapter.data.fchost.wwnn,
-                                      adapter.data.fchost.wwpn))) {
-        VIR_FREE(name);
-        return 0;
-    }
-
-    if (!adapter.data.fchost.parent &&
-        !(adapter.data.fchost.parent = virFindFCHostCapableVport(NULL))) {
-         virReportError(VIR_ERR_XML_ERROR, "%s",
-                       _("'parent' for vHBA not specified, and "
-                         "cannot find one on this host"));
-         return -1;
-    }
-
-    if (getHostNumber(adapter.data.fchost.parent, &parent_host) < 0)
-        return -1;
-
-    if (virManageVport(parent_host, adapter.data.fchost.wwpn,
-                       adapter.data.fchost.wwnn, VPORT_CREATE) < 0)
-        return -1;
-
-    virFileWaitForDevices();
-    return 0;
-}
-
-static int
-deleteVport(virStoragePoolSourceAdapter adapter)
-{
-    unsigned int parent_host;
-
-    if (adapter.type != VIR_STORAGE_POOL_SOURCE_ADAPTER_TYPE_FC_HOST)
-        return 0;
-
-    /* It must be a HBA instead of a vHBA as long as "parent"
-     * is NULL. "createVport" guaranteed "parent" for a vHBA
-     * cannot be NULL, it's either specified in XML, or detected
-     * automatically.
-     */
-    if (!adapter.data.fchost.parent)
-        return 0;
-
-    if (!(virGetFCHostNameByWWN(NULL, adapter.data.fchost.wwnn,
-                                adapter.data.fchost.wwpn)))
-        return -1;
-
-    if (getHostNumber(adapter.data.fchost.parent, &parent_host) < 0)
-        return -1;
-
-    if (virManageVport(parent_host, adapter.data.fchost.wwpn,
-                       adapter.data.fchost.wwnn, VPORT_DELETE) < 0)
-        return -1;
-
-    return 0;
-}
-
-
-static int
 virStorageBackendSCSICheckPool(virConnectPtr conn ATTRIBUTE_UNUSED,
                                virStoragePoolObjPtr pool,
                                bool *isActive)
 {
-    char *path = NULL;
-    char *name = NULL;
-    unsigned int host;
-    int ret = -1;
+    char *path;
 
     *isActive = false;
-
-    if (!(name = getAdapterName(pool->def->source.adapter)))
+    if (virAsprintf(&path, "/sys/class/scsi_host/%s", pool->def->source.adapter) < 0) {
+        virReportOOMError();
         return -1;
+    }
 
-    if (getHostNumber(name, &host) < 0)
-        goto cleanup;
+    if (access(path, F_OK) == 0)
+        *isActive = true;
 
-    if (virAsprintf(&path, "/sys/class/scsi_host/host%d", host) < 0)
-        goto cleanup;
-
-    *isActive = virFileExists(path);
-
-    ret = 0;
-cleanup:
     VIR_FREE(path);
-    VIR_FREE(name);
-    return ret;
+
+    return 0;
 }
 
 static int
 virStorageBackendSCSIRefreshPool(virConnectPtr conn ATTRIBUTE_UNUSED,
                                  virStoragePoolObjPtr pool)
 {
-    char *name = NULL;
-    unsigned int host;
-    int ret = -1;
+    int retval = 0;
+    uint32_t host;
 
     pool->def->allocation = pool->def->capacity = pool->def->available = 0;
 
-    if (!(name = getAdapterName(pool->def->source.adapter)))
-        return -1;
-
-    if (getHostNumber(name, &host) < 0)
+    if (sscanf(pool->def->source.adapter, "host%u", &host) != 1) {
+        VIR_DEBUG("Failed to get host number from '%s'",
+                    pool->def->source.adapter);
+        retval = -1;
         goto out;
+    }
 
     VIR_DEBUG("Scanning host%u", host);
 
-    if (virStorageBackendSCSITriggerRescan(host) < 0)
+    if (virStorageBackendSCSITriggerRescan(host) < 0) {
+        retval = -1;
         goto out;
+    }
 
     virStorageBackendSCSIFindLUs(pool, host);
 
-    ret = 0;
 out:
-    VIR_FREE(name);
-    return ret;
+    return retval;
 }
 
-static int
-virStorageBackendSCSIStartPool(virConnectPtr conn ATTRIBUTE_UNUSED,
-                               virStoragePoolObjPtr pool)
-{
-    virStoragePoolSourceAdapter adapter = pool->def->source.adapter;
-    return createVport(adapter);
-}
-
-static int
-virStorageBackendSCSIStopPool(virConnectPtr conn ATTRIBUTE_UNUSED,
-                              virStoragePoolObjPtr pool)
-{
-    virStoragePoolSourceAdapter adapter = pool->def->source.adapter;
-    return deleteVport(adapter);
-}
 
 virStorageBackend virStorageBackendSCSI = {
     .type = VIR_STORAGE_POOL_SCSI,
 
     .checkPool = virStorageBackendSCSICheckPool,
     .refreshPool = virStorageBackendSCSIRefreshPool,
-    .startPool = virStorageBackendSCSIStartPool,
-    .stopPool = virStorageBackendSCSIStopPool,
 };

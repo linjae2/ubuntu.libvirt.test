@@ -1,7 +1,7 @@
 /*
  * virtime.c: Time handling functions
  *
- * Copyright (C) 2006-2012 Red Hat, Inc.
+ * Copyright (C) 2006-2011 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  *
@@ -34,11 +34,14 @@
 #include <config.h>
 
 #include <stdio.h>
-#include <sys/time.h>
+#ifndef HAVE_CLOCK_GETTIME
+# include <sys/time.h>
+#endif
 
 #include "virtime.h"
-#include "viralloc.h"
-#include "virerror.h"
+#include "util.h"
+#include "memory.h"
+#include "virterror_internal.h"
 
 #define VIR_FROM_THIS VIR_FROM_NONE
 
@@ -158,8 +161,8 @@ int virTimeFieldsThenRaw(unsigned long long when, struct tm *fields)
 
       /* Adjust DAYS and Y to match the guessed year.  */
       days -= ((yg - y) * 365
-               + LEAPS_THRU_END_OF(yg - 1)
-               - LEAPS_THRU_END_OF(y - 1));
+               + LEAPS_THRU_END_OF (yg - 1)
+               - LEAPS_THRU_END_OF (y - 1));
       y = yg;
     }
     fields->tm_year = y - 1900;
@@ -303,8 +306,10 @@ char *virTimeStringNow(void)
 {
     char *ret;
 
-    if (VIR_ALLOC_N(ret, VIR_TIME_STRING_BUFLEN) < 0)
+    if (VIR_ALLOC_N(ret, VIR_TIME_STRING_BUFLEN) < 0) {
+        virReportOOMError();
         return NULL;
+    }
 
     if (virTimeStringNowRaw(ret) < 0) {
         virReportSystemError(errno, "%s",
@@ -332,8 +337,10 @@ char *virTimeStringThen(unsigned long long when)
 {
     char *ret;
 
-    if (VIR_ALLOC_N(ret, VIR_TIME_STRING_BUFLEN) < 0)
+    if (VIR_ALLOC_N(ret, VIR_TIME_STRING_BUFLEN) < 0) {
+        virReportOOMError();
         return NULL;
+    }
 
     if (virTimeStringThenRaw(when, ret) < 0) {
         virReportSystemError(errno, "%s",

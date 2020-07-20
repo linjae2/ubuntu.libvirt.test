@@ -1,7 +1,7 @@
 /*
  * virkeepalive.c: keepalive handling
  *
- * Copyright (C) 2011-2013 Red Hat, Inc.
+ * Copyright (C) 2011 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,34 +14,41 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Jiri Denemark <jdenemar@redhat.com>
  */
 
 #include <config.h>
 
-#include "viralloc.h"
-#include "virthread.h"
+#include "memory.h"
+#include "threads.h"
 #include "virfile.h"
-#include "virlog.h"
-#include "virerror.h"
+#include "logging.h"
+#include "util.h"
+#include "virterror_internal.h"
 #include "virnetsocket.h"
 #include "virkeepaliveprotocol.h"
 #include "virkeepalive.h"
 
 #define VIR_FROM_THIS VIR_FROM_RPC
+#define virNetError(code, ...)                                    \
+    virReportErrorHelper(VIR_FROM_THIS, code, __FILE__,           \
+                         __FUNCTION__, __LINE__, __VA_ARGS__)
 
 struct _virKeepAlive {
-    virObjectLockable parent;
+    int refs;
+    virMutex lock;
 
     int interval;
     unsigned int count;
     unsigned int countToDeath;
     time_t lastPacketReceived;
-    time_t intervalStart;
     int timer;
+
+    virNetMessagePtr response;
+    int responseTimer;
 
     virKeepAliveSendFunc sendCB;
     virKeepAliveDeadFunc deadCB;
@@ -50,42 +57,26 @@ struct _virKeepAlive {
 };
 
 
-static virClassPtr virKeepAliveClass;
-static void virKeepAliveDispose(void *obj);
-
-static int virKeepAliveOnceInit(void)
+static void
+virKeepAliveLock(virKeepAlivePtr ka)
 {
-    if (!(virKeepAliveClass = virClassNew(virClassForObjectLockable(),
-                                          "virKeepAlive",
-                                          sizeof(virKeepAlive),
-                                          virKeepAliveDispose)))
-        return -1;
-
-    return 0;
+    virMutexLock(&ka->lock);
 }
 
-VIR_ONCE_GLOBAL_INIT(virKeepAlive)
+static void
+virKeepAliveUnlock(virKeepAlivePtr ka)
+{
+    virMutexUnlock(&ka->lock);
+}
+
 
 static virNetMessagePtr
-virKeepAliveMessage(virKeepAlivePtr ka, int proc)
+virKeepAliveMessage(int proc)
 {
     virNetMessagePtr msg;
-    const char *procstr = NULL;
-
-    switch (proc) {
-    case KEEPALIVE_PROC_PING:
-        procstr = "request";
-        break;
-    case KEEPALIVE_PROC_PONG:
-        procstr = "response";
-        break;
-    default:
-        VIR_WARN("Refusing to send unknown keepalive message: %d", proc);
-        return NULL;
-    }
 
     if (!(msg = virNetMessageNew(false)))
-        goto error;
+        return NULL;
 
     msg->header.prog = KEEPALIVE_PROGRAM;
     msg->header.vers = KEEPALIVE_PROTOCOL_VERSION;
@@ -95,57 +86,69 @@ virKeepAliveMessage(virKeepAlivePtr ka, int proc)
     if (virNetMessageEncodeHeader(msg) < 0 ||
         virNetMessageEncodePayloadEmpty(msg) < 0) {
         virNetMessageFree(msg);
-        goto error;
+        return NULL;
     }
 
-    VIR_DEBUG("Sending keepalive %s to client %p", procstr, ka->client);
+    return msg;
+}
+
+
+static void
+virKeepAliveSend(virKeepAlivePtr ka, virNetMessagePtr msg)
+{
+    const char *proc = NULL;
+    void *client = ka->client;
+    virKeepAliveSendFunc sendCB = ka->sendCB;
+
+    switch (msg->header.proc) {
+    case KEEPALIVE_PROC_PING:
+        proc = "request";
+        break;
+    case KEEPALIVE_PROC_PONG:
+        proc = "response";
+        break;
+    }
+
+    if (!proc) {
+        VIR_WARN("Refusing to send unknown keepalive message: %d",
+                 msg->header.proc);
+        virNetMessageFree(msg);
+        return;
+    }
+
+    VIR_DEBUG("Sending keepalive %s to client %p", proc, ka->client);
     PROBE(RPC_KEEPALIVE_SEND,
           "ka=%p client=%p prog=%d vers=%d proc=%d",
           ka, ka->client, msg->header.prog, msg->header.vers, msg->header.proc);
 
-    return msg;
+    ka->refs++;
+    virKeepAliveUnlock(ka);
 
-error:
-    VIR_WARN("Failed to generate keepalive %s", procstr);
-    return NULL;
+    if (sendCB(client, msg) < 0) {
+        VIR_WARN("Failed to send keepalive %s to client %p", proc, client);
+        virNetMessageFree(msg);
+    }
+
+    virKeepAliveLock(ka);
+    ka->refs--;
 }
 
 
-static bool
-virKeepAliveTimerInternal(virKeepAlivePtr ka,
-                          virNetMessagePtr *msg)
+static void
+virKeepAliveScheduleResponse(virKeepAlivePtr ka)
 {
-    time_t now = time(NULL);
-    int timeval;
+    if (ka->responseTimer == -1)
+        return;
 
-    if (ka->interval <= 0 || ka->intervalStart == 0)
-        return false;
+    VIR_DEBUG("Scheduling keepalive response to client %p", ka->client);
 
-    if (now - ka->intervalStart < ka->interval) {
-        timeval = ka->interval - (now - ka->intervalStart);
-        virEventUpdateTimeout(ka->timer, timeval * 1000);
-        return false;
+    if (!ka->response &&
+        !(ka->response = virKeepAliveMessage(KEEPALIVE_PROC_PONG))) {
+        VIR_WARN("Failed to generate keepalive response");
+        return;
     }
 
-    timeval = now - ka->lastPacketReceived;
-    PROBE(RPC_KEEPALIVE_TIMEOUT,
-          "ka=%p client=%p countToDeath=%d idle=%d",
-          ka, ka->client, ka->countToDeath, timeval);
-
-    if (ka->countToDeath == 0) {
-        VIR_WARN("No response from client %p after %d keepalive messages in"
-                 " %d seconds",
-                 ka->client,
-                 ka->count,
-                 timeval);
-        return true;
-    } else {
-        ka->countToDeath--;
-        ka->intervalStart = now;
-        *msg = virKeepAliveMessage(ka, KEEPALIVE_PROC_PING);
-        virEventUpdateTimeout(ka->timer, ka->interval * 1000);
-        return false;
-    }
+    virEventUpdateTimeout(ka->responseTimer, 0);
 }
 
 
@@ -153,33 +156,78 @@ static void
 virKeepAliveTimer(int timer ATTRIBUTE_UNUSED, void *opaque)
 {
     virKeepAlivePtr ka = opaque;
-    virNetMessagePtr msg = NULL;
-    bool dead;
-    void *client;
+    time_t now = time(NULL);
 
-    virObjectLock(ka);
+    virKeepAliveLock(ka);
 
-    client = ka->client;
-    dead = virKeepAliveTimerInternal(ka, &msg);
+    PROBE(RPC_KEEPALIVE_TIMEOUT,
+          "ka=%p client=%p countToDeath=%d idle=%d",
+          ka, ka->client, ka->countToDeath,
+          (int) (now - ka->lastPacketReceived));
 
-    if (!dead && !msg)
+    if (now - ka->lastPacketReceived < ka->interval - 1) {
+        int timeout = ka->interval - (now - ka->lastPacketReceived);
+        virEventUpdateTimeout(ka->timer, timeout * 1000);
         goto cleanup;
-
-    virObjectRef(ka);
-    virObjectUnlock(ka);
-
-    if (dead) {
-        ka->deadCB(client);
-    } else if (ka->sendCB(client, msg) < 0) {
-        VIR_WARN("Failed to send keepalive request to client %p", client);
-        virNetMessageFree(msg);
     }
 
-    virObjectLock(ka);
-    virObjectUnref(ka);
+    if (ka->countToDeath == 0) {
+        virKeepAliveDeadFunc deadCB = ka->deadCB;
+        void *client = ka->client;
+
+        VIR_WARN("No response from client %p after %d keepalive messages in"
+                 " %d seconds",
+                 ka->client,
+                 ka->count,
+                 (int) (now - ka->lastPacketReceived));
+        ka->refs++;
+        virKeepAliveUnlock(ka);
+        deadCB(client);
+        virKeepAliveLock(ka);
+        ka->refs--;
+    } else {
+        virNetMessagePtr msg;
+
+        ka->countToDeath--;
+        if (!(msg = virKeepAliveMessage(KEEPALIVE_PROC_PING)))
+            VIR_WARN("Failed to generate keepalive request");
+        else
+            virKeepAliveSend(ka, msg);
+        virEventUpdateTimeout(ka->timer, ka->interval * 1000);
+    }
 
 cleanup:
-    virObjectUnlock(ka);
+    virKeepAliveUnlock(ka);
+}
+
+
+static void
+virKeepAliveResponseTimer(int timer ATTRIBUTE_UNUSED, void *opaque)
+{
+    virKeepAlivePtr ka = opaque;
+    virNetMessagePtr msg;
+
+    virKeepAliveLock(ka);
+
+    VIR_DEBUG("ka=%p, client=%p, response=%p",
+              ka, ka->client, ka->response);
+
+    if (ka->response) {
+        msg = ka->response;
+        ka->response = NULL;
+        virKeepAliveSend(ka, msg);
+    }
+
+    virEventUpdateTimeout(ka->responseTimer, ka->response ? 0 : -1);
+
+    virKeepAliveUnlock(ka);
+}
+
+
+static void
+virKeepAliveTimerFree(void *opaque)
+{
+    virKeepAliveFree(opaque);
 }
 
 
@@ -195,12 +243,17 @@ virKeepAliveNew(int interval,
 
     VIR_DEBUG("client=%p, interval=%d, count=%u", client, interval, count);
 
-    if (virKeepAliveInitialize() < 0)
+    if (VIR_ALLOC(ka) < 0) {
+        virReportOOMError();
         return NULL;
+    }
 
-    if (!(ka = virObjectLockableNew(virKeepAliveClass)))
+    if (virMutexInit(&ka->lock) < 0) {
+        VIR_FREE(ka);
         return NULL;
+    }
 
+    ka->refs = 1;
     ka->interval = interval;
     ka->count = count;
     ka->countToDeath = count;
@@ -210,23 +263,54 @@ virKeepAliveNew(int interval,
     ka->deadCB = deadCB;
     ka->freeCB = freeCB;
 
+    ka->responseTimer = virEventAddTimeout(-1, virKeepAliveResponseTimer,
+                                           ka, virKeepAliveTimerFree);
+    if (ka->responseTimer < 0) {
+        virKeepAliveFree(ka);
+        return NULL;
+    }
+    /* the timer now has a reference to ka */
+    ka->refs++;
+
     PROBE(RPC_KEEPALIVE_NEW,
-          "ka=%p client=%p",
-          ka, ka->client);
+          "ka=%p client=%p refs=%d",
+          ka, ka->client, ka->refs);
 
     return ka;
 }
 
 
 void
-virKeepAliveDispose(void *obj)
+virKeepAliveRef(virKeepAlivePtr ka)
 {
-    virKeepAlivePtr ka = obj;
+    virKeepAliveLock(ka);
+    ka->refs++;
+    PROBE(RPC_KEEPALIVE_REF,
+          "ka=%p client=%p refs=%d",
+          ka, ka->client, ka->refs);
+    virKeepAliveUnlock(ka);
+}
 
-    PROBE(RPC_KEEPALIVE_DISPOSE,
-          "ka=%p", ka);
 
+void
+virKeepAliveFree(virKeepAlivePtr ka)
+{
+    if (!ka)
+        return;
+
+    virKeepAliveLock(ka);
+    PROBE(RPC_KEEPALIVE_FREE,
+          "ka=%p client=%p refs=%d",
+          ka, ka->client, ka->refs);
+
+    if (--ka->refs > 0) {
+        virKeepAliveUnlock(ka);
+        return;
+    }
+
+    virMutexDestroy(&ka->lock);
     ka->freeCB(ka->client);
+    VIR_FREE(ka);
 }
 
 
@@ -238,9 +322,8 @@ virKeepAliveStart(virKeepAlivePtr ka,
     int ret = -1;
     time_t delay;
     int timeout;
-    time_t now;
 
-    virObjectLock(ka);
+    virKeepAliveLock(ka);
 
     if (ka->timer >= 0) {
         VIR_DEBUG("Keepalive messages already enabled");
@@ -250,14 +333,8 @@ virKeepAliveStart(virKeepAlivePtr ka,
 
     if (interval > 0) {
         if (ka->interval > 0) {
-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
-                           _("keepalive interval already set"));
-            goto cleanup;
-        }
-        /* Guard against overflow */
-        if (interval > INT_MAX / 1000) {
-            virReportError(VIR_ERR_INTERNAL_ERROR,
-                           _("keepalive interval %d too large"), interval);
+            virNetError(VIR_ERR_INTERNAL_ERROR, "%s",
+                        _("keepalive interval already set"));
             goto cleanup;
         }
         ka->interval = interval;
@@ -275,112 +352,84 @@ virKeepAliveStart(virKeepAlivePtr ka,
           "ka=%p client=%p interval=%d count=%u",
           ka, ka->client, interval, count);
 
-    now = time(NULL);
-    delay = now - ka->lastPacketReceived;
+    delay = time(NULL) - ka->lastPacketReceived;
     if (delay > ka->interval)
         timeout = 0;
     else
         timeout = ka->interval - delay;
-    ka->intervalStart = now - (ka->interval - timeout);
     ka->timer = virEventAddTimeout(timeout * 1000, virKeepAliveTimer,
-                                   ka, virObjectFreeCallback);
+                                   ka, virKeepAliveTimerFree);
     if (ka->timer < 0)
         goto cleanup;
 
     /* the timer now has another reference to this object */
-    virObjectRef(ka);
+    ka->refs++;
     ret = 0;
 
 cleanup:
-    virObjectUnlock(ka);
+    virKeepAliveUnlock(ka);
     return ret;
 }
 
 
-void
-virKeepAliveStop(virKeepAlivePtr ka)
+static void
+virKeepAliveStopInternal(virKeepAlivePtr ka, bool all)
 {
-    virObjectLock(ka);
+    virKeepAliveLock(ka);
 
     PROBE(RPC_KEEPALIVE_STOP,
-          "ka=%p client=%p",
-          ka, ka->client);
+          "ka=%p client=%p all=%d",
+          ka, ka->client, all);
 
     if (ka->timer > 0) {
         virEventRemoveTimeout(ka->timer);
         ka->timer = -1;
     }
 
-    virObjectUnlock(ka);
-}
+    if (all) {
+        if (ka->responseTimer > 0) {
+            virEventRemoveTimeout(ka->responseTimer);
+            ka->responseTimer = -1;
+        }
 
-
-int
-virKeepAliveTimeout(virKeepAlivePtr ka)
-{
-    int timeout;
-
-    if (!ka)
-        return -1;
-
-    virObjectLock(ka);
-
-    if (ka->interval <= 0 || ka->intervalStart == 0) {
-        timeout = -1;
-    } else {
-        timeout = ka->interval - (time(NULL) - ka->intervalStart);
-        if (timeout < 0)
-            timeout = 0;
-        /* Guard against overflow */
-        if (timeout > INT_MAX / 1000)
-            timeout = INT_MAX / 1000;
+        virNetMessageFree(ka->response);
+        ka->response = NULL;
     }
 
-    virObjectUnlock(ka);
-
-    if (timeout < 0)
-        return -1;
-    else
-        return timeout * 1000;
+    virKeepAliveUnlock(ka);
 }
 
 
-bool
-virKeepAliveTrigger(virKeepAlivePtr ka,
-                    virNetMessagePtr *msg)
+void
+virKeepAliveStop(virKeepAlivePtr ka)
 {
-    bool dead;
+    virKeepAliveStopInternal(ka, true);
+}
 
-    *msg = NULL;
-    if (!ka)
-        return false;
 
-    virObjectLock(ka);
-    dead = virKeepAliveTimerInternal(ka, msg);
-    virObjectUnlock(ka);
-
-    return dead;
+void
+virKeepAliveStopSending(virKeepAlivePtr ka)
+{
+    virKeepAliveStopInternal(ka, false);
 }
 
 
 bool
 virKeepAliveCheckMessage(virKeepAlivePtr ka,
-                         virNetMessagePtr msg,
-                         virNetMessagePtr *response)
+                         virNetMessagePtr msg)
 {
     bool ret = false;
 
     VIR_DEBUG("ka=%p, client=%p, msg=%p",
               ka, ka ? ka->client : "(null)", msg);
 
-    *response = NULL;
     if (!ka)
         return false;
 
-    virObjectLock(ka);
+    virKeepAliveLock(ka);
 
     ka->countToDeath = ka->count;
-    ka->lastPacketReceived = ka->intervalStart = time(NULL);
+    ka->lastPacketReceived = time(NULL);
 
     if (msg->header.prog == KEEPALIVE_PROGRAM &&
         msg->header.vers == KEEPALIVE_PROTOCOL_VERSION &&
@@ -393,7 +442,7 @@ virKeepAliveCheckMessage(virKeepAlivePtr ka,
         switch (msg->header.proc) {
         case KEEPALIVE_PROC_PING:
             VIR_DEBUG("Got keepalive request from client %p", ka->client);
-            *response = virKeepAliveMessage(ka, KEEPALIVE_PROC_PONG);
+            virKeepAliveScheduleResponse(ka);
             break;
 
         case KEEPALIVE_PROC_PONG:
@@ -409,7 +458,7 @@ virKeepAliveCheckMessage(virKeepAlivePtr ka,
     if (ka->timer >= 0)
         virEventUpdateTimeout(ka->timer, ka->interval * 1000);
 
-    virObjectUnlock(ka);
+    virKeepAliveUnlock(ka);
 
     return ret;
 }

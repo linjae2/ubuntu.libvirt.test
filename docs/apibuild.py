@@ -10,7 +10,6 @@
 import os, sys
 import string
 import glob
-import re
 
 quiet=True
 warnings=0
@@ -24,19 +23,13 @@ included_files = {
   "libvirt.h": "header with general libvirt API definitions",
   "virterror.h": "header with error specific API definitions",
   "libvirt.c": "Main interfaces for the libvirt library",
-  "virerror.c": "implements error handling and reporting code for libvirt",
-  "virevent.c": "event loop for monitoring file handles",
-  "virtypedparam.c": "virTypedParameters APIs",
+  "virterror.c": "implements error handling and reporting code for libvirt",
+  "event.c": "event loop for monitoring file handles",
 }
 
 qemu_included_files = {
   "libvirt-qemu.h": "header with QEMU specific API definitions",
   "libvirt-qemu.c": "Implementations for the QEMU specific APIs",
-}
-
-lxc_included_files = {
-  "libvirt-lxc.h": "header with LXC specific API definitions",
-  "libvirt-lxc.c": "Implementations for the LXC specific APIs",
 }
 
 ignored_words = {
@@ -50,7 +43,6 @@ ignored_words = {
 }
 
 ignored_functions = {
-  "virConnectSupportsFeature": "private function for remote access",
   "virDomainMigrateFinish": "private function for migration",
   "virDomainMigrateFinish2": "private function for migration",
   "virDomainMigratePerform": "private function for migration",
@@ -63,19 +55,14 @@ ignored_functions = {
   "virDomainMigratePrepare3": "private function for migration",
   "virDomainMigrateConfirm3": "private function for migration",
   "virDomainMigratePrepareTunnel3": "private function for tunnelled migration",
+  "virDrvSupportsFeature": "private function for remote access",
   "DllMain": "specific function for Win32",
-  "virTypedParamsValidate": "internal function in virtypedparam.c",
-  "virTypedParameterAssign": "internal function in virtypedparam.c",
-  "virTypedParameterAssignFromStr": "internal function in virtypedparam.c",
-  "virTypedParameterToString": "internal function in virtypedparam.c",
-  "virTypedParamsCheck": "internal function in virtypedparam.c",
-  "virTypedParamsCopy": "internal function in virtypedparam.c",
-  "virDomainMigrateBegin3Params": "private function for migration",
-  "virDomainMigrateFinish3Params": "private function for migration",
-  "virDomainMigratePerform3Params": "private function for migration",
-  "virDomainMigratePrepare3Params": "private function for migration",
-  "virDomainMigrateConfirm3Params": "private function for migration",
-  "virDomainMigratePrepareTunnel3Params": "private function for tunnelled migration",
+  "virEventAddHandle": "internal function in event.c",
+  "virEventUpdateHandle": "internal function in event.c",
+  "virEventRemoveHandle": "internal function in event.c",
+  "virEventAddTimeout": "internal function in event.c",
+  "virEventUpdateTimeout": "internal function in event.c",
+  "virEventRemoveTimeout": "internal function in event.c",
 }
 
 ignored_macros = {
@@ -111,7 +98,7 @@ class identifier:
         self.extra = extra
         self.lineno = lineno
         self.static = 0
-        if conditionals is None or len(conditionals) == 0:
+        if conditionals == None or len(conditionals) == 0:
             self.conditionals = None
         else:
             self.conditionals = conditionals[:]
@@ -123,13 +110,13 @@ class identifier:
         r = "%s %s:" % (self.type, self.name)
         if self.static:
             r = r + " static"
-        if self.module is not None:
+        if self.module != None:
             r = r + " from %s" % (self.module)
-        if self.info is not None:
+        if self.info != None:
             r = r + " " +  `self.info`
-        if self.extra is not None:
+        if self.extra != None:
             r = r + " " + `self.extra`
-        if self.conditionals is not None:
+        if self.conditionals != None:
             r = r + " " + `self.conditionals`
         return r
 
@@ -149,7 +136,7 @@ class identifier:
     def set_static(self, static):
         self.static = static
     def set_conditionals(self, conditionals):
-        if conditionals is None or len(conditionals) == 0:
+        if conditionals == None or len(conditionals) == 0:
             self.conditionals = None
         else:
             self.conditionals = conditionals[:]
@@ -178,17 +165,17 @@ class identifier:
         if self.name == debugsym and not quiet:
             print "=> update %s : %s" % (debugsym, (module, type, info,
                                          extra, conditionals))
-        if header is not None and self.header is None:
+        if header != None and self.header == None:
             self.set_header(module)
-        if module is not None and (self.module is None or self.header == self.module):
+        if module != None and (self.module == None or self.header == self.module):
             self.set_module(module)
-        if type is not None and self.type is None:
+        if type != None and self.type == None:
             self.set_type(type)
-        if info is not None:
+        if info != None:
             self.set_info(info)
-        if extra is not None:
+        if extra != None:
             self.set_extra(extra)
-        if conditionals is not None:
+        if conditionals != None:
             self.set_conditionals(conditionals)
 
 class index:
@@ -217,10 +204,10 @@ class index:
            d = identifier(name, header, module, type, lineno, info, extra, conditionals)
            self.identifiers[name] = d
 
-        if d is not None and static == 1:
+        if d != None and static == 1:
             d.set_static(1)
 
-        if d is not None and name is not None and type is not None:
+        if d != None and name != None and type != None:
             self.references[name] = d
 
         if name == debugsym and not quiet:
@@ -239,10 +226,10 @@ class index:
            d = identifier(name, header, module, type, lineno, info, extra, conditionals)
            self.identifiers[name] = d
 
-        if d is not None and static == 1:
+        if d != None and static == 1:
             d.set_static(1)
 
-        if d is not None and name is not None and type is not None:
+        if d != None and name != None and type != None:
             if type == "function":
                 self.functions[name] = d
             elif type == "functype":
@@ -251,6 +238,8 @@ class index:
                 self.variables[name] = d
             elif type == "include":
                 self.includes[name] = d
+            elif type == "struct":
+                self.structs[name] = d
             elif type == "struct":
                 self.structs[name] = d
             elif type == "union":
@@ -418,7 +407,7 @@ class CLexer:
         return self.lineno
 
     def push(self, token):
-        self.tokens.insert(0, token)
+        self.tokens.insert(0, token);
 
     def debug(self):
         print "Last token: ", self.last
@@ -432,13 +421,13 @@ class CLexer:
             else:
                 line = self.line
                 self.line = ""
-            if line is None:
+            if line == None:
                 return None
 
             if line[0] == '#':
                 self.tokens = map((lambda x: ('preproc', x)),
                                   string.split(line))
-                break
+                break;
             l = len(line)
             if line[0] == '"' or line[0] == "'":
                 end = line[0]
@@ -461,7 +450,7 @@ class CLexer:
                     tok = tok + line
                     if found == 0:
                         line = self.getline()
-                        if line is None:
+                        if line == None:
                             return None
                 self.last = ('string', tok)
                 return self.last
@@ -486,7 +475,7 @@ class CLexer:
                     tok = tok + line
                     if found == 0:
                         line = self.getline()
-                        if line is None:
+                        if line == None:
                             return None
                 self.last = ('comment', tok)
                 return self.last
@@ -598,7 +587,7 @@ class CParser:
             self.is_header = 0
         self.input = open(filename)
         self.lexer = CLexer(self.input)
-        if idx is None:
+        if idx == None:
             self.index = index()
         else:
             self.index = idx
@@ -667,18 +656,27 @@ class CParser:
         lines = string.split(comment, "\n")
         item = None
         for line in lines:
-            line = line.lstrip().lstrip('*').lstrip()
-
-            m = re.match('([_.a-zA-Z0-9]+):(.*)', line)
-            if m:
-                item = m.group(1)
-                line = m.group(2).lstrip()
-
-            if item:
+            while line != "" and (line[0] == ' ' or line[0] == '\t'):
+                line = line[1:]
+            while line != "" and line[0] == '*':
+                line = line[1:]
+            while line != "" and (line[0] == ' ' or line[0] == '\t'):
+                line = line[1:]
+            try:
+                (it, line) = string.split(line, ":", 1)
+                item = it
+                while line != "" and (line[0] == ' ' or line[0] == '\t'):
+                    line = line[1:]
                 if res.has_key(item):
                     res[item] = res[item] + " " + line
                 else:
                     res[item] = line
+            except:
+                if item != None:
+                    if res.has_key(item):
+                        res[item] = res[item] + " " + line
+                    else:
+                        res[item] = line
         self.index.info = res
 
     def strip_lead_star(self, line):
@@ -707,8 +705,8 @@ class CParser:
         com = token[1]
         if self.top_comment == "":
             self.top_comment = com
-        if self.comment is None or com[0] == '*':
-            self.comment = com
+        if self.comment == None or com[0] == '*':
+            self.comment = com;
         else:
             self.comment = self.comment + com
         token = self.lexer.token()
@@ -731,7 +729,7 @@ class CParser:
         args = []
         desc = ""
 
-        if self.comment is None:
+        if self.comment == None:
             if not quiet:
                 self.warning("Missing comment for type %s" % (name))
             return((args, desc))
@@ -780,7 +778,7 @@ class CParser:
         args = []
         desc = ""
 
-        if self.comment is None:
+        if self.comment == None:
             if not quiet:
                 self.warning("Missing comment for macro %s" % (name))
             return((args, desc))
@@ -860,7 +858,7 @@ class CParser:
         desc = ""
         retdesc = ""
 
-        if self.comment is None:
+        if self.comment == None:
             if not quiet:
                 self.warning("Missing comment for function %s" % (name))
             return(((ret[0], retdesc), args, desc))
@@ -906,7 +904,7 @@ class CParser:
             while i < nbargs:
                 if args[i][1] == arg:
                     args[i] = (args[i][0], arg, desc)
-                    break
+                    break;
                 i = i + 1
             if i >= nbargs:
                 if not quiet:
@@ -919,7 +917,7 @@ class CParser:
             l = lines[0]
             i = 0
             # Remove all leading '*', followed by at most one ' ' character
-            # since we need to preserve correct indentation of code examples
+            # since we need to preserve correct identation of code examples
             while i < len(l) and l[i] == '*':
                 i = i + 1
             if i > 0:
@@ -958,7 +956,7 @@ class CParser:
              #
             i = 0
             while i < nbargs:
-                if args[i][2] is None and args[i][0] != "void" and args[i][1] is not None:
+                if args[i][2] == None and args[i][0] != "void" and args[i][1] != None:
                     self.warning("Function comment for %s lacks description of arg %s" % (name, args[i][1]))
                 i = i + 1
             if retdesc == "" and ret[0] != "void":
@@ -975,7 +973,7 @@ class CParser:
         name = token[1]
         if name == "#include":
             token = self.lexer.token()
-            if token is None:
+            if token == None:
                 return None
             if token[0] == 'preproc':
                 self.index_add(token[1], self.filename, not self.is_header,
@@ -984,14 +982,14 @@ class CParser:
             return token
         if name == "#define":
             token = self.lexer.token()
-            if token is None:
+            if token == None:
                 return None
             if token[0] == 'preproc':
                  # TODO macros with arguments
                 name = token[1]
                 lst = []
                 token = self.lexer.token()
-                while token is not None and token[0] == 'preproc' and \
+                while token != None and token[0] == 'preproc' and \
                       token[1][0] != '#':
                     lst.append(token[1])
                     token = self.lexer.token()
@@ -1059,7 +1057,7 @@ class CParser:
                 self.conditionals = self.conditionals[:-1]
             self.defines = self.defines[:-1]
         token = self.lexer.token()
-        while token is not None and token[0] == 'preproc' and \
+        while token != None and token[0] == 'preproc' and \
             token[1][0] != '#':
             token = self.lexer.token()
         return token
@@ -1076,7 +1074,7 @@ class CParser:
         global ignored_words
 
         token = self.lexer.token()
-        while token is not None:
+        while token != None:
             if token[0] == 'comment':
                 token = self.parseComment(token)
                 continue
@@ -1088,7 +1086,7 @@ class CParser:
                 return token
             elif token[0] == "name" and token[1] == "__attribute":
                 token = self.lexer.token()
-                while token is not None and token[1] != ";":
+                while token != None and token[1] != ";":
                     token = self.lexer.token()
                 return token
             elif token[0] == "name" and ignored_words.has_key(token[1]):
@@ -1109,20 +1107,20 @@ class CParser:
      # Parse a typedef, it records the type and its name.
      #
     def parseTypedef(self, token):
-        if token is None:
+        if token == None:
             return None
         token = self.parseType(token)
-        if token is None:
+        if token == None:
             self.error("parsing typedef")
             return None
         base_type = self.type
         type = base_type
          #self.debug("end typedef type", token)
-        while token is not None:
+        while token != None:
             if token[0] == "name":
                 name = token[1]
                 signature = self.signature
-                if signature is not None:
+                if signature != None:
                     type = string.split(type, '(')[0]
                     d = self.mergeFunctionComment(name,
                             ((type, None), signature), 1)
@@ -1143,17 +1141,17 @@ class CParser:
                 self.error("parsing typedef: expecting a name")
                 return token
              #self.debug("end typedef", token)
-            if token is not None and token[0] == 'sep' and token[1] == ',':
+            if token != None and token[0] == 'sep' and token[1] == ',':
                 type = base_type
                 token = self.token()
-                while token is not None and token[0] == "op":
+                while token != None and token[0] == "op":
                     type = type + token[1]
                     token = self.token()
-            elif token is not None and token[0] == 'sep' and token[1] == ';':
-                break
-            elif token is not None and token[0] == 'name':
+            elif token != None and token[0] == 'sep' and token[1] == ';':
+                break;
+            elif token != None and token[0] == 'name':
                 type = base_type
-                continue
+                continue;
             else:
                 self.error("parsing typedef: expecting ';'", token)
                 return token
@@ -1165,7 +1163,7 @@ class CParser:
      # the balancing } included
      #
     def parseBlock(self, token):
-        while token is not None:
+        while token != None:
             if token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseBlock(token)
@@ -1205,7 +1203,7 @@ class CParser:
     def parseStruct(self, token):
         fields = []
          #self.debug("start parseStruct", token)
-        while token is not None:
+        while token != None:
             if token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseTypeBlock(token)
@@ -1220,7 +1218,7 @@ class CParser:
                  #self.debug("before parseType", token)
                 token = self.parseType(token)
                  #self.debug("after parseType", token)
-                if token is not None and token[0] == "name":
+                if token != None and token[0] == "name":
                     fname = token[1]
                     token = self.token()
                     if token[0] == "sep" and token[1] == ";":
@@ -1236,19 +1234,19 @@ class CParser:
                         self.comment = None
                     else:
                         self.error("parseStruct: expecting ;", token)
-                elif token is not None and token[0] == "sep" and token[1] == "{":
+                elif token != None and token[0] == "sep" and token[1] == "{":
                     token = self.token()
                     token = self.parseTypeBlock(token)
-                    if token is not None and token[0] == "name":
+                    if token != None and token[0] == "name":
                         token = self.token()
-                    if token is not None and token[0] == "sep" and token[1] == ";":
+                    if token != None and token[0] == "sep" and token[1] == ";":
                         token = self.token()
                     else:
                         self.error("parseStruct: expecting ;", token)
                 else:
                     self.error("parseStruct: name", token)
                     token = self.token()
-                self.type = base_type
+                self.type = base_type;
         self.struct_fields = fields
          #self.debug("end parseStruct", token)
          #print fields
@@ -1260,7 +1258,7 @@ class CParser:
     def parseUnion(self, token):
         fields = []
         # self.debug("start parseUnion", token)
-        while token is not None:
+        while token != None:
             if token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseTypeBlock(token)
@@ -1275,7 +1273,7 @@ class CParser:
                 # self.debug("before parseType", token)
                 token = self.parseType(token)
                 # self.debug("after parseType", token)
-                if token is not None and token[0] == "name":
+                if token != None and token[0] == "name":
                     fname = token[1]
                     token = self.token()
                     if token[0] == "sep" and token[1] == ";":
@@ -1286,19 +1284,19 @@ class CParser:
                         self.comment = None
                     else:
                         self.error("parseUnion: expecting ;", token)
-                elif token is not None and token[0] == "sep" and token[1] == "{":
+                elif token != None and token[0] == "sep" and token[1] == "{":
                     token = self.token()
                     token = self.parseTypeBlock(token)
-                    if token is not None and token[0] == "name":
+                    if token != None and token[0] == "name":
                         token = self.token()
-                    if token is not None and token[0] == "sep" and token[1] == ";":
+                    if token != None and token[0] == "sep" and token[1] == ";":
                         token = self.token()
                     else:
                         self.error("parseUnion: expecting ;", token)
                 else:
                     self.error("parseUnion: name", token)
                     token = self.token()
-                self.type = base_type
+                self.type = base_type;
         self.union_fields = fields
         # self.debug("end parseUnion", token)
         # print fields
@@ -1313,14 +1311,14 @@ class CParser:
         self.comment = None
         comment = ""
         value = "0"
-        while token is not None:
+        while token != None:
             if token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseTypeBlock(token)
             elif token[0] == "sep" and token[1] == "}":
-                if name is not None:
+                if name != None:
                     self.cleanupComment()
-                    if self.comment is not None:
+                    if self.comment != None:
                         comment = self.comment
                         self.comment = None
                     self.enums.append((name, value, comment))
@@ -1328,8 +1326,8 @@ class CParser:
                 return token
             elif token[0] == "name":
                     self.cleanupComment()
-                    if name is not None:
-                        if self.comment is not None:
+                    if name != None:
+                        if self.comment != None:
                             comment = string.strip(self.comment)
                             self.comment = None
                         self.enums.append((name, value, comment))
@@ -1357,101 +1355,12 @@ class CParser:
                 token = self.token()
         return token
 
-    def parseVirEnumDecl(self, token):
-        if token[0] != "name":
-            self.error("parsing VIR_ENUM_DECL: expecting name", token)
-
-        token = self.token()
-
-        if token[0] != "sep":
-            self.error("parsing VIR_ENUM_DECL: expecting ')'", token)
-
-        if token[1] != ')':
-            self.error("parsing VIR_ENUM_DECL: expecting ')'", token)
-
-        token = self.token()
-        if token[0] == "sep" and token[1] == ';':
-            token = self.token()
-
-        return token
-
-    def parseVirEnumImpl(self, token):
-        # First the type name
-        if token[0] != "name":
-            self.error("parsing VIR_ENUM_IMPL: expecting name", token)
-
-        token = self.token()
-
-        if token[0] != "sep":
-            self.error("parsing VIR_ENUM_IMPL: expecting ','", token)
-
-        if token[1] != ',':
-            self.error("parsing VIR_ENUM_IMPL: expecting ','", token)
-        token = self.token()
-
-        # Now the sentinel name
-        if token[0] != "name":
-            self.error("parsing VIR_ENUM_IMPL: expecting name", token)
-
-        token = self.token()
-
-        if token[0] != "sep":
-            self.error("parsing VIR_ENUM_IMPL: expecting ','", token)
-
-        if token[1] != ',':
-            self.error("parsing VIR_ENUM_IMPL: expecting ','", token)
-
-        token = self.token()
-
-        # Now a list of strings (optional comments)
-        while token is not None:
-            isGettext = False
-            # First a string, optionally with N_(...)
-            if token[0] == 'name':
-                if token[1] != 'N_':
-                    self.error("parsing VIR_ENUM_IMPL: expecting 'N_'", token)
-                token = self.token()
-                if token[0] != "sep" or token[1] != '(':
-                    self.error("parsing VIR_ENUM_IMPL: expecting '('", token)
-                token = self.token()
-                isGettext = True
-
-                if token[0] != "string":
-                    self.error("parsing VIR_ENUM_IMPL: expecting a string", token)
-                token = self.token()
-            elif token[0] == "string":
-                token = self.token()
-            else:
-                self.error("parsing VIR_ENUM_IMPL: expecting a string", token)
-
-            # Then a separator
-            if token[0] == "sep":
-                if isGettext and token[1] == ')':
-                    token = self.token()
-
-                if token[1] == ',':
-                    token = self.token()
-
-                if token[1] == ')':
-                    token = self.token()
-                    break
-
-            # Then an optional comment
-            if token[0] == "comment":
-                token = self.token()
-
-
-        if token[0] == "sep" and token[1] == ';':
-            token = self.token()
-
-        return token
-
      #
      # Parse a C definition block, used for structs or unions it parse till
      # the balancing }
      #
     def parseTypeBlock(self, token):
-        while token is not None:
+        while token != None:
             if token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseTypeBlock(token)
@@ -1472,7 +1381,7 @@ class CParser:
         self.struct_fields = []
         self.union_fields = []
         self.signature = None
-        if token is None:
+        if token == None:
             return token
 
         while token[0] == "name" and (
@@ -1524,13 +1433,13 @@ class CParser:
             if token[0] == "name":
                 nametok = token
                 token = self.token()
-            if token is not None and token[0] == "sep" and token[1] == "{":
+            if token != None and token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseStruct(token)
-            elif token is not None and token[0] == "op" and token[1] == "*":
+            elif token != None and token[0] == "op" and token[1] == "*":
                 self.type = self.type + " " + nametok[1] + " *"
                 token = self.token()
-                while token is not None and token[0] == "op" and token[1] == "*":
+                while token != None and token[0] == "op" and token[1] == "*":
                     self.type = self.type + " *"
                     token = self.token()
                 if token[0] == "name":
@@ -1539,11 +1448,11 @@ class CParser:
                 else:
                     self.error("struct : expecting name", token)
                     return token
-            elif token is not None and token[0] == "name" and nametok is not None:
+            elif token != None and token[0] == "name" and nametok != None:
                 self.type = self.type + " " + nametok[1]
                 return token
 
-            if nametok is not None:
+            if nametok != None:
                 self.lexer.push(token)
                 token = nametok
             return token
@@ -1558,14 +1467,14 @@ class CParser:
             if token[0] == "name":
                 nametok = token
                 token = self.token()
-            if token is not None and token[0] == "sep" and token[1] == "{":
+            if token != None and token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseUnion(token)
-            elif token is not None and token[0] == "name" and nametok is not None:
+            elif token != None and token[0] == "name" and nametok != None:
                 self.type = self.type + " " + nametok[1]
                 return token
 
-            if nametok is not None:
+            if nametok != None:
                 self.lexer.push(token)
                 token = nametok
             return token
@@ -1577,13 +1486,13 @@ class CParser:
                 self.type = self.type + " " + token[1]
             self.enums = []
             token = self.token()
-            if token is not None and token[0] == "sep" and token[1] == "{":
+            if token != None and token[0] == "sep" and token[1] == "{":
                 token = self.token()
                 token = self.parseEnumBlock(token)
             else:
                 self.error("parsing enum: expecting '{'", token)
             enum_type = None
-            if token is not None and token[0] != "name":
+            if token != None and token[0] != "name":
                 self.lexer.push(token)
                 token = ("name", "enum")
             else:
@@ -1592,29 +1501,6 @@ class CParser:
                 self.index_add(enum[0], self.filename,
                                not self.is_header, "enum",
                                (enum[1], enum[2], enum_type))
-            return token
-        elif token[0] == "name" and token[1] == "VIR_ENUM_DECL":
-            token = self.token()
-            if token is not None and token[0] == "sep" and token[1] == "(":
-                token = self.token()
-                token = self.parseVirEnumDecl(token)
-            else:
-                self.error("parsing VIR_ENUM_DECL: expecting '('", token)
-            if token is not None:
-                self.lexer.push(token)
-                token = ("name", "virenumdecl")
-            return token
-
-        elif token[0] == "name" and token[1] == "VIR_ENUM_IMPL":
-            token = self.token()
-            if token is not None and token[0] == "sep" and token[1] == "(":
-                token = self.token()
-                token = self.parseVirEnumImpl(token)
-            else:
-                self.error("parsing VIR_ENUM_IMPL: expecting '('", token)
-            if token is not None:
-                self.lexer.push(token)
-                token = ("name", "virenumimpl")
             return token
 
         elif token[0] == "name":
@@ -1627,7 +1513,7 @@ class CParser:
                        token)
             return token
         token = self.token()
-        while token is not None and (token[0] == "op" or
+        while token != None and (token[0] == "op" or
               token[0] == "name" and token[1] == "const"):
             self.type = self.type + " " + token[1]
             token = self.token()
@@ -1635,31 +1521,31 @@ class CParser:
          #
          # if there is a parenthesis here, this means a function type
          #
-        if token is not None and token[0] == "sep" and token[1] == '(':
+        if token != None and token[0] == "sep" and token[1] == '(':
             self.type = self.type + token[1]
             token = self.token()
-            while token is not None and token[0] == "op" and token[1] == '*':
+            while token != None and token[0] == "op" and token[1] == '*':
                 self.type = self.type + token[1]
                 token = self.token()
-            if token is None or token[0] != "name" :
-                self.error("parsing function type, name expected", token)
+            if token == None or token[0] != "name" :
+                self.error("parsing function type, name expected", token);
                 return token
             self.type = self.type + token[1]
             nametok = token
             token = self.token()
-            if token is not None and token[0] == "sep" and token[1] == ')':
+            if token != None and token[0] == "sep" and token[1] == ')':
                 self.type = self.type + token[1]
                 token = self.token()
-                if token is not None and token[0] == "sep" and token[1] == '(':
+                if token != None and token[0] == "sep" and token[1] == '(':
                     token = self.token()
-                    type = self.type
-                    token = self.parseSignature(token)
-                    self.type = type
+                    type = self.type;
+                    token = self.parseSignature(token);
+                    self.type = type;
                 else:
-                    self.error("parsing function type, '(' expected", token)
+                    self.error("parsing function type, '(' expected", token);
                     return token
             else:
-                self.error("parsing function type, ')' expected", token)
+                self.error("parsing function type, ')' expected", token);
                 return token
             self.lexer.push(token)
             token = nametok
@@ -1668,25 +1554,25 @@ class CParser:
          #
          # do some lookahead for arrays
          #
-        if token is not None and token[0] == "name":
+        if token != None and token[0] == "name":
             nametok = token
             token = self.token()
-            if token is not None and token[0] == "sep" and token[1] == '[':
+            if token != None and token[0] == "sep" and token[1] == '[':
                 self.type = self.type + " " + nametok[1]
-                while token is not None and token[0] == "sep" and token[1] == '[':
+                while token != None and token[0] == "sep" and token[1] == '[':
                     self.type = self.type + token[1]
                     token = self.token()
-                    while token is not None and token[0] != 'sep' and \
+                    while token != None and token[0] != 'sep' and \
                           token[1] != ']' and token[1] != ';':
                         self.type = self.type + token[1]
                         token = self.token()
-                if token is not None and token[0] == 'sep' and token[1] == ']':
+                if token != None and token[0] == 'sep' and token[1] == ']':
                     self.type = self.type + token[1]
                     token = self.token()
                 else:
-                    self.error("parsing array type, ']' expected", token)
+                    self.error("parsing array type, ']' expected", token);
                     return token
-            elif token is not None and token[0] == "sep" and token[1] == ':':
+            elif token != None and token[0] == "sep" and token[1] == ':':
                  # remove :12 in case it's a limited int size
                 token = self.token()
                 token = self.token()
@@ -1700,25 +1586,25 @@ class CParser:
      #    up to the ')' included
     def parseSignature(self, token):
         signature = []
-        if token is not None and token[0] == "sep" and token[1] == ')':
+        if token != None and token[0] == "sep" and token[1] == ')':
             self.signature = []
             token = self.token()
             return token
-        while token is not None:
+        while token != None:
             token = self.parseType(token)
-            if token is not None and token[0] == "name":
+            if token != None and token[0] == "name":
                 signature.append((self.type, token[1], None))
                 token = self.token()
-            elif token is not None and token[0] == "sep" and token[1] == ',':
+            elif token != None and token[0] == "sep" and token[1] == ',':
                 token = self.token()
                 continue
-            elif token is not None and token[0] == "sep" and token[1] == ')':
+            elif token != None and token[0] == "sep" and token[1] == ')':
                  # only the type was provided
                 if self.type == "...":
                     signature.append((self.type, "...", None))
                 else:
                     signature.append((self.type, None, None))
-            if token is not None and token[0] == "sep":
+            if token != None and token[0] == "sep":
                 if token[1] == ',':
                     token = self.token()
                     continue
@@ -1761,7 +1647,6 @@ class CParser:
         "virDomainSetMaxMemory"          : (False, ("memory")),
         "virDomainSetMemory"             : (False, ("memory")),
         "virDomainSetMemoryFlags"        : (False, ("memory")),
-        "virDomainBlockCommit"           : (False, ("bandwidth")),
         "virDomainBlockJobSetSpeed"      : (False, ("bandwidth")),
         "virDomainBlockPull"             : (False, ("bandwidth")),
         "virDomainBlockRebase"           : (False, ("bandwidth")),
@@ -1813,17 +1698,17 @@ class CParser:
         static = 0
         if token[1] == 'extern':
             token = self.token()
-            if token is None:
+            if token == None:
                 return token
             if token[0] == 'string':
                 if token[1] == 'C':
                     token = self.token()
-                    if token is None:
+                    if token == None:
                         return token
                     if token[0] == 'sep' and token[1] == "{":
                         token = self.token()
 #                        print 'Entering extern "C line ', self.lineno()
-                        while token is not None and (token[0] != 'sep' or
+                        while token != None and (token[0] != 'sep' or
                               token[1] != "}"):
                             if token[0] == 'name':
                                 token = self.parseGlobal(token)
@@ -1840,7 +1725,7 @@ class CParser:
         elif token[1] == 'static':
             static = 1
             token = self.token()
-            if token is None or  token[0] != 'name':
+            if token == None or  token[0] != 'name':
                 return token
 
         if token[1] == 'typedef':
@@ -1849,22 +1734,22 @@ class CParser:
         else:
             token = self.parseType(token)
             type_orig = self.type
-        if token is None or token[0] != "name":
+        if token == None or token[0] != "name":
             return token
         type = type_orig
         self.name = token[1]
         token = self.token()
-        while token is not None and (token[0] == "sep" or token[0] == "op"):
+        while token != None and (token[0] == "sep" or token[0] == "op"):
             if token[0] == "sep":
                 if token[1] == "[":
                     type = type + token[1]
                     token = self.token()
-                    while token is not None and (token[0] != "sep" or \
+                    while token != None and (token[0] != "sep" or \
                           token[1] != ";"):
                         type = type + token[1]
                         token = self.token()
 
-            if token is not None and token[0] == "op" and token[1] == "=":
+            if token != None and token[0] == "op" and token[1] == "=":
                  #
                  # Skip the initialization of the variable
                  #
@@ -1874,15 +1759,15 @@ class CParser:
                     token = self.parseBlock(token)
                 else:
                     self.comment = None
-                    while token is not None and (token[0] != "sep" or \
+                    while token != None and (token[0] != "sep" or \
                           (token[1] != ';' and token[1] != ',')):
                             token = self.token()
                 self.comment = None
-                if token is None or token[0] != "sep" or (token[1] != ';' and
+                if token == None or token[0] != "sep" or (token[1] != ';' and
                    token[1] != ','):
                     self.error("missing ';' or ',' after value")
 
-            if token is not None and token[0] == "sep":
+            if token != None and token[0] == "sep":
                 if token[1] == ";":
                     self.comment = None
                     token = self.token()
@@ -1897,7 +1782,7 @@ class CParser:
                 elif token[1] == "(":
                     token = self.token()
                     token = self.parseSignature(token)
-                    if token is None:
+                    if token == None:
                         return None
                     if token[0] == "sep" and token[1] == ";":
                         self.checkLongLegacyFunction(self.name, type, self.signature)
@@ -1913,17 +1798,17 @@ class CParser:
                         self.index_add(self.name, self.filename, static,
                                         "function", d)
                         token = self.token()
-                        token = self.parseBlock(token)
+                        token = self.parseBlock(token);
                 elif token[1] == ',':
                     self.comment = None
                     self.index_add(self.name, self.filename, static,
                                     "variable", type)
                     type = type_orig
                     token = self.token()
-                    while token is not None and token[0] == "sep":
+                    while token != None and token[0] == "sep":
                         type = type + token[1]
                         token = self.token()
-                    if token is not None and token[0] == "name":
+                    if token != None and token[0] == "name":
                         self.name = token[1]
                         token = self.token()
                 else:
@@ -1935,7 +1820,7 @@ class CParser:
         if not quiet:
             print "Parsing %s" % (self.filename)
         token = self.token()
-        while token is not None:
+        while token != None:
             if token[0] == 'name':
                 token = self.parseGlobal(token)
             else:
@@ -1957,27 +1842,15 @@ class docBuilder:
             self.includes = includes + included_files.keys()
         elif name == "libvirt-qemu":
             self.includes = includes + qemu_included_files.keys()
-        elif name == "libvirt-lxc":
-            self.includes = includes + lxc_included_files.keys()
         self.modules = {}
         self.headers = {}
         self.idx = index()
         self.xref = {}
         self.index = {}
         self.basename = name
-        self.errors = 0
-
-    def warning(self, msg):
-        global warnings
-        warnings = warnings + 1
-        print msg
-
-    def error(self, msg):
-        self.errors += 1
-        print >>sys.stderr, "Error:", msg
 
     def indexString(self, id, str):
-        if str is None:
+        if str == None:
             return
         str = string.replace(str, "'", ' ')
         str = string.replace(str, '"', ' ')
@@ -2023,7 +1896,7 @@ class docBuilder:
         for header in self.headers.keys():
             parser = CParser(header)
             idx = parser.parse()
-            self.headers[header] = idx
+            self.headers[header] = idx;
             self.idx.merge(idx)
 
     def scanModules(self):
@@ -2041,19 +1914,19 @@ class docBuilder:
                 skip = 1
                 for incl in self.includes:
                     if string.find(file, incl) != -1:
-                        skip = 0
+                        skip = 0;
                         break
                 if skip == 0:
-                    self.modules[file] = None
+                    self.modules[file] = None;
             files = glob.glob(directory + "/*.h")
             for file in files:
                 skip = 1
                 for incl in self.includes:
                     if string.find(file, incl) != -1:
-                        skip = 0
+                        skip = 0;
                         break
                 if skip == 0:
-                    self.headers[file] = None
+                    self.headers[file] = None;
         self.scanHeaders()
         self.scanModules()
 
@@ -2069,33 +1942,33 @@ class docBuilder:
         id = self.idx.enums[name]
         output.write("    <enum name='%s' file='%s'" % (name,
                      self.modulename_file(id.header)))
-        if id.info is not None:
+        if id.info != None:
             info = id.info
-            if info[0] is not None and info[0] != '':
+            if info[0] != None and info[0] != '':
                 try:
                     val = eval(info[0])
                 except:
                     val = info[0]
-                output.write(" value='%s'" % (val))
-            if info[2] is not None and info[2] != '':
-                output.write(" type='%s'" % info[2])
-            if info[1] is not None and info[1] != '':
-                output.write(" info='%s'" % escape(info[1]))
+                output.write(" value='%s'" % (val));
+            if info[2] != None and info[2] != '':
+                output.write(" type='%s'" % info[2]);
+            if info[1] != None and info[1] != '':
+                output.write(" info='%s'" % escape(info[1]));
         output.write("/>\n")
 
     def serialize_macro(self, output, name):
         id = self.idx.macros[name]
         output.write("    <macro name='%s' file='%s'>\n" % (name,
                      self.modulename_file(id.header)))
-        if id.info is not None:
+        if id.info != None:
             try:
                 (args, desc) = id.info
-                if desc is not None and desc != "":
+                if desc != None and desc != "":
                     output.write("      <info><![CDATA[%s]]></info>\n" % (desc))
                     self.indexString(name, desc)
                 for arg in args:
                     (name, desc) = arg
-                    if desc is not None and desc != "":
+                    if desc != None and desc != "":
                         output.write("      <arg name='%s' info='%s'/>\n" % (
                                      name, escape(desc)))
                         self.indexString(name, desc)
@@ -2110,7 +1983,7 @@ class docBuilder:
         output.write("        <union>\n")
         for f in field[3]:
             desc = f[2]
-            if desc is None:
+            if desc == None:
                 desc = ''
             else:
                 desc = escape(desc)
@@ -2128,12 +2001,12 @@ class docBuilder:
             if self.idx.structs.has_key(name) and ( \
                type(self.idx.structs[name].info) == type(()) or
                 type(self.idx.structs[name].info) == type([])):
-                output.write(">\n")
+                output.write(">\n");
                 try:
                     for field in self.idx.structs[name].info:
                         desc = field[2]
                         self.indexString(name, desc)
-                        if desc is None:
+                        if desc == None:
                             desc = ''
                         else:
                             desc = escape(desc)
@@ -2145,13 +2018,13 @@ class docBuilder:
                     self.warning("Failed to serialize struct %s" % (name))
                 output.write("    </struct>\n")
             else:
-                output.write("/>\n")
+                output.write("/>\n");
         else :
             output.write("    <typedef name='%s' file='%s' type='%s'" % (
                          name, self.modulename_file(id.header), id.info))
             try:
                 desc = id.extra
-                if desc is not None and desc != "":
+                if desc != None and desc != "":
                     output.write(">\n      <info><![CDATA[%s]]></info>\n" % (desc))
                     output.write("    </typedef>\n")
                 else:
@@ -2161,7 +2034,7 @@ class docBuilder:
 
     def serialize_variable(self, output, name):
         id = self.idx.variables[name]
-        if id.info is not None:
+        if id.info != None:
             output.write("    <variable name='%s' file='%s' type='%s'/>\n" % (
                     name, self.modulename_file(id.header), id.info))
         else:
@@ -2179,22 +2052,20 @@ class docBuilder:
         #
         # Processing of conditionals modified by Bill 1/1/05
         #
-        if id.conditionals is not None:
+        if id.conditionals != None:
             apstr = ""
             for cond in id.conditionals:
                 if apstr != "":
                     apstr = apstr + " &amp;&amp; "
                 apstr = apstr + cond
-            output.write("      <cond>%s</cond>\n"% (apstr))
+            output.write("      <cond>%s</cond>\n"% (apstr));
         try:
             (ret, params, desc) = id.info
             output.write("      <info><![CDATA[%s]]></info>\n" % (desc))
             self.indexString(name, desc)
-            if ret[0] is not None:
+            if ret[0] != None:
                 if ret[0] == "void":
                     output.write("      <return type='void'/>\n")
-                elif (ret[1] is None or ret[1] == '') and not ignored_functions.has_key(name):
-                    self.error("Missing documentation for return of function `%s'" % name)
                 else:
                     output.write("      <return type='%s' info='%s'/>\n" % (
                              ret[0], escape(ret[1])))
@@ -2202,24 +2073,20 @@ class docBuilder:
             for param in params:
                 if param[0] == 'void':
                     continue
-                if (param[2] is None or param[2] == ''):
-                    if ignored_functions.has_key(name):
-                        output.write("      <arg name='%s' type='%s' info=''/>\n" % (param[1], param[0]))
-                    else:
-                        self.error("Missing documentation for arg `%s' of function `%s'" % (param[1], name))
+                if param[2] == None:
+                    output.write("      <arg name='%s' type='%s' info=''/>\n" % (param[1], param[0]))
                 else:
                     output.write("      <arg name='%s' type='%s' info='%s'/>\n" % (param[1], param[0], escape(param[2])))
                     self.indexString(name, param[2])
         except:
-            print >>sys.stderr, "Exception:", sys.exc_info()[1]
-            self.warning("Failed to save function %s info: %s" % (name, `id.info`))
+            self.warning("Failed to save function %s info: " % name, `id.info`)
         output.write("    </%s>\n" % (id.type))
 
     def serialize_exports(self, output, file):
         module = self.modulename_file(file)
         output.write("    <file name='%s'>\n" % (module))
         dict = self.headers[file]
-        if dict.info is not None:
+        if dict.info != None:
             for data in ('Summary', 'Description', 'Author'):
                 try:
                     output.write("     <%s>%s</%s>\n" % (
@@ -2352,12 +2219,12 @@ class docBuilder:
         ids.sort()
         for id in ids:
             if id[0] != letter:
-                if letter is not None:
+                if letter != None:
                     output.write("    </letter>\n")
                 letter = id[0]
                 output.write("    <letter name='%s'>\n" % (letter))
             output.write("      <ref name='%s'/>\n" % (id))
-        if letter is not None:
+        if letter != None:
             output.write("    </letter>\n")
 
     def serialize_xrefs_references(self, output):
@@ -2383,8 +2250,8 @@ class docBuilder:
             if len(index[id]) > 30:
                 continue
             if id[0] != letter:
-                if letter is None or count > 200:
-                    if letter is not None:
+                if letter == None or count > 200:
+                    if letter != None:
                         output.write("      </letter>\n")
                         output.write("    </chunk>\n")
                         count = 0
@@ -2392,12 +2259,12 @@ class docBuilder:
                     output.write("    <chunk name='chunk%s'>\n" % (chunk))
                     first_letter = id[0]
                     chunk = chunk + 1
-                elif letter is not None:
+                elif letter != None:
                     output.write("      </letter>\n")
                 letter = id[0]
                 output.write("      <letter name='%s'>\n" % (letter))
             output.write("        <word name='%s'>\n" % (id))
-            tokens = index[id]
+            tokens = index[id];
             tokens.sort()
             tok = None
             for token in tokens:
@@ -2407,7 +2274,7 @@ class docBuilder:
                 output.write("          <ref name='%s'/>\n" % (token))
                 count = count + 1
             output.write("        </word>\n")
-        if letter is not None:
+        if letter != None:
             output.write("      </letter>\n")
             output.write("    </chunk>\n")
             if count != 0:
@@ -2476,10 +2343,6 @@ class docBuilder:
         output.write("</api>\n")
         output.close()
 
-        if self.errors > 0:
-            print >>sys.stderr, "apibuild.py: %d error(s) encountered during generation" % self.errors
-            sys.exit(3)
-
         filename = "%s/%s-refs.xml" % (self.path, self.name)
         if not quiet:
             print "Saving XML Cross References %s" % (filename)
@@ -2492,8 +2355,8 @@ class docBuilder:
 
 
 def rebuild(name):
-    if name not in ["libvirt", "libvirt-qemu", "libvirt-lxc"]:
-        self.warning("rebuild() failed, unknown module %s") % name
+    if name not in ["libvirt", "libvirt-qemu"]:
+        self.warning("rebuild() failed, unkown module %s") % name
         return None
     builder = None
     srcdir = os.environ["srcdir"]
@@ -2535,7 +2398,6 @@ if __name__ == "__main__":
     else:
         rebuild("libvirt")
         rebuild("libvirt-qemu")
-        rebuild("libvirt-lxc")
     if warnings > 0:
         sys.exit(2)
     else:

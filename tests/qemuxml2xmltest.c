@@ -8,19 +8,15 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#include "testutils.h"
-
 #ifdef WITH_QEMU
 
 # include "internal.h"
+# include "testutils.h"
 # include "qemu/qemu_conf.h"
 # include "qemu/qemu_domain.h"
 # include "testutilsqemu.h"
-# include "virstring.h"
 
-# define VIR_FROM_THIS VIR_FROM_NONE
-
-static virQEMUDriver driver;
+static struct qemud_driver driver;
 
 static int
 testCompareXMLToXMLFiles(const char *inxml, const char *outxml, bool live)
@@ -30,23 +26,18 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml, bool live)
     char *actual = NULL;
     int ret = -1;
     virDomainDefPtr def = NULL;
-    unsigned int flags = live ? 0 : VIR_DOMAIN_XML_INACTIVE;
 
     if (virtTestLoadFile(inxml, &inXmlData) < 0)
         goto fail;
     if (virtTestLoadFile(outxml, &outXmlData) < 0)
         goto fail;
 
-    if (!(def = virDomainDefParseString(inXmlData, driver.caps, driver.xmlopt,
-                                        QEMU_EXPECTED_VIRT_TYPES, flags)))
+    if (!(def = virDomainDefParseString(driver.caps, inXmlData,
+                                        QEMU_EXPECTED_VIRT_TYPES,
+                                        live ? 0 : VIR_DOMAIN_XML_INACTIVE)))
         goto fail;
 
-    if (!virDomainDefCheckABIStability(def, def)) {
-        fprintf(stderr, "ABI stability check failed on %s", inxml);
-        goto fail;
-    }
-
-    if (!(actual = virDomainDefFormat(def, VIR_DOMAIN_XML_SECURE | flags)))
+    if (!(actual = virDomainDefFormat(def, VIR_DOMAIN_XML_SECURE)))
         goto fail;
 
     if (STRNEQ(outXmlData, actual)) {
@@ -89,19 +80,16 @@ testCompareXMLToXMLHelper(const void *data)
                     abs_srcdir, info->name) < 0)
         goto cleanup;
 
-    if ((info->when & WHEN_INACTIVE) &&
-        testCompareXMLToXMLFiles(xml_in,
-                                 info->different ? xml_out : xml_in,
-                                 false) < 0)
-        goto cleanup;
-
-    if ((info->when & WHEN_ACTIVE) &&
-        testCompareXMLToXMLFiles(xml_in,
-                                 info->different ? xml_out : xml_in,
-                                 true) < 0)
-        goto cleanup;
-
-    ret = 0;
+    if (info->when & WHEN_INACTIVE) {
+        ret = testCompareXMLToXMLFiles(xml_in,
+                                       info->different ? xml_out : xml_in,
+                                       false);
+    }
+    if (info->when & WHEN_ACTIVE) {
+        ret = testCompareXMLToXMLFiles(xml_in,
+                                       info->different ? xml_out : xml_in,
+                                       true);
+    }
 
 cleanup:
     VIR_FREE(xml_in);
@@ -118,14 +106,11 @@ mymain(void)
     if ((driver.caps = testQemuCapsInit()) == NULL)
         return EXIT_FAILURE;
 
-    if (!(driver.xmlopt = virQEMUDriverCreateXMLConf(&driver)))
-        return EXIT_FAILURE;
-
 # define DO_TEST_FULL(name, is_different, when)                         \
     do {                                                                \
         const struct testInfo info = {name, is_different, when};        \
         if (virtTestRun("QEMU XML-2-XML " name,                         \
-                        testCompareXMLToXMLHelper, &info) < 0)          \
+                        1, testCompareXMLToXMLHelper, &info) < 0)       \
             ret = -1;                                                   \
     } while (0)
 
@@ -141,8 +126,6 @@ mymain(void)
     setenv("PATH", "/bin", 1);
 
     DO_TEST("minimal");
-    DO_TEST("machine-core-on");
-    DO_TEST("machine-core-off");
     DO_TEST("boot-cdrom");
     DO_TEST("boot-network");
     DO_TEST("boot-floppy");
@@ -150,28 +133,12 @@ mymain(void)
     DO_TEST("boot-menu-disable");
     DO_TEST("boot-order");
     DO_TEST("bootloader");
-
-    DO_TEST("reboot-timeout-enabled");
-    DO_TEST("reboot-timeout-disabled");
-
     DO_TEST("clock-utc");
     DO_TEST("clock-localtime");
     DO_TEST("cpu-kvmclock");
     DO_TEST("cpu-host-kvmclock");
     DO_TEST("kvmclock");
-
-    DO_TEST("cpu-eoi-disabled");
-    DO_TEST("cpu-eoi-enabled");
-    DO_TEST("eoi-disabled");
-    DO_TEST("eoi-enabled");
-    DO_TEST("pv-spinlock-disabled");
-    DO_TEST("pv-spinlock-enabled");
-
-    DO_TEST("hyperv");
-    DO_TEST("hyperv-off");
-
     DO_TEST("hugepages");
-    DO_TEST("nosharepages");
     DO_TEST("disk-aio");
     DO_TEST("disk-cdrom");
     DO_TEST("disk-floppy");
@@ -185,23 +152,13 @@ mymain(void)
     DO_TEST("disk-drive-cache-v1-wt");
     DO_TEST("disk-drive-cache-v1-wb");
     DO_TEST("disk-drive-cache-v1-none");
-    DO_TEST("disk-drive-network-nbd");
-    DO_TEST("disk-drive-network-nbd-export");
-    DO_TEST("disk-drive-network-nbd-ipv6");
-    DO_TEST("disk-drive-network-nbd-ipv6-export");
-    DO_TEST("disk-drive-network-nbd-unix");
-    DO_TEST("disk-drive-network-iscsi");
-    DO_TEST("disk-drive-network-iscsi-auth");
     DO_TEST("disk-scsi-device");
     DO_TEST("disk-scsi-vscsi");
     DO_TEST("disk-scsi-virtio-scsi");
-    DO_TEST("disk-virtio-scsi-num_queues");
-    DO_TEST("disk-scsi-megasas");
     DO_TEST_FULL("disk-mirror", false, WHEN_ACTIVE);
     DO_TEST_FULL("disk-mirror", true, WHEN_INACTIVE);
     DO_TEST("graphics-listen-network");
     DO_TEST("graphics-vnc");
-    DO_TEST("graphics-vnc-websocket");
     DO_TEST("graphics-vnc-sasl");
     DO_TEST("graphics-vnc-tls");
     DO_TEST("graphics-sdl");
@@ -213,9 +170,6 @@ mymain(void)
     DO_TEST("input-usbtablet");
     DO_TEST("input-xen");
     DO_TEST("misc-acpi");
-    DO_TEST("misc-disable-s3");
-    DO_TEST("misc-disable-suspends");
-    DO_TEST("misc-enable-s4");
     DO_TEST("misc-no-reboot");
     DO_TEST("net-user");
     DO_TEST("net-virtio");
@@ -224,10 +178,7 @@ mymain(void)
     DO_TEST("net-eth-ifname");
     DO_TEST("net-virtio-network-portgroup");
     DO_TEST("net-hostdev");
-    DO_TEST("net-hostdev-vfio");
-    DO_TEST("net-openvswitch");
     DO_TEST("sound");
-    DO_TEST("sound-device");
     DO_TEST("net-bandwidth");
 
     DO_TEST("serial-vc");
@@ -247,12 +198,10 @@ mymain(void)
 
     DO_TEST("hostdev-usb-address");
     DO_TEST("hostdev-pci-address");
-    DO_TEST("hostdev-vfio");
     DO_TEST("pci-rom");
 
     DO_TEST("encrypted-disk");
     DO_TEST_DIFFERENT("memtune");
-    DO_TEST_DIFFERENT("memtune-unlimited");
     DO_TEST("blkiotune");
     DO_TEST("blkiotune-device");
     DO_TEST("cputune");
@@ -260,7 +209,6 @@ mymain(void)
     DO_TEST("smp");
     DO_TEST("lease");
     DO_TEST("event_idx");
-    DO_TEST("vhost_queues");
     DO_TEST("virtio-lun");
 
     DO_TEST("usb-redir");
@@ -268,24 +216,9 @@ mymain(void)
 
     DO_TEST_FULL("seclabel-dynamic-baselabel", false, WHEN_INACTIVE);
     DO_TEST_FULL("seclabel-dynamic-override", false, WHEN_INACTIVE);
-    DO_TEST_FULL("seclabel-dynamic-labelskip", true, WHEN_INACTIVE);
-    DO_TEST_FULL("seclabel-dynamic-relabel", false, WHEN_INACTIVE);
     DO_TEST("seclabel-static");
-    DO_TEST_FULL("seclabel-static-labelskip", false, WHEN_ACTIVE);
     DO_TEST("seclabel-none");
     DO_TEST("numad-static-vcpu-no-numatune");
-    DO_TEST("disk-scsi-lun-passthrough-sgio");
-
-    DO_TEST("disk-scsi-disk-vpd");
-    DO_TEST("disk-source-pool");
-    DO_TEST("disk-source-pool-mode");
-
-    DO_TEST("disk-drive-discard");
-
-    DO_TEST("virtio-rng-random");
-    DO_TEST("virtio-rng-egd");
-
-    DO_TEST("pseries-nvram");
 
     /* These tests generate different XML */
     DO_TEST_DIFFERENT("balloon-device-auto");
@@ -299,39 +232,10 @@ mymain(void)
     DO_TEST_DIFFERENT("numad-auto-vcpu-no-numatune");
     DO_TEST_DIFFERENT("numad-auto-memory-vcpu-no-cpuset-and-placement");
     DO_TEST_DIFFERENT("numad-auto-memory-vcpu-cpuset");
-    DO_TEST_DIFFERENT("usb-ich9-ehci-addr");
 
     DO_TEST_DIFFERENT("metadata");
 
-    DO_TEST("tpm-passthrough");
-    DO_TEST("pci-bridge");
-    DO_TEST_DIFFERENT("pci-bridge-many-disks");
-    DO_TEST_DIFFERENT("pci-autoadd-addr");
-    DO_TEST_DIFFERENT("pci-autoadd-idx");
-    DO_TEST_DIFFERENT("pcie-root");
-    DO_TEST_DIFFERENT("q35");
-
-    DO_TEST("hostdev-scsi-lsi");
-    DO_TEST("hostdev-scsi-virtio-scsi");
-    DO_TEST("hostdev-scsi-readonly");
-
-    DO_TEST("disk-copy_on_read");
-    DO_TEST("hostdev-scsi-shareable");
-    DO_TEST("hostdev-scsi-sgio");
-
-    DO_TEST_DIFFERENT("hostdev-scsi-autogen-address");
-
-    DO_TEST_DIFFERENT("s390-defaultconsole");
-
-    DO_TEST("pcihole64");
-    DO_TEST_DIFFERENT("pcihole64-gib");
-    DO_TEST("pcihole64-none");
-    DO_TEST("pcihole64-q35");
-
-    DO_TEST("panic");
-
-    virObjectUnref(driver.caps);
-    virObjectUnref(driver.xmlopt);
+    virCapabilitiesFree(driver.caps);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -339,6 +243,7 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
+# include "testutils.h"
 
 int
 main(void)

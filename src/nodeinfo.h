@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -24,37 +24,29 @@
 #ifndef __VIR_NODEINFO_H__
 # define __VIR_NODEINFO_H__
 
+# include "libvirt/libvirt.h"
 # include "capabilities.h"
 
-int nodeGetInfo(virNodeInfoPtr nodeinfo);
+int nodeGetInfo(virConnectPtr conn, virNodeInfoPtr nodeinfo);
 int nodeCapsInitNUMA(virCapsPtr caps);
 
-int nodeGetCPUStats(int cpuNum,
+int nodeGetCPUStats(virConnectPtr conn,
+                    int cpuNum,
                     virNodeCPUStatsPtr params,
                     int *nparams,
                     unsigned int flags);
-int nodeGetMemoryStats(int cellNum,
+int nodeGetMemoryStats(virConnectPtr conn,
+                       int cellNum,
                        virNodeMemoryStatsPtr params,
                        int *nparams,
                        unsigned int flags);
-int nodeGetCellsFreeMemory(unsigned long long *freeMems,
+int nodeGetCellsFreeMemory(virConnectPtr conn,
+                           unsigned long long *freeMems,
                            int startCell,
                            int maxCells);
-unsigned long long nodeGetFreeMemory(void);
+unsigned long long nodeGetFreeMemory(virConnectPtr conn);
 
-virBitmapPtr nodeGetCPUBitmap(int *max_id);
-int nodeGetCPUCount(void);
-
-int nodeGetMemoryParameters(virTypedParameterPtr params,
-                            int *nparams,
-                            unsigned int flags);
-
-int nodeSetMemoryParameters(virTypedParameterPtr params,
-                            int nparams,
-                            unsigned int flags);
-
-int nodeGetCPUMap(unsigned char **cpumap,
-                  unsigned int *online,
-                  unsigned int flags);
-
+char *nodeGetCPUmap(virConnectPtr conn,
+                    int *max_id,
+                    const char *mapname);
 #endif /* __VIR_NODEINFO_H__*/

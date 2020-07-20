@@ -5,7 +5,7 @@
   <allocation unit='bytes'>0</allocation>
   <available unit='bytes'>0</available>
   <source>
-    <adapter type='scsi_host' name='host0'/>
+    <adapter name='host0'/>
   </source>
   <target>
     <path>/dev/disk/by-path</path>

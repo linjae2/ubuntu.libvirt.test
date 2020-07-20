@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Daniel P. Berrange <berrange@redhat.com>
  */
@@ -26,7 +26,6 @@
 
 # include "virnetmessage.h"
 # include "virnetserverclient.h"
-# include "virobject.h"
 
 typedef struct _virNetServer virNetServer;
 typedef virNetServer *virNetServerPtr;
@@ -68,6 +67,8 @@ int virNetServerProgramGetVersion(virNetServerProgramPtr prog);
 unsigned int virNetServerProgramGetPriority(virNetServerProgramPtr prog,
                                             int procedure);
 
+void virNetServerProgramRef(virNetServerProgramPtr prog);
+
 int virNetServerProgramMatches(virNetServerProgramPtr prog,
                                virNetMessagePtr msg);
 
@@ -100,5 +101,10 @@ int virNetServerProgramSendStreamData(virNetServerProgramPtr prog,
                                       int serial,
                                       const char *data,
                                       size_t len);
+
+void virNetServerProgramFree(virNetServerProgramPtr prog);
+
+
+
 
 #endif /* __VIR_NET_SERVER_PROGRAM_H__ */

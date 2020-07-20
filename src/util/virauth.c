@@ -1,7 +1,6 @@
 /*
  * virauth.c: authentication related utility functions
  *
- * Copyright (C) 2012 Red Hat, Inc.
  * Copyright (C) 2010 Matthias Bolte <matthias.bolte@googlemail.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -15,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -25,24 +24,23 @@
 #include <stdlib.h>
 
 #include "virauth.h"
-#include "virutil.h"
-#include "viralloc.h"
-#include "virlog.h"
+#include "util.h"
+#include "memory.h"
+#include "logging.h"
 #include "datatypes.h"
-#include "virerror.h"
+#include "virterror_internal.h"
 #include "configmake.h"
 #include "virauthconfig.h"
-#include "virstring.h"
 
 #define VIR_FROM_THIS VIR_FROM_AUTH
 
-int
-virAuthGetConfigFilePathURI(virURIPtr uri,
-                            char **path)
+
+int virAuthGetConfigFilePath(virConnectPtr conn,
+                             char **path)
 {
     int ret = -1;
     size_t i;
-    const char *authenv = virGetEnvBlockSUID("LIBVIRT_AUTH_FILE");
+    const char *authenv = getenv("LIBVIRT_AUTH_FILE");
     char *userdir = NULL;
 
     *path = NULL;
@@ -51,28 +49,27 @@ virAuthGetConfigFilePathURI(virURIPtr uri,
 
     if (authenv) {
         VIR_DEBUG("Using path from env '%s'", authenv);
-        if (VIR_STRDUP(*path, authenv) < 0)
-            goto cleanup;
+        if (!(*path = strdup(authenv)))
+            goto no_memory;
         return 0;
     }
 
-    if (uri) {
-        for (i = 0; i < uri->paramsCount; i++) {
-            if (STREQ_NULLABLE(uri->params[i].name, "authfile") &&
-                uri->params[i].value) {
-                VIR_DEBUG("Using path from URI '%s'", uri->params[i].value);
-                if (VIR_STRDUP(*path, uri->params[i].value) < 0)
-                    goto cleanup;
-                return 0;
-            }
+    for (i = 0 ; i < conn->uri->paramsCount ; i++) {
+        if (STREQ_NULLABLE(conn->uri->params[i].name, "authfile") &&
+            conn->uri->params[i].value) {
+            VIR_DEBUG("Using path from URI '%s'",
+                      conn->uri->params[i].value);
+            if (!(*path = strdup(conn->uri->params[i].value)))
+                goto no_memory;
+            return 0;
         }
     }
 
-    if (!(userdir = virGetUserConfigDirectory()))
+    if (!(userdir = virGetUserDirectory(geteuid())))
         goto cleanup;
 
-    if (virAsprintf(path, "%s/auth.conf", userdir) < 0)
-        goto cleanup;
+    if (virAsprintf(path, "%s/.libvirt/auth.conf", userdir) < 0)
+        goto no_memory;
 
     VIR_DEBUG("Checking for readability of '%s'", *path);
     if (access(*path, R_OK) == 0)
@@ -80,8 +77,8 @@ virAuthGetConfigFilePathURI(virURIPtr uri,
 
     VIR_FREE(*path);
 
-    if (VIR_STRDUP(*path, SYSCONFDIR "/libvirt/auth.conf") < 0)
-        goto cleanup;
+    if (!(*path = strdup(SYSCONFDIR "/libvirt/auth.conf")))
+        goto no_memory;
 
     VIR_DEBUG("Checking for readability of '%s'", *path);
     if (access(*path, R_OK) == 0)
@@ -97,67 +94,72 @@ cleanup:
     VIR_FREE(userdir);
 
     return ret;
-}
 
-
-int
-virAuthGetConfigFilePath(virConnectPtr conn,
-                         char **path)
-{
-    return virAuthGetConfigFilePathURI(conn ? conn->uri : NULL, path);
+no_memory:
+    virReportOOMError();
+    goto cleanup;
 }
 
 
 static int
-virAuthGetCredential(const char *servicename,
-                     const char *hostname,
+virAuthGetCredential(virConnectPtr conn,
+                     const char *servicename,
                      const char *credname,
-                     const char *path,
                      char **value)
 {
     int ret = -1;
+    char *path = NULL;
     virAuthConfigPtr config = NULL;
     const char *tmp;
 
     *value = NULL;
 
-    if (path == NULL)
-        return 0;
+    if (virAuthGetConfigFilePath(conn, &path) < 0)
+        goto cleanup;
+
+    if (path == NULL) {
+        ret = 0;
+        goto cleanup;
+    }
 
     if (!(config = virAuthConfigNew(path)))
         goto cleanup;
 
     if (virAuthConfigLookup(config,
                             servicename,
-                            hostname,
+                            conn->uri->server,
                             credname,
                             &tmp) < 0)
         goto cleanup;
 
-    if (VIR_STRDUP(*value, tmp) < 0)
+    if (tmp &&
+        !(*value = strdup(tmp))) {
+        virReportOOMError();
         goto cleanup;
+    }
 
     ret = 0;
 
 cleanup:
     virAuthConfigFree(config);
+    VIR_FREE(path);
     return ret;
 }
 
 
 char *
-virAuthGetUsernamePath(const char *path,
-                       virConnectAuthPtr auth,
-                       const char *servicename,
-                       const char *defaultUsername,
-                       const char *hostname)
+virAuthGetUsername(virConnectPtr conn,
+                   virConnectAuthPtr auth,
+                   const char *servicename,
+                   const char *defaultUsername,
+                   const char *hostname)
 {
     unsigned int ncred;
     virConnectCredential cred;
     char *prompt;
     char *ret = NULL;
 
-    if (virAuthGetCredential(servicename, hostname, "username", path, &ret) < 0)
+    if (virAuthGetCredential(conn, servicename, "username", &ret) < 0)
         return NULL;
     if (ret != NULL)
         return ret;
@@ -200,41 +202,20 @@ virAuthGetUsernamePath(const char *path,
 }
 
 
+
 char *
-virAuthGetUsername(virConnectPtr conn,
+virAuthGetPassword(virConnectPtr conn,
                    virConnectAuthPtr auth,
                    const char *servicename,
-                   const char *defaultUsername,
+                   const char *username,
                    const char *hostname)
-{
-    char *ret;
-    char *path;
-
-    if (virAuthGetConfigFilePath(conn, &path) < 0)
-        return NULL;
-
-    ret = virAuthGetUsernamePath(path, auth, servicename,
-                                 defaultUsername, hostname);
-
-    VIR_FREE(path);
-
-    return ret;
-}
-
-
-char *
-virAuthGetPasswordPath(const char *path,
-                       virConnectAuthPtr auth,
-                       const char *servicename,
-                       const char *username,
-                       const char *hostname)
 {
     unsigned int ncred;
     virConnectCredential cred;
     char *prompt;
     char *ret = NULL;
 
-    if (virAuthGetCredential(servicename, hostname, "password", path, &ret) < 0)
+    if (virAuthGetCredential(conn, servicename, "password", &ret) < 0)
         return NULL;
     if (ret != NULL)
         return ret;
@@ -269,25 +250,4 @@ virAuthGetPasswordPath(const char *path,
     VIR_FREE(prompt);
 
     return cred.result;
-}
-
-
-char *
-virAuthGetPassword(virConnectPtr conn,
-                   virConnectAuthPtr auth,
-                   const char *servicename,
-                   const char *username,
-                   const char *hostname)
-{
-    char *ret;
-    char *path;
-
-    if (virAuthGetConfigFilePath(conn, &path) < 0)
-        return NULL;
-
-    ret = virAuthGetPasswordPath(path, auth, servicename, username, hostname);
-
-    VIR_FREE(path);
-
-    return ret;
 }

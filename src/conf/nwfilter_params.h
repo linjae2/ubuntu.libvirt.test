@@ -1,7 +1,7 @@
 /*
  * nwfilter_params.h: parsing and data maintenance of filter parameters
  *
- * Copyright (C) 2011-2013 Red Hat, Inc.
+ * Copyright (C) 2011 Red Hat, Inc.
  * Copyright (C) 2010 IBM Corporation
  *
  * This library is free software; you can redistribute it and/or
@@ -15,8 +15,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  * Author: Stefan Berger <stefanb@us.ibm.com>
  */
@@ -24,8 +24,7 @@
 # define NWFILTER_PARAMS_H
 
 # include "virhash.h"
-# include "virbuffer.h"
-# include "virmacaddr.h"
+# include "buf.h"
 
 enum virNWFilterVarValueType {
     NWFILTER_VALUE_TYPE_SIMPLE,
@@ -51,14 +50,12 @@ struct _virNWFilterVarValue {
 
 virNWFilterVarValuePtr virNWFilterVarValueCreateSimple(char *);
 virNWFilterVarValuePtr virNWFilterVarValueCreateSimpleCopyValue(const char *);
-virNWFilterVarValuePtr virNWFilterVarValueCopy(const virNWFilterVarValue *);
+virNWFilterVarValuePtr virNWFilterVarValueCopy(const virNWFilterVarValuePtr);
 void virNWFilterVarValueFree(virNWFilterVarValuePtr val);
-const char *virNWFilterVarValueGetSimple(const virNWFilterVarValue *val);
-const char *virNWFilterVarValueGetNthValue(const virNWFilterVarValue *val,
+const char *virNWFilterVarValueGetSimple(const virNWFilterVarValuePtr val);
+const char *virNWFilterVarValueGetNthValue(virNWFilterVarValuePtr val,
                                            unsigned int idx);
-unsigned int virNWFilterVarValueGetCardinality(const virNWFilterVarValue *);
-bool virNWFilterVarValueEqual(const virNWFilterVarValue *a,
-                              const virNWFilterVarValue *b);
+unsigned int virNWFilterVarValueGetCardinality(const virNWFilterVarValuePtr);
 int virNWFilterVarValueAddValue(virNWFilterVarValuePtr val, char *value);
 int virNWFilterVarValueDelValue(virNWFilterVarValuePtr val, const char *value);
 
@@ -87,19 +84,12 @@ void *virNWFilterHashTableRemoveEntry(virNWFilterHashTablePtr table,
                                       const char *name);
 int virNWFilterHashTablePutAll(virNWFilterHashTablePtr src,
                                virNWFilterHashTablePtr dest);
-bool virNWFilterHashTableEqual(virNWFilterHashTablePtr a,
-                               virNWFilterHashTablePtr b);
 
 # define VALID_VARNAME \
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 
 # define VALID_VARVALUE \
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:"
-
-# define NWFILTER_VARNAME_IP "IP"
-# define NWFILTER_VARNAME_MAC "MAC"
-# define NWFILTER_VARNAME_CTRL_IP_LEARNING "CTRL_IP_LEARNING"
-# define NWFILTER_VARNAME_DHCPSERVER "DHCPSERVER"
 
 enum virNWFilterVarAccessType {
     VIR_NWFILTER_VAR_ACCESS_ELEMENT = 0,
@@ -125,18 +115,18 @@ struct  _virNWFilterVarAccess {
 # define VIR_NWFILTER_MAX_ITERID   1000
 
 void virNWFilterVarAccessFree(virNWFilterVarAccessPtr varAccess);
-bool virNWFilterVarAccessEqual(const virNWFilterVarAccess *a,
-                               const virNWFilterVarAccess *b);
+bool virNWFilterVarAccessEqual(const virNWFilterVarAccessPtr a,
+                               const virNWFilterVarAccessPtr b);
 virNWFilterVarAccessPtr virNWFilterVarAccessParse(const char *varAccess);
 void virNWFilterVarAccessPrint(virNWFilterVarAccessPtr vap,
                                virBufferPtr buf);
-const char *virNWFilterVarAccessGetVarName(const virNWFilterVarAccess *vap);
+const char *virNWFilterVarAccessGetVarName(const virNWFilterVarAccessPtr vap);
 enum virNWFilterVarAccessType virNWFilterVarAccessGetType(
-                                           const virNWFilterVarAccess *vap);
-unsigned int virNWFilterVarAccessGetIterId(const virNWFilterVarAccess *vap);
-unsigned int virNWFilterVarAccessGetIndex(const virNWFilterVarAccess *vap);
-bool virNWFilterVarAccessIsAvailable(const virNWFilterVarAccess *vap,
-                                     const virNWFilterHashTable *hash);
+                                           const virNWFilterVarAccessPtr vap);
+unsigned int virNWFilterVarAccessGetIterId(const virNWFilterVarAccessPtr vap);
+unsigned int virNWFilterVarAccessGetIndex(const virNWFilterVarAccessPtr vap);
+bool virNWFilterVarAccessIsAvailable(const virNWFilterVarAccessPtr vap,
+                                     const virNWFilterHashTablePtr hash);
 
 typedef struct _virNWFilterVarCombIterEntry virNWFilterVarCombIterEntry;
 typedef virNWFilterVarCombIterEntry *virNWFilterVarCombIterEntryPtr;
@@ -165,7 +155,7 @@ void virNWFilterVarCombIterFree(virNWFilterVarCombIterPtr ci);
 virNWFilterVarCombIterPtr virNWFilterVarCombIterNext(
                                 virNWFilterVarCombIterPtr ci);
 const char *virNWFilterVarCombIterGetVarValue(virNWFilterVarCombIterPtr ci,
-                                              const virNWFilterVarAccess *);
+                                              const virNWFilterVarAccessPtr);
 
 
 #endif /* NWFILTER_PARAMS_H */

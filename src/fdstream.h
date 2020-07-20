@@ -14,8 +14,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -24,7 +24,7 @@
 # define __VIR_FDSTREAM_H_
 
 # include "internal.h"
-# include "vircommand.h"
+# include "command.h"
 
 /* internal callback, the generic one is used up by daemon stream driver */
 /* the close callback is called with fdstream private data locked */
@@ -32,9 +32,6 @@ typedef void (*virFDStreamInternalCloseCb)(virStreamPtr st, void *opaque);
 
 typedef void (*virFDStreamInternalCloseCbFreeOpaque)(void *opaque);
 
-
-/* Only for use by test suite */
-void virFDStreamSetIOHelper(const char *path);
 
 int virFDStreamOpen(virStreamPtr st,
                     int fd);

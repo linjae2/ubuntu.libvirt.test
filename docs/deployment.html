@@ -64,10 +64,6 @@
                         </div>
                       </li><li>
                         <div>
-                          <a title="Configure access control libvirt APIs" class="inactive" href="acl.html">Access control</a>
-                        </div>
-                      </li><li>
-                        <div>
                           <a title="Migrating guests between machines" class="inactive" href="migration.html">Migration</a>
                         </div>
                       </li><li>
@@ -80,19 +76,11 @@
                         </div>
                       </li><li>
                         <div>
-                          <a title="Audit trail logs for host operations" class="inactive" href="auditlog.html">Audit log</a>
-                        </div>
-                      </li><li>
-                        <div>
                           <a title="Firewall and network filter configuration" class="inactive" href="firewall.html">Firewall</a>
                         </div>
                       </li><li>
                         <div>
                           <a title="Ensuring exclusive guest access to disks" class="inactive" href="locking.html">Disk locking</a>
-                        </div>
-                      </li><li>
-                        <div>
-                          <a title="Control groups integration" class="inactive" href="cgroups.html">CGroups</a>
                         </div>
                       </li><li>
                         <div>
@@ -174,7 +162,7 @@
             <a href="#git">Built from GIT</a>
           </li></ul>
         <h2>
-          <a name="packages" shape="rect" id="packages">Pre-packaged releases</a>
+          <a name="packages" id="packages">Pre-packaged releases</a>
         </h2>
         <p>
       The libvirt API is now available in all major Linux distributions,
@@ -183,20 +171,20 @@
       module.
     </p>
         <h2>
-          <a name="tarball" shape="rect" id="tarball">Self-built releases</a>
+          <a name="tarball" id="tarball">Self-built releases</a>
         </h2>
         <p>
       libvirt uses GNU autotools for its build system, so deployment
       follows the usual process of <code>configure; make ; make install</code>
     </p>
-        <pre xml:space="preserve">
+        <pre>
 
       # ./configure --prefix=$HOME/usr
       # make
       # make install
     </pre>
         <h2>
-          <a name="git" shape="rect" id="git">Built from GIT</a>
+          <a name="git" id="git">Built from GIT</a>
         </h2>
         <p>
       When building from GIT it is necessary to generate the autotools
@@ -205,7 +193,7 @@
       installed. The process can be automated with the <code>autogen.sh</code>
       script.
     </p>
-        <pre xml:space="preserve">
+        <pre>
 
       # ./autogen.sh --prefix=$HOME/usr
       # make

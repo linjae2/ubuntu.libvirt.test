@@ -1,6 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <body>
     <h1>Spawning processes / commands from libvirt drivers</h1>
 
@@ -258,9 +256,8 @@
 <pre>
   int sharedfd = open("cmd.log", "w+");
   int childfd = open("conf.txt", "r");
-  virCommandPassFD(cmd, sharedfd, 0);
-  virCommandPassFD(cmd, childfd,
-                   VIR_COMMAND_PASS_FD_CLOSE_PARENT);
+  virCommandPreserveFD(cmd, sharedfd);
+  virCommandTransferFD(cmd, childfd);
   if (VIR_CLOSE(sharedfd) &lt; 0)
       goto cleanup;
 </pre>

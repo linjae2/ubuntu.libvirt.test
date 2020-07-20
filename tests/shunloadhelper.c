@@ -12,8 +12,8 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
@@ -26,30 +26,27 @@
  */
 
 #include <config.h>
-
-#include <stdlib.h>
-
 #include "internal.h"
+
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+#include <stdlib.h>
 
 static void shunloadError(void *userData ATTRIBUTE_UNUSED,
                           virErrorPtr error ATTRIBUTE_UNUSED)
 {
 }
 
-int shunloadStart(void);
+void shunloadStart(void);
 
-int shunloadStart(void) {
+void shunloadStart(void) {
     virConnectPtr conn;
 
     virSetErrorFunc(NULL, shunloadError);
-    if (virInitialize() < 0)
-        return -1;
+    virInitialize();
 
     conn = virConnectOpen("test:///default");
     virDomainDestroy(NULL);
-    if (conn) {
+    if (conn)
         virConnectClose(conn);
-        return 0;
-    }
-    return -1;
 }

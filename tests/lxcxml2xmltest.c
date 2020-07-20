@@ -8,19 +8,14 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#include "testutils.h"
-
 #ifdef WITH_LXC
 
 # include "internal.h"
+# include "testutils.h"
 # include "lxc/lxc_conf.h"
 # include "testutilslxc.h"
-# include "virstring.h"
-
-# define VIR_FROM_THIS VIR_FROM_NONE
 
 static virCapsPtr caps;
-static virDomainXMLOptionPtr xmlopt;
 
 static int
 testCompareXMLToXMLFiles(const char *inxml, const char *outxml, bool live)
@@ -36,15 +31,10 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml, bool live)
     if (virtTestLoadFile(outxml, &outXmlData) < 0)
         goto fail;
 
-    if (!(def = virDomainDefParseString(inXmlData, caps, xmlopt,
+    if (!(def = virDomainDefParseString(caps, inXmlData,
                                         1 << VIR_DOMAIN_VIRT_LXC,
                                         live ? 0 : VIR_DOMAIN_XML_INACTIVE)))
         goto fail;
-
-    if (!virDomainDefCheckABIStability(def, def)) {
-        fprintf(stderr, "ABI stability check failed on %s", inxml);
-        goto fail;
-    }
 
     if (!(actual = virDomainDefFormat(def, VIR_DOMAIN_XML_SECURE)))
         goto fail;
@@ -84,23 +74,18 @@ testCompareXMLToXMLHelper(const void *data)
         goto cleanup;
 
     if (info->different) {
-        if (testCompareXMLToXMLFiles(xml_in, xml_out, false) < 0)
-            goto cleanup;
+        ret = testCompareXMLToXMLFiles(xml_in, xml_out, false);
     } else {
-        if (testCompareXMLToXMLFiles(xml_in, xml_in, false) < 0)
-            goto cleanup;
+        ret = testCompareXMLToXMLFiles(xml_in, xml_in, false);
     }
     if (!info->inactive_only) {
         if (info->different) {
-            if (testCompareXMLToXMLFiles(xml_in, xml_out, true) < 0)
-                goto cleanup;
+            ret = testCompareXMLToXMLFiles(xml_in, xml_out, true);
         } else {
-            if (testCompareXMLToXMLFiles(xml_in, xml_in, true) < 0)
-                goto cleanup;
+            ret = testCompareXMLToXMLFiles(xml_in, xml_in, true);
         }
     }
 
-    ret = 0;
 cleanup:
     VIR_FREE(xml_in);
     VIR_FREE(xml_out);
@@ -116,14 +101,11 @@ mymain(void)
     if ((caps = testLXCCapsInit()) == NULL)
         return EXIT_FAILURE;
 
-    if (!(xmlopt = lxcDomainXMLConfInit()))
-        return EXIT_FAILURE;
-
 # define DO_TEST_FULL(name, is_different, inactive)                     \
     do {                                                                \
         const struct testInfo info = {name, is_different, inactive};    \
-        if (virtTestRun("LXC XML-2-XML " name,                          \
-                        testCompareXMLToXMLHelper, &info) < 0)          \
+        if (virtTestRun("LXC XML-2-XML " name,                         \
+                        1, testCompareXMLToXMLHelper, &info) < 0)       \
             ret = -1;                                                   \
     } while (0)
 
@@ -139,14 +121,8 @@ mymain(void)
     setenv("PATH", "/bin", 1);
 
     DO_TEST("systemd");
-    DO_TEST("hostdev");
-    DO_TEST("disk-formats");
-    DO_TEST_DIFFERENT("filesystem-ram");
-    DO_TEST("filesystem-root");
-    DO_TEST("idmap");
 
-    virObjectUnref(caps);
-    virObjectUnref(xmlopt);
+    virCapabilitiesFree(caps);
 
     return ret==0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -154,6 +130,7 @@ mymain(void)
 VIRT_TEST_MAIN(mymain)
 
 #else
+# include "testutils.h"
 
 int
 main(void)

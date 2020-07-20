@@ -14,25 +14,25 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  *
  */
 
 #include <config.h>
 
-#ifdef WITH_AUDIT
+#ifdef HAVE_AUDIT
 # include <libaudit.h>
 #endif
 #include <stdio.h>
 #include <unistd.h>
 
-#include "virerror.h"
-#include "virlog.h"
+#include "virterror_internal.h"
+#include "logging.h"
 #include "viraudit.h"
+#include "util.h"
 #include "virfile.h"
-#include "viralloc.h"
-#include "virstring.h"
+#include "memory.h"
 
 /* Provide the macros in case the header file is old.
    FIXME: should be removed. */
@@ -48,14 +48,14 @@
 
 #define VIR_FROM_THIS VIR_FROM_AUDIT
 
-#if WITH_AUDIT
+#if HAVE_AUDIT
 static int auditfd = -1;
 #endif
 static int auditlog = 0;
 
 int virAuditOpen(void)
 {
-#if WITH_AUDIT
+#if HAVE_AUDIT
     if ((auditfd = audit_open()) < 0) {
         virReportSystemError(errno, "%s", _("Unable to initialize audit layer"));
         return -1;
@@ -74,9 +74,8 @@ void virAuditLog(int logging)
 }
 
 
-void virAuditSend(const char *filename,
+void virAuditSend(const char *file ATTRIBUTE_UNUSED, const char *func,
                   size_t linenr,
-                  const char *funcname,
                   const char *clienttty ATTRIBUTE_UNUSED,
                   const char *clientaddr ATTRIBUTE_UNUSED,
                   enum virAuditRecordType type ATTRIBUTE_UNUSED, bool success,
@@ -87,7 +86,7 @@ void virAuditSend(const char *filename,
 
     /* Duplicate later checks, to short circuit & avoid printf overhead
      * when nothing is enabled */
-#if WITH_AUDIT
+#if HAVE_AUDIT
     if (!auditlog && auditfd < 0)
         return;
 #else
@@ -104,16 +103,14 @@ void virAuditSend(const char *filename,
 
     if (auditlog && str) {
         if (success)
-            virLogMessage(VIR_LOG_FROM_AUDIT, VIR_LOG_INFO,
-                          filename, linenr, funcname,
-                          NULL, "success=yes %s", str);
+            virLogMessage("audit", VIR_LOG_INFO, func, linenr, 0,
+                          "success=yes %s", str);
         else
-            virLogMessage(VIR_LOG_FROM_AUDIT, VIR_LOG_WARN,
-                          filename, linenr, funcname,
-                          NULL, "success=no %s", str);
+            virLogMessage("audit", VIR_LOG_WARN, func, linenr, 0,
+                          "success=no %s", str);
     }
 
-#if WITH_AUDIT
+#if HAVE_AUDIT
     if (auditfd < 0) {
         VIR_FREE(str);
         return;
@@ -141,14 +138,14 @@ void virAuditSend(const char *filename,
 
 void virAuditClose(void)
 {
-#if WITH_AUDIT
+#if HAVE_AUDIT
     VIR_FORCE_CLOSE(auditfd);
 #endif
 }
 
 char *virAuditEncode(const char *key, const char *value)
 {
-#if WITH_AUDIT
+#if HAVE_AUDIT
     return audit_encode_nv_string(key, value, 0);
 #else
     char *str;
