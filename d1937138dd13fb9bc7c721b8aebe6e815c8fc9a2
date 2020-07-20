@@ -1,0 +1,4 @@
+  * [77fc1c5] New upstream version 0.9.0~rc2
+  * [30ceba5] Drop superflous build-dep on dpkg-dev.
+    The affected versions are neither in Lenny, Squeeze nor Sid.
+  * [5845bed] Switch to dh_python2 (Closes: #616874)
