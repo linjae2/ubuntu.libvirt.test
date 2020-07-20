@@ -1,0 +1,3 @@
+  * fix file removal in storage pools (LP: #1571068)
+    - debian/patches/fix-vol-remove-only-setuid-for-virFileRemove-if-on-NFS.patch
+    - debian/patches/fix-vol-remove-vir-file-breakout.patch
