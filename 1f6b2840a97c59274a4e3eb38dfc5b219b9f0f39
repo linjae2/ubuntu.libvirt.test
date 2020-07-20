@@ -1,0 +1,129 @@
+  * Merged with Debian unstable
+    - this picks up a fix for migrations using NFS mounts (LP: #1637601).
+  * Remaining changes:
+    - Disable sheepdog (universe dependency)
+    - Disable libssh2 support (universe dependency)
+    - Disable firewalld support (universe dependency)
+    - Disable selinux
+    - Enable esx support
+      - Add build-dep to libcurl4-gnutls-dev (required for esx)
+    - Set qemu-group to kvm (for compat with older ubuntu)
+    - Added changes to use the upstream apparmor profiles with added
+      delta (configurable via apparmor profiles version).
+      * d/p/u/000[1-6]-apparmor-*
+    - Regularly clear AppArmor profiles for vms that no longer exist
+    - Fix name resolution calls from virt-aa-helper profile (LP 1546674).
+    - Add missing apparmor rule for debug-threads feature (LP 1615550).
+    - Add new block device types to virt-aa-helpers profile (LP 1641618)
+    - Additional apport package-hook
+    - d/rules: debhelper start virtlogd.socket
+    - Add sysvinit script for virtlockd
+    - Additional debian/bug-presubj
+    - Modifications to adapt for our delayed switch away from libvirt-bin (can
+      be dropped after 18.04).
+      - d/p/ubuntu/libvirtd-service-add-bin-alias.patch: alias to old
+        libvirt-bin name.
+      - d/p/ubuntu/libvirtd-init-add-bin-alias.patch: provides for the old
+        libvirt-bin name.
+    - Wait on socket in sysvinit script
+    - Backwards compatible handling of groups (can be dropped after 18.04).
+    - config details and autostart of default bridged network. Creating that is
+      now the default in general, yet our solution provides the following on
+      top as of today:
+      - nat only on some ports <port start='1024' end='65535'/>
+      - autostart the default network by default
+      - do not autostart if 192.168.122.0 is already taken (e.g. in containers)
+    - d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch: This is
+      the group based access to libvirt functions as it was used in Ubuntu
+      for quite long.
+      - d/p/ubuntu/daemon-augeas-fix-expected.patch fix some related tests
+        due to the group access change.
+    - d/p/ubuntu/dnsmasq-as-priv-user: configuration to run as extra user
+      - d/p/ubuntu/disable-network-test.patch: disable test failing due to
+        dnsmasq changes.
+    - ubuntu/parallel-shutdown.patch: set parallel shutdown by default.
+    - d/p/ubuntu/enable-kvm-spice.patch: compat with older Ubuntu qemu/kvm
+      which provided a separate kvm-spice.
+    - d/p/ubuntu/storage-default-permission-mode-to-0711: safer default perms
+      for storage dirs like /var/lib/libvirt/images.
+    - d/p/ubuntu/storage-disable-gluster-test: gluster not enabled, skip test
+    - d/p/ubuntu/9031-enable-lxc-apparmor: enable apparmor confinement of
+      containers by default.
+    - d/p/ubuntu/9032-lxc-allow-no-security-driver: allow empty sec driver for
+      libvirt-lxc.
+    - d/p/ubuntu/ubuntu_machine_type.patch: accept ubuntu types as pci440fx
+    - d/p/ubuntu/ubuntu-libxl-qemu-path.patch: Set common qemu path to match
+      Debian/Ubuntu Xen packaging.
+    - d/p/ubuntu/ubuntu-libxl-hvmloader-path.patch: Fallback for libxl
+      xen paths (LP 1459603)
+    - d/p/ubuntu/ubuntu-libxl-Fix-up-VRAM-to-minimum-requirements.patch: auto
+      set VRAM to minimum requirements
+    - d/p/ubuntu/libxl-no-dm-check.patch: Stop calling emulator to identify
+      device-model
+    - d/p/ubuntu/xen-default-uri.patch: set default URI on xen hosts
+    - fixup tests to match packaging of Xen (mostly different paths)
+      - d/p/ubuntu/libxl-fix-test-data.patch
+      - d/p/ubuntu/fix-xen-xml-in-tests.patch
+    - d/p/ubuntu/Debianize-virtlogd-service.patch: Adapt config file location
+      for Debian based systems.
+    - d/p/ubuntu/Debianize-virtlockd-init.patch: Fix default config path in
+      virtlockd.init for Debian based systems.
+    - d/p/ubuntu/9034-complete-9p-support: virt-aa-helper: add l to 9p file
+      options.
+    - d/p/ubuntu/parallel-shutdown.patch: shut guests down in parallel
+    - d/p/ubuntu/virt-aa-helper-no-explicity-deny-for-basefiles.patch: ask for
+      no deny rule for readonly disk elements.
+    - d/p/ubuntu/virt-aa-helper-add-guest-agent-rule.patch: add virt-aa-helper
+      rule allowing all private channel access
+    - d/p/ubuntu/libvirtd-service-nolimit.patch: remove proc/file/task limits
+      to support huge systems.
+    - d/p/ubuntu/virt-aa-helper-apparmor-allow-usr-share-AAVMF-too.patch:
+      virt-aa-helper to allow access to aarch64 UEFI images.
+    - d/p/ubuntu/libvirtd-service-set-notifyaccess.patch: set NotifyAccess=all
+      in libvirtd.service (LP 1574566).
+    - d/p/ubuntu/apibuild-skip-libvirt-common.h: drop libvirt-common.h from
+      included_files to avoid build failures due to duplicate definitions.
+    - Update README.Debian with Ubuntu changes
+    - Convert libvirt0, libnss_libvirt and libvirt-dev to multi-arch.
+    - Add libxl log directory
+    - Enable some additional features on ppc64el and s390x (for arch parity)
+      - systemtap, zfs, numa and numad on s390x.
+      - systemtap on ppc64el.
+  * Dropped Changes:
+    - Build depend on gnutls >= 3.5.6-4ubuntu2 (no > 3.5.6 && < 3.5.6-4ubuntu2
+      in any release left)
+    - Fix parsing non apparmor labels LP:#1633207 (upstream in libvirt 2.5)
+    - Ignore newlines in guest list (upstream in libvirt 2.4)
+    - Avoid migration postcopy issues by ensuring valid commands (upstream in
+      libvirt 2.5)
+    - Enable numa for arm64 (in Debian)
+    - Fix libvirt start failure when security_driver set (upstream in libvirt
+      2.2)
+    - virt-aa-helper: Fix upstream implementation of no explicit deny rule
+      (upstream in libvirt 2.3)
+    - Some useless whitespace damage and no more applicable comments
+    - The following patches were part of the Delta but not the series file.
+      So they had no effect and can be dropped now:
+      - ubuntu/9036-util-prepare-uri-for-libxml2-2.9.2.patch
+      - ubuntu/Disable-failing-virnetsockettest.patch
+      - ubuntu/dont-include-non-migrateable-features-in-host-model
+      - ubuntu/upstream-libxl-Allow-libxl-to-find-pygrub-binary.patch
+    - See the 2.1.0-1ubuntu15 and 2.1.0-1ubuntu16 changelogs for related
+      pre-merge drops
+    - Add build-dep to libxml-libxml-perl (no more needed)
+    - apparmor double add /usr/bin/qemu-sparc64 rmix (no function anymore)
+    - apparmor /usr/{lib,lib64}/qemu/block-*.so (in Debian)
+    - apparmor moving /bin/bash rmix in profile (drop non functional delta)
+    - follow Debians style of block-*.so rules for block-extra (drop our
+      functionally equivalent adding/moving of rules)
+    - follow Debians style of lib/lib64 rules (drop a lot of our functional
+      functionally equivalent adding/moving of rules)
+    - accept Upstream style to handle libvirt_iohelper and libvirt_parthelper
+      (stop removing the two rules without an associated bug to reduce delta)
+    - Disabling dep8 smoke tests
+  * Added Changes:
+    - d/t/control, d/t/smoke-qemu-session: fixup smoke-qemu-session by making
+      vmlinuz available and accessible (in discussed with Debian in debbug
+      848314)
+    - d/t/control, d/t/smoke-lxc: fix up lxc smoke test (in discussed with
+      Debian in debbug 848317)
