@@ -1,3 +1,12 @@
+libvirt (6.0.0-0ubuntu8.3) focal-security; urgency=medium
+
+  * SECURITY UPDATE: privilege escalation via incorrect socket permissions
+    - debian/patches/ubuntu/set-proper-socket-permissions.patch: set
+      appropriate permissions on socket created by systemd.
+    - CVE-2020-15708
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Thu, 30 Jul 2020 06:40:28 -0400
+
 libvirt (6.0.0-0ubuntu8.2) focal; urgency=medium
 
   * enable attr support to store XATTR labels. Among other things

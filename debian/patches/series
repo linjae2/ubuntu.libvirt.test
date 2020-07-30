@@ -82,3 +82,4 @@ ubuntu-aa/lp-1871354-apparmor-avoid-denials-on-libpmem-initialization.patch
 ubuntu/CVE-CVE-2020-10701-api-disallow-virDomainAgentSetResponseTimeout-on-rea.patch
 ubuntu/lp-1879325-Don-t-require-secdrivers-to-implement-.domainMoveIma.patch
 ubuntu/lp-1879325-security-don-t-fail-if-built-without-attr-support.patch
+ubuntu/set-proper-socket-permissions.patch
