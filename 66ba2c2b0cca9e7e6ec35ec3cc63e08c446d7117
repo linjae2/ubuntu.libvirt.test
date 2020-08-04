@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: privilege escalation via incorrect socket permissions
+    - debian/patches/ubuntu/set-proper-socket-permissions.patch: set
+      appropriate permissions on socket created by systemd.
+    - CVE-2020-15708
