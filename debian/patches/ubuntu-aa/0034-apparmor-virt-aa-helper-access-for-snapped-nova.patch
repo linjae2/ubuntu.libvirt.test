@@ -11,13 +11,13 @@ Author: Corey Bryant <corey.bryant@canonical.com>
 Forwarded: no (part of continuous upstreaming effort)
 Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 ---
- src/security/apparmor/usr.lib.libvirt.virt-aa-helper | 3 +++
+ src/security/apparmor/usr.lib.libvirt.virt-aa-helper.in | 3 +++
  1 file changed, 3 insertions(+)
 
 diff --git a/src/security/apparmor/usr.lib.libvirt.virt-aa-helper b/src/security/apparmor/usr.lib.libvirt.virt-aa-helper
 index 387a261..63799ea 100644
---- a/src/security/apparmor/usr.lib.libvirt.virt-aa-helper
-+++ b/src/security/apparmor/usr.lib.libvirt.virt-aa-helper
+--- a/src/security/apparmor/usr.lib.libvirt.virt-aa-helper.in
++++ b/src/security/apparmor/usr.lib.libvirt.virt-aa-helper.in
 @@ -69,6 +69,9 @@ profile virt-aa-helper /usr/{lib,lib64}/libvirt/virt-aa-helper {
    /var/lib/nova/instances/_base/** r,
    # nova snapshots (LP: #1244694)
