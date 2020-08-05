@@ -1,0 +1,5 @@
+  * SECURITY UPDATE: privilege escalation via incorrect socket permissions
+    - debian/patches/ubuntu/Allow-libvirt-group-to-access-the-socket.patch:
+      updated patch to also set appropriate permissions on socket created
+      by systemd.
+    - CVE-2020-15708
