@@ -10,10 +10,10 @@ Bug-Ubuntu: https://bugs.launchpad.net/bugs/1786019
 Last-Update: 2018-08-08
 --- a/src/security/apparmor/libvirt-qemu
 +++ b/src/security/apparmor/libvirt-qemu
-@@ -226,3 +226,6 @@
-   # required for sasl GSSAPI plugin
-   /etc/gss/mech.d/ r,
-   /etc/gss/mech.d/* r,
+@@ -253,3 +253,6 @@
+   # /sys/bus/nd/devices
+   / r, # harmless on any lsb compliant system
+   /sys/bus/nd/devices/{,**/} r,
 +
 +  # Site-specific additions and overrides. See local/README for details.
 +  #include <local/abstractions/libvirt-qemu>
