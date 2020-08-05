@@ -9,11 +9,11 @@ Got various updates over time to include further Ubuntu specific paths.
 Forwarded: no (Ubuntu specific paths)
 Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
 ---
- src/security/apparmor/usr.lib.libvirt.virt-aa-helper | 12 ++++++++++++
+ src/security/apparmor/usr.lib.libvirt.virt-aa-helper.in | 12 ++++++++++++
  1 file changed, 12 insertions(+)
 
---- a/src/security/apparmor/usr.lib.libvirt.virt-aa-helper
-+++ b/src/security/apparmor/usr.lib.libvirt.virt-aa-helper
+--- a/src/security/apparmor/usr.lib.libvirt.virt-aa-helper.in
++++ b/src/security/apparmor/usr.lib.libvirt.virt-aa-helper.in
 @@ -52,7 +52,19 @@ profile virt-aa-helper /usr/{lib,lib64}/
    @{HOME}/** r,
    /var/lib/libvirt/images/ r,
