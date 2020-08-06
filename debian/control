@@ -132,9 +132,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon QEMU connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -151,9 +151,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon LXC connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -170,9 +170,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon VirtualBox connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -189,9 +189,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon Xen connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
