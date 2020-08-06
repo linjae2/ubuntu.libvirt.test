@@ -55,7 +55,19 @@ profile virt-aa-helper @libexecdir@/virt-aa-helper {
   @{HOME}/** r,
   /var/lib/libvirt/images/ r,
   /var/lib/libvirt/images/** r,
-  /var/lib/nova/instances/_base/* r,
+  # nova base images (LP: #907269)
+  /var/lib/nova/images/** r,
+  /var/lib/nova/instances/_base/** r,
+  # nova snapshots (LP: #1244694)
+  /var/lib/nova/instances/snapshots/** r,
+  # eucalyptus (LP: #564914)
+  /var/lib/eucalyptus/instances/**/disk* r,
+  # eucalyptus loader (LP: #637544)
+  /var/lib/eucalyptus/instances/**/loader* r,
+  # for uvtool
+  /var/lib/uvtool/libvirt/images/** r,
+  # for multipass
+  /var/snap/multipass/common/data/multipassd/vault/instances/** r,
   /{media,mnt,opt,srv}/** r,
   # For virt-sandbox
   /{,var/}run/libvirt/**/[sv]d[a-z] r,
