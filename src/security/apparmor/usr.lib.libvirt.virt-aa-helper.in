@@ -60,6 +60,9 @@ profile virt-aa-helper @libexecdir@/virt-aa-helper {
   /var/lib/nova/instances/_base/** r,
   # nova snapshots (LP: #1244694)
   /var/lib/nova/instances/snapshots/** r,
+  # nova base/snapshot files in snapped nova (LP: #1644507)
+  /var/snap/nova-hypervisor/common/instances/_base/** r,
+  /var/snap/nova-hypervisor/common/instances/snapshots/** r,
   # eucalyptus (LP: #564914)
   /var/lib/eucalyptus/instances/**/disk* r,
   # eucalyptus loader (LP: #637544)
