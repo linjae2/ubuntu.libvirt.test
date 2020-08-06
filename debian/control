@@ -1,7 +1,8 @@
 Source: libvirt
 Section: libs
 Priority: optional
-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders:
  Guido Günther <agx@sigxcpu.org>,
  Laurent Léonard <laurent@open-minds.org>,
@@ -24,7 +25,6 @@ Build-Depends:
  libgcrypt20-dev,
  libglusterfs-dev [linux-any],
  libgnutls28-dev,
- libnetcf-dev (>= 1:0.2.3-3~) [linux-any],
  libnl-3-dev [linux-any],
  libnl-route-3-dev [linux-any],
  libnuma-dev [linux-any],
@@ -38,7 +38,6 @@ Build-Depends:
  libsanlock-dev [linux-any],
  libsasl2-dev,
  libselinux1-dev (>= 2.0.82) [linux-any],
- libssh2-1-dev,
  libtirpc-dev,
  libudev-dev [linux-any],
  libwireshark-dev (>= 1.11.3),
@@ -47,6 +46,7 @@ Build-Depends:
  libxml2-dev (>= 2.9.2+really2.9.1+dfsg1-0.2),
  libxml2-utils,
  libyajl-dev,
+ libzfslinux-dev [linux-amd64 linux-arm64 linux-armhf linux-i386 linux-ppc64el linux-s390x],
  lvm2 [linux-any],
  netcat-openbsd,
  nfs-common,
@@ -101,9 +101,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
- libvirt-daemon-driver-lxc,
- libvirt-daemon-driver-vbox,
- libvirt-daemon-driver-xen,
  libxml2-utils,
  netcat-openbsd,
  qemu-kvm | qemu (>= 0.9.1),
@@ -111,6 +108,9 @@ Suggests:
  libvirt-daemon-driver-storage-gluster,
  libvirt-daemon-driver-storage-rbd,
  libvirt-daemon-driver-storage-zfs,
+ libvirt-daemon-driver-lxc,
+ libvirt-daemon-driver-vbox,
+ libvirt-daemon-driver-xen,
  libvirt-daemon-system,
  numad,
 Enhances:
@@ -133,9 +133,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon QEMU connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -152,9 +152,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon LXC connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -171,9 +171,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon VirtualBox connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -190,9 +190,9 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Replaces:
- libvirt-daemon (<< 6.0.0-1~),
+ libvirt-daemon (<< 6.6.0-1ubuntu1~),
 Description: Virtualization daemon Xen connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -278,11 +278,11 @@ Recommends:
  dmidecode,
  dnsmasq-base (>= 2.46-1),
  iproute2,
- mdevctl,
  parted,
 Suggests:
  apparmor,
  auditd,
+ mdevctl,
  nfs-common,
  open-iscsi [linux-any],
  pm-utils,

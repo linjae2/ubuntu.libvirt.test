@@ -1,0 +1,42 @@
+From 3542675ad82ff86fb9dd8ef233dd728ba60f47bf Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Fri, 7 Aug 2020 09:05:04 +0200
+Subject: [PATCH] apparmor: allow unmounting .dev entries
+
+With qemu 5.0 and libvirt 6.6 there are new apparmor denials:
+  apparmor="DENIED" operation="umount" profile="libvirtd"
+  name="/run/libvirt/qemu/1-kvmguest-groovy-norm.dev/" comm="rpc-worker"
+
+These are related to new issues around devmapper handling [1] and the
+error path triggered by these issues now causes this new denial.
+
+There are already related rules for mounting and it seems right to
+allow also the related umount.
+
+[1]: https://www.redhat.com/archives/libvir-list/2020-August/msg00236.html
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=d61d8206f3f40fadbd0ed52f9480f8ae0fc9b6ff
+Applied-Upstream: 6.7.0
+Last-Update: 2020-08-07
+
+---
+ src/security/apparmor/usr.sbin.libvirtd.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/security/apparmor/usr.sbin.libvirtd.in b/src/security/apparmor/usr.sbin.libvirtd.in
+index 1e137039e9..7c48b36e3d 100644
+--- a/src/security/apparmor/usr.sbin.libvirtd.in
++++ b/src/security/apparmor/usr.sbin.libvirtd.in
+@@ -31,6 +31,7 @@ profile libvirtd @sbindir@/libvirtd flags=(attach_disconnected) {
+ 
+   mount options=(rw,rslave)  -> /,
+   mount options=(rw, nosuid) -> /{var/,}run/libvirt/qemu/*.dev/,
++  umount /{var/,}run/libvirt/qemu/*.dev/,
+ 
+   # libvirt provides any mounts under /dev to qemu namespaces
+   mount options=(rw, move) /dev/ -> /{,var/}run/libvirt/qemu/*.dev/,
+-- 
+2.27.0
+

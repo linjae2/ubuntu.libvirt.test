@@ -7,6 +7,7 @@ apparmor profile.  However the default tls directory in qemu.conf that
 we ship is /etc/pki/qemu.  So permit that as well.
 
 Closes: #930100
+Applied-Upstream: 6.7.0
 ---
  src/security/apparmor/libvirt-qemu | 2 ++
  1 file changed, 2 insertions(+)

@@ -2381,6 +2381,8 @@ const char *s390HostPassthroughOnlyMachines[] = {
     "s390-ccw-virtio-2.5",
     "s390-ccw-virtio-2.6",
     "s390-ccw-virtio-2.7",
+    "s390-ccw-virtio-xenial",
+    "s390-ccw-virtio-yakkety",
     NULL
 };
 
@@ -2737,7 +2739,7 @@ static const char *preferredMachines[] =
 
     "integratorcp", /* VIR_ARCH_AARCH64 */
     "axis-dev88", /* VIR_ARCH_CRIS */
-    "pc", /* VIR_ARCH_I686 */
+    "ubuntu", /* VIR_ARCH_I686 */
     NULL, /* VIR_ARCH_ITANIUM (doesn't exist in QEMU any more) */
     "lm32-evr", /* VIR_ARCH_LM32 */
 
@@ -2769,7 +2771,7 @@ static const char *preferredMachines[] =
     "SS-5", /* VIR_ARCH_SPARC */
     "sun4u", /* VIR_ARCH_SPARC64 */
     "puv3", /* VIR_ARCH_UNICORE32 */
-    "pc", /* VIR_ARCH_X86_64 */
+    "ubuntu", /* VIR_ARCH_X86_64 */
 
     "sim", /* VIR_ARCH_XTENSA */
     "sim", /* VIR_ARCH_XTENSAEB */

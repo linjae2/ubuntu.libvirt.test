@@ -99,7 +99,7 @@ vah_usage(void)
             "  Modes:\n"
             "    -a | --add                     load profile\n"
             "    -c | --create                  create profile from template\n"
-            "    -D | --delete                  unload and delete profile\n"
+            "    -D | --delete                  unload profile and delete generated rules\n"
             "    -r | --replace                 reload profile\n"
             "    -R | --remove                  unload profile\n"
             "  Options:\n"
@@ -873,11 +873,11 @@ add_file_path(virStorageSourcePtr src,
 
     if (depth == 0) {
         if (src->readonly)
-            ret = vah_add_file(buf, src->path, "rk");
+            ret = vah_add_file(buf, src->path, "Rk");
         else
             ret = vah_add_file(buf, src->path, "rwk");
     } else {
-        ret = vah_add_file(buf, src->path, "rk");
+        ret = vah_add_file(buf, src->path, "Rk");
     }
 
     if (ret != 0)
@@ -1142,7 +1142,7 @@ get_files(vahControl * ctl)
             /* We don't need to add deny rw rules for readonly mounts,
              * this can only lead to troubles when mounting / readonly.
              */
-            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rw", true) != 0)
+            if (vah_add_path(&buf, fs->src->path, fs->readonly ? "R" : "rwl", true) != 0)
                 goto cleanup;
         }
     }
@@ -1487,11 +1487,10 @@ main(int argc, char **argv)
 
     if (ctl->cmd == 'a') {
         rc = parserLoad(ctl->uuid);
-    } else if (ctl->cmd == 'R' || ctl->cmd == 'D') {
+    } else if (ctl->cmd == 'R' || ctl->cmd == 'D' ) {
         rc = parserRemove(ctl->uuid);
         if (ctl->cmd == 'D') {
             unlink(include_file);
-            unlink(profile);
         }
     } else if (ctl->cmd == 'c' || ctl->cmd == 'r') {
         char *included_files = NULL;

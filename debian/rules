@@ -37,11 +37,11 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
     WITH_MACVTAP         = --with-macvtap
     WITH_NETWORK         = --with-network
     WITH_OPENVZ          = --with-openvz
-    WITH_NETCF           = --with-netcf
+    WITH_NETCF           = --without-netcf
     WITH_POLKIT          = --with-polkit
     WITH_SANLOCK         = --with-sanlock
     WITH_INIT_SCRIPT     = --with-init-script=systemd
-    WITH_FIREWALLD       = --with-firewalld
+    WITH_FIREWALLD       = --without-firewalld
     WITH_ATTR            = --with-attr
     WITH_AUDIT           = --with-audit
     WITH_SELINUX         = --with-selinux --with-secdriver-selinux --with-selinux-mount=/sys/fs/selinux
@@ -92,11 +92,11 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     --disable-rpath \
     --with-qemu \
     --with-qemu-user=libvirt-qemu \
-    --with-qemu-group=libvirt-qemu \
+    --with-qemu-group=kvm \
     $(WITH_OPENVZ) \
     --with-sasl \
     --with-yajl \
-    --with-ssh2 \
+    --without-ssh2 \
     $(WITH_POLKIT) \
     $(WITH_SANLOCK) \
     $(WITH_UDEV) \
@@ -176,7 +176,17 @@ override_dh_auto_test:
 # various dh_* tools will work optimally. This target is the perfect place
 # to perform such operations
 override_dh_auto_install:
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
 	dh_auto_install
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
 
 	# Copy upstream files to debian/ so dh_* can find them
 	cp $(DEB_DESTDIR)/usr/lib/libvirt/libvirt-guests.sh \
