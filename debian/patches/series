@@ -37,3 +37,4 @@ ubuntu-aa/0050-local-include-for-libvirt-qemu.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu-aa/lp-1847361-load-versioned-module.patch
+ubuntu/wait-for-qemu-kvm.patch
