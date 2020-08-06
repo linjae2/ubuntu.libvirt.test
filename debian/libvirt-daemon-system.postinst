@@ -87,7 +87,7 @@ add_users_groups()
     fi
     # For upgrades that still have the insecure libvirt group (too much privileges)
     if [ -n "$2" ] && dpkg --compare-versions -- "$2" le-nl "4.0.0-1ubuntu5~"; then
-        if [ "$(id -r -g -n libvirt-dnsmasq)" == "libvirt" ]; then
+        if [ "$(id -r -g -n libvirt-dnsmasq)" = "libvirt" ]; then
             echo "assigning libvirt-dnsmasq a less privileged group (libvirt->libvirt-dnsmasq)"
             usermod libvirt-dnsmasq -g libvirt-dnsmasq
         fi
