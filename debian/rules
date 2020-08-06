@@ -176,6 +176,9 @@ override_dh_auto_test:
 # various dh_* tools will work optimally. This target is the perfect place
 # to perform such operations
 override_dh_auto_install:
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
 	dh_auto_install
 
 	# Copy upstream files to debian/ so dh_* can find them

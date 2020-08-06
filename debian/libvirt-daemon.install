@@ -18,6 +18,7 @@ usr/sbin/libvirtd
 usr/sbin/virt-sanlock-cleanup
 usr/sbin/virtlockd
 usr/sbin/virtlogd
+usr/share/apport/package-hooks/source_libvirt.py
 usr/share/augeas/lenses/libvirt_lockd.aug
 usr/share/augeas/lenses/libvirt_sanlock.aug
 usr/share/augeas/lenses/libvirtd.aug
