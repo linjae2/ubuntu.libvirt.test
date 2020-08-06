@@ -18,7 +18,7 @@ Abstract:
  a system user called unsurprisingly 'dnsmasq').
 --- a/src/network/bridge_driver.c
 +++ b/src/network/bridge_driver.c
-@@ -1146,7 +1146,8 @@ networkDnsmasqConfContents(virNetworkObj
+@@ -1094,7 +1094,8 @@ networkDnsmasqConfContents(virNetworkObj
                        "##    virsh net-edit %s\n"
                        "## or other application using the libvirt API.\n"
                        "##\n## dnsmasq conf file created by libvirt\n"
@@ -240,6 +240,46 @@ Abstract:
  interface=virbr0
 --- a/tests/networkxml2confdata/dnsmasq-options.conf
 +++ b/tests/networkxml2confdata/dnsmasq-options.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/leasetime-hours.conf
++++ b/tests/networkxml2confdata/leasetime-hours.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/leasetime-infinite.conf
++++ b/tests/networkxml2confdata/leasetime-infinite.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/leasetime-minutes.conf
++++ b/tests/networkxml2confdata/leasetime-minutes.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/leasetime-seconds.conf
++++ b/tests/networkxml2confdata/leasetime-seconds.conf
 @@ -5,6 +5,7 @@
  ##
  ## dnsmasq conf file created by libvirt
