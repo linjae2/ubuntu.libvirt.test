@@ -17,32 +17,7 @@ to be adapted in their expected output, that is done in:
 
 --- a/src/remote/libvirtd.conf.in
 +++ b/src/remote/libvirtd.conf.in
-@@ -81,6 +81,7 @@
- #
- # This is restricted to 'root' by default.
- #unix_sock_group = "libvirt"
-+unix_sock_group = "libvirt"
- 
- # Set the UNIX socket permissions for the R/O socket. This is used
- # for monitoring VM status only
-@@ -91,6 +92,7 @@
- # Default allows any user. If setting group ownership, you may want to
- # restrict this too.
- #unix_sock_ro_perms = "0777"
-+unix_sock_ro_perms = "0777"
- 
- # Set the UNIX socket permissions for the R/W socket. This is used
- # for full management of VMs
-@@ -103,7 +105,7 @@
- #
- # If not using PolicyKit and setting group ownership for access
- # control, then you may want to relax this too.
--#unix_sock_rw_perms = "0770"
-+unix_sock_rw_perms = "0770"
- 
- # Set the UNIX socket permissions for the admin interface socket.
- #
-@@ -149,7 +151,7 @@
+@@ -149,7 +149,7 @@
  #
  # To restrict monitoring of domains you may wish to enable
  # an authentication mechanism here
@@ -51,7 +26,7 @@ to be adapted in their expected output, that is done in:
  
  # Set an authentication scheme for UNIX read-write sockets
  # By default socket permissions only allow root. If PolicyKit
-@@ -159,6 +161,7 @@
+@@ -159,6 +159,7 @@
  # If the unix_sock_rw_perms are changed you may wish to enable
  # an authentication mechanism here
  #auth_unix_rw = "none"
