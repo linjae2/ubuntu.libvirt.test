@@ -39,3 +39,4 @@ ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu-aa/lp-1847361-load-versioned-module.patch
 ubuntu/wait-for-qemu-kvm.patch
 ubuntu-aa/apparmor-profiles-are-meant-to-allow-adding-permanen.patch
+ubuntu-aa/apparmor-allow-unmounting-.dev-entries.patch
