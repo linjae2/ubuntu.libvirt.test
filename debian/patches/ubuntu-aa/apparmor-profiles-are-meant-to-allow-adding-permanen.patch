@@ -1,0 +1,65 @@
+From 45f8a5e4a2a2b7d2fa2e3dd9c9596ce0e3aabbb1 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Thu, 6 Aug 2020 16:54:34 +0200
+Subject: [PATCH] apparmor: profiles are meant to allow adding permanent
+ overrides
+
+The design of apparmor in libvirt to enhance guest isolation always
+had a way to define custom per-guest rules as described in docs/drvqemu.html
+and [1].
+
+Commits meant to clean the profiles after guest shutdown were a bit
+overzealous and accidentially removed this important admin feature as
+well.
+
+Therefore reduce the --delete option of virt-aa-helper to only delete
+the .files that would be re-generated in any case.
+
+Users/Admins are always free to clean the profiles themselve if they
+prefer a clean directory - they will be regenerated as needed. But
+libvirt should never remove the files meant to allow per-guest
+overrides and thereby break a documented feature.
+
+[1]: https://gitlab.com/apparmor/apparmor/-/wikis/Libvirt#advanced-usage
+
+Fixes: eba2225b "apparmor: delete profile on VM shutdown"
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1745114
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=d9c21f4bfc1ab74a84bf54968caf9f16e7efe9df
+Last-Update: 2020-08-07
+
+---
+ src/security/virt-aa-helper.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index dadb9d1614..c2f44aabe8 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -99,7 +99,7 @@ vah_usage(void)
+             "  Modes:\n"
+             "    -a | --add                     load profile\n"
+             "    -c | --create                  create profile from template\n"
+-            "    -D | --delete                  unload and delete profile\n"
++            "    -D | --delete                  unload profile and delete generated rules\n"
+             "    -r | --replace                 reload profile\n"
+             "    -R | --remove                  unload profile\n"
+             "  Options:\n"
+@@ -1487,11 +1487,10 @@ main(int argc, char **argv)
+ 
+     if (ctl->cmd == 'a') {
+         rc = parserLoad(ctl->uuid);
+-    } else if (ctl->cmd == 'R' || ctl->cmd == 'D') {
++    } else if (ctl->cmd == 'R' || ctl->cmd == 'D' ) {
+         rc = parserRemove(ctl->uuid);
+         if (ctl->cmd == 'D') {
+             unlink(include_file);
+-            unlink(profile);
+         }
+     } else if (ctl->cmd == 'c' || ctl->cmd == 'r') {
+         char *included_files = NULL;
+-- 
+2.27.0
+
