@@ -413,6 +413,16 @@ libvirt (6.0.0~rc1-1) experimental; urgency=medium
 
  -- Guido Günther <agx@sigxcpu.org>  Sat, 18 Jan 2020 18:16:20 +0100
 
+libvirt (6.0.0-0ubuntu11) groovy; urgency=medium
+
+  * SECURITY UPDATE: privilege escalation via incorrect socket permissions
+    - debian/patches/ubuntu/Allow-libvirt-group-to-access-the-socket.patch:
+      updated patch to also set appropriate permissions on socket created
+      by systemd.
+    - CVE-2020-15708
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 05 Aug 2020 09:08:34 -0400
+
 libvirt (6.0.0-0ubuntu10) groovy; urgency=medium
 
   * enable attr support to store XATTR labels. Among other things
