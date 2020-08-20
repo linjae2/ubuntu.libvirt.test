@@ -172,6 +172,7 @@ libvirt (6.6.0-1ubuntu1) groovy; urgency=medium
       triggering denials in devmapper error path
     - d/p/ubuntu-aa/pparmor-profiles-are-meant-to-allow-adding-permanen.patch:
       (again) allow permanent per guest overrides (LP: #1745114)
+    - d/control: drop mdevctl to a suggest until (LP 1889248) is ready
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 06 Aug 2020 08:04:09 +0200
 
