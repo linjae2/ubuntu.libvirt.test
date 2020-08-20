@@ -5,8 +5,6 @@ libvirt (6.6.0-1ubuntu1) groovy; urgency=medium
     (LP: #1874647) - Stale libvirt cache leads to VM startup failures
     (LP: #1869796) - bad ordering and dependent restarts of services/sockets
     Remaining changes:
-    - d/control, d/rules: Disable rbd and zfs on riscv64 where they are
-      unavailable (LP 1872952)
     - d/p/ubuntu-aa/lp-1847361-load-versioned-module.patch: allow loading
       versioned modules after qemu package upgrades (LP 1847361)
     - libvirt-uri.sh: Automatically switch default libvirt URI for users
@@ -154,6 +152,8 @@ libvirt (6.6.0-1ubuntu1) groovy; urgency=medium
       avoid error messages on purge [deluser/delgroup no more report warnings]
     - "Additional apport package-hook": due to context auto updates
       d/libvirt-daemon.install had bad entries which are no more required.
+    - d/control, d/rules: Disable rbd and zfs on riscv64 where they are
+      unavailable (LP 1872952)
   * Added Changes:
     - d/control: breaks replaces for augeas lenses move in 6.0.0-1
       (follows Debian, droppable >22.04)
