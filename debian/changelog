@@ -54,6 +54,8 @@ libvirt (6.6.0-1ubuntu1) groovy; urgency=medium
       machine type correctly with newer qemu/libvirt
     - d/control: add libzfslinux-dev to build-deps
     - d/control: drop libvirt-lxc, vbox and xen drivers to suggest
+    - d/p/ubuntu/lp-1861125-ubuntu-models: recognize Ubuntu models for
+      (LP 1861125) fixups
     - Apparmor Delta that is Ubuntu specific or yet to be upstreamed
       split into logical pieces. File names in debian/patches/ubuntu-aa/:
       + 0003-apparmor-libvirt-qemu-Allow-read-access-to-overcommi.patch:
@@ -143,6 +145,8 @@ libvirt (6.6.0-1ubuntu1) groovy; urgency=medium
     - d/p/ubuntu/lp-1655111*: fix qemu_bridge_helper to work with named
       profiles (LP 1655111)
   * Dropped changes (no more needed):
+    - d/control: make libvirt-daemon-driver-storage-rbd a recommend instead of
+      just a suggest. This was deprecated since bionic and now will be dropped.
     - Update Vcs-Git and Vcs-Browser fields to point to launchpad
     - d/control: VCS links to use generic Ubuntu launchpad git URLs
     - refreshed patches for libvirt v6.0.0
