@@ -28,6 +28,7 @@ Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1745114
 Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=d9c21f4bfc1ab74a84bf54968caf9f16e7efe9df
+Applied-Upstream: 6.7.0
 Last-Update: 2020-08-07
 
 ---

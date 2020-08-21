@@ -2,6 +2,7 @@ From: Tobias Wolter <towo@b1-systems.de>
 Date: Wed, 21 Aug 2019 10:27:05 +0200
 Subject: apparmor: Allow run pygrub
 
+Applied-Upstream: 6.7.0
 ---
  src/security/apparmor/usr.sbin.libvirtd.in | 1 +
  1 file changed, 1 insertion(+)

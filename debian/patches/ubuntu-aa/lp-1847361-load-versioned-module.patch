@@ -25,6 +25,7 @@ Description: allow loading modules from /var/run
  Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 
 Forwarded: yes, https://www.redhat.com/archives/libvir-list/2020-March/msg00486.html
+Applied-Upstream: 6.7.0
 Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1847361
 Last-Update: 2020-03-13

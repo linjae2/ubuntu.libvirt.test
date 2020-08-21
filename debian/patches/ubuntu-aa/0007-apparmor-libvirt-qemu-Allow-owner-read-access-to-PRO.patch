@@ -7,6 +7,7 @@ Subject: [PATCH 07/33] apparmor, libvirt-qemu: Allow owner read access to
 Forwarded: no (part of continuous upstreaming effort)
 Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+Applied-Upstream: 6.7.0
 ---
  src/security/apparmor/libvirt-qemu | 1 +
  1 file changed, 1 insertion(+)
