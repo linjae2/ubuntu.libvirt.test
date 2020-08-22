@@ -31,7 +31,6 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
     WITH_STORAGE_ISCSI   = --with-storage-iscsi
     WITH_STORAGE_DISK    = --with-storage-disk
     WITH_STORAGE_RBD     = --with-storage-rbd
-    WITH_STORAGE_ZFS     = --with-storage-zfs
     WITH_STORAGE_GLUSTER = --with-storage-gluster
     WITH_UDEV            = --with-udev
     WITH_CAPNG           = --with-capng
@@ -42,46 +41,36 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
     WITH_POLKIT          = --with-polkit
     WITH_SANLOCK         = --with-sanlock
     WITH_INIT_SCRIPT     = --with-init-script=systemd
-    WITH_SYSTEMD         = --with-systemd-daemon
     WITH_FIREWALLD       = --with-firewalld
     WITH_ATTR            = --with-attr
     WITH_AUDIT           = --with-audit
     WITH_SELINUX         = --with-selinux --with-secdriver-selinux --with-selinux-mount=/sys/fs/selinux
     WITH_APPARMOR        = --with-apparmor --with-secdriver-apparmor --with-apparmor-profiles
     WITH_NSS_PLUGIN      = --with-nss-plugin
-    ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 armel armhf i386 ia64 powerpc s390))
-        WITH_DTRACE      = --with-dtrace
-    else
-        WITH_DTRACE      = --without-dtrace
-    endif
-    ifneq (,$(findstring $(DEB_HOST_ARCH), amd64 arm64 i386 ia64 mips mipsel powerpc ppc64el))
-        WITH_NUMA        = --with-numactl --with-numad
-    else
-        WITH_NUMA        = --without-numactl --without-numad
-    endif
+    WITH_DTRACE          = --with-dtrace
+    WITH_NUMA            = --with-numactl --with-numad
     ifneq (,$(findstring $(DEB_HOST_ARCH), ia64))
         WITH_LXC         = --without-lxc
     else
         WITH_LXC         = --with-lxc
     endif
 else
-    ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
-        WITH_STORAGE_ZFS = --with-storage-zfs
-    endif
     WITH_STORAGE_LVM     = --without-storage-lvm
     WITH_STORAGE_ISCSI   = --without-storage-iscsi
     WITH_STORAGE_DISK    = --without-storage-disk
     WITH_STORAGE_RBD     = --without-storage-rbd
+    WITH_STORAGE_GLUSTER = --without-storage-gluster
     WITH_UDEV            = --without-udev
     WITH_CAPNG           = --without-capng
     WITH_MACVTAP         = --without-macvtap
     WITH_NETWORK         = --without-network
+    WITH_OPENVZ          = --without-openvz
     WITH_LXC             = --without-lxc
     WITH_NUMA            = --without-numactl --without-numad
     WITH_NETCF           = --without-netcf
     WITH_INIT_SCRIPT     = --with-init-script=none
     WITH_POLKIT          = --without-polkit
-    WITH_SYSTEMD         = --without-systemd-daemon
+    WITH_SANLOCK         = --without-sanlock
     WITH_FIREWALLD       = --without-firewalld
     WITH_ATTR            = --without-attr
     WITH_AUDIT           = --without-audit
@@ -109,6 +98,7 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     --with-yajl \
     --with-ssh2 \
     $(WITH_POLKIT) \
+    $(WITH_SANLOCK) \
     $(WITH_UDEV) \
     --with-storage-fs \
     --with-storage-dir \
@@ -118,7 +108,7 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     --without-storage-sheepdog \
     $(WITH_STORAGE_RBD) \
     $(WITH_STORAGE_GLUSTER) \
-    $(WITH_STORAGE_ZFS) \
+    --with-storage-zfs \
     $(WITH_INIT_SCRIPT) \
     $(WITH_NUMA) \
     $(WITH_SELINUX) \
@@ -207,6 +197,12 @@ override_dh_auto_install:
 	cp debian/polkit/60-libvirt.pkla \
 	   $(DEB_DESTDIR)/var/lib/polkit-1/localauthority/10-vendor.d/
 
+	# Rename the upstream polkit rule so that it matches the name used
+	# historically in Debian, as well as that of the backwards compat
+	# rules we just installed
+	mv $(DEB_DESTDIR)/usr/share/polkit-1/rules.d/50-libvirt.rules \
+	   $(DEB_DESTDIR)/usr/share/polkit-1/rules.d/60-libvirt.rules
+
 	# Don't ship any la files
 	rm $(DEB_DESTDIR)/usr/lib/*/wireshark/plugins/*/*/*.la
 
@@ -216,6 +212,9 @@ override_dh_auto_install:
 	# Don't ship the CI dashboard, which is not useful as documentation
 	# triggers the privacy-breach-generic Lintian tag
 	rm $(DEB_DESTDIR)/usr/share/doc/libvirt/html/ci.html
+
+	# Don't autostart the default network
+	rm $(DEB_DESTDIR)/etc/libvirt/qemu/networks/autostart/default.xml
 
 override_dh_install-arch:
 	dh_install
