@@ -1,3 +1,12 @@
+libvirt (6.6.0-1ubuntu2) groovy; urgency=medium
+
+  * d/p/u/lp-1892826-Revert-m4-virt-xdr-rewrite-XDR-check.patch: avoid clashes
+    between libtripc and glibc that break libvirt-lxc (LP: #1892826)
+  * d/p/ubuntu-aa/lp-1892736-apparmor-allow-libvirtd-to-call-virtiofsd.patch:
+    allow libvirt to control virtiofsd (LP: #1892736)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 25 Aug 2020 14:53:26 +0200
+
 libvirt (6.6.0-1ubuntu1) groovy; urgency=medium
 
   * Merge with Debian 6.6.0-1 from experimental
