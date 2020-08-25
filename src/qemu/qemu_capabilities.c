@@ -2381,6 +2381,8 @@ const char *s390HostPassthroughOnlyMachines[] = {
     "s390-ccw-virtio-2.5",
     "s390-ccw-virtio-2.6",
     "s390-ccw-virtio-2.7",
+    "s390-ccw-virtio-xenial",
+    "s390-ccw-virtio-yakkety",
     NULL
 };
 
