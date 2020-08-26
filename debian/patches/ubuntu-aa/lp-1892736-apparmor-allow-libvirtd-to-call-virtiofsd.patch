@@ -1,0 +1,59 @@
+From 73d2218a1b4d74f623ce4eafdc5d0c1f409ed5fb Mon Sep 17 00:00:00 2001
+From: Kevin Locke <kevin@kevinlocke.name>
+Date: Tue, 25 Aug 2020 07:31:27 -0600
+Subject: [PATCH] apparmor: allow libvirtd to call virtiofsd
+
+When using [virtiofs], libvirtd must launch [virtiofsd] to provide
+filesystem access on the host.  When a guest is configured with
+virtiofs, such as:
+
+    <filesystem type='mount' accessmode='passthrough'>
+      <driver type='virtiofs'/>
+      <source dir='/path'/>
+      <target dir='mount_tag'/>
+    </filesystem>
+
+Attempting to start the guest fails with:
+
+    internal error: virtiofsd died unexpectedly
+
+/var/log/libvirt/qemu/$name-fs0-virtiofsd.log contains (as a single
+line, wrapped below):
+
+    libvirt:  error : cannot execute binary /usr/lib/qemu/virtiofsd:
+    Permission denied
+
+dmesg contains (as a single line, wrapped below):
+
+    audit: type=1400 audit(1598229295.959:73): apparmor="DENIED"
+    operation="exec" profile="libvirtd" name="/usr/lib/qemu/virtiofsd"
+    pid=46007 comm="rpc-worker" requested_mask="x" denied_mask="x"
+    fsuid=0 ouid=0
+
+To avoid this, allow execution of virtiofsd from the libvirtd AppArmor
+profile.
+
+[virtiofs]: https://libvirt.org/kbase/virtiofs.html
+[virtiofsd]: https://www.qemu.org/docs/master/interop/virtiofsd.html
+
+Signed-off-by: Kevin Locke <kevin@kevinlocke.name>
+Reviewed-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=44cbd3afaf9b6ba84af9b68825cede9ff60e1138
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1892736
+Last-Update: 2020-08-26
+
+---
+ src/security/apparmor/usr.sbin.libvirtd.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/src/security/apparmor/usr.sbin.libvirtd.in
++++ b/src/security/apparmor/usr.sbin.libvirtd.in
+@@ -89,6 +89,7 @@ profile libvirtd @sbindir@/libvirtd flag
+   /usr/lib/xen-*/bin/libxl-save-helper PUx,
+   /usr/{lib,lib64,lib/qemu,libexec}/vhost-user-gpu PUx,
+   /usr/lib/xen-*/bin/pygrub PUx,
++  /usr/{lib,lib64,lib/qemu,libexec}/virtiofsd PUx,
+ 
+   # Required by nwfilter_ebiptables_driver.c:ebiptablesWriteToTempFile() to
+   # read and run an ebtables script.

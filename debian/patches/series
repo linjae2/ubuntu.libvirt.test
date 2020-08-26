@@ -41,3 +41,4 @@ ubuntu/wait-for-qemu-kvm.patch
 ubuntu-aa/apparmor-profiles-are-meant-to-allow-adding-permanen.patch
 ubuntu-aa/apparmor-allow-unmounting-.dev-entries.patch
 ubuntu/lp-1892826-Revert-m4-virt-xdr-rewrite-XDR-check.patch
+ubuntu-aa/lp-1892736-apparmor-allow-libvirtd-to-call-virtiofsd.patch
