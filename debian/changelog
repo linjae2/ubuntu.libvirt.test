@@ -1,3 +1,12 @@
+libvirt (6.0.0-0ubuntu8.4) focal; urgency=medium
+
+  * avoid stale libvirt capability cache (LP: 1874647)
+    - when host cpu changes (e.g. nested with different configuration)
+    - when s390x protvirt or AMD SEV changes
+    - d/p/ubuntu/lp-1874647-*
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 31 Aug 2020 08:41:25 +0200
+
 libvirt (6.0.0-0ubuntu8.3) focal-security; urgency=medium
 
   * SECURITY UPDATE: privilege escalation via incorrect socket permissions
