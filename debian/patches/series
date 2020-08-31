@@ -83,3 +83,16 @@ ubuntu/CVE-CVE-2020-10701-api-disallow-virDomainAgentSetResponseTimeout-on-rea.p
 ubuntu/lp-1879325-Don-t-require-secdrivers-to-implement-.domainMoveIma.patch
 ubuntu/lp-1879325-security-don-t-fail-if-built-without-attr-support.patch
 ubuntu/set-proper-socket-permissions.patch
+ubuntu/lp-1874647-util-Define-g_autoptr-callback-for-FILE.patch
+ubuntu/lp-1874647-hostcpu-Introduce-virHostCPUGetSignature.patch
+ubuntu/lp-1874647-hostcpu-Implement-virHostCPUGetSignature-for-x86.patch
+ubuntu/lp-1874647-hostcpu-Implement-virHostCPUGetSignature-for-ppc64.patch
+ubuntu/lp-1874647-hostcpu-Implement-virHostCPUGetSignature-for-s390.patch
+ubuntu/lp-1874647-qemu-Invalidate-capabilities-when-host-CPU-changes.patch
+ubuntu/lp-1874647-util-Introduce-a-parser-for-kernel-cmdline-arguments.patch
+ubuntu/lp-1874647-qemu-Check-if-s390-secure-guest-support-is-enabled.patch
+ubuntu/lp-1874647-qemu-Check-if-AMD-secure-guest-support-is-enabled.patch
+ubuntu/lp-1874647-tools-Secure-guest-check-on-s390-in-virt-host-valida.patch
+ubuntu/lp-1874647-tools-Secure-guest-check-for-AMD-in-virt-host-valida.patch
+ubuntu/lp-1874647-docs-Update-AMD-launch-secure-description.patch
+ubuntu/lp-1874647-docs-Describe-protected-virtualization-guest-setup.patch
