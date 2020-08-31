@@ -2149,9 +2149,11 @@ virHostCPUGetMSR;
 virHostCPUGetOnline;
 virHostCPUGetOnlineBitmap;
 virHostCPUGetPresentBitmap;
+virHostCPUGetSignature;
 virHostCPUGetStats;
 virHostCPUGetThreadsPerSubcore;
 virHostCPUHasBitmap;
+virHostCPUReadSignature;
 virHostCPUStatsAssign;
 
 
@@ -3391,6 +3393,8 @@ virHostGetDRMRenderNode;
 virHostHasIOMMU;
 virIndexToDiskName;
 virIsDevMapperDevice;
+virKernelCmdlineMatchParam;
+virKernelCmdlineNextParam;
 virMemoryLimitIsSet;
 virMemoryLimitTruncate;
 virMemoryMaxValue;

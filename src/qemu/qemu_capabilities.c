@@ -23,6 +23,7 @@
 
 #include "qemu_capabilities.h"
 #include "viralloc.h"
+#include "virarch.h"
 #include "vircrypto.h"
 #include "virlog.h"
 #include "virerror.h"
@@ -628,6 +629,7 @@ struct _virQEMUCaps {
 
     bool usedQMP;
     bool kvmSupportsNesting;
+    bool kvmSupportsSecureGuest;
 
     char *binary;
     time_t ctime;
@@ -640,6 +642,7 @@ struct _virQEMUCaps {
     unsigned int kvmVersion;
     unsigned int libvirtVersion;
     unsigned int microcodeVersion;
+    char *hostCPUSignature;
     char *package;
     char *kernelVersion;
 
@@ -1808,6 +1811,7 @@ virQEMUCapsPtr virQEMUCapsNewCopy(virQEMUCapsPtr qemuCaps)
     ret->invalidation = qemuCaps->invalidation;
     ret->usedQMP = qemuCaps->usedQMP;
     ret->kvmSupportsNesting = qemuCaps->kvmSupportsNesting;
+    ret->kvmSupportsSecureGuest = qemuCaps->kvmSupportsSecureGuest;
 
     ret->ctime = qemuCaps->ctime;
 
@@ -1816,6 +1820,7 @@ virQEMUCapsPtr virQEMUCapsNewCopy(virQEMUCapsPtr qemuCaps)
     ret->version = qemuCaps->version;
     ret->kvmVersion = qemuCaps->kvmVersion;
     ret->microcodeVersion = qemuCaps->microcodeVersion;
+    ret->hostCPUSignature = g_strdup(qemuCaps->hostCPUSignature);
 
     ret->package = g_strdup(qemuCaps->package);
     ret->kernelVersion = g_strdup(qemuCaps->kernelVersion);
@@ -1872,6 +1877,7 @@ void virQEMUCapsDispose(void *obj)
     VIR_FREE(qemuCaps->package);
     VIR_FREE(qemuCaps->kernelVersion);
     VIR_FREE(qemuCaps->binary);
+    VIR_FREE(qemuCaps->hostCPUSignature);
 
     VIR_FREE(qemuCaps->gicCapabilities);
 
@@ -3927,6 +3933,7 @@ struct _virQEMUCapsCachePriv {
     virArch hostArch;
     unsigned int microcodeVersion;
     char *kernelVersion;
+    char *hostCPUSignature;
 
     /* cache whether /dev/kvm is usable as runUid:runGuid */
     virTristateBool kvmUsable;
@@ -3943,6 +3950,7 @@ virQEMUCapsCachePrivFree(void *privData)
 
     VIR_FREE(priv->libDir);
     VIR_FREE(priv->kernelVersion);
+    VIR_FREE(priv->hostCPUSignature);
     VIR_FREE(priv);
 }
 
@@ -4120,6 +4128,8 @@ virQEMUCapsLoadCache(virArch hostArch,
         goto cleanup;
     }
 
+    qemuCaps->hostCPUSignature = virXPathString("string(./hostCPUSignature)", ctxt);
+
     if (virXPathBoolean("boolean(./package)", ctxt) > 0) {
         qemuCaps->package = virXPathString("string(./package)", ctxt);
         if (!qemuCaps->package)
@@ -4222,6 +4232,9 @@ virQEMUCapsLoadCache(virArch hostArch,
 
     if (virXPathBoolean("boolean(./kvmSupportsNesting)", ctxt) > 0)
         qemuCaps->kvmSupportsNesting = true;
+
+    if (virXPathBoolean("boolean(./kvmSupportsSecureGuest)", ctxt) > 0)
+        qemuCaps->kvmSupportsSecureGuest = true;
 
     ret = 0;
  cleanup:
@@ -4420,6 +4433,8 @@ virQEMUCapsFormatCache(virQEMUCapsPtr qemuCaps)
 
     virBufferAsprintf(&buf, "<microcodeVersion>%u</microcodeVersion>\n",
                       qemuCaps->microcodeVersion);
+    virBufferEscapeString(&buf, "<hostCPUSignature>%s</hostCPUSignature>\n",
+                          qemuCaps->hostCPUSignature);
 
     if (qemuCaps->package)
         virBufferAsprintf(&buf, "<package>%s</package>\n",
@@ -4457,6 +4472,9 @@ virQEMUCapsFormatCache(virQEMUCapsPtr qemuCaps)
     if (qemuCaps->kvmSupportsNesting)
         virBufferAddLit(&buf, "<kvmSupportsNesting/>\n");
 
+    if (qemuCaps->kvmSupportsSecureGuest)
+        virBufferAddLit(&buf, "<kvmSupportsSecureGuest/>\n");
+
     virBufferAdjustIndent(&buf, -2);
     virBufferAddLit(&buf, "</qemuCaps>\n");
 
@@ -4493,6 +4511,74 @@ virQEMUCapsSaveFile(void *data,
  cleanup:
     VIR_FREE(xml);
     return ret;
+}
+
+
+/*
+ * Check whether IBM Secure Execution (S390) is enabled
+ */
+static bool
+virQEMUCapsKVMSupportsSecureGuestS390(void)
+{
+
+    g_autofree char *cmdline = NULL;
+    static const char *kValues[] = {"y", "Y", "on", "ON", "oN", "On", "1"};
+
+    if (!virFileIsDir("/sys/firmware/uv"))
+        return false;
+
+    if (virFileReadValueString(&cmdline, "/proc/cmdline") < 0)
+        return false;
+
+    /* we're prefix matching rather than equality matching here, because kernel
+     * would treat even something like prot_virt='yFOO' as enabled */
+    if (virKernelCmdlineMatchParam(cmdline, "prot_virt", kValues,
+                                   G_N_ELEMENTS(kValues),
+                                   VIR_KERNEL_CMDLINE_FLAGS_SEARCH_FIRST |
+                                   VIR_KERNEL_CMDLINE_FLAGS_CMP_PREFIX))
+        return true;
+
+    return false;
+}
+
+
+/*
+ * Check whether AMD Secure Encrypted Virtualization (x86) is enabled
+ */
+static bool
+virQEMUCapsKVMSupportsSecureGuestAMD(void)
+{
+    g_autofree char *modValue = NULL;
+
+    if (virFileReadValueString(&modValue, "/sys/module/kvm_amd/parameters/sev") < 0)
+        return false;
+
+    if (modValue[0] != '1')
+        return false;
+
+    if (virFileExists(QEMU_DEV_SEV))
+        return true;
+
+    return false;
+}
+
+
+/*
+ * Check whether the secure guest functionality is enabled.
+ * See the specific architecture function for details on the verifications made.
+ */
+static bool
+virQEMUCapsKVMSupportsSecureGuest(void)
+{
+    virArch arch = virArchFromHost();
+
+    if (ARCH_IS_S390(arch))
+        return virQEMUCapsKVMSupportsSecureGuestS390();
+
+    if (ARCH_IS_X86(arch))
+        return virQEMUCapsKVMSupportsSecureGuestAMD();
+
+    return false;
 }
 
 
@@ -4650,6 +4736,15 @@ virQEMUCapsIsValid(void *data,
     }
 
     if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_KVM)) {
+        if (STRNEQ_NULLABLE(priv->hostCPUSignature, qemuCaps->hostCPUSignature)) {
+            VIR_DEBUG("Outdated capabilities for '%s': host CPU changed "
+                      "('%s' vs '%s')",
+                      qemuCaps->binary,
+                      priv->hostCPUSignature,
+                      qemuCaps->hostCPUSignature);
+            return false;
+        }
+
         if (priv->microcodeVersion != qemuCaps->microcodeVersion) {
             VIR_DEBUG("Outdated capabilities for '%s': microcode version "
                       "changed (%u vs %u)",
@@ -4673,6 +4768,13 @@ virQEMUCapsIsValid(void *data,
             VIR_DEBUG("Outdated capabilities for '%s': kvm kernel nested "
                       "value changed from %d",
                      qemuCaps->binary, qemuCaps->kvmSupportsNesting);
+            return false;
+        }
+
+        if (virQEMUCapsKVMSupportsSecureGuest() != qemuCaps->kvmSupportsSecureGuest) {
+            VIR_DEBUG("Outdated capabilities for '%s': kvm kernel secure guest "
+                      "value changed from %d",
+                      qemuCaps->binary, qemuCaps->kvmSupportsSecureGuest);
             return false;
         }
     }
@@ -5099,6 +5201,7 @@ virQEMUCapsNewForBinaryInternal(virArch hostArch,
                                 const char *libDir,
                                 uid_t runUid,
                                 gid_t runGid,
+                                const char *hostCPUSignature,
                                 unsigned int microcodeVersion,
                                 const char *kernelVersion)
 {
@@ -5137,11 +5240,14 @@ virQEMUCapsNewForBinaryInternal(virArch hostArch,
     virQEMUCapsInitHostCPUModel(qemuCaps, hostArch, VIR_DOMAIN_VIRT_QEMU);
 
     if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_KVM)) {
+        qemuCaps->hostCPUSignature = g_strdup(hostCPUSignature);
         qemuCaps->microcodeVersion = microcodeVersion;
 
         qemuCaps->kernelVersion = g_strdup(kernelVersion);
 
         qemuCaps->kvmSupportsNesting = virQEMUCapsKVMSupportsNesting();
+
+        qemuCaps->kvmSupportsSecureGuest = virQEMUCapsKVMSupportsSecureGuest();
     }
 
     return qemuCaps;
@@ -5162,6 +5268,7 @@ virQEMUCapsNewData(const char *binary,
                                            priv->libDir,
                                            priv->runUid,
                                            priv->runGid,
+                                           priv->hostCPUSignature,
                                            virHostCPUGetMicrocodeVersion(),
                                            priv->kernelVersion);
 }
@@ -5260,6 +5367,9 @@ virQEMUCapsCacheNew(const char *libDir,
     priv->libDir = g_strdup(libDir);
 
     priv->hostArch = virArchFromHost();
+
+    if (virHostCPUGetSignature(&priv->hostCPUSignature) < 0)
+        goto error;
 
     priv->runUid = runUid;
     priv->runGid = runGid;
