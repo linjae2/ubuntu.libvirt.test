@@ -1,6 +1,6 @@
 libvirt (6.0.0-0ubuntu8.4) focal; urgency=medium
 
-  * avoid stale libvirt capability cache (LP: 1874647)
+  * avoid stale libvirt capability cache (LP: #1874647)
     - when host cpu changes (e.g. nested with different configuration)
     - when s390x protvirt or AMD SEV changes
     - d/p/ubuntu/lp-1874647-*
