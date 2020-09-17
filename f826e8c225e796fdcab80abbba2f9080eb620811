@@ -1,0 +1,3 @@
+  * [7b7ff73] patches: Add backport/[...]gluster-module-dep.patch
+  * [a9cc391] debhelper: Use compat level 13
+  * [b327f9a] rules: Increase timeout for tests to 15m
