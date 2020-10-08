@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu8.5) focal; urgency=medium
+
+  * d/p/ubuntu/lp-1887490-*: add named types and definitions for EPYC-Rome
+    chips (LP: #1887490)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 08 Oct 2020 07:36:06 +0200
+
 libvirt (6.0.0-0ubuntu8.4) focal; urgency=medium
 
   * avoid stale libvirt capability cache (LP: #1874647)

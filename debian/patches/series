@@ -96,3 +96,13 @@ ubuntu/lp-1874647-tools-Secure-guest-check-on-s390-in-virt-host-valida.patch
 ubuntu/lp-1874647-tools-Secure-guest-check-for-AMD-in-virt-host-valida.patch
 ubuntu/lp-1874647-docs-Update-AMD-launch-secure-description.patch
 ubuntu/lp-1874647-docs-Describe-protected-virtualization-guest-setup.patch
+ubuntu/lp-1887490-cputest-Add-data-for-AMD-Ryzen-9-3900X-12-Core-Proce.patch
+ubuntu/lp-1887490-cpu_map-Add-pschange-mc-no-bit-in-IA32_ARCH_CAPABILI.patch
+ubuntu/lp-1887490-cpu_map-Request-test-files-update-when-adding-x86-fe.patch
+ubuntu/lp-1887490-cpu_map-Add-missing-x86-features-in-0x7-CPUID-leaf.patch
+ubuntu/lp-1887490-cpu_map-Add-missing-x86-features-in-0x80000008-CPUID.patch
+ubuntu/lp-1887490-cpu_map-Add-missing-AMD-SVM-features.patch
+ubuntu/lp-1887490-Add-testdata-for-AMD-EPYC-7502.patch
+ubuntu/lp-1887490-cpu_map-Defined-and-enable-EPYC-Rome-model.patch
+ubuntu/lp-1887490-cputest-Update-QEMU-data-for-Ryzen-9-3900X.patch
+ubuntu/lp-1887490-cpu_map-Remove-monitor-feature-from-EPYC-Rome.patch
