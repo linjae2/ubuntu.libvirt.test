@@ -9,7 +9,11 @@ Reviewed-by: Jiri Denemark <jdenemar@redhat.com>
 Origin: backport, https://gitlab.com/libvirt/libvirt/-/commit/f941639f8
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1887490
 Last-Update: 2020-10-08
-X-Backport-Note: qemu 5.2 test to patch didn't exist back then, skipped
+X-Backport-Notes:
+  - qemu 5.2 test to patch didn't exist back then, skipped
+  - Furthermore upstream switched to meson only, but we are on 6.6 still
+    therefore the change to src/cpu_map/meson.build needs to be reflected
+    in src/cpu_map/Makefile.inc.am + src/Makefile.in
 
 ---
  src/cpu_map/index.xml                         |  1 +
@@ -403,3 +407,23 @@ X-Backport-Note: qemu 5.2 test to patch didn't exist back then, skipped
        <model usable='yes'>EPYC-IBPB</model>
        <model usable='yes'>EPYC</model>
        <model usable='yes'>Dhyana</model>
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -4453,6 +4453,7 @@ cpumap_DATA = \
+ 	cpu_map/x86_Dhyana.xml \
+ 	cpu_map/x86_EPYC.xml \
+ 	cpu_map/x86_EPYC-IBPB.xml \
++	cpu_map/x86_EPYC-Rome.xml \
+ 	cpu_map/x86_Haswell.xml \
+ 	cpu_map/x86_Haswell-IBRS.xml \
+ 	cpu_map/x86_Haswell-noTSX.xml \
+--- a/src/cpu_map/Makefile.inc.am
++++ b/src/cpu_map/Makefile.inc.am
+@@ -37,6 +37,7 @@ cpumap_DATA = \
+ 	cpu_map/x86_Dhyana.xml \
+ 	cpu_map/x86_EPYC.xml \
+ 	cpu_map/x86_EPYC-IBPB.xml \
++	cpu_map/x86_EPYC-Rome.xml \
+ 	cpu_map/x86_Haswell.xml \
+ 	cpu_map/x86_Haswell-IBRS.xml \
+ 	cpu_map/x86_Haswell-noTSX.xml \
