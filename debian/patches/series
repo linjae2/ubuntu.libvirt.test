@@ -42,3 +42,7 @@ ubuntu-aa/apparmor-profiles-are-meant-to-allow-adding-permanen.patch
 ubuntu-aa/apparmor-allow-unmounting-.dev-entries.patch
 ubuntu/lp-1892826-Revert-m4-virt-xdr-rewrite-XDR-check.patch
 ubuntu-aa/lp-1892736-apparmor-allow-libvirtd-to-call-virtiofsd.patch
+ubuntu/lp-1887490-Add-testdata-for-AMD-EPYC-7502.patch
+ubuntu/lp-1887490-cpu_map-Defined-and-enable-EPYC-Rome-model.patch
+ubuntu/lp-1887490-cputest-Update-QEMU-data-for-Ryzen-9-3900X.patch
+ubuntu/lp-1887490-cpu_map-Remove-monitor-feature-from-EPYC-Rome.patch

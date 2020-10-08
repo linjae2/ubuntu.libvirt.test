@@ -205,7 +205,7 @@
         "nodeid_msr": false,
         "pdcm": false,
         "vmx-exit-clear-rtit-ctl": false,
-        "model": 113,
+        "model": 49,
         "movbe": true,
         "nrip_save": true,
         "nrip-save": true,
@@ -245,7 +245,7 @@
         "vmx-entry-noload-debugctl": false,
         "pmm": false,
         "apic": true,
-        "spec-ctrl": false,
+        "spec-ctrl": true,
         "vmx-posted-intr": false,
         "vmx-apicv-register": false,
         "min-xlevel2": 0,
@@ -313,6 +313,7 @@
         "tsc_scale": false,
         "tsc-scale": false,
         "topoext": false,
+        "amd-stibp": true,
         "hv-vpindex": false,
         "hv-no-nonarch-coresharing": "off",
         "vmx-preemption-timer": false,
@@ -369,7 +370,7 @@
         "level-func7": 0,
         "vmx-mtf": false,
         "pause_filter": false,
-        "model-id": "AMD Ryzen 9 3900X 12-Core Processor            ",
+        "model-id": "AMD EPYC 7502 32-Core Processor                ",
         "sha-ni": true,
         "abm": true,
         "vmx-ept-advanced-exitinfo": false,
@@ -612,9 +613,7 @@
     {
       "name": "Westmere-v2",
       "typename": "Westmere-v2-x86_64-cpu",
-      "unavailable-features": [
-        "spec-ctrl"
-      ],
+      "unavailable-features": [],
       "static": false,
       "migration-safe": true
     },
@@ -628,9 +627,7 @@
     {
       "name": "Westmere-IBRS",
       "typename": "Westmere-IBRS-x86_64-cpu",
-      "unavailable-features": [
-        "spec-ctrl"
-      ],
+      "unavailable-features": [],
       "alias-of": "Westmere-v2",
       "static": false,
       "migration-safe": true
@@ -652,7 +649,6 @@
         "cldemote",
         "movdiri",
         "movdir64b",
-        "spec-ctrl",
         "core-capability",
         "split-lock-detect"
       ],
@@ -669,7 +665,6 @@
         "cldemote",
         "movdiri",
         "movdir64b",
-        "spec-ctrl",
         "core-capability",
         "mpx",
         "mpx",
@@ -688,35 +683,12 @@
         "cldemote",
         "movdiri",
         "movdir64b",
-        "spec-ctrl",
         "core-capability",
         "mpx",
         "mpx",
         "split-lock-detect"
       ],
       "alias-of": "Snowridge-v1",
-      "static": false,
-      "migration-safe": true
-    },
-    {
-      "name": "Skylake-Server-v4",
-      "typename": "Skylake-Server-v4-x86_64-cpu",
-      "unavailable-features": [
-        "pcid",
-        "erms",
-        "invpcid",
-        "avx512f",
-        "avx512dq",
-        "avx512cd",
-        "avx512bw",
-        "avx512vl",
-        "pku",
-        "spec-ctrl",
-        "avx512f",
-        "avx512f",
-        "avx512f",
-        "pku"
-      ],
       "static": false,
       "migration-safe": true
     },
@@ -733,7 +705,6 @@
         "avx512bw",
         "avx512vl",
         "pku",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -757,7 +728,6 @@
         "avx512bw",
         "avx512vl",
         "pku",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -802,7 +772,6 @@
         "avx512bw",
         "avx512vl",
         "pku",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -827,7 +796,6 @@
         "avx512bw",
         "avx512vl",
         "pku",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -867,8 +835,7 @@
       "unavailable-features": [
         "pcid",
         "erms",
-        "invpcid",
-        "spec-ctrl"
+        "invpcid"
       ],
       "static": false,
       "migration-safe": true
@@ -881,8 +848,7 @@
         "hle",
         "erms",
         "invpcid",
-        "rtm",
-        "spec-ctrl"
+        "rtm"
       ],
       "static": false,
       "migration-safe": true
@@ -906,8 +872,7 @@
       "unavailable-features": [
         "pcid",
         "erms",
-        "invpcid",
-        "spec-ctrl"
+        "invpcid"
       ],
       "alias-of": "Skylake-Client-v3",
       "static": false,
@@ -921,8 +886,7 @@
         "hle",
         "erms",
         "invpcid",
-        "rtm",
-        "spec-ctrl"
+        "rtm"
       ],
       "alias-of": "Skylake-Client-v2",
       "static": false,
@@ -945,9 +909,7 @@
     {
       "name": "SandyBridge-v2",
       "typename": "SandyBridge-v2-x86_64-cpu",
-      "unavailable-features": [
-        "spec-ctrl"
-      ],
+      "unavailable-features": [],
       "static": false,
       "migration-safe": true
     },
@@ -961,9 +923,7 @@
     {
       "name": "SandyBridge-IBRS",
       "typename": "SandyBridge-IBRS-x86_64-cpu",
-      "unavailable-features": [
-        "spec-ctrl"
-      ],
+      "unavailable-features": [],
       "alias-of": "SandyBridge-v2",
       "static": false,
       "migration-safe": true
@@ -1083,9 +1043,7 @@
     {
       "name": "Nehalem-v2",
       "typename": "Nehalem-v2-x86_64-cpu",
-      "unavailable-features": [
-        "spec-ctrl"
-      ],
+      "unavailable-features": [],
       "static": false,
       "migration-safe": true
     },
@@ -1099,9 +1057,7 @@
     {
       "name": "Nehalem-IBRS",
       "typename": "Nehalem-IBRS-x86_64-cpu",
-      "unavailable-features": [
-        "spec-ctrl"
-      ],
+      "unavailable-features": [],
       "alias-of": "Nehalem-v2",
       "static": false,
       "migration-safe": true
@@ -1159,8 +1115,7 @@
       "name": "IvyBridge-v2",
       "typename": "IvyBridge-v2-x86_64-cpu",
       "unavailable-features": [
-        "erms",
-        "spec-ctrl"
+        "erms"
       ],
       "static": false,
       "migration-safe": true
@@ -1178,8 +1133,7 @@
       "name": "IvyBridge-IBRS",
       "typename": "IvyBridge-IBRS-x86_64-cpu",
       "unavailable-features": [
-        "erms",
-        "spec-ctrl"
+        "erms"
       ],
       "alias-of": "IvyBridge-v2",
       "static": false,
@@ -1192,74 +1146,6 @@
         "erms"
       ],
       "alias-of": "IvyBridge-v1",
-      "static": false,
-      "migration-safe": true
-    },
-    {
-      "name": "Icelake-Server-v4",
-      "typename": "Icelake-Server-v4-x86_64-cpu",
-      "unavailable-features": [
-        "pcid",
-        "erms",
-        "invpcid",
-        "avx512f",
-        "avx512dq",
-        "avx512ifma",
-        "avx512cd",
-        "avx512bw",
-        "avx512vl",
-        "avx512vbmi",
-        "pku",
-        "avx512vbmi2",
-        "gfni",
-        "vaes",
-        "vpclmulqdq",
-        "avx512vnni",
-        "avx512bitalg",
-        "avx512-vpopcntdq",
-        "la57",
-        "fsrm",
-        "spec-ctrl",
-        "avx512f",
-        "avx512f",
-        "avx512f",
-        "pku",
-        "ibrs-all",
-        "taa-no"
-      ],
-      "static": false,
-      "migration-safe": true
-    },
-    {
-      "name": "Icelake-Server-v3",
-      "typename": "Icelake-Server-v3-x86_64-cpu",
-      "unavailable-features": [
-        "pcid",
-        "erms",
-        "invpcid",
-        "avx512f",
-        "avx512dq",
-        "avx512cd",
-        "avx512bw",
-        "avx512vl",
-        "avx512vbmi",
-        "pku",
-        "avx512vbmi2",
-        "gfni",
-        "vaes",
-        "vpclmulqdq",
-        "avx512vnni",
-        "avx512bitalg",
-        "avx512-vpopcntdq",
-        "la57",
-        "spec-ctrl",
-        "avx512f",
-        "avx512f",
-        "avx512f",
-        "pku",
-        "ibrs-all",
-        "taa-no"
-      ],
       "static": false,
       "migration-safe": true
     },
@@ -1285,7 +1171,6 @@
         "avx512bitalg",
         "avx512-vpopcntdq",
         "la57",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1318,7 +1203,6 @@
         "avx512bitalg",
         "avx512-vpopcntdq",
         "la57",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1349,7 +1233,6 @@
         "avx512bitalg",
         "avx512-vpopcntdq",
         "la57",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1383,7 +1266,6 @@
         "avx512bitalg",
         "avx512-vpopcntdq",
         "la57",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1409,7 +1291,6 @@
         "avx512vnni",
         "avx512bitalg",
         "avx512-vpopcntdq",
-        "spec-ctrl",
         "pku"
       ],
       "static": false,
@@ -1433,7 +1314,6 @@
         "avx512vnni",
         "avx512bitalg",
         "avx512-vpopcntdq",
-        "spec-ctrl",
         "pku"
       ],
       "static": false,
@@ -1455,7 +1335,6 @@
         "avx512vnni",
         "avx512bitalg",
         "avx512-vpopcntdq",
-        "spec-ctrl",
         "pku"
       ],
       "alias-of": "Icelake-Client-v2",
@@ -1480,7 +1359,6 @@
         "avx512vnni",
         "avx512bitalg",
         "avx512-vpopcntdq",
-        "spec-ctrl",
         "pku"
       ],
       "alias-of": "Icelake-Client-v1",
@@ -1493,8 +1371,7 @@
       "unavailable-features": [
         "pcid",
         "erms",
-        "invpcid",
-        "spec-ctrl"
+        "invpcid"
       ],
       "static": false,
       "migration-safe": true
@@ -1507,8 +1384,7 @@
         "hle",
         "erms",
         "invpcid",
-        "rtm",
-        "spec-ctrl"
+        "rtm"
       ],
       "static": false,
       "migration-safe": true
@@ -1543,8 +1419,7 @@
       "unavailable-features": [
         "pcid",
         "erms",
-        "invpcid",
-        "spec-ctrl"
+        "invpcid"
       ],
       "alias-of": "Haswell-v4",
       "static": false,
@@ -1570,8 +1445,7 @@
         "hle",
         "erms",
         "invpcid",
-        "rtm",
-        "spec-ctrl"
+        "rtm"
       ],
       "alias-of": "Haswell-v3",
       "static": false,
@@ -1659,22 +1533,11 @@
       "migration-safe": true
     },
     {
-      "name": "Denverton-v2",
-      "typename": "Denverton-v2-x86_64-cpu",
-      "unavailable-features": [
-        "erms",
-        "spec-ctrl"
-      ],
-      "static": false,
-      "migration-safe": true
-    },
-    {
       "name": "Denverton-v1",
       "typename": "Denverton-v1-x86_64-cpu",
       "unavailable-features": [
         "erms",
         "mpx",
-        "spec-ctrl",
         "mpx",
         "mpx"
       ],
@@ -1687,7 +1550,6 @@
       "unavailable-features": [
         "erms",
         "mpx",
-        "spec-ctrl",
         "mpx",
         "mpx"
       ],
@@ -1711,14 +1573,12 @@
         "avx512vl",
         "pku",
         "avx512vnni",
-        "spec-ctrl",
         "avx512-bf16",
         "avx512f",
         "avx512f",
         "avx512f",
         "pku",
-        "ibrs-all",
-        "taa-no"
+        "ibrs-all"
       ],
       "static": false,
       "migration-safe": true
@@ -1739,14 +1599,12 @@
         "avx512vl",
         "pku",
         "avx512vnni",
-        "spec-ctrl",
         "avx512-bf16",
         "avx512f",
         "avx512f",
         "avx512f",
         "pku",
-        "ibrs-all",
-        "taa-no"
+        "ibrs-all"
       ],
       "alias-of": "Cooperlake-v1",
       "static": false,
@@ -1768,30 +1626,6 @@
       "migration-safe": true
     },
     {
-      "name": "Cascadelake-Server-v4",
-      "typename": "Cascadelake-Server-v4-x86_64-cpu",
-      "unavailable-features": [
-        "pcid",
-        "erms",
-        "invpcid",
-        "avx512f",
-        "avx512dq",
-        "avx512cd",
-        "avx512bw",
-        "avx512vl",
-        "pku",
-        "avx512vnni",
-        "spec-ctrl",
-        "avx512f",
-        "avx512f",
-        "avx512f",
-        "pku",
-        "ibrs-all"
-      ],
-      "static": false,
-      "migration-safe": true
-    },
-    {
       "name": "Cascadelake-Server-v3",
       "typename": "Cascadelake-Server-v3-x86_64-cpu",
       "unavailable-features": [
@@ -1805,7 +1639,6 @@
         "avx512vl",
         "pku",
         "avx512vnni",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1831,7 +1664,6 @@
         "avx512vl",
         "pku",
         "avx512vnni",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1857,7 +1689,6 @@
         "avx512vl",
         "pku",
         "avx512vnni",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1880,7 +1711,6 @@
         "avx512vl",
         "pku",
         "avx512vnni",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1907,7 +1737,6 @@
         "avx512vl",
         "pku",
         "avx512vnni",
-        "spec-ctrl",
         "avx512f",
         "avx512f",
         "avx512f",
@@ -1923,8 +1752,7 @@
       "unavailable-features": [
         "pcid",
         "erms",
-        "invpcid",
-        "spec-ctrl"
+        "invpcid"
       ],
       "static": false,
       "migration-safe": true
@@ -1937,8 +1765,7 @@
         "hle",
         "erms",
         "invpcid",
-        "rtm",
-        "spec-ctrl"
+        "rtm"
       ],
       "static": false,
       "migration-safe": true
@@ -1973,8 +1800,7 @@
       "unavailable-features": [
         "pcid",
         "erms",
-        "invpcid",
-        "spec-ctrl"
+        "invpcid"
       ],
       "alias-of": "Broadwell-v4",
       "static": false,
@@ -2000,8 +1826,7 @@
         "hle",
         "erms",
         "invpcid",
-        "rtm",
-        "spec-ctrl"
+        "rtm"
       ],
       "alias-of": "Broadwell-v3",
       "static": false,
