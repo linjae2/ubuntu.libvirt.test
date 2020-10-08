@@ -1,3 +1,10 @@
+libvirt (6.6.0-1ubuntu3) groovy; urgency=medium
+
+  * d/p/ubuntu/lp-1887490-*: add named types and definitions for EPYC-Rome
+    chips (LP: #1887490)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 08 Oct 2020 07:36:06 +0200
+
 libvirt (6.6.0-1ubuntu2) groovy; urgency=medium
 
   * d/p/u/lp-1892826-Revert-m4-virt-xdr-rewrite-XDR-check.patch: avoid clashes
