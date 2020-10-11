@@ -881,6 +881,8 @@ int virNetSocketNewConnectSSH(const char *nodename,
     virCommandAddEnvPass(cmd, "KRB5CCNAME");
     virCommandAddEnvPass(cmd, "SSH_AUTH_SOCK");
     virCommandAddEnvPass(cmd, "SSH_ASKPASS");
+    virCommandAddEnvPass(cmd, "GPG_TTY");
+    virCommandAddEnvPass(cmd, "TERM");
     virCommandAddEnvPass(cmd, "DISPLAY");
     virCommandAddEnvPass(cmd, "XAUTHORITY");
     virCommandClearCaps(cmd);
