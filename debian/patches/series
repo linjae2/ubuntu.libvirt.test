@@ -46,3 +46,4 @@ ubuntu/lp-1887490-Add-testdata-for-AMD-EPYC-7502.patch
 ubuntu/lp-1887490-cpu_map-Defined-and-enable-EPYC-Rome-model.patch
 ubuntu/lp-1887490-cputest-Update-QEMU-data-for-Ryzen-9-3900X.patch
 ubuntu/lp-1887490-cpu_map-Remove-monitor-feature-from-EPYC-Rome.patch
+ubuntu/lp-1901242-util-Fix-logic-in-virFileSetCOW.patch
