@@ -1,3 +1,11 @@
+libvirt (6.6.0-1ubuntu3.1) groovy; urgency=medium
+
+  * d/p/ubuntu/lp-1901242-util-Fix-logic-in-virFileSetCOW.patch: fix dir pool
+    handling on non BTRFS affecting virt-manager, api and commandline pool
+    handling (LP: #1901242)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 28 Oct 2020 07:47:53 +0100
+
 libvirt (6.6.0-1ubuntu3) groovy; urgency=medium
 
   * d/p/ubuntu/lp-1887490-*: add named types and definitions for EPYC-Rome
