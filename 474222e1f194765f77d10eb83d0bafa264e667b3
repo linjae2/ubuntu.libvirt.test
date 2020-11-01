@@ -1,0 +1,7 @@
+  * Team upload
+  * [a09e8f2] New upstream version 6.8.0
+  * [11671ad] patches: Drop backport/[...]gluster-module-dep.patch
+  * [d4522ee] patches: Add backport/rpc-Fix-virt-ssh-helper-detection.patch
+  * [1012105] libvirt-daemon: Install virt-ssh-helper
+  * [1070367] control: Drop Build-Depends on netcat-openbsd
+  * [509eb72] control: Drop Build-Depends on libdbus-1-dev
