@@ -1091,7 +1091,8 @@ networkDnsmasqConfContents(virNetworkObjPtr obj,
                       "##    virsh net-edit %s\n"
                       "## or other application using the libvirt API.\n"
                       "##\n## dnsmasq conf file created by libvirt\n"
-                      "strict-order\n",
+                      "strict-order\n"
+                      "user=libvirt-dnsmasq\n",
                       def->name);
 
     /* if dns is disabled, set its listening port to 0, which
