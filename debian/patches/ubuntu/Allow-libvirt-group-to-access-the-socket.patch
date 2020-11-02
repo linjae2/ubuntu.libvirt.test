@@ -17,19 +17,20 @@ to be adapted in their expected output, that is done in:
 
 --- a/src/remote/libvirtd.conf.in
 +++ b/src/remote/libvirtd.conf.in
-@@ -149,7 +149,7 @@
+@@ -162,7 +162,7 @@
  #
- # To restrict monitoring of domains you may wish to enable
- # an authentication mechanism here
--#auth_unix_ro = "none"
+ # To restrict monitoring of domains you may wish to either
+ # enable 'sasl' here, or change the polkit policy definition.
+-#auth_unix_ro = "@default_auth@"
 +auth_unix_ro = "none"
  
- # Set an authentication scheme for UNIX read-write sockets
- # By default socket permissions only allow root. If PolicyKit
-@@ -159,6 +159,7 @@
- # If the unix_sock_rw_perms are changed you may wish to enable
- # an authentication mechanism here
- #auth_unix_rw = "none"
+ # Set an authentication scheme for UNIX read-write sockets.
+ #
+@@ -178,7 +178,7 @@
+ # is essential to change the systemd SocketMode parameter
+ # back to 0600, to avoid an insecure configuration.
+ #
+-#auth_unix_rw = "@default_auth@"
 +auth_unix_rw = "none"
  @CUT_ENABLE_IP@
  
@@ -40,7 +41,7 @@ to be adapted in their expected output, that is done in:
  # when using systemd version < 227
  ListenStream=@runstatedir@/libvirt/@sockprefix@-sock
  Service=@service@.service
--SocketMode=0666
+-SocketMode=@mode@
 +SocketMode=0660
 +SocketUser=root
 +SocketGroup=libvirt
