@@ -259,3 +259,6 @@
   # /sys/bus/nd/devices
   / r, # harmless on any lsb compliant system
   /sys/bus/nd/devices/{,**/} r,
+
+  # Site-specific additions and overrides. See local/README for details.
+  #include <local/abstractions/libvirt-qemu>
