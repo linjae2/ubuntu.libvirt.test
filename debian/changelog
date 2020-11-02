@@ -1,3 +1,116 @@
+libvirt (6.9.0-1ubuntu1) hirsute; urgency=medium
+
+  * Merge with Debian 6.8.0-1 from unstable
+    Remaining changes:
+    - libvirt-uri.sh: Automatically switch default libvirt URI for users
+      via user profile (xen URI on dom0, qemu:///system otherwise)
+      [contains lintian fixups of 6.6.0-1ubuntu1]
+    - Disable libssh2 support (universe dependency)
+    - Disable firewalld support (universe dependency)
+    - d/control: add libzfslinux-dev to build-deps
+    - d/control: drop libvirt-lxc, vbox and xen drivers to suggest
+    - d/control: breaks replaces for augeas lenses move in 6.0.0-1
+      (follows Debian, droppable >22.04)
+    - d/control: drop mdevctl to a suggest until (LP 1889248) is ready
+    - debian/rules: disable the netcf backend. (LP: 1764314)
+    - debian/patches/ubuntu/ovmf_paths.patch: adjust paths to secboot.fd UEFI
+      Secure Boot enabled variants of the OVMF firmware and variable store for
+      the paths where we ship these files in Ubuntu.
+    - Set qemu-group to kvm (for compat with older ubuntu)
+    - Additional apport package-hook
+    - Autostart default bridged network (As upstream does, but not Debian).
+      In addition to just enabling it our solution provides:
+      + do not autostart if subnet is already taken (e.g. in guests).
+      + iterate some alternative subnets before giving up
+    - d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch: This is
+      the group based access to libvirt functions as it was used in Ubuntu
+      for quite a long time.
+      + d/p/ubuntu/daemon-augeas-fix-expected.patch fix some related tests
+        due to the group access change.
+      + d/libvirt-daemon-system.postinst: add users in sudo to the libvirt
+        group.
+    - ubuntu/parallel-shutdown.patch: set parallel shutdown by default.
+    - Update README.Debian with Ubuntu changes
+    - d/p/ubuntu/ubuntu_machine_type.patch: accept ubuntu types as pci440fx
+    - fix autopkgtests
+      + d/t/control, d/t/smoke-qemu-session: fixup smoke-qemu-session by making
+        vmlinuz available and accessible (Debian bug 848314)
+      + d/t/control: fix smoke-qemu-session by ensuring the service will run
+        installing libvirt-daemon-system
+      + d/t/smoke-lxc: fix smoke-lxc by ignoring potential issues on destroy as
+        long as the following undefine succeeds
+      + d/t/smoke-lxc: use systemd instead of sysV to restart the service
+    - dnsmasq related enhancements
+      [now contains dnsmasq-as-priv-user of 6.6.0-1ubuntu1]
+      + run dnsmasq as libvirt-dnsmasq (LP: 1743718)
+      + d/libvirt-daemon-system.postinst: add libvirt-dnsmasq user and group
+      + d/libvirt-daemon-system.postrm: remove libvirt-dnsmasq user and group
+        on purge
+      + d/p/ubuntu/dnsmasq-as-priv-user: write dnsmasq config with user
+        libvirt-dnsmasq and adapt the self tests to expect that config
+      + d/libvirt-daemon-system.postinst: fix old libvirt-dnsmasq users group
+      + Add dnsmasq configuration to work with system wide dnsmasq-base
+    - d/p/ubuntu/set-default-machine-to-ubuntu.patch: to select default
+      machine type correctly with newer qemu/libvirt
+    - d/p/ubuntu/lp-1861125-ubuntu-models: recognize Ubuntu models for
+      (LP 1861125) fixups
+    - d/p/ubuntu/wait-for-qemu-kvm.patch - avoid hangs on startup (LP 1887592)
+    - Apparmor Delta that is Ubuntu specific or yet to be upstreamed
+      split into logical pieces. File names in debian/patches/ubuntu-aa/:
+      + 0020-virt-aa-helper-ubuntu-storage-paths.patch:
+        apparmor, virt-aa-helper: Allow various storage pools and image
+        locations
+      + 0029-appmor-libvirt-qemu-Add-9p-support.patch: appmor,
+        libvirt-qemu: Add 9p support
+      + 0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch:
+        virt-aa-helper: Ask for no deny rule for readonly disk (renamed and
+        reworded, was virt-aa-helper-no-explicity-deny-for-basefiles.patch)
+      + 0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch:
+        apparmor, libvirt-qemu: Allow reading charm-specific ceph config
+      + 0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch: allow
+        commands executed by ubuntu only kvm wrapper on ppc64el
+        (LP 1686621 LP 1680384 LP 1784023)
+      + 0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch:
+        apparmor, virt-aa-helper: access for snapped nova
+      + 0050-local-include-for-libvirt-qemu.patch,
+        d/libvirt-daemon-system.postinst: provide a local apparmor include
+        for abstraction/libvirt-qemu (LP: 1786019)
+      + lp-1815910-allow-vhost-net.patch: avoid apparmor issues
+        with vhost-net/vhost-vsock/vhost-scsi hotplug (LP: 1815910)
+  * Dropped Changes [in Debian now]
+    - d/p/u/lp-1892826-Revert-m4-virt-xdr-rewrite-XDR-check.patch: avoid clashes
+      between libtripc and glibc that break libvirt-lxc (LP 1892826)
+  * Dropped Changes [in upstream now]
+    - d/p/ubuntu/lp-1901242-util-Fix-logic-in-virFileSetCOW.patch: fix dir pool
+      handling on non BTRFS affecting virt-manager, api and commandline pool
+      handling (LP 1901242)
+    - d/p/ubuntu-aa/lp-1892736-apparmor-allow-libvirtd-to-call-virtiofsd.patch:
+      allow libvirt to control virtiofsd (LP 1892736)
+    - d/p/ubuntu-aa/apparmor-allow-unmounting-.dev-entries.patch: avoid
+      triggering denials in devmapper error path
+    - d/p/ubuntu-aa/apparmor-profiles-are-meant-to-allow-adding-permanen.patch:
+      (again) allow permanent per guest overrides (LP 1745114)
+    - d/p/ubuntu-aa/lp-1847361-load-versioned-module.patch: allow loading
+      versioned modules after qemu package upgrades (LP 1847361)
+    - d/p/ubuntu-aa/0003-apparmor-libvirt-qemu-Allow-read-access-to-overcommi.
+      patch: apparmor, libvirt-qemu: Allow read access to overcommit_memory
+    - d/p/ubuntu-aa/0007-apparmor-libvirt-qemu-Allow-owner-read-access-to-PRO.
+      patch: apparmor, libvirt-qemu: Allow owner read access to @{PROC}/*/auxv
+    - d/p/ubuntu/lp-1887490-*: add named types and definitions for EPYC-Rome
+      chips (LP 1887490)
+    - 0030-virt-aa-helper-Complete-9p-support.patch: virt-aa-helper:
+      add l to 9p file options.
+  * Added Changes
+    - d/p/ubuntu/daemon-augeas-fix-expected.patch: update for 6.9
+    - d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch: update for 6.9
+    - remove Debian debian/Revert-m4-virt-xdr-rewrite-XDR-check.patch as with
+      recent ubuntu glibx 2.32 it is breaking the build
+    - d/control: add libtirpc for rpc.h with glibc >=2.32
+    - d/p/ubuntu-aa/apparmor-allow-kvm-spice-compat-wrapper.patch: fix migrating
+      pre-Focal guests by allowing kvm-spice
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 02 Nov 2020 12:02:26 +0100
+
 libvirt (6.9.0-1) unstable; urgency=medium
 
   * Team upload
