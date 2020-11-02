@@ -1,3 +1,4 @@
+etc/dnsmasq.d-available/libvirt-daemon
 etc/libvirt/libvirtd.conf
 etc/libvirt/qemu-lockd.conf
 etc/libvirt/qemu.conf
@@ -5,6 +6,5 @@ etc/libvirt/virtlockd.conf
 etc/libvirt/virtlogd.conf
 etc/logrotate.d/*
 etc/sasl2/*
-usr/lib/firewalld/zones/libvirt.xml
 usr/share/polkit-1
 var/lib/polkit-1/localauthority/10-vendor.d/*

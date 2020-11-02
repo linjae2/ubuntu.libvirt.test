@@ -7,5 +7,25 @@ debian/Debianize-virtlockd.patch
 debian/Debianize-virtlogd.patch
 debian/apparmor_profiles_local_include.patch
 debian/Set-defaults-for-zfs-tools.patch
-debian/Revert-m4-virt-xdr-rewrite-XDR-check.patch
 debian/Use-sensible-editor-by-default.patch
+
+ubuntu/Allow-libvirt-group-to-access-the-socket.patch
+ubuntu/daemon-augeas-fix-expected.patch
+ubuntu/ubuntu_machine_type.patch
+ubuntu/parallel-shutdown.patch
+ubuntu/dnsmasq-as-priv-user
+ubuntu/ovmf_paths.patch
+ubuntu/set-default-machine-to-ubuntu.patch
+ubuntu/lp-1861125-ubuntu-models.patch
+ubuntu/wait-for-qemu-kvm.patch
+
+# Ubuntu Apparmor Changes
+ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
+ubuntu-aa/0029-appmor-libvirt-qemu-Add-9p-support.patch
+ubuntu-aa/0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch
+ubuntu-aa/0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch
+ubuntu-aa/0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch
+ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
+ubuntu-aa/0050-local-include-for-libvirt-qemu.patch
+ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
+ubuntu-aa/apparmor-allow-kvm-spice-compat-wrapper.patch

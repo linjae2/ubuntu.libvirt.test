@@ -1,0 +1,43 @@
+From 451b87bd69aea06817ed6073ca70a0e5724afb21 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Mon, 16 Nov 2020 13:21:10 +0100
+Subject: [PATCH] apparmor: allow kvm-spice compat wrapper
+
+'kvm-spice' is a binary name used to call 'kvm' which actually is a wrapper
+around qemu-system-x86_64 enabling kvm acceleration. This isn't in use
+for quite a while anymore, but required to work for compatibility e.g.
+when migrating in old guests.
+
+For years this was a symlink kvm-spice->kvm and therefore covered
+apparmor-wise by the existing entry:
+   /usr/bin/kvm rmix,
+But due to a recent change [1] in qemu packaging this now is no symlink,
+but a wrapper on its own and therefore needs an own entry that allows it
+to be executed.
+
+[1]: https://salsa.debian.org/qemu-team/qemu/-/commit/9944836d3
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/1441ce83fe76ce5b8
+Last-Update: 2020-11-17
+
+---
+ src/security/apparmor/libvirt-qemu | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/security/apparmor/libvirt-qemu b/src/security/apparmor/libvirt-qemu
+index a03e9e2c94..85c9e61d6c 100644
+--- a/src/security/apparmor/libvirt-qemu
++++ b/src/security/apparmor/libvirt-qemu
+@@ -102,6 +102,7 @@
+ 
+   # the various binaries
+   /usr/bin/kvm rmix,
++  /usr/bin/kvm-spice rmix,
+   /usr/bin/qemu rmix,
+   /usr/bin/qemu-aarch64 rmix,
+   /usr/bin/qemu-alpha rmix,
+-- 
+2.29.2
+
