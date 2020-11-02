@@ -1,7 +1,8 @@
 Source: libvirt
 Section: libs
 Priority: optional
-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders:
  Guido Günther <agx@sigxcpu.org>,
  Laurent Léonard <laurent@open-minds.org>,
