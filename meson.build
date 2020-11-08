@@ -1450,8 +1450,6 @@ endif
 # use extra library as it's provided by libc directly.
 if host_machine.system() == 'windows'
   xdr_dep = cc.find_library('portablexdr', required: false)
-elif host_machine.system() == 'linux'
-  xdr_dep = dependency('libtirpc', required: false)
 else
   xdr_dep = declare_dependency()
 endif
