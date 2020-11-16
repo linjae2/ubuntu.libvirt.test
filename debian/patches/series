@@ -29,3 +29,4 @@ ubuntu-aa/0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch
 ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/0050-local-include-for-libvirt-qemu.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
+ubuntu-aa/apparmor-allow-kvm-spice-compat-wrapper.patch
