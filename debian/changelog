@@ -1,3 +1,11 @@
+libvirt (6.9.0-1ubuntu2) hirsute; urgency=medium
+
+  * virt-ssh-helper: fix slow migrations and volume transfers (LP: #1904584)
+    - d/p/ubuntu/lp-1904584-remote-make-ssh-helper-massively-faster.patch
+    - d/p/ubuntu/lp-1904584-util-avoid-glib-event-loop-workaround.patch
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 26 Nov 2020 16:52:23 +0100
+
 libvirt (6.9.0-1ubuntu1) hirsute; urgency=medium
 
   * Merge with Debian 6.8.0-1 from unstable
