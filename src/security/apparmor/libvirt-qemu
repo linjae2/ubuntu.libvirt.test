@@ -251,6 +251,11 @@
   # for vfio hotplug on systems without static vfio (LP: #1775777)
   /dev/vfio/vfio rw,
 
+  # for vhost-net/vsock/scsi hotplug (LP: #1815910)
+  /dev/vhost-net rw,
+  /dev/vhost-vsock rw,
+  /dev/vhost-scsi rw,
+
   # required for sasl GSSAPI plugin
   /etc/gss/mech.d/ r,
   /etc/gss/mech.d/* r,
