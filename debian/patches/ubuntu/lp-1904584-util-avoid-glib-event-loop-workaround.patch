@@ -1,0 +1,127 @@
+From 6d69afe4517646811ee96981408bc6fc18b5ffbb Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Daniel=20P=2E=20Berrang=C3=A9?= <berrange@redhat.com>
+Date: Wed, 25 Nov 2020 17:59:16 +0000
+Subject: [PATCH] util: avoid glib event loop workaround where possible
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+I previously did a workaround for a glib event loop race
+that causes crashes:
+
+  commit 0db4743645b7a0611a3c0687f834205c9956f7fc
+  Author: Daniel P. Berrangé <berrange@redhat.com>
+  Date:   Tue Jul 28 16:52:47 2020 +0100
+
+    util: avoid crash due to race in glib event loop code
+
+it turns out that the workaround has a significant performance
+penalty on I/O intensive workloads. We thus need to avoid the
+workaround if we know we have a new enough glib to avoid the
+race condition.
+
+Reviewed-by: Daniel Henrique Barboza <danielhb413@gmail.com>
+Tested-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Signed-off-by: Daniel P. Berrangé <berrange@redhat.com>
+
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=6d69afe4517646811ee96981408bc6fc18b5ffbb
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1904584
+Last-Update: 2020-11-26
+
+---
+ src/util/vireventglib.c | 29 +++++++++++++++++++++--------
+ 1 file changed, 21 insertions(+), 8 deletions(-)
+
+diff --git a/src/util/vireventglib.c b/src/util/vireventglib.c
+index 6842c6e806..193b3bfde2 100644
+--- a/src/util/vireventglib.c
++++ b/src/util/vireventglib.c
+@@ -189,9 +189,21 @@ virEventGLibHandleFind(int watch)
+  * If the last reference to a GSource is released in a non-main
+  * thread we're exposed to a race condition that causes a
+  * crash:
+- * https://gitlab.gnome.org/GNOME/glib/-/merge_requests/1358
+- * Thus we're using an idle func to release our ref
++ *
++ *    https://gitlab.gnome.org/GNOME/glib/-/merge_requests/1358
++ *
++ * Thus we're using an idle func to release our ref...
++ *
++ * ...but this imposes a significant performance penalty on
++ * I/O intensive workloads which are sensitive to the iterations
++ * of the event loop, so avoid the workaround if we know we have
++ * new enough glib.
+  */
++#if GLIB_CHECK_VERSION(2, 64, 0)
++# define g_vir_source_unref_safe(source) g_source_unref(source)
++#else
++# define g_vir_source_unref_safe(source) g_idle_add(virEventGLibSourceUnrefIdle, source)
++
+ static gboolean
+ virEventGLibSourceUnrefIdle(gpointer data)
+ {
+@@ -201,6 +213,7 @@ virEventGLibSourceUnrefIdle(gpointer data)
+ 
+     return FALSE;
+ }
++#endif
+ 
+ 
+ static void
+@@ -231,7 +244,7 @@ virEventGLibHandleUpdate(int watch,
+         if (data->source != NULL) {
+             VIR_DEBUG("Removed old handle source=%p", data->source);
+             g_source_destroy(data->source);
+-            g_idle_add(virEventGLibSourceUnrefIdle, data->source);
++            g_vir_source_unref_safe(data->source);
+         }
+ 
+         data->source = virEventGLibAddSocketWatch(
+@@ -245,7 +258,7 @@ virEventGLibHandleUpdate(int watch,
+ 
+         VIR_DEBUG("Removed old handle source=%p", data->source);
+         g_source_destroy(data->source);
+-        g_idle_add(virEventGLibSourceUnrefIdle, data->source);
++        g_vir_source_unref_safe(data->source);
+         data->source = NULL;
+         data->events = 0;
+     }
+@@ -294,7 +307,7 @@ virEventGLibHandleRemove(int watch)
+ 
+     if (data->source != NULL) {
+         g_source_destroy(data->source);
+-        g_idle_add(virEventGLibSourceUnrefIdle, data->source);
++        g_vir_source_unref_safe(data->source);
+         data->source = NULL;
+         data->events = 0;
+     }
+@@ -427,7 +440,7 @@ virEventGLibTimeoutUpdate(int timer,
+     if (interval >= 0) {
+         if (data->source != NULL) {
+             g_source_destroy(data->source);
+-            g_idle_add(virEventGLibSourceUnrefIdle, data->source);
++            g_vir_source_unref_safe(data->source);
+         }
+ 
+         data->interval = interval;
+@@ -437,7 +450,7 @@ virEventGLibTimeoutUpdate(int timer,
+             goto cleanup;
+ 
+         g_source_destroy(data->source);
+-        g_idle_add(virEventGLibSourceUnrefIdle, data->source);
++        g_vir_source_unref_safe(data->source);
+         data->source = NULL;
+     }
+ 
+@@ -486,7 +499,7 @@ virEventGLibTimeoutRemove(int timer)
+ 
+     if (data->source != NULL) {
+         g_source_destroy(data->source);
+-        g_idle_add(virEventGLibSourceUnrefIdle, data->source);
++        g_vir_source_unref_safe(data->source);
+         data->source = NULL;
+     }
+ 
+-- 
+2.29.2
+
