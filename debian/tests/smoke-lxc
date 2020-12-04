@@ -4,8 +4,20 @@ set -e
 
 export LIBVIRT_DEFAULT_URI='lxc:///'
 
+try_restart_libvirtd()
+{
+    for _ in $(seq 10); do
+        systemctl restart libvirtd && return
+        sleep 2s
+    done
+    # This turned out to be flaky, non reproducible outside of LP-infra and
+    # is not what we want to test, Skip the test in this case
+    echo "Flaky restart failed while checking libvirt-lxc - skipping".
+    exit 77
+}
+
 # workaround to debbug #848317/867379 which triggers more likely on ubuntu
-systemctl restart libvirtd
+try_restart_libvirtd
 
 XML=debian/tests/smoke-lxc.xml
 DOMAIN=sl
@@ -54,7 +66,7 @@ virsh start ${DOMAIN}
 grep -qs "starting up" /var/log/libvirt/lxc/sl.log
 try_check_domain
 # Make sure a restart doesn't termiante the domain
-systemctl restart libvirtd
+try_restart_libvirtd
 try_check_domain
 virsh destroy ${DOMAIN} || true
 virsh undefine ${DOMAIN}
