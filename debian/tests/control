@@ -19,7 +19,7 @@ Depends:
  libvirt-daemon-driver-lxc,
  libvirt-daemon-system,
  libxml2-utils,
-Restrictions: allow-stderr, needs-root, isolation-machine
+Restrictions: allow-stderr, needs-root, isolation-machine, skippable
 
 Tests: build-test
 Depends:
