@@ -19,10 +19,24 @@ cleanup()
    fi
 }
 
+try_check_domain()
+{
+    for _ in $(seq 10); do
+        check_domain && return
+        sleep 2s
+    done
+    echo "Known to be unreliable on test infrastructure"
+    exit 77
+}
+
 check_domain()
 {
-  virsh list | grep -qs "${DOMAIN}[[:space:]]\+running"
-  virsh lxc-enter-namespace --noseclabel ${DOMAIN} /bin/ls /bin/ls
+    rc=0
+    virsh list | grep -qs "${DOMAIN}[[:space:]]\+running"
+    rc=$((rc+$?))
+    virsh lxc-enter-namespace --noseclabel ${DOMAIN} /bin/ls /bin/ls
+    rc=$((rc+$?))
+    return $rc
 }
 
 trap cleanup EXIT
@@ -38,11 +52,11 @@ rm -f /var/log/libvirt/lxc/sl.log
 virsh start ${DOMAIN}
 # Check virtlogd is running
 grep -qs "starting up" /var/log/libvirt/lxc/sl.log
-check_domain
+try_check_domain
 # Make sure a restart doesn't termiante the domain
-/etc/init.d/libvirtd restart
-check_domain
-virsh destroy ${DOMAIN}
+systemctl restart libvirtd
+try_check_domain
+virsh destroy ${DOMAIN} || true
 virsh undefine ${DOMAIN}
 CLEANED_UP=1
 set +x
