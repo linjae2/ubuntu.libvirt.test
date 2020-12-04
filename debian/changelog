@@ -1,3 +1,12 @@
+libvirt (6.6.0-1ubuntu3.2) groovy; urgency=medium
+
+  * Improve flaky smoke-lxc test (LP: #1899180)
+    - d/t/control, d/t/smoke-lxc: retry service restart and skip test if
+      failing; This was flaky on some release/architectures
+    - d/t/smoke-lxc: retry check_domain being flaky on arm64
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 04 Dec 2020 08:12:02 +0100
+
 libvirt (6.6.0-1ubuntu3.1) groovy; urgency=medium
 
   * d/p/ubuntu/lp-1901242-util-Fix-logic-in-virFileSetCOW.patch: fix dir pool
