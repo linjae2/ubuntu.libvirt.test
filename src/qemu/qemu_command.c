@@ -5649,10 +5649,32 @@ qemuBuildHostdevCommandLine(virCommandPtr cmd,
 
         /* MDEV */
         if (virHostdevIsMdevDevice(hostdev)) {
-            if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_VFIO_PCI)) {
-                virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                               _("VFIO PCI device assignment is not "
-                                 "supported by this version of qemu"));
+            virDomainHostdevSubsysMediatedDevPtr mdevsrc = &subsys->u.mdev;
+
+            switch ((virMediatedDeviceModelType) mdevsrc->model) {
+            case VIR_MDEV_MODEL_TYPE_VFIO_PCI:
+                if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_VFIO_PCI)) {
+                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                                   _("VFIO PCI device assignment is not "
+                                     "supported by this version of qemu"));
+                    return -1;
+                }
+
+                break;
+            case VIR_MDEV_MODEL_TYPE_VFIO_AP:
+                if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_VFIO_AP)) {
+                    virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                                   _("VFIO AP device assignment is not "
+                                     "supported by this version of QEMU"));
+                    return -1;
+                }
+                break;
+            case VIR_MDEV_MODEL_TYPE_LAST:
+            default:
+                virReportError(VIR_ERR_INTERNAL_ERROR,
+                               _("Unexpected enum value %d for "
+                                 "virMediatedDeviceModelType"),
+                               mdevsrc->model);
                 return -1;
             }
 
