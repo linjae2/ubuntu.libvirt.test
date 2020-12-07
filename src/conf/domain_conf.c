@@ -11030,6 +11030,7 @@ virDomainNetDefParseXML(virDomainXMLOptionPtr xmlopt,
         }
     } else {
         virDomainNetGenerateMAC(xmlopt, &def->mac);
+        def->mac_generated = true;
     }
 
     if (devaddr) {
@@ -16202,7 +16203,7 @@ virDomainNetFindIdx(virDomainDefPtr def, virDomainNetDefPtr net)
     size_t i;
     int matchidx = -1;
     char mac[VIR_MAC_STRING_BUFLEN];
-    bool MACAddrSpecified = !net->mac.generated;
+    bool MACAddrSpecified = !net->mac_generated;
     bool PCIAddrSpecified = virDomainDeviceAddressIsValid(&net->info,
                                                           VIR_DOMAIN_DEVICE_ADDRESS_TYPE_PCI);
 
