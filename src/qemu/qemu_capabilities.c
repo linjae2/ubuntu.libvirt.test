@@ -1015,6 +1015,7 @@ virQEMUCapsInitGuest(virCapsPtr caps,
         const char *kvmbins[] = {
             "/usr/libexec/qemu-kvm", /* RHEL */
             "qemu-kvm", /* Fedora */
+            "kvm-spice", /* qemu-kvm-spice Ubuntu package */
             "kvm", /* Debian/Ubuntu */
             NULL,
         };
