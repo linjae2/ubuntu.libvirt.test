@@ -1,3 +1,12 @@
+libvirt (4.0.0-1ubuntu8.18) bionic; urgency=medium
+
+  * Improve flaky smoke-lxc test (LP: #1899180)
+    - d/t/control, d/t/smoke-lxc: retry service restart and skip test if
+      failing; This was flaky on some release/architectures
+    - d/t/smoke-lxc: retry check_domain being flaky on arm64
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 07 Dec 2020 08:25:47 +0100
+
 libvirt (4.0.0-1ubuntu8.17) bionic-security; urgency=medium
 
   * SECURITY UPDATE: denial of service via active pool without target path
