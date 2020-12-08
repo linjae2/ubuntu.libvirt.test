@@ -1,3 +1,12 @@
+libvirt (6.0.0-0ubuntu8.6) focal; urgency=medium
+
+  * Improve flaky smoke-lxc test (LP: #1899180)
+    - d/t/control, d/t/smoke-lxc: retry service restart and skip test if
+      failing; This was flaky on some release/architectures
+    - d/t/smoke-lxc: retry check_domain being flaky on arm64
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 08 Dec 2020 15:09:17 +0100
+
 libvirt (6.0.0-0ubuntu8.5) focal; urgency=medium
 
   * d/p/ubuntu/lp-1887490-*: add named types and definitions for EPYC-Rome
