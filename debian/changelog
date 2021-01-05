@@ -1,3 +1,11 @@
+libvirt (6.0.0-0ubuntu8.11) focal; urgency=medium
+
+  * d/p/ubuntu/lp-1906266-virStorageFileGetMetadataRecurse-Allow-format-probin:
+    relax restrictions on format probing for compat with older images
+    (LP: #1906266)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 05 Jan 2021 13:48:48 +0100
+
 libvirt (6.0.0-0ubuntu8.10) focal; urgency=medium
 
   * d/p/ubuntu-aa/lp-1890858-unix-socket.patch: avoid issues of some users
