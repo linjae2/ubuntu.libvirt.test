@@ -149,7 +149,10 @@ Enhances:
 Breaks:
  libvirt-clients (<< 6.9.0-2~),
  libvirt-daemon-driver-lxc (<< 6.9.0-2~),
+ libvirt-daemon-system (<< 6.9.0-3~),
  libvirt-sanlock (<< 6.9.0-2~),
+Replaces:
+ libvirt-daemon-system (<< 6.9.0-3~),
 Description: Virtualization daemon
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -324,7 +327,6 @@ Depends:
  logrotate,
  policykit-1 [linux-any],
  ${misc:Depends},
- ${shlibs:Depends},
 Recommends:
  dmidecode,
  dnsmasq-base (>= 2.46-1),
@@ -356,12 +358,11 @@ Description: Libvirt daemon configuration files
 
 Package: libvirt-daemon-system-systemd
 Section: admin
-Architecture: any
+Architecture: all
 Depends:
  systemd-container,
  systemd-sysv,
  ${misc:Depends},
- ${shlibs:Depends},
 Conflicts:
  libvirt-daemon-system-sysv,
 Description: Libvirt daemon configuration files (systemd)
@@ -376,13 +377,12 @@ Description: Libvirt daemon configuration files (systemd)
 
 Package: libvirt-daemon-system-sysv
 Section: admin
-Architecture: any
+Architecture: all
 Pre-Depends:
  ${misc:Pre-Depends},
 Depends:
  lsb-base,
  ${misc:Depends},
- ${shlibs:Depends},
 Breaks:
  libvirt-daemon-system (<< 5.6.0-4~),
 Replaces:
