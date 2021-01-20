@@ -1,0 +1,3 @@
+  * Team upload
+  * [81999fb] rules: Move virt-aa-helper to libvirt-daemon
+  * [b9b6a95] control: Make libvirt-daemon-system-{systemd,sysv} Arch: all
