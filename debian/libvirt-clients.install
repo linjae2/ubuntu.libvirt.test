@@ -15,3 +15,4 @@ usr/share/man/man1/virt-pki-validate.1
 usr/share/man/man1/virt-xml-validate.1
 usr/share/man/man7/virkeycode-*.7
 usr/share/man/man7/virkeyname-*.7
+etc/profile.d/libvirt-uri.sh

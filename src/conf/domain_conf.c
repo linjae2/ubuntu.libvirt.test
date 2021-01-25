@@ -2456,6 +2456,7 @@ virDomainVsockDefFree(virDomainVsockDefPtr vsock)
 
     virObjectUnref(vsock->privateData);
     virDomainDeviceInfoClear(&vsock->info);
+    VIR_FREE(vsock->virtio);
     VIR_FREE(vsock);
 }
 
@@ -5130,34 +5131,6 @@ virDomainHostdevDefPostParse(virDomainHostdevDefPtr dev,
 }
 
 
-static int
-virDomainCheckVirtioOptions(virDomainVirtioOptionsPtr virtio)
-{
-    if (!virtio)
-        return 0;
-
-    if (virtio->iommu != VIR_TRISTATE_SWITCH_ABSENT) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("iommu driver option is only supported "
-                         "for virtio devices"));
-        return -1;
-    }
-    if (virtio->ats != VIR_TRISTATE_SWITCH_ABSENT) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("ats driver option is only supported "
-                         "for virtio devices"));
-        return -1;
-    }
-    if (virtio->packed != VIR_TRISTATE_SWITCH_ABSENT) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("packed driver option is only supported "
-                         "for virtio devices"));
-        return -1;
-    }
-    return 0;
-}
-
-
 static void
 virDomainChrDefPostParse(virDomainChrDefPtr chr,
                          const virDomainDef *def)
@@ -5254,11 +5227,6 @@ virDomainDiskDefPostParse(virDomainDiskDefPtr disk,
         virDomainPostParseCheckISCSIPath(&disk->src->path);
     }
 
-    if (disk->bus != VIR_DOMAIN_DISK_BUS_VIRTIO &&
-        virDomainCheckVirtioOptions(disk->virtio) < 0) {
-        return -1;
-    }
-
     if (disk->src->type == VIR_STORAGE_TYPE_NVME) {
         if (disk->src->nvme->managed == VIR_TRISTATE_BOOL_ABSENT)
             disk->src->nvme->managed = VIR_TRISTATE_BOOL_YES;
@@ -5300,18 +5268,6 @@ virDomainControllerDefPostParse(virDomainControllerDefPtr cdev)
         virReportError(VIR_ERR_XML_ERROR, "%s",
                        _("'iothread' attribute only supported for "
                          "virtio scsi controllers"));
-        return -1;
-    }
-
-    return 0;
-}
-
-
-static int
-virDomainNetDefPostParse(virDomainNetDefPtr net)
-{
-    if (!virDomainNetIsVirtioModel(net) &&
-        virDomainCheckVirtioOptions(net->virtio) < 0) {
         return -1;
     }
 
@@ -5367,10 +5323,6 @@ virDomainDeviceDefPostParseCommon(virDomainDeviceDefPtr dev,
         ret = virDomainControllerDefPostParse(dev->data.controller);
         break;
 
-    case VIR_DOMAIN_DEVICE_NET:
-        ret = virDomainNetDefPostParse(dev->data.net);
-        break;
-
     case VIR_DOMAIN_DEVICE_VSOCK:
         virDomainVsockDefPostParse(dev->data.vsock);
         ret = 0;
@@ -5378,6 +5330,7 @@ virDomainDeviceDefPostParseCommon(virDomainDeviceDefPtr dev,
 
     case VIR_DOMAIN_DEVICE_LEASE:
     case VIR_DOMAIN_DEVICE_FS:
+    case VIR_DOMAIN_DEVICE_NET:
     case VIR_DOMAIN_DEVICE_INPUT:
     case VIR_DOMAIN_DEVICE_SOUND:
     case VIR_DOMAIN_DEVICE_WATCHDOG:
@@ -15672,6 +15625,11 @@ virDomainVsockDefParseXML(virDomainXMLOptionPtr xmlopt,
     if (virDomainDeviceInfoParseXML(xmlopt, node, &vsock->info, flags) < 0)
         return NULL;
 
+    if (virDomainVirtioOptionsParseXML(virXPathNode("./driver", ctxt),
+                                       &vsock->virtio) < 0)
+        return NULL;
+
+
     return g_steal_pointer(&vsock);
 }
 
@@ -21539,6 +21497,15 @@ static bool
 virDomainVirtioOptionsCheckABIStability(virDomainVirtioOptionsPtr src,
                                         virDomainVirtioOptionsPtr dst)
 {
+    if (!src && !dst)
+        return true;
+
+    if (!src || !dst) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("Target device virtio options don't match the source"));
+        return false;
+    }
+
     if (src->iommu != dst->iommu) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                        _("Target device iommu option '%s' does not "
@@ -21623,8 +21590,7 @@ virDomainDiskDefCheckABIStability(virDomainDiskDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21683,8 +21649,7 @@ virDomainControllerDefCheckABIStability(virDomainControllerDefPtr src,
         }
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21717,8 +21682,7 @@ virDomainFsDefCheckABIStability(virDomainFSDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21766,8 +21730,7 @@ virDomainNetDefCheckABIStability(virDomainNetDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21805,8 +21768,7 @@ virDomainInputDefCheckABIStability(virDomainInputDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21905,8 +21867,7 @@ virDomainVideoDefCheckABIStability(virDomainVideoDefPtr src,
         }
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -22119,8 +22080,7 @@ virDomainMemballoonDefCheckABIStability(virDomainMemballoonDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -22142,8 +22102,7 @@ virDomainRNGDefCheckABIStability(virDomainRNGDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -22852,6 +22811,9 @@ virDomainVsockDefCheckABIStability(virDomainVsockDefPtr src,
                        virDomainVsockModelTypeToString(src->model));
         return false;
     }
+
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+        return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
         return false;
@@ -28041,6 +28003,7 @@ virDomainVsockDefFormat(virBufferPtr buf,
     g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
     g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
     g_auto(virBuffer) cidAttrBuf = VIR_BUFFER_INITIALIZER;
+    g_auto(virBuffer) drvAttrBuf = VIR_BUFFER_INITIALIZER;
 
     if (vsock->model) {
         virBufferAsprintf(&attrBuf, " model='%s'",
@@ -28057,6 +28020,9 @@ virDomainVsockDefFormat(virBufferPtr buf,
 
     virDomainDeviceInfoFormat(&childBuf, &vsock->info, 0);
 
+    virDomainVirtioOptionsFormat(&drvAttrBuf, vsock->virtio);
+
+    virXMLFormatElement(&childBuf, "driver", &drvAttrBuf, NULL);
     virXMLFormatElement(buf, "vsock", &attrBuf, &childBuf);
 }
 
