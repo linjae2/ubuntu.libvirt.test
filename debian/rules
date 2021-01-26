@@ -280,7 +280,7 @@ override_dh_installinit:
 override_dh_installsystemd:
 	dh_installsystemd -p libvirt-daemon-system --no-also --restart-after-upgrade libvirtd.service
 	dh_installsystemd -p libvirt-daemon-system --no-also --no-stop-on-upgrade $(LIBVIRT_SYSTEM_SERVICES)
-	dh_installsystemd -p libvirt-daemon-system --no-also $(LIBVIRT_SOCKETS)
+	dh_installsystemd -p libvirt-daemon-system --no-also --no-stop-on-upgrade $(LIBVIRT_SOCKETS)
 
 override_dh_installdocs:
 	dh_installdocs -plibvirt-doc --doc-main-package libvirt-doc
