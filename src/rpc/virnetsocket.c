@@ -922,7 +922,7 @@ virNetSocketNewConnectLibSSH2(const char *host,
     int ret = -1;
     int portN;
 
-    VIR_AUTOSTRINGLIST authMethodList = NULL;
+    g_auto(GStrv) authMethodList = NULL;
     char **authMethodNext;
 
     /* port number will be verified while opening the socket */
@@ -1054,7 +1054,7 @@ virNetSocketNewConnectLibssh(const char *host,
     int ret = -1;
     int portN;
 
-    VIR_AUTOSTRINGLIST authMethodList = NULL;
+    g_auto(GStrv) authMethodList = NULL;
     char **authMethodNext;
 
     /* port number will be verified while opening the socket */
