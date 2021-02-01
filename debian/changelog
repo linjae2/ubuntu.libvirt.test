@@ -92,6 +92,13 @@ libvirt (7.0.0-1ubuntu1) hirsute; urgency=medium
       - d/p/ubuntu/lp-1904584-util-avoid-glib-event-loop-workaround.patch
   * Dropped Changes [ready for main]
     - d/control: drop mdevctl to a suggest until (LP: #1889248) is ready
+  * Added Changes:
+    - Avoid various issues around service/socket status after install/reinstall
+      and on upgrades (LP: #1914054).
+      - d/rules: let sockets use --no-stop-on-upgrade to avoid false positives
+      - d/rules: --no-restart-after-upgrade does not prevent restarts
+      - d/rules: avoid --no-start which breaks .sockets on re-install
+      - d/rules: start, but do not restart libvirt-guests.service
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 25 Jan 2021 14:32:05 +0100
 
