@@ -99,6 +99,8 @@ libvirt (7.0.0-1ubuntu1) hirsute; urgency=medium
       - d/rules: --no-restart-after-upgrade does not prevent restarts
       - d/rules: avoid --no-start which breaks .sockets on re-install
       - d/rules: start, but do not restart libvirt-guests.service
+    - d/p/u/lp-1913266-*: add vsock options to be usable with s390x secure
+      execution (LP: #1913266)
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 25 Jan 2021 14:32:05 +0100
 
