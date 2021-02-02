@@ -21,6 +21,10 @@ ubuntu/ovmf_paths.patch
 ubuntu/set-default-machine-to-ubuntu.patch
 ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu/wait-for-qemu-kvm.patch
+ubuntu/lp-1913266-conf-Move-virDomainCheckVirtioOptions-into-domain_va.patch
+ubuntu/lp-1913266-conf-Drop-empty-virDomainNetDefPostParse.patch
+ubuntu/lp-1913266-conf-Improve-virDomainVirtioOptionsCheckABIStability.patch
+ubuntu/lp-1913266-qemu-Add-virtio-related-options-to-vsock.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
