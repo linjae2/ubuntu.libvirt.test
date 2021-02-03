@@ -101,6 +101,10 @@ libvirt (7.0.0-1ubuntu1) hirsute; urgency=medium
       - d/rules: start, but do not restart libvirt-guests.service
     - d/p/u/lp-1913266-*: add vsock options to be usable with s390x secure
       execution (LP: #1913266)
+    - Dependency improvements yet unreleased from salsa/debian/master thanks
+      to Andrea Bolognani (Debian #981435).
+      - control: Always explicitly depend on libvirt0
+      - control: Always use versioned deps for libvirt components
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 25 Jan 2021 14:32:05 +0100
 
