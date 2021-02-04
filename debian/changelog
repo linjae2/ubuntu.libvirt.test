@@ -1,3 +1,10 @@
+libvirt (7.0.0-1ubuntu2) hirsute; urgency=medium
+
+  * d/control: extend demotion of libvirt-lxc related dependencies to
+    libvirt-login-shell
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 04 Feb 2021 13:44:49 +0100
+
 libvirt (7.0.0-1ubuntu1) hirsute; urgency=medium
 
   * Merge with Debian 7.0.0-1 from Debian unstable
