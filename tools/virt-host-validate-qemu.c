@@ -112,5 +112,9 @@ int virHostValidateQEMU(void)
                              VIR_HOST_VALIDATE_WARN) < 0)
         ret = -1;
 
+    if (virHostValidateSecureGuests("QEMU",
+                                    VIR_HOST_VALIDATE_WARN) < 0)
+        ret = -1;
+
     return ret;
 }
