@@ -3633,6 +3633,9 @@ qemuValidateDomainDeviceDefVsock(const virDomainVsockDef *vsock,
                                               "vsock"))
         return -1;
 
+    if (qemuValidateDomainVirtioOptions(vsock->virtio, qemuCaps) < 0)
+        return -1;
+
     return 0;
 }
 
