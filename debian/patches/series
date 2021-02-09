@@ -47,3 +47,4 @@ ubuntu/lp-1887490-cpu_map-Defined-and-enable-EPYC-Rome-model.patch
 ubuntu/lp-1887490-cputest-Update-QEMU-data-for-Ryzen-9-3900X.patch
 ubuntu/lp-1887490-cpu_map-Remove-monitor-feature-from-EPYC-Rome.patch
 ubuntu/lp-1901242-util-Fix-logic-in-virFileSetCOW.patch
+ubuntu/lp-1913266-qemu-Add-virtio-related-options-to-vsock.patch
