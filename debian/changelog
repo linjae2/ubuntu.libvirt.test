@@ -1,3 +1,10 @@
+libvirt (4.0.0-1ubuntu8.19) bionic; urgency=medium
+
+  * d/p/lp1915811-fix-numa-topology.patch: Fix NUMA topology population for
+    machines with a high number of CPUs (LP: #1915811)
+
+ -- Victor Manuel Tapia King <victor.tapia@canonical.com>  Thu, 18 Feb 2021 17:40:38 +0100
+
 libvirt (4.0.0-1ubuntu8.18) bionic; urgency=medium
 
   * Improve flaky smoke-lxc test (LP: #1899180)
