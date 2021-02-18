@@ -253,7 +253,6 @@ virNumaGetNodeCPUs(int node,
                    virBitmapPtr *cpus)
 {
     unsigned long *mask = NULL;
-    unsigned long *allonesmask = NULL;
     virBitmapPtr cpumap = NULL;
     int ncpus = 0;
     int max_n_cpus = virNumaGetMaxCPUs();
@@ -263,24 +262,17 @@ virNumaGetNodeCPUs(int node,
 
     *cpus = NULL;
 
-    if (VIR_ALLOC_N(mask, mask_n_bytes / sizeof(*mask)) < 0)
-        goto cleanup;
-
-    if (VIR_ALLOC_N(allonesmask, mask_n_bytes / sizeof(*mask)) < 0)
-        goto cleanup;
-
-    memset(allonesmask, 0xff, mask_n_bytes);
-
-    /* The first time this returns -1, ENOENT if node doesn't exist... */
-    if (numa_node_to_cpus(node, mask, mask_n_bytes) < 0) {
-        VIR_WARN("NUMA topology for cell %d is not available, ignoring", node);
+    if (!virNumaNodeIsAvailable(node)) {
+        VIR_DEBUG("NUMA topology for cell %d is not available, ignoring", node);
         ret = -2;
         goto cleanup;
     }
 
-    /* second, third... times it returns an all-1's mask */
-    if (memcmp(mask, allonesmask, mask_n_bytes) == 0) {
-        VIR_DEBUG("NUMA topology for cell %d is invalid, ignoring", node);
+    if (VIR_ALLOC_N(mask, mask_n_bytes / sizeof(*mask)) < 0)
+        goto cleanup;
+
+    if (numa_node_to_cpus(node, mask, mask_n_bytes) < 0) {
+        VIR_WARN("NUMA topology for cell %d is not available, ignoring", node);
         ret = -2;
         goto cleanup;
     }
@@ -301,7 +293,6 @@ virNumaGetNodeCPUs(int node,
 
  cleanup:
     VIR_FREE(mask);
-    VIR_FREE(allonesmask);
     virBitmapFree(cpumap);
 
     return ret;
