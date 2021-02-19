@@ -107,3 +107,5 @@ ubuntu/lp-1887490-cpu_map-Defined-and-enable-EPYC-Rome-model.patch
 ubuntu/lp-1887490-cputest-Update-QEMU-data-for-Ryzen-9-3900X.patch
 ubuntu/lp-1887490-cpu_map-Remove-monitor-feature-from-EPYC-Rome.patch
 ubuntu/lp-1913266-qemu-Add-virtio-related-options-to-vsock.patch
+ubuntu/lp1915811-01-virnuma-Don-t-work-around-numa_node_to_cpus.patch
+ubuntu/lp1915811-02-virnuma-Use-numa_nodes_ptr-when-checking-av.patch
