@@ -117,3 +117,4 @@ lp1681839-03-virsh-ensure-SIGINT-action-is-reset-on-all-errors.patch
 lp1681839-04-virsh-improve-waiting-for-block-job-readiness.patch
 ubuntu/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch
 ubuntu/lp-1864918-Fix-TLS-test-suites-with-gnutls-3.6.0.patch
+ubuntu/lp1915811-fix-numa-topology.patch
