@@ -1563,6 +1563,7 @@ qemuConnectMonitor(virQEMUDriverPtr driver, virDomainObjPtr vm, int asyncJob,
     qemuDomainObjPrivatePtr priv = vm->privateData;
     int ret = -1;
     qemuMonitorPtr mon = NULL;
+    unsigned long long timeout = 0;
 
     if (virSecurityManagerSetDaemonSocketLabel(driver->securityManager,
                                                vm->def) < 0) {
@@ -1570,6 +1571,12 @@ qemuConnectMonitor(virQEMUDriverPtr driver, virDomainObjPtr vm, int asyncJob,
                   vm->def->name);
         return -1;
     }
+
+    /* When using hugepages, kernel zeroes them out before
+     * handing them over to qemu. This can be very time
+     * consuming. Therefore, add a second to timeout for each
+     * 1GiB of guest RAM. */
+    timeout = vm->def->mem.total_memory / (1024 * 1024);
 
     /* Hold an extra reference because we can't allow 'vm' to be
      * deleted unitl the monitor gets its own reference. */
@@ -1581,6 +1588,7 @@ qemuConnectMonitor(virQEMUDriverPtr driver, virDomainObjPtr vm, int asyncJob,
     mon = qemuMonitorOpen(vm,
                           priv->monConfig,
                           priv->monJSON,
+                          timeout,
                           &monitorCallbacks,
                           driver);
 
