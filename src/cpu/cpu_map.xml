@@ -290,6 +290,9 @@
     <feature name='spec-ctrl'>
       <cpuid function='0x07' edx='0x04000000'/>
     </feature>
+    <feature name='ssbd'>
+      <cpuid function='0x07' edx='0x80000000'/>
+    </feature>
 
     <!-- cpuid function 0x7 ecx 0x0 features -->
     <!-- We support only ecx 0x0 now as it's done by a workaround -->
