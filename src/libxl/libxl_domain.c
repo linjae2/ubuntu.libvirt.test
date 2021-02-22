@@ -400,6 +400,18 @@ libxlDomainDefPostParse(virDomainDefPtr def,
     if (virDomainDefCheckUnsupportedMemoryHotplug(def) < 0)
         return -1;
 
+    /*
+     * For older versions of libvirt we always set the emulator string
+     * to "qemu-dm" (the field was not actually used or passed on to
+     * libxl). Newer versions of libvirt do use it and also pass it on.
+     * Also xml verification insists on this being a full path. So we
+     * convert all old configs to the full path.
+     */
+    if (def->emulator && STREQ(def->emulator, "qemu-dm")) {
+        VIR_FREE(def->emulator);
+        if (VIR_STRDUP(def->emulator, "/usr/bin/qemu-system-i386") < 0)
+            return -1;
+    }
     return 0;
 }
 
