@@ -287,6 +287,9 @@
     <feature name='perfctr_nb'>
       <cpuid function='0x80000001' ecx='0x01000000'/>
     </feature>
+    <feature name='md-clear'> <!-- md_clear -->
+      <cpuid function='0x07' edx='0x00000400'/>
+    </feature>
     <feature name='spec-ctrl'>
       <cpuid function='0x07' edx='0x04000000'/>
     </feature>
