@@ -149,6 +149,7 @@ nodeDeviceSysfsGetPCISRIOVCaps(const char *sysfsPath,
     for (i = 0; i < data->pci_dev.num_virtual_functions; i++)
        VIR_FREE(data->pci_dev.virtual_functions[i]);
     VIR_FREE(data->pci_dev.virtual_functions);
+    VIR_FREE(data->pci_dev.physical_function);
     data->pci_dev.num_virtual_functions = 0;
     data->pci_dev.max_virtual_functions = 0;
     data->pci_dev.flags &= ~VIR_NODE_DEV_CAP_FLAG_PCI_VIRTUAL_FUNCTION;
