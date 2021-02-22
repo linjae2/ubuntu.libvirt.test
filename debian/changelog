@@ -1,3 +1,10 @@
+libvirt (6.6.0-1ubuntu3.4) groovy; urgency=medium
+
+  * d/p/lp1915811-*: Fix NUMA topology population for machines with high number
+  of CPUs (LP: #1915811)
+
+ -- Victor Manuel Tapia King <victor.tapia@canonical.com>  Mon, 22 Feb 2021 12:23:53 +0100
+
 libvirt (6.6.0-1ubuntu3.3) groovy; urgency=medium
 
   * d/p/u/lp-1913266-qemu-Add-virtio-related-options-to-vsock.patch: allow
