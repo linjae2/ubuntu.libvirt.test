@@ -226,6 +226,34 @@ virSecurityDeviceLabelDefValidate(virSecurityDeviceLabelDefPtr *seclabels,
 }
 
 
+static int
+virDomainCheckVirtioOptions(virDomainVirtioOptionsPtr virtio)
+{
+    if (!virtio)
+        return 0;
+
+    if (virtio->iommu != VIR_TRISTATE_SWITCH_ABSENT) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("iommu driver option is only supported "
+                         "for virtio devices"));
+        return -1;
+    }
+    if (virtio->ats != VIR_TRISTATE_SWITCH_ABSENT) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("ats driver option is only supported "
+                         "for virtio devices"));
+        return -1;
+    }
+    if (virtio->packed != VIR_TRISTATE_SWITCH_ABSENT) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("packed driver option is only supported "
+                         "for virtio devices"));
+        return -1;
+    }
+    return 0;
+}
+
+
 #define VENDOR_LEN  8
 #define PRODUCT_LEN 16
 
@@ -277,15 +305,19 @@ virDomainDiskDefValidate(const virDomainDef *def,
         return -1;
     }
 
-    if (disk->bus != VIR_DOMAIN_DISK_BUS_VIRTIO &&
-        (disk->model == VIR_DOMAIN_DISK_MODEL_VIRTIO ||
-         disk->model == VIR_DOMAIN_DISK_MODEL_VIRTIO_TRANSITIONAL ||
-         disk->model == VIR_DOMAIN_DISK_MODEL_VIRTIO_NON_TRANSITIONAL)) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                       _("disk model '%s' not supported for bus '%s'"),
-                       virDomainDiskModelTypeToString(disk->model),
-                       virDomainDiskBusTypeToString(disk->bus));
-        return -1;
+    if (disk->bus != VIR_DOMAIN_DISK_BUS_VIRTIO) {
+        if (disk->model == VIR_DOMAIN_DISK_MODEL_VIRTIO ||
+            disk->model == VIR_DOMAIN_DISK_MODEL_VIRTIO_TRANSITIONAL ||
+            disk->model == VIR_DOMAIN_DISK_MODEL_VIRTIO_NON_TRANSITIONAL) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("disk model '%s' not supported for bus '%s'"),
+                           virDomainDiskModelTypeToString(disk->model),
+                           virDomainDiskBusTypeToString(disk->bus));
+            return -1;
+        }
+
+        if (virDomainCheckVirtioOptions(disk->virtio) < 0)
+            return -1;
     }
 
     if (disk->src->type == VIR_STORAGE_TYPE_NVME) {
@@ -1330,6 +1362,11 @@ virDomainNetDefValidate(const virDomainNetDef *net)
         return -1;
     }
 
+    if (!virDomainNetIsVirtioModel(net) &&
+        virDomainCheckVirtioOptions(net->virtio) < 0) {
+        return -1;
+    }
+
     return 0;
 }
 
@@ -1413,6 +1450,15 @@ virDomainMemoryDefValidate(const virDomainMemoryDef *mem,
 }
 
 
+static bool
+virDomainVsockIsVirtioModel(const virDomainVsockDef *vsock)
+{
+    return (vsock->model == VIR_DOMAIN_VSOCK_MODEL_VIRTIO ||
+            vsock->model == VIR_DOMAIN_VSOCK_MODEL_VIRTIO_TRANSITIONAL ||
+            vsock->model == VIR_DOMAIN_VSOCK_MODEL_VIRTIO_NON_TRANSITIONAL);
+}
+
+
 static int
 virDomainVsockDefValidate(const virDomainVsockDef *vsock)
 {
@@ -1421,6 +1467,10 @@ virDomainVsockDefValidate(const virDomainVsockDef *vsock)
                        _("guest CIDs must be >= 3"));
         return -1;
     }
+
+    if (!virDomainVsockIsVirtioModel(vsock) &&
+        virDomainCheckVirtioOptions(vsock->virtio) < 0)
+        return -1;
 
     return 0;
 }
