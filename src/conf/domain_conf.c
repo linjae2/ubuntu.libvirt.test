@@ -5274,13 +5274,6 @@ virDomainControllerDefPostParse(virDomainControllerDefPtr cdev)
 }
 
 
-static int
-virDomainNetDefPostParse(virDomainNetDefPtr net G_GNUC_UNUSED)
-{
-    return 0;
-}
-
-
 static void
 virDomainVsockDefPostParse(virDomainVsockDefPtr vsock)
 {
@@ -5329,10 +5322,6 @@ virDomainDeviceDefPostParseCommon(virDomainDeviceDefPtr dev,
         ret = virDomainControllerDefPostParse(dev->data.controller);
         break;
 
-    case VIR_DOMAIN_DEVICE_NET:
-        ret = virDomainNetDefPostParse(dev->data.net);
-        break;
-
     case VIR_DOMAIN_DEVICE_VSOCK:
         virDomainVsockDefPostParse(dev->data.vsock);
         ret = 0;
@@ -5340,6 +5329,7 @@ virDomainDeviceDefPostParseCommon(virDomainDeviceDefPtr dev,
 
     case VIR_DOMAIN_DEVICE_LEASE:
     case VIR_DOMAIN_DEVICE_FS:
+    case VIR_DOMAIN_DEVICE_NET:
     case VIR_DOMAIN_DEVICE_INPUT:
     case VIR_DOMAIN_DEVICE_SOUND:
     case VIR_DOMAIN_DEVICE_WATCHDOG:
