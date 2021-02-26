@@ -29,7 +29,7 @@ Documentation=https://libvirt.org
 [Service]
 Type=notify
 EnvironmentFile=-@sysconfdir@/default/libvirtd
-ExecStart=@sbindir@/libvirtd $libvirtd_opts
+ExecStart=@sbindir@/libvirtd $LIBVIRTD_ARGS
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 Restart=on-failure

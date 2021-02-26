@@ -1,17 +1,5 @@
 #!/bin/sh
-#
-### BEGIN INIT INFO
-# Provides: libvirt-guests
-# Required-Start: $remote_fs libvirtd
-# Required-Stop: $remote_fs libvirtd
-# Default-Start: 2 3 4 5
-# Default-Stop: 0 1 6
-# Short-Description: suspend/resume libvirt guests on shutdown/boot
-# Description: This is a script for suspending active libvirt guests
-#              on shutdown and resuming them on next boot
-#              See https://libvirt.org/
-### END INIT INFO
-#
+
 # Copyright (C) 2011-2014 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
@@ -28,19 +16,19 @@
 # License along with this library.  If not, see
 # <http://www.gnu.org/licenses/>.
 
-sysconfdir=/etc
-localstatedir=/var
-libvirtd=/usr/sbin/libvirtd
+sysconfdir="@sysconfdir@"
+localstatedir="@localstatedir@"
+libvirtd="@sbindir@"/libvirtd
 
 # Source gettext library.
 # Make sure this file is recognized as having translations: _("dummy")
-. /usr/bin/gettext.sh
+. "@bindir@"/gettext.sh
 
 # Make sure calls to this script get redirected to systemctl when
 # using systemd
 . /lib/lsb/init-functions
 
-export TEXTDOMAIN="libvirt" TEXTDOMAINDIR="/usr/share/locale"
+export TEXTDOMAIN="@PACKAGE@" TEXTDOMAINDIR="@localedir@"
 
 URIS="default"
 ON_BOOT="ignore"
