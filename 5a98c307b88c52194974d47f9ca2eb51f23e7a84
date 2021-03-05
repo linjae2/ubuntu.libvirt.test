@@ -1,0 +1,2 @@
+  * d/p/lp1915811-fix-numa-topology.patch: Fix NUMA topology population for
+    machines with a high number of CPUs (LP: #1915811)
