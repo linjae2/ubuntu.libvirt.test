@@ -339,6 +339,9 @@
   <feature name='avx512-4fmaps'>
     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00000008'/>
   </feature>
+  <feature name='fsrm'>
+    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00000010'/>
+  </feature>
   <feature name='md-clear'> <!-- md_clear -->
     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00000400'/>
   </feature>
@@ -502,6 +505,9 @@
   <feature name='ibpb'>
     <cpuid eax_in='0x80000008' ebx='0x00001000'/>
   </feature>
+  <feature name='ibrs'>
+    <cpuid eax_in='0x80000008' ebx='0x00004000'/>
+  </feature>
   <feature name='amd-stibp'>
     <cpuid eax_in='0x80000008' ebx='0x00008000'/>
   </feature>
@@ -545,6 +551,9 @@
   </feature>
   <feature name='pfthreshold'>
     <cpuid eax_in='0x8000000a' edx='0x00001000'/>
+  </feature>
+  <feature name='svme-addr-chk'>
+    <cpuid eax_in='0x8000000a' edx='0x10000000'/>
   </feature>
 
   <!-- IA32_ARCH_CAPABILITIES features -->
