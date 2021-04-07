@@ -1,3 +1,15 @@
+libvirt (6.0.0-0ubuntu8.9) focal; urgency=medium
+
+  * d/p/u/lp-1921754*: add EPYC-Rome-v2 as v1 missed IBRS and thereby fails
+    on some HW/Guest combinations e.g. Windows 10 on Threadripper
+    (LP: #1921754)
+  * d/p/u/lp-1921880*: add EPYC-Milan features and named cpu type support
+    (LP: #1921880)
+  * d/p/u/lp-1922907: add ability to parse cpu stepping and thereby correctly
+    differentiate skylake and cascadelake chips (LP: #1922907)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 07 Apr 2021 13:33:46 +0200
+
 libvirt (6.0.0-0ubuntu8.8) focal; urgency=medium
 
   * d/p/lp1915811-*: Fix NUMA topology population for machines with high number
