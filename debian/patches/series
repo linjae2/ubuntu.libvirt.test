@@ -110,3 +110,8 @@ ubuntu/lp-1913266-qemu-Add-virtio-related-options-to-vsock.patch
 ubuntu/lp1915811-01-virnuma-Don-t-work-around-numa_node_to_cpus.patch
 ubuntu/lp1915811-02-virnuma-Use-numa_nodes_ptr-when-checking-av.patch
 ubuntu/lp-1921754-cpumap-Add-support-for-ibrs-CPU-feature.patch
+ubuntu/lp-1921880-cpu_map-Add-support-for-fsrm-CPU-feature.patch
+ubuntu/lp-1921880-cpumap-Add-support-for-svme-addr-check-CPU-feature.patch
+ubuntu/lp-1921880-cpu_map-Add-EPYC-Milan-x86-CPU-model.patch
+ubuntu/lp-1921880-cpu_map-Install-x86_EPYC-Milan.xml.patch
+ubuntu/lp-1921880-cpu_map-Fix-spelling-of-svme-addr-chk-feature.patch
