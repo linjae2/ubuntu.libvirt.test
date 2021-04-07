@@ -34,3 +34,9 @@ ubuntu-aa/0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch
 ubuntu-aa/0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch
 ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
+ubuntu/lp-1921754-cpumap-Add-support-for-ibrs-CPU-feature.patch
+ubuntu/lp-1921880-cpumap-Add-support-for-svme-addr-check-CPU-feature.patch
+ubuntu/lp-1921880-cpu_map-Add-EPYC-Milan-x86-CPU-model.patch
+ubuntu/lp-1921880-cpu_map-Install-x86_EPYC-Milan.xml.patch
+ubuntu/lp-1921880-cpu_map-sync_qemu_i386.py-Add-mapping-for-svme-addr-.patch
+ubuntu/lp-1921880-cpu_map-Fix-spelling-of-svme-addr-chk-feature.patch
