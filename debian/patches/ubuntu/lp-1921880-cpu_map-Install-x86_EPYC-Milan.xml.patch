@@ -6,7 +6,7 @@ Subject: [PATCH] cpu_map: Install x86_EPYC-Milan.xml
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
 Reviewed-by: Pavel Hrdina <phrdina@redhat.com>
 
-Backport-Note: Focal is pre-meson so the patch needed to be adapted to
+Backport-Note: Groovy is pre-meson so the patch needed to be adapted to
     fit the Make based build, the same that we've done in patch
     ubuntu/lp-1887490-cpu_map-Defined-and-enable-EPYC-Rome-model.patch
 Origin: backport, https://libvirt.org/git/?p=libvirt.git;a=commit;h=d3de79db
