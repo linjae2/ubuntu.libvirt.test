@@ -1,0 +1,5 @@
+  * d/p/u/lp-1921754*: add EPYC-Rome-v2 as v1 missed IBRS and thereby fails
+    on some HW/Guest combinations e.g. Windows 10 on Threadripper
+    (LP: #1921754)
+  * d/p/u/lp-1921880*: add EPYC-Milan features and named cpu type support
+    (LP: #1921880)
