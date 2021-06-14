@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu8.10) focal; urgency=medium
+
+  * d/p/ubuntu-aa/lp-1890858-unix-socket.patch: avoid issues of some users
+    to connect to libvirtd (LP: #1890858)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 14 Jun 2021 14:36:04 +0200
+
 libvirt (6.0.0-0ubuntu8.9) focal; urgency=medium
 
   * d/p/u/lp-1921754*: add EPYC-Rome-v2 as v1 missed IBRS and thereby fails
