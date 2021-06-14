@@ -155,3 +155,4 @@ ubuntu/lp-1922907-cputest-Add-data-for-Intel-R-Xeon-R-Platinum-9242-CP.patch
 ubuntu/lp-1922907-cputest-Add-data-for-Intel-R-Xeon-R-Gold-6130-CPU.patch
 ubuntu/lp-1922907-cpu_map-Distinguish-Cascadelake-Server-from-Skylake-.patch
 ubuntu/lp-1922907-cleanup-test-data.patch
+ubuntu-aa/lp-1890858-unix-socket.patch
