@@ -1,0 +1,2 @@
+  * d/p/ubuntu-aa/lp-1890858-unix-socket.patch: avoid issues of some users
+    to connect to libvirtd (LP: #1890858)
