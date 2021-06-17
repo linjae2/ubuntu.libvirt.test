@@ -196,7 +196,7 @@ virFileDirectFdFlag(void)
  * read-write is not supported, just a single direction.  */
 struct _virFileWrapperFd {
     bool closed; /* Whether virFileWrapperFdClose() has been already called */
-    virCommandPtr cmd; /* Child iohelper process to do the I/O.  */
+    virCommand *cmd; /* Child iohelper process to do the I/O.  */
     char *err_msg; /* stderr of @cmd */
 };
 
@@ -228,10 +228,10 @@ struct _virFileWrapperFd {
  * freed with virFileWrapperFdFree().  On failure, @fd is unchanged, an
  * error message is output, and NULL is returned.
  */
-virFileWrapperFdPtr
+virFileWrapperFd *
 virFileWrapperFdNew(int *fd, const char *name, unsigned int flags)
 {
-    virFileWrapperFdPtr ret = NULL;
+    virFileWrapperFd *ret = NULL;
     bool output = false;
     int pipefd[2] = { -1, -1 };
     int mode = -1;
@@ -318,7 +318,7 @@ virFileWrapperFdNew(int *fd, const char *name, unsigned int flags)
     return NULL;
 }
 #else /* WIN32 */
-virFileWrapperFdPtr
+virFileWrapperFd *
 virFileWrapperFdNew(int *fd G_GNUC_UNUSED,
                     const char *name G_GNUC_UNUSED,
                     unsigned int fdflags G_GNUC_UNUSED)
@@ -344,7 +344,7 @@ virFileWrapperFdNew(int *fd G_GNUC_UNUSED,
  * This function can be safely called multiple times on the same @wfd.
  */
 int
-virFileWrapperFdClose(virFileWrapperFdPtr wfd)
+virFileWrapperFdClose(virFileWrapperFd *wfd)
 {
     int ret;
 
@@ -377,14 +377,14 @@ virFileWrapperFdClose(virFileWrapperFdPtr wfd)
  * closing the fd resulting from virFileWrapperFdNew().
  */
 void
-virFileWrapperFdFree(virFileWrapperFdPtr wfd)
+virFileWrapperFdFree(virFileWrapperFd *wfd)
 {
     if (!wfd)
         return;
 
-    VIR_FREE(wfd->err_msg);
+    g_free(wfd->err_msg);
     virCommandFree(wfd->cmd);
-    VIR_FREE(wfd);
+    g_free(wfd);
 }
 
 
@@ -810,8 +810,7 @@ int virFileLoopDeviceAssociate(const char *file,
     lo.lo_flags = LO_FLAGS_AUTOCLEAR;
 
     /* Set backing file name for LOOP_GET_STATUS64 queries */
-    if (virStrncpy((char *) lo.lo_file_name, file,
-                   strlen(file), LO_NAME_SIZE) < 0) {
+    if (virStrcpy((char *) lo.lo_file_name, file, LO_NAME_SIZE) < 0) {
         virReportSystemError(errno,
                              _("Unable to set backing file %s"), file);
         goto cleanup;
@@ -840,8 +839,7 @@ int virFileLoopDeviceAssociate(const char *file,
     }
 
     VIR_DEBUG("Attached loop device  %s %d to %s", file, lofd, loname);
-    *dev = loname;
-    loname = NULL;
+    *dev = g_steal_pointer(&loname);
 
     ret = 0;
 
@@ -1117,8 +1115,19 @@ static int
 safezero_posix_fallocate(int fd, off_t offset, off_t len)
 {
     int ret = posix_fallocate(fd, offset, len);
-    if (ret == 0)
+    if (ret == 0) {
         return 0;
+    } else if (ret == EINVAL) {
+        /* EINVAL is returned when either:
+           - Operation is not supported by the underlying filesystem,
+           - offset or len argument values are invalid.
+           Assuming that offset and len are valid, this error means
+           the operation is not supported, and we need to fall back
+           to other methods.
+        */
+        return -2;
+    }
+
     errno = ret;
     return -1;
 }
@@ -1297,13 +1306,12 @@ virFileFindMountPoint(const char *type G_GNUC_UNUSED)
 
 #endif /* defined WITH_MNTENT_H && defined WITH_GETMNTENT_R */
 
-int
+void
 virBuildPathInternal(char **path, ...)
 {
     char *path_component = NULL;
     g_auto(virBuffer) buf = VIR_BUFFER_INITIALIZER;
     va_list ap;
-    int ret = 0;
 
     va_start(ap, path);
 
@@ -1318,10 +1326,6 @@ virBuildPathInternal(char **path, ...)
     va_end(ap);
 
     *path = virBufferContentAndReset(&buf);
-    if (*path == NULL)
-        ret = -1;
-
-    return ret;
 }
 
 /* Read no more than the specified maximum number of bytes. */
@@ -1342,10 +1346,7 @@ saferead_lim(int fd, size_t max_len, size_t *length)
             if (alloc < size + BUFSIZ + 1)
                 alloc = size + BUFSIZ + 1;
 
-            if (VIR_REALLOC_N(buf, alloc) < 0) {
-                save_errno = errno;
-                break;
-            }
+            VIR_REALLOC_N(buf, alloc);
         }
 
         /* Ensure that (size + requested <= max_len); */
@@ -1700,7 +1701,7 @@ virFindFileInPath(const char *file)
      * it. return it if found.
      */
 
-    if (!(paths = virStringSplit(origpath, ":", 0)))
+    if (!(paths = g_strsplit(origpath, ":", 0)))
         return NULL;
 
     for (pathiter = paths; *pathiter; pathiter++) {
@@ -2006,7 +2007,6 @@ virFileGetMountSubtreeImpl(const char *mtabpath,
     FILE *procmnt;
     struct mntent mntent;
     char mntbuf[1024];
-    int ret = -1;
     char **mounts = NULL;
     size_t nmounts = 0;
 
@@ -2027,8 +2027,7 @@ virFileGetMountSubtreeImpl(const char *mtabpath,
                mntent.mnt_dir[strlen(prefix)] == '/')))
             continue;
 
-        if (VIR_EXPAND_N(mounts, nmounts, nmounts ? 1 : 2) < 0)
-            goto cleanup;
+        VIR_EXPAND_N(mounts, nmounts, nmounts ? 1 : 2);
         mounts[nmounts - 2] = g_strdup(mntent.mnt_dir);
     }
 
@@ -2038,13 +2037,8 @@ virFileGetMountSubtreeImpl(const char *mtabpath,
 
     *mountsret = mounts;
     *nmountsret = nmounts ? nmounts - 1 : 0;
-    ret = 0;
-
- cleanup:
-    if (ret < 0)
-        g_strfreev(mounts);
     endmntent(procmnt);
-    return ret;
+    return 0;
 }
 #else /* ! defined WITH_MNTENT_H && defined WITH_GETMNTENT_R */
 static int
@@ -2632,7 +2626,7 @@ virDirCreateNoFork(const char *path,
         virReportSystemError(errno, _("stat of '%s' failed"), path);
         goto error;
     }
-# ifndef WIN32
+
     if (((uid != (uid_t) -1 && st.st_uid != uid) ||
          (gid != (gid_t) -1 && st.st_gid != gid))
         && (chown(path, uid, gid) < 0)) {
@@ -2641,7 +2635,7 @@ virDirCreateNoFork(const char *path,
                              path, (unsigned int) uid, (unsigned int) gid);
         goto error;
     }
-# endif /* !WIN32 */
+
     if (mode != (mode_t) -1 && chmod(path, mode) < 0) {
         ret = -errno;
         virReportSystemError(errno,
@@ -3026,69 +3020,6 @@ int virFileChownFiles(const char *name,
 }
 #endif /* WIN32 */
 
-static int
-virFileMakePathHelper(char *path, mode_t mode)
-{
-    struct stat st;
-    char *p;
-
-    VIR_DEBUG("path=%s mode=0%o", path, mode);
-
-    if (stat(path, &st) >= 0) {
-        if (S_ISDIR(st.st_mode))
-            return 0;
-
-        errno = ENOTDIR;
-        return -1;
-    }
-
-    if (errno != ENOENT)
-        return -1;
-
-    if ((p = strrchr(path, '/')) == NULL) {
-        errno = EINVAL;
-        return -1;
-    }
-
-    if (p != path) {
-        *p = '\0';
-
-        if (virFileMakePathHelper(path, mode) < 0)
-            return -1;
-
-        *p = '/';
-    }
-
-    if (g_mkdir(path, mode) < 0 && errno != EEXIST)
-        return -1;
-
-    return 0;
-}
-
-/**
- * Creates the given directory with mode 0777 if it's not already existing.
- *
- * Returns 0 on success, or -1 if an error occurred (in which case, errno
- * is set appropriately).
- */
-int
-virFileMakePath(const char *path)
-{
-    return virFileMakePathWithMode(path, 0777);
-}
-
-int
-virFileMakePathWithMode(const char *path,
-                        mode_t mode)
-{
-    g_autofree char *tmp = NULL;
-
-    tmp = g_strdup(path);
-
-    return virFileMakePathHelper(tmp, mode);
-}
-
-
 int
 virFileMakeParentPath(const char *path)
 {
@@ -3105,7 +3036,7 @@ virFileMakeParentPath(const char *path)
     }
     *p = '\0';
 
-    return virFileMakePathHelper(tmp, 0777);
+    return g_mkdir_with_parents(tmp, 0777);
 }
 
 
@@ -3182,15 +3113,13 @@ virFileOpenTty(int *ttyprimary, char **ttyName, int rawmode)
         name = g_new0(char, len);
 
         while ((rc = ttyname_r(secondary, name, len)) == ERANGE) {
-            if (VIR_RESIZE_N(name, len, len, len) < 0)
-                goto cleanup;
+            VIR_RESIZE_N(name, len, len, len);
         }
         if (rc != 0) {
             errno = rc;
             goto cleanup;
         }
-        *ttyName = name;
-        name = NULL;
+        *ttyName = g_steal_pointer(&name);
     }
 
     ret = 0;
@@ -3224,7 +3153,7 @@ virFileOpenTty(int *ttyprimary G_GNUC_UNUSED,
 int
 virFileAbsPath(const char *path, char **abspath)
 {
-    if (path[0] == '/') {
+    if (g_path_is_absolute(path)) {
         *abspath = g_strdup(path);
     } else {
         g_autofree char *buf = g_get_current_dir();
@@ -3585,14 +3514,14 @@ virFileGetDefaultHugepageSize(unsigned long long *size)
 }
 
 int
-virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
+virFileFindHugeTLBFS(virHugeTLBFS **ret_fs,
                      size_t *ret_nfs)
 {
     int ret = -1;
     FILE *f = NULL;
     struct mntent mb;
     char mntbuf[1024];
-    virHugeTLBFSPtr fs = NULL;
+    virHugeTLBFS *fs = NULL;
     size_t nfs = 0;
     unsigned long long default_hugepagesz = 0;
 
@@ -3604,13 +3533,12 @@ virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
     }
 
     while (getmntent_r(f, &mb, mntbuf, sizeof(mntbuf))) {
-        virHugeTLBFSPtr tmp;
+        virHugeTLBFS *tmp;
 
         if (STRNEQ(mb.mnt_type, "hugetlbfs"))
             continue;
 
-        if (VIR_EXPAND_N(fs, nfs, 1) < 0)
-             goto cleanup;
+        VIR_EXPAND_N(fs, nfs, 1);
 
         tmp = &fs[nfs - 1];
 
@@ -3626,9 +3554,8 @@ virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
         tmp->deflt = tmp->size == default_hugepagesz;
     }
 
-    *ret_fs = fs;
     *ret_nfs = nfs;
-    fs = NULL;
+    *ret_fs = g_steal_pointer(&fs);
     nfs = 0;
     ret = 0;
 
@@ -3659,7 +3586,7 @@ virFileGetHugepageSize(const char *path G_GNUC_UNUSED,
 }
 
 int
-virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs G_GNUC_UNUSED,
+virFileFindHugeTLBFS(virHugeTLBFS **ret_fs G_GNUC_UNUSED,
                      size_t *ret_nfs G_GNUC_UNUSED)
 {
     /* XXX implement me :-) */
@@ -3679,8 +3606,8 @@ virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs G_GNUC_UNUSED,
  * Returns: default hugepage, or
  *          NULL if none found
  */
-virHugeTLBFSPtr
-virFileGetDefaultHugepage(virHugeTLBFSPtr fs,
+virHugeTLBFS *
+virFileGetDefaultHugepage(virHugeTLBFS *fs,
                           size_t nfs)
 {
     size_t i;
@@ -3730,7 +3657,7 @@ virFileSetupDev(const char *path,
     const unsigned long mount_flags = MS_NOSUID;
     const char *mount_fs = "tmpfs";
 
-    if (virFileMakePath(path) < 0) {
+    if (g_mkdir_with_parents(path, 0777) < 0) {
         virReportSystemError(errno,
                              _("Failed to make path %s"), path);
         return -1;
@@ -3755,7 +3682,7 @@ virFileBindMountDevice(const char *src,
 {
     if (!virFileExists(dst)) {
         if (virFileIsDir(src)) {
-            if (virFileMakePath(dst) < 0) {
+            if (g_mkdir_with_parents(dst, 0777) < 0) {
                 virReportSystemError(errno, _("Unable to make dir %s"), dst);
                 return -1;
             }
@@ -4239,7 +4166,7 @@ virFileReadValueScaledInt(unsigned long long *value, const char *format, ...)
 
 /**
  * virFileReadValueBitmap:
- * @value: pointer to virBitmapPtr to be allocated and filled in with the value
+ * @value: pointer to virBitmap * to be allocated and filled in with the value
  * @format, ...: file to read from
  *
  * Read int from @format and put it into @value.
@@ -4248,7 +4175,7 @@ virFileReadValueScaledInt(unsigned long long *value, const char *format, ...)
  * fine.
  */
 int
-virFileReadValueBitmap(virBitmapPtr *value, const char *format, ...)
+virFileReadValueBitmap(virBitmap **value, const char *format, ...)
 {
     g_autofree char *str = NULL;
     g_autofree char *path = NULL;

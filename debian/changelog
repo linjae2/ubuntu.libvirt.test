@@ -1,3 +1,28 @@
+libvirt (7.4.0-0ubuntu1) impish; urgency=medium
+
+  * Merge v7.4.0 from upstream,
+    among a lot of new features and fixes this closes a few of issues
+    reported against Ubuntu
+    - Toleration for qemu >=6.0 handling of props (LP: #1932264)
+    - Persistent vfio-ccw device assignments (LP: #1887929)
+    - Drop patches that are upstream in v7.4.0
+      - d/p/b/meson-Fix-cross-building-of-dtrace-probes.patch
+      - d/p/b/apparmor-let-image-label-setting-loop-over-backing-files.patch
+      - d/p/r/systemd-Revert-remote-Add-libvirtd-dependency-to-virt-gue.patch
+      - d/p/u/lp-1913266-*: add vsock options to be usable with s390x
+      - d/p/u/lp-1921754-*: EPYC-Rome-v2
+      - d/p/u/lp-1921880-*: EPYC-Milan
+    - d/libvirt-clients.install: completions no more are symlinked to vsh
+    - Revert "disable firewalld support (universe dependency)"
+      This does not add a runtime dependency and while firewalld isn't in
+      main that way users can install and use it from universe.
+      (LP: #1928113)
+    - d/libvirt0.symbols: bump symbol versions for 7.4.0
+    - d/rules: disable the now auto-built vstorage backend
+    - not-installed: split daemon man pages are no yet installed
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 17 Jun 2021 10:33:27 +0200
+
 libvirt (7.0.0-2ubuntu2) hirsute; urgency=medium
 
   * d/p/u/lp-1921754*: add EPYC-Rome-v2 as v1 missed IBRS and thereby fails

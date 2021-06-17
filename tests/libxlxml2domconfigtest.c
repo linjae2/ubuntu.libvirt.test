@@ -41,7 +41,7 @@
 
 # define VIR_FROM_THIS VIR_FROM_LIBXL
 
-static libxlDriverPrivatePtr driver;
+static libxlDriverPrivate *driver;
 
 static int
 testCompareXMLToDomConfig(const char *xmlfile,
@@ -51,8 +51,8 @@ testCompareXMLToDomConfig(const char *xmlfile,
     libxl_domain_config actualconfig;
     libxl_domain_config expectconfig;
     xentoollog_logger *log = NULL;
-    virPortAllocatorRangePtr gports = NULL;
-    virDomainDefPtr vmdef = NULL;
+    virPortAllocatorRange *gports = NULL;
+    virDomainDef *vmdef = NULL;
     char *actualjson = NULL;
     char *tempjson = NULL;
     char *expectjson = NULL;
@@ -105,7 +105,13 @@ testCompareXMLToDomConfig(const char *xmlfile,
      */
 # ifndef LIBXL_HAVE_BUILDINFO_APIC
     if (expectconfig.c_info.type == LIBXL_DOMAIN_TYPE_HVM) {
+#  ifdef LIBXL_HAVE_MEMKB_64BITS
+        /*
+         * This part of the libxl API was changed without a guard in Xen 4.8.
+         * Reuse another Xen 4.8 specific conditional.
+         */
         libxl_defbool_unset(&expectconfig.b_info.acpi);
+#  endif
         libxl_defbool_set(&expectconfig.b_info.u.hvm.apic, true);
         libxl_defbool_set(&expectconfig.b_info.u.hvm.acpi, true);
     }

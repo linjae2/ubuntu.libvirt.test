@@ -124,7 +124,6 @@ else
   sym_files += 'libvirt_libssh2.syms'
 endif
 
-
 # variables filled by subdirectories
 
 libvirt_libs = []
@@ -201,7 +200,6 @@ guest_unit_files = []
 #   * sockets - array of additional sockets (optional, default [ 'main', 'ro', 'admin' ])
 #   * socket_$name_in - additional socket source files (optional, default remote/libvirtd.socket.in )
 #   * deps - socket dependencies (optional, default '')
-#   * conflicts - if the service conflicts with libvirtd (optional, true)
 virt_daemon_units = []
 
 # openrc_init_files
@@ -266,6 +264,7 @@ subdir('nwfilter')
 subdir('secret')
 subdir('security')
 subdir('storage')
+subdir('storage_file')
 
 subdir('bhyve')
 subdir('esx')

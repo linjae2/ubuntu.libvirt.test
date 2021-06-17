@@ -157,16 +157,9 @@
 
       <optional>
         <element name="distances">
-          <zeroOrMore>
-            <element name="sibling">
-              <attribute name="id">
-                <ref name="unsignedInt"/>
-              </attribute>
-              <attribute name="value">
-                <ref name="unsignedInt"/>
-              </attribute>
-            </element>
-          </zeroOrMore>
+          <oneOrMore>
+            <ref name="numaDistance"/>
+          </oneOrMore>
         </element>
       </optional>
 
@@ -405,6 +398,14 @@
       <optional>
         <attribute name="maxCpus">
           <ref name="unsignedInt"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="deprecated">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
         </attribute>
       </optional>
       <text/>

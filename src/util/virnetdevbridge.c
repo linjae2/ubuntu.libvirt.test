@@ -1036,13 +1036,9 @@ virNetDevBridgeFDBAddDel(const virMacAddr *mac, const char *ifname,
     if (!(ndm.ndm_state & (NUD_PERMANENT | NUD_REACHABLE)))
         ndm.ndm_state |= NUD_PERMANENT;
 
-    nl_msg = nlmsg_alloc_simple(isAdd ? RTM_NEWNEIGH : RTM_DELNEIGH,
-                                NLM_F_REQUEST |
-                                (isAdd ? (NLM_F_CREATE | NLM_F_EXCL) : 0));
-    if (!nl_msg) {
-        virReportOOMError();
-        return -1;
-    }
+    nl_msg = virNetlinkMsgNew(isAdd ? RTM_NEWNEIGH : RTM_DELNEIGH,
+                              NLM_F_REQUEST |
+                              (isAdd ? (NLM_F_CREATE | NLM_F_EXCL) : 0));
 
     if (nlmsg_append(nl_msg, &ndm, sizeof(ndm), NLMSG_ALIGNTO) < 0)
         goto buffer_too_small;
@@ -1067,9 +1063,13 @@ virNetDevBridgeFDBAddDel(const virMacAddr *mac, const char *ifname,
         if (resp->nlmsg_len < NLMSG_LENGTH(sizeof(*err)))
             goto malformed_resp;
         if (err->error) {
-            virReportSystemError(-err->error,
-                                 _("error adding fdb entry for %s"), ifname);
-            return -1;
+            if (isAdd && -err->error == EEXIST) {
+                VIR_DEBUG("fdb entry for %s already exists", ifname);
+            } else {
+                virReportSystemError(-err->error,
+                                     _("error adding fdb entry for %s"), ifname);
+                return -1;
+            }
         }
         break;
     case NLMSG_DONE:
