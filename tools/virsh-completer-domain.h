@@ -110,3 +110,15 @@ char ** virshDomainLifecycleCompleter(vshControl *ctl,
 char ** virshDomainLifecycleActionCompleter(vshControl *ctl,
                                             const vshCmd *cmd,
                                             unsigned int flags);
+
+char ** virshCodesetNameCompleter(vshControl *ctl,
+                                  const vshCmd *cmd,
+                                  unsigned int flags);
+
+char ** virshKeycodeNameCompleter(vshControl *ctl,
+                                  const vshCmd *cmd,
+                                  unsigned int flags);
+
+char ** virshDomainFSMountpointsCompleter(vshControl *ctl,
+                                          const vshCmd *cmd,
+                                          unsigned int flags);

@@ -38,7 +38,7 @@ test_virCapabilities(const void *opaque)
 {
     struct virCapabilitiesData *data = (struct virCapabilitiesData *) opaque;
     const char *archStr = virArchToString(data->arch);
-    virCapsPtr caps = NULL;
+    virCaps *caps = NULL;
     char *capsXML = NULL;
     char *path = NULL;
     char *system = NULL;
@@ -113,7 +113,7 @@ mymain(void)
     DO_TEST_FULL("resctrl-skx-twocaches", VIR_ARCH_X86_64, true, true);
     DO_TEST_FULL("resctrl-fake-feature", VIR_ARCH_X86_64, true, true);
 
-    return ret;
+    return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 VIR_TEST_MAIN_PRELOAD(mymain, VIR_TEST_MOCK("virnuma"))

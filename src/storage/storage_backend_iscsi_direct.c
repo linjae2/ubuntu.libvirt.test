@@ -29,11 +29,13 @@
 #include "storage_util.h"
 #include "viralloc.h"
 #include "virerror.h"
+#include "viridentity.h"
 #include "virlog.h"
 #include "virobject.h"
 #include "virstring.h"
 #include "virtime.h"
 #include "viruuid.h"
+#include "virsecureerase.h"
 
 #define VIR_FROM_THIS VIR_FROM_STORAGE
 
@@ -58,7 +60,7 @@ virISCSIDirectCreateContext(const char* initiator_iqn)
 }
 
 static char *
-virStorageBackendISCSIDirectPortal(virStoragePoolSourcePtr source)
+virStorageBackendISCSIDirectPortal(virStoragePoolSource *source)
 {
     char *portal = NULL;
 
@@ -85,13 +87,15 @@ virStorageBackendISCSIDirectPortal(virStoragePoolSourcePtr source)
 
 static int
 virStorageBackendISCSIDirectSetAuth(struct iscsi_context *iscsi,
-                                    virStoragePoolSourcePtr source)
+                                    virStoragePoolSource *source)
 {
-    unsigned char *secret_value = NULL;
+    g_autofree unsigned char *secret_value = NULL;
     size_t secret_size;
-    virStorageAuthDefPtr authdef = source->auth;
+    g_autofree char *secret_str = NULL;
+    virStorageAuthDef *authdef = source->auth;
     int ret = -1;
     virConnectPtr conn = NULL;
+    VIR_IDENTITY_AUTORESTORE virIdentity *oldident = NULL;
 
     if (!authdef || authdef->authType == VIR_STORAGE_AUTH_TYPE_NONE)
         return 0;
@@ -105,6 +109,9 @@ virStorageBackendISCSIDirectSetAuth(struct iscsi_context *iscsi,
         return ret;
     }
 
+    if (!(oldident = virIdentityElevateCurrent()))
+        return -1;
+
     if (!(conn = virGetConnectSecret()))
         return ret;
 
@@ -113,14 +120,13 @@ virStorageBackendISCSIDirectSetAuth(struct iscsi_context *iscsi,
                                  &secret_value, &secret_size) < 0)
         goto cleanup;
 
-    if (VIR_REALLOC_N(secret_value, secret_size + 1) < 0)
-        goto cleanup;
-
-    secret_value[secret_size] = '\0';
+    secret_str = g_new0(char, secret_size + 1);
+    memcpy(secret_str, secret_value, secret_size);
+    virSecureErase(secret_value, secret_size);
+    secret_str[secret_size] = '\0';
 
     if (iscsi_set_initiator_username_pwd(iscsi,
-                                         authdef->username,
-                                         (const char *)secret_value) < 0) {
+                                         authdef->username, secret_str) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Failed to set credential: %s"),
                        iscsi_get_error(iscsi));
@@ -129,7 +135,7 @@ virStorageBackendISCSIDirectSetAuth(struct iscsi_context *iscsi,
 
     ret = 0;
  cleanup:
-    VIR_DISPOSE_N(secret_value, secret_size);
+    virSecureErase(secret_str, secret_size);
     virObjectUnref(conn);
     return ret;
 }
@@ -223,12 +229,12 @@ virISCSIDirectTestUnitReady(struct iscsi_context *iscsi,
 }
 
 static int
-virISCSIDirectSetVolumeAttributes(virStoragePoolObjPtr pool,
-                                  virStorageVolDefPtr vol,
+virISCSIDirectSetVolumeAttributes(virStoragePoolObj *pool,
+                                  virStorageVolDef *vol,
                                   int lun,
                                   char *portal)
 {
-    virStoragePoolDefPtr def = virStoragePoolObjGetDef(pool);
+    virStoragePoolDef *def = virStoragePoolObjGetDef(pool);
 
     vol->name = g_strdup_printf("%s%u", VOL_NAME_PREFIX, lun);
     vol->key = g_strdup_printf("ip-%s-iscsi-%s-lun-%u", portal,
@@ -296,12 +302,12 @@ virISCSIDirectGetVolumeCapacity(struct iscsi_context *iscsi,
 }
 
 static int
-virISCSIDirectRefreshVol(virStoragePoolObjPtr pool,
+virISCSIDirectRefreshVol(virStoragePoolObj *pool,
                          struct iscsi_context *iscsi,
                          int lun,
                          char *portal)
 {
-    virStoragePoolDefPtr def = virStoragePoolObjGetDef(pool);
+    virStoragePoolDef *def = virStoragePoolObjGetDef(pool);
     uint32_t block_size = 0;
     uint64_t nb_block = 0;
     g_autoptr(virStorageVolDef) vol = NULL;
@@ -332,11 +338,11 @@ virISCSIDirectRefreshVol(virStoragePoolObjPtr pool,
 }
 
 static int
-virISCSIDirectReportLuns(virStoragePoolObjPtr pool,
+virISCSIDirectReportLuns(virStoragePoolObj *pool,
                          struct iscsi_context *iscsi,
                          char *portal)
 {
-    virStoragePoolDefPtr def = virStoragePoolObjGetDef(pool);
+    virStoragePoolDef *def = virStoragePoolObjGetDef(pool);
     struct scsi_task *task = NULL;
     struct scsi_reportluns_list *list = NULL;
     int full_size;
@@ -465,7 +471,7 @@ virISCSIDirectScanTargets(char *initiator_iqn,
 }
 
 static int
-virStorageBackendISCSIDirectCheckPool(virStoragePoolObjPtr pool,
+virStorageBackendISCSIDirectCheckPool(virStoragePoolObj *pool,
                                       bool *isActive)
 {
     *isActive = virStoragePoolObjIsActive(pool);
@@ -548,10 +554,10 @@ virStorageBackendISCSIDirectFindPoolSources(const char *srcSpec,
 }
 
 static struct iscsi_context *
-virStorageBackendISCSIDirectSetConnection(virStoragePoolObjPtr pool,
+virStorageBackendISCSIDirectSetConnection(virStoragePoolObj *pool,
                                           char **portalRet)
 {
-    virStoragePoolDefPtr def = virStoragePoolObjGetDef(pool);
+    virStoragePoolDef *def = virStoragePoolObjGetDef(pool);
     struct iscsi_context *iscsi = NULL;
     g_autofree char *portal = NULL;
 
@@ -577,7 +583,7 @@ virStorageBackendISCSIDirectSetConnection(virStoragePoolObjPtr pool,
 }
 
 static int
-virStorageBackendISCSIDirectRefreshPool(virStoragePoolObjPtr pool)
+virStorageBackendISCSIDirectRefreshPool(virStoragePoolObj *pool)
 {
     struct iscsi_context *iscsi = NULL;
     int ret = -1;
@@ -592,7 +598,7 @@ virStorageBackendISCSIDirectRefreshPool(virStoragePoolObjPtr pool)
 }
 
 static int
-virStorageBackendISCSIDirectGetLun(virStorageVolDefPtr vol,
+virStorageBackendISCSIDirectGetLun(virStorageVolDef *vol,
                                    int *lun)
 {
     const char *name;
@@ -608,7 +614,7 @@ virStorageBackendISCSIDirectGetLun(virStorageVolDefPtr vol,
 }
 
 static int
-virStorageBackendISCSIDirectVolWipeZero(virStorageVolDefPtr vol,
+virStorageBackendISCSIDirectVolWipeZero(virStorageVolDef *vol,
                                         struct iscsi_context *iscsi)
 {
     uint64_t lba = 0;
@@ -651,8 +657,8 @@ virStorageBackendISCSIDirectVolWipeZero(virStorageVolDefPtr vol,
 }
 
 static int
-virStorageBackenISCSIDirectWipeVol(virStoragePoolObjPtr pool,
-                                   virStorageVolDefPtr vol,
+virStorageBackenISCSIDirectWipeVol(virStoragePoolObj *pool,
+                                   virStorageVolDef *vol,
                                    unsigned int algorithm,
                                    unsigned int flags)
 {

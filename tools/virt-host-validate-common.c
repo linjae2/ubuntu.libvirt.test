@@ -188,10 +188,10 @@ int virHostValidateNamespace(const char *hvname,
 }
 
 
-virBitmapPtr virHostValidateGetCPUFlags(void)
+virBitmap *virHostValidateGetCPUFlags(void)
 {
     FILE *fp;
-    virBitmapPtr flags = NULL;
+    virBitmap *flags = NULL;
 
     if (!(fp = fopen("/proc/cpuinfo", "r")))
         return NULL;
@@ -201,9 +201,8 @@ virBitmapPtr virHostValidateGetCPUFlags(void)
     do {
         char line[1024];
         char *start;
-        char **tokens;
-        size_t ntokens;
-        size_t i;
+        g_auto(GStrv) tokens = NULL;
+        GStrv next;
 
         if (!fgets(line, sizeof(line), fp))
             break;
@@ -228,20 +227,18 @@ virBitmapPtr virHostValidateGetCPUFlags(void)
 
         /* Split the line using " " as a delimiter. The first token
          * will always be ":", but that's okay */
-        if (!(tokens = virStringSplitCount(start, " ", 0, &ntokens)))
+        if (!(tokens = g_strsplit(start, " ", 0)))
             continue;
 
         /* Go through all flags and check whether one of those we
          * might want to check for later on is present; if that's
          * the case, set the relevant bit in the bitmap */
-        for (i = 0; i < ntokens; i++) {
+        for (next = tokens; *next; next++) {
             int value;
 
-            if ((value = virHostValidateCPUFlagTypeFromString(tokens[i])) >= 0)
+            if ((value = virHostValidateCPUFlagTypeFromString(*next)) >= 0)
                 ignore_value(virBitmapSetBit(flags, value));
         }
-
-        virStringListFreeCount(tokens, ntokens);
     } while (1);
 
     VIR_FORCE_FCLOSE(fp);
@@ -330,7 +327,7 @@ int virHostValidateCGroupControllers(const char *hvname G_GNUC_UNUSED,
 int virHostValidateIOMMU(const char *hvname,
                          virHostValidateLevel level)
 {
-    virBitmapPtr flags;
+    virBitmap *flags;
     struct stat sb;
     const char *bootarg = NULL;
     bool isAMD = false, isIntel = false;
@@ -444,7 +441,7 @@ bool virHostKernelModuleIsLoaded(const char *module)
 int virHostValidateSecureGuests(const char *hvname,
                                 virHostValidateLevel level)
 {
-    virBitmapPtr flags;
+    virBitmap *flags;
     bool hasFac158 = false;
     bool hasAMDSev = false;
     virArch arch = virArchFromHost();
