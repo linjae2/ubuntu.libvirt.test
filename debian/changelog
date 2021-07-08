@@ -1,3 +1,10 @@
+libvirt (7.4.0-0ubuntu3) impish; urgency=medium
+
+  * d/t/smoke-lxc: skip if cgroup v1&v2 are present (systemd 248
+    was not enough)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 08 Jul 2021 14:20:53 +0200
+
 libvirt (7.4.0-0ubuntu2) impish; urgency=medium
 
   * d/t/smoke-lxc: skip before systemd 248 due to a known bug (LP: #1934966)
