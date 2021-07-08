@@ -50,6 +50,20 @@ try_restart_libvirtd()
 
 trap cleanup EXIT
 
+# This is a bug due to upstream and happens due to cgroup/systemd handling
+# https://libvirt.org/git/?p=libvirt.git;a=commit;h=9c1693eff4
+# https://bugs.archlinux.org/task/70174
+# https://bugzilla.opensuse.org/show_bug.cgi?id=1183247
+# https://gitlab.com/libvirt/libvirt/-/issues/182
+# https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1934966
+# It is reported to work again with systemd 248
+# So skip this until libvirt >=7.1.0 systemd <248
+version=$(dpkg-query --showformat='${Version}' --show systemd)
+if dpkg --compare-versions $version lt 248; then
+    echo "Libvirt >=7.1.0 is known to fail LXC handling with systemd <248 (issue 182) - skipping".
+    exit 77
+fi
+
 set -x
 virt-host-validate lxc || exit 0
 virsh capabilities

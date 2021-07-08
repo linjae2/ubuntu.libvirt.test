@@ -1,3 +1,9 @@
+libvirt (7.4.0-0ubuntu2) impish; urgency=medium
+
+  * d/t/smoke-lxc: skip before systemd 248 due to a known bug (LP: #1934966)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 08 Jul 2021 09:33:49 +0200
+
 libvirt (7.4.0-0ubuntu1) impish; urgency=medium
 
   * Merge v7.4.0 from upstream,
