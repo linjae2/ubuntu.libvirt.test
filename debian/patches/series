@@ -40,3 +40,5 @@ ubuntu/lp-1921880-cpu_map-Add-EPYC-Milan-x86-CPU-model.patch
 ubuntu/lp-1921880-cpu_map-Install-x86_EPYC-Milan.xml.patch
 ubuntu/lp-1921880-cpu_map-sync_qemu_i386.py-Add-mapping-for-svme-addr-.patch
 ubuntu/lp-1921880-cpu_map-Fix-spelling-of-svme-addr-chk-feature.patch
+ubuntu/lp-1892132-Add-phys_port_name-support-on-virPCIGetNetName.patch
+ubuntu/lp-1892132-add-virNetDevGetPhysPortName.patch
