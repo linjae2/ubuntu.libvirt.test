@@ -21491,6 +21491,15 @@ static bool
 virDomainVirtioOptionsCheckABIStability(virDomainVirtioOptionsPtr src,
                                         virDomainVirtioOptionsPtr dst)
 {
+    if (!src && !dst)
+        return true;
+
+    if (!src || !dst) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("Target device virtio options don't match the source"));
+        return false;
+    }
+
     if (src->iommu != dst->iommu) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                        _("Target device iommu option '%s' does not "
@@ -21575,8 +21584,7 @@ virDomainDiskDefCheckABIStability(virDomainDiskDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21635,8 +21643,7 @@ virDomainControllerDefCheckABIStability(virDomainControllerDefPtr src,
         }
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21669,8 +21676,7 @@ virDomainFsDefCheckABIStability(virDomainFSDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21718,8 +21724,7 @@ virDomainNetDefCheckABIStability(virDomainNetDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21757,8 +21762,7 @@ virDomainInputDefCheckABIStability(virDomainInputDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -21857,8 +21861,7 @@ virDomainVideoDefCheckABIStability(virDomainVideoDefPtr src,
         }
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -22071,8 +22074,7 @@ virDomainMemballoonDefCheckABIStability(virDomainMemballoonDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
@@ -22094,8 +22096,7 @@ virDomainRNGDefCheckABIStability(virDomainRNGDefPtr src,
         return false;
     }
 
-    if (src->virtio && dst->virtio &&
-        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+    if (!virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
         return false;
 
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
