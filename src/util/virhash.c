@@ -129,7 +129,7 @@ virHashComputeKey(const virHashTable *table, const void *name)
  *
  * Create a new virHashTablePtr.
  *
- * Returns the newly created object, or NULL if an error occurred.
+ * Returns the newly created object.
  */
 virHashTablePtr virHashCreateFull(ssize_t size,
                                   virHashDataFree dataFree,
@@ -143,8 +143,7 @@ virHashTablePtr virHashCreateFull(ssize_t size,
     if (size <= 0)
         size = 256;
 
-    if (VIR_ALLOC(table) < 0)
-        return NULL;
+    table = g_new0(virHashTable, 1);
 
     table->seed = virRandomBits(32);
     table->size = size;
@@ -155,10 +154,7 @@ virHashTablePtr virHashCreateFull(ssize_t size,
     table->keyCopy = keyCopy;
     table->keyFree = keyFree;
 
-    if (VIR_ALLOC_N(table->table, size) < 0) {
-        VIR_FREE(table);
-        return NULL;
-    }
+    table->table = g_new0(virHashEntryPtr, table->size);
 
     return table;
 }
@@ -170,7 +166,7 @@ virHashTablePtr virHashCreateFull(ssize_t size,
  *
  * Create a new virHashTablePtr.
  *
- * Returns the newly created object, or NULL if an error occurred.
+ * Returns the newly created object.
  */
 virHashTablePtr
 virHashNew(virHashDataFree dataFree)
@@ -191,7 +187,7 @@ virHashNew(virHashDataFree dataFree)
  *
  * Create a new virHashTablePtr.
  *
- * Returns the newly created object, or NULL if an error occurred.
+ * Returns the newly created object.
  */
 virHashTablePtr virHashCreate(ssize_t size, virHashDataFree dataFree)
 {
