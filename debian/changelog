@@ -1,3 +1,12 @@
+libvirt (6.0.0-0ubuntu8.13) focal; urgency=medium
+
+  * Add support for switchdev NICs that link representor ports to parent PCI
+    device. (LP: #1892132)
+    - d/p/u/lp-1892132-Add-phys_port_name-support-on-virPCIGetNetName.patch
+    - d/p/u/lp-1892132-add-virNetDevGetPhysPortName.patch
+
+ -- Frode Nordahl <frode.nordahl@canonical.com>  Fri, 16 Jul 2021 05:16:36 +0000
+
 libvirt (6.0.0-0ubuntu8.12) focal; urgency=medium
 
   * d/p/u/lp-1929202-*: fix pre-creation of images during migration
