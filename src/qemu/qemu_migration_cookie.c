@@ -454,55 +454,53 @@ qemuMigrationCookieAddNBD(qemuMigrationCookiePtr mig,
                           virDomainObjPtr vm)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
-    virHashTablePtr stats = NULL;
+    g_autoptr(virHashTable) stats = virHashNew(virHashValueFree);
+    bool blockdev = virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_BLOCKDEV);
     size_t i;
-    int ret = -1, rc;
+    int rc;
 
     /* It is not a bug if there already is a NBD data */
     qemuMigrationCookieNBDFree(mig->nbd);
 
-    if (VIR_ALLOC(mig->nbd) < 0)
-        return -1;
+    mig->nbd = g_new0(qemuMigrationCookieNBD, 1);
 
-    if (vm->def->ndisks &&
-        VIR_ALLOC_N(mig->nbd->disks, vm->def->ndisks) < 0)
-        return -1;
+    mig->nbd->port = priv->nbdPort;
+    mig->flags |= QEMU_MIGRATION_COOKIE_NBD;
+
+    if (vm->def->ndisks == 0)
+        return 0;
+
+    mig->nbd->disks = g_new0(struct qemuMigrationCookieNBDDisk, vm->def->ndisks);
     mig->nbd->ndisks = 0;
+
+    if (qemuDomainObjEnterMonitorAsync(driver, vm, priv->job.asyncJob) < 0)
+        return -1;
+    if (blockdev)
+        rc = qemuMonitorBlockStatsUpdateCapacityBlockdev(priv->mon, stats);
+    else
+        rc = qemuMonitorBlockStatsUpdateCapacity(priv->mon, stats, false);
+    if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0)
+        return -1;
 
     for (i = 0; i < vm->def->ndisks; i++) {
         virDomainDiskDefPtr disk = vm->def->disks[i];
         qemuBlockStats *entry;
 
-        if (!stats) {
-            if (!(stats = virHashCreate(10, virHashValueFree)))
-                goto cleanup;
-
-            if (qemuDomainObjEnterMonitorAsync(driver, vm,
-                                               priv->job.asyncJob) < 0)
-                goto cleanup;
-            rc = qemuMonitorBlockStatsUpdateCapacity(priv->mon, stats, false);
-            if (qemuDomainObjExitMonitor(driver, vm) < 0)
-                goto cleanup;
-            if (rc < 0)
-                goto cleanup;
+        if (blockdev) {
+            if (!(entry = virHashLookup(stats, disk->src->nodeformat)))
+                continue;
+        } else {
+            if (!disk->info.alias ||
+                !(entry = virHashLookup(stats, disk->info.alias)))
+                continue;
         }
-
-        if (!disk->info.alias ||
-            !(entry = virHashLookup(stats, disk->info.alias)))
-            continue;
 
         mig->nbd->disks[mig->nbd->ndisks].target = g_strdup(disk->dst);
         mig->nbd->disks[mig->nbd->ndisks].capacity = entry->capacity;
         mig->nbd->ndisks++;
     }
 
-    mig->nbd->port = priv->nbdPort;
-    mig->flags |= QEMU_MIGRATION_COOKIE_NBD;
-
-    ret = 0;
- cleanup:
-    virHashFree(stats);
-    return ret;
+    return 0;
 }
 
 
