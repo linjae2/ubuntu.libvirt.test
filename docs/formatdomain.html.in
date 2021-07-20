@@ -8929,7 +8929,10 @@ qemu-kvm -net nic,model=? /dev/null
     element specifies the CID assigned to the guest. If the attribute
     <code>auto</code> is set to <code>yes</code>, libvirt
     will assign a free CID automatically on domain startup.
-    <span class="since">Since 4.4.0</span></p>
+    <span class="since">Since 4.4.0</span>
+    The optional <code>driver</code> element allows to specify virtio options, see
+    <a href="#elementsVirtio">Virtio-specific options</a> for more details.
+    <span class="since">Since 7.1.0</span></p>
 
 <pre>
 ...
