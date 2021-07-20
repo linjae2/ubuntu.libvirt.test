@@ -157,3 +157,13 @@ ubuntu/lp-1922907-cpu_map-Distinguish-Cascadelake-Server-from-Skylake-.patch
 ubuntu/lp-1922907-cleanup-test-data.patch
 ubuntu-aa/lp-1890858-unix-socket.patch
 ubuntu/lp-1906266-virStorageFileGetMetadataRecurse-Allow-format-probin.patch
+ubuntu/lp-1929202-util-hash-Use-g_new0-for-allocating-hash-internals.patch
+ubuntu/lp-1929202-conf-domain-Remove-checking-of-return-value-of-virHa.patch
+ubuntu/lp-1929202-Remove-checking-of-return-value-of-virHashNew.patch
+ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Exit-early-if-there-are-no.patch
+ubuntu/lp-1929202-qemuMigrationCookieNBD-Extract-embedded-struct.patch
+ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Use-glib-memory-allocators.patch
+ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Move-monitor-call-out-of-t.patch
+ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Use-virHashNew-and-automat.patch
+ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Remove-ret-variable-and-cl.patch
+ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Fix-filling-of-capacity-wh.patch
