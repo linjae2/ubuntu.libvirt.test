@@ -3,6 +3,8 @@ etc/sysconfig/*
 # Installed in examples already
 usr/lib/sysctl.d/60-libvirtd.conf
 # Drop these once we start shipping split daemons
+etc/apparmor.d/usr.sbin.virtqemud
+etc/apparmor.d/usr.sbin.virtxend
 etc/libvirt/virtinterfaced.conf
 etc/libvirt/virtlxcd.conf
 etc/libvirt/virtnetworkd.conf
