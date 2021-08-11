@@ -850,6 +850,7 @@ CPU Tuning
    to which vCPUs this allocation applies. A vCPU can only be member of one
    ``cachetune`` element allocation. The vCPUs specified by cachetune can be
    identical with those in memorytune, however they are not allowed to overlap.
+   The optional, output only ``id`` attribute identifies cache uniquely.
    Supported subelements are:
 
    ``cache``
@@ -3146,6 +3147,16 @@ paravirtualized driver is specified via the ``disk`` element.
    may look like ``<serial>WD-WMAP9A966149</serial>``. Not supported for
    scsi-block devices, that is those using disk ``type`` 'block' using
    ``device`` 'lun' on ``bus`` 'scsi'. :since:`Since 0.7.1`
+
+   Note that depending on hypervisor and device type the serial number may be
+   truncated silently. IDE/SATA devices are commonly limited to 20 characters.
+   SCSI devices depending on hypervisor version are limited to 20, 36 or 247
+   characters.
+
+   Hypervisors may also start rejecting overly long serials instead of
+   truncating them in the future so it's advised to avoid the implicit
+   truncation by testing the desired serial length range with the desired device
+   and hypervisor combination.
 ``wwn``
    If present, this element specifies the WWN (World Wide Name) of a virtual
    hard disk or CD-ROM drive. It must be composed of 16 hexadecimal digits.
@@ -3251,6 +3262,7 @@ A directory on the host that can be accessed directly from the guest.
      <filesystem type='mount'>
          <driver type='virtiofs' queue='1024'/>
          <source socket='/tmp/sock'/>
+         <target dir='tag'/>
      </filesystem>
      ...
    </devices>
@@ -5735,7 +5747,7 @@ to provide a graphics tablet for absolute cursor movement.
        <source evdev='/dev/input/event1'/>
      </input>
      <input type='evdev'>
-       <source dev='/dev/input/event1234' grab='all' repeat='on'/>
+       <source dev='/dev/input/event1234' grab='all' repeat='on' grabToggle='ctrl-ctrl'/>
      </input>
    </devices>
    ...
@@ -5756,10 +5768,12 @@ On S390, ``address`` can be used to provide a CCW address for an input device (
 sub-element ``source`` must have an ``evdev`` (for ``passthrough``) or ``dev``
 (for ``evdev``) attribute containing the absolute path to the event device
 passed through to guests.
-For type ``evdev``, ``source`` can have two optional attributes ``grab`` with
-value 'all' which when enabled grabs all input devices instead of just one and
-``repeat`` with value 'on'/'off' to enable/disable auto-repeat events (
-:since:`Since 7.4.0`).
+For type ``evdev``, ``source`` has three optional attributes ``grab`` with
+value 'all' which when enabled grabs all input devices instead of just one,
+``repeat`` with value 'on'/'off' to enable/disable auto-repeat events and
+``grabToggle`` (:since:`since 7.6.0`) with values ``ctrl-ctrl``, ``alt-alt``,
+``shift-shift``, ``meta-meta``, ``scrolllock`` or ``ctrl-scrolllock`` to
+change the grab key combination.
 ``input`` type ``evdev`` is currently supported only on linux devices.
 (KVM only) :since:`Since 5.2.0` , the ``input`` element accepts a
 ``model`` attribute which has the values 'virtio', 'virtio-transitional' and
@@ -6864,13 +6878,15 @@ A virtual sound card can be attached to the host via the ``sound`` element.
 ``sound``
    The ``sound`` element has one mandatory attribute, ``model``, which specifies
    what real sound device is emulated. Valid values are specific to the
-   underlying hypervisor, though typical choices are 'es1370', 'sb16', 'ac97',
-   'ich6' and 'usb'. ( :since:`'ac97' only since 0.6.0, 'ich6' only since
-   0.8.8, 'usb' only since 1.2.7` )
+   underlying hypervisor, though typical choices are 'sb16', 'es1370', 'pcspk',
+   'ac97' (:since:`Since 0.6.0`), 'ich6' (:since:`Since 0.8.8`), 'ich9'
+   (:since:`Since 1.1.3`), 'usb' (:since:`Since 1.2.8`) and 'ich7'
+   (:since:`Since 6.7.0`, bhyve only).
 
-:since:`Since 0.9.13` , a sound element with ``ich6`` model can have optional
-sub-elements ``<codec>`` to attach various audio codecs to the audio device. If
-not specified, a default codec will be attached to allow playback and recording.
+:since:`Since 0.9.13` , a sound element with ``ich6`` or ``ich9`` models can have
+optional sub-elements ``<codec>`` to attach various audio codecs to the audio
+device. If not specified, a default codec will be attached to allow playback
+and recording.
 
 Valid values are:
 
@@ -6910,8 +6926,8 @@ ID is specified, then the default audio backend will be used.
 
 :anchor:`<a id="elementsAudio"/>`
 
-Audio devices
-~~~~~~~~~~~~~
+Audio backends
+~~~~~~~~~~~~~~
 
 A virtual audio device corresponds to a host audio backend that is mapped
 to the guest sound device.
@@ -6924,6 +6940,10 @@ to the guest sound device.
 ``id``
    Integer id of the audio device. Must be greater than 0.
 
+``timerPeriod``
+   Timer period in microseconds. Must be greater than 0. If omitted,
+   the lowest possible period is used.
+
 All the backends support child element for configuring input and
 output properties
 
@@ -6931,7 +6951,7 @@ output properties
 
    ...
    <devices>
-     <audio id='1' type='pulseaudio'>
+     <audio id='1' type='pulseaudio' timerPeriod='40'>
        <input mixingEngine='yes' fixedSettings='yes' voices='1' bufferLength='100'>
          <settings frequency='44100' channels='2' format='s16'/>
        </input>
@@ -7523,12 +7543,15 @@ Example: usage of the TPM Emulator
       each QEMU guest requesting access to it.
 
 ``version``
-   The ``version`` attribute indicates the version of the TPM. By default a TPM
-   1.2 is created. This attribute only works with the ``emulator`` backend. The
-   following versions are supported:
+   The ``version`` attribute indicates the version of the TPM. This attribute
+   only works with the ``emulator`` backend. The following versions are
+   supported:
 
    -  '1.2' : creates a TPM 1.2
    -  '2.0' : creates a TPM 2.0
+
+   The default version used depends on the combination of hypervisor, guest
+   architecture, TPM model and backend.
 
 ``persistent_state``
    The ``persistent_state`` attribute indicates whether 'swtpm' TPM state is
@@ -8060,6 +8083,13 @@ Note: DEA/TDEA is synonymous with DES/TDES.
 
 Launch Security
 ---------------
+
+Specifying ``<launchSecurity type='s390-pv'\>`` in a s390 domain prepares
+the guest to run in protected virtualization secure mode, also known as
+IBM Secure Execution. For more required host and guest preparation steps, see
+`Protected Virtualization on s390 <kbase/s390_protected_virt.html>`__
+:since:`Since 7.6.0`
+
 
 The contents of the ``<launchSecurity type='sev'>`` element is used to provide
 the guest owners input used for creating an encrypted VM using the AMD SEV

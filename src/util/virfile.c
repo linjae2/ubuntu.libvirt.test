@@ -56,7 +56,7 @@
 #if WITH_SYS_SYSCALL_H
 # include <sys/syscall.h>
 #endif
-#if WITH_SYS_ACL_H
+#if WITH_LIBACL
 # include <sys/acl.h>
 #endif
 #include <sys/file.h>
@@ -733,7 +733,7 @@ static int virFileLoopDeviceOpenSearch(char **dev_name)
             !g_ascii_isdigit(de->d_name[4]))
             continue;
 
-        looppath = g_strdup_printf("/dev/%s", de->d_name);
+        looppath = g_build_filename("/dev", de->d_name, NULL);
 
         VIR_DEBUG("Checking up on device %s", looppath);
         if ((fd = open(looppath, O_RDWR)) < 0) {
@@ -860,7 +860,7 @@ virFileNBDDeviceIsBusy(const char *dev_name)
 {
     g_autofree char *path = NULL;
 
-    path = g_strdup_printf(SYSFS_BLOCK_DIR "/%s/pid", dev_name);
+    path = g_build_filename(SYSFS_BLOCK_DIR, dev_name, "pid", NULL);
 
     if (!virFileExists(path)) {
         if (errno == ENOENT)
@@ -893,7 +893,7 @@ virFileNBDDeviceFindUnused(void)
                 return NULL;
 
             if (rv == 0)
-                return g_strdup_printf("/dev/%s", de->d_name);
+                return g_build_filename("/dev", de->d_name, NULL);
         }
     }
     if (direrr < 0)
@@ -1028,7 +1028,7 @@ int virFileDeleteTree(const char *dir)
         g_autofree char *filepath = NULL;
         GStatBuf sb;
 
-        filepath = g_strdup_printf("%s/%s", dir, de->d_name);
+        filepath = g_build_filename(dir, de->d_name, NULL);
 
         if (g_lstat(filepath, &sb) < 0) {
             virReportSystemError(errno, _("Cannot access '%s'"),
@@ -1422,7 +1422,7 @@ virFileReadLimFD(int fd, int maxlen, char **buf)
         errno = EINVAL;
         return -1;
     }
-    s = saferead_lim(fd, maxlen+1, &len);
+    s = saferead_lim(fd, (size_t) maxlen + 1, &len);
     if (s == NULL)
         return -1;
     if (len > maxlen || (int)len != len) {
@@ -1568,7 +1568,7 @@ virFileRelLinkPointsTo(const char *directory,
                        checkLink);
         return -1;
     }
-    candidate = g_strdup_printf("%s/%s", directory, checkLink);
+    candidate = g_build_filename(directory, checkLink, NULL);
     return virFileLinkPointsTo(candidate, checkDest);
 }
 
@@ -1662,55 +1662,19 @@ virFileIsLink(const char *linkpath)
 char *
 virFindFileInPath(const char *file)
 {
-    const char *origpath = NULL;
-    g_auto(GStrv) paths = NULL;
-    char **pathiter;
-
+    g_autofree char *path = NULL;
     if (file == NULL)
         return NULL;
 
-    /* if we are passed an absolute path (starting with /), return a
-     * copy of that path, after validating that it is executable
-     */
-    if (g_path_is_absolute(file)) {
-        if (!virFileIsExecutable(file))
-            return NULL;
-
-        return g_strdup(file);
-    }
-
-    /* If we are passed an anchored path (containing a /), then there
-     * is no path search - it must exist in the current directory
-     */
-    if (strchr(file, '/')) {
-        char *abspath = NULL;
-
-        if (!virFileIsExecutable(file))
-            return NULL;
-
-        ignore_value(virFileAbsPath(file, &abspath));
-        return abspath;
-    }
-
-    /* copy PATH env so we can tweak it */
-    origpath = getenv("PATH");
-    if (!origpath)
-        origpath = "/bin:/usr/bin";
-
-    /* for each path segment, append the file to search for and test for
-     * it. return it if found.
-     */
-
-    if (!(paths = g_strsplit(origpath, ":", 0)))
+    path = g_find_program_in_path(file);
+    if (!path)
         return NULL;
 
-    for (pathiter = paths; *pathiter; pathiter++) {
-        g_autofree char *fullpath = g_strdup_printf("%s/%s", *pathiter, file);
-        if (virFileIsExecutable(fullpath))
-            return g_steal_pointer(&fullpath);
-    }
-
-    return NULL;
+    /* Workaround for a bug in g_find_program_in_path() not returning absolute
+     * path as documented.  This has been fixed in
+     * https://gitlab.gnome.org/GNOME/glib/-/merge_requests/2127
+     */
+    return g_canonicalize_filename(path, NULL);
 }
 
 
@@ -1754,6 +1718,7 @@ virFileFindResourceFull(const char *filename,
     char *ret = NULL;
     const char *envval = envname ? getenv(envname) : NULL;
     const char *path;
+    g_autofree char *fullFilename = NULL;
 
     if (!prefix)
         prefix = "";
@@ -1767,7 +1732,8 @@ virFileFindResourceFull(const char *filename,
     else
         path = installdir;
 
-    ret = g_strdup_printf("%s/%s%s%s", path, prefix, filename, suffix);
+    fullFilename = g_strdup_printf("%s%s%s", prefix, filename, suffix);
+    ret = g_build_filename(path, fullFilename, NULL);
 
     VIR_DEBUG("Resolved '%s' to '%s'", filename, ret);
     return ret;
@@ -2923,9 +2889,9 @@ virDirOpenQuiet(DIR **dirp, const char *name)
  * @name: if non-NULL, the name related to @dirp for use in error reporting
  *
  * Wrapper around readdir. Typical usage:
+ *   g_autoptr(DIR) dir = NULL;
  *   struct dirent *ent;
  *   int rc;
- *   DIR *dir;
  *   if (virDirOpen(&dir, name) < 0)
  *       goto error;
  *   while ((rc = virDirRead(dir, &ent, name)) > 0)
@@ -2986,7 +2952,7 @@ int virFileChownFiles(const char *name,
     while ((direrr = virDirRead(dir, &ent, name)) > 0) {
         g_autofree char *path = NULL;
 
-        path = g_strdup_printf("%s/%s", name, ent->d_name);
+        path = g_build_filename(name, ent->d_name, NULL);
 
         if (!virFileIsRegular(path))
             continue;
@@ -3048,9 +3014,10 @@ virFileBuildPath(const char *dir, const char *name, const char *ext)
     char *path;
 
     if (ext == NULL) {
-        path = g_strdup_printf("%s/%s", dir, name);
+        path = g_build_filename(dir, name, NULL);
     } else {
-        path = g_strdup_printf("%s/%s%s", dir, name, ext);
+        g_autofree char *extName = g_strdup_printf("%s%s", name, ext);
+        path = g_build_filename(dir, extName, NULL);
     }
 
     return path;
@@ -3142,27 +3109,6 @@ virFileOpenTty(int *ttyprimary G_GNUC_UNUSED,
     return -1;
 }
 #endif /* WIN32 */
-
-/*
- * Creates an absolute path for a potentially relative path.
- * Return 0 if the path was not relative, or on success.
- * Return -1 on error.
- *
- * You must free the result.
- */
-int
-virFileAbsPath(const char *path, char **abspath)
-{
-    if (g_path_is_absolute(path)) {
-        *abspath = g_strdup(path);
-    } else {
-        g_autofree char *buf = g_get_current_dir();
-
-        *abspath = g_strdup_printf("%s/%s", buf, path);
-    }
-
-    return 0;
-}
 
 /* Remove spurious / characters from a path. The result must be freed */
 char *
@@ -3752,7 +3698,7 @@ virFileMoveMount(const char *src G_GNUC_UNUSED,
 #endif /* !defined(__linux__) || !defined(WITH_SYS_MOUNT_H) */
 
 
-#if defined(WITH_SYS_ACL_H)
+#if defined(WITH_LIBACL)
 int
 virFileGetACLs(const char *file,
                void **acl)
@@ -3782,7 +3728,7 @@ virFileFreeACLs(void **acl)
     *acl = NULL;
 }
 
-#else /* !defined(WITH_SYS_ACL_H) */
+#else /* !defined(WITH_LIBACL) */
 
 int
 virFileGetACLs(const char *file G_GNUC_UNUSED,
@@ -3808,7 +3754,7 @@ virFileFreeACLs(void **acl)
     *acl = NULL;
 }
 
-#endif /* !defined(WITH_SYS_ACL_H) */
+#endif /* !defined(WITH_LIBACL) */
 
 int
 virFileCopyACLs(const char *src,
@@ -4119,6 +4065,30 @@ virFileReadValueUllong(unsigned long long *value, const char *format, ...)
     return 0;
 }
 
+int
+virFileReadValueUllongQuiet(unsigned long long *value, const char *format, ...)
+{
+    g_autofree char *str = NULL;
+    g_autofree char *path = NULL;
+    va_list ap;
+
+    va_start(ap, format);
+    path = g_strdup_vprintf(format, ap);
+    va_end(ap);
+
+    if (!virFileExists(path))
+        return -2;
+
+    if (virFileReadAllQuiet(path, VIR_INT64_STR_BUFLEN, &str) < 0)
+        return -1;
+
+    virStringTrimOptionalNewline(str);
+
+    if (virStrToLong_ullp(str, NULL, 10, value) < 0)
+        return -1;
+
+    return 0;
+}
 
 /**
  * virFileReadValueScaledInt:

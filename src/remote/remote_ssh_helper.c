@@ -355,12 +355,10 @@ int main(int argc, char **argv)
     g_autoptr(virURI) uri = NULL;
     g_autofree char *driver = NULL;
     remoteDriverTransport transport;
-    bool user = false;
-    bool autostart = false;
     gboolean version = false;
     gboolean readonly = false;
     g_autofree char *sock_path = NULL;
-    g_autofree char *daemon_name = NULL;
+    g_autofree char *daemon_path = NULL;
     g_autoptr(virNetSocket) sock = NULL;
     GError *error = NULL;
     g_autoptr(GOptionContext) context = NULL;
@@ -369,6 +367,7 @@ int main(int argc, char **argv)
         { "version", 'V', 0, G_OPTION_ARG_NONE, &version, "Display version information", NULL },
         { NULL, '\0', 0, 0, NULL, NULL, NULL }
     };
+    unsigned int flags;
 
     context = g_option_context_new("- libvirt socket proxy");
     g_option_context_add_main_entries(context, entries, PACKAGE);
@@ -422,16 +421,17 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    remoteGetURIDaemonInfo(uri, transport, &user, &autostart);
+    remoteGetURIDaemonInfo(uri, transport, &flags);
+    if (readonly)
+        flags |= REMOTE_DRIVER_OPEN_RO;
 
     sock_path = remoteGetUNIXSocket(transport,
                                     REMOTE_DRIVER_MODE_AUTO,
                                     driver,
-                                    !!readonly,
-                                    user,
-                                    &daemon_name);
+                                    flags,
+                                    &daemon_path);
 
-    if (virNetSocketNewConnectUNIX(sock_path, autostart, daemon_name, &sock) < 0) {
+    if (virNetSocketNewConnectUNIX(sock_path, daemon_path, &sock) < 0) {
         g_printerr(_("%s: cannot connect to '%s': %s\n"),
                    argv[0], sock_path, virGetLastErrorMessage());
         exit(EXIT_FAILURE);

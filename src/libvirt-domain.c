@@ -827,7 +827,7 @@ virDomainSave(virDomainPtr domain, const char *to)
         char *absolute_to;
 
         /* We must absolutize the file path as the save is done out of process */
-        if (virFileAbsPath(to, &absolute_to) < 0) {
+        if (!(absolute_to = g_canonicalize_filename(to, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute output file path"));
             goto error;
@@ -915,7 +915,7 @@ virDomainSaveFlags(virDomainPtr domain, const char *to,
         char *absolute_to;
 
         /* We must absolutize the file path as the save is done out of process */
-        if (virFileAbsPath(to, &absolute_to) < 0) {
+        if (!(absolute_to = g_canonicalize_filename(to, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute output file path"));
             goto error;
@@ -965,7 +965,7 @@ virDomainRestore(virConnectPtr conn, const char *from)
         char *absolute_from;
 
         /* We must absolutize the file path as the restore is done out of process */
-        if (virFileAbsPath(from, &absolute_from) < 0) {
+        if (!(absolute_from = g_canonicalize_filename(from, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute input file path"));
             goto error;
@@ -1039,7 +1039,7 @@ virDomainRestoreFlags(virConnectPtr conn, const char *from, const char *dxml,
         char *absolute_from;
 
         /* We must absolutize the file path as the restore is done out of process */
-        if (virFileAbsPath(from, &absolute_from) < 0) {
+        if (!(absolute_from = g_canonicalize_filename(from, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute input file path"));
             goto error;
@@ -1097,7 +1097,7 @@ virDomainSaveImageGetXMLDesc(virConnectPtr conn, const char *file,
         char *absolute_file;
 
         /* We must absolutize the file path as the read is done out of process */
-        if (virFileAbsPath(file, &absolute_file) < 0) {
+        if (!(absolute_file = g_canonicalize_filename(file, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute input file path"));
             goto error;
@@ -1170,7 +1170,7 @@ virDomainSaveImageDefineXML(virConnectPtr conn, const char *file,
         char *absolute_file;
 
         /* We must absolutize the file path as the read is done out of process */
-        if (virFileAbsPath(file, &absolute_file) < 0) {
+        if (!(absolute_file = g_canonicalize_filename(file, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute input file path"));
             goto error;
@@ -1245,7 +1245,7 @@ virDomainCoreDump(virDomainPtr domain, const char *to, unsigned int flags)
         char *absolute_to;
 
         /* We must absolutize the file path as the save is done out of process */
-        if (virFileAbsPath(to, &absolute_to) < 0) {
+        if (!(absolute_to = g_canonicalize_filename(to, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute core file path"));
             goto error;
@@ -1329,7 +1329,7 @@ virDomainCoreDumpWithFormat(virDomainPtr domain, const char *to,
         char *absolute_to;
 
         /* We must absolutize the file path as the save is done out of process */
-        if (virFileAbsPath(to, &absolute_to) < 0) {
+        if (!(absolute_to = g_canonicalize_filename(to, NULL))) {
             virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                            _("could not build absolute core file path"));
             goto error;
@@ -6290,8 +6290,8 @@ virDomainGetBlockInfo(virDomainPtr domain, const char *disk,
  *
  * Define a domain, but does not start it.
  * This definition is persistent, until explicitly undefined with
- * virDomainUndefine(). A previous definition for this domain would be
- * overridden if it already exists.
+ * virDomainUndefine(). A previous definition for this domain with the same
+ * UUID and name would be overridden if it already exists.
  *
  * virDomainFree should be used to free the resources after the
  * domain object is no longer needed.
@@ -6333,8 +6333,8 @@ virDomainDefineXML(virConnectPtr conn, const char *xml)
  *
  * Defines a domain, but does not start it.
  * This definition is persistent, until explicitly undefined with
- * virDomainUndefine(). A previous definition for this domain would be
- * overridden if it already exists.
+ * virDomainUndefine(). A previous definition for this domain with the same
+ * UUID and name would be overridden if it already exists.
  *
  * virDomainFree should be used to free the resources after the
  * domain object is no longer needed.
@@ -11625,6 +11625,13 @@ virConnectGetDomainCapabilities(virConnectPtr conn,
  *     "cpu.user" - user cpu time spent in nanoseconds as unsigned long long.
  *     "cpu.system" - system cpu time spent in nanoseconds as unsigned long
  *                    long.
+ *     "cpu.haltpoll.success.time" - halt-polling cpu usage about the VCPU polled
+ *                                   until a virtual interrupt was delivered in
+ *                                   nanoseconds as unsigned long long.
+ *     "cpu.haltpoll.fail.time" - halt-polling cpu usage about the VCPU had to schedule
+ *                                out (either because the maximum poll time was reached
+ *                                or it needed to yield the CPU) in nanoseconds as
+ *                                unsigned long long.
  *     "cpu.cache.monitor.count" - the number of cache monitors for this domain
  *     "cpu.cache.monitor.<num>.name" - the name of cache monitor <num>
  *     "cpu.cache.monitor.<num>.vcpus" - vcpu list of cache monitor <num>
@@ -12636,6 +12643,10 @@ int virDomainGetGuestInfo(virDomainPtr domain,
  * threshold set. The index corresponds to the 'index' attribute reported in the
  * live VM XML for 'backingStore' or 'source' elements of a disk. If index is
  * given the threshold is set for the corresponding image.
+ *
+ * In case when @dev does not contain index the
+ * VIR_DOMAIN_EVENT_ID_BLOCK_THRESHOLD event may be emitted twice, once for the
+ * disk device target without index and once containing the index.
  *
  * Note that the threshold event can be registered also for destinations of a
  * 'virDomainBlockCopy' destination by using the 'index' of the 'mirror' source.

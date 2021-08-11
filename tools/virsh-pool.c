@@ -64,6 +64,7 @@
     {.name = "type", \
      .type = VSH_OT_DATA, \
      .flags = VSH_OFLAG_REQ, \
+     .completer = virshPoolTypeCompleter, \
      .help = N_("type of the pool") \
     }, \
     {.name = "print-xml", \
@@ -834,13 +835,7 @@ virshStoragePoolSorter(const void *a, const void *b)
                          virStoragePoolGetName(*pb));
 }
 
-struct virshStoragePoolList {
-    virStoragePoolPtr *pools;
-    size_t npools;
-};
-
-static void
-virshStoragePoolListFree(struct virshStoragePoolList *list)
+void virshStoragePoolListFree(struct virshStoragePoolList *list)
 {
     size_t i;
 
@@ -854,7 +849,7 @@ virshStoragePoolListFree(struct virshStoragePoolList *list)
     g_free(list);
 }
 
-static struct virshStoragePoolList *
+struct virshStoragePoolList *
 virshStoragePoolListCollect(vshControl *ctl,
                             unsigned int flags)
 {

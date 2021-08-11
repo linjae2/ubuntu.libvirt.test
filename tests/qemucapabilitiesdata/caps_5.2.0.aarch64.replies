@@ -19520,25 +19520,9 @@
 {
   "execute": "device-list-properties",
   "arguments": {
-    "typename": "virtio-net-s390"
-  },
-  "id": "libvirt-13"
-}
-
-{
-  "id": "libvirt-13",
-  "error": {
-    "class": "DeviceNotFound",
-    "desc": "Device 'virtio-net-s390' not found"
-  }
-}
-
-{
-  "execute": "device-list-properties",
-  "arguments": {
     "typename": "vfio-pci"
   },
-  "id": "libvirt-14"
+  "id": "libvirt-13"
 }
 
 {
@@ -19720,7 +19704,7 @@
       "type": "int32"
     }
   ],
-  "id": "libvirt-14"
+  "id": "libvirt-13"
 }
 
 {
@@ -19728,7 +19712,7 @@
   "arguments": {
     "typename": "scsi-hd"
   },
-  "id": "libvirt-15"
+  "id": "libvirt-14"
 }
 
 {
@@ -19905,7 +19889,7 @@
       "type": "int32"
     }
   ],
-  "id": "libvirt-15"
+  "id": "libvirt-14"
 }
 
 {
@@ -19913,7 +19897,7 @@
   "arguments": {
     "typename": "ide-hd"
   },
-  "id": "libvirt-16"
+  "id": "libvirt-15"
 }
 
 {
@@ -20041,7 +20025,7 @@
       "type": "int32"
     }
   ],
-  "id": "libvirt-16"
+  "id": "libvirt-15"
 }
 
 {
@@ -20049,11 +20033,11 @@
   "arguments": {
     "typename": "PIIX4_PM"
   },
-  "id": "libvirt-17"
+  "id": "libvirt-16"
 }
 
 {
-  "id": "libvirt-17",
+  "id": "libvirt-16",
   "error": {
     "class": "DeviceNotFound",
     "desc": "Device 'PIIX4_PM' not found"
@@ -20065,11 +20049,11 @@
   "arguments": {
     "typename": "i440FX-pcihost"
   },
-  "id": "libvirt-18"
+  "id": "libvirt-17"
 }
 
 {
-  "id": "libvirt-18",
+  "id": "libvirt-17",
   "error": {
     "class": "DeviceNotFound",
     "desc": "Device 'i440FX-pcihost' not found"
@@ -20081,11 +20065,11 @@
   "arguments": {
     "typename": "q35-pcihost"
   },
-  "id": "libvirt-19"
+  "id": "libvirt-18"
 }
 
 {
-  "id": "libvirt-19",
+  "id": "libvirt-18",
   "error": {
     "class": "DeviceNotFound",
     "desc": "Device 'q35-pcihost' not found"
@@ -20097,7 +20081,7 @@
   "arguments": {
     "typename": "usb-storage"
   },
-  "id": "libvirt-20"
+  "id": "libvirt-19"
 }
 
 {
@@ -20196,7 +20180,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-20"
+  "id": "libvirt-19"
 }
 
 {
@@ -20204,11 +20188,11 @@
   "arguments": {
     "typename": "kvm-pit"
   },
-  "id": "libvirt-21"
+  "id": "libvirt-20"
 }
 
 {
-  "id": "libvirt-21",
+  "id": "libvirt-20",
   "error": {
     "class": "DeviceNotFound",
     "desc": "Device 'kvm-pit' not found"
@@ -20220,7 +20204,7 @@
   "arguments": {
     "typename": "VGA"
   },
-  "id": "libvirt-22"
+  "id": "libvirt-21"
 }
 
 {
@@ -20315,7 +20299,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-22"
+  "id": "libvirt-21"
 }
 
 {
@@ -20323,7 +20307,7 @@
   "arguments": {
     "typename": "vmware-svga"
   },
-  "id": "libvirt-23"
+  "id": "libvirt-22"
 }
 
 {
@@ -20376,7 +20360,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-23"
+  "id": "libvirt-22"
 }
 
 {
@@ -20384,7 +20368,7 @@
   "arguments": {
     "typename": "virtio-gpu-pci"
   },
-  "id": "libvirt-24"
+  "id": "libvirt-23"
 }
 
 {
@@ -20595,7 +20579,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-24"
+  "id": "libvirt-23"
 }
 
 {
@@ -20603,7 +20587,7 @@
   "arguments": {
     "typename": "virtio-gpu-device"
   },
-  "id": "libvirt-25"
+  "id": "libvirt-24"
 }
 
 {
@@ -20686,7 +20670,7 @@
       "type": "uint32"
     }
   ],
-  "id": "libvirt-25"
+  "id": "libvirt-24"
 }
 
 {
@@ -20694,11 +20678,11 @@
   "arguments": {
     "typename": "ICH9-LPC"
   },
-  "id": "libvirt-26"
+  "id": "libvirt-25"
 }
 
 {
-  "id": "libvirt-26",
+  "id": "libvirt-25",
   "error": {
     "class": "DeviceNotFound",
     "desc": "Device 'ICH9-LPC' not found"
@@ -20710,7 +20694,7 @@
   "arguments": {
     "typename": "virtio-balloon-pci"
   },
-  "id": "libvirt-27"
+  "id": "libvirt-26"
 }
 
 {
@@ -20930,7 +20914,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-27"
+  "id": "libvirt-26"
 }
 
 {
@@ -20938,11 +20922,11 @@
   "arguments": {
     "typename": "virtio-balloon-ccw"
   },
-  "id": "libvirt-28"
+  "id": "libvirt-27"
 }
 
 {
-  "id": "libvirt-28",
+  "id": "libvirt-27",
   "error": {
     "class": "DeviceNotFound",
     "desc": "Device 'virtio-balloon-ccw' not found"
@@ -20954,7 +20938,7 @@
   "arguments": {
     "typename": "virtio-balloon-device"
   },
-  "id": "libvirt-29"
+  "id": "libvirt-28"
 }
 
 {
@@ -21052,7 +21036,7 @@
       "type": "int"
     }
   ],
-  "id": "libvirt-29"
+  "id": "libvirt-28"
 }
 
 {
@@ -21060,7 +21044,7 @@
   "arguments": {
     "typename": "nec-usb-xhci"
   },
-  "id": "libvirt-30"
+  "id": "libvirt-29"
 }
 
 {
@@ -21161,7 +21145,7 @@
       "type": "uint32"
     }
   ],
-  "id": "libvirt-30"
+  "id": "libvirt-29"
 }
 
 {
@@ -21169,7 +21153,7 @@
   "arguments": {
     "typename": "nvdimm"
   },
-  "id": "libvirt-31"
+  "id": "libvirt-30"
 }
 
 {
@@ -21211,7 +21195,7 @@
       "type": "uint64"
     }
   ],
-  "id": "libvirt-31"
+  "id": "libvirt-30"
 }
 
 {
@@ -21219,7 +21203,7 @@
   "arguments": {
     "typename": "pcie-root-port"
   },
-  "id": "libvirt-32"
+  "id": "libvirt-31"
 }
 
 {
@@ -21340,7 +21324,7 @@
       "type": "PCIELinkSpeed"
     }
   ],
-  "id": "libvirt-32"
+  "id": "libvirt-31"
 }
 
 {
@@ -21348,7 +21332,7 @@
   "arguments": {
     "typename": "usb-host"
   },
-  "id": "libvirt-33"
+  "id": "libvirt-32"
 }
 
 {
@@ -21446,7 +21430,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-33"
+  "id": "libvirt-32"
 }
 
 {
@@ -21454,7 +21438,7 @@
   "arguments": {
     "typename": "vhost-user-fs-device"
   },
-  "id": "libvirt-34"
+  "id": "libvirt-33"
 }
 
 {
@@ -21530,7 +21514,7 @@
       "type": "uint16"
     }
   ],
-  "id": "libvirt-34"
+  "id": "libvirt-33"
 }
 
 {
@@ -21538,7 +21522,7 @@
   "arguments": {
     "typename": "memory-backend-file"
   },
-  "id": "libvirt-35"
+  "id": "libvirt-34"
 }
 
 {
@@ -21608,7 +21592,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-35"
+  "id": "libvirt-34"
 }
 
 {
@@ -21616,7 +21600,7 @@
   "arguments": {
     "typename": "memory-backend-memfd"
   },
-  "id": "libvirt-36"
+  "id": "libvirt-35"
 }
 
 {
@@ -21685,7 +21669,7 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-36"
+  "id": "libvirt-35"
 }
 
 {
@@ -21693,7 +21677,7 @@
   "arguments": {
     "typename": "max-arm-cpu"
   },
-  "id": "libvirt-37"
+  "id": "libvirt-36"
 }
 
 {
@@ -21902,12 +21886,12 @@
       "type": "bool"
     }
   ],
-  "id": "libvirt-37"
+  "id": "libvirt-36"
 }
 
 {
   "execute": "query-machines",
-  "id": "libvirt-38"
+  "id": "libvirt-37"
 }
 
 {
@@ -22644,7 +22628,7 @@
       "deprecated": false
     }
   ],
-  "id": "libvirt-38"
+  "id": "libvirt-37"
 }
 
 {
@@ -22652,7 +22636,7 @@
   "arguments": {
     "typename": "virt-5.2-machine"
   },
-  "id": "libvirt-39"
+  "id": "libvirt-38"
 }
 
 {
@@ -22813,6 +22797,99 @@
     {
       "name": "virt.flash1",
       "type": "child<cfi.pflash01>"
+    }
+  ],
+  "id": "libvirt-38"
+}
+
+{
+  "execute": "qom-list-properties",
+  "arguments": {
+    "typename": "none-machine"
+  },
+  "id": "libvirt-39"
+}
+
+{
+  "return": [
+    {
+      "name": "type",
+      "type": "string"
+    },
+    {
+      "description": "Set on/off to enable/disable graphics emulation",
+      "name": "graphics",
+      "type": "bool"
+    },
+    {
+      "description": "Set memory encryption object to use",
+      "name": "memory-encryption",
+      "type": "string"
+    },
+    {
+      "description": "Linux kernel device tree file",
+      "name": "dtb",
+      "type": "string"
+    },
+    {
+      "description": "Set on/off to enable/disable usb",
+      "name": "usb",
+      "type": "bool"
+    },
+    {
+      "description": "The first phandle ID we may generate dynamically",
+      "name": "phandle-start",
+      "type": "int"
+    },
+    {
+      "description": "Include guest memory in a core dump",
+      "name": "dump-guest-core",
+      "type": "bool"
+    },
+    {
+      "description": "Linux kernel command line",
+      "name": "append",
+      "type": "string"
+    },
+    {
+      "description": "Set on to disable self-describing migration",
+      "name": "suppress-vmdesc",
+      "type": "bool"
+    },
+    {
+      "description": "Enable/disable memory merge support",
+      "name": "mem-merge",
+      "type": "bool"
+    },
+    {
+      "description": "Overrides the \"compatible\" property of the dt root node",
+      "name": "dt-compatible",
+      "type": "string"
+    },
+    {
+      "description": "Linux kernel image file",
+      "name": "kernel",
+      "type": "string"
+    },
+    {
+      "description": "Dump current dtb to a file and quit",
+      "name": "dumpdtb",
+      "type": "string"
+    },
+    {
+      "description": "Linux initial ramdisk file",
+      "name": "initrd",
+      "type": "string"
+    },
+    {
+      "description": "Firmware image",
+      "name": "firmware",
+      "type": "string"
+    },
+    {
+      "description": "Set RAM backendValid value is ID of hostmem based backend",
+      "name": "memory-backend",
+      "type": "string"
     }
   ],
   "id": "libvirt-39"

@@ -1068,7 +1068,25 @@ virDomainDefDuplicateDiskInfoValidate(const virDomainDef *def)
     return 0;
 }
 
+static int
+virDomainDefDuplicateHostdevInfoValidate(const virDomainDef *def)
+{
+    size_t i;
+    size_t j;
 
+    for (i = 0; i < def->nhostdevs; i++) {
+        for (j = i + 1; j < def->nhostdevs; j++) {
+            if (virDomainHostdevMatch(def->hostdevs[i],
+                                      def->hostdevs[j])) {
+                virReportError(VIR_ERR_XML_ERROR, "%s",
+                    _("Hostdev already exists in the domain configuration"));
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
 
 /**
  * virDomainDefDuplicateDriveAddressesValidate:
@@ -1239,26 +1257,20 @@ static int
 virDomainDefValidateAliases(const virDomainDef *def,
                             GHashTable **aliases)
 {
-    struct virDomainDefValidateAliasesData data;
-    int ret = -1;
-
     /* We are not storing copies of aliases. Don't free them. */
-    if (!(data.aliases = virHashNew(NULL)))
-        goto cleanup;
+    g_autoptr(GHashTable) tmpaliases = virHashNew(NULL);
+    struct virDomainDefValidateAliasesData data = { .aliases = tmpaliases };
 
     if (virDomainDeviceInfoIterateFlags((virDomainDef *) def,
                                         virDomainDeviceDefValidateAliasesIterator,
                                         DOMAIN_DEVICE_ITERATE_ALL_CONSOLES,
                                         &data) < 0)
-        goto cleanup;
+        return -1;
 
     if (aliases)
-        *aliases = g_steal_pointer(&data.aliases);
+        *aliases = g_steal_pointer(&tmpaliases);
 
-    ret = 0;
- cleanup:
-    virHashFree(data.aliases);
-    return ret;
+    return 0;
 }
 
 
@@ -1496,10 +1508,40 @@ virDomainDefIOMMUValidate(const virDomainDef *def)
 
 
 static int
+virDomainDefFSValidate(const virDomainDef *def)
+{
+    size_t i;
+    g_autoptr(GHashTable) dsts = virHashNew(NULL);
+
+    for (i = 0; i < def->nfss; i++) {
+        const virDomainFSDef *fs = def->fss[i];
+
+        if (fs->fsdriver != VIR_DOMAIN_FS_DRIVER_TYPE_VIRTIOFS)
+            continue;
+
+        if (virHashHasEntry(dsts, fs->dst)) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("filesystem target '%s' specified twice"),
+                           fs->dst);
+            return -1;
+        }
+
+        if (virHashAddEntry(dsts, fs->dst, (void *) 0x1) < 0)
+            return -1;
+    }
+
+    return 0;
+}
+
+
+static int
 virDomainDefValidateInternal(const virDomainDef *def,
                              virDomainXMLOption *xmlopt)
 {
     if (virDomainDefDuplicateDiskInfoValidate(def) < 0)
+        return -1;
+
+    if (virDomainDefDuplicateHostdevInfoValidate(def) < 0)
         return -1;
 
     if (virDomainDefDuplicateDriveAddressesValidate(def) < 0)
@@ -1539,6 +1581,9 @@ virDomainDefValidateInternal(const virDomainDef *def,
         return -1;
 
     if (virDomainNumaDefValidate(def->numa) < 0)
+        return -1;
+
+    if (virDomainDefFSValidate(def) < 0)
         return -1;
 
     return 0;
@@ -2006,6 +2051,16 @@ virDomainShmemDefValidate(const virDomainShmemDef *shmem)
 static int
 virDomainFSDefValidate(const virDomainFSDef *fs)
 {
+    if (fs->dst == NULL) {
+        const char *source = fs->src->path;
+        if (!source)
+            source = fs->sock;
+
+        virReportError(VIR_ERR_NO_TARGET,
+                       source ? "%s" : NULL, source);
+        return -1;
+    }
+
     if (fs->info.bootIndex &&
         fs->fsdriver != VIR_DOMAIN_FS_DRIVER_TYPE_VIRTIOFS) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",

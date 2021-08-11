@@ -82,7 +82,7 @@ typedef enum { /* virQEMUCapsFlags grouping marker for syntax-check */
 
     /* 25 */
     X_QEMU_CAPS_DEVICE, /* Is the -device arg available */
-    X_QEMU_CAPS_SDL, /* Is the new -sdl arg available */
+    QEMU_CAPS_SDL, /* support for SDL graphics is compiled into qemu */
     X_QEMU_CAPS_SMP_TOPOLOGY, /* -smp has sockets/cores/threads */
     X_QEMU_CAPS_NETDEV, /* -netdev flag & netdev_add/remove */
     X_QEMU_CAPS_RTC, /* The -rtc flag for clock options */
@@ -180,7 +180,7 @@ typedef enum { /* virQEMUCapsFlags grouping marker for syntax-check */
 
     /* 95 */
     QEMU_CAPS_NEC_USB_XHCI, /* -device nec-usb-xhci */
-    QEMU_CAPS_VIRTIO_S390, /* -device virtio-*-s390 */
+    X_QEMU_CAPS_VIRTIO_S390, /* -device virtio-*-s390 */
     X_QEMU_CAPS_BALLOON_EVENT, /* Async event for balloon changes */
     X_QEMU_CAPS_NETDEV_BRIDGE, /* bridge helper support */
     QEMU_CAPS_SCSI_LSI, /* -device lsi */
@@ -483,7 +483,7 @@ typedef enum { /* virQEMUCapsFlags grouping marker for syntax-check */
     /* 310 */
     QEMU_CAPS_MACHINE_PSERIES_CAP_HTM, /* -machine pseries.cap-htm */
     QEMU_CAPS_USB_STORAGE_WERROR, /* -device usb-storage,werror=..,rerror=.. */
-    X_QEMU_CAPS_EGL_HEADLESS, /* -display egl-headless */
+    QEMU_CAPS_EGL_HEADLESS, /* -display egl-headless */
     QEMU_CAPS_VFIO_PCI_DISPLAY, /* -device vfio-pci.display */
     QEMU_CAPS_BLOCKDEV, /* -blockdev and blockdev-add are supported */
 
@@ -610,6 +610,13 @@ typedef enum { /* virQEMUCapsFlags grouping marker for syntax-check */
     QEMU_CAPS_COMPAT_DEPRECATED, /* -compat deprecated-(input|output) is supported */
     QEMU_CAPS_ACPI_INDEX, /* PCI device 'acpi-index' property */
     QEMU_CAPS_INPUT_LINUX, /* -object input-linux */
+    QEMU_CAPS_VIRTIO_GPU_GL_PCI, /* -device virtio-gpu-gl-pci */
+    QEMU_CAPS_VIRTIO_VGA_GL, /* -device virtio-vga-gl */
+
+    /* 405 */
+    QEMU_CAPS_MACHINE_CONFIDENTAL_GUEST_SUPPORT, /* -machine confidential-guest-support */
+    QEMU_CAPS_QUERY_DISPLAY_OPTIONS, /* 'query-display-options' qmp command present */
+    QEMU_CAPS_S390_PV_GUEST, /* -object s390-pv-guest,... */
 
     QEMU_CAPS_LAST /* this must always be the last item */
 } virQEMUCapsFlags;
@@ -769,6 +776,9 @@ int virQEMUCapsFillDomainCaps(virQEMUCaps *qemuCaps,
                               virFirmware **firmwares,
                               size_t nfirmwares);
 
+void virQEMUCapsFillDomainMemoryBackingCaps(virQEMUCaps *qemuCaps,
+                                            virDomainCapsMemoryBacking *memoryBacking);
+
 void virQEMUCapsFillDomainDeviceGraphicsCaps(virQEMUCaps *qemuCaps,
                                              virDomainCapsDeviceGraphics *dev);
 
@@ -798,6 +808,9 @@ virQEMUCapsCPUFeatureFromQEMU(virQEMUCaps *qemuCaps,
 
 virSEVCapability *
 virQEMUCapsGetSEVCapabilities(virQEMUCaps *qemuCaps);
+
+bool
+virQEMUCapsGetKVMSupportsSecureGuest(virQEMUCaps *qemuCaps) G_GNUC_NO_INLINE;
 
 virArch virQEMUCapsArchFromString(const char *arch);
 const char *virQEMUCapsArchToString(virArch arch);

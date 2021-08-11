@@ -421,9 +421,6 @@ qemuDomainAssignS390Addresses(virDomainDef *def,
         if (!(addrs = virDomainCCWAddressSetCreateFromDomain(def)))
             goto cleanup;
 
-    } else if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_S390)) {
-        /* deal with legacy virtio-s390 */
-        qemuDomainPrimeVirtioDeviceAddresses(def, VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390);
     }
 
     ret = 0;
@@ -2244,10 +2241,7 @@ qemuDomainAssignDevicePCISlots(virDomainDef *def,
 
         /* don't touch s390 devices */
         if (virDeviceInfoPCIAddressIsPresent(&def->disks[i]->info) ||
-            def->disks[i]->info.type ==
-            VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390 ||
-            def->disks[i]->info.type ==
-            VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW)
+            def->disks[i]->info.type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW)
             continue;
 
         /* Also ignore virtio-mmio disks if our machine allows them */
@@ -3258,8 +3252,7 @@ qemuDomainReleaseDeviceAddress(virDomainObj *vm,
 int
 qemuDomainEnsureVirtioAddress(bool *releaseAddr,
                               virDomainObj *vm,
-                              virDomainDeviceDef *dev,
-                              const char *devicename)
+                              virDomainDeviceDef *dev)
 {
     virDomainDeviceInfo *info = virDomainDeviceGetInfo(dev);
     qemuDomainObjPrivate *priv = vm->privateData;
@@ -3271,12 +3264,6 @@ qemuDomainEnsureVirtioAddress(bool *releaseAddr,
         if (qemuDomainIsS390CCW(vm->def) &&
             virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_CCW))
             info->type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW;
-        else if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_VIRTIO_S390))
-            info->type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390;
-    } else {
-        if (!qemuDomainCheckCCWS390AddressSupport(vm->def, info, priv->qemuCaps,
-                                                  devicename))
-            return -1;
     }
 
     if (info->type == VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW) {

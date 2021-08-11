@@ -331,7 +331,8 @@ testBuildCapabilities(virConnectPtr conn)
                                        i, privconn->cells[i].mem,
                                        privconn->cells[i].numCpus, &cpu_cells,
                                        0, NULL,
-                                       nPages, &pages);
+                                       nPages, &pages,
+                                       NULL);
     }
 
     for (i = 0; i < G_N_ELEMENTS(guest_types); i++) {
@@ -2077,6 +2078,68 @@ testDomainGetState(virDomainPtr domain,
     virDomainObjEndAPI(&privdom);
 
     return 0;
+}
+
+static int
+testDomainGetControlInfo(virDomainPtr dom,
+                         virDomainControlInfoPtr info,
+                         unsigned int flags)
+{
+    virDomainObj *vm;
+    testDomainObjPrivate *priv;
+    int ret = -1;
+
+    virCheckFlags(0, -1);
+
+    if (!(vm = testDomObjFromDomain(dom)))
+        goto cleanup;
+
+    if (virDomainObjCheckActive(vm) < 0)
+        goto cleanup;
+
+    priv = vm->privateData;
+
+    memset(info, 0, sizeof(*info));
+
+    if (priv->seconds > 0 && priv->seconds < 10000) {
+        info->state = VIR_DOMAIN_CONTROL_JOB;
+        info->stateTime = priv->seconds;
+    } else if (priv->seconds < 30000 && priv->seconds >= 10000) {
+        info->state = VIR_DOMAIN_CONTROL_OCCUPIED;
+        info->stateTime = priv->seconds - 10000;
+    } else if (priv->seconds < 60000 && priv->seconds >= 30000) {
+        info->state = VIR_DOMAIN_CONTROL_ERROR;
+        switch (priv->seconds % 4) {
+        case 0:
+            info->details = VIR_DOMAIN_CONTROL_ERROR_REASON_NONE;
+            break;
+
+        case 1:
+            info->details = VIR_DOMAIN_CONTROL_ERROR_REASON_UNKNOWN;
+            break;
+
+        case 2:
+            info->details = VIR_DOMAIN_CONTROL_ERROR_REASON_MONITOR;
+            break;
+
+        case 3:
+            info->details = VIR_DOMAIN_CONTROL_ERROR_REASON_INTERNAL;
+            break;
+
+        default:
+            info->details = VIR_DOMAIN_CONTROL_ERROR_REASON_NONE;
+            break;
+        }
+        info->stateTime = priv->seconds - 30000;
+    } else {
+        info->state = VIR_DOMAIN_CONTROL_OK;
+    }
+
+    ret = 0;
+
+ cleanup:
+    virDomainObjEndAPI(&vm);
+    return ret;
 }
 
 static int
@@ -5006,6 +5069,66 @@ testDomainInterfaceAddressFromNet(testDriver *driver,
     return ret;
 }
 
+static int
+testDomainGetSecurityLabel(virDomainPtr dom,
+                           virSecurityLabelPtr seclabel)
+{
+    virDomainObj *vm;
+    int ret = -1;
+
+    memset(seclabel, 0, sizeof(*seclabel));
+
+    if (!(vm = testDomObjFromDomain(dom)))
+        return -1;
+
+    if (virDomainObjIsActive(vm)) {
+        if (virStrcpyStatic(seclabel->label, "libvirt-test") < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("security label exceeds maximum: %zu"),
+                           sizeof(seclabel->label) - 1);
+            goto cleanup;
+        }
+
+        seclabel->enforcing = 1;
+    }
+
+    ret = 0;
+
+ cleanup:
+    virDomainObjEndAPI(&vm);
+    return ret;
+}
+
+static int
+testNodeGetSecurityModel(virConnectPtr conn,
+                         virSecurityModelPtr secmodel)
+{
+    testDriver *driver = conn->privateData;
+
+    memset(secmodel, 0, sizeof(*secmodel));
+
+    if (driver->caps->host.nsecModels == 0 ||
+        driver->caps->host.secModels[0].model == NULL)
+        return 0;
+
+    if (virStrcpy(secmodel->model, driver->caps->host.secModels[0].model,
+                  VIR_SECURITY_MODEL_BUFLEN) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("security model string exceeds max %d bytes"),
+                       VIR_SECURITY_MODEL_BUFLEN - 1);
+        return -1;
+    }
+
+    if (virStrcpy(secmodel->doi, driver->caps->host.secModels[0].doi,
+                  VIR_SECURITY_DOI_BUFLEN) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("security DOI string exceeds max %d bytes"),
+                       VIR_SECURITY_DOI_BUFLEN - 1);
+        return -1;
+    }
+
+    return 0;
+}
 
 static int
 testDomainInterfaceAddresses(virDomainPtr dom,
@@ -9274,6 +9397,7 @@ static virHypervisorDriver testHypervisorDriver = {
     .domainGetHostname = testDomainGetHostname, /* 5.5.0 */
     .domainGetInfo = testDomainGetInfo, /* 0.1.1 */
     .domainGetState = testDomainGetState, /* 0.9.2 */
+    .domainGetControlInfo = testDomainGetControlInfo, /* 7.6.0 */
     .domainGetTime = testDomainGetTime, /* 5.4.0 */
     .domainSetTime = testDomainSetTime, /* 5.7.0 */
     .domainSave = testDomainSave, /* 0.3.2 */
@@ -9295,6 +9419,8 @@ static virHypervisorDriver testHypervisorDriver = {
     .domainGetVcpus = testDomainGetVcpus, /* 0.7.3 */
     .domainGetVcpuPinInfo = testDomainGetVcpuPinInfo, /* 1.2.18 */
     .domainGetMaxVcpus = testDomainGetMaxVcpus, /* 0.7.3 */
+    .domainGetSecurityLabel = testDomainGetSecurityLabel, /* 7.5.0 */
+    .nodeGetSecurityModel = testNodeGetSecurityModel, /* 7.5.0 */
     .domainGetXMLDesc = testDomainGetXMLDesc, /* 0.1.4 */
     .domainSetMemoryParameters = testDomainSetMemoryParameters, /* 5.6.0 */
     .domainGetMemoryParameters = testDomainGetMemoryParameters, /* 5.6.0 */

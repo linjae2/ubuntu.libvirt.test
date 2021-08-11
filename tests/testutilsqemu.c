@@ -73,7 +73,7 @@ static const char *const riscv64_machines[] = {
     "spike_v1.10", "spike_v1.9.1", "sifive_e", "virt", "sifive_u", NULL
 };
 static const char *const s390x_machines[] = {
-    "s390-virtio", "s390-ccw-virtio", "s390-ccw", NULL
+    "s390-ccw-virtio", "s390-ccw", NULL
 };
 static const char *const sparc_machines[] = {
     "SS-5", "LX", "SPARCClassic", "SPARCbook",
@@ -585,11 +585,8 @@ testQemuGetLatestCaps(void)
         "s390x",
         "x86_64",
     };
-    GHashTable *capslatest;
+    g_autoptr(GHashTable) capslatest = virHashNew(g_free);
     size_t i;
-
-    if (!(capslatest = virHashNew(g_free)))
-        goto error;
 
     VIR_TEST_VERBOSE("");
 
@@ -597,18 +594,14 @@ testQemuGetLatestCaps(void)
         char *cap = testQemuGetLatestCapsForArch(archs[i], "xml");
 
         if (!cap || virHashAddEntry(capslatest, archs[i], cap) < 0)
-            goto error;
+            return NULL;
 
         VIR_TEST_VERBOSE("latest caps for %s: %s", archs[i], cap);
     }
 
     VIR_TEST_VERBOSE("");
 
-    return capslatest;
-
- error:
-    virHashFree(capslatest);
-    return NULL;
+    return g_steal_pointer(&capslatest);
 }
 
 

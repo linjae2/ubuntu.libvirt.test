@@ -108,11 +108,13 @@ struct _virCapsHostNUMACell {
     virNumaDistance *distances;
     int npageinfo;
     virCapsHostNUMACellPageInfo *pageinfo;
+    GArray *caches; /* virNumaCache */
 };
 
 struct _virCapsHostNUMA {
     gint refs;
     GPtrArray *cells;
+    GArray *interconnects; /* virNumaInterconnect */
 };
 
 struct _virCapsHostSecModelLabel {
@@ -253,7 +255,8 @@ virCapabilitiesHostNUMAAddCell(virCapsHostNUMA *caps,
                                int ndistances,
                                virNumaDistance **distances,
                                int npageinfo,
-                               virCapsHostNUMACellPageInfo **pageinfo);
+                               virCapsHostNUMACellPageInfo **pageinfo,
+                               GArray **caches);
 
 virCapsGuestMachine **
 virCapabilitiesAllocMachines(const char *const *names,

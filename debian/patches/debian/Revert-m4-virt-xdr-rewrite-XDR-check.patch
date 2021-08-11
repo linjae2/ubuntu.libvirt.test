@@ -33,19 +33,19 @@ As soon as we rebuild agains 2.32 which is about to arrive we can drop
 this revert and follow upstream as 2.32 dropped the option to enable
 --enable-obsolete-rpc.
 ---
- meson.build | 2 --
- 1 file changed, 2 deletions(-)
+ meson.build | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/meson.build b/meson.build
-index da0157b..9121ea5 100644
+index b8d2d46..35109d3 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -1429,8 +1429,6 @@ endif
- # use extra library as it's provided by libc directly.
+@@ -861,7 +861,7 @@ endforeach
  if host_machine.system() == 'windows'
    xdr_dep = cc.find_library('portablexdr', required: false)
--elif host_machine.system() == 'linux'
+ elif host_machine.system() == 'linux'
 -  xdr_dep = dependency('libtirpc', required: false)
++  xdr_dep = cc.find_library('c', required: false)
+ elif host_machine.system() in [ 'freebsd', 'darwin' ]
+   xdr_dep = cc.find_library('c', required: false)
  else
-   xdr_dep = declare_dependency()
- endif

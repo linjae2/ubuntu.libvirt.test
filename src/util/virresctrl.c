@@ -542,7 +542,7 @@ virResctrlGetCacheInfo(virResctrlInfo *resctrl,
 
         type = virResctrlTypeFromString(endptr);
         if (type < 0) {
-            VIR_DEBUG("Cannot parse resctrl cache info type '%s'", endptr);
+            VIR_DEBUG("Ignoring resctrl cache info with suffix '%s'", endptr);
             continue;
         }
 
@@ -662,7 +662,7 @@ virResctrlGetMemoryBandwidthInfo(virResctrlInfo *resctrl)
     rv = virFileReadValueUint(&i_membw->max_allocation,
                               SYSFS_RESCTRL_PATH "/info/MB/num_closids");
     if (rv == -2) {
-         /* Similar reasoning to min_bandwidth above. */
+        /* Similar reasoning to min_bandwidth above. */
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("Cannot get max allocation from resctrl memory info"));
     }
@@ -1104,8 +1104,10 @@ virResctrlAllocUpdateMask(virResctrlAlloc *alloc,
         VIR_EXPAND_N(a_type->masks, a_type->nmasks,
                      cache - a_type->nmasks + 1);
 
-    if (!a_type->masks[cache])
-        a_type->masks[cache] = virBitmapNewCopy(mask);
+    if (a_type->masks[cache])
+        virBitmapFree(a_type->masks[cache]);
+
+    a_type->masks[cache] = virBitmapNewCopy(mask);
 
     return 0;
 }
@@ -1437,7 +1439,6 @@ virResctrlAllocParseProcessMemoryBandwidth(virResctrlInfo *resctrl,
     if (alloc->mem_bw->nbandwidths <= id) {
         VIR_EXPAND_N(alloc->mem_bw->bandwidths, alloc->mem_bw->nbandwidths,
                      id - alloc->mem_bw->nbandwidths + 1);
-        return -1;
     }
     if (!alloc->mem_bw->bandwidths[id])
         alloc->mem_bw->bandwidths[id] = g_new0(unsigned int, 1);

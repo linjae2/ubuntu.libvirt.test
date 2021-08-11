@@ -21,6 +21,7 @@ main(void)
 #else
 
 # define DOM_UUID "ef861801-45b9-11cb-88e3-afbfe5370493"
+# define SECURITY_LABEL "libvirt-test (enforcing)"
 
 static const char *dominfo_fc4 = "\
 Id:             2\n\
@@ -34,6 +35,9 @@ Used memory:    131072 KiB\n\
 Persistent:     yes\n\
 Autostart:      disable\n\
 Managed save:   no\n\
+Security model: testSecurity\n\
+Security DOI:   \n\
+Security label: " SECURITY_LABEL "\n\
 \n";
 static const char *domuuid_fc4 = DOM_UUID "\n\n";
 static const char *domid_fc4 = "2\n\n";
@@ -246,6 +250,13 @@ static int testCompareDomstateByName(const void *data G_GNUC_UNUSED)
     return testCompareOutputLit(exp, NULL, argv);
 }
 
+static int testCompareDomControlInfoByName(const void *data G_GNUC_UNUSED)
+{
+    const char *const argv[] = { VIRSH_CUSTOM, "domcontrol", "fc4", NULL };
+    const char *exp = "ok\n\n";
+    return testCompareOutputLit(exp, NULL, argv);
+}
+
 struct testInfo {
     const char *const *argv;
     const char *result;
@@ -328,6 +339,10 @@ mymain(void)
 
     if (virTestRun("virsh domstate (by name)",
                    testCompareDomstateByName, NULL) != 0)
+        ret = -1;
+
+    if (virTestRun("virsh domcontrol (by name)",
+                   testCompareDomControlInfoByName, NULL) != 0)
         ret = -1;
 
     /* It's a bit awkward listing result before argument, but that's a

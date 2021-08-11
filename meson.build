@@ -1,6 +1,6 @@
 project(
   'libvirt', 'c',
-  version: '7.4.0',
+  version: '7.6.0',
   license: 'LGPLv2+',
   meson_version: '>= 0.54.0',
   default_options: [
@@ -224,6 +224,14 @@ alloc_max = run_command(
   'print(min(2**(@0@ * 8 - 1) - 1, 2**(@1@ * 8) - 1))'.format(ptrdiff_max, size_max),
 )
 
+# sanitizer instrumentation may enlarge stack frames
+stack_frame_size = get_option('b_sanitize') == 'none' ? 4096 : 8192
+
+# array_bounds=2 check triggers false positive on some GCC
+# versions when using sanitizers. Seen on Fedora 34 with
+# GCC 11.1.1
+array_bounds = get_option('b_sanitize') == 'none' ? 2 : 1
+
 cc_flags += [
   '-fasynchronous-unwind-tables',
   '-fexceptions',
@@ -234,7 +242,8 @@ cc_flags += [
   '-Waddress-of-packed-member',
   '-Waggressive-loop-optimizations',
   '-Walloc-size-larger-than=@0@'.format(alloc_max.stdout().strip()),
-  '-Warray-bounds=2',
+  '-Walloca',
+  '-Warray-bounds=@0@'.format(array_bounds),
   '-Wattribute-alias=2',
   '-Wattribute-warning',
   '-Wattributes',
@@ -278,7 +287,7 @@ cc_flags += [
   '-Wformat-y2k',
   '-Wformat-zero-length',
   '-Wframe-address',
-  '-Wframe-larger-than=4096',
+  '-Wframe-larger-than=@0@'.format(stack_frame_size),
   '-Wfree-nonheap-object',
   '-Whsa',
   '-Wif-not-aligned',
@@ -390,7 +399,6 @@ cc_flags += [
   '-Wvariadic-macros',
   '-Wvector-operation-performance',
   '-Wvla',
-  '-Wvla-larger-then=4031',
   '-Wvolatile-register-var',
   '-Wwrite-strings',
 ]
@@ -420,7 +428,7 @@ if get_option('warning_level') == '2'
   if supported_cc_flags.contains('-Wlogical-op')
     # Broken in 6.0 and later
     #     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69602
-    w_logical_op_args = ['-O2', '-Wlogical-op', '-Werror']
+    w_logical_op_args = [ '-O2', '-Wlogical-op', '-Werror' ]
     w_logical_op_code = '''
       #define TEST1 1
       #define TEST2 TEST1
@@ -436,7 +444,7 @@ if get_option('warning_level') == '2'
   endif
 
   # Check whether clang gives bogus warning for -Wdouble-promotion.
-  w_double_promotion_args = ['-O2', '-Wdouble-promotion', '-Werror']
+  w_double_promotion_args = [ '-O2', '-Wdouble-promotion', '-Werror' ]
   w_double_promotion_code = '''
     #include <math.h>
 
@@ -446,12 +454,12 @@ if get_option('warning_level') == '2'
     }
   '''
   if cc.compiles(w_double_promotion_code, args: w_double_promotion_args, name: '-Wdouble-promotion')
-    supported_cc_flags += ['-Wdouble-promotion']
+    supported_cc_flags += [ '-Wdouble-promotion' ]
   endif
 
   # Clang complains about unused static inline functions which are common
   # with G_DEFINE_AUTOPTR_CLEANUP_FUNC.
-  w_unused_function_args = ['-Wunused-function', '-Werror']
+  w_unused_function_args = [ '-Wunused-function', '-Werror' ]
   w_unused_function_code = '''
     static inline void foo(void) {}
 
@@ -459,7 +467,7 @@ if get_option('warning_level') == '2'
   '''
   # -Wunused-function is implied by -Wall, we must turn it off explicitly.
   if not cc.compiles(w_unused_function_code, args: w_unused_function_args)
-    supported_cc_flags += ['-Wno-unused-function']
+    supported_cc_flags += [ '-Wno-unused-function' ]
   endif
 
 endif
@@ -488,9 +496,12 @@ libvirt_nodelete = cc.get_supported_link_arguments([
   '-Wl,-z,nodelete',
 ])
 
-libvirt_no_undefined = cc.get_supported_link_arguments([
-  '-Wl,-z,defs',
-])
+libvirt_no_undefined = []
+if get_option('b_sanitize') == 'none'
+  libvirt_no_undefined += cc.get_supported_link_arguments([
+    '-Wl,-z,defs',
+  ])
+endif
 
 libvirt_no_indirect = cc.get_supported_link_arguments([
   '-Wl,--no-copy-dt-needed-entries',
@@ -622,22 +633,6 @@ endforeach
 
 # check for kernel headers required by src/util/virnetdevbridge.c
 if host_machine.system() == 'linux'
-  # Various kernel versions have headers that are not self-standing, but
-  # yet are incompatible with the corresponding glibc headers.  In order
-  # to guarantee compilation across a wide range of versions (from RHEL 5
-  # to rawhide), we first have to probe whether glibc and kernel can be
-  # used in tandem; and if not, provide workarounds that ensure that
-  # ABI-compatible IPv6 types are present for use by the kernel headers.
-  netinet_workaround_code = '''
-  #include <netinet/in.h>
-  #include <linux/in6.h>
-
-  int main(void) { return 0; }
-  '''
-  if not cc.compiles(netinet_workaround_code)
-    conf.set('NETINET_LINUX_WORKAROUND', 1)
-  endif
-
   required_headers = [
     'linux/param.h',
     'linux/sockios.h',
@@ -794,9 +789,9 @@ required_programs = [
 ]
 
 required_programs_groups = [
-  {'name':'rpcgen', 'prog':['rpcgen', 'portable-rpcgen']},
-  {'name':'rst2html', 'prog':['rst2html5', 'rst2html5.py', 'rst2html5-3']},
-  {'name':'rst2man', 'prog':['rst2man', 'rst2man.py', 'rst2man-3']},
+  { 'name': 'rpcgen', 'prog': [ 'rpcgen', 'portable-rpcgen' ] },
+  { 'name': 'rst2html', 'prog': [ 'rst2html5', 'rst2html5.py', 'rst2html5-3' ] },
+  { 'name': 'rst2man', 'prog': [ 'rst2man', 'rst2man.py', 'rst2man-3' ] },
 ]
 
 if host_machine.system() == 'freebsd'
@@ -804,7 +799,7 @@ if host_machine.system() == 'freebsd'
 endif
 
 foreach name : required_programs
-  prog = find_program(name, required: true, dirs: libvirt_sbin_path)
+  prog = find_program(name, dirs: libvirt_sbin_path)
   varname = name.underscorify()
   conf.set_quoted(varname.to_upper(), prog.path())
   conf.set_quoted('@0@_PATH'.format(varname.to_upper()), prog.path())
@@ -812,7 +807,7 @@ foreach name : required_programs
 endforeach
 
 foreach item : required_programs_groups
-  prog = find_program(item.get('prog'), required: true, dirs: libvirt_sbin_path)
+  prog = find_program(item.get('prog'), dirs: libvirt_sbin_path)
   varname = item.get('name').underscorify()
   conf.set_quoted(varname.to_upper(), prog.path())
   set_variable('@0@_prog'.format(varname), prog)
@@ -858,31 +853,74 @@ foreach name : optional_programs
 endforeach
 
 
+# early checks where lot of other packages depend on the result
+
+# On MinGW portablexdr provides XDR functions, on linux they are
+# provided by libtirpc and on FreeBSD/macOS there is no need to
+# use extra library as it's provided by libc directly.
+if host_machine.system() == 'windows'
+  xdr_dep = cc.find_library('portablexdr', required: false)
+elif host_machine.system() == 'linux'
+  xdr_dep = dependency('libtirpc', required: false)
+elif host_machine.system() in [ 'freebsd', 'darwin' ]
+  xdr_dep = cc.find_library('c', required: false)
+else
+  xdr_dep = dependency('', required: false)
+endif
+
+if not get_option('driver_remote').disabled()
+  use_remote = true
+
+  if not xdr_dep.found()
+    use_remote = false
+    if get_option('driver_remote').enabled()
+      error('XDR is required for remote driver')
+    endif
+  endif
+
+  if use_remote
+    conf.set('WITH_REMOTE', 1)
+  endif
+endif
+
+
 # generic build dependencies
 
-if host_machine.system() == 'linux' and cc.has_header('sys/acl.h')
-  acl_dep = cc.find_library('acl', required: false)
-  conf.set('WITH_SYS_ACL_H', 1)
-else
-  acl_dep = dependency('', required: false)
+# FIXME rewrite to use dependency()
+acl_dep = cc.find_library('acl', required: false)
+if acl_dep.found()
+  conf.set('WITH_LIBACL', 1)
 endif
 
 apparmor_dep = dependency('libapparmor', required: get_option('apparmor'))
 if apparmor_dep.found()
-  if get_option('apparmor_profiles')
-    conf.set('WITH_APPARMOR_PROFILES', 1)
-  endif
   conf.set('WITH_APPARMOR', 1)
   conf.set_quoted('APPARMOR_DIR', sysconfdir / 'apparmor.d')
   conf.set_quoted('APPARMOR_PROFILES_PATH', '/sys/kernel/security/apparmor/profiles')
 endif
 
+if not get_option('apparmor_profiles').disabled()
+  apparmor_profiles_enable = true
+
+  if not conf.has('WITH_APPARMOR')
+    apparmor_profiles_enable = false
+    if get_option('apparmor_profiles').enabled()
+      error('Cannot enable apparmor_profiles without apparmor')
+    endif
+  endif
+
+  if apparmor_profiles_enable
+    conf.set('WITH_APPARMOR_PROFILES', 1)
+  endif
+endif
+
+# FIXME rewrite to use dependency() once we can use 2.4.48
 attr_dep = cc.find_library('attr', required: get_option('attr'))
 if attr_dep.found()
   conf.set('WITH_LIBATTR', 1)
 endif
 
-audit_dep = cc.find_library('audit', required: get_option('audit'))
+audit_dep = dependency('audit', required: get_option('audit'))
 if audit_dep.found()
   conf.set('WITH_AUDIT', 1)
 endif
@@ -896,7 +934,7 @@ if blkid_dep.found()
   conf.set('WITH_BLKID', 1)
 endif
 
-capng_dep = cc.find_library('cap-ng', required: get_option('capng'))
+capng_dep = dependency('libcap-ng', required: get_option('capng'))
 if capng_dep.found()
   conf.set('WITH_CAPNG', 1)
 endif
@@ -904,16 +942,6 @@ endif
 curl_version = '7.19.1'
 curl_dep = dependency('libcurl', version: '>=' + curl_version, required: get_option('curl'))
 if curl_dep.found()
-  # XXX as of libcurl-devel-7.20.1-3.fc13.x86_64, curl ships a version
-  # of <curl/curl.h> that #defines several wrapper macros around underlying
-  # functions to add type safety for gcc only.  However, these macros
-  # spuriously trip gcc's -Wlogical-op warning.  Avoid the warning by
-  # disabling the wrappers; even if it removes some type-check safety.
-  curl_dep = declare_dependency(
-    compile_args: [ '-DCURL_DISABLE_TYPECHECK' ],
-    dependencies: [ curl_dep ],
-  )
-
   conf.set('WITH_CURL', 1)
 endif
 
@@ -1004,28 +1032,16 @@ endif
 
 libpcap_version = '1.5.0'
 if not get_option('libpcap').disabled()
-  libpcap_dep = dependency('libpcap', version: '>=' + libpcap_version, required: false)
-
-  if not libpcap_dep.found()
-    pcap_config_prog = find_program('pcap-config', required: get_option('libpcap'))
-    if pcap_config_prog.found()
-      pcap_args = run_command(pcap_config_prog, '--cflags').stdout().strip().split()
-      pcap_libs = run_command(pcap_config_prog, '--libs').stdout().strip().split()
-      libpcap_dep = declare_dependency(
-        compile_args: pcap_args,
-        link_args: pcap_libs,
-      )
-    endif
+  libpcap_dep = dependency('pcap', version: '>=' + libpcap_version, required: get_option('libpcap'))
+  if libpcap_dep.found()
+    conf.set('WITH_LIBPCAP', 1)
   endif
 else
   libpcap_dep = dependency('', required: false)
 endif
-if libpcap_dep.found()
-  conf.set('WITH_LIBPCAP', 1)
-endif
 
 libssh_version = '0.7'
-if get_option('driver_remote').enabled()
+if conf.has('WITH_REMOTE')
   libssh_dep = dependency('libssh', version: '>=' + libssh_version, required: get_option('libssh'))
   if libssh_dep.found()
     conf.set('WITH_LIBSSH', 1)
@@ -1048,7 +1064,7 @@ else
 endif
 
 libssh2_version = '1.3'
-if get_option('driver_remote').enabled()
+if conf.has('WITH_REMOTE')
   libssh2_dep = dependency('libssh2', version: '>=' + libssh2_version, required: get_option('libssh2'))
   if libssh2_dep.found()
     conf.set('WITH_SSH2', 1)
@@ -1060,14 +1076,16 @@ endif
 libxml_version = '2.9.1'
 libxml_dep = dependency('libxml-2.0', version: '>=' + libxml_version)
 
-libm_dep = cc.find_library('m', required : false)
+libm_dep = cc.find_library('m')
 
 netcf_version = '0.1.8'
-netcf_dep = dependency('netcf', version: '>=' + netcf_version, required: get_option('netcf'))
 if not get_option('netcf').disabled()
+  netcf_dep = dependency('netcf', version: '>=' + netcf_version, required: get_option('netcf'))
   if netcf_dep.found()
     conf.set('WITH_NETCF', 1)
   endif
+else
+  netcf_dep = dependency('', required: false)
 endif
 
 have_gnu_gettext_tools = false
@@ -1109,7 +1127,7 @@ else
   intl_dep = dependency('', required: false)
 endif
 
-numactl_version = '2.0.6'
+# FIXME rewrite to use dependency() once we can use 2.0.14
 numactl_dep = cc.find_library('numa', required: get_option('numactl'))
 if numactl_dep.found()
   conf.set('WITH_NUMACTL', 1)
@@ -1123,12 +1141,6 @@ parallels_sdk_dep = dependency('parallels-sdk', version: '>=' + parallels_sdk_ve
 
 pciaccess_version = '0.10.0'
 pciaccess_dep = dependency('pciaccess', version: '>=' + pciaccess_version, required: get_option('pciaccess'))
-
-if not get_option('polkit').disabled() and host_machine.system() != 'windows'
-  pkcheck_prog = find_program('pkcheck', required: false, dirs: libvirt_sbin_path)
-else
-  pkcheck_prog = dependency('', required: false)
-endif
 
 rbd_dep = cc.find_library('rbd', required: false)
 rados_dep = cc.find_library('rados', required: false)
@@ -1169,22 +1181,22 @@ if not get_option('readline').disabled()
       endif
     endif
   endif
+  if readline_dep.found()
+    # We need this to avoid compilation issues with modern compilers.
+    # See 9ea3424a178 for a more detailed explanation
+    readline_dep = declare_dependency(
+      compile_args: [ '-D_FUNCTION_DEF' ],
+      dependencies: [ readline_dep ],
+    )
+
+    conf.set('WITH_READLINE', 1)
+  endif
 else
   readline_dep = dependency('', required: false)
 endif
-if readline_dep.found()
-  # We need this to avoid compilation issues with modern compilers.
-  # See 9ea3424a178 for a more detailed explanation
-  readline_dep = declare_dependency(
-    compile_args: [ '-D_FUNCTION_DEF' ],
-    dependencies: [ readline_dep ],
-  )
-
-  conf.set('WITH_READLINE', 1)
-endif
 
 if not get_option('sanlock').disabled()
-  sanlock_dep = dependency('libsanlock_client', required: false)
+  sanlock_dep = dependency('libsanlock_client', required: get_option('sanlock'))
 
   if sanlock_dep.found()
     conf.set('WITH_SANLOCK', 1)
@@ -1196,7 +1208,7 @@ if not get_option('sanlock').disabled()
 endif
 
 sasl_version = '2.1.26'
-if get_option('driver_remote').enabled()
+if conf.has('WITH_REMOTE')
   sasl_dep = dependency('libsasl2', version: '>=' + sasl_version, required: get_option('sasl'))
   if sasl_dep.found()
     conf.set('WITH_SASL', 1)
@@ -1205,7 +1217,7 @@ else
   sasl_dep = dependency('', required: false)
 endif
 
-selinux_dep = cc.find_library('selinux', required: get_option('selinux'))
+selinux_dep = dependency('libselinux', required: get_option('selinux'))
 if selinux_dep.found()
   selinux_mount = get_option('selinux_mount')
   if selinux_mount == ''
@@ -1219,7 +1231,7 @@ if selinux_dep.found()
   conf.set('WITH_SELINUX', 1)
 endif
 
-thread_dep = dependency('threads', required: true)
+thread_dep = dependency('threads')
 pthread_sigmask_code = '''
   #include <sys/types.h>
   #include <signal.h>
@@ -1304,17 +1316,6 @@ if wireshark_dep.found()
   endif
 endif
 
-# On MinGW portablexdr provides XDR functions, on linux they are
-# provided by libtirpc and on FreeBSD/macOS there is no need to
-# use extra library as it's provided by libc directly.
-if host_machine.system() == 'windows'
-  xdr_dep = cc.find_library('portablexdr', required: false)
-elif host_machine.system() == 'linux'
-  xdr_dep = dependency('libtirpc', required: false)
-else
-  xdr_dep = declare_dependency()
-endif
-
 yajl_version = '2.0.3'
 yajl_dep = dependency('yajl', version: '>=' + yajl_version, required: get_option('yajl'))
 if yajl_dep.found()
@@ -1335,9 +1336,7 @@ if yajl_dep.found()
   #
   # [1] https://github.com/Homebrew/homebrew-core/pull/74516
   if host_machine.system() != 'linux'
-    pkg_config_prog = find_program('pkg-config')
-    rc = run_command(pkg_config_prog, '--cflags', 'yajl', check: true)
-    cflags = rc.stdout().strip()
+    cflags = yajl_dep.get_pkgconfig_variable('cflags')
     if cflags.contains('include/yajl')
       rc = run_command(
         'python3', '-c',
@@ -1382,8 +1381,17 @@ if bash_completion_dep.found()
   endif
 endif
 
-if host_machine.system() != 'freebsd'
-  if not get_option('firewalld').disabled()
+if not get_option('firewalld').disabled()
+  firewalld_enable = true
+
+  if host_machine.system() != 'linux'
+    firewalld_enable = false
+    if get_option('firewalld').enabled()
+      error('firewalld support can only be enabled on Linux')
+    endif
+  endif
+
+  if firewalld_enable
     conf.set('WITH_FIREWALLD', 1)
   endif
 endif
@@ -1394,8 +1402,24 @@ elif get_option('firewalld_zone').enabled()
   error('You must have firewalld support enabled to enable firewalld_zone')
 endif
 
-if (pkcheck_prog.found() or get_option('polkit').enabled())
-  conf.set('WITH_POLKIT', 1)
+if not get_option('polkit').disabled()
+  polkit_enable = true
+
+  if get_option('polkit').auto()
+    pkcheck_prog = find_program('pkcheck', required: false, dirs: libvirt_sbin_path)
+    polkit_enable = pkcheck_prog.found()
+  endif
+
+  if host_machine.system() == 'windows'
+    polkit_enable = false
+    if get_option('polkit').enabled()
+      error('polkit support cannot be enabled on Windows')
+    endif
+  endif
+
+  if polkit_enable
+    conf.set('WITH_POLKIT', 1)
+  endif
 endif
 
 if udev_dep.found() and not pciaccess_dep.found()
@@ -1405,15 +1429,10 @@ endif
 
 # build driver options
 
-if get_option('driver_remote').enabled()
-  if not xdr_dep.found() and host_machine.system() not in [ 'freebsd', 'darwin' ]
-    error('XDR is required for remote driver')
-  endif
-  conf.set('WITH_REMOTE', 1)
+remote_default_mode = get_option('remote_default_mode')
+if remote_default_mode == 'direct'
+  conf.set('REMOTE_DRIVER_AUTOSTART_DIRECT', '1')
 endif
-
-remote_default_mode = get_option('remote_default_mode').to_upper()
-conf.set('REMOTE_DRIVER_MODE_DEFAULT', 'REMOTE_DRIVER_MODE_@0@'.format(remote_default_mode))
 
 if not get_option('driver_libvirtd').disabled()
   use_libvirtd = true
@@ -1472,7 +1491,7 @@ elif get_option('driver_interface').enabled()
 endif
 
 if not get_option('driver_libxl').disabled() and conf.has('WITH_LIBVIRTD')
-  libxl_version = '4.6.0'
+  libxl_version = '4.9.0'
   libxl_dep = dependency('xenlight', version: '>=' + libxl_version, required: get_option('driver_libxl'))
 
   if libxl_dep.found()
@@ -1489,18 +1508,14 @@ if not get_option('driver_libxl').disabled() and conf.has('WITH_LIBVIRTD')
     if cc.has_header('libxlutil.h')
       conf.set('WITH_LIBXLUTIL_H', 1)
     endif
-    xl_util_dep = cc.find_library('xlutil')
+    xl_util_dep = dependency('xlutil')
 
-    xen_store_dep = cc.find_library('xenstore')
+    xen_store_dep = dependency('xenstore')
+    xtl_link_dep = dependency('xentoollog')
 
-    # xtl_* infrastructure is in libxentoollog since Xen 4.7 previously
-    # it was in libxenctrl.
-    if libxl_dep.version().version_compare('>=4.7.0')
-      xtl_link_dep = cc.find_library('xentoollog')
-    else
-      xtl_link_dep = cc.find_library('xenctrl')
-    endif
-
+    # Upstream Xen failed to advertise LIBXL_API_VERSION 0x040700 and
+    # 0x040800 until the Xen 4.13 release. For Xen versions 4.9-4.12
+    # we'll need to stick with version 0x040500.
     if libxl_dep.version().version_compare('>=4.13.0')
       LIBXL_API_VERSION='0x041300'
     else
@@ -1560,6 +1575,48 @@ elif get_option('driver_lxc').enabled()
   error('linux and remote_driver are required for LXC')
 endif
 
+if not get_option('driver_ch').disabled() and host_machine.system() == 'linux' and (host_machine.cpu_family() == 'x86_64' or host_machine.cpu_family() == 'aarch64')
+  use_ch = true
+
+  if not conf.has('WITH_LIBVIRTD')
+    use_ch = false
+    if get_option('driver_ch').enabled()
+      error('libvirtd is required to build Cloud-Hypervisor driver')
+    endif
+  endif
+
+  if not yajl_dep.found()
+    use_ch = false
+    if get_option('driver_ch').enabled()
+      error('YAJL 2 is required to build Cloud-Hypervisor driver')
+    endif
+  endif
+
+  if not curl_dep.found()
+    use_ch = false
+    if get_option('driver_ch').enabled()
+      error('curl is required to build Cloud-Hypervisor driver')
+    endif
+  endif
+
+  if use_ch
+    conf.set('WITH_CH', 1)
+
+    default_ch_user = 'root'
+    default_ch_group = 'root'
+    ch_user = get_option('ch_user')
+    if ch_user == ''
+      ch_user = default_ch_user
+    endif
+    ch_group = get_option('ch_group')
+    if ch_group == ''
+      ch_group = default_ch_group
+    endif
+    conf.set_quoted('CH_USER', ch_user)
+    conf.set_quoted('CH_GROUP', ch_group)
+  endif
+endif
+
 # there's no use compiling the network driver without the libvirt
 # daemon, nor compiling it for macOS, where it breaks the compile
 if not get_option('driver_network').disabled() and conf.has('WITH_LIBVIRTD') and host_machine.system() != 'darwin'
@@ -1602,7 +1659,7 @@ if not get_option('driver_qemu').disabled()
     endif
     conf.set_quoted('QEMU_MODDIR', qemu_moddir)
 
-    if host_machine.system() in ['freebsd', 'darwin']
+    if host_machine.system() in [ 'freebsd', 'darwin' ]
       default_qemu_user = 'root'
       default_qemu_group = 'wheel'
     else
@@ -1701,7 +1758,7 @@ if not get_option('driver_secrets').disabled() and conf.has('WITH_LIBVIRTD')
   conf.set('WITH_SECRETS', 1)
 endif
 
-if get_option('driver_test').enabled()
+if not get_option('driver_test').disabled()
   conf.set('WITH_TEST', 1)
 endif
 
@@ -1879,10 +1936,9 @@ if conf.has('WITH_LIBVIRTD')
   if not get_option('storage_vstorage').disabled()
     vstorage_enable = true
     if host_machine.system() != 'linux'
-      if get_option('storage_fs').enabled()
+      vstorage_enable = false
+      if get_option('storage_vstorage').enabled()
         error('Vstorage is supported only on Linux')
-      else
-        vstorage_enable = false
       endif
     endif
 
@@ -1894,7 +1950,7 @@ if conf.has('WITH_LIBVIRTD')
 
   if not get_option('storage_zfs').disabled()
     zfs_enable = true
-    foreach name : ['zfs', 'zpool']
+    foreach name : [ 'zfs', 'zpool' ]
       set_variable(
         '@0@_prog'.format(name),
         '/sbin' / name
@@ -1904,7 +1960,7 @@ if conf.has('WITH_LIBVIRTD')
     if zfs_enable
       use_storage = true
       conf.set('WITH_STORAGE_ZFS', 1)
-      foreach name : ['zfs', 'zpool']
+      foreach name : [ 'zfs', 'zpool' ]
         conf.set_quoted(name.to_upper(), get_variable('@0@_prog'.format(name)))
       endforeach
     endif
@@ -2210,6 +2266,7 @@ driver_summary = {
   'VBox': conf.has('WITH_VBOX'),
   'libxl': conf.has('WITH_LIBXL'),
   'LXC': conf.has('WITH_LXC'),
+  'Cloud-Hypervisor': conf.has('WITH_CH'),
   'ESX': conf.has('WITH_ESX'),
   'Hyper-V': conf.has('WITH_HYPERV'),
   'vz': conf.has('WITH_VZ'),
@@ -2266,7 +2323,6 @@ libs_summary = {
   'glusterfs': glusterfs_dep.found(),
   'libiscsi': libiscsi_dep.found(),
   'libkvm': libkvm_dep.found(),
-  'libm': libm_dep.found(),
   'libnl': libnl_dep.found(),
   'libparted': libparted_dep.found(),
   'libpcap': libpcap_dep.found(),

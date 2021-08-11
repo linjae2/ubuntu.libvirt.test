@@ -371,7 +371,8 @@ mymain(void)
             QEMU_CAPS_VNC);
     DO_TEST("graphics-vnc-egl-headless",
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
-            QEMU_CAPS_VNC);
+            QEMU_CAPS_VNC,
+            QEMU_CAPS_EGL_HEADLESS);
 
     DO_TEST_CAPS_ARCH_LATEST("default-video-type-aarch64", "aarch64");
     DO_TEST_CAPS_ARCH_LATEST("default-video-type-ppc64", "ppc64");
@@ -384,8 +385,8 @@ mymain(void)
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_SPICE);
 
-    DO_TEST("graphics-sdl", QEMU_CAPS_DEVICE_VGA);
-    DO_TEST("graphics-sdl-fullscreen", QEMU_CAPS_DEVICE_CIRRUS_VGA);
+    DO_TEST("graphics-sdl", QEMU_CAPS_DEVICE_VGA, QEMU_CAPS_SDL);
+    DO_TEST("graphics-sdl-fullscreen", QEMU_CAPS_DEVICE_CIRRUS_VGA, QEMU_CAPS_SDL);
 
     cfg->spiceTLS = true;
     DO_TEST("graphics-spice",
@@ -414,12 +415,13 @@ mymain(void)
     cfg->spiceTLS = false;
     DO_TEST("graphics-spice-egl-headless",
             QEMU_CAPS_DEVICE_QXL,
-            QEMU_CAPS_SPICE);
+            QEMU_CAPS_SPICE,
+            QEMU_CAPS_EGL_HEADLESS);
 
     DO_TEST("graphics-egl-headless-rendernode",
             QEMU_CAPS_DEVICE_CIRRUS_VGA,
             QEMU_CAPS_EGL_HEADLESS_RENDERNODE,
-            QEMU_CAPS_DEVICE_CIRRUS_VGA);
+            QEMU_CAPS_EGL_HEADLESS);
 
     DO_TEST("input-usbmouse", NONE);
     DO_TEST("input-usbtablet", NONE);
@@ -565,13 +567,11 @@ mymain(void)
     DO_TEST("iothreads-ids-partial", NONE);
     DO_TEST("cputune-iothreads", NONE);
     DO_TEST("iothreads-disk", NONE);
-    DO_TEST("iothreads-disk-virtio-ccw",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
+    DO_TEST("iothreads-disk-virtio-ccw", QEMU_CAPS_CCW);
     DO_TEST("iothreads-virtio-scsi-pci",
             QEMU_CAPS_VIRTIO_SCSI);
     DO_TEST("iothreads-virtio-scsi-ccw",
-            QEMU_CAPS_VIRTIO_SCSI, QEMU_CAPS_CCW,
-            QEMU_CAPS_VIRTIO_S390);
+            QEMU_CAPS_VIRTIO_SCSI, QEMU_CAPS_CCW);
     DO_TEST("lease", NONE);
     DO_TEST("event_idx", NONE);
     DO_TEST("vhost_queues", NONE);
@@ -783,6 +783,7 @@ mymain(void)
     DO_TEST_CAPS_LATEST("tpm-emulator-tpm2");
     DO_TEST_CAPS_LATEST("tpm-emulator-tpm2-enc");
     DO_TEST_CAPS_LATEST("tpm-emulator-tpm2-pstate");
+    DO_TEST_CAPS_ARCH_LATEST("aarch64-tpm", "aarch64");
 
     DO_TEST("metadata", NONE);
     DO_TEST("metadata-duplicate", NONE);
@@ -1051,20 +1052,13 @@ mymain(void)
             QEMU_CAPS_CCW_CSSID_UNRESTRICTED,
             QEMU_CAPS_DEVICE_VFIO_AP);
 
-    DO_TEST("s390-defaultconsole",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
-    DO_TEST("s390-panic",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
-    DO_TEST("s390-panic-missing",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
-    DO_TEST("s390-panic-no-address",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
-    DO_TEST("s390-serial",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
-    DO_TEST("s390-serial-2",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
-    DO_TEST("s390-serial-console",
-            QEMU_CAPS_CCW, QEMU_CAPS_VIRTIO_S390);
+    DO_TEST_CAPS_ARCH_LATEST("s390-defaultconsole", "s390x");
+    DO_TEST("s390-panic", QEMU_CAPS_CCW);
+    DO_TEST("s390-panic-missing", QEMU_CAPS_CCW);
+    DO_TEST("s390-panic-no-address", QEMU_CAPS_CCW);
+    DO_TEST("s390-serial", QEMU_CAPS_CCW);
+    DO_TEST("s390-serial-2", QEMU_CAPS_CCW);
+    DO_TEST("s390-serial-console", QEMU_CAPS_CCW);
 
     DO_TEST("pcihole64", QEMU_CAPS_I440FX_PCI_HOLE64_SIZE);
     DO_TEST("pcihole64-gib", QEMU_CAPS_I440FX_PCI_HOLE64_SIZE);
@@ -1282,7 +1276,8 @@ mymain(void)
             QEMU_CAPS_SPICE_RENDERNODE);
     DO_TEST("video-virtio-gpu-sdl-gl",
             QEMU_CAPS_DEVICE_VIRTIO_GPU,
-            QEMU_CAPS_VIRTIO_GPU_VIRGL);
+            QEMU_CAPS_VIRTIO_GPU_VIRGL,
+            QEMU_CAPS_SDL);
 
     DO_TEST("virtio-input",
             QEMU_CAPS_VIRTIO_KEYBOARD,
@@ -1311,7 +1306,8 @@ mymain(void)
     DO_TEST("memfd-memory-numa",
             QEMU_CAPS_OBJECT_MEMORY_MEMFD,
             QEMU_CAPS_OBJECT_MEMORY_MEMFD_HUGETLB,
-            QEMU_CAPS_OBJECT_MEMORY_FILE);
+            QEMU_CAPS_OBJECT_MEMORY_FILE,
+            QEMU_CAPS_DEVICE_NVDIMM);
     DO_TEST("memfd-memory-default-hugepage",
             QEMU_CAPS_OBJECT_MEMORY_MEMFD,
             QEMU_CAPS_OBJECT_MEMORY_MEMFD_HUGETLB,
@@ -1340,6 +1336,7 @@ mymain(void)
             QEMU_CAPS_VNC,
             QEMU_CAPS_DEVICE_VIRTIO_GPU_CCW);
     DO_TEST("video-none-device", QEMU_CAPS_VNC);
+    DO_TEST_CAPS_LATEST("video-virtio-vga-gpu-gl");
 
     DO_TEST_CAPS_LATEST("intel-iommu");
     DO_TEST_CAPS_LATEST("intel-iommu-caching-mode");

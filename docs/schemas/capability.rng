@@ -138,6 +138,9 @@
           <ref name="cell"/>
         </oneOrMore>
       </element>
+      <optional>
+        <ref name="numaInterconnects"/>
+      </optional>
     </element>
   </define>
 
@@ -163,14 +166,18 @@
         </element>
       </optional>
 
+      <zeroOrMore>
+        <ref name="numaCache"/>
+      </zeroOrMore>
+
       <optional>
         <element name="cpus">
           <attribute name="num">
             <ref name="unsignedInt"/>
           </attribute>
-          <oneOrMore>
+          <zeroOrMore>
             <ref name="cpu"/>
-          </oneOrMore>
+          </zeroOrMore>
         </element>
       </optional>
     </element>
@@ -276,11 +283,11 @@
               <attribute name="granularity">
                 <ref name="unsignedInt"/>
               </attribute>
-            <optional>
-              <attribute name="min">
-                <ref name="unsignedInt"/>
-              </attribute>
-            </optional>
+              <optional>
+                <attribute name="min">
+                  <ref name="unsignedInt"/>
+                </attribute>
+              </optional>
               <attribute name="maxAllocs">
                 <ref name="unsignedInt"/>
               </attribute>

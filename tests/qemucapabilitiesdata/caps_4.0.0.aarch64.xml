@@ -4,6 +4,7 @@
   <selfctime>0</selfctime>
   <selfvers>0</selfvers>
   <flag name='kvm'/>
+  <flag name='sdl'/>
   <flag name='hda-duplex'/>
   <flag name='virtio-tx-alg'/>
   <flag name='virtio-blk-pci.ioeventfd'/>
@@ -142,6 +143,7 @@
   <flag name='vhost-vsock'/>
   <flag name='chardev-fd-pass'/>
   <flag name='usb-storage.werror'/>
+  <flag name='egl-headless'/>
   <flag name='vfio-pci.display'/>
   <flag name='memory-backend-memfd'/>
   <flag name='memory-backend-memfd.hugetlb'/>
@@ -177,6 +179,7 @@
   <flag name='vnc-opts'/>
   <flag name='rotation-rate'/>
   <flag name='input-linux'/>
+  <flag name='query-display-options'/>
   <version>4000000</version>
   <kvmVersion>0</kvmVersion>
   <microcodeVersion>61700240</microcodeVersion>

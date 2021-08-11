@@ -4,6 +4,7 @@
   <selfctime>0</selfctime>
   <selfvers>0</selfvers>
   <flag name='kvm'/>
+  <flag name='sdl'/>
   <flag name='virtio-tx-alg'/>
   <flag name='virtio-blk-pci.ioeventfd'/>
   <flag name='virtio-blk-pci.event_idx'/>
@@ -100,6 +101,7 @@
   <flag name='blockdev-del'/>
   <flag name='vhost-vsock'/>
   <flag name='tpm-emulator'/>
+  <flag name='egl-headless'/>
   <flag name='zpci'/>
   <flag name='iothread.poll-max-ns'/>
   <flag name='query-cpu-model-baseline'/>

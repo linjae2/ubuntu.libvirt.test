@@ -35,6 +35,7 @@
 #include "virkeynametable_linux.h"
 #include "virkeynametable_osx.h"
 #include "virkeynametable_win32.h"
+#include "conf/storage_conf.h"
 
 char **
 virshDomainNameCompleter(vshControl *ctl,
@@ -761,7 +762,7 @@ virshDomainSignalCompleter(vshControl *ctl G_GNUC_UNUSED,
     tmp = g_new0(char *, VIR_DOMAIN_PROCESS_SIGNAL_LAST + 1);
 
     for (i = 0; i < VIR_DOMAIN_PROCESS_SIGNAL_LAST; i++) {
-        const char *name = virDomainProcessSignalTypeToString(i);
+        const char *name = virshDomainProcessSignalTypeToString(i);
         tmp[i] = g_strdup(name);
     }
 
@@ -782,7 +783,7 @@ virshDomainLifecycleCompleter(vshControl *ctl G_GNUC_UNUSED,
     tmp = g_new0(char *, VIR_DOMAIN_LIFECYCLE_LAST + 1);
 
     for (i = 0; i < VIR_DOMAIN_LIFECYCLE_LAST; i++) {
-        const char *name = virDomainLifecycleTypeToString(i);
+        const char *name = virshDomainLifecycleTypeToString(i);
         tmp[i] = g_strdup(name);
     }
 
@@ -803,7 +804,7 @@ virshDomainLifecycleActionCompleter(vshControl *ctl G_GNUC_UNUSED,
     tmp = g_new0(char *, VIR_DOMAIN_LIFECYCLE_ACTION_LAST + 1);
 
     for (i = 0; i < VIR_DOMAIN_LIFECYCLE_ACTION_LAST; i++) {
-        const char *action = virDomainLifecycleActionTypeToString(i);
+        const char *action = virshDomainLifecycleActionTypeToString(i);
         tmp[i] = g_strdup(action);
     }
 
@@ -938,5 +939,60 @@ virshDomainFSMountpointsCompleter(vshControl *ctl,
         VIR_FREE(info);
     }
     virshDomainFree(dom);
+    return ret;
+}
+
+
+char **
+virshDomainCoreDumpFormatCompleter(vshControl *ctl G_GNUC_UNUSED,
+                                   const vshCmd *cmd G_GNUC_UNUSED,
+                                   unsigned int flags)
+{
+    char **ret = NULL;
+    size_t i;
+
+    virCheckFlags(0, NULL);
+
+    ret = g_new0(char *, VIR_DOMAIN_CORE_DUMP_FORMAT_LAST + 1);
+
+    for (i = 0; i < VIR_DOMAIN_CORE_DUMP_FORMAT_LAST; i++)
+        ret[i] = g_strdup(virshDomainCoreDumpFormatTypeToString(i));
+
+    return ret;
+}
+
+
+char **
+virshDomainMigrateCompMethodsCompleter(vshControl *ctl,
+                                       const vshCmd *cmd,
+                                       unsigned int flags)
+{
+    const char *methods[] = {"xbzrle", "mt",  NULL};
+    const char *method = NULL;
+
+    virCheckFlags(0, NULL);
+
+    if (vshCommandOptStringQuiet(ctl, cmd, "comp-methods", &method) < 0)
+        return NULL;
+
+    return virshCommaStringListComplete(method, methods);
+}
+
+
+char **
+virshDomainStorageFileFormatCompleter(vshControl *ctl G_GNUC_UNUSED,
+                                      const vshCmd *cmd G_GNUC_UNUSED,
+                                      unsigned int flags)
+{
+    char **ret = NULL;
+    size_t i;
+
+    virCheckFlags(0, NULL);
+
+    ret = g_new0(char *, VIR_STORAGE_FILE_LAST + 1);
+
+    for (i = 0; i < VIR_STORAGE_FILE_LAST; i++)
+        ret[i] = g_strdup(virStorageFileFormatTypeToString(i));
+
     return ret;
 }

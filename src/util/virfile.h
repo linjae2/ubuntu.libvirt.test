@@ -283,9 +283,6 @@ char *virFileBuildPath(const char *dir,
                        const char *name,
                        const char *ext) G_GNUC_WARN_UNUSED_RESULT;
 
-
-int virFileAbsPath(const char *path,
-                   char **abspath) G_GNUC_WARN_UNUSED_RESULT;
 void virFileRemoveLastComponent(char *path);
 
 int virFileOpenTty(int *ttymaster,
@@ -341,6 +338,8 @@ int virFileReadValueInt(int *value, const char *format, ...)
 int virFileReadValueUint(unsigned int *value, const char *format, ...)
  G_GNUC_PRINTF(2, 3);
 int virFileReadValueUllong(unsigned long long *value, const char *format, ...)
+ G_GNUC_PRINTF(2, 3);
+int virFileReadValueUllongQuiet(unsigned long long *value, const char *format, ...)
  G_GNUC_PRINTF(2, 3);
 int virFileReadValueBitmap(virBitmap **value, const char *format, ...)
  G_GNUC_PRINTF(2, 3);

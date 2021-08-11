@@ -38,12 +38,11 @@ test_virCapabilities(const void *opaque)
 {
     struct virCapabilitiesData *data = (struct virCapabilitiesData *) opaque;
     const char *archStr = virArchToString(data->arch);
-    virCaps *caps = NULL;
-    char *capsXML = NULL;
-    char *path = NULL;
-    char *system = NULL;
-    char *resctrl = NULL;
-    int ret = -1;
+    g_autoptr(virCaps) caps = NULL;
+    g_autofree char *capsXML = NULL;
+    g_autofree char *path = NULL;
+    g_autofree char *system = NULL;
+    g_autofree char *resctrl = NULL;
 
     system = g_strdup_printf("%s/vircaps2xmldata/linux-%s/system", abs_srcdir,
                              data->filename);
@@ -56,34 +55,26 @@ test_virCapabilities(const void *opaque)
     caps = virCapabilitiesNew(data->arch, data->offlineMigrate, data->liveMigrate);
 
     if (!caps)
-        goto cleanup;
+        return -1;
 
     if (!(caps->host.numa = virCapabilitiesHostNUMANewHost()))
-        goto cleanup;
+        return -1;
 
     if (virCapabilitiesInitCaches(caps) < 0)
-        goto cleanup;
+        return -1;
 
     virFileWrapperClearPrefixes();
 
     if (!(capsXML = virCapabilitiesFormatXML(caps)))
-        goto cleanup;
+        return -1;
 
     path = g_strdup_printf("%s/vircaps2xmldata/vircaps-%s-%s.xml", abs_srcdir,
                            archStr, data->filename);
 
     if (virTestCompareToFile(capsXML, path) < 0)
-        goto cleanup;
+        return -1;
 
-    ret = 0;
-
- cleanup:
-    VIR_FREE(system);
-    VIR_FREE(resctrl);
-    VIR_FREE(path);
-    VIR_FREE(capsXML);
-    virObjectUnref(caps);
-    return ret;
+    return 0;
 }
 
 static int
@@ -105,6 +96,8 @@ mymain(void)
     DO_TEST_FULL("basic-dies", VIR_ARCH_X86_64, false, false);
 
     DO_TEST_FULL("caches", VIR_ARCH_X86_64, true, true);
+
+    DO_TEST_FULL("hmat", VIR_ARCH_X86_64, true, true);
 
     DO_TEST_FULL("resctrl", VIR_ARCH_X86_64, true, true);
     DO_TEST_FULL("resctrl-cmt", VIR_ARCH_X86_64, true, true);

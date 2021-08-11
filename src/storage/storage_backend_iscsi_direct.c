@@ -391,19 +391,28 @@ virISCSIDirectReportLuns(virStoragePoolObj *pool,
 static int
 virISCSIDirectDisconnect(struct iscsi_context *iscsi)
 {
+    virErrorPtr orig_err;
+    int ret = -1;
+
+    virErrorPreserveLast(&orig_err);
+
     if (iscsi_logout_sync(iscsi) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Failed to logout: %s"),
                        iscsi_get_error(iscsi));
-        return -1;
+        goto cleanup;
     }
     if (iscsi_disconnect(iscsi) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Failed to disconnect: %s"),
                        iscsi_get_error(iscsi));
-        return -1;
+        goto cleanup;
     }
-    return 0;
+
+    ret = 0;
+ cleanup:
+    virErrorRestore(&orig_err);
+    return ret;
 }
 
 static int
@@ -411,37 +420,30 @@ virISCSIDirectUpdateTargets(struct iscsi_context *iscsi,
                             size_t *ntargets,
                             char ***targets)
 {
-    int ret = -1;
     struct iscsi_discovery_address *addr;
     struct iscsi_discovery_address *tmp_addr;
-    size_t tmp_ntargets = 0;
-    char **tmp_targets = NULL;
+    size_t i = 0;
+
+    *ntargets = 0;
 
     if (!(addr = iscsi_discovery_sync(iscsi))) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
                        _("Failed to discover session: %s"),
                        iscsi_get_error(iscsi));
-        return ret;
+        return -1;
     }
 
-    for (tmp_addr = addr; tmp_addr; tmp_addr = tmp_addr->next) {
-        g_autofree char *target = NULL;
+    for (tmp_addr = addr; tmp_addr; tmp_addr = tmp_addr->next)
+        (*ntargets)++;
 
-        target = g_strdup(tmp_addr->target_name);
+    *targets = g_new0(char *, *ntargets + 1);
 
-        if (VIR_APPEND_ELEMENT(tmp_targets, tmp_ntargets, target) < 0)
-            goto cleanup;
-    }
+    for (tmp_addr = addr; tmp_addr; tmp_addr = tmp_addr->next)
+        *targets[i++] = g_strdup(tmp_addr->target_name);
 
-    *targets = g_steal_pointer(&tmp_targets);
-    *ntargets = tmp_ntargets;
-    tmp_ntargets = 0;
-
-    ret = 0;
- cleanup:
     iscsi_free_discovery_data(iscsi, addr);
-    virStringListFreeCount(tmp_targets, tmp_ntargets);
-    return ret;
+
+    return 0;
 }
 
 static int
@@ -483,18 +485,15 @@ virStorageBackendISCSIDirectFindPoolSources(const char *srcSpec,
                                             unsigned int flags)
 {
     size_t ntargets = 0;
-    char **targets = NULL;
-    char *ret = NULL;
+    g_auto(GStrv) targets = NULL;
     size_t i;
-    virStoragePoolSourceList list = {
-        .type = VIR_STORAGE_POOL_ISCSI_DIRECT,
-        .nsources = 0,
-        .sources = NULL
-    };
+    g_autoptr(virStoragePoolSourceList) list = g_new0(virStoragePoolSourceList, 1);
     g_autofree char *portal = NULL;
     g_autoptr(virStoragePoolSource) source = NULL;
 
     virCheckFlags(0, NULL);
+
+    list->type = VIR_STORAGE_POOL_ISCSI_DIRECT;
 
     if (!srcSpec) {
         virReportError(VIR_ERR_INVALID_ARG, "%s",
@@ -502,55 +501,46 @@ virStorageBackendISCSIDirectFindPoolSources(const char *srcSpec,
         return NULL;
     }
 
-    if (!(source = virStoragePoolDefParseSourceString(srcSpec, list.type)))
+    if (!(source = virStoragePoolDefParseSourceString(srcSpec, list->type)))
         return NULL;
 
     if (source->nhost != 1) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("Expected exactly 1 host for the storage pool"));
-        goto cleanup;
+        return NULL;
     }
 
     if (!source->initiator.iqn) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
                        _("missing initiator IQN"));
-        goto cleanup;
+        return NULL;
     }
 
     if (!(portal = virStorageBackendISCSIDirectPortal(source)))
-        goto cleanup;
+        return NULL;
 
     if (virISCSIDirectScanTargets(source->initiator.iqn, portal, &ntargets, &targets) < 0)
-        goto cleanup;
+        return NULL;
 
-    list.sources = g_new0(virStoragePoolSource, ntargets);
+    list->sources = g_new0(virStoragePoolSource, ntargets);
 
     for (i = 0; i < ntargets; i++) {
-        list.sources[i].devices = g_new0(virStoragePoolSourceDevice, 1);
-        list.sources[i].hosts = g_new0(virStoragePoolSourceHost, 1);
-        list.sources[i].nhost = 1;
-        list.sources[i].hosts[0] = source->hosts[0];
-        list.sources[i].initiator = source->initiator;
-        list.sources[i].ndevice = 1;
-        list.sources[i].devices[0].path = targets[i];
-        list.nsources++;
+        list->sources[i].hosts = g_new0(virStoragePoolSourceHost, 1);
+        list->sources[i].nhost = 1;
+        list->sources[i].hosts[0].name = g_strdup(source->hosts[0].name);
+        list->sources[i].hosts[0].port = source->hosts[0].port;
+
+        virStorageSourceInitiatorCopy(&list->sources[i].initiator,
+                                      &source->initiator);
+
+        list->sources[i].devices = g_new0(virStoragePoolSourceDevice, 1);
+        list->sources[i].ndevice = 1;
+        list->sources[i].devices[0].path = g_strdup(targets[i]);
+
+        list->nsources++;
     }
 
-    if (!(ret = virStoragePoolSourceListFormat(&list)))
-        goto cleanup;
-
- cleanup:
-    if (list.sources) {
-        for (i = 0; i < ntargets; i++) {
-            VIR_FREE(list.sources[i].hosts);
-            VIR_FREE(list.sources[i].devices);
-        }
-        VIR_FREE(list.sources);
-    }
-    for (i = 0; i < ntargets; i++)
-        VIR_FREE(targets[i]);
-    VIR_FREE(targets);
-    return ret;
+    return virStoragePoolSourceListFormat(list);
 }
 
 static struct iscsi_context *

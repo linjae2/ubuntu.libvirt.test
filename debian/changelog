@@ -1,3 +1,26 @@
+libvirt (7.6.0-0ubuntu1) impish; urgency=medium
+
+  * Merge v7.6.0 from upstream and unreleased changes from Debian git.
+    Among other bugs this fixes copy-storage-inc based migrations (LP: #1936778)
+    - New upstream version 7.5.0
+    - New upstream version 7.6.0
+    - symbols: Bump symbol versions
+    - refresh d/p/debian/Set-defaults-for-zfs-tools.patch for v7.5.0
+    - patches: Refresh patches
+    - d/rules: disable the new Cloud Hypervisor driver
+    - d/rules: enable more features explicitly
+    - d/rules: use apparmor_profiles=enabled instead of the now rejected
+      value true
+    - update d/p/debian/Revert-m4-virt-xdr-rewrite-XDR-check.patch: to detect
+      XDR functions from glibc
+  * d/control, d/rules: enable libssh (LP: #1939416)
+  * refresh ubuntu patches for v7.6.0
+  * Further fixups for v7.6.0 (thanks to Andrea Bolognani)
+    - rules: Explicitly set remote_default_mode
+    - rules: Rework installation of AppArmor-related files
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 11 Aug 2021 08:11:16 +0200
+
 libvirt (7.4.0-0ubuntu3) impish; urgency=medium
 
   * d/t/smoke-lxc: skip if cgroup v1&v2 are present (systemd 248

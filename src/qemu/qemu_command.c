@@ -104,44 +104,6 @@ VIR_ENUM_IMPL(qemuVideo,
               "", /* ramfb can't be used with -vga */
 );
 
-VIR_ENUM_DECL(qemuDeviceVideo);
-
-VIR_ENUM_IMPL(qemuDeviceVideo,
-              VIR_DOMAIN_VIDEO_TYPE_LAST,
-              "", /* default value, we shouldn't see this */
-              "VGA",
-              "cirrus-vga",
-              "vmware-svga",
-              "", /* don't support xen */
-              "", /* don't support vbox */
-              "qxl-vga",
-              "", /* don't support parallels */
-              "virtio-vga",
-              "" /* don't support gop */,
-              "" /* 'none' doesn't make sense here */,
-              "bochs-display",
-              "ramfb",
-);
-
-VIR_ENUM_DECL(qemuDeviceVideoSecondary);
-
-VIR_ENUM_IMPL(qemuDeviceVideoSecondary,
-              VIR_DOMAIN_VIDEO_TYPE_LAST,
-              "", /* default value, we shouldn't see this */
-              "", /* no secondary device for VGA */
-              "", /* no secondary device for cirrus-vga */
-              "", /* no secondary device for vmware-svga */
-              "", /* don't support xen */
-              "", /* don't support vbox */
-              "qxl",
-              "", /* don't support parallels */
-              "virtio-gpu",
-              "" /* don't support gop */,
-              "" /* 'none' doesn't make sense here */,
-              "" /* no secondary device for bochs */,
-              "" /* no secondary device for ramfb */,
-);
-
 VIR_ENUM_IMPL(qemuSoundCodec,
               VIR_DOMAIN_SOUND_CODEC_TYPE_LAST,
               "hda-duplex",
@@ -524,9 +486,6 @@ qemuBuildVirtioDevStr(virBuffer *buf,
         break;
 
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390:
-        implName = "s390";
-        break;
-
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_DRIVE:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_SERIAL:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCID:
@@ -3093,7 +3052,8 @@ qemuBuildMemoryBackendProps(virJSONValue **backendProps,
 
     props = virJSONValueNewObject();
 
-    if (def->mem.source == VIR_DOMAIN_MEMORY_SOURCE_MEMFD) {
+    if (!mem->nvdimmPath &&
+        def->mem.source == VIR_DOMAIN_MEMORY_SOURCE_MEMFD) {
         backendType = "memory-backend-memfd";
 
         if (useHugepage) {
@@ -3987,6 +3947,11 @@ qemuBuildObjectInputDevStr(virDomainInputDef *dev,
     if (dev->source.grab == VIR_DOMAIN_INPUT_SOURCE_GRAB_ALL)
         virJSONValueObjectAdd(props, "b:grab_all", true, NULL);
 
+    if (dev->source.grabToggle != VIR_DOMAIN_INPUT_SOURCE_GRAB_TOGGLE_DEFAULT)
+        virJSONValueObjectAdd(props, "s:grab-toggle",
+                              virDomainInputSourceGrabToggleTypeToString(dev->source.grabToggle),
+                              NULL);
+
     if (qemuBuildObjectCommandlineFromJSON(&buf, props, qemuCaps) < 0)
         return NULL;
 
@@ -4195,29 +4160,99 @@ qemuBuildSoundCommandLine(virCommand *cmd,
 }
 
 
-
-static char *
-qemuBuildDeviceVideoStr(const virDomainDef *def,
-                        virDomainVideoDef *video,
-                        virQEMUCaps *qemuCaps)
+static const char *
+qemuDeviceVideoGetModel(virQEMUCaps *qemuCaps,
+                        const virDomainVideoDef *video,
+                        bool *virtio)
 {
-    g_auto(virBuffer) buf = VIR_BUFFER_INITIALIZER;
     const char *model = NULL;
+    bool primaryVga = false;
+    virTristateSwitch accel3d = VIR_TRISTATE_SWITCH_ABSENT;
+
+    *virtio = false;
+
+    if (video->accel)
+        accel3d = video->accel->accel3d;
+
+    if (video->primary && qemuDomainSupportsVideoVga(video, qemuCaps))
+        primaryVga = true;
 
     /* We try to chose the best model for primary video device by preferring
      * model with VGA compatibility mode.  For some video devices on some
      * architectures there might not be such model so fallback to one
      * without VGA compatibility mode. */
     if (video->backend == VIR_DOMAIN_VIDEO_BACKEND_TYPE_VHOSTUSER) {
-        if (video->primary && qemuDomainSupportsVideoVga(video, qemuCaps))
+        if (primaryVga) {
             model = "vhost-user-vga";
-        else
+        } else {
             model = "vhost-user-gpu";
+            *virtio = true;
+        }
     } else {
-        if (video->primary && qemuDomainSupportsVideoVga(video, qemuCaps))
-            model = qemuDeviceVideoTypeToString(video->type);
-        else
-            model = qemuDeviceVideoSecondaryTypeToString(video->type);
+        if (primaryVga) {
+            switch ((virDomainVideoType) video->type) {
+            case VIR_DOMAIN_VIDEO_TYPE_VGA:
+                model = "VGA";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_CIRRUS:
+                model = "cirrus-vga";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_VMVGA:
+                model = "vmware-svga";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_QXL:
+                model = "qxl-vga";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_VIRTIO:
+                if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_VGA_GL) &&
+                    accel3d == VIR_TRISTATE_SWITCH_ON)
+                    model = "virtio-vga-gl";
+                else
+                    model = "virtio-vga";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_BOCHS:
+                model = "bochs-display";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_RAMFB:
+                model = "ramfb";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_DEFAULT:
+            case VIR_DOMAIN_VIDEO_TYPE_XEN:
+            case VIR_DOMAIN_VIDEO_TYPE_VBOX:
+            case VIR_DOMAIN_VIDEO_TYPE_PARALLELS:
+            case VIR_DOMAIN_VIDEO_TYPE_GOP:
+            case VIR_DOMAIN_VIDEO_TYPE_NONE:
+            case VIR_DOMAIN_VIDEO_TYPE_LAST:
+                break;
+            }
+        } else {
+            switch ((virDomainVideoType) video->type) {
+            case VIR_DOMAIN_VIDEO_TYPE_QXL:
+                model = "qxl";
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_VIRTIO:
+                if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_GPU_GL_PCI) &&
+                    accel3d == VIR_TRISTATE_SWITCH_ON)
+                    model = "virtio-gpu-gl";
+                else
+                    model = "virtio-gpu";
+                *virtio = true;
+                break;
+            case VIR_DOMAIN_VIDEO_TYPE_DEFAULT:
+            case VIR_DOMAIN_VIDEO_TYPE_VGA:
+            case VIR_DOMAIN_VIDEO_TYPE_CIRRUS:
+            case VIR_DOMAIN_VIDEO_TYPE_VMVGA:
+            case VIR_DOMAIN_VIDEO_TYPE_XEN:
+            case VIR_DOMAIN_VIDEO_TYPE_VBOX:
+            case VIR_DOMAIN_VIDEO_TYPE_PARALLELS:
+            case VIR_DOMAIN_VIDEO_TYPE_GOP:
+            case VIR_DOMAIN_VIDEO_TYPE_NONE:
+            case VIR_DOMAIN_VIDEO_TYPE_BOCHS:
+            case VIR_DOMAIN_VIDEO_TYPE_RAMFB:
+            case VIR_DOMAIN_VIDEO_TYPE_LAST:
+                break;
+            }
+        }
     }
 
     if (!model || STREQ(model, "")) {
@@ -4227,7 +4262,27 @@ qemuBuildDeviceVideoStr(const virDomainDef *def,
         return NULL;
     }
 
-    if (STREQ(model, "virtio-gpu") || STREQ(model, "vhost-user-gpu")) {
+    return model;
+}
+
+
+static char *
+qemuBuildDeviceVideoStr(const virDomainDef *def,
+                        virDomainVideoDef *video,
+                        virQEMUCaps *qemuCaps)
+{
+    g_auto(virBuffer) buf = VIR_BUFFER_INITIALIZER;
+    const char *model = NULL;
+    virTristateSwitch accel3d = VIR_TRISTATE_SWITCH_ABSENT;
+    bool virtio = false;
+
+    if (video->accel)
+        accel3d = video->accel->accel3d;
+
+    if (!(model = qemuDeviceVideoGetModel(qemuCaps, video, &virtio)))
+        return NULL;
+
+    if (virtio) {
         if (qemuBuildVirtioDevStr(&buf, model, qemuCaps,
                                   VIR_DOMAIN_DEVICE_VIDEO, video) < 0) {
             return NULL;
@@ -4242,10 +4297,10 @@ qemuBuildDeviceVideoStr(const virDomainDef *def,
         video->type == VIR_DOMAIN_VIDEO_TYPE_VIRTIO) {
         if (video->accel &&
             virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_GPU_VIRGL) &&
-            (video->accel->accel3d == VIR_TRISTATE_SWITCH_ON ||
-             video->accel->accel3d == VIR_TRISTATE_SWITCH_OFF)) {
+            (accel3d == VIR_TRISTATE_SWITCH_ON ||
+             accel3d == VIR_TRISTATE_SWITCH_OFF)) {
             virBufferAsprintf(&buf, ",virgl=%s",
-                              virTristateSwitchTypeToString(video->accel->accel3d));
+                              virTristateSwitchTypeToString(accel3d));
         }
     }
 
@@ -5296,8 +5351,7 @@ qemuBuildVirtioSerialPortDevStr(const virDomainDef *def,
     }
 
     if (dev->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE &&
-        dev->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW &&
-        dev->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390) {
+        dev->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW) {
         /* Check it's a virtio-serial address */
         if (dev->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_SERIAL) {
             virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -5452,10 +5506,6 @@ qemuBuildRNGDevStr(const virDomainDef *def,
                    virQEMUCaps *qemuCaps)
 {
     g_auto(virBuffer) buf = VIR_BUFFER_INITIALIZER;
-
-    if (!qemuDomainCheckCCWS390AddressSupport(def, &dev->info, qemuCaps,
-                                              dev->source.file))
-        return NULL;
 
     if (qemuBuildVirtioDevStr(&buf, "virtio-rng", qemuCaps,
                               VIR_DOMAIN_DEVICE_RNG, dev) < 0) {
@@ -6922,8 +6972,24 @@ qemuBuildMachineCommandLine(virCommand *cmd,
     if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_LOADPARM))
         qemuAppendLoadparmMachineParm(&buf, def);
 
-    if (def->sev)
-        virBufferAddLit(&buf, ",memory-encryption=sev0");
+    if (def->sec) {
+        switch ((virDomainLaunchSecurity) def->sec->sectype) {
+        case VIR_DOMAIN_LAUNCH_SECURITY_SEV:
+            if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_MACHINE_CONFIDENTAL_GUEST_SUPPORT)) {
+                virBufferAddLit(&buf, ",confidential-guest-support=lsec0");
+            } else {
+                virBufferAddLit(&buf, ",memory-encryption=lsec0");
+            }
+            break;
+        case VIR_DOMAIN_LAUNCH_SECURITY_PV:
+            virBufferAddLit(&buf, ",confidential-guest-support=lsec0");
+            break;
+        case VIR_DOMAIN_LAUNCH_SECURITY_NONE:
+        case VIR_DOMAIN_LAUNCH_SECURITY_LAST:
+            virReportEnumRangeError(virDomainLaunchSecurity, def->sec->sectype);
+            return -1;
+        }
+    }
 
     if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_BLOCKDEV)) {
         if (priv->pflash0)
@@ -7198,8 +7264,8 @@ qemuBuilNumaCellCache(virCommand *cmd,
         unsigned int level;
         unsigned int size;
         unsigned int line;
-        virDomainCacheAssociativity associativity;
-        virDomainCachePolicy policy;
+        virNumaCacheAssociativity associativity;
+        virNumaCachePolicy policy;
 
         if (virDomainNumaGetNodeCache(def->numa, cell, i,
                                       &level, &size, &line,
@@ -7214,30 +7280,30 @@ qemuBuilNumaCellCache(virCommand *cmd,
                           cell, size, level);
 
         switch (associativity) {
-        case VIR_DOMAIN_CACHE_ASSOCIATIVITY_NONE:
+        case VIR_NUMA_CACHE_ASSOCIATIVITY_NONE:
             virBufferAddLit(&buf, ",associativity=none");
             break;
-        case VIR_DOMAIN_CACHE_ASSOCIATIVITY_DIRECT:
+        case VIR_NUMA_CACHE_ASSOCIATIVITY_DIRECT:
             virBufferAddLit(&buf, ",associativity=direct");
             break;
-        case VIR_DOMAIN_CACHE_ASSOCIATIVITY_FULL:
+        case VIR_NUMA_CACHE_ASSOCIATIVITY_FULL:
             virBufferAddLit(&buf, ",associativity=complex");
             break;
-        case VIR_DOMAIN_CACHE_ASSOCIATIVITY_LAST:
+        case VIR_NUMA_CACHE_ASSOCIATIVITY_LAST:
             break;
         }
 
         switch (policy) {
-        case VIR_DOMAIN_CACHE_POLICY_NONE:
+        case VIR_NUMA_CACHE_POLICY_NONE:
             virBufferAddLit(&buf, ",policy=none");
             break;
-        case VIR_DOMAIN_CACHE_POLICY_WRITEBACK:
+        case VIR_NUMA_CACHE_POLICY_WRITEBACK:
             virBufferAddLit(&buf, ",policy=write-back");
             break;
-        case VIR_DOMAIN_CACHE_POLICY_WRITETHROUGH:
+        case VIR_NUMA_CACHE_POLICY_WRITETHROUGH:
             virBufferAddLit(&buf, ",policy=write-through");
             break;
-        case VIR_DOMAIN_CACHE_POLICY_LAST:
+        case VIR_NUMA_CACHE_POLICY_LAST:
             break;
         }
 
@@ -7273,11 +7339,11 @@ qemuBuildNumaHMATCommandLine(virCommand *cmd,
     nlatencies = virDomainNumaGetInterconnectsCount(def->numa);
     for (i = 0; i < nlatencies; i++) {
         g_auto(virBuffer) buf = VIR_BUFFER_INITIALIZER;
-        virDomainNumaInterconnectType type;
+        virNumaInterconnectType type;
         unsigned int initiator;
         unsigned int target;
         unsigned int cache;
-        virDomainMemoryLatency accessType;
+        virMemoryLatency accessType;
         unsigned long value;
         const char *hierarchyStr;
         const char *accessStr;
@@ -7288,16 +7354,16 @@ qemuBuildNumaHMATCommandLine(virCommand *cmd,
             return -1;
 
         hierarchyStr = qemuDomainMemoryHierarchyTypeToString(cache);
-        accessStr = virDomainMemoryLatencyTypeToString(accessType);
+        accessStr = virMemoryLatencyTypeToString(accessType);
         virBufferAsprintf(&buf,
                           "hmat-lb,initiator=%u,target=%u,hierarchy=%s,data-type=%s-",
                           initiator, target, hierarchyStr, accessStr);
 
         switch (type) {
-        case VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_LATENCY:
+        case VIR_NUMA_INTERCONNECT_TYPE_LATENCY:
             virBufferAsprintf(&buf, "latency,latency=%lu", value);
             break;
-        case VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_BANDWIDTH:
+        case VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH:
             virBufferAsprintf(&buf, "bandwidth,bandwidth=%luK", value);
             break;
         }
@@ -7602,6 +7668,10 @@ qemuBuildAudioCommandLineArg(virCommand *cmd,
                       def->id,
                       qemuAudioDriverTypeToString(def->type));
 
+    if (def->timerPeriod)
+        virBufferAsprintf(&buf, ",timer-period=%u",
+                          def->timerPeriod);
+
     qemuBuildAudioCommonArg(&buf, "in", &def->input);
     qemuBuildAudioCommonArg(&buf, "out", &def->output);
 
@@ -7790,6 +7860,10 @@ qemuBuildAudioCommandLineEnv(virCommand *cmd,
     audio = def->audios[0];
     virCommandAddEnvPair(cmd, "QEMU_AUDIO_DRV",
                          qemuAudioDriverTypeToString(audio->type));
+
+    if (audio->timerPeriod)
+        virCommandAddEnvFormat(cmd, "QEMU_AUDIO_TIMER_PERIOD=%u",
+                               audio->timerPeriod);
 
     qemuBuildAudioCommonEnv(cmd, "QEMU_AUDIO_ADC_", &audio->input);
     qemuBuildAudioCommonEnv(cmd, "QEMU_AUDIO_DAC_", &audio->output);
@@ -8553,9 +8627,15 @@ qemuBuildInterfaceCommandLine(virQEMUDriver *driver,
     actualBandwidth = virDomainNetGetActualBandwidth(net);
     if (actualBandwidth) {
         if (virNetDevSupportsBandwidth(actualType)) {
-            if (virNetDevBandwidthSet(net->ifname, actualBandwidth, false,
-                                      !virDomainNetTypeSharesHostView(net)) < 0)
+            if (virDomainNetDefIsOvsport(net)) {
+                if (virNetDevOpenvswitchInterfaceSetQos(net->ifname, actualBandwidth,
+                                                        def->uuid,
+                                                        !virDomainNetTypeSharesHostView(net)) < 0)
+                    goto cleanup;
+            } else if (virNetDevBandwidthSet(net->ifname, actualBandwidth, false,
+                                             !virDomainNetTypeSharesHostView(net)) < 0) {
                 goto cleanup;
+            }
         } else {
             VIR_WARN("setting bandwidth on interfaces of "
                      "type '%s' is not implemented yet",
@@ -9774,9 +9854,6 @@ qemuBuildSEVCommandLine(virDomainObj *vm, virCommand *cmd,
     g_autofree char *dhpath = NULL;
     g_autofree char *sessionpath = NULL;
 
-    if (!sev)
-        return 0;
-
     VIR_DEBUG("policy=0x%x cbitpos=%d reduced_phys_bits=%d",
               sev->policy, sev->cbitpos, sev->reduced_phys_bits);
 
@@ -9786,7 +9863,7 @@ qemuBuildSEVCommandLine(virDomainObj *vm, virCommand *cmd,
     if (sev->session)
         sessionpath = g_strdup_printf("%s/session.base64", priv->libDir);
 
-    if (qemuMonitorCreateObjectProps(&props, "sev-guest", "sev0",
+    if (qemuMonitorCreateObjectProps(&props, "sev-guest", "lsec0",
                                      "u:cbitpos", sev->cbitpos,
                                      "u:reduced-phys-bits", sev->reduced_phys_bits,
                                      "u:policy", sev->policy,
@@ -9802,6 +9879,51 @@ qemuBuildSEVCommandLine(virDomainObj *vm, virCommand *cmd,
     virCommandAddArgBuffer(cmd, &buf);
     return 0;
 }
+
+
+static int
+qemuBuildPVCommandLine(virDomainObj *vm, virCommand *cmd)
+{
+    g_autoptr(virJSONValue) props = NULL;
+    g_auto(virBuffer) buf = VIR_BUFFER_INITIALIZER;
+    qemuDomainObjPrivate *priv = vm->privateData;
+
+    if (qemuMonitorCreateObjectProps(&props, "s390-pv-guest", "lsec0",
+                                     NULL) < 0)
+        return -1;
+
+    if (qemuBuildObjectCommandlineFromJSON(&buf, props, priv->qemuCaps) < 0)
+        return -1;
+
+    virCommandAddArg(cmd, "-object");
+    virCommandAddArgBuffer(cmd, &buf);
+    return 0;
+}
+
+
+static int
+qemuBuildSecCommandLine(virDomainObj *vm, virCommand *cmd,
+                        virDomainSecDef *sec)
+{
+    if (!sec)
+        return 0;
+
+    switch ((virDomainLaunchSecurity) sec->sectype) {
+    case VIR_DOMAIN_LAUNCH_SECURITY_SEV:
+        return qemuBuildSEVCommandLine(vm, cmd, &sec->data.sev);
+        break;
+    case VIR_DOMAIN_LAUNCH_SECURITY_PV:
+        return qemuBuildPVCommandLine(vm, cmd);
+        break;
+    case VIR_DOMAIN_LAUNCH_SECURITY_NONE:
+    case VIR_DOMAIN_LAUNCH_SECURITY_LAST:
+        virReportEnumRangeError(virDomainLaunchSecurity, sec->sectype);
+        return -1;
+    }
+
+    return 0;
+}
+
 
 static int
 qemuBuildVMCoreInfoCommandLine(virCommand *cmd,
@@ -10502,7 +10624,7 @@ qemuBuildCommandLine(virQEMUDriver *driver,
     if (qemuBuildVMCoreInfoCommandLine(cmd, def) < 0)
         return NULL;
 
-    if (qemuBuildSEVCommandLine(vm, cmd, def->sev) < 0)
+    if (qemuBuildSecCommandLine(vm, cmd, def->sec) < 0)
         return NULL;
 
     if (snapshot)

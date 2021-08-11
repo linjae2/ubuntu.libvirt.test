@@ -3,6 +3,7 @@
   <qemuctime>0</qemuctime>
   <selfctime>0</selfctime>
   <selfvers>0</selfvers>
+  <flag name='sdl'/>
   <flag name='spice'/>
   <flag name='hda-duplex'/>
   <flag name='ccid-emulated'/>
@@ -145,6 +146,7 @@
   <flag name='vhost-vsock'/>
   <flag name='chardev-fd-pass'/>
   <flag name='usb-storage.werror'/>
+  <flag name='egl-headless'/>
   <flag name='vfio-pci.display'/>
   <flag name='memory-backend-memfd'/>
   <flag name='memory-backend-memfd.hugetlb'/>
@@ -176,6 +178,7 @@
   <flag name='vnc-opts'/>
   <flag name='rotation-rate'/>
   <flag name='input-linux'/>
+  <flag name='query-display-options'/>
   <version>4000000</version>
   <kvmVersion>0</kvmVersion>
   <microcodeVersion>0</microcodeVersion>

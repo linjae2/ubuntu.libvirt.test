@@ -49,7 +49,7 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
     WITH_ATTR                 = -Dattr=enabled
     WITH_AUDIT                = -Daudit=enabled
     WITH_SELINUX              = -Dselinux=enabled -Dsecdriver_selinux=enabled -Dselinux_mount=/sys/fs/selinux
-    WITH_APPARMOR             = -Dapparmor=enabled -Dsecdriver_apparmor=enabled -Dapparmor_profiles=true
+    WITH_APPARMOR             = -Dapparmor=enabled -Dsecdriver_apparmor=enabled -Dapparmor_profiles=enabled
     WITH_NSS_PLUGIN           = -Dnss=enabled
     WITH_DTRACE               = -Ddtrace=enabled
     WITH_NUMA                 = -Dnumactl=enabled -Dnumad=enabled
@@ -82,7 +82,7 @@ else
     WITH_ATTR                 = -Dattr=disabled
     WITH_AUDIT                = -Daudit=disabled
     WITH_SELINUX              = -Dselinux=disabled -Dsecdriver_selinux=disabled -Dselinux_mount=
-    WITH_APPARMOR             = -Dapparmor=disabled -Dsecdriver_apparmor=disabled -Dapparmor_profiles=false
+    WITH_APPARMOR             = -Dapparmor=disabled -Dsecdriver_apparmor=disabled -Dapparmor_profiles=disabled
     WITH_NSS_PLUGIN           = -Dnss=disabled
     WITH_DTRACE               = -Ddtrace=disabled
     WITH_NUMA                 = -Dnumactl=disabled -Dnumad=disabled
@@ -96,6 +96,11 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     -Dpackager="$(DEB_BUILDUSER) $(DEB_BUILDDATE)" \
     -Dpackager_version="$(DEB_RELEASE)" \
     -Ddriver_qemu=enabled \
+    -Ddriver_libvirtd=enabled \
+    -Ddriver_remote=enabled \
+    -Dremote_default_mode=legacy \
+    -Ddriver_test=enabled \
+    -Ddriver_ch=disabled \
     -Dqemu_user=libvirt-qemu \
     -Dqemu_group=kvm \
     -Dqemu_moddir=/usr/lib/$(DEB_HOST_MULTIARCH)/qemu \
@@ -105,6 +110,7 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     -Dsasl=enabled \
     -Dyajl=enabled \
     -Dlibssh2=disabled \
+    -Dlibssh=enabled \
     $(WITH_POLKIT) \
     $(WITH_SANLOCK) \
     $(WITH_UDEV) \
@@ -155,6 +161,21 @@ LIBVIRT_SOCKETS = \
     virtlogd-admin.socket \
     virtlockd.socket \
     virtlockd-admin.socket \
+    $(NULL)
+
+APPARMOR_ABSTRACTIONS = \
+    libvirt-lxc \
+    libvirt-qemu \
+    $(NULL)
+
+APPARMOR_TEMPLATES = \
+    TEMPLATE.lxc \
+    TEMPLATE.qemu \
+    $(NULL)
+
+APPARMOR_SERVICES = \
+    usr.lib.libvirt.virt-aa-helper \
+    usr.sbin.libvirtd \
     $(NULL)
 
 DEB_BUILDDIR := $(CURDIR)/debian/build
@@ -249,9 +270,16 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	               lib/systemd/system/; \
 	done
 	dh_install -p libvirt-daemon usr/lib/libvirt/virt-aa-helper
-	dh_install -p libvirt-daemon-system etc/apparmor.d
-	dh_apparmor -p libvirt-daemon-system --profile-name=usr.lib.libvirt.virt-aa-helper
-	dh_apparmor -p libvirt-daemon-system --profile-name=usr.sbin.libvirtd
+	for f in $(APPARMOR_ABSTRACTIONS); do \
+	    dh_install -p libvirt-daemon-system etc/apparmor.d/abstractions/$${f}; \
+	done
+	for f in $(APPARMOR_TEMPLATES); do \
+	    dh_install -p libvirt-daemon-system etc/apparmor.d/libvirt/$${f}; \
+	done
+	for f in $(APPARMOR_SERVICES); do \
+	    dh_install -p libvirt-daemon-system etc/apparmor.d/$${f}; \
+	    dh_apparmor -p libvirt-daemon-system --profile-name=$${f}; \
+	done
 	# Not all linux arches have systemtap yet
 	mkdir -p $(DEB_DESTDIR)/usr/share/systemtap
 	dh_install -p libvirt-daemon-system usr/share/systemtap

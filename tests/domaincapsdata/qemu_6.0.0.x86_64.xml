@@ -118,6 +118,13 @@
       <model usable='yes'>486</model>
     </mode>
   </cpu>
+  <memoryBacking supported='yes'>
+    <enum name='sourceType'>
+      <value>file</value>
+      <value>anonymous</value>
+      <value>memfd</value>
+    </enum>
+  </memoryBacking>
   <devices>
     <disk supported='yes'>
       <enum name='diskDevice'>
@@ -207,6 +214,9 @@
     <genid supported='yes'/>
     <backingStoreInput supported='yes'/>
     <backup supported='no'/>
-    <sev supported='no'/>
+    <sev supported='yes'>
+      <cbitpos>47</cbitpos>
+      <reducedPhysBits>1</reducedPhysBits>
+    </sev>
   </features>
 </domainCapabilities>
