@@ -39,6 +39,7 @@ Build-Depends:
  libsasl2-dev,
  libselinux1-dev (>= 2.0.82) [linux-any],
  libtirpc-dev,
+ libssh-dev,
  libudev-dev [linux-any],
  libwireshark-dev (>= 1.11.3),
  libwiretap-dev,
