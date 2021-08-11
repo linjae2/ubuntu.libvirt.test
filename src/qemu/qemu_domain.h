@@ -914,7 +914,7 @@ int qemuDomainCheckMonitor(virQEMUDriver *driver,
                            virDomainObj *vm,
                            qemuDomainAsyncJob asyncJob);
 
-bool qemuDomainSupportsVideoVga(virDomainVideoDef *video,
+bool qemuDomainSupportsVideoVga(const virDomainVideoDef *video,
                                 virQEMUCaps *qemuCaps);
 
 bool qemuDomainNeedsVFIO(const virDomainDef *def);
@@ -954,12 +954,6 @@ qemuDomainObjPrivateXMLFormatAllowReboot(virBuffer *buf,
 int
 qemuDomainObjPrivateXMLParseAllowReboot(xmlXPathContextPtr ctxt,
                                         virTristateBool *allowReboot);
-
-bool
-qemuDomainCheckCCWS390AddressSupport(const virDomainDef *def,
-                                     const virDomainDeviceInfo *info,
-                                     virQEMUCaps *qemuCaps,
-                                     const char *devicename);
 
 void
 qemuDomainPrepareDiskSourceData(virDomainDiskDef *disk,

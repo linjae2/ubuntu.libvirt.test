@@ -331,7 +331,8 @@ testBuildCapabilities(virConnectPtr conn)
                                        i, privconn->cells[i].mem,
                                        privconn->cells[i].numCpus, &cpu_cells,
                                        0, NULL,
-                                       nPages, &pages);
+                                       nPages, &pages,
+                                       NULL);
     }
 
     for (i = 0; i < G_N_ELEMENTS(guest_types); i++) {
@@ -5006,6 +5007,66 @@ testDomainInterfaceAddressFromNet(testDriver *driver,
     return ret;
 }
 
+static int
+testDomainGetSecurityLabel(virDomainPtr dom,
+                           virSecurityLabelPtr seclabel)
+{
+    virDomainObj *vm;
+    int ret = -1;
+
+    memset(seclabel, 0, sizeof(*seclabel));
+
+    if (!(vm = testDomObjFromDomain(dom)))
+        return -1;
+
+    if (virDomainObjIsActive(vm)) {
+        if (virStrcpyStatic(seclabel->label, "libvirt-test") < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("security label exceeds maximum: %zu"),
+                           sizeof(seclabel->label) - 1);
+            goto cleanup;
+        }
+
+        seclabel->enforcing = 1;
+    }
+
+    ret = 0;
+
+ cleanup:
+    virDomainObjEndAPI(&vm);
+    return ret;
+}
+
+static int
+testNodeGetSecurityModel(virConnectPtr conn,
+                         virSecurityModelPtr secmodel)
+{
+    testDriver *driver = conn->privateData;
+
+    memset(secmodel, 0, sizeof(*secmodel));
+
+    if (driver->caps->host.nsecModels == 0 ||
+        driver->caps->host.secModels[0].model == NULL)
+        return 0;
+
+    if (virStrcpy(secmodel->model, driver->caps->host.secModels[0].model,
+                  VIR_SECURITY_MODEL_BUFLEN) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("security model string exceeds max %d bytes"),
+                       VIR_SECURITY_MODEL_BUFLEN - 1);
+        return -1;
+    }
+
+    if (virStrcpy(secmodel->doi, driver->caps->host.secModels[0].doi,
+                  VIR_SECURITY_DOI_BUFLEN) < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR,
+                       _("security DOI string exceeds max %d bytes"),
+                       VIR_SECURITY_DOI_BUFLEN - 1);
+        return -1;
+    }
+
+    return 0;
+}
 
 static int
 testDomainInterfaceAddresses(virDomainPtr dom,
@@ -9295,6 +9356,8 @@ static virHypervisorDriver testHypervisorDriver = {
     .domainGetVcpus = testDomainGetVcpus, /* 0.7.3 */
     .domainGetVcpuPinInfo = testDomainGetVcpuPinInfo, /* 1.2.18 */
     .domainGetMaxVcpus = testDomainGetMaxVcpus, /* 0.7.3 */
+    .domainGetSecurityLabel = testDomainGetSecurityLabel, /* 7.5.0 */
+    .nodeGetSecurityModel = testNodeGetSecurityModel, /* 7.5.0 */
     .domainGetXMLDesc = testDomainGetXMLDesc, /* 0.1.4 */
     .domainSetMemoryParameters = testDomainSetMemoryParameters, /* 5.6.0 */
     .domainGetMemoryParameters = testDomainGetMemoryParameters, /* 5.6.0 */

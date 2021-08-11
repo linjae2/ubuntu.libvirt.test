@@ -1276,6 +1276,7 @@ qemuValidateDomainDeviceDefZPCIAddress(virDomainDeviceInfo *info,
 
 static int
 qemuValidateDomainDeviceDefAddress(const virDomainDeviceDef *dev,
+                                   const virDomainDef *def,
                                    virQEMUCaps *qemuCaps)
 {
     virDomainDeviceInfo *info;
@@ -1309,12 +1310,31 @@ qemuValidateDomainDeviceDefAddress(const virDomainDeviceDef *dev,
         break;
         }
 
+    case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390:
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("'virtio-s390' addresses are no longer supported"));
+        return -1;
+
+    case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW:
+        if (!qemuDomainIsS390CCW(def)) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                           _("cannot use CCW address type for device '%s' using machine type '%s'"),
+                           NULLSTR(info->alias), def->os.machine);
+            return -1;
+        }
+
+        if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_CCW)) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                           _("CCW address type is not supported by this QEMU"));
+            return -1;
+        }
+
+        break;
+
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_DRIVE:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_SERIAL:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCID:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_USB:
-    case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_S390:
-    case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_VIRTIO_MMIO:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_ISA:
     case VIR_DOMAIN_DEVICE_ADDRESS_TYPE_DIMM:
@@ -2364,7 +2384,9 @@ qemuValidateDomainDeviceDefVideo(const virDomainVideoDef *video,
     } else if (video->accel) {
         if (video->accel->accel3d == VIR_TRISTATE_SWITCH_ON &&
             (video->type != VIR_DOMAIN_VIDEO_TYPE_VIRTIO ||
-             !virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_GPU_VIRGL))) {
+             !(virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_GPU_VIRGL) ||
+               virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_GPU_GL_PCI) ||
+               virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_VGA_GL)))) {
             virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                            _("%s 3d acceleration is not supported"),
                            virDomainVideoTypeToString(video->type));
@@ -2408,16 +2430,8 @@ static bool
 qemuValidateDomainDeviceDefDiskIOThreads(const virDomainDef *def,
                                          const virDomainDiskDef *disk)
 {
-    /* Right "type" of disk" */
     switch ((virDomainDiskBus)disk->bus) {
     case VIR_DOMAIN_DISK_BUS_VIRTIO:
-        if (disk->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_PCI &&
-            disk->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW) {
-            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                            _("IOThreads only available for virtio pci and "
-                              "virtio ccw disk"));
-            return false;
-        }
         break;
 
     case VIR_DOMAIN_DISK_BUS_IDE:
@@ -2831,9 +2845,6 @@ qemuValidateDomainDeviceDefDiskFrontend(const virDomainDiskDef *disk,
 
     if (disk->serial &&
         qemuValidateDomainDeviceDefDiskSerial(disk->serial) < 0)
-        return -1;
-
-    if (!qemuDomainCheckCCWS390AddressSupport(def, &disk->info, qemuCaps, disk->dst))
         return -1;
 
     if (disk->iothread && !qemuValidateDomainDeviceDefDiskIOThreads(def, disk))
@@ -3926,10 +3937,6 @@ qemuValidateDomainDeviceDefController(const virDomainControllerDef *controller,
 {
     int ret = 0;
 
-    if (!qemuDomainCheckCCWS390AddressSupport(def, &controller->info, qemuCaps,
-                                              "controller"))
-        return -1;
-
     if (controller->type == VIR_DOMAIN_CONTROLLER_TYPE_SCSI &&
         !qemuValidateCheckSCSIControllerModel(qemuCaps, controller->model))
         return -1;
@@ -4471,7 +4478,6 @@ qemuValidateDomainDeviceDefSound(virDomainSoundDef *sound,
 
 static int
 qemuValidateDomainDeviceDefVsock(const virDomainVsockDef *vsock,
-                                 const virDomainDef *def,
                                  virQEMUCaps *qemuCaps)
 {
     if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_VHOST_VSOCK)) {
@@ -4480,10 +4486,6 @@ qemuValidateDomainDeviceDefVsock(const virDomainVsockDef *vsock,
                          "with this QEMU binary"));
         return -1;
     }
-
-    if (!qemuDomainCheckCCWS390AddressSupport(def, &vsock->info, qemuCaps,
-                                              "vsock"))
-        return -1;
 
     if (qemuValidateDomainVirtioOptions(vsock->virtio, qemuCaps) < 0)
         return -1;
@@ -5002,7 +5004,7 @@ qemuValidateDomainDeviceDef(const virDomainDeviceDef *dev,
         qemuCaps = qemuCapsLocal;
     }
 
-    if ((ret = qemuValidateDomainDeviceDefAddress(dev, qemuCaps)) < 0)
+    if ((ret = qemuValidateDomainDeviceDefAddress(dev, def, qemuCaps)) < 0)
         return ret;
 
     switch ((virDomainDeviceType)dev->type) {
@@ -5049,7 +5051,7 @@ qemuValidateDomainDeviceDef(const virDomainDeviceDef *dev,
         break;
 
     case VIR_DOMAIN_DEVICE_VSOCK:
-        ret = qemuValidateDomainDeviceDefVsock(dev->data.vsock, def, qemuCaps);
+        ret = qemuValidateDomainDeviceDefVsock(dev->data.vsock, qemuCaps);
         break;
 
     case VIR_DOMAIN_DEVICE_TPM:

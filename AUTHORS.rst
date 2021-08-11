@@ -444,6 +444,7 @@ Patches have also been contributed by:
 * Laszlo Ersek <lersek@redhat.com>
 * Laurent Bigonville <bigon@bigon.be>
 * Laurent Léonard <laurent@open-minds.org>
+* Lee Yarwood <lyarwood@redhat.com>
 * Lei Li <lilei@linux.vnet.ibm.com>
 * Leno Hou <houqy@linux.vnet.ibm.com>
 * Leonid Bloch <lb.workbox@gmail.com>
@@ -544,6 +545,7 @@ Patches have also been contributed by:
 * Nan Zhang <nzhang@redhat.com>
 * Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>
 * Natanael Copa <ncopa@alpinelinux.org>
+* Nathan <nathan95@live.it>
 * Neal Gompa <ngompa13@gmail.com>
 * Nehal J Wani <nehaljw.kkd1@gmail.com>
 * Neil Wilson <neil@aldur.co.uk>
@@ -685,6 +687,7 @@ Patches have also been contributed by:
 * Shuang He <shuang.he@zstack.io>
 * Silvan Kaiser <silvan@quobyte.com>
 * Simon Arlott <bugzilla.redhat.simon@arlott.org>
+* Simon Chopin <chopin.simon@gmail.com>
 * Simon Kobyda <skobyda@redhat.com>
 * Simon McVittie <smcv@debian.org>
 * Simone Gotti <simone.gotti@gmail.com>
@@ -696,6 +699,7 @@ Patches have also been contributed by:
 * Stefan Bader <stefan.bader@canonical.com>
 * Stefan Berger <stefanb@linux.ibm.com>
 * Stefan Berger <stefanb@us.ibm.com>
+* Stefan Hajnoczi <stefanha@gmail.com>
 * Stefan Hajnoczi <stefanha@linux.vnet.ibm.com>
 * Stefan Hajnoczi <stefanha@redhat.com>
 * Stefan Schallenberg <infos@nafets.de>
@@ -762,11 +766,13 @@ Patches have also been contributed by:
 * Wei Huang <wei@redhat.com>
 * Wei Jiangang <weijg.fnst@cn.fujitsu.com>
 * Wei Liu <wei.liu2@citrix.com>
+* Wei Liu <wei.liu@kernel.org>
 * Weilun Zhu <zhuweilun@huawei.com>
 * Weiwei Li <nuonuoli@tencent.com>
 * Wen Congyang <wency@cn.fujitsu.com>
 * Wido den Hollander <wido@widodh.nl>
 * Wieland Hoffmann <themineo@googlemail.com>
+* William Douglas <william.douglas@intel.com>
 * William Grant <wgrant@ubuntu.com>
 * William Jon McCann <william.jon.mccann@gmail.com>
 * Wim ten Have <wim.ten.have@oracle.com>
@@ -806,6 +812,7 @@ Patches have also been contributed by:
 * Yuri Pudgorodskiy <yur@virtuozzo.com>
 * Yuto KAWAMURA(kawamuray) <kawamuray.dadada@gmail.com>
 * Yuval Shaia <yuval.shaia@oracle.com>
+* Zbigniew Jędrzejewski-Szmek <zbyszek@in.waw.pl>
 * Zdenek Styblik <stybla@turnovfree.net>
 * Zeeshan Ali (Khattak) <zeeshanak@gnome.org>
 * Zeng Junliang <zengjunliang@huawei.com>

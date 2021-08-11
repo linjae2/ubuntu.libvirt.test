@@ -121,6 +121,8 @@ virCapabilitiesFreeHostNUMACell(virCapsHostNUMACell *cell)
     g_free(cell->cpus);
     g_free(cell->distances);
     g_free(cell->pageinfo);
+    if (cell->caches)
+        g_array_unref(cell->caches);
     g_free(cell);
 }
 
@@ -189,7 +191,8 @@ virCapabilitiesHostNUMAUnref(virCapsHostNUMA *caps)
 
     if (g_atomic_int_dec_and_test(&caps->refs)) {
         g_ptr_array_unref(caps->cells);
-
+        if (caps->interconnects)
+            g_array_unref(caps->interconnects);
         g_free(caps);
     }
 }
@@ -335,6 +338,7 @@ virCapabilitiesSetNetPrefix(virCaps *caps,
  * @distances: NUMA distances to other nodes
  * @npageinfo: number of pages at node @num
  * @pageinfo: info on each single memory page
+ * @caches: info on memory side caches
  *
  * Registers a new NUMA cell for a host, passing in a array of
  * CPU IDs belonging to the cell, distances to other NUMA nodes
@@ -351,7 +355,8 @@ virCapabilitiesHostNUMAAddCell(virCapsHostNUMA *caps,
                                int ndistances,
                                virNumaDistance **distances,
                                int npageinfo,
-                               virCapsHostNUMACellPageInfo **pageinfo)
+                               virCapsHostNUMACellPageInfo **pageinfo,
+                               GArray **caches)
 {
     virCapsHostNUMACell *cell = g_new0(virCapsHostNUMACell, 1);
 
@@ -368,6 +373,9 @@ virCapabilitiesHostNUMAAddCell(virCapsHostNUMA *caps,
     if (pageinfo) {
         cell->npageinfo = npageinfo;
         cell->pageinfo = g_steal_pointer(pageinfo);
+    }
+    if (caches) {
+        cell->caches = g_steal_pointer(caches);
     }
 
     g_ptr_array_add(caps->cells, cell);
@@ -803,6 +811,41 @@ virCapabilitiesAddStoragePool(virCaps *caps,
 
 
 static int
+virCapsHostNUMACellCPUFormat(virBuffer *buf,
+                             const virCapsHostNUMACellCPU *cpus,
+                             int ncpus)
+{
+    g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
+    g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
+    size_t j;
+
+    virBufferAsprintf(&attrBuf, " num='%d'", ncpus);
+
+    for (j = 0; j < ncpus; j++) {
+        virBufferAsprintf(&childBuf, "<cpu id='%d'", cpus[j].id);
+
+        if (cpus[j].siblings) {
+            g_autofree char *siblings = NULL;
+
+            if (!(siblings = virBitmapFormat(cpus[j].siblings)))
+                return -1;
+
+            virBufferAsprintf(&childBuf,
+                              " socket_id='%d' die_id='%d' core_id='%d' siblings='%s'",
+                              cpus[j].socket_id,
+                              cpus[j].die_id,
+                              cpus[j].core_id,
+                              siblings);
+        }
+        virBufferAddLit(&childBuf, "/>\n");
+    }
+
+    virXMLFormatElement(buf, "cpus", &attrBuf, &childBuf);
+    return 0;
+}
+
+
+static int
 virCapabilitiesHostNUMAFormat(virBuffer *buf,
                               virCapsHostNUMA *caps)
 {
@@ -835,33 +878,26 @@ virCapabilitiesHostNUMAFormat(virBuffer *buf,
 
         virNumaDistanceFormat(buf, cell->distances, cell->ndistances);
 
-        virBufferAsprintf(buf, "<cpus num='%d'>\n", cell->ncpus);
-        virBufferAdjustIndent(buf, 2);
-        for (j = 0; j < cell->ncpus; j++) {
-            virBufferAsprintf(buf, "<cpu id='%d'", cell->cpus[j].id);
-
-            if (cell->cpus[j].siblings) {
-                g_autofree char *siblings = NULL;
-
-                if (!(siblings = virBitmapFormat(cell->cpus[j].siblings)))
-                    return -1;
-
-                virBufferAsprintf(buf,
-                                  " socket_id='%d' die_id='%d' core_id='%d' siblings='%s'",
-                                  cell->cpus[j].socket_id,
-                                  cell->cpus[j].die_id,
-                                  cell->cpus[j].core_id,
-                                  siblings);
-            }
-            virBufferAddLit(buf, "/>\n");
+        if (cell->caches) {
+            virNumaCache *caches = &g_array_index(cell->caches, virNumaCache, 0);
+            virNumaCacheFormat(buf, caches, cell->caches->len);
         }
-        virBufferAdjustIndent(buf, -2);
-        virBufferAddLit(buf, "</cpus>\n");
+
+        if (virCapsHostNUMACellCPUFormat(buf, cell->cpus, cell->ncpus) < 0)
+            return -1;
+
         virBufferAdjustIndent(buf, -2);
         virBufferAddLit(buf, "</cell>\n");
     }
     virBufferAdjustIndent(buf, -2);
     virBufferAddLit(buf, "</cells>\n");
+
+    if (caps->interconnects) {
+        const virNumaInterconnect *interconnects;
+        interconnects = &g_array_index(caps->interconnects, virNumaInterconnect, 0);
+        virNumaInterconnectFormat(buf, interconnects, caps->interconnects->len);
+    }
+
     virBufferAdjustIndent(buf, -2);
     virBufferAddLit(buf, "</topology>\n");
     return 0;
@@ -1520,6 +1556,129 @@ virCapabilitiesGetNUMAPagesInfo(int node,
 
 
 static int
+virCapabilitiesGetNodeCacheReadFile(const char *prefix,
+                                    const char *dir,
+                                    const char *file,
+                                    unsigned int *value)
+{
+    g_autofree char *path = g_build_filename(prefix, dir, file, NULL);
+    int rv = virFileReadValueUint(value, "%s", path);
+
+    if (rv < 0) {
+        if (rv == -2) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("File '%s' does not exist"),
+                           path);
+        }
+        return -1;
+    }
+
+    return 0;
+}
+
+
+static int
+virCapsHostNUMACellCacheComparator(const void *a,
+                                   const void *b)
+{
+    const virNumaCache *aa = a;
+    const virNumaCache *bb = b;
+
+    return aa->level - bb->level;
+}
+
+
+static int
+virCapabilitiesGetNodeCache(int node,
+                            GArray **cachesRet)
+{
+    g_autoptr(DIR) dir = NULL;
+    int direrr = 0;
+    struct dirent *entry;
+    g_autofree char *path = NULL;
+    g_autoptr(GArray) caches = g_array_new(FALSE, FALSE, sizeof(virNumaCache));
+
+    path = g_strdup_printf(SYSFS_SYSTEM_PATH "/node/node%d/memory_side_cache", node);
+
+    if (virDirOpenIfExists(&dir, path) < 0)
+        return -1;
+
+    while (dir && (direrr = virDirRead(dir, &entry, path)) > 0) {
+        const char *dname = STRSKIP(entry->d_name, "index");
+        virNumaCache cache = { 0 };
+        unsigned int indexing;
+        unsigned int write_policy;
+
+        if (!dname)
+            continue;
+
+        if (virStrToLong_ui(dname, NULL, 10, &cache.level) < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("unable to parse %s"),
+                           entry->d_name);
+            return -1;
+        }
+
+        if (virCapabilitiesGetNodeCacheReadFile(path, entry->d_name,
+                                                "size", &cache.size) < 0)
+            return -1;
+
+        cache.size >>= 10; /* read in bytes but stored in kibibytes */
+
+        if (virCapabilitiesGetNodeCacheReadFile(path, entry->d_name,
+                                                "line_size", &cache.line) < 0)
+            return -1;
+
+        if (virCapabilitiesGetNodeCacheReadFile(path, entry->d_name,
+                                                "indexing", &indexing) < 0)
+            return -1;
+
+        /* see enum cache_indexing in kernel */
+        switch (indexing) {
+        case 0: cache.associativity = VIR_NUMA_CACHE_ASSOCIATIVITY_DIRECT; break;
+        case 1: cache.associativity = VIR_NUMA_CACHE_ASSOCIATIVITY_FULL; break;
+        case 2: cache.associativity = VIR_NUMA_CACHE_ASSOCIATIVITY_NONE; break;
+        default:
+                virReportError(VIR_ERR_INTERNAL_ERROR,
+                               _("unknown indexing value '%u'"),
+                               indexing);
+                return -1;
+        }
+
+        if (virCapabilitiesGetNodeCacheReadFile(path, entry->d_name,
+                                                "write_policy", &write_policy) < 0)
+            return -1;
+
+        /* see enum cache_write_policy in kernel */
+        switch (write_policy) {
+        case 0: cache.policy = VIR_NUMA_CACHE_POLICY_WRITEBACK; break;
+        case 1: cache.policy = VIR_NUMA_CACHE_POLICY_WRITETHROUGH; break;
+        case 2: cache.policy = VIR_NUMA_CACHE_POLICY_NONE; break;
+        default:
+                virReportError(VIR_ERR_INTERNAL_ERROR,
+                               _("unknown write_policy value '%u'"),
+                               write_policy);
+                return -1;
+        }
+
+        g_array_append_val(caches, cache);
+    }
+
+    if (direrr < 0)
+        return -1;
+
+    if (caches->len > 0) {
+        g_array_sort(caches, virCapsHostNUMACellCacheComparator);
+        *cachesRet = g_steal_pointer(&caches);
+    } else {
+        *cachesRet = NULL;
+    }
+
+    return 0;
+}
+
+
+static int
 virCapabilitiesHostNUMAInitFake(virCapsHostNUMA *caps)
 {
     virNodeInfo nodeinfo;
@@ -1570,7 +1729,8 @@ virCapabilitiesHostNUMAInitFake(virCapsHostNUMA *caps)
                                        nodeinfo.memory,
                                        cid, &cpus,
                                        0, NULL,
-                                       0, NULL);
+                                       0, NULL,
+                                       NULL);
     }
 
     return 0;
@@ -1580,6 +1740,181 @@ virCapabilitiesHostNUMAInitFake(virCapsHostNUMA *caps)
         virBitmapFree(cpus[cid].siblings);
     VIR_FREE(cpus);
     return -1;
+}
+
+
+static void
+virCapabilitiesHostInsertHMAT(GArray *interconnects,
+                              unsigned int initiator,
+                              unsigned int target,
+                              unsigned int read_bandwidth,
+                              unsigned int write_bandwidth,
+                              unsigned int read_latency,
+                              unsigned int write_latency)
+{
+    virNumaInterconnect ni;
+
+    ni = (virNumaInterconnect) { VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH,
+        initiator, target, 0, VIR_MEMORY_LATENCY_READ, read_bandwidth};
+    g_array_append_val(interconnects, ni);
+
+    ni = (virNumaInterconnect) { VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH,
+        initiator, target, 0, VIR_MEMORY_LATENCY_WRITE, write_bandwidth};
+    g_array_append_val(interconnects, ni);
+
+    ni = (virNumaInterconnect) { VIR_NUMA_INTERCONNECT_TYPE_LATENCY,
+        initiator, target, 0, VIR_MEMORY_LATENCY_READ, read_latency};
+    g_array_append_val(interconnects, ni);
+
+    ni = (virNumaInterconnect) { VIR_NUMA_INTERCONNECT_TYPE_LATENCY,
+        initiator, target, 0, VIR_MEMORY_LATENCY_WRITE, write_latency};
+    g_array_append_val(interconnects, ni);
+}
+
+
+static int
+virCapabilitiesHostNUMAInitInterconnectsNode(GArray *interconnects,
+                                             unsigned int node)
+{
+    g_autofree char *path = NULL;
+    g_autofree char *initPath = NULL;
+    g_autoptr(DIR) dir = NULL;
+    int direrr = 0;
+    struct dirent *entry;
+    unsigned int read_bandwidth;
+    unsigned int write_bandwidth;
+    unsigned int read_latency;
+    unsigned int write_latency;
+
+    /* Unfortunately, kernel does not expose full HMAT table. I mean it does,
+     * in its binary form under /sys/firmware/acpi/tables/HMAT but we don't
+     * want to parse that. But some important info is still exposed, under
+     * "access0" and "access1" directories. The former contains the best
+     * interconnect to given node including CPUs and devices that might do I/O
+     * (such as GPUs and NICs). The latter contains the best interconnect to
+     * given node but only CPUs are considered. Stick with access1 until sysfs
+     * exposes the full table in a sensible way.
+     * NB on most system access0 and access1 contain the same values. */
+    path = g_strdup_printf(SYSFS_SYSTEM_PATH "/node/node%d/access1", node);
+
+    if (!virFileExists(path))
+        return 0;
+
+    if (virCapabilitiesGetNodeCacheReadFile(path, "initiators",
+                                            "read_bandwidth",
+                                            &read_bandwidth) < 0)
+        return -1;
+    if (virCapabilitiesGetNodeCacheReadFile(path, "initiators",
+                                            "write_bandwidth",
+                                            &write_bandwidth) < 0)
+        return -1;
+
+    /* Bandwidths are read in MiB but stored in KiB */
+    read_bandwidth <<= 10;
+    write_bandwidth <<= 10;
+
+    if (virCapabilitiesGetNodeCacheReadFile(path, "initiators",
+                                            "read_latency",
+                                            &read_latency) < 0)
+        return -1;
+    if (virCapabilitiesGetNodeCacheReadFile(path, "initiators",
+                                            "write_latency",
+                                            &write_latency) < 0)
+        return -1;
+
+    initPath = g_strdup_printf("%s/initiators", path);
+
+    if (virDirOpen(&dir, initPath) < 0)
+        return -1;
+
+    while ((direrr = virDirRead(dir, &entry, path)) > 0) {
+        const char *dname = STRSKIP(entry->d_name, "node");
+        unsigned int initNode;
+
+        if (!dname)
+            continue;
+
+        if (virStrToLong_ui(dname, NULL, 10, &initNode) < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("unable to parse %s"),
+                           entry->d_name);
+            return -1;
+        }
+
+        virCapabilitiesHostInsertHMAT(interconnects,
+                                      initNode, node,
+                                      read_bandwidth,
+                                      write_bandwidth,
+                                      read_latency,
+                                      write_latency);
+    }
+
+    return 0;
+}
+
+
+static int
+virCapsHostNUMAInterconnectComparator(const void *a,
+                                      const void *b)
+{
+    const virNumaInterconnect *aa = a;
+    const virNumaInterconnect *bb = b;
+
+    if (aa->type != bb->type)
+        return aa->type - bb->type;
+
+    if (aa->initiator != bb->initiator)
+        return aa->initiator - bb->initiator;
+
+    if (aa->target != bb->target)
+        return aa->target - bb->target;
+
+    if (aa->cache != bb->cache)
+        return aa->cache - bb->cache;
+
+    if (aa->accessType != bb->accessType)
+        return aa->accessType - bb->accessType;
+
+    return aa->value - bb->value;
+}
+
+
+static int
+virCapabilitiesHostNUMAInitInterconnects(virCapsHostNUMA *caps)
+{
+    g_autoptr(DIR) dir = NULL;
+    int direrr = 0;
+    struct dirent *entry;
+    const char *path = SYSFS_SYSTEM_PATH "/node/";
+    g_autoptr(GArray) interconnects = g_array_new(FALSE, FALSE, sizeof(virNumaInterconnect));
+
+    if (virDirOpenIfExists(&dir, path) < 0)
+        return -1;
+
+    while (dir && (direrr = virDirRead(dir, &entry, path)) > 0) {
+        const char *dname = STRSKIP(entry->d_name, "node");
+        unsigned int node;
+
+        if (!dname)
+            continue;
+
+        if (virStrToLong_ui(dname, NULL, 10, &node) < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("unable to parse %s"),
+                           entry->d_name);
+            return -1;
+        }
+
+        if (virCapabilitiesHostNUMAInitInterconnectsNode(interconnects, node) < 0)
+            return -1;
+    }
+
+    if (interconnects->len > 0) {
+        g_array_sort(interconnects, virCapsHostNUMAInterconnectComparator);
+        caps->interconnects = g_steal_pointer(&interconnects);
+    }
+
+    return 0;
 }
 
 
@@ -1600,8 +1935,9 @@ virCapabilitiesHostNUMAInitReal(virCapsHostNUMA *caps)
         g_autofree virNumaDistance *distances = NULL;
         int ndistances = 0;
         g_autofree virCapsHostNUMACellPageInfo *pageinfo = NULL;
-        int npageinfo;
+        int npageinfo = 0;
         unsigned long long memory;
+        g_autoptr(GArray) caches = NULL;
         int cpu;
         size_t i;
 
@@ -1628,6 +1964,9 @@ virCapabilitiesHostNUMAInitReal(virCapsHostNUMA *caps)
         if (virCapabilitiesGetNUMAPagesInfo(n, &pageinfo, &npageinfo) < 0)
             goto cleanup;
 
+        if (virCapabilitiesGetNodeCache(n, &caches) < 0)
+            goto cleanup;
+
         /* Detect the amount of memory in the numa cell in KiB */
         virNumaGetNodeMemory(n, &memory, NULL);
         memory >>= 10;
@@ -1635,8 +1974,12 @@ virCapabilitiesHostNUMAInitReal(virCapsHostNUMA *caps)
         virCapabilitiesHostNUMAAddCell(caps, n, memory,
                                        ncpus, &cpus,
                                        ndistances, &distances,
-                                       npageinfo, &pageinfo);
+                                       npageinfo, &pageinfo,
+                                       &caches);
     }
+
+    if (virCapabilitiesHostNUMAInitInterconnects(caps) < 0)
+        goto cleanup;
 
     ret = 0;
 
@@ -1924,8 +2267,10 @@ virCapabilitiesInitCaches(virCaps *caps)
     /* Sort the array in order for the tests to be predictable.  This way we can
      * still traverse the directory instead of guessing names (in case there is
      * 'index1' and 'index3' but no 'index2'). */
-    qsort(caps->host.cache.banks, caps->host.cache.nbanks,
-          sizeof(*caps->host.cache.banks), virCapsHostCacheBankSorter);
+    if (caps->host.cache.banks) {
+        qsort(caps->host.cache.banks, caps->host.cache.nbanks,
+              sizeof(*caps->host.cache.banks), virCapsHostCacheBankSorter);
+    }
 
     if (virCapabilitiesInitResctrlMemory(caps) < 0)
         goto cleanup;

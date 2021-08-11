@@ -379,17 +379,9 @@ libxlDomainDeviceDefPostParse(virDomainDeviceDef *dev,
 static int
 libxlDomainDefPostParse(virDomainDef *def,
                         unsigned int parseFlags G_GNUC_UNUSED,
-                        void *opaque,
+                        void *opaque G_GNUC_UNUSED,
                         void *parseOpaque G_GNUC_UNUSED)
 {
-    libxlDriverPrivate *driver = opaque;
-    g_autoptr(libxlDriverConfig) cfg = libxlDriverConfigGet(driver);
-
-    if (!virCapabilitiesDomainSupported(cfg->caps, def->os.type,
-                                        def->os.arch,
-                                        def->virtType))
-        return -1;
-
     /* Xen PV domains always have a PV console, so add one to the domain config
      * via post-parse callback if not explicitly specified in the XML. */
     if (def->os.type != VIR_DOMAIN_OSTYPE_HVM && def->nconsoles == 0) {
@@ -441,12 +433,49 @@ libxlDomainDefPostParse(virDomainDef *def,
     return 0;
 }
 
+static int
+libxlDomainDefValidate(const virDomainDef *def,
+                       void *opaque,
+                       void *parseOpaque G_GNUC_UNUSED)
+{
+    libxlDriverPrivate *driver = opaque;
+    g_autoptr(libxlDriverConfig) cfg = libxlDriverConfigGet(driver);
+    bool reqSecureBoot = false;
+
+    if (!virCapabilitiesDomainSupported(cfg->caps, def->os.type,
+                                        def->os.arch,
+                                        def->virtType))
+        return -1;
+
+    /* Xen+ovmf does not support secure boot */
+    if (def->os.firmware == VIR_DOMAIN_OS_DEF_FIRMWARE_EFI) {
+        if (def->os.firmwareFeatures &&
+            def->os.firmwareFeatures[VIR_DOMAIN_OS_DEF_FIRMWARE_FEATURE_SECURE_BOOT])
+            reqSecureBoot = true;
+    }
+    if (virDomainDefHasOldStyleUEFI(def)) {
+        if (def->os.loader &&
+            def->os.loader->secure == VIR_TRISTATE_BOOL_YES)
+            reqSecureBoot = true;
+    }
+    if (reqSecureBoot) {
+        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                       _("Secure boot is not supported on Xen"));
+        return -1;
+    }
+
+    return 0;
+}
+
 virDomainDefParserConfig libxlDomainDefParserConfig = {
     .macPrefix = { 0x00, 0x16, 0x3e },
     .netPrefix = LIBXL_GENERATED_PREFIX_XEN,
     .devicesPostParseCallback = libxlDomainDeviceDefPostParse,
     .domainPostParseCallback = libxlDomainDefPostParse,
-    .features = VIR_DOMAIN_DEF_FEATURE_NET_MODEL_STRING,
+    .domainValidateCallback = libxlDomainDefValidate,
+
+    .features = VIR_DOMAIN_DEF_FEATURE_FW_AUTOSELECT |
+                VIR_DOMAIN_DEF_FEATURE_NET_MODEL_STRING,
 };
 
 
@@ -568,7 +597,6 @@ libxlDomainShutdownThread(void *opaque)
         case VIR_DOMAIN_LIFECYCLE_ACTION_LAST:
             goto endjob;
         }
-#ifdef LIBXL_HAVE_SOFT_RESET
     } else if (xl_reason == LIBXL_SHUTDOWN_REASON_SOFT_RESET) {
         libxlDomainObjPrivate *priv = vm->privateData;
 
@@ -595,7 +623,6 @@ libxlDomainShutdownThread(void *opaque)
         }
         libxl_evenable_domain_death(cfg->ctx, vm->def->id, 0, &priv->deathW);
         libxlDomainUnpauseWrapper(cfg->ctx, vm->def->id);
-#endif
     } else {
         VIR_INFO("Unhandled shutdown_reason %d", xl_reason);
     }
@@ -849,9 +876,7 @@ libxlDomainCleanup(libxlDriverPrivate *driver,
     VIR_DEBUG("Cleaning up domain with id '%d' and name '%s'",
               vm->def->id, vm->def->name);
 
-#ifdef LIBXL_HAVE_PVUSB
     hostdev_flags |= VIR_HOSTDEV_SP_USB;
-#endif
 
     /* now that we know it's stopped call the hook if present */
     if (virHookPresent(VIR_HOOK_DRIVER_LIBXL)) {
@@ -1159,7 +1184,6 @@ libxlDomainUpdateDiskParams(virDomainDef *def, libxl_ctx *ctx)
     VIR_FREE(disks);
 }
 
-#ifdef LIBXL_HAVE_DEVICE_CHANNEL
 static void
 libxlDomainCreateChannelPTY(virDomainDef *def, libxl_ctx *ctx)
 {
@@ -1193,13 +1217,6 @@ libxlDomainCreateChannelPTY(virDomainDef *def, libxl_ctx *ctx)
     for (i = 0; i < nchannels; i++)
         libxl_device_channel_dispose(&x_channels[i]);
 }
-#endif
-
-#ifdef LIBXL_HAVE_SRM_V2
-# define LIBXL_DOMSTART_RESTORE_VER_ATTR /* empty */
-#else
-# define LIBXL_DOMSTART_RESTORE_VER_ATTR G_GNUC_UNUSED
-#endif
 
 /*
  * Start a domain through libxenlight.
@@ -1211,7 +1228,7 @@ libxlDomainStart(libxlDriverPrivate *driver,
                  virDomainObj *vm,
                  bool start_paused,
                  int restore_fd,
-                 uint32_t restore_ver LIBXL_DOMSTART_RESTORE_VER_ATTR)
+                 uint32_t restore_ver)
 {
     libxl_domain_config d_config;
     virDomainDef *def = NULL;
@@ -1230,9 +1247,7 @@ libxlDomainStart(libxlDriverPrivate *driver,
     unsigned int hostdev_flags = VIR_HOSTDEV_SP_PCI;
     g_autofree char *config_json = NULL;
 
-#ifdef LIBXL_HAVE_PVUSB
     hostdev_flags |= VIR_HOSTDEV_SP_USB;
-#endif
 
     libxl_domain_config_init(&d_config);
 
@@ -1356,9 +1371,7 @@ libxlDomainStart(libxlDriverPrivate *driver,
                                       &domid, NULL, &aop_console_how);
     } else {
         libxl_domain_restore_params_init(&params);
-#ifdef LIBXL_HAVE_SRM_V2
         params.stream_version = restore_ver;
-#endif
         ret = libxlDomainCreateRestoreWrapper(cfg->ctx, &d_config, &domid,
                                               restore_fd, &params,
                                           &aop_console_how);
@@ -1402,10 +1415,8 @@ libxlDomainStart(libxlDriverPrivate *driver,
     libxlDomainCreateIfaceNames(vm->def, &d_config);
     libxlDomainUpdateDiskParams(vm->def, cfg->ctx);
 
-#ifdef LIBXL_HAVE_DEVICE_CHANNEL
     if (vm->def->nchannels > 0)
         libxlDomainCreateChannelPTY(vm->def, cfg->ctx);
-#endif
 
     if ((dom_xml = virDomainDefFormat(vm->def, driver->xmlopt, 0)) == NULL)
         goto destroy_dom;

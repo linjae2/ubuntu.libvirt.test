@@ -51,37 +51,37 @@ typedef enum {
 VIR_ENUM_DECL(virDomainMemoryAccess);
 
 typedef enum {
-    VIR_DOMAIN_CACHE_ASSOCIATIVITY_NONE,    /* No associativity */
-    VIR_DOMAIN_CACHE_ASSOCIATIVITY_DIRECT,  /* Direct mapped cache */
-    VIR_DOMAIN_CACHE_ASSOCIATIVITY_FULL,    /* Fully associative cache */
+    VIR_NUMA_CACHE_ASSOCIATIVITY_NONE,    /* No associativity */
+    VIR_NUMA_CACHE_ASSOCIATIVITY_DIRECT,  /* Direct mapped cache */
+    VIR_NUMA_CACHE_ASSOCIATIVITY_FULL,    /* Fully associative cache */
 
-    VIR_DOMAIN_CACHE_ASSOCIATIVITY_LAST
-} virDomainCacheAssociativity;
-VIR_ENUM_DECL(virDomainCacheAssociativity);
-
-typedef enum {
-    VIR_DOMAIN_CACHE_POLICY_NONE,           /* No policy */
-    VIR_DOMAIN_CACHE_POLICY_WRITEBACK,      /* Write-back policy */
-    VIR_DOMAIN_CACHE_POLICY_WRITETHROUGH,   /* Write-through policy */
-
-    VIR_DOMAIN_CACHE_POLICY_LAST
-} virDomainCachePolicy;
-VIR_ENUM_DECL(virDomainCachePolicy);
+    VIR_NUMA_CACHE_ASSOCIATIVITY_LAST
+} virNumaCacheAssociativity;
+VIR_ENUM_DECL(virNumaCacheAssociativity);
 
 typedef enum {
-    VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_LATENCY,
-    VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_BANDWIDTH,
-} virDomainNumaInterconnectType;
+    VIR_NUMA_CACHE_POLICY_NONE,           /* No policy */
+    VIR_NUMA_CACHE_POLICY_WRITEBACK,      /* Write-back policy */
+    VIR_NUMA_CACHE_POLICY_WRITETHROUGH,   /* Write-through policy */
+
+    VIR_NUMA_CACHE_POLICY_LAST
+} virNumaCachePolicy;
+VIR_ENUM_DECL(virNumaCachePolicy);
 
 typedef enum {
-    VIR_DOMAIN_MEMORY_LATENCY_NONE = 0, /* No memory latency defined */
-    VIR_DOMAIN_MEMORY_LATENCY_ACCESS,   /* Access latency */
-    VIR_DOMAIN_MEMORY_LATENCY_READ,     /* Read latency */
-    VIR_DOMAIN_MEMORY_LATENCY_WRITE,    /* Write latency */
+    VIR_NUMA_INTERCONNECT_TYPE_LATENCY,
+    VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH,
+} virNumaInterconnectType;
 
-    VIR_DOMAIN_MEMORY_LATENCY_LAST
-} virDomainMemoryLatency;
-VIR_ENUM_DECL(virDomainMemoryLatency);
+typedef enum {
+    VIR_MEMORY_LATENCY_NONE = 0, /* No memory latency defined */
+    VIR_MEMORY_LATENCY_ACCESS,   /* Access latency */
+    VIR_MEMORY_LATENCY_READ,     /* Read latency */
+    VIR_MEMORY_LATENCY_WRITE,    /* Write latency */
+
+    VIR_MEMORY_LATENCY_LAST
+} virMemoryLatency;
+VIR_ENUM_DECL(virMemoryLatency);
 
 
 virDomainNuma *virDomainNumaNew(void);
@@ -233,8 +233,8 @@ int virDomainNumaGetNodeCache(const virDomainNuma *numa,
                               unsigned int *level,
                               unsigned int *size,
                               unsigned int *line,
-                              virDomainCacheAssociativity *associativity,
-                              virDomainCachePolicy *policy);
+                              virNumaCacheAssociativity *associativity,
+                              virNumaCachePolicy *policy);
 
 ssize_t virDomainNumaGetNodeInitiator(const virDomainNuma *numa,
                                       size_t node);
@@ -243,11 +243,11 @@ size_t virDomainNumaGetInterconnectsCount(const virDomainNuma *numa);
 
 int virDomainNumaGetInterconnect(const virDomainNuma *numa,
                                  size_t i,
-                                 virDomainNumaInterconnectType *type,
+                                 virNumaInterconnectType *type,
                                  unsigned int *initiator,
                                  unsigned int *target,
                                  unsigned int *cache,
-                                 virDomainMemoryLatency *accessType,
+                                 virMemoryLatency *accessType,
                                  unsigned long *value);
 
 typedef struct _virNumaDistance virNumaDistance;
@@ -259,3 +259,32 @@ struct _virNumaDistance {
 void virNumaDistanceFormat(virBuffer *buf,
                            const virNumaDistance *distances,
                            size_t ndistances);
+
+typedef struct _virNumaCache virNumaCache;
+struct _virNumaCache {
+    unsigned int level; /* cache level */
+    unsigned int size;  /* cache size */
+    unsigned int line;  /* line size, !!! in bytes !!! */
+    virNumaCacheAssociativity associativity; /* cache associativity */
+    virNumaCachePolicy policy; /* cache policy */
+};
+
+void virNumaCacheFormat(virBuffer *buf,
+                        const virNumaCache *caches,
+                        size_t ncaches);
+
+typedef struct _virNumaInterconnect virNumaInterconnect;
+struct _virNumaInterconnect {
+    virNumaInterconnectType type;  /* whether structure describes latency
+                                      or bandwidth */
+    unsigned int initiator; /* the initiator NUMA node */
+    unsigned int target;    /* the target NUMA node */
+    unsigned int cache;     /* the target cache on @target; if 0 then the
+                               memory on @target */
+    virMemoryLatency accessType;  /* what type of access is defined */
+    unsigned long value;    /* value itself */
+};
+
+void virNumaInterconnectFormat(virBuffer *buf,
+                               const virNumaInterconnect *interconnects,
+                               size_t ninterconnects);

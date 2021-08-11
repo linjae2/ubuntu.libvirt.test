@@ -3146,6 +3146,16 @@ paravirtualized driver is specified via the ``disk`` element.
    may look like ``<serial>WD-WMAP9A966149</serial>``. Not supported for
    scsi-block devices, that is those using disk ``type`` 'block' using
    ``device`` 'lun' on ``bus`` 'scsi'. :since:`Since 0.7.1`
+
+   Note that depending on hypervisor and device type the serial number may be
+   truncated silently. IDE/SATA devices are commonly limited to 20 characters.
+   SCSI devices depending on hypervisor version are limited to 20, 36 or 247
+   characters.
+
+   Hypervisors may also start rejecting overly long serials instead of
+   truncating them in the future so it's advised to avoid the implicit
+   truncation by testing the desired serial length range with the desired device
+   and hypervisor combination.
 ``wwn``
    If present, this element specifies the WWN (World Wide Name) of a virtual
    hard disk or CD-ROM drive. It must be composed of 16 hexadecimal digits.
@@ -3251,6 +3261,7 @@ A directory on the host that can be accessed directly from the guest.
      <filesystem type='mount'>
          <driver type='virtiofs' queue='1024'/>
          <source socket='/tmp/sock'/>
+         <target dir='tag'/>
      </filesystem>
      ...
    </devices>
@@ -6864,13 +6875,15 @@ A virtual sound card can be attached to the host via the ``sound`` element.
 ``sound``
    The ``sound`` element has one mandatory attribute, ``model``, which specifies
    what real sound device is emulated. Valid values are specific to the
-   underlying hypervisor, though typical choices are 'es1370', 'sb16', 'ac97',
-   'ich6' and 'usb'. ( :since:`'ac97' only since 0.6.0, 'ich6' only since
-   0.8.8, 'usb' only since 1.2.7` )
+   underlying hypervisor, though typical choices are 'sb16', 'es1370', 'pcspk',
+   'ac97' (:since:`Since 0.6.0`), 'ich6' (:since:`Since 0.8.8`), 'ich9'
+   (:since:`Since 1.1.3`), 'usb' (:since:`Since 1.2.8`) and 'ich7'
+   (:since:`Since 6.7.0`, bhyve only).
 
-:since:`Since 0.9.13` , a sound element with ``ich6`` model can have optional
-sub-elements ``<codec>`` to attach various audio codecs to the audio device. If
-not specified, a default codec will be attached to allow playback and recording.
+:since:`Since 0.9.13` , a sound element with ``ich6`` or ``ich9`` models can have
+optional sub-elements ``<codec>`` to attach various audio codecs to the audio
+device. If not specified, a default codec will be attached to allow playback
+and recording.
 
 Valid values are:
 
@@ -6910,8 +6923,8 @@ ID is specified, then the default audio backend will be used.
 
 :anchor:`<a id="elementsAudio"/>`
 
-Audio devices
-~~~~~~~~~~~~~
+Audio backends
+~~~~~~~~~~~~~~
 
 A virtual audio device corresponds to a host audio backend that is mapped
 to the guest sound device.
@@ -6924,6 +6937,10 @@ to the guest sound device.
 ``id``
    Integer id of the audio device. Must be greater than 0.
 
+``timerPeriod``
+   Timer period in microseconds. Must be greater than 0. If omitted,
+   the lowest possible period is used.
+
 All the backends support child element for configuring input and
 output properties
 
@@ -6931,7 +6948,7 @@ output properties
 
    ...
    <devices>
-     <audio id='1' type='pulseaudio'>
+     <audio id='1' type='pulseaudio' timerPeriod='40'>
        <input mixingEngine='yes' fixedSettings='yes' voices='1' bufferLength='100'>
          <settings frequency='44100' channels='2' format='s16'/>
        </input>

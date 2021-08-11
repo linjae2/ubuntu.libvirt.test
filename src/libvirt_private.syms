@@ -861,14 +861,8 @@ virNodeDeviceDeleteVport;
 virNodeDeviceGetParentName;
 
 # conf/numa_conf.h
-virDomainCacheAssociativityTypeFromString;
-virDomainCacheAssociativityTypeToString;
-virDomainCachePolicyTypeFromString;
-virDomainCachePolicyTypeToString;
 virDomainMemoryAccessTypeFromString;
 virDomainMemoryAccessTypeToString;
-virDomainMemoryLatencyTypeFromString;
-virDomainMemoryLatencyTypeToString;
 virDomainNumaCheckABIStability;
 virDomainNumaEquals;
 virDomainNumaFillCPUsInNode;
@@ -913,7 +907,15 @@ virDomainNumatunePlacementTypeFromString;
 virDomainNumatunePlacementTypeToString;
 virDomainNumatuneSet;
 virDomainNumatuneSpecifiedMaxNode;
+virMemoryLatencyTypeFromString;
+virMemoryLatencyTypeToString;
+virNumaCacheAssociativityTypeFromString;
+virNumaCacheAssociativityTypeToString;
+virNumaCacheFormat;
+virNumaCachePolicyTypeFromString;
+virNumaCachePolicyTypeToString;
 virNumaDistanceFormat;
+virNumaInterconnectFormat;
 
 
 # conf/nwfilter_conf.h
@@ -1046,6 +1048,7 @@ virStoragePoolSourceClear;
 virStoragePoolSourceDeviceClear;
 virStoragePoolSourceFree;
 virStoragePoolSourceListFormat;
+virStoragePoolSourceListFree;
 virStoragePoolSourceListNewSource;
 virStoragePoolTypeFromString;
 virStoragePoolTypeToString;
@@ -2037,6 +2040,7 @@ virCommandSetUID;
 virCommandSetUmask;
 virCommandSetWorkingDirectory;
 virCommandToString;
+virCommandToStringBuf;
 virCommandToStringFull;
 virCommandWait;
 virCommandWriteArgLog;
@@ -2176,7 +2180,6 @@ virDirOpen;
 virDirOpenIfExists;
 virDirOpenQuiet;
 virDirRead;
-virFileAbsPath;
 virFileAccessibleAs;
 virFileActivateDirOverrideForLib;
 virFileActivateDirOverrideForProg;

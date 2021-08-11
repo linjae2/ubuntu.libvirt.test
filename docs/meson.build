@@ -111,6 +111,7 @@ docs_rst_files = [
   'daemons',
   'developer-tooling',
   'drvqemu',
+  'drvch',
   'formatbackup',
   'formatcheckpoint',
   'formatdomain',
@@ -296,6 +297,7 @@ html_xslt_gen = []
 # --- end of XSLT processing ---
 
 subdir('fonts')
+subdir('go')
 subdir('html')
 subdir('internals')
 subdir('js')

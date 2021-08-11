@@ -60,31 +60,27 @@ VIR_ENUM_IMPL(virDomainMemoryAccess,
               "private",
 );
 
-VIR_ENUM_IMPL(virDomainCacheAssociativity,
-              VIR_DOMAIN_CACHE_ASSOCIATIVITY_LAST,
+VIR_ENUM_IMPL(virNumaCacheAssociativity,
+              VIR_NUMA_CACHE_ASSOCIATIVITY_LAST,
               "none",
               "direct",
               "full",
 );
 
-VIR_ENUM_IMPL(virDomainCachePolicy,
-              VIR_DOMAIN_CACHE_POLICY_LAST,
+VIR_ENUM_IMPL(virNumaCachePolicy,
+              VIR_NUMA_CACHE_POLICY_LAST,
               "none",
               "writeback",
               "writethrough",
 );
 
-VIR_ENUM_IMPL(virDomainMemoryLatency,
-              VIR_DOMAIN_MEMORY_LATENCY_LAST,
+VIR_ENUM_IMPL(virMemoryLatency,
+              VIR_MEMORY_LATENCY_LAST,
               "none",
               "access",
               "read",
               "write"
 );
-
-typedef struct _virDomainNumaCache virDomainNumaCache;
-
-typedef struct _virDomainNumaInterconnect virDomainNumaInterconnect;
 
 typedef struct _virDomainNumaNode virDomainNumaNode;
 
@@ -107,27 +103,12 @@ struct _virDomainNuma {
         virNumaDistance *distances; /* remote node distances */
         size_t ndistances;
 
-        struct _virDomainNumaCache {
-            unsigned int level; /* cache level */
-            unsigned int size;  /* cache size */
-            unsigned int line;  /* line size, !!! in bytes !!! */
-            virDomainCacheAssociativity associativity; /* cache associativity */
-            virDomainCachePolicy policy; /* cache policy */
-        } *caches;
+        virNumaCache *caches;
         size_t ncaches;
     } *mem_nodes;           /* guest node configuration */
     size_t nmem_nodes;
 
-    struct _virDomainNumaInterconnect {
-        virDomainNumaInterconnectType type;  /* whether structure describes latency
-                                                or bandwidth */
-        unsigned int initiator; /* the initiator NUMA node */
-        unsigned int target;    /* the target NUMA node */
-        unsigned int cache;     /* the target cache on @target; if 0 then the
-                                   memory on @target */
-        virDomainMemoryLatency accessType;  /* what type of access is defined */
-        unsigned long value;    /* value itself */
-    } *interconnects;
+    virNumaInterconnect *interconnects;
     size_t ninterconnects;
 
     /* Future NUMA tuning related stuff should go here. */
@@ -845,11 +826,11 @@ virDomainNumaDefNodeCacheParseXML(virDomainNuma *def,
     if ((n = virXPathNodeSet("./cache", ctxt, &nodes)) < 0)
         return -1;
 
-    def->mem_nodes[cur_cell].caches = g_new0(virDomainNumaCache, n);
+    def->mem_nodes[cur_cell].caches = g_new0(virNumaCache, n);
 
     for (i = 0; i < n; i++) {
         VIR_XPATH_NODE_AUTORESTORE(ctxt)
-        virDomainNumaCache *cache = &def->mem_nodes[cur_cell].caches[i];
+        virNumaCache *cache = &def->mem_nodes[cur_cell].caches[i];
         g_autofree char *tmp = NULL;
         unsigned int level;
         int associativity;
@@ -883,7 +864,7 @@ virDomainNumaDefNodeCacheParseXML(virDomainNuma *def,
             return -1;
         }
 
-        if ((associativity = virDomainCacheAssociativityTypeFromString(tmp)) < 0) {
+        if ((associativity = virNumaCacheAssociativityTypeFromString(tmp)) < 0) {
             virReportError(VIR_ERR_XML_ERROR,
                            _("Invalid cache associativity '%s'"),
                            tmp);
@@ -898,7 +879,7 @@ virDomainNumaDefNodeCacheParseXML(virDomainNuma *def,
                            cur_cell);
         }
 
-        if ((policy = virDomainCachePolicyTypeFromString(tmp)) < 0) {
+        if ((policy = virNumaCachePolicyTypeFromString(tmp)) < 0) {
             virReportError(VIR_ERR_XML_ERROR,
                            _("Invalid cache policy '%s'"),
                            tmp);
@@ -915,7 +896,7 @@ virDomainNumaDefNodeCacheParseXML(virDomainNuma *def,
                                 ctxt, &line, 1, ULLONG_MAX, true) < 0)
             return -1;
 
-        *cache = (virDomainNumaCache){level, size, line, associativity, policy};
+        *cache = (virNumaCache){level, size, line, associativity, policy};
         def->mem_nodes[cur_cell].ncaches++;
     }
 
@@ -1029,24 +1010,24 @@ virDomainNumaDefParseXML(virDomainNuma *def,
                              &interconnect)) < 0)
         return -1;
 
-    def->interconnects = g_new0(virDomainNumaInterconnect, n);
+    def->interconnects = g_new0(virNumaInterconnect, n);
     for (i = 0; i < n; i++) {
-        virDomainNumaInterconnectType type;
+        virNumaInterconnectType type;
         unsigned int initiator;
         unsigned int target;
         unsigned int cache = 0;
-        virDomainMemoryLatency accessType;
+        virMemoryLatency accessType;
         unsigned long long value;
 
         if (virXMLNodeNameEqual(interconnect[i], "latency")) {
-            type = VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_LATENCY;
+            type = VIR_NUMA_INTERCONNECT_TYPE_LATENCY;
 
             if (virXMLPropULongLong(interconnect[i], "value", 10,
                                     VIR_XML_PROP_REQUIRED, &value) < 0)
                 return -1;
         } else if (virXMLNodeNameEqual(interconnect[i], "bandwidth")) {
             VIR_XPATH_NODE_AUTORESTORE(ctxt)
-            type = VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_BANDWIDTH;
+            type = VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH;
 
             ctxt->node = interconnect[i];
 
@@ -1070,13 +1051,13 @@ virDomainNumaDefParseXML(virDomainNuma *def,
             return -1;
 
         if (virXMLPropEnum(interconnect[i], "type",
-                           virDomainMemoryLatencyTypeFromString,
+                           virMemoryLatencyTypeFromString,
                            VIR_XML_PROP_REQUIRED | VIR_XML_PROP_NONZERO,
                            &accessType) < 0)
             return -1;
 
-        def->interconnects[i] = (virDomainNumaInterconnect) {type, initiator, target,
-                                                             cache, accessType, value};
+        def->interconnects[i] = (virNumaInterconnect) {type, initiator, target,
+                                                       cache, accessType, value};
         def->ninterconnects++;
     }
 
@@ -1102,7 +1083,6 @@ virDomainNumaDefFormatXML(virBuffer *buf,
         virBitmap *cpumask = virDomainNumaGetNodeCpumask(def, i);
         g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
         g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
-        size_t j;
 
         memAccess = virDomainNumaGetNodeMemoryAccessMode(def, i);
         discard = virDomainNumaGetNodeDiscard(def, i);
@@ -1131,79 +1111,14 @@ virDomainNumaDefFormatXML(virBuffer *buf,
                               def->mem_nodes[i].distances,
                               def->mem_nodes[i].ndistances);
 
-        for (j = 0; j < def->mem_nodes[i].ncaches; j++) {
-            virDomainNumaCache *cache = &def->mem_nodes[i].caches[j];
-
-            virBufferAsprintf(&childBuf, "<cache level='%u'", cache->level);
-            if (cache->associativity) {
-                virBufferAsprintf(&childBuf, " associativity='%s'",
-                                  virDomainCacheAssociativityTypeToString(cache->associativity));
-            }
-
-            if (cache->policy) {
-                virBufferAsprintf(&childBuf, " policy='%s'",
-                                  virDomainCachePolicyTypeToString(cache->policy));
-            }
-            virBufferAddLit(&childBuf, ">\n");
-
-            virBufferAdjustIndent(&childBuf, 2);
-            virBufferAsprintf(&childBuf,
-                              "<size value='%u' unit='KiB'/>\n",
-                              cache->size);
-
-            if (cache->line) {
-                virBufferAsprintf(&childBuf,
-                                  "<line value='%u' unit='B'/>\n",
-                                  cache->line);
-            }
-
-            virBufferAdjustIndent(&childBuf, -2);
-            virBufferAddLit(&childBuf, "</cache>\n");
-        }
+        virNumaCacheFormat(&childBuf,
+                           def->mem_nodes[i].caches,
+                           def->mem_nodes[i].ncaches);
 
         virXMLFormatElement(buf, "cell", &attrBuf, &childBuf);
     }
 
-    if (def->ninterconnects) {
-        virBufferAddLit(buf, "<interconnects>\n");
-        virBufferAdjustIndent(buf, 2);
-    }
-
-    for (i = 0; i < def->ninterconnects; i++) {
-        virDomainNumaInterconnect *l = &def->interconnects[i];
-
-        switch (l->type) {
-        case VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_LATENCY:
-            virBufferAddLit(buf, "<latency");
-            break;
-        case VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_BANDWIDTH:
-            virBufferAddLit(buf, "<bandwidth");
-        }
-
-        virBufferAsprintf(buf,
-                          " initiator='%u' target='%u'",
-                          l->initiator, l->target);
-
-        if (l->cache > 0) {
-            virBufferAsprintf(buf,
-                              " cache='%u'",
-                              l->cache);
-        }
-
-        virBufferAsprintf(buf,
-                          " type='%s' value='%lu'",
-                          virDomainMemoryLatencyTypeToString(l->accessType),
-                          l->value);
-
-        if (l->type == VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_BANDWIDTH)
-            virBufferAddLit(buf, " unit='KiB'");
-        virBufferAddLit(buf, "/>\n");
-    }
-
-    if (def->ninterconnects) {
-        virBufferAdjustIndent(buf, -2);
-        virBufferAddLit(buf, "</interconnects>\n");
-    }
+    virNumaInterconnectFormat(buf, def->interconnects, def->ninterconnects);
 
     virBufferAdjustIndent(buf, -2);
     virBufferAddLit(buf, "</numa>\n");
@@ -1226,7 +1141,7 @@ virDomainNumaDefValidate(const virDomainNuma *def)
         g_autoptr(virBitmap) levelsSeen = virBitmapNew(0);
 
         for (j = 0; j < node->ncaches; j++) {
-            const virDomainNumaCache *cache = &node->caches[j];
+            const virNumaCache *cache = &node->caches[j];
 
             /* Relax this if there's ever fourth layer of cache */
             if (cache->level > 3) {
@@ -1248,7 +1163,7 @@ virDomainNumaDefValidate(const virDomainNuma *def)
     }
 
     for (i = 0; i < def->ninterconnects; i++) {
-        const virDomainNumaInterconnect *l = &def->interconnects[i];
+        const virNumaInterconnect *l = &def->interconnects[i];
 
         if (l->initiator >= def->nmem_nodes) {
             virReportError(VIR_ERR_XML_ERROR, "%s",
@@ -1270,7 +1185,7 @@ virDomainNumaDefValidate(const virDomainNuma *def)
 
         if (l->cache > 0) {
             for (j = 0; j < def->mem_nodes[l->target].ncaches; j++) {
-                const virDomainNumaCache *cache = &def->mem_nodes[l->target].caches[j];
+                const virNumaCache *cache = &def->mem_nodes[l->target].caches[j];
 
                 if (l->cache == cache->level)
                     break;
@@ -1284,7 +1199,7 @@ virDomainNumaDefValidate(const virDomainNuma *def)
         }
 
         for (j = 0; j < i; j++) {
-            const virDomainNumaInterconnect *ll = &def->interconnects[j];
+            const virNumaInterconnect *ll = &def->interconnects[j];
 
             if (l->type == ll->type &&
                 l->initiator == ll->initiator &&
@@ -1712,8 +1627,8 @@ virDomainNumaGetNodeCache(const virDomainNuma *numa,
                           unsigned int *level,
                           unsigned int *size,
                           unsigned int *line,
-                          virDomainCacheAssociativity *associativity,
-                          virDomainCachePolicy *policy)
+                          virNumaCacheAssociativity *associativity,
+                          virNumaCachePolicy *policy)
 {
     const virDomainNumaNode *cell;
 
@@ -1755,20 +1670,20 @@ virDomainNumaGetNodeInitiator(const virDomainNuma *numa,
     /* For the rest, "NUMA node that has best performance (the lowest
      * latency or largest bandwidth) to this NUMA node." */
     for (i = 0; i < numa->ninterconnects; i++) {
-        const virDomainNumaInterconnect *l = &numa->interconnects[i];
+        const virNumaInterconnect *l = &numa->interconnects[i];
 
         if (l->target != node)
             continue;
 
         switch (l->type) {
-        case VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_LATENCY:
+        case VIR_NUMA_INTERCONNECT_TYPE_LATENCY:
             if (l->value < minLatency) {
                 minLatency = l->value;
                 candidateLatency = l->initiator;
             }
             break;
 
-        case VIR_DOMAIN_NUMA_INTERCONNECT_TYPE_BANDWIDTH:
+        case VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH:
             if (l->value > maxBandwidth) {
                 maxBandwidth = l->value;
                 candidateBandwidth = l->initiator;
@@ -1797,14 +1712,14 @@ virDomainNumaGetInterconnectsCount(const virDomainNuma *numa)
 int
 virDomainNumaGetInterconnect(const virDomainNuma *numa,
                              size_t i,
-                             virDomainNumaInterconnectType *type,
+                             virNumaInterconnectType *type,
                              unsigned int *initiator,
                              unsigned int *target,
                              unsigned int *cache,
-                             virDomainMemoryLatency *accessType,
+                             virMemoryLatency *accessType,
                              unsigned long *value)
 {
-    const virDomainNumaInterconnect *l;
+    const virNumaInterconnect *l;
 
     if (!numa || i >= numa->ninterconnects)
         return -1;
@@ -1838,4 +1753,89 @@ virNumaDistanceFormat(virBuffer *buf,
     }
 
     virXMLFormatElement(buf, "distances", NULL, &childBuf);
+}
+
+
+void
+virNumaCacheFormat(virBuffer *buf,
+                   const virNumaCache *caches,
+                   size_t ncaches)
+{
+    size_t i;
+
+    for (i = 0; i < ncaches; i++) {
+        const virNumaCache *cache = &caches[i];
+        g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
+        g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
+
+        virBufferAsprintf(&attrBuf, " level='%u'", cache->level);
+        if (cache->associativity) {
+            virBufferAsprintf(&attrBuf, " associativity='%s'",
+                              virNumaCacheAssociativityTypeToString(cache->associativity));
+        }
+
+        if (cache->policy) {
+            virBufferAsprintf(&attrBuf, " policy='%s'",
+                              virNumaCachePolicyTypeToString(cache->policy));
+        }
+
+        virBufferAsprintf(&childBuf,
+                          "<size value='%u' unit='KiB'/>\n",
+                          cache->size);
+
+        if (cache->line) {
+            virBufferAsprintf(&childBuf,
+                              "<line value='%u' unit='B'/>\n",
+                              cache->line);
+        }
+
+        virXMLFormatElement(buf, "cache", &attrBuf, &childBuf);
+    }
+}
+
+
+void
+virNumaInterconnectFormat(virBuffer *buf,
+                          const virNumaInterconnect *interconnects,
+                          size_t ninterconnects)
+{
+    g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
+    size_t i;
+
+    for (i = 0; i < ninterconnects; i++) {
+        const virNumaInterconnect *l = &interconnects[i];
+        g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
+        const char *elem = NULL;
+
+        switch (l->type) {
+        case VIR_NUMA_INTERCONNECT_TYPE_LATENCY:
+            elem = "latency";
+            break;
+        case VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH:
+            elem = "bandwidth";
+            break;
+        }
+
+        virBufferAsprintf(&attrBuf,
+                          " initiator='%u' target='%u'",
+                          l->initiator, l->target);
+
+        if (l->cache > 0) {
+            virBufferAsprintf(&attrBuf,
+                              " cache='%u'",
+                              l->cache);
+        }
+
+        virBufferAsprintf(&attrBuf,
+                          " type='%s' value='%lu'",
+                          virMemoryLatencyTypeToString(l->accessType),
+                          l->value);
+
+        if (l->type == VIR_NUMA_INTERCONNECT_TYPE_BANDWIDTH)
+            virBufferAddLit(&attrBuf, " unit='KiB'");
+
+        virXMLFormatElement(&childBuf, elem, &attrBuf, NULL);
+    }
+
+    virXMLFormatElement(buf, "interconnects", NULL, &childBuf);
 }

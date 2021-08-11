@@ -541,9 +541,6 @@ qemuSnapshotPrepareDiskExternal(virDomainObj *vm,
                                 bool reuse,
                                 bool blockdev)
 {
-    struct stat st;
-    int err;
-    int rc;
 
     if (disk->src->readonly && !(reuse || blockdev)) {
         virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
@@ -567,6 +564,10 @@ qemuSnapshotPrepareDiskExternal(virDomainObj *vm,
     }
 
     if (virStorageSourceIsLocalStorage(snapdisk->src)) {
+        struct stat st;
+        int err;
+        int rc;
+
         if (virStorageSourceInit(snapdisk->src) < 0)
             return -1;
 
@@ -581,18 +582,39 @@ qemuSnapshotPrepareDiskExternal(virDomainObj *vm,
                                      _("unable to stat for disk %s: %s"),
                                      snapdisk->name, snapdisk->src->path);
                 return -1;
-            } else if (reuse) {
+            }
+
+            if (reuse) {
                 virReportSystemError(err,
                                      _("missing existing file for disk %s: %s"),
                                      snapdisk->name, snapdisk->src->path);
                 return -1;
+            } else {
+                if (snapdisk->src->type == VIR_STORAGE_TYPE_BLOCK) {
+                    virReportError(VIR_ERR_OPERATION_UNSUPPORTED,
+                                   _("block device snapshot target '%s' doesn't exist"),
+                                   snapdisk->src->path);
+                    return -1;
+                }
             }
-        } else if (!S_ISBLK(st.st_mode) && st.st_size && !reuse) {
-            virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                           _("external snapshot file for disk %s already "
-                             "exists and is not a block device: %s"),
-                           snapdisk->name, snapdisk->src->path);
-            return -1;
+        } else {
+            /* at this point VIR_STORAGE_TYPE_DIR was already rejected */
+            if ((snapdisk->src->type == VIR_STORAGE_TYPE_BLOCK && !S_ISBLK(st.st_mode)) ||
+                (snapdisk->src->type == VIR_STORAGE_TYPE_FILE && !S_ISREG(st.st_mode))) {
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                               _("mismatch between configured type for snapshot disk '%s' and the type of existing file '%s'"),
+                               snapdisk->name, snapdisk->src->path);
+                return -1;
+            }
+
+            if (!reuse &&
+                snapdisk->src->type == VIR_STORAGE_TYPE_FILE &&
+                st.st_size > 0) {
+                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
+                               _("external snapshot file for disk %s already exists and is not a block device: %s"),
+                               snapdisk->name, snapdisk->src->path);
+                return -1;
+            }
         }
     }
 
@@ -1334,6 +1356,7 @@ qemuSnapshotCreateActiveExternal(virQEMUDriver *driver,
     virDomainSnapshotDef *snapdef = virDomainSnapshotObjGetDef(snap);
     bool memory = snapdef->memory == VIR_DOMAIN_SNAPSHOT_LOCATION_EXTERNAL;
     bool memory_unlink = false;
+    bool memory_existing = false;
     bool thaw = false;
     bool pmsuspended = false;
     int compressed;
@@ -1429,13 +1452,16 @@ qemuSnapshotCreateActiveExternal(virQEMUDriver *driver,
             goto cleanup;
         xml = NULL;
 
-        if ((ret = qemuSaveImageCreate(driver, vm, snapdef->file, data,
-                                      compressor, 0,
-                                      QEMU_ASYNC_JOB_SNAPSHOT)) < 0)
+        memory_existing = virFileExists(snapdef->memorysnapshotfile);
+
+        if ((ret = qemuSaveImageCreate(driver, vm, snapdef->memorysnapshotfile,
+                                       data, compressor, 0,
+                                       QEMU_ASYNC_JOB_SNAPSHOT)) < 0)
             goto cleanup;
 
         /* the memory image was created, remove it on errors */
-        memory_unlink = true;
+        if (!memory_existing)
+            memory_unlink = true;
 
         /* forbid any further manipulation */
         qemuDomainObjSetAsyncJobMask(vm, QEMU_JOB_DEFAULT_MASK);
@@ -1500,7 +1526,7 @@ qemuSnapshotCreateActiveExternal(virQEMUDriver *driver,
 
     virQEMUSaveDataFree(data);
     if (memory_unlink && ret < 0)
-        unlink(snapdef->file);
+        unlink(snapdef->memorysnapshotfile);
 
     return ret;
 }

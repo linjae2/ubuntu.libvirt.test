@@ -332,7 +332,8 @@ libxlCapsInitNuma(libxl_ctx *ctx, virCaps *caps)
                                        numa_info[i].size / 1024,
                                        nr_cpus_node[i], &cpus[i],
                                        nr_distances, &distances,
-                                       0, NULL);
+                                       0, NULL,
+                                       NULL);
 
         /* This is safe, as the CPU list is now stored in the NUMA cell */
         cpus[i] = NULL;
@@ -645,15 +646,6 @@ libxlMakeDomainDeviceVideoCaps(virDomainCapsDeviceVideo *dev)
     return 0;
 }
 
-bool libxlCapsHasPVUSB(void)
-{
-#ifdef LIBXL_HAVE_PVUSB
-    return true;
-#else
-    return false;
-#endif
-}
-
 static int
 libxlMakeDomainDeviceHostdevCaps(virDomainCapsDeviceHostdev *dev)
 {
@@ -677,9 +669,8 @@ libxlMakeDomainDeviceHostdevCaps(virDomainCapsDeviceHostdev *dev)
     VIR_DOMAIN_CAPS_ENUM_SET(dev->subsysType,
                              VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI);
 
-    if (libxlCapsHasPVUSB())
-        VIR_DOMAIN_CAPS_ENUM_SET(dev->subsysType,
-                                 VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB);
+    VIR_DOMAIN_CAPS_ENUM_SET(dev->subsysType,
+                             VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_USB);
 
     /* No virDomainHostdevCapsType for libxl */
     virDomainCapsEnumClear(&dev->capsType);

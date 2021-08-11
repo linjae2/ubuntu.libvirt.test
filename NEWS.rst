@@ -8,6 +8,41 @@ the changes introduced by each of them.
 For a more fine-grained view, use the `git log`_.
 
 
+v7.5.0 (2021-07-01)
+===================
+
+* **Security**
+
+  * svirt: fix MCS label generation (CVE-2021-3631)
+
+    A flaw in the way MCS labels were generated could result in a VM's
+    resource not being fully protected from access by another VM were
+    it to be compromised. https://gitlab.com/libvirt/libvirt/-/issues/153
+
+* **Removed features**
+
+  * xen: Remove support for Xen < 4.9
+
+    In accordance with our platform support policy, the oldest supported Xen
+    version is now bumped from 4.6 to 4.9.
+
+* **Improvements**
+
+  * docs: Document disk serial truncation status quo
+
+    Disk ``<serial>`` is being truncated by QEMU before passed to the guest.
+    Since it's impossible to fix it without running into further regressions
+    the documentation was improved to document the intricacies.
+
+* **Bug fixes**
+
+  * qemu: Fixed validation of disk ``iothread`` configuration
+
+    The validation of ``iothread`` config was previously moved to a place where
+    it caused bogus errors when address wasn't allocated when hotplugging a
+    disk. The check is now removed as it wasn't actually necessary at all.
+
+
 v7.4.0 (2021-06-01)
 ===================
 

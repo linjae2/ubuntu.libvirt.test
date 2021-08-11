@@ -43,6 +43,7 @@
 #include "virstring.h"
 #include "virsh-console.h"
 #include "virsh-domain-monitor.h"
+#include "virsh-host.h"
 #include "virerror.h"
 #include "virtime.h"
 #include "virtypedparam.h"
@@ -2235,6 +2236,8 @@ static const vshCmdOptDef opts_blockcopy[] = {
     },
     {.name = "format",
      .type = VSH_OT_STRING,
+     .flags = VSH_OFLAG_NONE,
+     .completer = virshDomainStorageFileFormatCompleter,
      .help = N_("format of the destination file")
     },
     {.name = "granularity",
@@ -3453,6 +3456,7 @@ static const vshCmdOptDef opts_dom_pm_suspend[] = {
     {.name = "target",
      .type = VSH_OT_DATA,
      .flags = VSH_OFLAG_REQ,
+     .completer = virshNodeSuspendTargetCompleter,
      .help = N_("mem(Suspend-to-RAM), "
                 "disk(Suspend-to-Disk), "
                 "hybrid(Hybrid-Suspend)")
@@ -3472,7 +3476,7 @@ cmdDomPMSuspend(vshControl *ctl, const vshCmd *cmd)
     const char *name;
     bool ret = false;
     const char *target = NULL;
-    unsigned int suspendTarget;
+    int suspendTarget;
     unsigned long long duration = 0;
 
     if (!(dom = virshCommandOptDomain(ctl, cmd, &name)))
@@ -3484,13 +3488,7 @@ cmdDomPMSuspend(vshControl *ctl, const vshCmd *cmd)
     if (vshCommandOptStringReq(ctl, cmd, "target", &target) < 0)
         goto cleanup;
 
-    if (STREQ(target, "mem")) {
-        suspendTarget = VIR_NODE_SUSPEND_TARGET_MEM;
-    } else if (STREQ(target, "disk")) {
-        suspendTarget = VIR_NODE_SUSPEND_TARGET_DISK;
-    } else if (STREQ(target, "hybrid")) {
-        suspendTarget = VIR_NODE_SUSPEND_TARGET_HYBRID;
-    } else {
+    if ((suspendTarget = virNodeSuspendTargetTypeFromString(target)) < 0) {
         vshError(ctl, "%s", _("Invalid target"));
         goto cleanup;
     }
@@ -5405,10 +5403,20 @@ static const vshCmdOptDef opts_dump[] = {
     },
     {.name = "format",
      .type = VSH_OT_STRING,
+     .flags = VSH_OFLAG_NONE,
+     .completer = virshDomainCoreDumpFormatCompleter,
      .help = N_("specify the format of memory-only dump")
     },
     {.name = NULL}
 };
+
+VIR_ENUM_IMPL(virDomainCoreDumpFormat,
+              VIR_DOMAIN_CORE_DUMP_FORMAT_LAST,
+              "kdump-zlib",
+              "kdump-lzo",
+              "kdump-snappy",
+              "elf",
+              "win-dmp");
 
 static void
 doDump(void *opaque)
@@ -5421,7 +5429,7 @@ doDump(void *opaque)
     const char *to = NULL;
     unsigned int flags = 0;
     const char *format = NULL;
-    unsigned int dumpformat = VIR_DOMAIN_CORE_DUMP_FORMAT_RAW;
+    int dumpformat = VIR_DOMAIN_CORE_DUMP_FORMAT_RAW;
 #ifndef WIN32
     sigset_t sigmask, oldsigmask;
 
@@ -5455,20 +5463,10 @@ doDump(void *opaque)
         }
 
         if (vshCommandOptStringQuiet(ctl, cmd, "format", &format) > 0) {
-            if (STREQ(format, "kdump-zlib")) {
-                dumpformat = VIR_DOMAIN_CORE_DUMP_FORMAT_KDUMP_ZLIB;
-            } else if (STREQ(format, "kdump-lzo")) {
-                dumpformat = VIR_DOMAIN_CORE_DUMP_FORMAT_KDUMP_LZO;
-            } else if (STREQ(format, "kdump-snappy")) {
-                dumpformat = VIR_DOMAIN_CORE_DUMP_FORMAT_KDUMP_SNAPPY;
-            } else if (STREQ(format, "elf")) {
-                dumpformat = VIR_DOMAIN_CORE_DUMP_FORMAT_RAW;
-            } else if (STREQ(format, "win-dmp")) {
-                dumpformat = VIR_DOMAIN_CORE_DUMP_FORMAT_WIN_DMP;
-            } else {
+            if ((dumpformat = virDomainCoreDumpFormatTypeFromString(format)) < 0) {
                 vshError(ctl, _("format '%s' is not supported, expecting "
-                                "'kdump-zlib', 'kdump-lzo', 'kdump-snappy' "
-                                "or 'elf'"), format);
+                                "'kdump-zlib', 'kdump-lzo', 'kdump-snappy', "
+                                "'win-dmp' or 'elf'"), format);
                 goto out;
             }
         }
@@ -9002,15 +9000,15 @@ cmdSetmem(vshControl *ctl, const vshCmd *cmd)
     bool config = vshCommandOptBool(cmd, "config");
     bool live = vshCommandOptBool(cmd, "live");
     bool current = vshCommandOptBool(cmd, "current");
-    unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
+    unsigned int flags = VIR_DOMAIN_AFFECT_LIVE;
 
     VSH_EXCLUSIVE_OPTIONS_VAR(current, live);
     VSH_EXCLUSIVE_OPTIONS_VAR(current, config);
 
+    if (current)
+        flags = VIR_DOMAIN_AFFECT_CURRENT;
     if (config)
         flags |= VIR_DOMAIN_AFFECT_CONFIG;
-    if (live)
-        flags |= VIR_DOMAIN_AFFECT_LIVE;
 
     if (!(dom = virshCommandOptDomain(ctl, cmd, NULL)))
         return false;
@@ -9025,13 +9023,8 @@ cmdSetmem(vshControl *ctl, const vshCmd *cmd)
         goto cleanup;
     kibibytes = VIR_DIV_UP(bytes, 1024);
 
-    if (!current && !live && !config) {
-        if (virDomainSetMemory(dom, kibibytes) != 0)
-            goto cleanup;
-    } else {
-        if (virDomainSetMemoryFlags(dom, kibibytes, flags) < 0)
-            goto cleanup;
-    }
+    if (virDomainSetMemoryFlags(dom, kibibytes, flags) < 0)
+        goto cleanup;
 
     ret = true;
  cleanup:
@@ -9103,16 +9096,9 @@ cmdSetmaxmem(vshControl *ctl, const vshCmd *cmd)
         goto cleanup;
     kibibytes = VIR_DIV_UP(bytes, 1024);
 
-    if (flags == 0) {
-        if (virDomainSetMaxMemory(dom, kibibytes) != 0) {
-            vshError(ctl, "%s", _("Unable to change MaxMemorySize"));
-            goto cleanup;
-        }
-    } else {
-        if (virDomainSetMemoryFlags(dom, kibibytes, flags | VIR_DOMAIN_MEM_MAXIMUM) < 0) {
-            vshError(ctl, "%s", _("Unable to change MaxMemorySize"));
-            goto cleanup;
-        }
+    if (virDomainSetMemoryFlags(dom, kibibytes, flags | VIR_DOMAIN_MEM_MAXIMUM) < 0) {
+        vshError(ctl, "%s", _("Unable to change MaxMemorySize"));
+        goto cleanup;
     }
 
     ret = true;
@@ -10631,6 +10617,7 @@ static const vshCmdOptDef opts_migrate[] = {
     },
     {.name = "comp-methods",
      .type = VSH_OT_STRING,
+     .completer = virshDomainMigrateCompMethodsCompleter,
      .help = N_("comma separated list of compression methods to be used")
     },
     {.name = "comp-mt-level",

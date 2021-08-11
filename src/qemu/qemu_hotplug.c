@@ -869,7 +869,7 @@ int qemuDomainAttachControllerDevice(virQEMUDriver *driver,
         return -1;
     }
 
-    if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev, "controller") < 0)
+    if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev) < 0)
         return -1;
 
     if (qemuAssignDeviceControllerAlias(vm->def, controller) < 0)
@@ -1022,7 +1022,7 @@ qemuDomainAttachDeviceDiskLiveInternal(virQEMUDriver *driver,
         break;
 
     case VIR_DOMAIN_DISK_BUS_VIRTIO:
-        if (qemuDomainEnsureVirtioAddress(&releaseVirtio, vm, dev, disk->dst) < 0)
+        if (qemuDomainEnsureVirtioAddress(&releaseVirtio, vm, dev) < 0)
             goto cleanup;
         break;
 
@@ -1230,10 +1230,21 @@ qemuDomainAttachNetDevice(virQEMUDriver *driver,
         /* This is really a "smart hostdev", so it should be attached
          * as a hostdev (the hostdev code will reach over into the
          * netdev-specific code as appropriate), then also added to
-         * the nets list (see cleanup:) if successful.
+         * the nets list if successful.
          */
-        ret = qemuDomainAttachHostDevice(driver, vm,
-                                         virDomainNetGetActualHostdev(net));
+        if (qemuDomainAttachHostDevice(driver, vm,
+                                       virDomainNetGetActualHostdev(net)) < 0) {
+            goto cleanup;
+        }
+        if (VIR_APPEND_ELEMENT_COPY(vm->def->nets, vm->def->nnets, net) < 0)
+            goto cleanup;
+
+        /* the rest of the setup doesn't apply to hostdev interfaces, so
+         * we can skip straight to the cleanup (nothing there applies to
+         * hostdev interfaces either, but it might in the future, so we
+         * may as well be consistent)
+         */
+        ret = 0;
         goto cleanup;
     }
 
@@ -1246,10 +1257,6 @@ qemuDomainAttachNetDevice(virQEMUDriver *driver,
         if (virDomainCCWAddressAssign(&net->info, ccwaddrs,
                                       !net->info.addr.ccw.assigned) < 0)
             goto cleanup;
-    } else if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_VIRTIO_S390)) {
-        virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                       _("virtio-s390 net device cannot be hotplugged."));
-        goto cleanup;
     } else if (qemuDomainEnsurePCIAddress(vm, &dev, driver) < 0) {
         goto cleanup;
     }
@@ -2316,7 +2323,7 @@ qemuDomainAttachRNGDevice(virQEMUDriver *driver,
     /* preallocate space for the device definition */
     VIR_REALLOC_N(vm->def->rngs, vm->def->nrngs + 1);
 
-    if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev, "rng") < 0)
+    if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev) < 0)
         return -1;
 
     if (qemuDomainNamespaceSetupRNG(vm, rng) < 0)
@@ -2865,10 +2872,9 @@ qemuDomainAttachMediatedDevice(virQEMUDriver *driver,
             return -1;
         break;
     case VIR_MDEV_MODEL_TYPE_VFIO_CCW: {
-        const char *devName = hostdev->source.subsys.u.mdev.uuidstr;
         bool releaseaddr = false;
 
-        if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev, devName) < 0)
+        if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev) < 0)
             return -1;
     }   break;
     case VIR_MDEV_MODEL_TYPE_LAST:
@@ -3205,7 +3211,7 @@ qemuDomainAttachInputDevice(virQEMUDriver *driver,
     }
 
     if (input->bus == VIR_DOMAIN_INPUT_BUS_VIRTIO) {
-        if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev, "input") < 0)
+        if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev) < 0)
             return -1;
     } else if (input->bus == VIR_DOMAIN_INPUT_BUS_USB) {
         if (virDomainUSBAddressEnsure(priv->usbaddrs, &input->info) < 0)
@@ -3302,7 +3308,7 @@ qemuDomainAttachVsockDevice(virQEMUDriver *driver,
         return -1;
     }
 
-    if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev, "vsock") < 0)
+    if (qemuDomainEnsureVirtioAddress(&releaseaddr, vm, &dev) < 0)
         return -1;
 
     if (qemuAssignDeviceVsockAlias(vsock) < 0)
@@ -5322,7 +5328,7 @@ qemuDomainDetachPrepDisk(virDomainObj *vm,
     int idx;
 
     if ((idx = qemuFindDisk(vm->def, match->dst)) < 0) {
-        virReportError(VIR_ERR_OPERATION_FAILED,
+        virReportError(VIR_ERR_DEVICE_MISSING,
                        _("disk %s not found"), match->dst);
         return -1;
     }
@@ -5819,7 +5825,7 @@ qemuDomainDetachPrepInput(virDomainObj *vm,
     int idx;
 
     if ((idx = virDomainInputDefFind(vm->def, match)) < 0) {
-        virReportError(VIR_ERR_OPERATION_FAILED, "%s",
+        virReportError(VIR_ERR_DEVICE_MISSING, "%s",
                        _("matching input device not found"));
         return -1;
     }
@@ -5855,7 +5861,7 @@ qemuDomainDetachPrepVsock(virDomainObj *vm,
     *detach = vsock = vm->def->vsock;
     if (!vsock ||
         !virDomainVsockDefEquals(match, vsock)) {
-        virReportError(VIR_ERR_OPERATION_FAILED, "%s",
+        virReportError(VIR_ERR_DEVICE_MISSING, "%s",
                        _("matching vsock device not found"));
         return -1;
     }
