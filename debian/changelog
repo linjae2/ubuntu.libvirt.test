@@ -1,4 +1,4 @@
-libvirt (6.0.0-0ubuntu8.12.1) focal; urgency=medium
+libvirt (6.0.0-0ubuntu8.13) focal; urgency=medium
 
   * Add support for switchdev NICs that link representor ports to parent PCI
     device. (LP: #1892132)

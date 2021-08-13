@@ -167,3 +167,5 @@ ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Move-monitor-call-out-of-t.patch
 ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Use-virHashNew-and-automat.patch
 ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Remove-ret-variable-and-cl.patch
 ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Fix-filling-of-capacity-wh.patch
+ubuntu/lp-1892132-add-virNetDevGetPhysPortName.patch
+ubuntu/lp-1892132-Add-phys_port_name-support-on-virPCIGetNetName.patch
