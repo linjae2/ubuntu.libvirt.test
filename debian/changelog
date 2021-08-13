@@ -1,3 +1,12 @@
+libvirt (7.0.0-2ubuntu2.1) hirsute; urgency=medium
+
+  * Add support for switchdev NICs that link representor ports to parent PCI
+    device. (LP: #1892132)
+    - d/p/u/lp-1892132-Add-phys_port_name-support-on-virPCIGetNetName.patch
+    - d/p/u/lp-1892132-add-virNetDevGetPhysPortName.patch
+
+ -- Frode Nordahl <frode.nordahl@canonical.com>  Fri, 16 Jul 2021 05:16:36 +0000
+
 libvirt (7.0.0-2ubuntu2) hirsute; urgency=medium
 
   * d/p/u/lp-1921754*: add EPYC-Rome-v2 as v1 missed IBRS and thereby fails
