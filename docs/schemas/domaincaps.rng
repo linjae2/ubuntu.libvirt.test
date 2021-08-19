@@ -38,6 +38,9 @@
           <ref name="cpu"/>
         </optional>
         <optional>
+          <ref name="memoryBacking"/>
+        </optional>
+        <optional>
           <ref name="devices"/>
         </optional>
         <optional>
@@ -88,6 +91,7 @@
   <define name="cpu">
     <element name="cpu">
       <ref name="cpuHost"/>
+      <ref name="cpuMax"/>
       <ref name="cpuHostModel"/>
       <ref name="cpuCustom"/>
     </element>
@@ -97,6 +101,18 @@
     <element name="mode">
       <attribute name="name">
         <value>host-passthrough</value>
+      </attribute>
+      <ref name="supported"/>
+      <optional>
+        <ref name="enum"/>
+      </optional>
+    </element>
+  </define>
+
+  <define name="cpuMax">
+    <element name="mode">
+      <attribute name="name">
+        <value>maximum</value>
       </attribute>
       <ref name="supported"/>
       <optional>
@@ -138,9 +154,24 @@
               <value>unknown</value>
             </choice>
           </attribute>
+          <optional>
+            <attribute name="deprecated">
+              <choice>
+                <value>yes</value>
+                <value>no</value>
+              </choice>
+            </attribute>
+          </optional>
           <text/>
         </element>
       </zeroOrMore>
+    </element>
+  </define>
+
+  <define name="memoryBacking">
+    <element name="memoryBacking">
+      <ref name="supported"/>
+      <ref name="enum"/>
     </element>
   </define>
 
@@ -160,6 +191,9 @@
       </optional>
       <optional>
         <ref name="rng"/>
+      </optional>
+      <optional>
+        <ref name="filesystem"/>
       </optional>
     </element>
   </define>
@@ -199,6 +233,13 @@
     </element>
   </define>
 
+  <define name="filesystem">
+    <element name="filesystem">
+      <ref name="supported"/>
+      <ref name="enum"/>
+    </element>
+  </define>
+
   <define name="features">
     <element name="features">
       <optional>
@@ -215,6 +256,9 @@
       </optional>
       <optional>
         <ref name="backup"/>
+      </optional>
+      <optional>
+        <ref name="s390-pv"/>
       </optional>
       <optional>
         <ref name="sev"/>
@@ -249,6 +293,12 @@
 
   <define name="backup">
     <element name="backup">
+      <ref name="supported"/>
+    </element>
+  </define>
+
+  <define name="s390-pv">
+    <element name="s390-pv">
       <ref name="supported"/>
     </element>
   </define>

@@ -88,13 +88,15 @@ qemuInteropFetchConfigs(const char *name,
                         char ***configs,
                         bool privileged)
 {
-    g_autoptr(GHashTable) files = NULL;
+    g_autoptr(GHashTable) files = virHashNew(g_free);
     g_autofree char *homeConfig = NULL;
     g_autofree char *xdgConfig = NULL;
     g_autofree char *sysLocation = virFileBuildPath(QEMU_SYSTEM_LOCATION, name, NULL);
     g_autofree char *etcLocation = virFileBuildPath(QEMU_ETC_LOCATION, name, NULL);
-    g_autofree virHashKeyValuePairPtr pairs = NULL;
-    virHashKeyValuePairPtr tmp = NULL;
+    g_autofree virHashKeyValuePair *pairs = NULL;
+    size_t npairs;
+    virHashKeyValuePair *tmp = NULL;
+    size_t nconfigs = 0;
 
     *configs = NULL;
 
@@ -115,9 +117,6 @@ qemuInteropFetchConfigs(const char *name,
         homeConfig = g_strdup_printf("%s/qemu/%s", xdgConfig, name);
     }
 
-    if (!(files = virHashNew(g_free)))
-        return -1;
-
     if (qemuBuildFileList(files, sysLocation) < 0)
         return -1;
 
@@ -132,11 +131,13 @@ qemuInteropFetchConfigs(const char *name,
      * where each filename (as key) has the highest priority full pathname
      * associated with it. */
 
-    if (virHashSize(files) == 0)
+    if (!(pairs = virHashGetItems(files, &npairs, true)))
+        return -1;
+
+    if (npairs == 0)
         return 0;
 
-    if (!(pairs = virHashGetItems(files, NULL, true)))
-        return -1;
+    *configs = g_new0(char *, npairs + 1);
 
     for (tmp = pairs; tmp->key; tmp++) {
         const char *path = tmp->value;
@@ -158,8 +159,7 @@ qemuInteropFetchConfigs(const char *name,
             continue;
         }
 
-        if (virStringListAdd(configs, path) < 0)
-            return -1;
+        (*configs)[nconfigs++] = g_strdup(path);
     }
 
     return 0;

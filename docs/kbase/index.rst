@@ -37,8 +37,20 @@ Usage
 `Launch security <launch_security_sev.html>`__
    Securely launching VMs with AMD SEV
 
+`Live full disk backup <live_full_disk_backup.html>`__
+   A walkthrough of how to take effective live full disk backups.
+
+`Merging disk image chains <merging_disk_image_chains.html>`__
+   Ways to reduce or consolidate disk image chains.
+
 `KVM real time <kvm-realtime.html>`__
    Run real time workloads in guests on a KVM hypervisor
+
+`PCI hotplug <../pci-hotplug.html>`__
+   Effective usage of PCI hotplug
+
+`PCI topology <../pci-addresses.html>`__
+   Addressing schemes for PCI devices
 
 Internals / Debugging
 ---------------------
@@ -54,4 +66,8 @@ Internals / Debugging
 
 `VM migration internals <migrationinternals.html>`__
    VM migration implementation details, complementing the info in
-   `migration <migration.html>`__
+   `migration <../migration.html>`__
+
+`Capturing core dumps for QEMU <qemu-core-dump.html>`__
+   How to configure libvirt to enable capture of core dumps from
+   QEMU virtual machines
