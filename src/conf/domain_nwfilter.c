@@ -37,14 +37,12 @@ VIR_LOG_INIT("conf.domain_nwfilter");
 
 #define VIR_FROM_THIS VIR_FROM_NWFILTER
 
-static virNWFilterBindingDefPtr
+static virNWFilterBindingDef *
 virNWFilterBindingDefForNet(const char *vmname,
                             const unsigned char *vmuuid,
-                            virDomainNetDefPtr net)
+                            virDomainNetDef *net)
 {
-    virNWFilterBindingDefPtr ret;
-
-    ret = g_new0(virNWFilterBindingDef, 1);
+    g_autoptr(virNWFilterBindingDef) ret = g_new0(virNWFilterBindingDef, 1);
 
     ret->ownername = g_strdup(vmname);
 
@@ -59,29 +57,24 @@ virNWFilterBindingDefForNet(const char *vmname,
 
     ret->filter = g_strdup(net->filter);
 
-    if (!(ret->filterparams = virHashNew(virNWFilterVarValueHashFree)))
-        goto error;
+    ret->filterparams = virHashNew(virNWFilterVarValueHashFree);
 
     if (net->filterparams &&
         virNWFilterHashTablePutAll(net->filterparams, ret->filterparams) < 0)
-        goto error;
+        return NULL;
 
-    return ret;
-
- error:
-    virNWFilterBindingDefFree(ret);
-    return NULL;
+    return g_steal_pointer(&ret);
 }
 
 
 int
 virDomainConfNWFilterInstantiate(const char *vmname,
                                  const unsigned char *vmuuid,
-                                 virDomainNetDefPtr net,
+                                 virDomainNetDef *net,
                                  bool ignoreExists)
 {
     virConnectPtr conn = virGetConnectNWFilter();
-    virNWFilterBindingDefPtr def = NULL;
+    virNWFilterBindingDef *def = NULL;
     virNWFilterBindingPtr binding = NULL;
     char *xml = NULL;
     int ret = -1;
@@ -122,7 +115,7 @@ virDomainConfNWFilterInstantiate(const char *vmname,
 
 static void
 virDomainConfNWFilterTeardownImpl(virConnectPtr conn,
-                                  virDomainNetDefPtr net)
+                                  virDomainNetDef *net)
 {
     virNWFilterBindingPtr binding;
 
@@ -140,7 +133,7 @@ virDomainConfNWFilterTeardownImpl(virConnectPtr conn,
 
 
 void
-virDomainConfNWFilterTeardown(virDomainNetDefPtr net)
+virDomainConfNWFilterTeardown(virDomainNetDef *net)
 {
     virConnectPtr conn;
 
@@ -156,13 +149,13 @@ virDomainConfNWFilterTeardown(virDomainNetDefPtr net)
 }
 
 void
-virDomainConfVMNWFilterTeardown(virDomainObjPtr vm)
+virDomainConfVMNWFilterTeardown(virDomainObj *vm)
 {
     size_t i;
     virConnectPtr conn = NULL;
 
     for (i = 0; i < vm->def->nnets; i++) {
-        virDomainNetDefPtr net = vm->def->nets[i];
+        virDomainNetDef *net = vm->def->nets[i];
 
         if (!net->filter)
             continue;

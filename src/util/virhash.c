@@ -36,7 +36,7 @@ struct _virHashAtomic {
     GHashTable *hash;
 };
 
-static virClassPtr virHashAtomicClass;
+static virClass *virHashAtomicClass;
 static void virHashAtomicDispose(void *obj);
 
 static int virHashAtomicOnceInit(void)
@@ -51,7 +51,7 @@ VIR_ONCE_GLOBAL_INIT(virHashAtomic);
 
 
 /**
- * Our hash function uses a random seed to provide uncertainity from run to run
+ * Our hash function uses a random seed to provide uncertainty from run to run
  * to prevent pre-crafting of colliding hash keys.
  */
 static uint32_t virHashTableSeed;
@@ -91,10 +91,10 @@ virHashNew(virHashDataFree dataFree)
 }
 
 
-virHashAtomicPtr
+virHashAtomic *
 virHashAtomicNew(virHashDataFree dataFree)
 {
-    virHashAtomicPtr hash;
+    virHashAtomic *hash;
 
     if (virHashAtomicInitialize() < 0)
         return NULL;
@@ -102,10 +102,7 @@ virHashAtomicNew(virHashDataFree dataFree)
     if (!(hash = virObjectLockableNew(virHashAtomicClass)))
         return NULL;
 
-    if (!(hash->hash = virHashNew(dataFree))) {
-        virObjectUnref(hash);
-        return NULL;
-    }
+    hash->hash = virHashNew(dataFree);
     return hash;
 }
 
@@ -113,7 +110,7 @@ virHashAtomicNew(virHashDataFree dataFree)
 static void
 virHashAtomicDispose(void *obj)
 {
-    virHashAtomicPtr hash = obj;
+    virHashAtomic *hash = obj;
 
     virHashFree(hash->hash);
 }
@@ -198,7 +195,7 @@ virHashUpdateEntry(GHashTable *table, const char *name,
 }
 
 int
-virHashAtomicUpdate(virHashAtomicPtr table,
+virHashAtomicUpdate(virHashAtomic *table,
                     const char *name,
                     void *userdata)
 {
@@ -287,7 +284,7 @@ void *virHashSteal(GHashTable *table, const char *name)
 }
 
 void *
-virHashAtomicSteal(virHashAtomicPtr table,
+virHashAtomicSteal(virHashAtomic *table,
                    const char *name)
 {
     void *data;
@@ -404,7 +401,7 @@ virHashForEachSafe(GHashTable *table,
                    virHashIterator iter,
                    void *opaque)
 {
-    g_autofree virHashKeyValuePairPtr items = virHashGetItems(table, NULL, false);
+    g_autofree virHashKeyValuePair *items = virHashGetItems(table, NULL, false);
     size_t i;
 
     if (!items)
@@ -424,7 +421,7 @@ virHashForEachSorted(GHashTable *table,
                      virHashIterator iter,
                      void *opaque)
 {
-    g_autofree virHashKeyValuePairPtr items = virHashGetItems(table, NULL, true);
+    g_autofree virHashKeyValuePair *items = virHashGetItems(table, NULL, true);
     size_t i;
 
     if (!items)
@@ -550,7 +547,7 @@ virHashGetItemsKeySorter(const void *va,
 }
 
 
-virHashKeyValuePairPtr
+virHashKeyValuePair *
 virHashGetItems(GHashTable *table,
                 size_t *nitems,
                 bool sortKeys)

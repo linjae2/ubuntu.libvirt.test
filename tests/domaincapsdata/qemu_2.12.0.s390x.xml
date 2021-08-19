@@ -30,6 +30,7 @@
         <value>off</value>
       </enum>
     </mode>
+    <mode name='maximum' supported='no'/>
     <mode name='host-model' supported='yes'>
       <model fallback='forbid'>z14-base</model>
       <feature policy='require' name='aen'/>
@@ -128,6 +129,13 @@
       <model usable='yes'>z990.3-base</model>
     </mode>
   </cpu>
+  <memoryBacking supported='yes'>
+    <enum name='sourceType'>
+      <value>file</value>
+      <value>anonymous</value>
+      <value>memfd</value>
+    </enum>
+  </memoryBacking>
   <devices>
     <disk supported='yes'>
       <enum name='diskDevice'>
@@ -191,6 +199,12 @@
         <value>egd</value>
       </enum>
     </rng>
+    <filesystem supported='yes'>
+      <enum name='driverType'>
+        <value>path</value>
+        <value>handle</value>
+      </enum>
+    </filesystem>
   </devices>
   <features>
     <gic supported='no'/>
@@ -198,6 +212,7 @@
     <genid supported='no'/>
     <backingStoreInput supported='no'/>
     <backup supported='no'/>
+    <s390-pv supported='no'/>
     <sev supported='no'/>
   </features>
 </domainCapabilities>

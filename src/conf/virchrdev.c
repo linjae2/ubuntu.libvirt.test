@@ -49,9 +49,8 @@ struct _virChrdevs {
 };
 
 typedef struct _virChrdevStreamInfo virChrdevStreamInfo;
-typedef virChrdevStreamInfo *virChrdevStreamInfoPtr;
 struct _virChrdevStreamInfo {
-    virChrdevsPtr devs;
+    virChrdevs *devs;
     char *path;
 };
 
@@ -221,10 +220,10 @@ static void virChrdevHashEntryFree(void *data)
  */
 static void virChrdevFDStreamCloseCbFree(void *opaque)
 {
-    virChrdevStreamInfoPtr priv = opaque;
+    virChrdevStreamInfo *priv = opaque;
 
-    VIR_FREE(priv->path);
-    VIR_FREE(priv);
+    g_free(priv->path);
+    g_free(priv);
 }
 
 /**
@@ -237,7 +236,7 @@ static void virChrdevFDStreamCloseCbFree(void *opaque)
 static void virChrdevFDStreamCloseCb(virStreamPtr st G_GNUC_UNUSED,
                                       void *opaque)
 {
-    virChrdevStreamInfoPtr priv = opaque;
+    virChrdevStreamInfo *priv = opaque;
     virMutexLock(&priv->devs->lock);
 
     /* remove entry from hash */
@@ -252,9 +251,9 @@ static void virChrdevFDStreamCloseCb(virStreamPtr st G_GNUC_UNUSED,
  *
  * Returns pointer to the allocated structure or NULL on error
  */
-virChrdevsPtr virChrdevAlloc(void)
+virChrdevs *virChrdevAlloc(void)
 {
-    virChrdevsPtr devs;
+    virChrdevs *devs;
     devs = g_new0(virChrdevs, 1);
 
     if (virMutexInit(&devs->lock) < 0) {
@@ -266,13 +265,9 @@ virChrdevsPtr virChrdevAlloc(void)
 
     /* there will hardly be any devices most of the time, the hash
      * does not have to be huge */
-    if (!(devs->hash = virHashNew(virChrdevHashEntryFree)))
-        goto error;
+    devs->hash = virHashNew(virChrdevHashEntryFree);
 
     return devs;
- error:
-    virChrdevFree(devs);
-    return NULL;
 }
 
 /**
@@ -293,7 +288,7 @@ static int virChrdevFreeClearCallbacks(void *payload,
  *
  * @devs Pointer to the private structure.
  */
-void virChrdevFree(virChrdevsPtr devs)
+void virChrdevFree(virChrdevs *devs)
 {
     if (!devs)
         return;
@@ -304,7 +299,7 @@ void virChrdevFree(virChrdevsPtr devs)
     virMutexUnlock(&devs->lock);
     virMutexDestroy(&devs->lock);
 
-    VIR_FREE(devs);
+    g_free(devs);
 }
 
 /**
@@ -323,12 +318,12 @@ void virChrdevFree(virChrdevsPtr devs)
  * corresponding lock file is created (if configured). Returns -1 on
  * error and 1 if the device stream is open and busy.
  */
-int virChrdevOpen(virChrdevsPtr devs,
-                  virDomainChrSourceDefPtr source,
+int virChrdevOpen(virChrdevs *devs,
+                  virDomainChrSourceDef *source,
                   virStreamPtr st,
                   bool force)
 {
-    virChrdevStreamInfoPtr cbdata = NULL;
+    virChrdevStreamInfo *cbdata = NULL;
     virChrdevHashEntry *ent;
     char *path;
     int ret;
