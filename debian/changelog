@@ -1,3 +1,12 @@
+libvirt (6.0.0-0ubuntu8.14) focal; urgency=medium
+
+  * Fixup backport of "util: Add phys_port_name support on virPCIGetNetName"
+    to include the incorrectly removed "firstEntryName = NULL;" line, which
+    caused a regression bringing up network pools. (LP: #1943481)
+    - d/p/u/lp-1892132-Add-phys_port_name-support-on-virPCIGetNetName.patch
+
+ -- Matthew Ruffell <matthew.ruffell@canonical.com>  Tue, 14 Sep 2021 14:00:49 +1200
+
 libvirt (6.0.0-0ubuntu8.13) focal; urgency=medium
 
   * Add support for switchdev NICs that link representor ports to parent PCI

@@ -81,7 +81,7 @@ index 0b1222373e..a54be60da0 100644
          }
  
          *netname = g_strdup(entry->d_name);
-@@ -2493,24 +2517,21 @@ virPCIGetNetName(const char *device_link_sysfs_path,
+@@ -2493,24 +2517,22 @@ virPCIGetNetName(const char *device_link_sysfs_path,
      }
  
      if (ret < 0) {
@@ -110,6 +110,7 @@ index 0b1222373e..a54be60da0 100644
 +             * (probably only) netname we found.
 +             */
 +            *netname = firstEntryName;
++            firstEntryName = NULL;
 +            ret = 0;
          } else {
 -            ret = 0; /* no netdev at the given index is *not* an error */

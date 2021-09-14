@@ -2526,6 +2526,7 @@ virPCIGetNetName(const char *device_link_sysfs_path,
              * (probably only) netname we found.
              */
             *netname = firstEntryName;
+            firstEntryName = NULL;
             ret = 0;
         } else {
             virReportError(VIR_ERR_INTERNAL_ERROR,
