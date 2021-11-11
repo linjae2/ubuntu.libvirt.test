@@ -353,6 +353,7 @@ Suggests:
  systemd,
  systemtap,
  zfsutils,
+ swtpm-tools,
 Description: Libvirt daemon configuration files
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
