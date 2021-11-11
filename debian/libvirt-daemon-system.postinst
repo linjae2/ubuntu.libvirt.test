@@ -172,6 +172,8 @@ add_statoverrides()
 
     QEMU_CONF="/etc/libvirt/qemu.conf"
 
+    SWTPM_DIR="/var/log/swtpm/libvirt/qemu"
+
     for dir in ${ROOT_DIRS}; do
         if ! dpkg-statoverride --list "${dir}" >/dev/null 2>&1; then
             [ ! -e "${dir}" ] || chown root:root "${dir}"
@@ -194,6 +196,12 @@ add_statoverrides()
     if ! dpkg-statoverride --list "${QEMU_CONF}" >/dev/null 2>&1; then
         [ ! -e "${QEMU_CONF}" ] || chown root:root "${QEMU_CONF}"
         [ ! -e "${QEMU_CONF}" ] || chmod 0600 "${QEMU_CONF}"
+    fi
+
+    # swtpm shall use user swtpm (LP: #1948880)
+    if ! dpkg-statoverride --list "${SWTPM_DIR}" >/dev/null 2>&1; then
+        [ ! -e "${SWTPM_DIR}" ] || chown swtpm:swtpm "${SWTPM_DIR}"
+        [ ! -e "${SWTPM_DIR}" ] || chmod 0700 "${SWTPM_DIR}"
     fi
 }
 
