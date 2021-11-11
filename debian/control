@@ -355,6 +355,7 @@ Suggests:
  systemd,
  systemtap,
  zfsutils,
+ swtpm-tools,
 Breaks:
  systemd-sysv (<< 224-1~),
 Description: Libvirt daemon configuration files
