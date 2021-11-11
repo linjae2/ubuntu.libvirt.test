@@ -343,6 +343,7 @@ Recommends:
  iproute2,
  mdevctl,
  parted,
+ swtpm-tools,
 Suggests:
  apparmor,
  auditd,
