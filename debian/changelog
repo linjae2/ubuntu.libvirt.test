@@ -1,3 +1,16 @@
+libvirt (7.6.0-0ubuntu2) jammy; urgency=medium
+
+  * d/p/u/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch: avoid
+    issues due to corrupted apparmor profiles (LP: #1927519)
+  * libvirt should not use user/group tss for swtpm (LP: #1948880)
+    - d/libvirt-daemon-system.postinst: own swtpm logdir by user swtpm
+    - d/p/u/swtpm-by-swtpm-user.patch: change default spawned swtpm processes
+      to user swtpm
+    - d/p/u/swtpm-by-swtpm-user.patch: adapt expected self test results
+    - d/control: suggest swtpm-tools
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 11 Nov 2021 12:11:38 +0100
+
 libvirt (7.6.0-0ubuntu1) impish; urgency=medium
 
   * Merge v7.6.0 from upstream and unreleased changes from Debian git.
