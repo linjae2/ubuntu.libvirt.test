@@ -2,6 +2,8 @@ libvirt (4.0.0-1ubuntu8.20) bionic; urgency=medium
 
   * d/p/u/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch:
     avoid issues due to corrupted apparmor profiles (LP: #1927519)
+  * d/p/u/skip-new-pdwtags.patch: avoid issues with backported
+    dwarves 1.21 (LP: #1951438)
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 18 Nov 2021 10:24:01 +0100
 
