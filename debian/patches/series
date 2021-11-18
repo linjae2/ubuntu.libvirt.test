@@ -140,3 +140,5 @@ ubuntu/lp-1844455-node_device_conf-Don-t-leak-physical_function.patch
 ubuntu-aa/lp-1847361-load-versioned-module.patch
 ubuntu/CVE-2020-10703.patch
 ubuntu/lp1915811-fix-numa-topology.patch
+ubuntu/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch
+ubuntu/skip-new-pdwtags.patch
