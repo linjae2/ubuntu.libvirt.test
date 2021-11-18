@@ -1,3 +1,10 @@
+libvirt (7.6.0-0ubuntu1.1) impish; urgency=medium
+
+  * d/p/u/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch:
+    avoid issues due to corrupted apparmor profiles (LP: #1927519)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 18 Nov 2021 10:19:58 +0100
+
 libvirt (7.6.0-0ubuntu1) impish; urgency=medium
 
   * Merge v7.6.0 from upstream and unreleased changes from Debian git.
