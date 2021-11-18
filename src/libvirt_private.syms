@@ -1881,6 +1881,7 @@ virHostCPUStatsAssign;
 
 # util/virhostdev.h
 virHostdevFindUSBDevice;
+virHostdevIsMdevDevice;
 virHostdevIsSCSIDevice;
 virHostdevManagerGetDefault;
 virHostdevPCINodeDeviceDetach;
