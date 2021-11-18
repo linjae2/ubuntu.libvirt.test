@@ -1,3 +1,10 @@
+libvirt (7.0.0-2ubuntu2.2) hirsute; urgency=medium
+
+  * d/p/u/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch:
+    avoid issues due to corrupted apparmor profiles (LP: #1927519)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 18 Nov 2021 10:22:28 +0100
+
 libvirt (7.0.0-2ubuntu2.1) hirsute; urgency=medium
 
   * Add support for switchdev NICs that link representor ports to parent PCI
