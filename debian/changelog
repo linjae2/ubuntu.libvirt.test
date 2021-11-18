@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu8.15) focal; urgency=medium
+
+  * d/p/u/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch:
+    avoid issues due to corrupted apparmor profiles (LP: #1927519)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 18 Nov 2021 10:23:11 +0100
+
 libvirt (6.0.0-0ubuntu8.14) focal; urgency=medium
 
   * Fixup backport of "util: Add phys_port_name support on virPCIGetNetName"
