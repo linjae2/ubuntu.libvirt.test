@@ -1143,6 +1143,29 @@ virNetDevGetPCIDevice(const char *devName)
 }
 
 
+/* A wrapper to get content of file from ifname SYSFS_NET_DIR
+ */
+static int
+virNetDevGetSysfsFileValue(const char *ifname,
+                           const char *fileName,
+                           char **sysfsFileData)
+{
+    g_autofree char *sysfsFile = NULL;
+
+    *sysfsFileData = NULL;
+
+    if (virNetDevSysfsFile(&sysfsFile, ifname, fileName) < 0)
+        return -1;
+
+    /* a failure to read just means the driver doesn't support
+     * <fileName>, so set success now and ignore the return from
+     * virFileReadAllQuiet().
+     */
+
+    ignore_value(virFileReadAllQuiet(sysfsFile, 1024, sysfsFileData));
+    return 0;
+}
+
 /**
  * virNetDevGetPhysPortID:
  *
@@ -1161,25 +1184,29 @@ int
 virNetDevGetPhysPortID(const char *ifname,
                        char **physPortID)
 {
-    int ret = -1;
-    char *physPortIDFile = NULL;
+    return virNetDevGetSysfsFileValue(ifname, "phys_port_id", physPortID);
+}
 
-    *physPortID = NULL;
 
-    if (virNetDevSysfsFile(&physPortIDFile, ifname, "phys_port_id") < 0)
-        goto cleanup;
-
-    /* a failure to read just means the driver doesn't support
-     * phys_port_id, so set success now and ignore the return from
-     * virFileReadAllQuiet().
-     */
-    ret = 0;
-
-    ignore_value(virFileReadAllQuiet(physPortIDFile, 1024, physPortID));
-
- cleanup:
-    VIR_FREE(physPortIDFile);
-    return ret;
+/**
+ * virNetDevGetPhysPortName:
+ *
+ * @ifname: name of a netdev
+ *
+ * @physPortName: pointer to char* that will receive @ifname's
+ *                phys_port_name from sysfs (null terminated
+ *                string). Could be NULL if @ifname's net driver doesn't
+ *                support phys_port_name (most netdev drivers
+ *                don't). Caller is responsible for freeing the string
+ *                when finished.
+ *
+ * Returns 0 on success or -1 on failure.
+ */
+int
+virNetDevGetPhysPortName(const char *ifname,
+                         char **physPortName)
+{
+    return virNetDevGetSysfsFileValue(ifname, "phys_port_name", physPortName);
 }
 
 
@@ -1458,6 +1485,17 @@ virNetDevGetPhysPortID(const char *ifname G_GNUC_UNUSED,
      * satisfy the linker.
      */
     *physPortID = NULL;
+    return 0;
+}
+
+int
+virNetDevGetPhysPortName(const char *ifname G_GNUC_UNUSED,
+                       char **physPortName)
+{
+    /* this actually should never be called, and is just here to
+     * satisfy the linker.
+     */
+    *physPortName = NULL;
     return 0;
 }
 
