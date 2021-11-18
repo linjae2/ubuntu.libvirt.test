@@ -169,3 +169,4 @@ ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Remove-ret-variable-and-cl.patch
 ubuntu/lp-1929202-qemuMigrationCookieAddNBD-Fix-filling-of-capacity-wh.patch
 ubuntu/lp-1892132-add-virNetDevGetPhysPortName.patch
 ubuntu/lp-1892132-Add-phys_port_name-support-on-virPCIGetNetName.patch
+ubuntu/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch
