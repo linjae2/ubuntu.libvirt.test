@@ -22,6 +22,7 @@ After=remote-fs.target
 After=systemd-logind.service
 After=systemd-machined.service
 After=xencommons.service
+After=qemu-kvm.service
 Conflicts=xendomains.service
 Documentation=man:libvirtd(8)
 Documentation=https://libvirt.org
