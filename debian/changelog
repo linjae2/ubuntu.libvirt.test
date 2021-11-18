@@ -1,3 +1,10 @@
+libvirt (4.0.0-1ubuntu8.20) bionic; urgency=medium
+
+  * d/p/u/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch:
+    avoid issues due to corrupted apparmor profiles (LP: #1927519)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 18 Nov 2021 10:24:01 +0100
+
 libvirt (4.0.0-1ubuntu8.19) bionic; urgency=medium
 
   * d/p/lp1915811-fix-numa-topology.patch: Fix NUMA topology population for
