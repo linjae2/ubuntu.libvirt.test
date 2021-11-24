@@ -1,3 +1,10 @@
+libvirt (7.6.0-0ubuntu3) jammy; urgency=medium
+
+  * d/libvirt-daemon-system.postinst: create user/group swtpm if not present
+    due to swtpm-tools (LP: #1951975)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 24 Nov 2021 07:50:53 +0100
+
 libvirt (7.6.0-0ubuntu2) jammy; urgency=medium
 
   * d/p/u/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch: avoid
