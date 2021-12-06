@@ -35,6 +35,16 @@ License: AS-IS-I
  MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE AUTHORS AND
  CONTRIBUTORS ACCEPT NO RESPONSIBILITY IN ANY CONCEIVABLE MANNER.
 
+Files: src/util/virpcivpd.*
+       src/util/virpcivpdpriv.h
+       tests/virpcivpdtest.c
+Copyright: 2021 Canonical Ltd.
+License: LGPL-2.1+
+
+Files: tools/virt-host-validate-ch.*
+Copyright: 2020-2021 Microsoft Corp.
+License: LGPL-2.1+
+
 Files: tests/pkix_asn1_tab.c
        tests/virsh-cpuset
        tests/virsh-optparse
@@ -47,10 +57,6 @@ Files: tests/pkix_asn1_tab.c
        tests/virsh-vcpupin
 Copyright: 2008-2019 Red Hat, Inc.
 License: GPL-2.0+
-
-Files: build-aux/vc-list-files
-Copyright: 1989-2019 Free Software Foundation, Inc.
-License: GPL-3.0+
 
 Files: src/vbox/vbox*
 Copyright: 2008-2009 Sun Microsystems, Inc.
@@ -100,23 +106,6 @@ License: GPL-2.0+
  .
  On Debian systems, the complete text of the GNU General Public License
  Version 2 can be found in `/usr/share/common-licenses/GPL-2'.
-
-License: GPL-3.0+
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 3 of the License, or
- (at your option) any later version.
- .
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- .
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <https://www.gnu.org/licenses/>.
- .
- On Debian systems, the complete text of the GNU General Public License
- Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
 
 License: SIL-1.1
  This Font Software is licensed under the SIL Open Font License,
