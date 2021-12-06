@@ -1,6 +1,6 @@
 project(
   'libvirt', 'c',
-  version: '7.6.0',
+  version: '7.9.0',
   license: 'LGPLv2+',
   meson_version: '>= 0.54.0',
   default_options: [
@@ -225,7 +225,7 @@ alloc_max = run_command(
 )
 
 # sanitizer instrumentation may enlarge stack frames
-stack_frame_size = get_option('b_sanitize') == 'none' ? 4096 : 8192
+stack_frame_size = get_option('b_sanitize') == 'none' ? 4096 : 32768
 
 # array_bounds=2 check triggers false positive on some GCC
 # versions when using sanitizers. Seen on Fedora 34 with
@@ -790,7 +790,7 @@ required_programs = [
 
 required_programs_groups = [
   { 'name': 'rpcgen', 'prog': [ 'rpcgen', 'portable-rpcgen' ] },
-  { 'name': 'rst2html', 'prog': [ 'rst2html5', 'rst2html5.py', 'rst2html5-3' ] },
+  { 'name': 'rst2html5', 'prog': [ 'rst2html5', 'rst2html5.py', 'rst2html5-3' ] },
   { 'name': 'rst2man', 'prog': [ 'rst2man', 'rst2man.py', 'rst2man-3' ] },
 ]
 
@@ -802,7 +802,6 @@ foreach name : required_programs
   prog = find_program(name, dirs: libvirt_sbin_path)
   varname = name.underscorify()
   conf.set_quoted(varname.to_upper(), prog.path())
-  conf.set_quoted('@0@_PATH'.format(varname.to_upper()), prog.path())
   set_variable('@0@_prog'.format(varname), prog)
 endforeach
 
@@ -848,7 +847,6 @@ foreach name : optional_programs
   endif
 
   conf.set_quoted(varname.to_upper(), prog_path)
-  conf.set_quoted('@0@_PATH'.format(varname.to_upper()), prog_path)
   set_variable('@0@_prog'.format(varname), prog)
 endforeach
 
@@ -1949,21 +1947,8 @@ if conf.has('WITH_LIBVIRTD')
   endif
 
   if not get_option('storage_zfs').disabled()
-    zfs_enable = true
-    foreach name : [ 'zfs', 'zpool' ]
-      set_variable(
-        '@0@_prog'.format(name),
-        '/sbin' / name
-      )
-    endforeach
-
-    if zfs_enable
-      use_storage = true
-      conf.set('WITH_STORAGE_ZFS', 1)
-      foreach name : [ 'zfs', 'zpool' ]
-        conf.set_quoted(name.to_upper(), get_variable('@0@_prog'.format(name)))
-      endforeach
-    endif
+    use_storage = true
+    conf.set('WITH_STORAGE_ZFS', 1)
   endif
 endif
 
@@ -2230,6 +2215,7 @@ configure_file(output: 'meson-config.h', configuration: conf)
 # generate run helper
 run_conf = configuration_data()
 run_conf.set('abs_builddir', meson.build_root())
+run_conf.set('abs_top_builddir', meson.build_root())
 configure_file(
   input: 'run.in',
   output: '@BASENAME@',
