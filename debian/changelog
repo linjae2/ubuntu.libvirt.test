@@ -1,3 +1,12 @@
+libvirt (7.10.0-1) unstable; urgency=medium
+
+  * Team upload
+
+  * [0817e92] New upstream version 7.10.0
+  * [2d2fb25] patches: Drop backported patches
+
+ -- Andrea Bolognani <eof@kiyuko.org>  Wed, 08 Dec 2021 00:24:01 +0100
+
 libvirt (7.9.0-1) unstable; urgency=medium
 
   * Team upload
