@@ -205,12 +205,12 @@ override_dh_auto_test:
 # we're not interested in, move things around) so that later calls to the
 # various dh_* tools will work optimally. This target is the perfect place
 # to perform such operations
-override_dh_auto_install:
-	dh_auto_install
-
+execute_after_dh_auto_install:
 	# Move upstream files where dh_* can find them
 	mv $(DEB_DESTDIR)/etc/sysconfig/ \
 	   $(DEB_DESTDIR)/etc/default/
+	mv $(DEB_DESTDIR)/usr/lib/sysctl.d/60-libvirtd.conf \
+	   $(DEB_DESTDIR)/usr/lib/sysctl.d/libvirtd.sysctl
 
 	# Copy the release notes where dh_installdocs can find them
 	cp NEWS.rst \
@@ -242,9 +242,7 @@ override_dh_auto_install:
 	   $(DEB_DESTDIR)/etc/libvirt/nwfilter/ \
 	   $(DEB_DESTDIR)/usr/share/libvirt/
 
-override_dh_install-arch:
-	dh_install
-
+execute_after_dh_install:
 ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	# Linux supports more nice things:
 	set -e; for f in $(SRV_MONOLITHIC); do \
@@ -253,13 +251,13 @@ ifneq (,$(findstring $(DEB_HOST_ARCH_OS), linux))
 	               lib/systemd/system/; \
 	done
 	dh_install -p libvirt-daemon usr/lib/libvirt/virt-aa-helper
-	for f in $(APPARMOR_ABSTRACTIONS); do \
+	set -e; for f in $(APPARMOR_ABSTRACTIONS); do \
 	    dh_install -p libvirt-daemon-system etc/apparmor.d/abstractions/$${f}; \
 	done
-	for f in $(APPARMOR_TEMPLATES); do \
+	set -e; for f in $(APPARMOR_TEMPLATES); do \
 	    dh_install -p libvirt-daemon-system etc/apparmor.d/libvirt/$${f}; \
 	done
-	for f in $(APPARMOR_SERVICES); do \
+	set -e; for f in $(APPARMOR_SERVICES); do \
 	    dh_install -p libvirt-daemon-system etc/apparmor.d/$${f}; \
 	    dh_apparmor -p libvirt-daemon-system --profile-name=$${f}; \
 	done
