@@ -1,0 +1,6 @@
+  * Team upload
+  [ Andrea Bolognani ]
+  * [26f63eb] control: Build-Depend on python3:any to fix cross-building
+  * [b14268f] patches: Backport fix for CVE-2021-4147
+  [ Joachim Falk ]
+  * [9ae5f14] Fix reboot command for LXC containers (Closes: #991773)
