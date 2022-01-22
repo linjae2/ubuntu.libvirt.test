@@ -53,7 +53,6 @@ libxlLoggerFileFree(void *payload)
 {
     FILE *file = payload;
     VIR_FORCE_FCLOSE(file);
-    file = NULL;
 }
 
 G_GNUC_PRINTF(5, 0) static void
@@ -175,7 +174,7 @@ libxlLoggerFree(libxlLogger *logger)
     xentoollog_logger *xtl_logger = (xentoollog_logger*)logger;
     if (logger->defaultLogFile)
         VIR_FORCE_FCLOSE(logger->defaultLogFile);
-    virHashFree(logger->files);
+    g_clear_pointer(&logger->files, g_hash_table_unref);
     virMutexDestroy(&logger->tableLock);
     xtl_logger_destroy(xtl_logger);
 }

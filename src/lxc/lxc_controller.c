@@ -731,7 +731,7 @@ static int virLXCControllerSetupLoopDevices(virLXCController *ctrl)
 static int virLXCControllerSetupCpuAffinity(virLXCController *ctrl)
 {
     int hostcpus, maxcpu = CPU_SETSIZE;
-    virBitmap *cpumap;
+    g_autoptr(virBitmap) cpumap = NULL;
     virBitmap *cpumapToSet;
 
     VIR_DEBUG("Setting CPU affinity");
@@ -761,11 +761,8 @@ static int virLXCControllerSetupCpuAffinity(virLXCController *ctrl)
      * so use '0' to indicate our own process ID. No threads are
      * running at this point
      */
-    if (virProcessSetAffinity(0 /* Self */, cpumapToSet, false) < 0) {
-        virBitmapFree(cpumap);
+    if (virProcessSetAffinity(0 /* Self */, cpumapToSet, false) < 0)
         return -1;
-    }
-    virBitmapFree(cpumap);
 
     return 0;
 }
@@ -810,8 +807,7 @@ static int virLXCControllerGetNumadAdvice(virLXCController *ctrl,
  */
 static int virLXCControllerSetupResourceLimits(virLXCController *ctrl)
 {
-    virBitmap *auto_nodeset = NULL;
-    int ret = -1;
+    g_autoptr(virBitmap) auto_nodeset = NULL;
     virBitmap *nodeset = NULL;
     virDomainNumatuneMemMode mode;
 
@@ -827,22 +823,19 @@ static int virLXCControllerSetupResourceLimits(virLXCController *ctrl)
             VIR_DEBUG("Setting up process resource limits");
 
             if (virLXCControllerGetNumadAdvice(ctrl, &auto_nodeset) < 0)
-                goto cleanup;
+                return -1;
 
             nodeset = virDomainNumatuneGetNodeset(ctrl->def->numa, auto_nodeset, -1);
 
             if (virNumaSetupMemoryPolicy(mode, nodeset) < 0)
-                goto cleanup;
+                return -1;
         }
     }
 
     if (virLXCControllerSetupCpuAffinity(ctrl) < 0)
-        goto cleanup;
+        return -1;
 
-    ret = 0;
- cleanup:
-    virBitmapFree(auto_nodeset);
-    return ret;
+    return 0;
 }
 
 
@@ -852,40 +845,36 @@ static int virLXCControllerSetupResourceLimits(virLXCController *ctrl)
  */
 static int virLXCControllerSetupCgroupLimits(virLXCController *ctrl)
 {
-    virBitmap *auto_nodeset = NULL;
-    int ret = -1;
+    g_autoptr(virBitmap) auto_nodeset = NULL;
     virBitmap *nodeset = NULL;
     size_t i;
 
     VIR_DEBUG("Setting up cgroup resource limits");
 
     if (virLXCControllerGetNumadAdvice(ctrl, &auto_nodeset) < 0)
-        goto cleanup;
+        return -1;
 
     nodeset = virDomainNumatuneGetNodeset(ctrl->def->numa, auto_nodeset, -1);
 
     if (!(ctrl->cgroup = virLXCCgroupCreate(ctrl->def,
-                                            getpid(),
+                                            ctrl->initpid,
                                             ctrl->nnicindexes,
                                             ctrl->nicindexes)))
-        goto cleanup;
+        return -1;
 
-    if (virCgroupAddMachineProcess(ctrl->cgroup, ctrl->initpid) < 0)
-        goto cleanup;
+    if (virCgroupAddMachineProcess(ctrl->cgroup, getpid()) < 0)
+        return -1;
 
     /* Add all qemu-nbd tasks to the cgroup */
     for (i = 0; i < ctrl->nnbdpids; i++) {
         if (virCgroupAddMachineProcess(ctrl->cgroup, ctrl->nbdpids[i]) < 0)
-            goto cleanup;
+            return -1;
     }
 
     if (virLXCCgroupSetup(ctrl->def, ctrl->cgroup, nodeset) < 0)
-        goto cleanup;
+        return -1;
 
-    ret = 0;
- cleanup:
-    virBitmapFree(auto_nodeset);
-    return ret;
+    return 0;
 }
 
 
@@ -2514,7 +2503,8 @@ int main(int argc, char *argv[])
     }
 
     /* Initialize logging */
-    virLogSetFromEnv();
+    if (virLogSetFromEnv() < 0)
+        exit(EXIT_FAILURE);
 
     while (1) {
         int c;
