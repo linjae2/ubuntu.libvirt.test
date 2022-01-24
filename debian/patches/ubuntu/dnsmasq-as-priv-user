@@ -18,7 +18,7 @@ Abstract:
  a system user called unsurprisingly 'dnsmasq').
 --- a/src/network/bridge_driver.c
 +++ b/src/network/bridge_driver.c
-@@ -1094,7 +1094,8 @@ networkDnsmasqConfContents(virNetworkObj
+@@ -1054,7 +1054,8 @@ networkDnsmasqConfContents(virNetworkObj
                        "##    virsh net-edit %s\n"
                        "## or other application using the libvirt API.\n"
                        "##\n## dnsmasq conf file created by libvirt\n"
@@ -66,8 +66,8 @@ Abstract:
  strict-order
 +user=libvirt-dnsmasq
  except-interface=lo
- bind-interfaces
- listen-address=192.168.152.1
+ bind-dynamic
+ interface=virbr2
 --- a/tests/networkxml2confdata/nat-network.conf
 +++ b/tests/networkxml2confdata/nat-network.conf
 @@ -5,6 +5,7 @@
@@ -126,8 +126,8 @@ Abstract:
  strict-order
 +user=libvirt-dnsmasq
  except-interface=lo
- bind-interfaces
- listen-address=192.168.122.1
+ bind-dynamic
+ interface=virbr0
 --- a/tests/networkxml2confdata/nat-network-dns-txt-record.conf
 +++ b/tests/networkxml2confdata/nat-network-dns-txt-record.conf
 @@ -5,6 +5,7 @@
@@ -186,8 +186,8 @@ Abstract:
  strict-order
 +user=libvirt-dnsmasq
  except-interface=lo
- bind-interfaces
- listen-address=192.168.122.1
+ bind-dynamic
+ interface=virbr0
 --- a/tests/networkxml2confdata/open-network.conf
 +++ b/tests/networkxml2confdata/open-network.conf
 @@ -5,6 +5,7 @@
