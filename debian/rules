@@ -100,7 +100,7 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     -Ddriver_test=enabled \
     -Ddriver_ch=disabled \
     -Dqemu_user=libvirt-qemu \
-    -Dqemu_group=libvirt-qemu \
+    -Dqemu_group=kvm \
     -Dqemu_moddir=/usr/lib/$(DEB_HOST_MULTIARCH)/qemu \
     -Dqemu_datadir=/usr/share/qemu \
     -Ddocs=enabled \
@@ -108,7 +108,7 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     $(WITH_OPENVZ) \
     -Dsasl=enabled \
     -Dyajl=enabled \
-    -Dlibssh2=enabled \
+    -Dlibssh2=disabled \
     -Dlibssh=enabled \
     $(WITH_POLKIT) \
     $(WITH_SANLOCK) \
@@ -145,21 +145,10 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     -Dwireshark_dissector=enabled \
     $(NULL)
 
-# Those have to stay up through upgrades to avoid interruptions
-LIBVIRT_SYSTEM_SERVICES = \
-    virtlogd.service \
-    virtlockd.service \
-    libvirt-guests.service \
-    $(NULL)
-
 LIBVIRT_SOCKETS = \
     libvirtd.socket \
     libvirtd-ro.socket \
     libvirtd-admin.socket \
-    virtlogd.socket \
-    virtlogd-admin.socket \
-    virtlockd.socket \
-    virtlockd-admin.socket \
     $(NULL)
 
 APPARMOR_ABSTRACTIONS = \
@@ -217,6 +206,12 @@ override_dh_auto_test:
 	    exit 1; \
 	fi
 
+override_dh_auto_install:
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
+	dh_auto_install
+
 # After the upstream build system has installed libvirt into $(DEB_DESTDIR),
 # we need to make some tweaks (add a few extra files, delete some contents
 # we're not interested in, move things around) so that later calls to the
@@ -230,6 +225,13 @@ execute_after_dh_auto_install:
 	    mv $(DEB_DESTDIR)/usr/lib/sysctl.d/60-$${f}.conf \
 	       $(DEB_DESTDIR)/usr/lib/sysctl.d/$${f}.sysctl; \
 	done
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
 
 	# Copy the release notes where dh_installdocs can find them
 	cp NEWS.rst \
@@ -309,7 +311,9 @@ override_dh_installinit:
 
 override_dh_installsystemd:
 	dh_installsystemd -p libvirt-daemon-system --no-also --restart-after-upgrade libvirtd.service
-	dh_installsystemd -p libvirt-daemon-system --no-also --no-stop-on-upgrade $(LIBVIRT_SYSTEM_SERVICES)
+	# Due to bug 994204 and also in general our former LIBVIRT_SYSTEM* units do
+	# not fit debhelper well, due to that we need to handle them ourselves in
+	# the maintainer scripts
 	dh_installsystemd -p libvirt-daemon-system --no-also --no-stop-on-upgrade $(LIBVIRT_SOCKETS)
 
 override_dh_installdocs:
