@@ -28,7 +28,7 @@ libvirt (8.0.0-1ubuntu1) jammy; urgency=medium
         due to the group access change.
       + d/libvirt-daemon-system.postinst: add users in sudo to the libvirt
         group.
-    - ubuntu/parallel-shutdown.patch: set parallel shutdown by default.
+    - d/p/u/parallel-shutdown.patch: set parallel shutdown by default.
     - Update README.Debian with Ubuntu changes
     - d/p/ubuntu/ubuntu_machine_type.patch: accept ubuntu types as pci440fx
     - fix autopkgtests (LP 1899180)
@@ -115,6 +115,11 @@ libvirt (8.0.0-1ubuntu1) jammy; urgency=medium
       was not enough)
   * Added changes:
     - d/p/u/dnsmasq-as-priv-user: update for 8.0.0
+    - Add recent upstream fixes to 8.0
+      + d/p/backport/qemuDomainSetupDisk-Initialize-targetPaths.patch to work
+        in containers like LXD (without guest start would hang).
+      + d/p/backport/util-fix-syslog-facility-value.patch to ensure logs
+        get passed to syslog/journal correctly.
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 24 Jan 2022 08:49:08 +0100
 
