@@ -120,6 +120,11 @@ libvirt (8.0.0-1ubuntu1) jammy; urgency=medium
         in containers like LXD (without guest start would hang).
       + d/p/backport/util-fix-syslog-facility-value.patch to ensure logs
         get passed to syslog/journal correctly.
+   - d/rules, d/libvirt-daemon-system.{postinst,postrm}: never stop
+     libvirt system services and sockets (LP: #1959054). This allows
+     to unblock some transitions that wait on libvirt now; The intention is
+     that it is fixed in debhelper and libvirt reverts this change before
+     jammy release.
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 24 Jan 2022 08:49:08 +0100
 
