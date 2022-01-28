@@ -299,4 +299,39 @@ if [ "$1" = "configure" ]; then
     fi
 fi
 
+# We start these units ourselves rather than letting debhelper
+# take responsibility. This is to stop debhelper from ever restarting these,
+# which versions since 13.4 cannot be prevented from doing, except with
+# --no-start
+# https://bugs.debian.org/994204
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+
+    for unit in virtlogd.service virtlockd.service libvirt-guests.service virtlogd.socket virtlogd-admin.socket virtlockd.socket virtlockd-admin.socket; do
+        # This will only remove masks created by d-s-h on package removal.
+        deb-systemd-helper unmask "$unit" >/dev/null || true
+        # was-enabled defaults to true, so new installations run enable.
+        if deb-systemd-helper --quiet was-enabled "$unit"; then
+                # Enables the unit on first installation, creates new
+                # symlinks on upgrades if the unit file has changed.
+                deb-systemd-helper enable "$unit" >/dev/null || true
+        else
+                # Update the statefile to add new symlinks (if any), which need to be
+                # cleaned up on purge. Also remove old symlinks.
+                deb-systemd-helper update-state "$unit" >/dev/null || true
+        fi
+    done
+
+    # Of these units virtlogd and virtlockd services have socket files and are fine
+    # without being started explicitly at this stage, but having debhelper
+    # start the sockets will make them re-started on upgrade/reinstall which will
+    # nowadays in turn also restart the services which we do not want to happen.
+    if [ -z "${DPKG_ROOT:-}" ]; then
+        if [ -d /run/systemd/system ]; then
+            systemctl --system daemon-reload >/dev/null || true
+            deb-systemd-invoke start 'libvirt-guests.service' >/dev/null || true
+            deb-systemd-invoke start 'virtlogd.socket' 'virtlogd-admin.socket' 'virtlockd.socket' 'virtlockd-admin.socket' >/dev/null || true
+        fi
+    fi
+fi
+
 exit 0

@@ -165,6 +165,24 @@ case "$1" in
     ;;
 esac
 
+# Due to a debhelper bug libvirt-guests, virtlogd and virtlockd were
+# restarted by debhelper, handle them fully ourselves now to avoid that
+# https://bugs.debian.org/994204
+for unit in virtlogd.service virtlockd.service libvirt-guests.service virtlogd.socket virtlogd-admin.socket virtlockd.socket virtlockd-admin.socket; do
+    if [ "$1" = "remove" ]; then
+            if [ -x "/usr/bin/deb-systemd-helper" ]; then
+                    deb-systemd-helper mask "$unit" >/dev/null || true
+            fi
+    fi
+
+    if [ "$1" = "purge" ]; then
+            if [ -x "/usr/bin/deb-systemd-helper" ]; then
+                    deb-systemd-helper purge "$unit" >/dev/null || true
+                    deb-systemd-helper unmask "$unit" >/dev/null || true
+            fi
+    fi
+done
+
 #DEBHELPER#
 
 exit 0
