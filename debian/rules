@@ -145,10 +145,21 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     -Dwireshark_dissector=enabled \
     $(NULL)
 
+# Those have to stay up through upgrades to avoid interruptions
+LIBVIRT_SYSTEM_SERVICES = \
+    virtlogd.service \
+    virtlockd.service \
+    libvirt-guests.service \
+    $(NULL)
+
 LIBVIRT_SOCKETS = \
     libvirtd.socket \
     libvirtd-ro.socket \
     libvirtd-admin.socket \
+    virtlogd.socket \
+    virtlogd-admin.socket \
+    virtlockd.socket \
+    virtlockd-admin.socket \
     $(NULL)
 
 APPARMOR_ABSTRACTIONS = \
@@ -311,9 +322,7 @@ override_dh_installinit:
 
 override_dh_installsystemd:
 	dh_installsystemd -p libvirt-daemon-system --no-also --restart-after-upgrade libvirtd.service
-	# Due to bug 994204 and also in general our former LIBVIRT_SYSTEM* units do
-	# not fit debhelper well, due to that we need to handle them ourselves in
-	# the maintainer scripts
+	dh_installsystemd -p libvirt-daemon-system --no-also --no-stop-on-upgrade $(LIBVIRT_SYSTEM_SERVICES)
 	dh_installsystemd -p libvirt-daemon-system --no-also --no-stop-on-upgrade $(LIBVIRT_SOCKETS)
 
 override_dh_installdocs:
