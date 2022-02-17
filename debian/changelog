@@ -1,3 +1,12 @@
+libvirt (8.0.0-1ubuntu3) jammy; urgency=medium
+
+  * Revert "d/rules, d/libvirt-daemon-system.{postinst,prerm}: never stop
+    system services and sockets."
+    Due to the fix being in debhelper we no more need this mitigation now.
+    (LP: #1959054)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 17 Feb 2022 10:08:01 +0100
+
 libvirt (8.0.0-1ubuntu2) jammy; urgency=medium
 
   * No-change rebuild to update maintainer scripts, see LP: 1959054
