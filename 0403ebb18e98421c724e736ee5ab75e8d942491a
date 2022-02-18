@@ -1,0 +1,4 @@
+  * Revert "d/rules, d/libvirt-daemon-system.{postinst,prerm}: never stop
+    system services and sockets."
+    Due to the fix being in debhelper we no more need this mitigation now.
+    (LP: #1959054)
