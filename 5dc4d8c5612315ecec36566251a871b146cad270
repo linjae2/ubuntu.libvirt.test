@@ -1,0 +1,3 @@
+  * apparmor: Fix QEMU access for UEFI variable files. Backported from
+    upstream master commit 7aec69b7fb9d0c. (Closes: #1006324, LP: #1962035)
+    Refresh apparmor_profiles_local_include.patch to resolve the conflict.
