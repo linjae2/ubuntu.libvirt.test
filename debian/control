@@ -10,7 +10,6 @@ Build-Depends:
  bash-completion,
  debhelper-compat (= 13),
  dh-apparmor [linux-any],
- dnsmasq-base,
  iptables [linux-any],
  kmod [linux-any],
  libacl1-dev [linux-any],
@@ -45,7 +44,7 @@ Build-Depends:
  libtirpc-dev,
  libudev-dev [linux-any],
  libwireshark-dev,
- libxen-dev [amd64 arm64 armhf i386],
+ libxen-dev [amd64 arm64 armhf],
  libxml2-dev,
  libxml2-utils,
  libyajl-dev,
@@ -221,7 +220,7 @@ Description: Virtualization daemon VirtualBox connection driver
 
 Package: libvirt-daemon-driver-xen
 Section: admin
-Architecture: amd64 arm64 armhf i386
+Architecture: amd64 arm64 armhf
 Multi-Arch: no
 Depends:
  libvirt-daemon (= ${binary:Version}),
@@ -474,7 +473,7 @@ Architecture: any
 Multi-Arch: same
 Depends:
  libvirt0 (= ${binary:Version}),
- libxen-dev [i386 amd64 armhf arm64],
+ libxen-dev [amd64 armhf arm64],
  ${misc:Depends},
 Recommends:
  pkg-config,

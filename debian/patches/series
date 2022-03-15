@@ -1,10 +1,9 @@
-backport/qemu-fix-inactive-snapshot-revert.patch
-backport/Revert-report-error-when-virProcessGetStatInfo-is-unable-.patch
+backport/qemu-segmentation-fault-in-virtqemud-executing-qemuDomain.patch
+backport/apparmor-Fix-QEMU-access-for-UEFI-variable-files.patch
 forward/Skip-vircgrouptest.patch
 forward/Reduce-udevadm-settle-timeout-to-10-seconds.patch
 forward/Pass-GPG_TTY-env-var-to-the-ssh-binary.patch
 debian/Debianize-libvirt-guests.patch
-debian/Debianize-libvirtd.patch
 debian/Debianize-systemd-service-files.patch
 debian/apparmor_profiles_local_include.patch
 debian/Use-sensible-editor-by-default.patch
