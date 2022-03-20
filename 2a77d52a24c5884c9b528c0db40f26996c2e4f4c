@@ -1,0 +1,6 @@
+  * [ba504f6] systemd: Hardcode output of dh_installsystemd
+    - Stop using dh_installsystemd and hardcode slightly tweaked
+      versions of its output in maintainer scripts instead, as a
+      temporary workaround for #994204
+  * [4c89356] systemd: Only ever restart libvirtd on upgrade
+    - This avoids guests being stopped or crashing during upgrades
