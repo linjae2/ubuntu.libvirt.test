@@ -1,3 +1,9 @@
+libvirt (8.0.0-1ubuntu6) jammy; urgency=medium
+
+  * d/control: recommend swtpm-tools (LP: #1948748)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 04 Apr 2022 07:30:15 +0200
+
 libvirt (8.0.0-1ubuntu5) jammy; urgency=medium
 
   * apparmor: Fix QEMU access for UEFI variable files. Backported from
