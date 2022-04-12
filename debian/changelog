@@ -1,3 +1,11 @@
+libvirt (8.0.0-1ubuntu7) jammy; urgency=medium
+
+  * d/p/ubuntu-aa/0035-apparmor-separate-swtpm-rules.patch: Patch the libvirtd
+    and libvirt-qemu apparmor profiles to allow swtpm to use its own profile
+    (LP: #1968187)
+
+ -- Lena Voytek <lena.voytek@canonical.com>  Tue, 12 Apr 2022 10:04:05 -0700
+
 libvirt (8.0.0-1ubuntu6) jammy; urgency=medium
 
   * d/control: recommend swtpm-tools (LP: #1948748)
