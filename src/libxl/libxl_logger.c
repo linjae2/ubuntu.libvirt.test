@@ -159,24 +159,20 @@ libxlLoggerNew(const char *logDir, virLogPriority minLevel)
     }
     logger.logDir = logDir;
 
-    if ((logger.files = virHashCreate(3, libxlLoggerFileFree)) == NULL)
-        return NULL;
-
     if (virAsprintf(&path, "%s/libxl-driver.log", logDir) < 0)
-        goto error;
+        goto cleanup;
 
     if ((logger.defaultLogFile = fopen(path, "a")) == NULL)
-        goto error;
+        goto cleanup;
+
+    if ((logger.files = virHashCreate(3, libxlLoggerFileFree)) == NULL)
+        goto cleanup;
 
     logger_out = XTL_NEW_LOGGER(libvirt, logger);
 
- cleanup:
+cleanup:
     VIR_FREE(path);
     return logger_out;
-
- error:
-    virHashFree(logger.files);
-    goto cleanup;
 }
 
 void
