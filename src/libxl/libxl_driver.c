@@ -6312,7 +6312,7 @@ libxlDomainInterfaceAddresses(virDomainPtr dom,
     if (!(vm = libxlDomObjFromDomain(dom)))
         goto cleanup;
 
-    if (virDomainInterfaceAddressesEnsureACL(dom->conn, vm->def) < 0)
+    if (virDomainInterfaceAddressesEnsureACL(dom->conn, vm->def, source) < 0)
         goto cleanup;
 
     if (!virDomainObjIsActive(vm)) {

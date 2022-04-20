@@ -287,8 +287,15 @@ virSecuritySELinuxMCSFind(virSecurityManagerPtr mgr,
         VIR_DEBUG("Try cat %s:c%d,c%d", sens, c1 + catMin, c2 + catMin);
 
         if (c1 == c2) {
-            if (virAsprintf(&mcs, "%s:c%d", sens, catMin + c1) < 0)
-                return NULL;
+            /*
+             * A process can access a file if the set of MCS categories
+             * for the file is equal-to *or* a subset-of, the set of
+             * MCS categories for the process.
+             *
+             * IOW, we must discard case where the categories are equal
+             * because that is a subset of other category pairs.
+             */
+            continue;
         } else {
             if (c1 > c2) {
                 int t = c1;
