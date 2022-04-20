@@ -424,7 +424,7 @@ virDomainDefParserConfig libxlDomainDefParserConfig = {
 };
 
 
-struct libxlShutdownThreadInfo
+struct libxlEventHandlerThreadInfo
 {
     libxlDriverPrivatePtr driver;
     virDomainObjPtr vm;
@@ -435,7 +435,7 @@ struct libxlShutdownThreadInfo
 static void
 libxlDomainShutdownThread(void *opaque)
 {
-    struct libxlShutdownThreadInfo *shutdown_info = opaque;
+    struct libxlEventHandlerThreadInfo *shutdown_info = opaque;
     virDomainObjPtr vm = shutdown_info->vm;
     libxl_event *ev = shutdown_info->event;
     libxlDriverPrivatePtr driver = shutdown_info->driver;
@@ -602,7 +602,7 @@ libxlDomainEventHandler(void *data, VIR_LIBXL_EVENT_CONST libxl_event *event)
     }
 
     if (event->type == LIBXL_EVENT_TYPE_DOMAIN_SHUTDOWN) {
-        struct libxlShutdownThreadInfo *shutdown_info = NULL;
+        struct libxlEventHandlerThreadInfo *shutdown_info = NULL;
         virThread thread;
         char *name = NULL;
 
@@ -633,7 +633,7 @@ libxlDomainEventHandler(void *data, VIR_LIBXL_EVENT_CONST libxl_event *event)
         }
         /*
          * virDomainObjEndAPI is called in the shutdown thread, where
-         * libxlShutdownThreadInfo and libxl_event are also freed.
+         * libxlEventHandlerThreadInfo and libxl_event are also freed.
          */
         return;
     } else if (event->type == LIBXL_EVENT_TYPE_DOMAIN_DEATH) {
