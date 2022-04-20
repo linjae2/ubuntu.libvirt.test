@@ -616,7 +616,7 @@ libxlDomainEventHandler(void *data, VIR_LIBXL_EVENT_CONST libxl_event *event)
         shutdown_info->driver = driver;
         shutdown_info->vm = vm;
         shutdown_info->event = (libxl_event *)event;
-        if (virAsprintf(&name, "ev-%d", event->domid) < 0)
+        if (virAsprintf(&name, "shutdown-event-%d", event->domid) < 0)
             goto cleanup;
         /*
          * Cleanup will be handled by the shutdown thread.
