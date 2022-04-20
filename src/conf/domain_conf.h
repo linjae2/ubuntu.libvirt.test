@@ -2359,6 +2359,7 @@ struct _virDomainVsockDef {
     virTristateBool auto_cid;
 
     virDomainDeviceInfo info;
+    virDomainVirtioOptionsPtr virtio;
 };
 
 struct _virDomainVirtioOptions {
