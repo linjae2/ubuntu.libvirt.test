@@ -21,7 +21,7 @@ Build-Depends:
  libcap-ng-dev [linux-any],
  libcurl4-gnutls-dev,
  libdevmapper-dev [linux-any],
- libfuse-dev [linux-any],
+ libfuse3-dev [linux-any],
  libglib2.0-dev,
  libglusterfs-dev [linux-any],
  libgnutls28-dev,
@@ -473,7 +473,6 @@ Architecture: any
 Multi-Arch: same
 Depends:
  libvirt0 (= ${binary:Version}),
- libxen-dev [amd64 armhf arm64],
  ${misc:Depends},
 Recommends:
  pkg-config,
