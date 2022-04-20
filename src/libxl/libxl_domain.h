@@ -65,9 +65,6 @@ struct _libxlDomainObjPrivate {
     /* console */
     virChrdevsPtr devs;
     libxl_evgen_domain_death *deathW;
-    /* Flag to indicate the upcoming LIBXL_EVENT_TYPE_DOMAIN_DEATH is caused
-     * by libvirt and should not be handled separately */
-    bool ignoreDeathEvent;
     unsigned short migrationPort;
     char *lockState;
 
