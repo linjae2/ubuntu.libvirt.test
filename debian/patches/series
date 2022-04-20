@@ -28,3 +28,11 @@ ubuntu-aa/0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch
 ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 ubuntu/lp-1927519-virt-aa-helper-Purge-profile-if-corrupted.patch
+CVE-2021-4147-1.patch
+CVE-2021-4147-2.patch
+CVE-2021-4147-3.patch
+CVE-2021-4147-4.patch
+CVE-2021-4147-5.patch
+CVE-2021-4147-6pre1.patch
+CVE-2021-4147-6.patch
+CVE-2022-0897.patch
