@@ -1,0 +1,47 @@
+  * SECURITY UPDATE: crash via double-free memory issue
+    - debian/patches/CVE-2020-25637-1.patch: gendispatch: handle empty
+      flags in src/rpc/gendispatch.pl.
+    - debian/patches/CVE-2020-25637-2.patch: add support for filtering
+      @acls by uint params in src/remote/remote_protocol.x,
+      src/rpc/gendispatch.pl.
+    - debian/patches/CVE-2020-25637-3.patch: require write acl for guest
+      agent in src/libxl/libxl_driver.c, src/qemu/qemu_driver.c,
+      src/remote/remote_protocol.x.
+    - debian/patches/CVE-2020-25637-4.patch: set ifname to NULL after
+      freeing in src/qemu/qemu_agent.c.
+    - CVE-2020-25637
+  * SECURITY UPDATE: sVirt SELinux confinement flaw
+    - debian/patches/CVE-2021-3631.patch: fix SELinux label generation
+      logic in src/security/security_selinux.c.
+    - CVE-2021-3631
+  * SECURITY UPDATE: improper locking issue
+    - debian/patches/CVE-2021-3667.patch: unlock object on ACL fail in
+      src/storage/storage_driver.c.
+    - CVE-2021-3667
+  * SECURITY UPDATE: segmentation fault during VM shutdown
+    - debian/patches/CVE-2021-3975.patch: add missing lock in
+      qemuProcessHandleMonitorEOF in src/qemu/qemu_process.c.
+    - CVE-2021-3975
+  * SECURITY UPDATE: DoS via libxl driver
+    - debian/patches/CVE-2021-4147-pre1.patch: fix domain shutdown in
+      src/libxl/libxl_domain.c.
+    - debian/patches/CVE-2021-4147-1.patch: disable death events after
+      receiving a shutdown event in src/libxl/libxl_domain.c,
+      src/libxl/libxl_domain.h.
+    - debian/patches/CVE-2021-4147-2.patch: rename libxlShutdownThreadInfo
+      struct in src/libxl/libxl_domain.c.
+    - debian/patches/CVE-2021-4147-3.patch: modify name of shutdown thread
+      in src/libxl/libxl_domain.c.
+    - debian/patches/CVE-2021-4147-4.patch: handle domain death events in a
+      thread in src/libxl/libxl_domain.c.
+    - debian/patches/CVE-2021-4147-5.patch: search for virDomainObj in
+      event handler threads in src/libxl/libxl_domain.c.
+    - debian/patches/CVE-2021-4147-6pre1.patch: avoid virHashFree by
+      rearranging code in src/libxl/libxl_logger.c.
+    - debian/patches/CVE-2021-4147-6.patch: protect access to libxlLogger
+      files hash table in src/libxl/libxl_logger.c.
+    - CVE-2021-4147
+  * SECURITY UPDATE: DoS via nwfilter driver
+    - debian/patches/CVE-2022-0897.patch: fix crash when counting number of
+      network filters in src/nwfilter/nwfilter_driver.c.
+    - CVE-2022-0897
