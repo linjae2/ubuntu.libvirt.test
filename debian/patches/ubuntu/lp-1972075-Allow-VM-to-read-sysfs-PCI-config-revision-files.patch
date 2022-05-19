@@ -1,0 +1,45 @@
+From 28d88786af8699fb780f9c4238828afd4332d6d1 Mon Sep 17 00:00:00 2001
+From: Max Goodhart <c@chromakode.com>
+Date: Wed, 11 May 2022 15:08:39 -0700
+Subject: [PATCH] Allow VM to read sysfs PCI config, revision files
+
+This fixes a blank screen when viewing a VM with virtio graphics and
+gl-accelerated Spice display on Ubuntu 22.04 / libvirt 8.0.0 / qemu 6.2.
+
+Without these AppArmor permissions, the libvirt error log contains
+repetitions of:
+
+qemu_spice_gl_scanout_texture: failed to get fd for texture
+
+This appears to be similar to this GNOME Boxes issue:
+https://gitlab.gnome.org/GNOME/gnome-boxes/-/issues/586
+
+Fixes: https://launchpad.net/bugs/1972075
+
+Signed-off-by: Max Goodhart <c@chromakode.com>
+Reviewed-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/42cb548045
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1972075
+Last-Update: 2022-05-19
+
+---
+ src/security/virt-aa-helper.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index 1f1cce8b3d..b314d2a059 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -1316,7 +1316,7 @@ get_files(vahControl * ctl)
+         virBufferAddLit(&buf, "  \"/dev/nvidiactl\" rw,\n");
+         virBufferAddLit(&buf, "  # Probe DRI device attributes\n");
+         virBufferAddLit(&buf, "  \"/dev/dri/\" r,\n");
+-        virBufferAddLit(&buf, "  \"/sys/devices/**/{uevent,vendor,device,subsystem_vendor,subsystem_device}\" r,\n");
++        virBufferAddLit(&buf, "  \"/sys/devices/**/{uevent,vendor,device,subsystem_vendor,subsystem_device,config,revision}\" r,\n");
+         virBufferAddLit(&buf, "  # dri libs will trigger that, but t is not requited and DAC would deny it anyway\n");
+         virBufferAddLit(&buf, "  deny \"/var/lib/libvirt/.cache/\" w,\n");
+     }
+-- 
+2.36.0
+
