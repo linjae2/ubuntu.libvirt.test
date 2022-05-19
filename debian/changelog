@@ -1,3 +1,10 @@
+libvirt (8.0.0-1ubuntu8) kinetic; urgency=medium
+
+  * d/p/u/lp-1972075-Allow-VM-to-read-sysfs-PCI-config-revision-files.patch:
+    apparmor allow new paths used for GL accelerated video (LP: #1972075)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 19 May 2022 08:14:48 +0200
+
 libvirt (8.0.0-1ubuntu7) jammy; urgency=medium
 
   * d/p/ubuntu-aa/0035-apparmor-separate-swtpm-rules.patch: Patch the libvirtd
