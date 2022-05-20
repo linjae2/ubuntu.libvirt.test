@@ -19,7 +19,7 @@ Fixes: https://launchpad.net/bugs/1972075
 Signed-off-by: Max Goodhart <c@chromakode.com>
 Reviewed-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 
-Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=28d88786af
+Origin: upstream, https://libvirt.org/git/?p=libvirt.git;a=commit;h=42cb548045
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1972075
 Last-Update: 2022-05-19
 
