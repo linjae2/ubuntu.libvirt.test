@@ -50,20 +50,20 @@ Build-Depends:
  libyajl-dev,
  lvm2 [linux-any],
  meson (>= 0.54.0~),
- nfs-common,
- numad [linux-any],
+ nfs-common:native,
+ numad:native [linux-any],
  open-iscsi [linux-any],
  po-debconf,
  python3-docutils,
- python3:any,
- qemu-system-common,
+ python3:native,
+ qemu-system-common:native,
  qemu-utils,
  systemtap-sdt-dev [linux-any],
  xsltproc,
 Vcs-Git: https://salsa.debian.org/libvirt-team/libvirt.git
 Vcs-Browser: https://salsa.debian.org/libvirt-team/libvirt
 Homepage: https://libvirt.org/
-Standards-Version: 4.6.0
+Standards-Version: 4.6.1
 Rules-Requires-Root: no
 
 Package: libvirt-clients
