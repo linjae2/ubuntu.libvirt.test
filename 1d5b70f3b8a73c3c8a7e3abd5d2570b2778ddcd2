@@ -1,0 +1,5 @@
+  * [74b9b5c] New upstream version 8.5.0
+  * [94a98bd] control: Fix cross building
+    - Explicitly request :native versions of several Build-Depends
+  * [417c882] control: Bump Standards-Version to 4.6.1
+    - No changes needed
