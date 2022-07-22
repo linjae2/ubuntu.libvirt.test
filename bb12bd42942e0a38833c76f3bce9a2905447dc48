@@ -1,0 +1,4 @@
+  * [6c9bffb] Implement custom handling for systemd units
+    - We've already moved away from dh_installsystemd due to
+      #994204, and now we're refactoring the custom code so that
+      it's easier to understand and maintain going forward
