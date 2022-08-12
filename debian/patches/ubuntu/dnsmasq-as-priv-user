@@ -18,7 +18,7 @@ Abstract:
  a system user called unsurprisingly 'dnsmasq').
 --- a/src/network/bridge_driver.c
 +++ b/src/network/bridge_driver.c
-@@ -1054,7 +1054,8 @@ networkDnsmasqConfContents(virNetworkObj
+@@ -1164,7 +1164,8 @@ networkDnsmasqConfContents(virNetworkObj
                        "##    virsh net-edit %s\n"
                        "## or other application using the libvirt API.\n"
                        "##\n## dnsmasq conf file created by libvirt\n"
@@ -280,6 +280,16 @@ Abstract:
  interface=virbr0
 --- a/tests/networkxml2confdata/leasetime-seconds.conf
 +++ b/tests/networkxml2confdata/leasetime-seconds.conf
+@@ -5,6 +5,7 @@
+ ##
+ ## dnsmasq conf file created by libvirt
+ strict-order
++user=libvirt-dnsmasq
+ except-interface=lo
+ bind-dynamic
+ interface=virbr0
+--- a/tests/networkxml2confdata/netboot-tftp.conf
++++ b/tests/networkxml2confdata/netboot-tftp.conf
 @@ -5,6 +5,7 @@
  ##
  ## dnsmasq conf file created by libvirt
