@@ -6,8 +6,8 @@ X-Not-Forwarded-Reason: swtpm user is ubuntu specific
 Author: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1948880
 Last-Update: 2021-11-11
---- a/src/qemu/qemu.conf
-+++ b/src/qemu/qemu.conf
+--- a/src/qemu/qemu.conf.in
++++ b/src/qemu/qemu.conf.in
 @@ -922,11 +922,14 @@
  
  # User for the swtpm TPM Emulator
