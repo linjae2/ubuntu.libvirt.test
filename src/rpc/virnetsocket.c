@@ -857,6 +857,7 @@ int virNetSocketNewConnectSSH(const char *nodename,
     virCommandAddEnvPass(cmd, "SSH_ASKPASS");
     virCommandAddEnvPass(cmd, "GPG_TTY");
     virCommandAddEnvPass(cmd, "TERM");
+    virCommandAddEnvPass(cmd, "OPENSSL_CONF");
     virCommandAddEnvPass(cmd, "DISPLAY");
     virCommandAddEnvPass(cmd, "XAUTHORITY");
     virCommandClearCaps(cmd);

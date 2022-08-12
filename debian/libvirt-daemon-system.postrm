@@ -92,6 +92,14 @@ case "$1" in
         systemd_unit_disable libvirtd.service libvirtd.socket libvirtd-admin.socket libvirtd-ro.socket
         systemd_unit_disable virtlogd.service virtlogd.socket virtlogd-admin.socket
         systemd_unit_disable virtlockd.service virtlockd.socket virtlockd-admin.socket
+
+        if [ -L /etc/dnsmasq.d/libvirt-daemon ]; then
+            echo "Removing libvirt-daemon dnsmasq configuration"
+            rm -f /etc/dnsmasq.d/libvirt-daemon 2>/dev/null || true
+
+            # Try to restart a potential system wide dnsmasq
+            invoke-rc.d dnsmasq restart 2>/dev/null || true
+        fi
     ;;
 
     purge)
@@ -113,6 +121,16 @@ case "$1" in
             delgroup libvirt-qemu >/dev/null || true
         fi
 
+        # a running libvirt-dnsmasq will break these removals
+        # yet the lifecycle of the network is non-related to the pkg purge
+        # Therefore ignore errors on these removals, better leave a user than break
+        if getent group libvirt-dnsmasq >/dev/null; then
+            delgroup libvirt-dnsmasq --system 2>/dev/null >/dev/null || true
+        fi
+        if getent passwd libvirt-dnsmasq >/dev/null; then
+            deluser libvirt-dnsmasq --system 2>/dev/null >/dev/null || true
+        fi
+
         # Clean up logs and cached capabilities
         rm -rf /var/log/libvirt \
                /var/cache/libvirt/qemu/capabilities
@@ -131,6 +149,9 @@ case "$1" in
                    /var/cache/libvirt/qemu; do
             [ ! -d $dir ] || rmdir --ignore-fail-on-non-empty $dir
         done
+
+        # Remove the link set up by postinst
+        rm -f /etc/libvirt/qemu/networks/autostart/default.xml
     ;;
 
     abort-install|abort-upgrade)

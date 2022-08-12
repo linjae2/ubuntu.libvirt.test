@@ -8,8 +8,10 @@
 #
 
 # Flag listening for secure TLS connections on the public TCP/IP port.
-# NB, must pass the --listen flag to the @DAEMON_NAME@ process for this to
-# have any effect.
+#
+# To enable listening sockets with the 'libvirtd' daemon it's also required to
+# pass the '--listen' flag on the commandline of the daemon.
+# This is not needed with 'virtproxyd'.
 #
 # This setting is not required or honoured if using systemd socket
 # activation.
@@ -21,8 +23,10 @@
 #listen_tls = 0
 
 # Listen for unencrypted TCP connections on the public TCP/IP port.
-# NB, must pass the --listen flag to the @DAEMON_NAME@ process for this to
-# have any effect.
+#
+# To enable listening sockets with the 'libvirtd' daemon it's also required to
+# pass the '--listen' flag on the commandline of the daemon.
+# This is not needed with 'virtproxyd'.
 #
 # This setting is not required or honoured if using systemd socket
 # activation.
@@ -162,7 +166,7 @@
 #
 # To restrict monitoring of domains you may wish to either
 # enable 'sasl' here, or change the polkit policy definition.
-#auth_unix_ro = "@default_auth@"
+auth_unix_ro = "none"
 
 # Set an authentication scheme for UNIX read-write sockets.
 #
@@ -178,7 +182,7 @@
 # is essential to change the systemd SocketMode parameter
 # back to 0600, to avoid an insecure configuration.
 #
-#auth_unix_rw = "@default_auth@"
+auth_unix_rw = "none"
 @CUT_ENABLE_IP@
 
 # Change the authentication scheme for TCP sockets.
