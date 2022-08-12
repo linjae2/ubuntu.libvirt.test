@@ -20,8 +20,8 @@ Secure Boot is effectively not in use due to the absence of the keys.
 
 Index: b/src/qemu/qemu.conf
 ===================================================================
---- a/src/qemu/qemu.conf
-+++ b/src/qemu/qemu.conf
+--- a/src/qemu/qemu.conf.in
++++ b/src/qemu/qemu.conf.in
 @@ -726,7 +726,8 @@
  #   "/usr/share/OVMF/OVMF_CODE.fd:/usr/share/OVMF/OVMF_VARS.fd",
  #   "/usr/share/OVMF/OVMF_CODE.secboot.fd:/usr/share/OVMF/OVMF_VARS.fd",
