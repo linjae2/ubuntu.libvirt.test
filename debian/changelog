@@ -115,10 +115,13 @@ libvirt (8.6.0-0ubuntu1) kinetic; urgency=medium
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Fri, 12 Aug 2022 10:34:29 +0200
 
-libvirt (8.6.0-1) UNRELEASED; urgency=medium
+libvirt (8.6.0-0) UNRELEASED; urgency=medium
 
-  * [db44da2] New upstream version 8.6.0
-  * [ebc4008] d/rules: update path of ci-dashboard removal
+  [ Christian Ehrhardt ]
+  * [f35cf09] d/rules: update path of ci-dashboard removal
+
+  [ Andrea Bolognani ]
+  * [a54d904] New upstream version 8.6.0
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 11 Aug 2022 10:28:25 +0200
 
