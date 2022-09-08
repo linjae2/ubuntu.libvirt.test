@@ -1,0 +1,35 @@
+From 2b98d5d91d95087d8a96d6450fa96414ed05ba5c Mon Sep 17 00:00:00 2001
+From: Andrea Bolognani <abologna@redhat.com>
+Date: Mon, 23 May 2022 10:31:02 +0200
+Subject: [PATCH] apparmor: Allow locking AAVMF firmware
+
+We already allow this for OVMF.
+
+Closes: https://gitlab.com/libvirt/libvirt/-/issues/312
+Signed-off-by: Andrea Bolognani <abologna@redhat.com>
+Reviewed-by: Martin Kletzander <mkletzan@redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/2b98d5d91
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1989078
+Last-Update: 2022-09-08
+
+---
+ src/security/apparmor/libvirt-qemu | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/security/apparmor/libvirt-qemu b/src/security/apparmor/libvirt-qemu
+index c29168da27..02ee273e7e 100644
+--- a/src/security/apparmor/libvirt-qemu
++++ b/src/security/apparmor/libvirt-qemu
+@@ -78,7 +78,7 @@
+   /var/lib/dbus/machine-id r,
+ 
+   # access to firmware's etc
+-  /usr/share/AAVMF/** r,
++  /usr/share/AAVMF/** rk,
+   /usr/share/bochs/** r,
+   /usr/share/edk2-ovmf/** rk,
+   /usr/share/kvm/** r,
+-- 
+2.37.3
+

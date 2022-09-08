@@ -33,3 +33,4 @@ ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 ubuntu/swtpm-by-swtpm-user.patch
 ubuntu-aa/0035-apparmor-separate-swtpm-rules.patch
 ubuntu/lp-1972075-Allow-VM-to-read-sysfs-PCI-config-revision-files.patch
+ubuntu/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch
