@@ -1,3 +1,10 @@
+libvirt (8.0.0-1ubuntu7.2) jammy; urgency=medium
+
+  * d/p/u/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch: allow arm64
+    to lock its OVMF resources (LP: #1989078)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Thu, 08 Sep 2022 12:00:39 +0200
+
 libvirt (8.0.0-1ubuntu7.1) jammy; urgency=medium
 
   * d/p/u/lp-1972075-Allow-VM-to-read-sysfs-PCI-config-revision-files.patch:
