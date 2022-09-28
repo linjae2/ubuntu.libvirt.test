@@ -1,3 +1,10 @@
+libvirt (8.6.0-0ubuntu2) kinetic; urgency=medium
+
+  * d/p/libvirt-daemon-system.postinst: default network autostart
+    handling needs to happen before services start (LP: #1990853)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 28 Sep 2022 08:36:15 +0200
+
 libvirt (8.6.0-0ubuntu1) kinetic; urgency=medium
 
   * Merge 8.0.0 from Debian unstable (LP: #1971289)
