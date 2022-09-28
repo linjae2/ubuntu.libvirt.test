@@ -298,6 +298,13 @@ case "$1" in
             fi
         done
 
+        # On an initial package install, create the default network autostart
+        # symlink if on a system that it will work on.
+        # Note: needs to complete before services are started the first time
+        if [ -z $2 ]; then
+            maybe_set_autostart
+        fi
+
         systemd_daemon_reload
         systemd_unit_enable virtlockd.service virtlockd.socket virtlockd-admin.socket
         systemd_unit_enable virtlogd.service virtlogd.socket virtlogd-admin.socket
@@ -310,12 +317,6 @@ case "$1" in
         systemd_unit_start libvirtd.socket libvirtd-admin.socket libvirtd-ro.socket
         systemd_unit_restart libvirtd.service
         systemd_unit_start libvirt-guests.service
-
-        # On an initial package install, create the default network autostart
-        # symlink if on a system that it will work on.
-        if [ -z $2 ]; then
-            maybe_set_autostart
-        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
