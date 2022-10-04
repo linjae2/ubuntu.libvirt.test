@@ -1,3 +1,10 @@
+libvirt (8.0.0-1ubuntu7.3) jammy; urgency=medium
+
+  * d/p/u/lp-1990499-virt-aa-helper-allow-common-riscv64-loader-paths.patch:
+    easen the use of riscv64 through libvirt (LP: #1990499)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 04 Oct 2022 08:33:14 +0200
+
 libvirt (8.0.0-1ubuntu7.2) jammy; urgency=medium
 
   * d/p/u/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch: allow arm64
