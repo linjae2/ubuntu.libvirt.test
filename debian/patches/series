@@ -34,3 +34,4 @@ ubuntu/swtpm-by-swtpm-user.patch
 ubuntu-aa/0035-apparmor-separate-swtpm-rules.patch
 ubuntu/lp-1972075-Allow-VM-to-read-sysfs-PCI-config-revision-files.patch
 ubuntu/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch
+ubuntu/lp-1990499-virt-aa-helper-allow-common-riscv64-loader-paths.patch

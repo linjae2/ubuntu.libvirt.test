@@ -1,0 +1,58 @@
+From 31ea9433aadacd08462faaa3e4b8a3f5949a7d7a Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Tue, 27 Sep 2022 11:03:07 +0200
+Subject: [PATCH] virt-aa-helper: allow common riscv64 loader paths
+
+Riscv64 usually uses u-boot as external -kernel and a loader from
+the open implementation of RISC-V SBI. The paths for those binaries
+as packaged in Debian and Ubuntu are in paths which are usually
+forbidden to be added by the user under /usr/lib...
+
+People used to start riscv64 guests only manually via qemu cmdline,
+but trying to encapsulate that via libvirt now causes failures when
+starting the guest due to the apparmor isolation not allowing that:
+   virt-aa-helper: error: skipped restricted file
+   virt-aa-helper: error: invalid VM definition
+
+Explicitly allow the sub-paths used by u-boot-qemu and opensbi
+under /usr/lib/ as readonly rules.
+
+Fixes: https://launchpad.net/bugs/1990499
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/31ea9433
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1990499
+Last-Update: 2022-10-04
+
+---
+ src/security/virt-aa-helper.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/src/security/virt-aa-helper.c b/src/security/virt-aa-helper.c
+index f338488da3..ceadaef99b 100644
+--- a/src/security/virt-aa-helper.c
++++ b/src/security/virt-aa-helper.c
+@@ -476,11 +476,13 @@ valid_path(const char *path, const bool readonly)
+         "/initrd",
+         "/initrd.img",
+         "/usr/share/edk2/",
+-        "/usr/share/OVMF/",              /* for OVMF images */
+-        "/usr/share/ovmf/",              /* for OVMF images */
+-        "/usr/share/AAVMF/",             /* for AAVMF images */
+-        "/usr/share/qemu-efi/",          /* for AAVMF images */
+-        "/usr/share/qemu-efi-aarch64/"   /* for AAVMF images */
++        "/usr/share/OVMF/",                  /* for OVMF images */
++        "/usr/share/ovmf/",                  /* for OVMF images */
++        "/usr/share/AAVMF/",                 /* for AAVMF images */
++        "/usr/share/qemu-efi/",              /* for AAVMF images */
++        "/usr/share/qemu-efi-aarch64/",      /* for AAVMF images */
++        "/usr/lib/u-boot/",                  /* u-boot loaders for qemu */
++        "/usr/lib/riscv64-linux-gnu/opensbi" /* RISC-V SBI implementation */
+     };
+     /* override the above with these */
+     const char * const override[] = {
+-- 
+2.37.3
+
