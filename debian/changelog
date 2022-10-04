@@ -1,3 +1,12 @@
+libvirt (8.6.0-0ubuntu3) kinetic; urgency=medium
+
+  * d/p/u/lp-1990499-virt-aa-helper-allow-common-riscv64-loader-paths.patch:
+    easen the use of riscv64 through libvirt (LP: #1990499)
+  * d/p/u/lp-1990949-virpcivpd-reduce-errors-in-log-due-to-invalid-VPD.patch:
+    reduce log noise by invalid VPD data (LP: #1990949)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 04 Oct 2022 08:29:46 +0200
+
 libvirt (8.6.0-0ubuntu2) kinetic; urgency=medium
 
   * d/p/libvirt-daemon-system.postinst: default network autostart

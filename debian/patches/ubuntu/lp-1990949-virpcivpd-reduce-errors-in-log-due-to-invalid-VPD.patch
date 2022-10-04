@@ -1,0 +1,181 @@
+From a2fe32a71b8d991db2e432ed8c206c81b00091f0 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Tue, 27 Sep 2022 12:17:41 +0200
+Subject: [PATCH] virpcivpd: reduce errors in log due to invalid VPD
+
+Sadly some devices provide invalid VPD data even with fully updated
+firmware. Former hardning like 600f580d "PCI VPD: Skip fields with
+invalid values" have already helped for those to some extent.
+But if one happens to have such a device installed in the system,
+despite all other things working properly the log potentially
+flooded with messages like:
+  internal error: The keyword is not comprised only of uppercase ASCII
+  letters or digits
+  internal error: A field data length violates the resource length boundary.
+
+The user can't do anything about it to change that, they will be there on
+any libvirt restart and potentially distract from other more important
+issues.
+
+Since the vpd decoding is implemented rather resilient (if parsing fails
+all goes on fine, the respective device just has no VPD data populated
+eventually) we can lower those from virReportError(VIR_ERR_INTERNAL_ERROR
+to just VIR_INFO. If needed for debugging people can set the level
+accordingly, but otherwise we would no more fill the logs with errors
+without a strong reason.
+
+Fixes: https://launchpad.net/bugs/1990949
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/a2fe32a7
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1990949
+Last-Update: 2022-10-04
+
+---
+ src/util/virpcivpd.c | 47 +++++++++++++++-----------------------------
+ 1 file changed, 16 insertions(+), 31 deletions(-)
+
+diff --git a/src/util/virpcivpd.c b/src/util/virpcivpd.c
+index 4ba4fea237..39557c7347 100644
+--- a/src/util/virpcivpd.c
++++ b/src/util/virpcivpd.c
+@@ -62,12 +62,11 @@ virPCIVPDResourceGetKeywordPrefix(const char *keyword)
+ 
+     /* Keywords must have a length of 2 bytes. */
+     if (strlen(keyword) != 2) {
+-        virReportError(VIR_ERR_INTERNAL_ERROR, _("The keyword length is not 2 bytes: %s"), keyword);
++        VIR_INFO("The keyword length is not 2 bytes: %s", keyword);
+         return NULL;
+     } else if (!(virPCIVPDResourceIsUpperOrNumber(keyword[0]) &&
+                  virPCIVPDResourceIsUpperOrNumber(keyword[1]))) {
+-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                       _("The keyword is not comprised only of uppercase ASCII letters or digits"));
++        VIR_INFO("The keyword is not comprised only of uppercase ASCII letters or digits");
+         return NULL;
+     }
+     /* Special-case the system-specific keywords since they share the "Y" prefix with "YA". */
+@@ -328,19 +327,16 @@ virPCIVPDResourceUpdateKeyword(virPCIVPDResource *res, const bool readOnly,
+                                const char *const keyword, const char *const value)
+ {
+     if (!res) {
+-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                       _("Cannot update the resource: a NULL resource pointer has been provided."));
++        VIR_INFO("Cannot update the resource: a NULL resource pointer has been provided.");
+         return false;
+     } else if (!keyword) {
+-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                       _("Cannot update the resource: a NULL keyword pointer has been provided."));
++        VIR_INFO("Cannot update the resource: a NULL keyword pointer has been provided.");
+         return false;
+     }
+ 
+     if (readOnly) {
+         if (!res->ro) {
+-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                           _("Cannot update the read-only keyword: RO section not initialized."));
++            VIR_INFO("Cannot update the read-only keyword: RO section not initialized.");
+             return false;
+         }
+ 
+@@ -375,9 +371,7 @@ virPCIVPDResourceUpdateKeyword(virPCIVPDResource *res, const bool readOnly,
+ 
+     } else {
+         if (!res->rw) {
+-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                           _
+-                           ("Cannot update the read-write keyword: read-write section not initialized."));
++            VIR_INFO("Cannot update the read-write keyword: read-write section not initialized.");
+             return false;
+         }
+ 
+@@ -476,8 +470,7 @@ virPCIVPDParseVPDLargeResourceFields(int vpdFileFd, uint16_t resPos, uint16_t re
+         if (virPCIVPDReadVPDBytes(vpdFileFd, buf, 3, fieldPos, csum) != 3) {
+             /* Invalid field encountered which means the resource itself is invalid too. Report
+              * That VPD has invalid format and bail. */
+-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                           _("Could not read a resource field header - VPD has invalid format"));
++            VIR_INFO("Could not read a resource field header - VPD has invalid format");
+             return false;
+         }
+         fieldDataLen = buf[2];
+@@ -488,12 +481,10 @@ virPCIVPDParseVPDLargeResourceFields(int vpdFileFd, uint16_t resPos, uint16_t re
+ 
+         /* Handle special cases first */
+         if (!readOnly && fieldFormat == VIR_PCI_VPD_RESOURCE_FIELD_VALUE_FORMAT_RESVD) {
+-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                           _("Unexpected RV keyword in the read-write section."));
++            VIR_INFO("Unexpected RV keyword in the read-write section.");
+             return false;
+         } else if (readOnly && fieldFormat == VIR_PCI_VPD_RESOURCE_FIELD_VALUE_FORMAT_RDWR) {
+-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                           _("Unexpected RW keyword in the read-only section."));
++            VIR_INFO("Unexpected RW keyword in the read-only section.");
+             return false;
+         }
+ 
+@@ -517,21 +508,18 @@ virPCIVPDParseVPDLargeResourceFields(int vpdFileFd, uint16_t resPos, uint16_t re
+                 bytesToRead = fieldDataLen;
+                 break;
+             default:
+-                virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                               _("Unexpected field value format encountered."));
++                VIR_INFO("Unexpected field value format encountered.");
+                 return false;
+         }
+ 
+         if (resPos + resDataLen < fieldPos + fieldDataLen) {
+             /* In this case the field cannot simply be skipped since the position of the
+              * next field is determined based on the length of a previous field. */
+-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                           _("A field data length violates the resource length boundary."));
++            VIR_INFO("A field data length violates the resource length boundary.");
+             return false;
+         }
+         if (virPCIVPDReadVPDBytes(vpdFileFd, buf, bytesToRead, fieldPos, csum) != bytesToRead) {
+-            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                           _("Could not parse a resource field data - VPD has invalid format"));
++            VIR_INFO("Could not parse a resource field data - VPD has invalid format");
+             return false;
+         }
+         /* Advance the position to the first byte of the next field. */
+@@ -552,7 +540,7 @@ virPCIVPDParseVPDLargeResourceFields(int vpdFileFd, uint16_t resPos, uint16_t re
+         } else if (fieldFormat == VIR_PCI_VPD_RESOURCE_FIELD_VALUE_FORMAT_RESVD) {
+             if (*csum) {
+                 /* All bytes up to and including the checksum byte should add up to 0. */
+-                virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("Checksum validation has failed"));
++                VIR_INFO("Checksum validation has failed");
+                 return false;
+             }
+             hasChecksum = true;
+@@ -578,8 +566,7 @@ virPCIVPDParseVPDLargeResourceFields(int vpdFileFd, uint16_t resPos, uint16_t re
+         }
+         /* The field format, keyword and value are determined. Attempt to update the resource. */
+         if (!virPCIVPDResourceUpdateKeyword(res, readOnly, fieldKeyword, fieldValue)) {
+-            virReportError(VIR_ERR_INTERNAL_ERROR,
+-                           _("Could not update the VPD resource keyword: %s"), fieldKeyword);
++            VIR_INFO("Could not update the VPD resource keyword: %s", fieldKeyword);
+             return false;
+         }
+     }
+@@ -627,14 +614,12 @@ virPCIVPDParseVPDLargeResourceString(int vpdFileFd, uint16_t resPos,
+     g_autofree char *buf = g_malloc0(resDataLen + 1);
+ 
+     if (virPCIVPDReadVPDBytes(vpdFileFd, (uint8_t *)buf, resDataLen, resPos, csum) != resDataLen) {
+-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                       _("Could not read a part of a resource - VPD has invalid format"));
++        VIR_INFO("Could not read a part of a resource - VPD has invalid format");
+         return false;
+     }
+     resValue = g_strdup(g_strstrip(buf));
+     if (!virPCIVPDResourceIsValidTextValue(resValue)) {
+-        virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+-                       _("The string resource has invalid characters in its value"));
++        VIR_INFO("The string resource has invalid characters in its value");
+         return false;
+     }
+     res->name = g_steal_pointer(&resValue);
+-- 
+2.37.3
+
