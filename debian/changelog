@@ -1,3 +1,11 @@
+libvirt (8.9.0-1) unstable; urgency=medium
+
+  * [981c332] New upstream version 8.9.0
+  * [3f29856] control: Add (build) dependency on mount
+    - Closes: #1023420
+
+ -- Andrea Bolognani <eof@kiyuko.org>  Sat, 19 Nov 2022 23:00:34 +0100
+
 libvirt (8.5.0-2) experimental; urgency=medium
 
   * [6c9bffb] Implement custom handling for systemd units

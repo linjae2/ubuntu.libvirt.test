@@ -20,16 +20,13 @@
 
 #pragma once
 
-char *virTPMCreateCancelPath(const char *devpath) G_GNUC_NO_INLINE;
+char *virTPMCreateCancelPath(const char *devpath) G_NO_INLINE;
 
 char *virTPMGetSwtpm(void);
 char *virTPMGetSwtpmSetup(void);
 char *virTPMGetSwtpmIoctl(void);
 
 bool virTPMHasSwtpm(void);
-
-bool virTPMSwtpmCapsGet(unsigned int cap);
-bool virTPMSwtpmSetupCapsGet(unsigned int cap);
 
 typedef enum {
     VIR_TPM_SWTPM_FEATURE_CMDARG_PWD_FD,
@@ -42,9 +39,14 @@ typedef enum {
     VIR_TPM_SWTPM_SETUP_FEATURE_CMDARG_CREATE_CONFIG_FILES,
     VIR_TPM_SWTPM_SETUP_FEATURE_TPM12_NOT_NEED_ROOT,
     VIR_TPM_SWTPM_SETUP_FEATURE_CMDARG_RECONFIGURE_PCR_BANKS,
+    VIR_TPM_SWTPM_SETUP_FEATURE_TPM_1_2,
+    VIR_TPM_SWTPM_SETUP_FEATURE_TPM_2_0,
 
     VIR_TPM_SWTPM_SETUP_FEATURE_LAST
 } virTPMSwtpmSetupFeature;
 
 VIR_ENUM_DECL(virTPMSwtpmFeature);
 VIR_ENUM_DECL(virTPMSwtpmSetupFeature);
+
+bool virTPMSwtpmCapsGet(virTPMSwtpmFeature cap);
+bool virTPMSwtpmSetupCapsGet(virTPMSwtpmSetupFeature cap);

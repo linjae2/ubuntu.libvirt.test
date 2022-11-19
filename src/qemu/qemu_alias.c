@@ -192,8 +192,7 @@ qemuAssignDeviceControllerAlias(virDomainDef *domainDef,
 
 int
 qemuAssignDeviceDiskAlias(virDomainDef *def,
-                          virDomainDiskDef *disk,
-                          virQEMUCaps *qemuCaps)
+                          virDomainDiskDef *disk)
 {
     qemuDomainDiskPrivate *diskPriv = QEMU_DOMAIN_DISK_PRIVATE(disk);
     const char *prefix = virDomainDiskBusTypeToString(disk->bus);
@@ -231,8 +230,7 @@ qemuAssignDeviceDiskAlias(virDomainDef *def,
      * on the alias in qemu. While certain disk types use just the alias, some
      * need the full path into /machine/peripheral as a historical artifact.
      */
-    if (!diskPriv->qomName &&
-        virQEMUCapsGet(qemuCaps, QEMU_CAPS_BLOCKDEV)) {
+    if (!diskPriv->qomName) {
         switch ((virDomainDiskBus) disk->bus) {
         case VIR_DOMAIN_DISK_BUS_FDC:
         case VIR_DOMAIN_DISK_BUS_IDE:
@@ -597,13 +595,21 @@ qemuAssignDeviceVsockAlias(virDomainVsockDef *vsock)
 }
 
 
+static void
+qemuAssignDeviceIOMMUAlias(virDomainIOMMUDef *iommu)
+{
+    if (!iommu->info.alias)
+        iommu->info.alias = g_strdup("iommu0");
+}
+
+
 int
-qemuAssignDeviceAliases(virDomainDef *def, virQEMUCaps *qemuCaps)
+qemuAssignDeviceAliases(virDomainDef *def)
 {
     size_t i;
 
     for (i = 0; i < def->ndisks; i++) {
-        if (qemuAssignDeviceDiskAlias(def, def->disks[i], qemuCaps) < 0)
+        if (qemuAssignDeviceDiskAlias(def, def->disks[i]) < 0)
             return -1;
     }
     for (i = 0; i < def->nnets; i++) {
@@ -681,6 +687,8 @@ qemuAssignDeviceAliases(virDomainDef *def, virQEMUCaps *qemuCaps)
     if (def->vsock) {
         qemuAssignDeviceVsockAlias(def->vsock);
     }
+    if (def->iommu)
+        qemuAssignDeviceIOMMUAlias(def->iommu);
 
     return 0;
 }

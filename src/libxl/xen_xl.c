@@ -27,6 +27,7 @@
 #include "virerror.h"
 #include "virlog.h"
 #include "domain_conf.h"
+#include "domain_postparse.h"
 #include "viralloc.h"
 #include "virstring.h"
 #include "storage_source_backingstore.h"
@@ -714,6 +715,9 @@ xenParseXLDisk(virConf *conf, virDomainDef *def)
                     virDomainDiskSetDriver(disk, "phy");
                     virDomainDiskSetType(disk, VIR_STORAGE_TYPE_BLOCK);
                     break;
+#ifdef LIBXL_HAVE_DEVICE_DISK_SPECIFICATION
+                case LIBXL_DISK_BACKEND_STANDALONE:
+#endif
                 default:
                     virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
                                    _("disk backend not supported: %s"),

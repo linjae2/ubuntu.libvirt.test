@@ -151,9 +151,9 @@ virStorageVolObjListNew(void)
     if (!(vols = virObjectRWLockableNew(virStorageVolObjListClass)))
         return NULL;
 
-    vols->objsKey = virHashNew(virObjectFreeHashData);
-    vols->objsName = virHashNew(virObjectFreeHashData);
-    vols->objsPath = virHashNew(virObjectFreeHashData);
+    vols->objsKey = virHashNew(virObjectUnref);
+    vols->objsName = virHashNew(virObjectUnref);
+    vols->objsPath = virHashNew(virObjectUnref);
 
     return vols;
 }
@@ -378,8 +378,8 @@ virStoragePoolObjListNew(void)
     if (!(pools = virObjectRWLockableNew(virStoragePoolObjListClass)))
         return NULL;
 
-    pools->objs = virHashNew(virObjectFreeHashData);
-    pools->objsName = virHashNew(virObjectFreeHashData);
+    pools->objs = virHashNew(virObjectUnref);
+    pools->objsName = virHashNew(virObjectUnref);
 
     return pools;
 }
@@ -1579,7 +1579,7 @@ virStoragePoolObjLoad(virStoragePoolObjList *pools,
 
     VIR_DEBUG("loading storage pool config XML '%s'", path);
 
-    if (!(def = virStoragePoolDefParseFile(path)))
+    if (!(def = virStoragePoolDefParse(NULL, path, 0)))
         return NULL;
 
     if (!virStringMatchesNameSuffix(file, def->name, ".xml")) {
@@ -1622,7 +1622,7 @@ virStoragePoolObjLoadState(virStoragePoolObjList *pools,
 
     VIR_DEBUG("loading storage pool state XML '%s'", stateFile);
 
-    if (!(xml = virXMLParseCtxt(stateFile, NULL, _("(pool state)"), &ctxt)))
+    if (!(xml = virXMLParseFileCtxt(stateFile, &ctxt)))
         return NULL;
 
     if (!(node = virXPathNode("//pool", ctxt))) {
