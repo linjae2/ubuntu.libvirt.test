@@ -1818,7 +1818,11 @@ virSecuritySELinuxSetImageLabelInternal(virSecurityManager *mgr,
     const char *path = src->path;
     int ret;
 
-    if (!src->path || !virStorageSourceIsLocalStorage(src))
+    /* Special case NVMe. Per virStorageSourceIsLocalStorage() it's
+     * considered not local, but we still want the code below to set
+     * label on VFIO group. */
+    if (src->type != VIR_STORAGE_TYPE_NVME &&
+        (!src->path || !virStorageSourceIsLocalStorage(src)))
         return 0;
 
     secdef = virDomainDefGetSecurityLabelDef(def, SECURITY_SELINUX_NAME);
@@ -2541,7 +2545,12 @@ virSecuritySELinuxSetChardevLabel(virSecurityManager *mgr,
         break;
 
     case VIR_DOMAIN_CHR_TYPE_UNIX:
-        if (!dev_source->data.nix.listen) {
+        if (!dev_source->data.nix.listen ||
+            (dev_source->data.nix.path &&
+             virFileExists(dev_source->data.nix.path))) {
+            /* Also label mode='bind' sockets if they exist,
+             * e.g. because they were created by libvirt
+             * and passed via FD */
             if (virSecuritySELinuxSetFilecon(mgr,
                                              dev_source->data.nix.path,
                                              imagelabel,
@@ -2618,7 +2627,7 @@ virSecuritySELinuxRestoreChardevLabel(virSecurityManager *mgr,
     case VIR_DOMAIN_CHR_TYPE_UNIX:
         if (!dev_source->data.nix.listen) {
             if (virSecuritySELinuxRestoreFileLabel(mgr,
-                                                   dev_source->data.file.path,
+                                                   dev_source->data.nix.path,
                                                    true) < 0)
                 goto done;
         }

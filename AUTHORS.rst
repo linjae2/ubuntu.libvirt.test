@@ -175,6 +175,7 @@ Patches have also been contributed by:
 * Bruno Haible <bruno@clisp.org>
 * Bryan Kearney <bkearney@redhat.com>
 * Cao jin <caoj.fnst@cn.fujitsu.com>
+* Carlos Bilbao <carlos.bilbao@amd.com>
 * Carlos Santos <casantos@redhat.com>
 * Casey Callendrello <cdc@redhat.com>
 * Cedric Bosdonnat <cbosdonnat@suse.com>
@@ -204,6 +205,7 @@ Patches have also been contributed by:
 * Christian Schoenebeck <qemu_oss@crudebyte.com>
 * Christoffer Dall <cdall@linaro.org>
 * Christophe Fergeau <cfergeau@redhat.com>
+* Christophe de Dinechin <dinechin@redhat.com>
 * Chuck Short <chuck.short@canonical.com>
 * Chuck Short <zulcss@gmail.com>
 * Chunhe Li <lichunhe@huawei.com>
@@ -246,6 +248,7 @@ Patches have also been contributed by:
 * David L Stevens <dlstevens@us.ibm.com>
 * David L. Leskovec <dlesko@linux.vnet.ibm.com>
 * David Mansfield <dmansfield@gmail.com>
+* David Michael <david@bigbadwolfsecurity.com>
 * David S. Wang <dwang2@cisco.com>
 * David Shane Holden <dpejesh@yahoo.com>
 * David Weber <wb@munzinger.de>
@@ -294,9 +297,11 @@ Patches have also been contributed by:
 * Eric Farman <farman@linux.ibm.com>
 * Eric Farman <farman@linux.vnet.ibm.com>
 * Eric W. Biederman <ebiederm@xmission.com>
+* Eric van Blokland <mail@ericvanblokland.nl>
 * Erik Skultety <eskultet@redhat.com>
 * Ersek Laszlo <lacos@caesar.elte.hu>
 * Eugen Feller <eugen.feller@inria.fr>
+* Eugenio Pérez <eperezma@redhat.com>
 * Fabian Affolter <mail@fabian-affolter.ch>
 * Fabian Freyer <fabian.freyer@physik.tu-berlin.de>
 * Fabiano Fidêncio <fidencio@redhat.com>
@@ -330,6 +335,7 @@ Patches have also been contributed by:
 * Gerd v. Egidy <gerd@egidy.de>
 * Gerhard Stenzel <gerhard.stenzel@de.ibm.com>
 * Giuseppe Scrivano <gscrivan@redhat.com>
+* Gogo Gogsi <linux.hr@protonmail.com>
 * Gordon Messmer <gordon@dragonsdawn.net>
 * Gregor Kopka <gregor@kopka.net>
 * Guan Qiang <hzguanqiang@corp.netease.com>
@@ -397,11 +403,13 @@ Patches have also been contributed by:
 * Jean-Baptiste Holcroft <jean-baptiste@holcroft.fr>
 * Jean-Baptiste Rouault <jean-baptiste.rouault@diateam.net>
 * Jean-Marc Liger <jean-marc.liger@parisdescartes.fr>
+* Jens Petersen <petersen@redhat.com>
 * Jeremy Fitzhardinge <jeremy@goop.org>
 * Jesse Cook <code.crashenx@gmail.com>
 * Jesse J. Cook <jesse.j.cook@member.fsf.org>
 * Jia Zhou <zhou.jia2@zte.com.cn>
 * Jianan Gao <jgao@redhat.com>
+* Jiang Jiacheng <jiangjiacheng@huawei.com>
 * Jiang Kun <jiang.kun2@zte.com.cn>
 * Jianwei Hu <jiahu@redhat.com>
 * Jidong Xia <xiajidong@cmss.chinamobile.com>
@@ -489,6 +497,7 @@ Patches have also been contributed by:
 * Liuji (Jeremy) <jeremy.liu@huawei.com>
 * Lorin Hochstein <lorin@isi.edu>
 * Lubomir Rintel <lkundrak@v3.sk>
+* Ludek Janda <ljanda@redhat.com>
 * Ludovic Beliveau <ludovic.beliveau@windriver.com>
 * Luiz Capitulino <lcapitulino@redhat.com>
 * Luke Yue <lukedyue@gmail.com>
@@ -603,6 +612,7 @@ Patches have also been contributed by:
 * Ohad Levy <ohadlevy@gmail.com>
 * Olaf Hering <olaf@aepfle.de>
 * Oleg Strikov <oleg.strikov@canonical.com>
+* Oleksandr Tyshchenko <oleksandr_tyshchenko@epam.com>
 * Olesya Gerasimenko <gammaray@basealt.ru>
 * Olga Krishtal <okrishtal@virtuozzo.com>
 * Olivia Yin <Hong-Hua.Yin@freescale.com>
@@ -639,6 +649,7 @@ Patches have also been contributed by:
 * Peter Robinson <pbrobinson@gmail.com>
 * Phil Petty <phpetty@cisco.com>
 * Philipp Hahn <hahn@univention.de>
+* Pierre LIBEAU <pierre.libeau@corp.ovh.com>
 * Pieter Hollants <pieter@hollants.com>
 * Pino Toscano <ptoscano@redhat.com>
 * Pino Toscano <toscano.pino@tiscali.it>
@@ -877,6 +888,7 @@ Patches have also been contributed by:
 * Zhangzijian <zhang.zijian@h3c.com>
 * Zheng Chuan <zhengchuan@huawei.com>
 * Zhenyu Ye <yezhenyu2@huawei.com>
+* Zhenyu Zhang <zhenyzha@redhat.com>
 * Zhenyu Zheng <zheng.zhenyu@outlook.com>
 * Zhenzhong Duan <zhenzhong.duan@intel.com>
 * ZhiPeng Lu <lu.zhipeng@zte.com.cn>
@@ -898,15 +910,19 @@ Patches have also been contributed by:
 * intrigeri <intrigeri@debian.org>
 * james robson <jrobson@websense.com>
 * jason lee <ppark5237@gmail.com>
+* jiangjiacheng <jiangjiacheng@huawei.com>
 * lawrancejing <lawrancejing@gmail.com>
 * liguang <lig.fnst@cn.fujitsu.com>
+* lu zhipeng <luzhipeng@cestc.cn>
 * luzhipeng <luzhipeng@cestc.cn>
+* minglei.liu <minglei.liu@smartx.com>
 * ning.bo <ning.bo9@zte.com.cn>
 * ramyelkest <ramyelkest@gmail.com>
 * ryan woodsmall <rwoodsmall@gmail.com>
 * sannyshao <jishao@redhat.com>
 * shenjiatong <yshxxsjt715@gmail.com>
 * simmon <simmon@nplob.com>
+* ttxine <ttxinee@outlook.com>
 * tuqiang <tu.qiang35@zte.com.cn>
 * w00251574 <wangjie88@huawei.com>
 * wangjian <wangjian161@huawei.com>
@@ -915,6 +931,7 @@ Patches have also been contributed by:
 * xuzhang <xuzhang@redhat.com>
 * yangdongsheng <yangds.fnst@cn.fujitsu.com>
 * yuelongguang <yuelongguang@le.com>
+* zhanchun li <lzc777@126.com>
 * zhang bo <oscar.zhangbo@huawei.com>
 * zhangjl02 <zhangjl02@inspur.com>
 * zhanglei <zhanglei@smartx.com>

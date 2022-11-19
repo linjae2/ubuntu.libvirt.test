@@ -1069,6 +1069,8 @@ cmdAttachInterface(vshControl *ctl, const vshCmd *cmd)
     case VIR_DOMAIN_NET_TYPE_UDP:
     case VIR_DOMAIN_NET_TYPE_VDPA:
     case VIR_DOMAIN_NET_TYPE_INTERNAL:
+    case VIR_DOMAIN_NET_TYPE_NULL:
+    case VIR_DOMAIN_NET_TYPE_VDS:
     case VIR_DOMAIN_NET_TYPE_LAST:
         vshError(ctl, _("No support for %s in command 'attach-interface'"),
                  type);
@@ -3648,6 +3650,14 @@ static const vshCmdOptDef opts_undefine[] = {
      .type = VSH_OT_BOOL,
      .help = N_("keep nvram file")
     },
+    {.name = "tpm",
+     .type = VSH_OT_BOOL,
+     .help = N_("remove TPM state")
+    },
+    {.name = "keep-tpm",
+     .type = VSH_OT_BOOL,
+     .help = N_("keep TPM state")
+    },
     {.name = NULL}
 };
 
@@ -3675,6 +3685,8 @@ cmdUndefine(vshControl *ctl, const vshCmd *cmd)
     bool delete_snapshots = vshCommandOptBool(cmd, "delete-storage-volume-snapshots");
     bool nvram = vshCommandOptBool(cmd, "nvram");
     bool keep_nvram = vshCommandOptBool(cmd, "keep-nvram");
+    bool tpm = vshCommandOptBool(cmd, "tpm");
+    bool keep_tpm = vshCommandOptBool(cmd, "keep-tpm");
     /* Positive if these items exist.  */
     int has_managed_save = 0;
     int has_snapshots_metadata = 0;
@@ -3700,6 +3712,7 @@ cmdUndefine(vshControl *ctl, const vshCmd *cmd)
 
     VSH_REQUIRE_OPTION("delete-storage-volume-snapshots", "remove-all-storage");
     VSH_EXCLUSIVE_OPTIONS("nvram", "keep-nvram");
+    VSH_EXCLUSIVE_OPTIONS("tpm", "keep-tpm");
 
     ignore_value(vshCommandOptStringQuiet(ctl, cmd, "storage", &vol_string));
 
@@ -3727,6 +3740,10 @@ cmdUndefine(vshControl *ctl, const vshCmd *cmd)
         flags |= VIR_DOMAIN_UNDEFINE_NVRAM;
     if (keep_nvram)
         flags |= VIR_DOMAIN_UNDEFINE_KEEP_NVRAM;
+    if (tpm)
+        flags |= VIR_DOMAIN_UNDEFINE_TPM;
+    if (keep_tpm)
+        flags |= VIR_DOMAIN_UNDEFINE_KEEP_TPM;
 
     if (!(dom = virshCommandOptDomain(ctl, cmd, &name)))
         return false;
@@ -4529,6 +4546,7 @@ static const vshCmdOptDef opts_save_image_dumpxml[] = {
     },
     {.name = "xpath",
      .type = VSH_OT_STRING,
+     .flags = VSH_OFLAG_REQ_OPT,
      .completer = virshCompleteEmpty,
      .help = N_("xpath expression to filter the XML document")
     },
@@ -4961,6 +4979,7 @@ static const vshCmdOptDef opts_managed_save_dumpxml[] = {
     },
     {.name = "xpath",
      .type = VSH_OT_STRING,
+     .flags = VSH_OFLAG_REQ_OPT,
      .completer = virshCompleteEmpty,
      .help = N_("xpath expression to filter the XML document")
     },
@@ -7831,6 +7850,7 @@ static const vshCmdOptDef opts_iothreadset[] = {
      .type = VSH_OT_INT,
      .help = N_("upper boundary for worker thread pool")
     },
+    VIRSH_COMMON_OPT_DOMAIN_CONFIG,
     VIRSH_COMMON_OPT_DOMAIN_LIVE,
     VIRSH_COMMON_OPT_DOMAIN_CURRENT,
     {.name = NULL}
@@ -7842,6 +7862,8 @@ cmdIOThreadSet(vshControl *ctl, const vshCmd *cmd)
     g_autoptr(virshDomain) dom = NULL;
     int id = 0;
     bool ret = false;
+    bool current = vshCommandOptBool(cmd, "current");
+    bool config = vshCommandOptBool(cmd, "config");
     bool live = vshCommandOptBool(cmd, "live");
     unsigned int flags = VIR_DOMAIN_AFFECT_CURRENT;
     virTypedParameterPtr params = NULL;
@@ -7852,8 +7874,13 @@ cmdIOThreadSet(vshControl *ctl, const vshCmd *cmd)
     int thread_val;
     int rc;
 
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, live);
+    VSH_EXCLUSIVE_OPTIONS_VAR(current, config);
+
     if (live)
         flags |= VIR_DOMAIN_AFFECT_LIVE;
+    if (config)
+        flags |= VIR_DOMAIN_AFFECT_CONFIG;
 
     if (!(dom = virshCommandOptDomain(ctl, cmd, NULL)))
         return false;
@@ -9860,13 +9887,18 @@ cmdQemuMonitorCommandQMPWrap(vshControl *ctl,
                              const vshCmd *cmd)
 {
     g_autofree char *fullcmd = cmdQemuMonitorCommandConcatCmd(ctl, cmd, NULL);
-    g_autoptr(virJSONValue) fullcmdjson = virJSONValueFromString(fullcmd);
+    g_autoptr(virJSONValue) fullcmdjson = NULL;
     g_autofree char *fullargs = NULL;
     g_autoptr(virJSONValue) fullargsjson = NULL;
     const vshCmdOpt *opt = NULL;
     const char *commandname = NULL;
     g_autoptr(virJSONValue) command = NULL;
     g_autoptr(virJSONValue) arguments = NULL;
+
+    if (!(fullcmdjson = virJSONValueFromString(fullcmd))) {
+        /* Reset the error before adding wrapping. */
+        vshResetLibvirtError();
+    }
 
     /* if we've got a JSON object, pass it through */
     if (virJSONValueIsObject(fullcmdjson))
@@ -9879,8 +9911,11 @@ cmdQemuMonitorCommandQMPWrap(vshControl *ctl,
         commandname = opt->data;
 
     /* now we process arguments similarly to how we've dealt with the full command */
-    if ((fullargs = cmdQemuMonitorCommandConcatCmd(ctl, cmd, opt)))
-        fullargsjson = virJSONValueFromString(fullargs);
+    if ((fullargs = cmdQemuMonitorCommandConcatCmd(ctl, cmd, opt)) &&
+        !(fullargsjson = virJSONValueFromString(fullargs))) {
+        /* Reset the error before adding wrapping. */
+        vshResetLibvirtError();
+    }
 
     /* for empty args or a valid JSON object we just use that */
     if (!fullargs || virJSONValueIsObject(fullargsjson)) {
@@ -10461,6 +10496,7 @@ static const vshCmdOptDef opts_dumpxml[] = {
     },
     {.name = "xpath",
      .type = VSH_OT_STRING,
+     .flags = VSH_OFLAG_REQ_OPT,
      .completer = virshCompleteEmpty,
      .help = N_("xpath expression to filter the XML document")
     },

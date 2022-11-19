@@ -54,7 +54,7 @@ typedef enum {
 
 void virCommandPassFD(virCommand *cmd,
                       int fd,
-                      unsigned int flags) G_GNUC_NO_INLINE;
+                      unsigned int flags) G_NO_INLINE;
 
 void virCommandSetPidFile(virCommand *cmd,
                           const char *pidfile) ATTRIBUTE_NONNULL(2);
@@ -216,5 +216,10 @@ int virCommandRunNul(virCommand *cmd,
                      size_t n_columns,
                      virCommandRunNulFunc func,
                      void *data);
+
+void virCommandSetRunAlone(virCommand *cmd);
+
+void virCommandSetRunAmong(virCommand *cmd,
+                           pid_t pid);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(virCommand, virCommandFree);

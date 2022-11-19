@@ -1129,8 +1129,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
             controller->model == VIR_DOMAIN_CONTROLLER_MODEL_PCIE_ROOT) {
             if (controller->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                               _("pci-root and pcie-root controllers "
-                                 "should not have an address"));
+                               _("pci-root and pcie-root controllers should not have an address"));
                 return -1;
             }
         }
@@ -1147,8 +1146,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
 
             if (opts->targetIndex < 0 || opts->targetIndex > 30) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               _("PCI controller target index '%d' out of "
-                                 "range - must be 0-30"),
+                               _("PCI controller target index '%d' out of range - must be 0-30"),
                                opts->targetIndex);
                 return -1;
             }
@@ -1156,8 +1154,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
             if ((controller->idx == 0 && opts->targetIndex != 0) ||
                 (controller->idx != 0 && opts->targetIndex == 0)) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                               _("Only the PCI controller with index 0 can "
-                                 "have target index 0, and vice versa"));
+                               _("Only the PCI controller with index 0 can have target index 0, and vice versa"));
                 return -1;
             }
         }
@@ -1165,8 +1162,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
         if (opts->chassisNr != -1) {
             if (opts->chassisNr < 1 || opts->chassisNr > 255) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               _("PCI controller chassisNr '%d' out of range "
-                                 "- must be 1-255"),
+                               _("PCI controller chassisNr '%d' out of range - must be 1-255"),
                                opts->chassisNr);
                 return -1;
             }
@@ -1175,8 +1171,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
         if (opts->chassis != -1) {
             if (opts->chassis < 0 || opts->chassis > 255) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               _("PCI controller chassis '%d' out of range "
-                                 "- must be 0-255"),
+                               _("PCI controller chassis '%d' out of range - must be 0-255"),
                                opts->chassis);
                 return -1;
             }
@@ -1185,8 +1180,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
         if (opts->port != -1) {
             if (opts->port < 0 || opts->port > 255) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               _("PCI controller port '%d' out of range "
-                                 "- must be 0-255"),
+                               _("PCI controller port '%d' out of range - must be 0-255"),
                                opts->port);
                 return -1;
             }
@@ -1195,8 +1189,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
         if (opts->busNr != -1) {
             if (opts->busNr < 1 || opts->busNr > 254) {
                 virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
-                               _("PCI controller busNr '%d' out of range "
-                                 "- must be 1-254"),
+                               _("PCI controller busNr '%d' out of range - must be 1-254"),
                                opts->busNr);
                 return -1;
             }
@@ -1204,8 +1197,7 @@ virDomainControllerDefValidate(const virDomainControllerDef *controller)
 
         if (opts->numaNode >= 0 && controller->idx == 0) {
             virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
-                           _("The PCI controller with index=0 can't "
-                             "be associated with a NUMA node"));
+                           _("The PCI controller with index=0 can't be associated with a NUMA node"));
             return -1;
         }
     }
@@ -1598,21 +1590,104 @@ static int
 virDomainDefOSValidate(const virDomainDef *def,
                        virDomainXMLOption *xmlopt)
 {
-    if (def->os.firmware &&
-        !(xmlopt->config.features & VIR_DOMAIN_DEF_FEATURE_FW_AUTOSELECT)) {
-        virReportError(VIR_ERR_XML_DETAIL, "%s",
-                       _("firmware auto selection not implemented for this driver"));
-        return -1;
+    virDomainLoaderDef *loader = def->os.loader;
+
+    if (def->os.firmware) {
+        if (!(xmlopt->config.features & VIR_DOMAIN_DEF_FEATURE_FW_AUTOSELECT)) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("firmware auto selection not implemented for this driver"));
+            return -1;
+        }
+
+        if (!loader)
+            return 0;
+
+        if (loader->readonly) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("loader attribute 'readonly' cannot be specified "
+                             "when firmware autoselection is enabled"));
+            return -1;
+        }
+        if (loader->type) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("loader attribute 'type' cannot be specified "
+                             "when firmware autoselection is enabled"));
+            return -1;
+        }
+        if (loader->path) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("loader path cannot be specified "
+                             "when firmware autoselection is enabled"));
+            return -1;
+        }
+        if (loader->nvramTemplate) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("nvram attribute 'template' cannot be specified "
+                             "when firmware autoselection is enabled"));
+            return -1;
+        }
+
+        /* We need to accept 'yes' here because the initial implementation
+         * of firmware autoselection used it as a way to request a firmware
+         * with Secure Boot support, so the error message is technically
+         * incorrect; however, we want to discourage people from using this
+         * attribute at all, so it's fine to be a bit more aggressive than
+         * it would be strictly required :) */
+        if (loader->secure == VIR_TRISTATE_BOOL_NO) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("loader attribute 'secure' cannot be specified "
+                             "when firmware autoselection is enabled"));
+            return -1;
+        }
+
+        if (loader->nvram && def->os.firmware != VIR_DOMAIN_OS_DEF_FIRMWARE_EFI) {
+            virReportError(VIR_ERR_XML_DETAIL,
+                           _("firmware type '%s' does not support nvram"),
+                           virDomainOsDefFirmwareTypeToString(def->os.firmware));
+            return -1;
+        }
+    } else {
+        if (def->os.firmwareFeatures) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("cannot use feature-based firmware autoselection "
+                             "when firmware autoselection is disabled"));
+            return -1;
+        }
+
+        if (!loader)
+            return 0;
+
+        if (!loader->path) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("no loader path specified and firmware auto selection disabled"));
+            return -1;
+        }
     }
 
-    if (!def->os.loader)
-        return 0;
+    if (loader->stateless == VIR_TRISTATE_BOOL_YES) {
+        if (loader->nvramTemplate) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("NVRAM template is not permitted when loader is stateless"));
+            return -1;
+        }
 
-    if (!def->os.loader->path &&
-        def->os.firmware == VIR_DOMAIN_OS_DEF_FIRMWARE_NONE) {
-        virReportError(VIR_ERR_XML_DETAIL, "%s",
-                       _("no loader path specified and firmware auto selection disabled"));
-        return -1;
+        if (loader->nvram) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("NVRAM is not permitted when loader is stateless"));
+            return -1;
+        }
+    } else if (loader->stateless == VIR_TRISTATE_BOOL_NO) {
+        if (def->os.firmware == VIR_DOMAIN_OS_DEF_FIRMWARE_NONE) {
+            if (def->os.loader->type != VIR_DOMAIN_LOADER_TYPE_PFLASH) {
+                virReportError(VIR_ERR_XML_DETAIL, "%s",
+                               _("Only pflash loader type permits NVRAM"));
+                return -1;
+            }
+        } else if (def->os.firmware != VIR_DOMAIN_OS_DEF_FIRMWARE_EFI) {
+            virReportError(VIR_ERR_XML_DETAIL, "%s",
+                           _("Only EFI firmware permits NVRAM"));
+            return -1;
+        }
     }
 
     return 0;
@@ -1832,13 +1907,20 @@ virDomainDefValidateInternal(const virDomainDef *def,
 }
 
 
+struct virDomainDefValidateDeviceIteratorData {
+    virDomainXMLOption *xmlopt;
+    void *parseOpaque;
+    unsigned int parseFlags;
+};
+
+
 static int
 virDomainDefValidateDeviceIterator(virDomainDef *def,
                                    virDomainDeviceDef *dev,
                                    virDomainDeviceInfo *info G_GNUC_UNUSED,
                                    void *opaque)
 {
-    struct virDomainDefPostParseDeviceIteratorData *data = opaque;
+    struct virDomainDefValidateDeviceIteratorData *data = opaque;
     return virDomainDeviceDefValidate(dev, def,
                                       data->parseFlags, data->xmlopt,
                                       data->parseOpaque);
@@ -1867,7 +1949,7 @@ virDomainDefValidate(virDomainDef *def,
                      virDomainXMLOption *xmlopt,
                      void *parseOpaque)
 {
-    struct virDomainDefPostParseDeviceIteratorData data = {
+    struct virDomainDefValidateDeviceIteratorData data = {
         .xmlopt = xmlopt,
         .parseFlags = parseFlags,
         .parseOpaque = parseOpaque,
@@ -2052,6 +2134,40 @@ virDomainNetDefValidate(const virDomainNetDef *net)
         return -1;
     }
 
+    switch (net->type) {
+    case VIR_DOMAIN_NET_TYPE_VHOSTUSER:
+        if (!virDomainNetIsVirtioModel(net)) {
+            virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                           _("Wrong or no <model> 'type' attribute specified with <interface type='vhostuser'/>. vhostuser requires the virtio-net* frontend"));
+            return -1;
+        }
+
+        if (net->data.vhostuser->data.nix.listen &&
+            net->data.vhostuser->data.nix.reconnect.enabled == VIR_TRISTATE_BOOL_YES) {
+            virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+                           _("'reconnect' attribute unsupported 'server' mode for <interface type='vhostuser'>"));
+            return -1;
+        }
+        break;
+
+    case VIR_DOMAIN_NET_TYPE_NETWORK:
+    case VIR_DOMAIN_NET_TYPE_VDPA:
+    case VIR_DOMAIN_NET_TYPE_BRIDGE:
+    case VIR_DOMAIN_NET_TYPE_CLIENT:
+    case VIR_DOMAIN_NET_TYPE_SERVER:
+    case VIR_DOMAIN_NET_TYPE_MCAST:
+    case VIR_DOMAIN_NET_TYPE_UDP:
+    case VIR_DOMAIN_NET_TYPE_INTERNAL:
+    case VIR_DOMAIN_NET_TYPE_DIRECT:
+    case VIR_DOMAIN_NET_TYPE_HOSTDEV:
+    case VIR_DOMAIN_NET_TYPE_VDS:
+    case VIR_DOMAIN_NET_TYPE_ETHERNET:
+    case VIR_DOMAIN_NET_TYPE_USER:
+    case VIR_DOMAIN_NET_TYPE_NULL:
+    case VIR_DOMAIN_NET_TYPE_LAST:
+        break;
+    }
+
     return 0;
 }
 
@@ -2136,6 +2252,19 @@ virDomainMemoryDefValidate(const virDomainMemoryDef *mem,
                            const virDomainDef *def)
 {
     unsigned long long thpSize;
+
+    /* Guest NUMA nodes are continuous and indexed from zero. */
+    if (mem->targetNode != -1) {
+        const size_t nodeCount = virDomainNumaGetNodeCount(def->numa);
+
+        if (mem->targetNode >= nodeCount) {
+            virReportError(VIR_ERR_XML_DETAIL,
+                           _("can't add memory backend for guest node '%d' as the guest has only '%zu' NUMA nodes configured"),
+                           mem->targetNode, nodeCount);
+            return -1;
+        }
+    }
+
 
     switch (mem->model) {
     case VIR_DOMAIN_MEMORY_MODEL_NVDIMM:
@@ -2526,6 +2655,72 @@ virDomainGraphicsDefValidate(const virDomainDef *def,
 }
 
 static int
+virDomainIOMMUDefValidate(const virDomainIOMMUDef *iommu)
+{
+    switch (iommu->model) {
+    case VIR_DOMAIN_IOMMU_MODEL_SMMUV3:
+    case VIR_DOMAIN_IOMMU_MODEL_VIRTIO:
+        if (iommu->intremap != VIR_TRISTATE_SWITCH_ABSENT ||
+            iommu->caching_mode != VIR_TRISTATE_SWITCH_ABSENT ||
+            iommu->eim != VIR_TRISTATE_SWITCH_ABSENT ||
+            iommu->iotlb != VIR_TRISTATE_SWITCH_ABSENT ||
+            iommu->aw_bits != 0) {
+            virReportError(VIR_ERR_XML_ERROR,
+                           _("iommu model '%s' doesn't support additional attributes"),
+                           virDomainIOMMUModelTypeToString(iommu->model));
+            return -1;
+        }
+        break;
+
+    case VIR_DOMAIN_IOMMU_MODEL_INTEL:
+    case VIR_DOMAIN_IOMMU_MODEL_LAST:
+        break;
+    }
+
+    switch (iommu->model) {
+    case VIR_DOMAIN_IOMMU_MODEL_SMMUV3:
+    case VIR_DOMAIN_IOMMU_MODEL_INTEL:
+        if (iommu->info.type != VIR_DOMAIN_DEVICE_ADDRESS_TYPE_NONE) {
+            virReportError(VIR_ERR_XML_ERROR,
+                           _("iommu model '%s' can't have address"),
+                           virDomainIOMMUModelTypeToString(iommu->model));
+            return -1;
+        }
+        break;
+
+    case VIR_DOMAIN_IOMMU_MODEL_VIRTIO:
+    case VIR_DOMAIN_IOMMU_MODEL_LAST:
+        break;
+    }
+
+    return 0;
+}
+
+
+static int
+virDomainTPMDevValidate(const virDomainTPMDef *tpm)
+{
+    switch (tpm->type) {
+    case VIR_DOMAIN_TPM_TYPE_EMULATOR:
+        if (tpm->data.emulator.activePcrBanks &&
+            tpm->data.emulator.version != VIR_DOMAIN_TPM_VERSION_2_0) {
+            virReportError(VIR_ERR_XML_ERROR,
+                           _("<active_pcr_banks/> requires TPM version '%s'"),
+                           virDomainTPMVersionTypeToString(VIR_DOMAIN_TPM_VERSION_2_0));
+            return -1;
+        }
+        break;
+
+    case VIR_DOMAIN_TPM_TYPE_PASSTHROUGH:
+    case VIR_DOMAIN_TPM_TYPE_LAST:
+        break;
+    }
+
+    return 0;
+}
+
+
+static int
 virDomainDeviceInfoValidate(const virDomainDeviceDef *dev)
 {
     virDomainDeviceInfo *info;
@@ -2626,14 +2821,18 @@ virDomainDeviceDefValidateInternal(const virDomainDeviceDef *dev,
     case VIR_DOMAIN_DEVICE_GRAPHICS:
         return virDomainGraphicsDefValidate(def, dev->data.graphics);
 
+    case VIR_DOMAIN_DEVICE_IOMMU:
+        return virDomainIOMMUDefValidate(dev->data.iommu);
+
+    case VIR_DOMAIN_DEVICE_TPM:
+        return virDomainTPMDevValidate(dev->data.tpm);
+
     case VIR_DOMAIN_DEVICE_LEASE:
     case VIR_DOMAIN_DEVICE_WATCHDOG:
     case VIR_DOMAIN_DEVICE_HUB:
     case VIR_DOMAIN_DEVICE_MEMBALLOON:
     case VIR_DOMAIN_DEVICE_NVRAM:
-    case VIR_DOMAIN_DEVICE_TPM:
     case VIR_DOMAIN_DEVICE_PANIC:
-    case VIR_DOMAIN_DEVICE_IOMMU:
     case VIR_DOMAIN_DEVICE_NONE:
     case VIR_DOMAIN_DEVICE_LAST:
         break;

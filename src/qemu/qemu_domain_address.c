@@ -420,8 +420,7 @@ qemuDomainAssignS390Addresses(virDomainDef *def,
     int ret = -1;
     virDomainCCWAddressSet *addrs = NULL;
 
-    if (qemuDomainIsS390CCW(def) &&
-        virQEMUCapsGet(qemuCaps, QEMU_CAPS_CCW)) {
+    if (qemuDomainIsS390CCW(def)) {
         if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE_VFIO_CCW))
             qemuDomainPrimeVfioDeviceAddresses(def, VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW);
 
@@ -1003,7 +1002,7 @@ qemuDomainDeviceCalculatePCIConnectFlags(virDomainDeviceDef *dev,
         break;
 
     case VIR_DOMAIN_DEVICE_IOMMU:
-        switch ((virDomainIOMMUModel) dev->data.iommu->model) {
+        switch (dev->data.iommu->model) {
             case VIR_DOMAIN_IOMMU_MODEL_VIRTIO:
                 return virtioFlags | VIR_PCI_CONNECT_INTEGRATED;
 
@@ -1098,7 +1097,7 @@ qemuDomainFillDevicePCIConnectFlagsIterInit(virDomainDef *def,
                            VIR_PCI_CONNECT_AUTOASSIGN);
     }
 
-    if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_PCI_DISABLE_LEGACY)) {
+    if (virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_PCI_TRANSITIONAL)) {
         data->virtioFlags = data->pcieFlags;
     } else {
         data->virtioFlags = (VIR_PCI_CONNECT_TYPE_PCI_DEVICE |
@@ -2384,7 +2383,7 @@ qemuDomainAssignDevicePCISlots(virDomainDef *def,
     if (def->iommu) {
         virDomainIOMMUDef *iommu = def->iommu;
 
-        switch ((virDomainIOMMUModel) iommu->model) {
+        switch (iommu->model) {
         case VIR_DOMAIN_IOMMU_MODEL_VIRTIO:
             if (virDeviceInfoPCIAddressIsWanted(&iommu->info) &&
                 qemuDomainPCIAddressReserveNextAddr(addrs, &iommu->info) < 0) {
@@ -3289,13 +3288,11 @@ qemuDomainEnsureVirtioAddress(bool *releaseAddr,
                               virDomainDeviceDef *dev)
 {
     virDomainDeviceInfo *info = virDomainDeviceGetInfo(dev);
-    qemuDomainObjPrivate *priv = vm->privateData;
     virDomainCCWAddressSet *ccwaddrs = NULL;
     int ret = -1;
 
     if (!info->type) {
-        if (qemuDomainIsS390CCW(vm->def) &&
-            virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_CCW))
+        if (qemuDomainIsS390CCW(vm->def))
             info->type = VIR_DOMAIN_DEVICE_ADDRESS_TYPE_CCW;
     }
 

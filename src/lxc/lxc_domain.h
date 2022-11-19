@@ -25,7 +25,7 @@
 #include "lxc_conf.h"
 #include "lxc_monitor.h"
 #include "virenum.h"
-#include "domain_job.h"
+#include "virdomainjob.h"
 
 
 typedef enum {
@@ -54,13 +54,6 @@ struct _lxcDomainDef {
 };
 
 
-struct virLXCDomainJobObj {
-    virCond cond;                       /* Use to coordinate jobs */
-    virDomainJob active;                /* Currently running job */
-    int owner;                          /* Thread which set current job */
-};
-
-
 typedef struct _virLXCDomainObjPrivate virLXCDomainObjPrivate;
 struct _virLXCDomainObjPrivate {
     virLXCDriver *driver;
@@ -73,23 +66,11 @@ struct _virLXCDomainObjPrivate {
 
     virCgroup *cgroup;
     char *machineName;
-
-    struct virLXCDomainJobObj job;
 };
 
 extern virXMLNamespace virLXCDriverDomainXMLNamespace;
 extern virDomainXMLPrivateDataCallbacks virLXCDriverPrivateDataCallbacks;
 extern virDomainDefParserConfig virLXCDriverDomainDefParserConfig;
-
-int
-virLXCDomainObjBeginJob(virLXCDriver *driver,
-                       virDomainObj *obj,
-                       virDomainJob job)
-    G_GNUC_WARN_UNUSED_RESULT;
-
-void
-virLXCDomainObjEndJob(virLXCDriver *driver,
-                     virDomainObj *obj);
 
 
 char *

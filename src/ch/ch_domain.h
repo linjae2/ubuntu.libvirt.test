@@ -24,23 +24,11 @@
 #include "ch_monitor.h"
 #include "virchrdev.h"
 #include "vircgroup.h"
-#include "domain_job.h"
-
-/* Give up waiting for mutex after 30 seconds */
-#define CH_JOB_WAIT_TIME (1000ull * 30)
-
-
-struct virCHDomainJobObj {
-    virCond cond;                       /* Use to coordinate jobs */
-    virDomainJob active;                /* Currently running job */
-    int owner;                          /* Thread which set current job */
-};
+#include "virdomainjob.h"
 
 
 typedef struct _virCHDomainObjPrivate virCHDomainObjPrivate;
 struct _virCHDomainObjPrivate {
-    struct virCHDomainJobObj job;
-
     virChrdevs *chrdevs;
     virCHDriver *driver;
     virCHMonitor *monitor;
@@ -68,13 +56,6 @@ struct _virCHDomainVcpuPrivate {
 
 extern virDomainXMLPrivateDataCallbacks virCHDriverPrivateDataCallbacks;
 extern virDomainDefParserConfig virCHDriverDomainDefParserConfig;
-
-int
-virCHDomainObjBeginJob(virDomainObj *obj, virDomainJob job)
-    G_GNUC_WARN_UNUSED_RESULT;
-
-void
-virCHDomainObjEndJob(virDomainObj *obj);
 
 void
 virCHDomainRemoveInactive(virCHDriver *driver,

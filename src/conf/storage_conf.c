@@ -483,6 +483,7 @@ virStoragePoolSourceClear(virStoragePoolSource *source)
     virStorageAuthDefFree(source->auth);
     VIR_FREE(source->vendor);
     VIR_FREE(source->product);
+    VIR_FREE(source->protocolVer);
 }
 
 
@@ -526,7 +527,6 @@ virStoragePoolDefParseSource(xmlXPathContextPtr ctxt,
     virStoragePoolOptions *options;
     int n;
     g_autoptr(virStorageAuthDef) authdef = NULL;
-    g_autofree char *ver = NULL;
     g_autofree xmlNodePtr *nodeset = NULL;
     g_autofree char *sourcedir = NULL;
     VIR_XPATH_NODE_AUTORESTORE(ctxt)
@@ -634,7 +634,7 @@ virStoragePoolDefParseSource(xmlXPathContextPtr ctxt,
     }
 
     /* Option protocol version string (NFSvN) */
-    if ((ver = virXPathString("string(./protocol/@ver)", ctxt))) {
+    if ((source->protocolVer = virXPathString("string(./protocol/@ver)", ctxt))) {
         if ((source->format != VIR_STORAGE_POOL_NETFS_NFS) &&
             (source->format != VIR_STORAGE_POOL_NETFS_AUTO)) {
             virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
@@ -643,10 +643,11 @@ virStoragePoolDefParseSource(xmlXPathContextPtr ctxt,
                            virStoragePoolFormatFileSystemNetTypeToString(source->format));
             return -1;
         }
-        if (virStrToLong_uip(ver, NULL, 0, &source->protocolVer) < 0) {
-            virReportError(VIR_ERR_XML_ERROR,
-                           _("storage pool protocol ver '%s' is malformed"),
-                           ver);
+
+        if (strchr(source->protocolVer, ',')) {
+            virReportError(VIR_ERR_XML_DETAIL,
+                           _("storage pool protocol ver '%s' must not contain ','"),
+                           source->protocolVer);
             return -1;
         }
     }
@@ -666,10 +667,8 @@ virStoragePoolDefParseSourceString(const char *srcSpec,
     g_autoptr(xmlXPathContext) xpath_ctxt = NULL;
     g_autoptr(virStoragePoolSource) def = NULL;
 
-    if (!(doc = virXMLParseStringCtxtRoot(srcSpec,
-                                          _("(storage_source_specification)"),
-                                          "source",
-                                          &xpath_ctxt)))
+    if (!(doc = virXMLParse(NULL, srcSpec, _("(storage_source_specification)"),
+                            "source", &xpath_ctxt, NULL, false)))
         return NULL;
 
     def = g_new0(virStoragePoolSource, 1);
@@ -972,56 +971,20 @@ virStoragePoolDefParseXML(xmlXPathContextPtr ctxt)
 
 
 virStoragePoolDef *
-virStoragePoolDefParseNode(xmlDocPtr xml,
-                           xmlNodePtr root)
-{
-    g_autoptr(xmlXPathContext) ctxt = NULL;
-
-    if (!virXMLNodeNameEqual(root, "pool")) {
-        virReportError(VIR_ERR_XML_ERROR,
-                       _("unexpected root element <%s>, "
-                         "expecting <pool>"),
-                       root->name);
-        return NULL;
-    }
-
-    if (!(ctxt = virXMLXPathContextNew(xml)))
-        return NULL;
-
-    ctxt->node = root;
-    return virStoragePoolDefParseXML(ctxt);
-}
-
-
-static virStoragePoolDef *
 virStoragePoolDefParse(const char *xmlStr,
                        const char *filename,
                        unsigned int flags)
 {
-    virStoragePoolDef *ret = NULL;
     g_autoptr(xmlDoc) xml = NULL;
-
-    if ((xml = virXMLParse(filename, xmlStr, _("(storage_pool_definition)"),
-                           "storagepool.rng", flags & VIR_STORAGE_POOL_DEFINE_VALIDATE))) {
-        ret = virStoragePoolDefParseNode(xml, xmlDocGetRootElement(xml));
-    }
-
-    return ret;
-}
+    g_autoptr(xmlXPathContext) ctxt = NULL;
+    bool validate = flags & VIR_STORAGE_POOL_DEFINE_VALIDATE;
 
 
-virStoragePoolDef *
-virStoragePoolDefParseString(const char *xmlStr,
-                             unsigned int flags)
-{
-    return virStoragePoolDefParse(xmlStr, NULL, flags);
-}
+    if (!(xml = virXMLParse(filename, xmlStr, _("(storage_pool_definition)"),
+                            "pool", &ctxt, "storagepool.rng", validate)))
+        return NULL;
 
-
-virStoragePoolDef *
-virStoragePoolDefParseFile(const char *filename)
-{
-    return virStoragePoolDefParse(NULL, filename, 0);
+    return virStoragePoolDefParseXML(ctxt);
 }
 
 
@@ -1099,9 +1062,7 @@ virStoragePoolSourceFormat(virBuffer *buf,
     if (src->auth)
         virStorageAuthDefFormat(buf, src->auth);
 
-    if (src->protocolVer)
-        virBufferAsprintf(buf, "<protocol ver='%u'/>\n", src->protocolVer);
-
+    virBufferEscapeString(buf, "<protocol ver='%s'/>\n", src->protocolVer);
     virBufferEscapeString(buf, "<vendor name='%s'/>\n", src->vendor);
     virBufferEscapeString(buf, "<product name='%s'/>\n", src->product);
 
@@ -1271,7 +1232,7 @@ virStorageCheckCompat(const char *compat)
 }
 
 
-static virStorageVolDef *
+virStorageVolDef *
 virStorageVolDefParseXML(virStoragePoolDef *pool,
                          xmlXPathContextPtr ctxt,
                          unsigned int flags)
@@ -1439,61 +1400,19 @@ virStorageVolDefParseXML(virStoragePoolDef *pool,
 
 
 virStorageVolDef *
-virStorageVolDefParseNode(virStoragePoolDef *pool,
-                          xmlDocPtr xml,
-                          xmlNodePtr root,
-                          unsigned int flags)
-{
-    g_autoptr(xmlXPathContext) ctxt = NULL;
-
-    if (!virXMLNodeNameEqual(root, "volume")) {
-        virReportError(VIR_ERR_XML_ERROR,
-                       _("unexpected root element <%s>, "
-                         "expecting <volume>"),
-                       root->name);
-        return NULL;
-    }
-
-    if (!(ctxt = virXMLXPathContextNew(xml)))
-        return NULL;
-
-    ctxt->node = root;
-    return virStorageVolDefParseXML(pool, ctxt, flags);
-}
-
-
-static virStorageVolDef *
 virStorageVolDefParse(virStoragePoolDef *pool,
                       const char *xmlStr,
                       const char *filename,
                       unsigned int flags)
 {
-    virStorageVolDef *ret = NULL;
     g_autoptr(xmlDoc) xml = NULL;
+    g_autoptr(xmlXPathContext) ctxt = NULL;
 
-    if ((xml = virXMLParse(filename, xmlStr, _("(storage_volume_definition)"), NULL, false))) {
-        ret = virStorageVolDefParseNode(pool, xml, xmlDocGetRootElement(xml), flags);
-    }
+    if (!(xml = virXMLParse(filename, xmlStr, _("(storage_volume_definition)"),
+                            "volume", &ctxt, NULL, false)))
+        return NULL;
 
-    return ret;
-}
-
-
-virStorageVolDef *
-virStorageVolDefParseString(virStoragePoolDef *pool,
-                            const char *xmlStr,
-                            unsigned int flags)
-{
-    return virStorageVolDefParse(pool, xmlStr, NULL, flags);
-}
-
-
-virStorageVolDef *
-virStorageVolDefParseFile(virStoragePoolDef *pool,
-                          const char *filename,
-                          unsigned int flags)
-{
-    return virStorageVolDefParse(pool, NULL, filename, flags);
+    return virStorageVolDefParseXML(pool, ctxt, flags);
 }
 
 

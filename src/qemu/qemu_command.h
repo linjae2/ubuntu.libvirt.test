@@ -67,7 +67,7 @@ int qemuBuildTLSx509BackendProps(const char *tlspath,
 
 /* Open a UNIX socket for chardev FD passing */
 int
-qemuOpenChrChardevUNIXSocket(const virDomainChrSourceDef *dev) G_GNUC_NO_INLINE;
+qemuOpenChrChardevUNIXSocket(const virDomainChrSourceDef *dev) G_NO_INLINE;
 
 virJSONValue *
 qemuBuildChrDeviceProps(const virDomainDef *vmdef,
@@ -197,10 +197,6 @@ qemuBuildZPCIDevProps(virDomainDeviceInfo *dev);
 
 int qemuNetworkPrepareDevices(virDomainDef *def);
 
-int qemuGetDriveSourceString(virStorageSource *src,
-                             qemuDomainSecretInfo *secinfo,
-                             char **source);
-
 bool
 qemuDiskConfigBlkdeviotuneEnabled(virDomainDiskDef *disk);
 
@@ -238,7 +234,7 @@ int
 qemuBuildTPMOpenBackendFDs(const char *tpmdev,
                            int *tpmfd,
                            int *cancelfd)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3) G_GNUC_NO_INLINE;
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) ATTRIBUTE_NONNULL(3) G_NO_INLINE;
 
 const char * qemuAudioDriverTypeToString(virDomainAudioType type);
 virDomainAudioType qemuAudioDriverTypeFromString(const char *str);

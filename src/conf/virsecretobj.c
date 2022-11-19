@@ -118,7 +118,7 @@ virSecretObjListNew(void)
     if (!(secrets = virObjectRWLockableNew(virSecretObjListClass)))
         return NULL;
 
-    if (!(secrets->objs = virHashNew(virObjectFreeHashData))) {
+    if (!(secrets->objs = virHashNew(virObjectUnref))) {
         virObjectUnref(secrets);
         return NULL;
     }
@@ -870,7 +870,7 @@ virSecretLoad(virSecretObjList *secrets,
     virSecretDef *def = NULL;
     virSecretObj *obj = NULL;
 
-    if (!(def = virSecretDefParseFile(path)))
+    if (!(def = virSecretDefParse(NULL, path, 0)))
         goto cleanup;
 
     if (virSecretLoadValidateUUID(def, file) < 0)

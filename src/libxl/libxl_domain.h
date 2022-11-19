@@ -24,15 +24,8 @@
 
 #include "libxl_conf.h"
 #include "virchrdev.h"
-#include "domain_job.h"
+#include "virdomainjob.h"
 
-
-struct libxlDomainJobObj {
-    virCond cond;                       /* Use to coordinate jobs */
-    virDomainJob active;                /* Currently running job */
-    int owner;                          /* Thread which set current job */
-    virDomainJobData *current;        /* Statistics for the current job */
-};
 
 typedef struct _libxlDomainObjPrivate libxlDomainObjPrivate;
 struct _libxlDomainObjPrivate {
@@ -43,8 +36,6 @@ struct _libxlDomainObjPrivate {
     unsigned short migrationPort;
     char *lockState;
     bool lockProcessRunning;
-
-    struct libxlDomainJobObj job;
 
     bool hookRun;  /* true if there was a hook run over this domain */
 };
@@ -59,18 +50,8 @@ int
 libxlDomainObjPrivateInitCtx(virDomainObj *vm);
 
 int
-libxlDomainObjBeginJob(libxlDriverPrivate *driver,
-                       virDomainObj *obj,
-                       virDomainJob job)
-    G_GNUC_WARN_UNUSED_RESULT;
-
-void
-libxlDomainObjEndJob(libxlDriverPrivate *driver,
-                     virDomainObj *obj);
-
-int
-libxlDomainJobUpdateTime(struct libxlDomainJobObj *job)
-    G_GNUC_WARN_UNUSED_RESULT;
+libxlDomainJobGetTimeElapsed(virDomainJobObj *job,
+                             unsigned long long *timeElapsed);
 
 char *
 libxlDomainManagedSavePath(libxlDriverPrivate *driver,

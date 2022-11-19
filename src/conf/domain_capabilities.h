@@ -127,6 +127,21 @@ struct _virDomainCapsDeviceTPM {
     virTristateBool supported;
     virDomainCapsEnum model;   /* virDomainTPMModel */
     virDomainCapsEnum backendModel;   /* virDomainTPMBackendType */
+    virDomainCapsEnum backendVersion; /* virDomainTPMVersion */
+};
+
+STATIC_ASSERT_ENUM(VIR_DOMAIN_REDIRDEV_BUS_LAST);
+typedef struct _virDomainCapsDeviceRedirdev virDomainCapsDeviceRedirdev;
+struct _virDomainCapsDeviceRedirdev {
+    virTristateBool supported;
+    virDomainCapsEnum bus;   /* virDomainRedirdevBus */
+};
+
+STATIC_ASSERT_ENUM(VIR_DOMAIN_CHR_TYPE_LAST);
+typedef struct _virDomainCapsDeviceChannel virDomainCapsDeviceChannel;
+struct _virDomainCapsDeviceChannel {
+    virTristateBool supported;
+    virDomainCapsEnum type;   /* virDomainChrType */
 };
 
 STATIC_ASSERT_ENUM(VIR_DOMAIN_FS_DRIVER_TYPE_LAST);
@@ -158,6 +173,7 @@ struct _virDomainCapsCPUModel {
     virDomainCapsCPUUsable usable;
     char **blockers; /* NULL-terminated list of usability blockers */
     bool deprecated;
+    char *vendor;
 };
 
 typedef struct _virDomainCapsCPUModels virDomainCapsCPUModels;
@@ -224,6 +240,8 @@ struct _virDomainCaps {
     virDomainCapsDeviceRNG rng;
     virDomainCapsDeviceFilesystem filesystem;
     virDomainCapsDeviceTPM tpm;
+    virDomainCapsDeviceRedirdev redirdev;
+    virDomainCapsDeviceChannel channel;
     /* add new domain devices here */
 
     virDomainCapsFeatureGIC gic;
@@ -243,11 +261,13 @@ virDomainCaps *virDomainCapsNew(const char *path,
 
 virDomainCapsCPUModels *virDomainCapsCPUModelsNew(size_t nmodels);
 virDomainCapsCPUModels *virDomainCapsCPUModelsCopy(virDomainCapsCPUModels *old);
-int virDomainCapsCPUModelsAdd(virDomainCapsCPUModels *cpuModels,
-                              const char *name,
-                              virDomainCapsCPUUsable usable,
-                              char **blockers,
-                              bool deprecated);
+void
+virDomainCapsCPUModelsAdd(virDomainCapsCPUModels *cpuModels,
+                          const char *name,
+                          virDomainCapsCPUUsable usable,
+                          char **blockers,
+                          bool deprecated,
+                          const char *vendor);
 virDomainCapsCPUModel *
 virDomainCapsCPUModelsGet(virDomainCapsCPUModels *cpuModels,
                           const char *name);
