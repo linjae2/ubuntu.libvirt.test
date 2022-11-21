@@ -1,3 +1,10 @@
+libvirt (8.6.0-0ubuntu4) lunar; urgency=medium
+
+  * d/p/u/fix-swtpm-pid-duplication.patch: Clean up swtpm pids after a vm
+    shuts down (LP: #1997269)
+
+ -- Lena Voytek <lena.voytek@canonical.com>  Mon, 21 Nov 2022 11:16:40 -0700
+
 libvirt (8.6.0-0ubuntu3) kinetic; urgency=medium
 
   * d/p/u/lp-1990499-virt-aa-helper-allow-common-riscv64-loader-paths.patch:
