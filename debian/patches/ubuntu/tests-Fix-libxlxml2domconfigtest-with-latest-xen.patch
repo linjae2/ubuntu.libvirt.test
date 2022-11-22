@@ -1,0 +1,242 @@
+From 72d4709ab901dd3699d342f15ca3aff9bffddf96 Mon Sep 17 00:00:00 2001
+From: Cole Robinson <crobinso@redhat.com>
+Date: Thu, 27 Oct 2022 08:51:25 -0400
+Subject: [PATCH] tests: Fix libxlxml2domconfigtest with latest xen
+
+shadow_memkb is populated from a libxl API call, and the value can
+change. For example:
+https://xenbits.xen.org/gitweb/?p=xen.git;a=commit;h=2c992810854a15b41be920519ce83a4a328d5168
+
+Mock libxl_get_required_shadow_memory to give consistent output
+
+Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
+Signed-off-by: Cole Robinson <crobinso@redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/72d4709ab9
+Last-Update: 2022-11-22
+
+---
+ tests/libxlmock.c                                     | 11 +++++++++++
+ tests/libxlxml2domconfigdata/basic-hvm.json           |  2 +-
+ tests/libxlxml2domconfigdata/basic-pv.json            |  2 +-
+ tests/libxlxml2domconfigdata/basic-pvh.json           |  2 +-
+ tests/libxlxml2domconfigdata/cpu-shares-hvm.json      |  2 +-
+ tests/libxlxml2domconfigdata/fullvirt-acpi-slic.json  |  2 +-
+ .../fullvirt-cpuid-legacy-nest.json                   |  2 +-
+ tests/libxlxml2domconfigdata/fullvirt-cpuid.json      |  2 +-
+ .../libxlxml2domconfigdata/max-eventchannels-hvm.json |  2 +-
+ tests/libxlxml2domconfigdata/max-gntframes-hvm.json   |  2 +-
+ tests/libxlxml2domconfigdata/moredevs-hvm.json        |  2 +-
+ tests/libxlxml2domconfigdata/multiple-ip.json         |  2 +-
+ tests/libxlxml2domconfigdata/variable-clock-hvm.json  |  2 +-
+ .../libxlxml2domconfigdata/vnuma-hvm-legacy-nest.json |  2 +-
+ tests/libxlxml2domconfigdata/vnuma-hvm.json           |  2 +-
+ 15 files changed, 25 insertions(+), 14 deletions(-)
+
+diff --git a/tests/libxlmock.c b/tests/libxlmock.c
+index 0e4bf7df52..4754597e5b 100644
+--- a/tests/libxlmock.c
++++ b/tests/libxlmock.c
+@@ -109,6 +109,17 @@ VIR_MOCK_STUB_RET_ARGS(bind,
+                        const struct sockaddr *, addr,
+                        socklen_t, addrlen)
+ 
++VIR_MOCK_IMPL_RET_ARGS(libxl_get_required_shadow_memory,
++                       unsigned long,
++                       unsigned long, maxmem_kb,
++                       unsigned int, smp_cpus)
++{
++    /* silence gcc warning about unused function */
++    if (0)
++        real_libxl_get_required_shadow_memory(maxmem_kb, smp_cpus);
++    return 1234;
++}
++
+ VIR_MOCK_IMPL_RET_ARGS(__xstat, int,
+                        int, ver,
+                        const char *, path,
+diff --git a/tests/libxlxml2domconfigdata/basic-hvm.json b/tests/libxlxml2domconfigdata/basic-hvm.json
+index 87f8cb7d8a..d30875420d 100644
+--- a/tests/libxlxml2domconfigdata/basic-hvm.json
++++ b/tests/libxlxml2domconfigdata/basic-hvm.json
+@@ -15,7 +15,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 12288,
++        "shadow_memkb": 1234,
+         "device_model_version": "qemu_xen",
+         "device_model": "/bin/true",
+         "sched_params": {
+diff --git a/tests/libxlxml2domconfigdata/basic-pv.json b/tests/libxlxml2domconfigdata/basic-pv.json
+index b71c3b0f49..32d188fabd 100644
+--- a/tests/libxlxml2domconfigdata/basic-pv.json
++++ b/tests/libxlxml2domconfigdata/basic-pv.json
+@@ -14,7 +14,7 @@
+         ],
+         "max_memkb": 524288,
+         "target_memkb": 524288,
+-        "shadow_memkb": 8192,
++        "shadow_memkb": 1234,
+         "sched_params": {
+ 
+         },
+diff --git a/tests/libxlxml2domconfigdata/basic-pvh.json b/tests/libxlxml2domconfigdata/basic-pvh.json
+index 48365c9026..f51957aa85 100644
+--- a/tests/libxlxml2domconfigdata/basic-pvh.json
++++ b/tests/libxlxml2domconfigdata/basic-pvh.json
+@@ -14,7 +14,7 @@
+         ],
+         "max_memkb": 524288,
+         "target_memkb": 524288,
+-        "shadow_memkb": 8192,
++        "shadow_memkb": 1234,
+         "sched_params": {
+ 
+         },
+diff --git a/tests/libxlxml2domconfigdata/cpu-shares-hvm.json b/tests/libxlxml2domconfigdata/cpu-shares-hvm.json
+index 2aa97e88c5..15105c83ad 100644
+--- a/tests/libxlxml2domconfigdata/cpu-shares-hvm.json
++++ b/tests/libxlxml2domconfigdata/cpu-shares-hvm.json
+@@ -15,7 +15,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 12288,
++        "shadow_memkb": 1234,
+         "device_model_version": "qemu_xen",
+         "device_model": "/bin/true",
+         "sched_params": {
+diff --git a/tests/libxlxml2domconfigdata/fullvirt-acpi-slic.json b/tests/libxlxml2domconfigdata/fullvirt-acpi-slic.json
+index a2d46797aa..26f5abefee 100644
+--- a/tests/libxlxml2domconfigdata/fullvirt-acpi-slic.json
++++ b/tests/libxlxml2domconfigdata/fullvirt-acpi-slic.json
+@@ -11,7 +11,7 @@
+         ],
+         "max_memkb": 592896,
+         "target_memkb": 403456,
+-        "shadow_memkb": 5656,
++        "shadow_memkb": 1234,
+         "sched_params": {
+         },
+         "apic": "True",
+diff --git a/tests/libxlxml2domconfigdata/fullvirt-cpuid-legacy-nest.json b/tests/libxlxml2domconfigdata/fullvirt-cpuid-legacy-nest.json
+index 6290655c20..740b82d2e6 100644
+--- a/tests/libxlxml2domconfigdata/fullvirt-cpuid-legacy-nest.json
++++ b/tests/libxlxml2domconfigdata/fullvirt-cpuid-legacy-nest.json
+@@ -11,7 +11,7 @@
+         ],
+         "max_memkb": 592896,
+         "target_memkb": 403456,
+-        "shadow_memkb": 5656,
++        "shadow_memkb": 1234,
+         "cpuid": [
+             {
+                 "leaf": 1,
+diff --git a/tests/libxlxml2domconfigdata/fullvirt-cpuid.json b/tests/libxlxml2domconfigdata/fullvirt-cpuid.json
+index 811a4f0ac7..8bf41894a5 100644
+--- a/tests/libxlxml2domconfigdata/fullvirt-cpuid.json
++++ b/tests/libxlxml2domconfigdata/fullvirt-cpuid.json
+@@ -11,7 +11,7 @@
+         ],
+         "max_memkb": 592896,
+         "target_memkb": 403456,
+-        "shadow_memkb": 5656,
++        "shadow_memkb": 1234,
+         "cpuid": [
+             {
+                 "leaf": 1,
+diff --git a/tests/libxlxml2domconfigdata/max-eventchannels-hvm.json b/tests/libxlxml2domconfigdata/max-eventchannels-hvm.json
+index 4a5b0ca65f..6f0daa065f 100644
+--- a/tests/libxlxml2domconfigdata/max-eventchannels-hvm.json
++++ b/tests/libxlxml2domconfigdata/max-eventchannels-hvm.json
+@@ -15,7 +15,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 12288,
++        "shadow_memkb": 1234,
+         "event_channels": 2047,
+         "device_model_version": "qemu_xen",
+         "device_model": "/bin/true",
+diff --git a/tests/libxlxml2domconfigdata/max-gntframes-hvm.json b/tests/libxlxml2domconfigdata/max-gntframes-hvm.json
+index 2883d057ff..35de588abc 100644
+--- a/tests/libxlxml2domconfigdata/max-gntframes-hvm.json
++++ b/tests/libxlxml2domconfigdata/max-gntframes-hvm.json
+@@ -15,7 +15,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 12288,
++        "shadow_memkb": 1234,
+         "max_grant_frames": 64,
+         "device_model_version": "qemu_xen",
+         "device_model": "/bin/true",
+diff --git a/tests/libxlxml2domconfigdata/moredevs-hvm.json b/tests/libxlxml2domconfigdata/moredevs-hvm.json
+index 58cf32a8d4..bdc9afc29b 100644
+--- a/tests/libxlxml2domconfigdata/moredevs-hvm.json
++++ b/tests/libxlxml2domconfigdata/moredevs-hvm.json
+@@ -17,7 +17,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 12288,
++        "shadow_memkb": 1234,
+         "device_model_version": "qemu_xen",
+         "device_model": "/bin/true",
+         "sched_params": {
+diff --git a/tests/libxlxml2domconfigdata/multiple-ip.json b/tests/libxlxml2domconfigdata/multiple-ip.json
+index 2db98b82f6..e0b37aa795 100644
+--- a/tests/libxlxml2domconfigdata/multiple-ip.json
++++ b/tests/libxlxml2domconfigdata/multiple-ip.json
+@@ -14,7 +14,7 @@
+         ],
+         "max_memkb": 524288,
+         "target_memkb": 524288,
+-        "shadow_memkb": 8192,
++        "shadow_memkb": 1234,
+         "sched_params": {
+ 
+         },
+diff --git a/tests/libxlxml2domconfigdata/variable-clock-hvm.json b/tests/libxlxml2domconfigdata/variable-clock-hvm.json
+index 9a25d51da2..3c131c603c 100644
+--- a/tests/libxlxml2domconfigdata/variable-clock-hvm.json
++++ b/tests/libxlxml2domconfigdata/variable-clock-hvm.json
+@@ -15,7 +15,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 12288,
++        "shadow_memkb": 1234,
+         "rtc_timeoffset": 3600,
+         "localtime": "True",
+         "device_model_version": "qemu_xen",
+diff --git a/tests/libxlxml2domconfigdata/vnuma-hvm-legacy-nest.json b/tests/libxlxml2domconfigdata/vnuma-hvm-legacy-nest.json
+index 6cda8d0252..6725df9112 100644
+--- a/tests/libxlxml2domconfigdata/vnuma-hvm-legacy-nest.json
++++ b/tests/libxlxml2domconfigdata/vnuma-hvm-legacy-nest.json
+@@ -103,7 +103,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 14336,
++        "shadow_memkb": 1234,
+         "device_model_version": "qemu_xen",
+         "device_model": "/bin/true",
+         "sched_params": {
+diff --git a/tests/libxlxml2domconfigdata/vnuma-hvm.json b/tests/libxlxml2domconfigdata/vnuma-hvm.json
+index f578ccd3d3..2556c82d5f 100644
+--- a/tests/libxlxml2domconfigdata/vnuma-hvm.json
++++ b/tests/libxlxml2domconfigdata/vnuma-hvm.json
+@@ -103,7 +103,7 @@
+         "max_memkb": 1048576,
+         "target_memkb": 1048576,
+         "video_memkb": 8192,
+-        "shadow_memkb": 14336,
++        "shadow_memkb": 1234,
+         "device_model_version": "qemu_xen",
+         "device_model": "/bin/true",
+         "sched_params": {
+-- 
+2.38.1
+
