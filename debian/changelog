@@ -1,3 +1,10 @@
+libvirt (8.6.0-0ubuntu5) lunar; urgency=medium
+
+  * d/p/u/tests-Fix-libxlxml2domconfigtest-with-latest-xen.patch: fix FTBFS
+    with latest libxl
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 22 Nov 2022 16:13:36 +0100
+
 libvirt (8.6.0-0ubuntu4) lunar; urgency=medium
 
   [ Lena Voytek ]
