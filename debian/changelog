@@ -1,3 +1,13 @@
+libvirt (8.0.0-1ubuntu7.4) jammy; urgency=medium
+
+  * d/p/u/lp-1993304-apparmor-allow-getattr-on-usb-devices.patch: prevent
+    apparmor denials on USB forwarding (LP: #1993304)
+  * d/p/u/lp-1996176-nodedev-ignore-EINVAL-from-libudev-in-udevEventHandl.patch:
+    tolerate the impact of too large udev data avoiding a busy loop
+    (LP: #1996176)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 22 Nov 2022 15:59:28 +0100
+
 libvirt (8.0.0-1ubuntu7.3) jammy; urgency=medium
 
   * d/p/u/lp-1990499-virt-aa-helper-allow-common-riscv64-loader-paths.patch:

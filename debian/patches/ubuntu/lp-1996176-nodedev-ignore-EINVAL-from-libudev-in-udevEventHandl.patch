@@ -1,0 +1,58 @@
+From 33a38492b75acb7dbec9b64c41a5dba4acde4240 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Thu, 10 Nov 2022 10:36:28 +0100
+Subject: [PATCH] nodedev: ignore EINVAL from libudev in udevEventHandleThread
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Certain udev entries might be of a size that makes libudev emit EINVAL
+which right now leads to udevEventHandleThread exiting. Due to no more
+handling events other elements of libvirt will start pushing for events
+to be consumed which never happens causing a busy loop burning a cpu
+without any gain.
+
+After evaluation of the example case discussed in in #245 and a test
+run ignoring EINVAL it was considered safe to add EINVAL to the ignored
+errnos to not exit udevEventHandleThread giving it more resilience.
+
+The root cause is in systemd and by now was discussed and fixed via
+https://github.com/systemd/systemd/issues/24987, but hardening libvirt
+to be able to better deal with EINVAL returned still is the right thing
+to avoid the reported busy loops on systemd with older systemd versions.
+
+Fixes: https://gitlab.com/libvirt/libvirt/-/issues/245
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/33a38492b75acb7
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1996176
+Last-Update: 2022-11-22
+
+---
+ src/node_device/node_device_udev.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/node_device/node_device_udev.c b/src/node_device/node_device_udev.c
+index 24ef1c25a9..2454cab8f8 100644
+--- a/src/node_device/node_device_udev.c
++++ b/src/node_device/node_device_udev.c
+@@ -1865,10 +1865,12 @@ udevEventHandleThread(void *opaque G_GNUC_UNUSED)
+             }
+ 
+             /* POSIX allows both EAGAIN and EWOULDBLOCK to be used
+-             * interchangeably when the read would block or timeout was fired
++             * interchangeably when the read would block or timeout was fired.
++             * EINVAL might happen on too large udev entries, ignore those for
++             * the robustness of udevEventHandleThread.
+              */
+             VIR_WARNINGS_NO_WLOGICALOP_EQUAL_EXPR
+-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
++            if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINVAL) {
+             VIR_WARNINGS_RESET
+                 virReportSystemError(errno, "%s",
+                                      _("failed to receive device from udev "
+-- 
+2.38.1
+

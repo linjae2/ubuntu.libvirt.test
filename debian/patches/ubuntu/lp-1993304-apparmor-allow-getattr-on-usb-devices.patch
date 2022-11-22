@@ -1,0 +1,49 @@
+From d6ecd766aa95028b35b6da0d709721720c75c7c1 Mon Sep 17 00:00:00 2001
+From: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Date: Thu, 17 Nov 2022 09:35:05 +0100
+Subject: [PATCH] apparmor: allow getattr on usb devices
+
+For the handling of usb we already allow plenty of read access,
+but so far /sys/bus/usb/devices only needed read access to the directory
+to enumerate the symlinks in there that point to the actual entries via
+relative links to ../../../devices/.
+
+But in more recent systemd with updated libraries a program might do
+getattr calls on those symlinks. And while symlinks in apparmor usually
+do not matter, as it is the effective target of an access that has to be
+allowed, here the getattr calls are on the links themselves.
+
+On USB hostdev usage that causes a set of denials like:
+ apparmor="DENIED" operation="getattr" class="file"
+ name="/sys/bus/usb/devices/usb1" comm="qemu-system-x86"
+ requested_mask="r" denied_mask="r" ...
+
+It is safe to read the links, therefore add a rule to allow it to
+the block of rules that covers the usb related access.
+
+Signed-off-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+Reviewed-by: Michal Privoznik <mprivozn at redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/d6ecd766aa950
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1993304
+Last-Update: 2022-11-22
+
+---
+ src/security/apparmor/libvirt-qemu | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/security/apparmor/libvirt-qemu b/src/security/apparmor/libvirt-qemu
+index 02ee273e7e..d0289b8943 100644
+--- a/src/security/apparmor/libvirt-qemu
++++ b/src/security/apparmor/libvirt-qemu
+@@ -42,6 +42,7 @@
+ 
+   # For hostdev access. The actual devices will be added dynamically
+   /sys/bus/usb/devices/ r,
++  /sys/bus/usb/devices/* r,
+   /sys/devices/**/usb[0-9]*/** r,
+   # libusb needs udev data about usb devices (~equal to content of lsusb -v)
+   /run/udev/data/+usb* r,
+-- 
+2.38.1
+
