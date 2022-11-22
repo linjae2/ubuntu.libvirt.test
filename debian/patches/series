@@ -14,6 +14,7 @@ ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu/dnsmasq-as-priv-user
 ubuntu/ovmf_paths.patch
 ubuntu/wait-for-qemu-kvm.patch
+ubuntu/lp-1997269-fix-swtpm-pid-duplication.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
@@ -26,3 +27,5 @@ ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 ubuntu/swtpm-by-swtpm-user.patch
 ubuntu/lp-1990499-virt-aa-helper-allow-common-riscv64-loader-paths.patch
 ubuntu/lp-1990949-virpcivpd-reduce-errors-in-log-due-to-invalid-VPD.patch
+ubuntu/lp-1996176-nodedev-ignore-EINVAL-from-libudev-in-udevEventHandl.patch
+ubuntu/lp-1993304-apparmor-allow-getattr-on-usb-devices.patch
