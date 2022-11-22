@@ -1,9 +1,17 @@
 libvirt (8.6.0-0ubuntu4) lunar; urgency=medium
 
+  [ Lena Voytek ]
   * d/p/u/fix-swtpm-pid-duplication.patch: Clean up swtpm pids after a vm
     shuts down (LP: #1997269)
 
- -- Lena Voytek <lena.voytek@canonical.com>  Mon, 21 Nov 2022 11:16:40 -0700
+  [Christian Ehrhardt ]
+  * d/p/u/lp-1993304-apparmor-allow-getattr-on-usb-devices.patch: prevent
+    apparmor denials on USB forwarding (LP: #1993304)
+  * d/p/u/lp-1996176-nodedev-ignore-EINVAL-from-libudev-in-udevEventHandl.patch:
+    tolerate the impact of too large udev data avoiding a busy loop
+    (LP: #1996176)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 22 Nov 2022 11:21:30 +0100
 
 libvirt (8.6.0-0ubuntu3) kinetic; urgency=medium
 
