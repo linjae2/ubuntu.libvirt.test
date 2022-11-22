@@ -1,4 +1,4 @@
-libvirt (8.6.0-0ubuntu4) lunar; urgency=medium
+libvirt (8.6.0-0ubuntu3.1) kinetic; urgency=medium
 
   [ Lena Voytek ]
   * d/p/u/fix-swtpm-pid-duplication.patch: Clean up swtpm pids after a vm
