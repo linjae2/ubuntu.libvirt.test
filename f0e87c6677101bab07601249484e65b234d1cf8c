@@ -1,0 +1,4 @@
+  [ Guido Günther ]
+  * [efe753f] qemu: Recommend swtpm for TPM emulation (Closes: #1009972)
+  [ Andrea Bolognani ]
+  * [7dc1e3c] New upstream version 8.10.0
