@@ -1,0 +1,10 @@
+  * [145e4fe] patches: Add backports
+    - backport/docs-Fix-typo-in-virt-qemu-sev-validate-1.patch
+    - backport/tools-Fix-interpreter-for-virt-qemu-sev-validate.patch
+    - backport/tools-Fix-style-issues-in-virt-qemu-sev-validate.patch
+  * [409e40a] libvirt-clients-qemu: New binary package
+    - Contains QEMU-specific tools
+    - Depends on Python
+  * [bf99e82] libvirt-l10n: New binary package
+    - Contains translations
+    - Can be safely uninstalled to reduce disk footprint
