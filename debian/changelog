@@ -1,3 +1,10 @@
+libvirt (6.0.0-0ubuntu8.17) focal; urgency=medium
+
+  * d/p/u/lp-1989078-*.patch: allow arm64 to lock its OVMF/AAVMF resources
+    (LP: #1989078)
+
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Mon, 09 Jan 2023 08:48:16 +0100
+
 libvirt (6.0.0-0ubuntu8.16) focal-security; urgency=medium
 
   * SECURITY UPDATE: crash via double-free memory issue

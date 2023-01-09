@@ -186,3 +186,5 @@ CVE-2021-4147-5.patch
 CVE-2021-4147-6pre1.patch
 CVE-2021-4147-6.patch
 CVE-2022-0897.patch
+ubuntu/lp-1989078-apparmor-Fix-QEMU-access-for-UEFI-variable-files.patch
+ubuntu/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch
