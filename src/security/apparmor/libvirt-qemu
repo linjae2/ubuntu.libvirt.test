@@ -91,7 +91,7 @@
   /usr/share/misc/sgabios.bin r,
   /usr/share/ovmf/** rk,
   /usr/share/OVMF/** rk,
-  /usr/share/AAVMF/** r,
+  /usr/share/AAVMF/** rk,
   /usr/share/qemu-efi/** r,
   /usr/share/slof/** r,
 
