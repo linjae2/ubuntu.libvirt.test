@@ -16,6 +16,7 @@ X-Backport-Note: 07af71ad has not landed yet and since it sorted all entries
                  there is some non-functional noise
 Origin: backport, https://gitlab.com/libvirt/libvirt/-/commit/7aec69b7f
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/1989078
+Bug-Debian: https://bugs.debian.org/1006324
 Last-Update: 2023-01-09
 
 ---
