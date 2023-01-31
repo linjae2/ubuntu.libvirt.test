@@ -1,6 +1,7 @@
 libvirt (9.0.0-2ubuntu1) lunar; urgency=medium
 
   * Merge 9.0.0 from Debian git (LP: #1993412)
+    Also resolved the ask for a rebuild against recent libxen (LP: #2004163)
     Remaining changes:
     - libvirt-uri.sh, d/rules: Automatically switch default libvirt URI
       for users via user profile (xen URI on dom0, qemu:///system otherwise)
