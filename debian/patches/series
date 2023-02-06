@@ -1,5 +1,6 @@
 backport/apparmor-let-image-label-setting-loop-over-backing-files.patch
 backport/meson-Fix-cross-building-of-dtrace-probes.patch
+backport/Fix-reboot-command-for-LXC-containers.patch
 revert/systemd-Revert-remote-Add-libvirtd-dependency-to-virt-gue.patch
 forward/Skip-vircgrouptest.patch
 forward/Reduce-udevadm-settle-timeout-to-10-seconds.patch
@@ -11,3 +12,6 @@ debian/apparmor_profiles_local_include.patch
 debian/Set-defaults-for-zfs-tools.patch
 debian/Revert-m4-virt-xdr-rewrite-XDR-check.patch
 debian/Use-sensible-editor-by-default.patch
+backport/vircgroup-Fix-virCgroupKillRecursive-wrt-nested-controlle.patch
+backport/tests-Fix-libxlxml2domconfigtest-with-latest-xen.patch
+backport/tests-Fix-libxlxml2domconfigtest.patch
