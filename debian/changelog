@@ -1,3 +1,24 @@
+libvirt (7.0.0-3+deb11u2) bullseye; urgency=medium
+
+  * [461d540] Fix libxl config test failures.
+    Backports two commits from upstream to not fail with newer xen.
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 06 Feb 2023 17:50:14 +0100
+
+libvirt (7.0.0-3+deb11u1) bullseye; urgency=medium
+
+  [ Guido Günther ]
+  * [eb0956b] d/salsa-ci: Switch to bullseye
+  * [dfcaecc] d/gbp.conf: Switch to bullseye
+  * [7decb27] vircgroup: Fix virCgroupKillRecursive() wrt nested controllers.
+    Thanks to Dio Putra (Closes: #983871)
+
+  [ Joachim Falk ]
+  * [fcfceec] lxc: Fix reboot command
+    (Closes: #991773)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 24 Nov 2022 21:59:50 +0100
+
 libvirt (7.0.0-3) unstable; urgency=medium
 
   * Team upload
