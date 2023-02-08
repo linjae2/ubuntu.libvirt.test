@@ -1,6 +1,6 @@
-libvirt (9.0.0-0ubuntu1) lunar; urgency=medium
+libvirt (9.0.0-1ubuntu1) lunar; urgency=medium
 
-  * Merge 9.0.0 from Debian git (LP: #1993412)
+  * Merge 9.0.0-1 from Debian testing (LP: #1993412)
     Also resolved the ask for a rebuild against recent libxen (LP: #2004163)
     Remaining changes:
     - libvirt-uri.sh, d/rules: Automatically switch default libvirt URI
@@ -51,6 +51,8 @@ libvirt (9.0.0-0ubuntu1) lunar; urgency=medium
     - d/p/ubuntu/lp-1861125-ubuntu-models: recognize Ubuntu models for
       (LP 1861125) fixups
     - d/p/ubuntu/wait-for-qemu-kvm.patch - avoid hangs on startup (LP 1887592)
+    - d/libvirt-daemon-system.libvirt-guests.default: shut guests down
+      in parallel
     - Apparmor Delta that is Ubuntu specific or yet to be upstreamed
       split into logical pieces. File names in debian/patches/ubuntu-aa/:
       + 0020-virt-aa-helper-ubuntu-storage-paths.patch:
@@ -74,7 +76,6 @@ libvirt (9.0.0-0ubuntu1) lunar; urgency=medium
       + d/p/u/swtpm-by-swtpm-user.patch: change default spawned swtpm processes
         to user swtpm and adapt expected self test result changes triggered by
         this
-      + d/control: suggest swtpm-tools
       + d/libvirt-daemon-system.postinst: create user/group swtpm if not present
         due to swtpm-tools (LP 1951975)
   * Dropped changes [upstream now]:
@@ -91,11 +92,13 @@ libvirt (9.0.0-0ubuntu1) lunar; urgency=medium
       easen the use of riscv64 through libvirt (LP 1990499) [v8.9.0]
     - d/p/u/lp-1990949-virpcivpd-reduce-errors-in-log-due-to-invalid-VPD.patch:
       reduce log noise by invalid VPD data (LP 1990949) [v8.7.0]
-  * Dropped changes [in Debian since 8.9.0-1]:
-    - [f35cf09] d/rules: update path of ci-dashboard removal
-    - [a54d904] New upstream version 8.6.0
+  * Dropped changes [in Debian now]:
+    - [f35cf09] d/rules: update path of ci-dashboard removal [8.9.0-1]
+    - [a54d904] New upstream version 8.6.0 [8.9.0-1]
+    - patch refreshes and .symbols updated from 8.5.0 -> 8.6.0 [8.9.0-1]
+    - d/control: suggest swtpm-tools [8.10.0-1]
 
- -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 24 Jan 2023 13:58:40 +0100
+ -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 08 Feb 2023 14:54:15 +0100
 
 libvirt (9.0.0-1) unstable; urgency=medium
 
