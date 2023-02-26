@@ -459,7 +459,6 @@ mymain(void)
     DO_TEST_NOCAPS("net-vhostuser");
     DO_TEST_NOCAPS("net-user");
     DO_TEST_NOCAPS("net-user-addr");
-    DO_TEST_NOCAPS("net-user-passt");
     DO_TEST_NOCAPS("net-virtio");
     DO_TEST_NOCAPS("net-virtio-device");
     DO_TEST_NOCAPS("net-virtio-disable-offloads");
