@@ -97,6 +97,10 @@ libvirt (9.0.0-2ubuntu1) lunar; urgency=medium
     - [a54d904] New upstream version 8.6.0 [8.9.0-1]
     - patch refreshes and .symbols updated from 8.5.0 -> 8.6.0 [8.9.0-1]
     - d/control: suggest swtpm-tools [8.10.0-1]
+  * Added changes:
+    - revert "libvirt-daemon-system: Drop polkit rules in legacy pkla format"
+      because policykit-1 > 121 isn't yet ready to go to main in lunar.
+      (LP: #2008830)
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Wed, 01 Mar 2023 07:56:39 +0100
 
