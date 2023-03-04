@@ -911,7 +911,7 @@ virNetSocketNewConnectLibSSH2(const char *host,
     }
 
     /* create ssh session context */
-    if (!(sess = virNetSSHSessionNew()))
+    if (!(sess = virNetSSHSessionNew(username)))
         goto error;
 
     /* set ssh session parameters */
@@ -948,18 +948,13 @@ virNetSocketNewConnectLibSSH2(const char *host,
         const char *authMethod = *authMethodNext;
 
         if (STRCASEEQ(authMethod, "keyboard-interactive")) {
-            ret = virNetSSHSessionAuthAddKeyboardAuth(sess, username, -1);
+            ret = virNetSSHSessionAuthAddKeyboardAuth(sess, -1);
         } else if (STRCASEEQ(authMethod, "password")) {
-            ret = virNetSSHSessionAuthAddPasswordAuth(sess,
-                                                      uri,
-                                                      username);
+            ret = virNetSSHSessionAuthAddPasswordAuth(sess, uri);
         } else if (STRCASEEQ(authMethod, "privkey")) {
-            ret = virNetSSHSessionAuthAddPrivKeyAuth(sess,
-                                                     username,
-                                                     privkey,
-                                                     NULL);
+            ret = virNetSSHSessionAuthAddPrivKeyAuth(sess, privkey);
         } else if (STRCASEEQ(authMethod, "agent")) {
-            ret = virNetSSHSessionAuthAddAgentAuth(sess, username);
+            ret = virNetSSHSessionAuthAddAgentAuth(sess);
         } else {
             virReportError(VIR_ERR_INVALID_ARG,
                            _("Invalid authentication method: '%s'"),
@@ -1082,9 +1077,7 @@ virNetSocketNewConnectLibssh(const char *host,
         } else if (STRCASEEQ(authMethod, "password")) {
             ret = virNetLibsshSessionAuthAddPasswordAuth(sess, uri);
         } else if (STRCASEEQ(authMethod, "privkey")) {
-            ret = virNetLibsshSessionAuthAddPrivKeyAuth(sess,
-                                                        privkey,
-                                                        NULL);
+            ret = virNetLibsshSessionAuthAddPrivKeyAuth(sess, privkey);
         } else if (STRCASEEQ(authMethod, "agent")) {
             ret = virNetLibsshSessionAuthAddAgentAuth(sess);
         } else {
