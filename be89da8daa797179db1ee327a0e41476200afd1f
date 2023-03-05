@@ -1,0 +1,4 @@
+  * [92a1704] New upstream version 9.1.0
+  * [7c31663] patches: Re-enable passt support
+  * [85c31f2] patches: Drop backports
+  * [1268425] rules: Add missing dependencies for libvirt-clients-qemu
