@@ -20,7 +20,7 @@
 
 #include "testutils.h"
 
-#if defined HAVE_SYSFS_MOCK
+#ifdef __linux__
 
 
 # define LIBVIRT_VIRCGROUPPRIV_H_ALLOW
