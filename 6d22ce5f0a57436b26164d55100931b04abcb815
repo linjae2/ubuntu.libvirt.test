@@ -1,0 +1,16 @@
+  [ Andrea Bolognani ]
+  * [4d3b6ff] debconf: Add Spanish translation
+    - Thanks to Jonathan Bustillos (Closes: #986773)
+  * [5dbd337] debconf: Add Italian translation
+    - Thanks to Ceppo (Closes: #1019161)
+  * [23c7d71] debconf: Add Romanian translation
+    - Thanks to Remus-Gabriel Chelu (Closes: #1032335)
+  * [faef0ca] patches: Drop forward/Skip-vircgrouptest.patch
+    - Should no longer be needed
+  [ Pino Toscano ]
+  * [351123e] Limit architectures with RBD support
+    - No longer attempt to build the RBD storage driver on Linux
+      architectures where Ceph itself is not built (e.g. ppc64)
+  * [689bbe6] control: switch libc6-dev B-D to libc-dev
+    - Should make libvirt buildable on architectures that don't
+      have libc6-dev (e.g. ia64)
