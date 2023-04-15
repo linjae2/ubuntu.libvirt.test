@@ -1128,7 +1128,11 @@ mymain(void)
                         QEMU_CAPS_DEVICE_ISA_SERIAL);
     DO_TEST_NOCAPS("firmware-manual-efi");
     DO_TEST_PARSE_ERROR_NOCAPS("firmware-manual-efi-no-path");
-    DO_TEST_CAPS_LATEST_PARSE_ERROR("firmware-manual-efi-features");
+    DO_TEST_CAPS_LATEST("firmware-manual-efi-features");
+    DO_TEST_CAPS_ARCH_LATEST_FULL("firmware-manual-efi-features", "x86_64",
+                                  ARG_FLAGS, FLAG_EXPECT_PARSE_ERROR,
+                                  ARG_PARSEFLAGS, VIR_DOMAIN_DEF_PARSE_ABI_UPDATE,
+                                  ARG_END);
     DO_TEST_CAPS_LATEST("firmware-manual-bios-rw");
     DO_TEST_CAPS_LATEST("firmware-manual-bios-rw-implicit");
     DO_TEST("firmware-manual-efi-secure",

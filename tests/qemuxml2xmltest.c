@@ -936,6 +936,7 @@ mymain(void)
     DO_TEST_NOCAPS("firmware-manual-bios");
     DO_TEST_NOCAPS("firmware-manual-bios-stateless");
     DO_TEST_NOCAPS("firmware-manual-efi");
+    DO_TEST_CAPS_LATEST("firmware-manual-efi-features");
     DO_TEST_CAPS_LATEST("firmware-manual-efi-nvram-network-iscsi");
     DO_TEST_CAPS_LATEST("firmware-manual-efi-nvram-network-nbd");
     DO_TEST_CAPS_LATEST("firmware-manual-efi-nvram-file");
