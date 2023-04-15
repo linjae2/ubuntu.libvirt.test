@@ -1,0 +1,8 @@
+  * [56bee71] patches: Add backports
+    - backport/conf-Fix-migration-in-some-firmware-autoselection-scenari.patch
+  * [4cdee74] debconf: Add Spanish translation
+    - Thanks to Jonathan Bustillos (Closes: #986773)
+  * [1e520e5] debconf: Add Italian translation
+    - Thanks to Ceppo (Closes: #1019161)
+  * [12619ec] debconf: Add Romanian translation
+    - Thanks to Remus-Gabriel Chelu (Closes: #1032335)
