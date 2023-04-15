@@ -9037,6 +9037,12 @@ virDomainNetBackendParseXML(xmlNodePtr node,
                        VIR_XML_PROP_NONZERO, &def->backend.type) < 0) {
         return -1;
     }
+    if (def->backend.type == VIR_DOMAIN_NET_BACKEND_PASST) {
+        virReportError(VIR_ERR_XML_ERROR,
+                       _("Invalid value for attribute '%s' in element '%s': '%s'."),
+                       "type", node->name, "passt");
+        return -1;
+    }
 
     def->backend.logFile = virXMLPropString(node, "logFile");
 
