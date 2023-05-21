@@ -1,0 +1,4 @@
+  * [4e3ec2a] links: Link /usr/share/doc/* to /usr/share/doc/libvirt0
+    - The documentation directory for all binary packages (except
+      for libvirt-doc) is now a symlink to that of libvirt0, which
+      means that we no longer install 20+ copies of the same files
