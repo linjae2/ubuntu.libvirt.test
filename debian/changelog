@@ -1,3 +1,12 @@
+libvirt (8.6.0-0ubuntu3.2) kinetic-security; urgency=medium
+
+  * SECURITY UPDATE: DoS via memleak in SR-IOV PCI device capabilities
+    - debian/patches/CVE-2023-2700.patch: resolve leak in
+      virPCIVirtualFunctionList cleanup in src/util/virpci.c.
+    - CVE-2023-2700
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Fri, 26 May 2023 10:07:47 -0400
+
 libvirt (8.6.0-0ubuntu3.1) kinetic; urgency=medium
 
   [ Lena Voytek ]
