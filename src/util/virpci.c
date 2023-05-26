@@ -2255,6 +2255,7 @@ virPCIVirtualFunctionListFree(virPCIVirtualFunctionList *list)
         g_free(list->functions[i].ifname);
     }
 
+    g_free(list->functions);
     g_free(list);
 }
 

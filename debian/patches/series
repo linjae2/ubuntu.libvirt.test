@@ -37,3 +37,5 @@ ubuntu/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch
 ubuntu/lp-1990499-virt-aa-helper-allow-common-riscv64-loader-paths.patch
 ubuntu/lp-1996176-nodedev-ignore-EINVAL-from-libudev-in-udevEventHandl.patch
 ubuntu/lp-1993304-apparmor-allow-getattr-on-usb-devices.patch
+CVE-2022-0897.patch
+CVE-2023-2700.patch
