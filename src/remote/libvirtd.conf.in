@@ -162,7 +162,7 @@
 #
 # To restrict monitoring of domains you may wish to either
 # enable 'sasl' here, or change the polkit policy definition.
-#auth_unix_ro = "@default_auth@"
+auth_unix_ro = "none"
 
 # Set an authentication scheme for UNIX read-write sockets.
 #
@@ -178,7 +178,7 @@
 # is essential to change the systemd SocketMode parameter
 # back to 0600, to avoid an insecure configuration.
 #
-#auth_unix_rw = "@default_auth@"
+auth_unix_rw = "none"
 @CUT_ENABLE_IP@
 
 # Change the authentication scheme for TCP sockets.
