@@ -1,0 +1,3 @@
+  * [79f6669] patches: Add backports
+    - backport/virpci-Resolve-leak-in-virPCIVirtualFunctionList-cleanup.patch
+      - Fixes CVE-2023-2700 (Closes: #1036297)
