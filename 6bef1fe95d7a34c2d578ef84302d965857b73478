@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: DoS via memleak in SR-IOV PCI device capabilities
+    - debian/patches/CVE-2023-2700.patch: resolve leak in
+      virPCIVirtualFunctionList cleanup in src/util/virpci.c.
+    - CVE-2023-2700
