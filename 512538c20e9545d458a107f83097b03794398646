@@ -1,0 +1,4 @@
+  * [98c5c4c] New upstream version 9.4.0
+  * [d0f1ab7] patches: Drop debian/Debianize-systemd-service-files.patch
+    - Changes to the upstream build system make these
+      Debian-specific modifications no longer necessary
