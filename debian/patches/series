@@ -39,3 +39,4 @@ ubuntu/lp-1996176-nodedev-ignore-EINVAL-from-libudev-in-udevEventHandl.patch
 ubuntu/lp-1993304-apparmor-allow-getattr-on-usb-devices.patch
 CVE-2022-0897.patch
 CVE-2023-2700.patch
+ubuntu/lp-2024114-Avoid-memleak-in-virNodeDeviceGetPCIVPDDynamicCap.patch
