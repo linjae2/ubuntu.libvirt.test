@@ -1,0 +1,47 @@
+From 64d32118540aca3d42bc5ee21c8b780cafe04bfa Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Wed, 30 Nov 2022 14:53:21 +0100
+Subject: [PATCH] node_device_conf: Avoid memleak in
+ virNodeDeviceGetPCIVPDDynamicCap()
+
+The virNodeDeviceGetPCIVPDDynamicCap() function is called from
+virNodeDeviceGetPCIDynamicCaps() and therefore has to be a wee
+bit more clever about adding VPD capability. Namely, it has to
+remove the old one before adding a new one. This is how other
+functions called from virNodeDeviceGetPCIDynamicCaps() behave
+as well.
+
+Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=2143235
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+Reviewed-by: Peter Krempa <pkrempa@redhat.com>
+
+Origin: upstream, https://github.com/libvirt/libvirt/commit/64d32118540aca3d42bc5ee21c8b780cafe04bfa
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2024114
+Bug: https://bugzilla.redhat.com/show_bug.cgi?id=2143235
+Last-Update: 2023-06-20
+
+---
+ src/conf/node_device_conf.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- a/src/conf/node_device_conf.c
++++ b/src/conf/node_device_conf.c
+@@ -3019,6 +3019,9 @@ virNodeDeviceGetPCIVPDDynamicCap(virNode
+     virPCIDeviceAddress devAddr;
+     g_autoptr(virPCIVPDResource) res = NULL;
+ 
++    g_clear_pointer(&devCapPCIDev->vpd, virPCIVPDResourceFree);
++    devCapPCIDev->flags &= ~VIR_NODE_DEV_CAP_FLAG_PCI_VPD;
++
+     devAddr.domain = devCapPCIDev->domain;
+     devAddr.bus = devCapPCIDev->bus;
+     devAddr.slot = devCapPCIDev->slot;
+@@ -3032,8 +3035,6 @@ virNodeDeviceGetPCIVPDDynamicCap(virNode
+         if ((res = virPCIDeviceGetVPD(pciDev))) {
+             devCapPCIDev->flags |= VIR_NODE_DEV_CAP_FLAG_PCI_VPD;
+             devCapPCIDev->vpd = g_steal_pointer(&res);
+-        } else {
+-            virPCIVPDResourceFree(g_steal_pointer(&devCapPCIDev->vpd));
+         }
+     }
+     return 0;
