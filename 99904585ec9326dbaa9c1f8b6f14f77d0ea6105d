@@ -1,0 +1,2 @@
+  * d/p/u/lp-2024114-Avoid-memleak-in-virNodeDeviceGetPCIVPDDynamicCap.patch:
+    fix memory leak PCI devices with VPD data (LP: #2024114) 
