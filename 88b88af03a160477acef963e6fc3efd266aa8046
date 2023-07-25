@@ -1,0 +1,2 @@
+  [ Pino Toscano ]
+  * [2adb625] Enable the glusterfs storage driver only on 64bit architectures
