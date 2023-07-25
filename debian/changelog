@@ -1,3 +1,12 @@
+libvirt (9.0.0-2ubuntu1.2) lunar-security; urgency=medium
+
+  * SECURITY UPDATE: denial of service via improper locking
+    - debian/patches/CVE-2023-3750.patch: fix returning of locked objects
+      from virStoragePoolObjListSearch in src/conf/virstorageobj.c.
+    - CVE-2023-3750
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Tue, 25 Jul 2023 09:11:54 -0400
+
 libvirt (9.0.0-2ubuntu1.1) lunar-security; urgency=medium
 
   * SECURITY UPDATE: DoS via memleak in SR-IOV PCI device capabilities
