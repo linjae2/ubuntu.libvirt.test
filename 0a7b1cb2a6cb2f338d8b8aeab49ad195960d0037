@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: denial of service via improper locking
+    - debian/patches/CVE-2023-3750.patch: fix returning of locked objects
+      from virStoragePoolObjListSearch in src/conf/virstorageobj.c.
+    - CVE-2023-3750
