@@ -8,8 +8,6 @@ Forwarded: not-needed
  tools/libvirt-guests.sh.in       | 17 ++++++++---------
  2 files changed, 10 insertions(+), 11 deletions(-)
 
-diff --git a/docs/manpages/libvirt-guests.rst b/docs/manpages/libvirt-guests.rst
-index f27eaad..62b279c 100644
 --- a/docs/manpages/libvirt-guests.rst
 +++ b/docs/manpages/libvirt-guests.rst
 @@ -51,7 +51,7 @@ The following variables are supported:
@@ -30,8 +28,6 @@ index f27eaad..62b279c 100644
  
    Action taken on host shutdown
  
-diff --git a/tools/libvirt-guests.sh.in b/tools/libvirt-guests.sh.in
-index 0160142..0141f05 100644
 --- a/tools/libvirt-guests.sh.in
 +++ b/tools/libvirt-guests.sh.in
 @@ -21,19 +21,19 @@ localstatedir="@localstatedir@"
