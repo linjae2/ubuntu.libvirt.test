@@ -26,3 +26,4 @@ usr/share/man/man7/virkeycode-xtkbd.7
 usr/share/man/man7/virkeyname-linux.7
 usr/share/man/man7/virkeyname-osx.7
 usr/share/man/man7/virkeyname-win32.7
+etc/profile.d/libvirt-uri.sh
