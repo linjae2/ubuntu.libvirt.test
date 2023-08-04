@@ -1,0 +1,63 @@
+From f0a495161629662af3a820895bf35bed61863ae0 Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon, 7 Feb 2022 11:56:40 +0100
+Subject: qemu: domain: Store 'qomPath' in qemuDomainVcpuPrivate
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The QOM path will be needed by code which is querying the cpu flags via
+'qom-get' and thus needs a valid QOM path to the vCPU.
+
+Add it into the private data and transfer from the queried data.
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1982896
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/f0a495161629662af3a820895bf35bed61863ae0
+Last-Update: 2023-08-04
+---
+diff --git a/src/qemu/qemu_domain.c b/src/qemu/qemu_domain.c
+index 14b585c6e9..015f635dc8 100644
+--- a/src/qemu/qemu_domain.c
++++ b/src/qemu/qemu_domain.c
+@@ -821,6 +821,7 @@ qemuDomainVcpuPrivateDispose(void *obj)
+     g_free(priv->type);
+     g_free(priv->alias);
+     virJSONValueFree(priv->props);
++    g_free(priv->qomPath);
+     return;
+ }
+ 
+@@ -9550,6 +9551,8 @@ qemuDomainRefreshVcpuInfo(virQEMUDriver *driver,
+         vcpupriv->props = g_steal_pointer(&info[i].props);
+         vcpupriv->enable_id = info[i].id;
+         vcpupriv->qemu_id = info[i].qemu_id;
++        g_free(vcpupriv->qomPath);
++        vcpupriv->qomPath = g_steal_pointer(&info[i].qom_path);
+ 
+         if (hotplug && state) {
+             vcpu->online = info[i].online;
+diff --git a/src/qemu/qemu_domain.h b/src/qemu/qemu_domain.h
+index 78474b3f73..8bf1c91049 100644
+--- a/src/qemu/qemu_domain.h
++++ b/src/qemu/qemu_domain.h
+@@ -316,6 +316,8 @@ struct _qemuDomainVcpuPrivate {
+     int thread_id;
+     int node_id;
+     int vcpus;
++
++    char *qomPath;
+ };
+ 
+ #define QEMU_DOMAIN_VCPU_PRIVATE(vcpu) \
+diff --git a/src/qemu/qemu_monitor.h b/src/qemu/qemu_monitor.h
+index 11ecda97de..efc4721ea9 100644
+--- a/src/qemu/qemu_monitor.h
++++ b/src/qemu/qemu_monitor.h
+@@ -692,7 +692,6 @@ struct _qemuMonitorCPUInfo {
+     /* alias of an hotpluggable entry. Entries with alias can be hot-unplugged */
+     char *alias;
+ 
+-    /* internal for use in the matching code */
+     char *qom_path;
+ 
+     bool halted;

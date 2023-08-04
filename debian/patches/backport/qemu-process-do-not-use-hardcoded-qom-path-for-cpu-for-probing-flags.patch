@@ -1,0 +1,58 @@
+From a7743c60268e706699d4aa53ac0c45683ea84954 Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon, 7 Feb 2022 12:29:47 +0100
+Subject: qemu: process: Don't use hardcoded QOM path for cpu for probing flags
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Modify 'qemuProcessGetVCPUQOMPath' to take the detected QOM path of the
+first vCPU which is always present as the QOM path used our code probing
+CPU flags via 'qom-get'.
+
+This is needed as upcoming qemu will change it.
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1982896
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/a7743c60268e706699d4aa53ac0c45683ea84954
+Last-Update: 2023-08-04
+---
+diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
+index bd9c6ed747..eeda2a92ef 100644
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -4226,8 +4226,16 @@ qemuProcessTranslateCPUFeatures(const char *name,
+ 
+ /* returns the QOM path to the first vcpu */
+ static const char *
+-qemuProcessGetVCPUQOMPath(void)
++qemuProcessGetVCPUQOMPath(virDomainObj *vm)
+ {
++    virDomainVcpuDef *vcpu = virDomainDefGetVcpu(vm->def, 0);
++    qemuDomainVcpuPrivate *vcpupriv;
++
++    if (vcpu &&
++        (vcpupriv = QEMU_DOMAIN_VCPU_PRIVATE(vcpu)) &&
++        vcpupriv->qomPath)
++        return vcpupriv->qomPath;
++
+     return "/machine/unattached/device[0]";
+ }
+ 
+@@ -4242,7 +4250,7 @@ qemuProcessFetchGuestCPU(virQEMUDriver *driver,
+     qemuDomainObjPrivate *priv = vm->privateData;
+     g_autoptr(virCPUData) dataEnabled = NULL;
+     g_autoptr(virCPUData) dataDisabled = NULL;
+-    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath();
++    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath(vm);
+     bool generic;
+     int rc;
+ 
+@@ -8465,7 +8473,7 @@ qemuProcessRefreshCPUMigratability(virQEMUDriver *driver,
+ {
+     qemuDomainObjPrivate *priv = vm->privateData;
+     virDomainDef *def = vm->def;
+-    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath();
++    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath(vm);
+     bool migratable;
+     int rc;
+ 

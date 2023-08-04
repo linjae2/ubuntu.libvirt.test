@@ -4224,6 +4224,22 @@ qemuProcessTranslateCPUFeatures(const char *name,
 }
 
 
+/* returns the QOM path to the first vcpu */
+static const char *
+qemuProcessGetVCPUQOMPath(virDomainObj *vm)
+{
+    virDomainVcpuDef *vcpu = virDomainDefGetVcpu(vm->def, 0);
+    qemuDomainVcpuPrivate *vcpupriv;
+
+    if (vcpu &&
+        (vcpupriv = QEMU_DOMAIN_VCPU_PRIVATE(vcpu)) &&
+        vcpupriv->qomPath)
+        return vcpupriv->qomPath;
+
+    return "/machine/unattached/device[0]";
+}
+
+
 static int
 qemuProcessFetchGuestCPU(virQEMUDriver *driver,
                          virDomainObj *vm,
@@ -4234,6 +4250,7 @@ qemuProcessFetchGuestCPU(virQEMUDriver *driver,
     qemuDomainObjPrivate *priv = vm->privateData;
     g_autoptr(virCPUData) dataEnabled = NULL;
     g_autoptr(virCPUData) dataDisabled = NULL;
+    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath(vm);
     bool generic;
     int rc;
 
@@ -4251,10 +4268,11 @@ qemuProcessFetchGuestCPU(virQEMUDriver *driver,
     if (generic) {
         rc = qemuMonitorGetGuestCPU(priv->mon,
                                     vm->def->os.arch,
+                                    cpuQOMPath,
                                     qemuProcessTranslateCPUFeatures, priv->qemuCaps,
                                     &dataEnabled, &dataDisabled);
     } else {
-        rc = qemuMonitorGetGuestCPUx86(priv->mon, &dataEnabled, &dataDisabled);
+        rc = qemuMonitorGetGuestCPUx86(priv->mon, cpuQOMPath, &dataEnabled, &dataDisabled);
     }
 
     qemuDomainObjExitMonitor(driver, vm);
@@ -4335,25 +4353,19 @@ qemuProcessUpdateAndVerifyCPU(virQEMUDriver *driver,
                               virDomainObj *vm,
                               qemuDomainAsyncJob asyncJob)
 {
-    virCPUData *cpu = NULL;
-    virCPUData *disabled = NULL;
-    int ret = -1;
+    g_autoptr(virCPUData) cpu = NULL;
+    g_autoptr(virCPUData) disabled = NULL;
 
     if (qemuProcessFetchGuestCPU(driver, vm, asyncJob, &cpu, &disabled) < 0)
-        goto cleanup;
+        return -1;
 
     if (qemuProcessVerifyCPU(vm, cpu) < 0)
-        goto cleanup;
+        return -1;
 
     if (qemuProcessUpdateLiveGuestCPU(vm, cpu, disabled) < 0)
-        goto cleanup;
+        return -1;
 
-    ret = 0;
-
- cleanup:
-    virCPUDataFree(cpu);
-    virCPUDataFree(disabled);
-    return ret;
+    return 0;
 }
 
 
@@ -7585,10 +7597,6 @@ qemuProcessLaunch(virConnectPtr conn,
     if (qemuConnectAgent(driver, vm) < 0)
         goto cleanup;
 
-    VIR_DEBUG("Verifying and updating provided guest CPU");
-    if (qemuProcessUpdateAndVerifyCPU(driver, vm, asyncJob) < 0)
-        goto cleanup;
-
     VIR_DEBUG("setting up hotpluggable cpus");
     if (qemuDomainHasHotpluggableStartupVcpus(vm->def)) {
         if (qemuDomainRefreshVcpuInfo(driver, vm, asyncJob, false) < 0)
@@ -7609,6 +7617,10 @@ qemuProcessLaunch(virConnectPtr conn,
         goto cleanup;
 
     qemuDomainVcpuPersistOrder(vm->def);
+
+    VIR_DEBUG("Verifying and updating provided guest CPU");
+    if (qemuProcessUpdateAndVerifyCPU(driver, vm, asyncJob) < 0)
+        goto cleanup;
 
     VIR_DEBUG("Detecting IOThread PIDs");
     if (qemuProcessDetectIOThreadPIDs(driver, vm, asyncJob) < 0)
@@ -8486,6 +8498,7 @@ qemuProcessRefreshCPUMigratability(virQEMUDriver *driver,
 {
     qemuDomainObjPrivate *priv = vm->privateData;
     virDomainDef *def = vm->def;
+    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath(vm);
     bool migratable;
     int rc;
 
@@ -8504,7 +8517,7 @@ qemuProcessRefreshCPUMigratability(virQEMUDriver *driver,
     if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
         return -1;
 
-    rc = qemuMonitorGetCPUMigratable(priv->mon, &migratable);
+    rc = qemuMonitorGetCPUMigratable(priv->mon, cpuQOMPath, &migratable);
 
     qemuDomainObjExitMonitor(driver, vm);
     if (rc < 0)
@@ -8874,13 +8887,13 @@ qemuProcessReconnect(void *opaque)
     ignore_value(qemuSecurityCheckAllLabel(driver->securityManager,
                                            obj->def));
 
-    if (qemuProcessRefreshCPU(driver, obj) < 0)
-        goto error;
-
     if (qemuDomainRefreshVcpuInfo(driver, obj, QEMU_ASYNC_JOB_NONE, true) < 0)
         goto error;
 
     qemuDomainVcpuPersistOrder(obj->def);
+
+    if (qemuProcessRefreshCPU(driver, obj) < 0)
+        goto error;
 
     if (qemuDomainUpdateMemoryDeviceInfo(driver, obj, QEMU_ASYNC_JOB_NONE) < 0)
         goto error;

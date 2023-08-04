@@ -1,0 +1,50 @@
+From 476e8641864dcf04a74cb7f98a4f5d2fab53b1fa Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon, 7 Feb 2022 10:57:11 +0100
+Subject: qemuProcessUpdateAndVerifyCPU: Refactor cleanup
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Use automatic memory clearing and remove the 'ret' variable.
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1982896
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/476e8641864dcf04a74cb7f98a4f5d2fab53b1fa
+Last-Update: 2023-08-04
+---
+diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
+index ea586e54c1..d080ab1c49 100644
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -4335,25 +4335,19 @@ qemuProcessUpdateAndVerifyCPU(virQEMUDriver *driver,
+                               virDomainObj *vm,
+                               qemuDomainAsyncJob asyncJob)
+ {
+-    virCPUData *cpu = NULL;
+-    virCPUData *disabled = NULL;
+-    int ret = -1;
++    g_autoptr(virCPUData) cpu = NULL;
++    g_autoptr(virCPUData) disabled = NULL;
+ 
+     if (qemuProcessFetchGuestCPU(driver, vm, asyncJob, &cpu, &disabled) < 0)
+-        goto cleanup;
++        return -1;
+ 
+     if (qemuProcessVerifyCPU(vm, cpu) < 0)
+-        goto cleanup;
++        return -1;
+ 
+     if (qemuProcessUpdateLiveGuestCPU(vm, cpu, disabled) < 0)
+-        goto cleanup;
+-
+-    ret = 0;
++        return -1;
+ 
+- cleanup:
+-    virCPUDataFree(cpu);
+-    virCPUDataFree(disabled);
+-    return ret;
++    return 0;
+ }
+ 
+ 

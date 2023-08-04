@@ -1,0 +1,422 @@
+From 715846b6eaf73bdd40cb9d5016c49e593475809b Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon, 7 Feb 2022 11:45:18 +0100
+Subject: qemu: monitor: Don't hardcode QOM path of first CPU
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Convert all code using the 'QOM_CPU_PATH' macro to accept the QOM path
+as an argument.
+
+For now the new helper for fetching the path 'qemuProcessGetVCPUQOMPath'
+will always return the same hard-coded value.
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1982896
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/715846b6eaf73bdd40cb9d5016c49e593475809b
+Last-Update: 2023-08-04
+---
+diff --git a/src/qemu/qemu_monitor.c b/src/qemu/qemu_monitor.c
+index babf9e62fb..a79ccabdca 100644
+--- a/src/qemu/qemu_monitor.c
++++ b/src/qemu/qemu_monitor.c
+@@ -3887,6 +3887,7 @@ qemuMonitorSetDomainLog(qemuMonitor *mon,
+ /**
+  * qemuMonitorJSONGetGuestCPUx86:
+  * @mon: Pointer to the monitor
++ * @cpuQOMPath: QOM path of a CPU to probe
+  * @data: returns the cpu data
+  * @disabled: returns the CPU data for features which were disabled by QEMU
+  *
+@@ -3897,10 +3898,11 @@ qemuMonitorSetDomainLog(qemuMonitor *mon,
+  */
+ int
+ qemuMonitorGetGuestCPUx86(qemuMonitor *mon,
++                          const char *cpuQOMPath,
+                           virCPUData **data,
+                           virCPUData **disabled)
+ {
+-    VIR_DEBUG("data=%p disabled=%p", data, disabled);
++    VIR_DEBUG("cpuQOMPath=%s data=%p disabled=%p", cpuQOMPath, data, disabled);
+ 
+     QEMU_CHECK_MONITOR(mon);
+ 
+@@ -3908,7 +3910,7 @@ qemuMonitorGetGuestCPUx86(qemuMonitor *mon,
+     if (disabled)
+         *disabled = NULL;
+ 
+-    return qemuMonitorJSONGetGuestCPUx86(mon, data, disabled);
++    return qemuMonitorJSONGetGuestCPUx86(mon, cpuQOMPath, data, disabled);
+ }
+ 
+ 
+@@ -3916,6 +3918,7 @@ qemuMonitorGetGuestCPUx86(qemuMonitor *mon,
+  * qemuMonitorGetGuestCPU:
+  * @mon: Pointer to the monitor
+  * @arch: CPU architecture
++ * @cpuQOMPath: QOM path of a CPU to probe
+  * @translate: callback for translating CPU feature names from QEMU to libvirt
+  * @opaque: data for @translate callback
+  * @enabled: returns the CPU data for all enabled features
+@@ -3929,13 +3932,14 @@ qemuMonitorGetGuestCPUx86(qemuMonitor *mon,
+ int
+ qemuMonitorGetGuestCPU(qemuMonitor *mon,
+                        virArch arch,
++                       const char *cpuQOMPath,
+                        qemuMonitorCPUFeatureTranslationCallback translate,
+                        void *opaque,
+                        virCPUData **enabled,
+                        virCPUData **disabled)
+ {
+-    VIR_DEBUG("arch=%s translate=%p opaque=%p enabled=%p disabled=%p",
+-              virArchToString(arch), translate, opaque, enabled, disabled);
++    VIR_DEBUG("arch=%s cpuQOMPath=%s translate=%p opaque=%p enabled=%p disabled=%p",
++              virArchToString(arch), cpuQOMPath, translate, opaque, enabled, disabled);
+ 
+     QEMU_CHECK_MONITOR(mon);
+ 
+@@ -3943,7 +3947,7 @@ qemuMonitorGetGuestCPU(qemuMonitor *mon,
+     if (disabled)
+         *disabled = NULL;
+ 
+-    return qemuMonitorJSONGetGuestCPU(mon, arch, translate, opaque,
++    return qemuMonitorJSONGetGuestCPU(mon, arch, cpuQOMPath, translate, opaque,
+                                       enabled, disabled);
+ }
+ 
+@@ -4416,11 +4420,12 @@ qemuMonitorGetJobInfo(qemuMonitor *mon,
+  */
+ int
+ qemuMonitorGetCPUMigratable(qemuMonitor *mon,
++                            const char *cpuQOMPath,
+                             bool *migratable)
+ {
+     QEMU_CHECK_MONITOR(mon);
+ 
+-    return qemuMonitorJSONGetCPUMigratable(mon, migratable);
++    return qemuMonitorJSONGetCPUMigratable(mon, cpuQOMPath, migratable);
+ }
+ 
+ 
+diff --git a/src/qemu/qemu_monitor.h b/src/qemu/qemu_monitor.h
+index 9b2e4e1421..11ecda97de 100644
+--- a/src/qemu/qemu_monitor.h
++++ b/src/qemu/qemu_monitor.h
+@@ -1348,6 +1348,7 @@ void qemuMonitorSetDomainLog(qemuMonitor *mon,
+                              virFreeCallback destroy);
+ 
+ int qemuMonitorGetGuestCPUx86(qemuMonitor *mon,
++                              const char *cpuQOMPath,
+                               virCPUData **data,
+                               virCPUData **disabled);
+ 
+@@ -1356,6 +1357,7 @@ typedef const char *(*qemuMonitorCPUFeatureTranslationCallback)(const char *name
+ 
+ int qemuMonitorGetGuestCPU(qemuMonitor *mon,
+                            virArch arch,
++                           const char *cpuQOMPath,
+                            qemuMonitorCPUFeatureTranslationCallback translate,
+                            void *opaque,
+                            virCPUData **enabled,
+@@ -1489,6 +1491,7 @@ int qemuMonitorGetJobInfo(qemuMonitor *mon,
+ 
+ int
+ qemuMonitorGetCPUMigratable(qemuMonitor *mon,
++                            const char *cpuQOMPath,
+                             bool *migratable);
+ 
+ int
+diff --git a/src/qemu/qemu_monitor_json.c b/src/qemu/qemu_monitor_json.c
+index d81456bcad..8e1501d91f 100644
+--- a/src/qemu/qemu_monitor_json.c
++++ b/src/qemu/qemu_monitor_json.c
+@@ -48,8 +48,6 @@
+ 
+ VIR_LOG_INIT("qemu.qemu_monitor_json");
+ 
+-#define QOM_CPU_PATH  "/machine/unattached/device[0]"
+-
+ #define LINE_ENDING "\r\n"
+ 
+ VIR_ENUM_IMPL(qemuMonitorJob,
+@@ -7026,6 +7024,7 @@ qemuMonitorJSONParseCPUx86Features(virJSONValue *data)
+ 
+ static int
+ qemuMonitorJSONGetCPUx86Data(qemuMonitor *mon,
++                             const char *cpuQOMPath,
+                              const char *property,
+                              virCPUData **cpudata)
+ {
+@@ -7034,7 +7033,7 @@ qemuMonitorJSONGetCPUx86Data(qemuMonitor *mon,
+     virJSONValue *data;
+ 
+     if (!(cmd = qemuMonitorJSONMakeCommand("qom-get",
+-                                           "s:path", QOM_CPU_PATH,
++                                           "s:path", cpuQOMPath,
+                                            "s:property", property,
+                                            NULL)))
+         return -1;
+@@ -7058,7 +7057,8 @@ qemuMonitorJSONGetCPUx86Data(qemuMonitor *mon,
+  * of a guest CPU, and 1 if the feature is supported.
+  */
+ static int
+-qemuMonitorJSONCheckCPUx86(qemuMonitor *mon)
++qemuMonitorJSONCheckCPUx86(qemuMonitor *mon,
++                           const char *cpuQOMPath)
+ {
+     g_autoptr(virJSONValue) cmd = NULL;
+     g_autoptr(virJSONValue) reply = NULL;
+@@ -7067,7 +7067,7 @@ qemuMonitorJSONCheckCPUx86(qemuMonitor *mon)
+     size_t n;
+ 
+     if (!(cmd = qemuMonitorJSONMakeCommand("qom-list",
+-                                           "s:path", QOM_CPU_PATH,
++                                           "s:path", cpuQOMPath,
+                                            NULL)))
+         return -1;
+ 
+@@ -7102,6 +7102,7 @@ qemuMonitorJSONCheckCPUx86(qemuMonitor *mon)
+ /**
+  * qemuMonitorJSONGetGuestCPUx86:
+  * @mon: Pointer to the monitor
++ * @cpuQOMPath: QOM path of a CPU to probe
+  * @data: returns the cpu data of the guest
+  * @disabled: returns the CPU data for features which were disabled by QEMU
+  *
+@@ -7112,6 +7113,7 @@ qemuMonitorJSONCheckCPUx86(qemuMonitor *mon)
+  */
+ int
+ qemuMonitorJSONGetGuestCPUx86(qemuMonitor *mon,
++                              const char *cpuQOMPath,
+                               virCPUData **data,
+                               virCPUData **disabled)
+ {
+@@ -7119,17 +7121,17 @@ qemuMonitorJSONGetGuestCPUx86(qemuMonitor *mon,
+     g_autoptr(virCPUData) cpuDisabled = NULL;
+     int rc;
+ 
+-    if ((rc = qemuMonitorJSONCheckCPUx86(mon)) < 0)
++    if ((rc = qemuMonitorJSONCheckCPUx86(mon, cpuQOMPath)) < 0)
+         return -1;
+     else if (!rc)
+         return -2;
+ 
+-    if (qemuMonitorJSONGetCPUx86Data(mon, "feature-words",
++    if (qemuMonitorJSONGetCPUx86Data(mon, cpuQOMPath, "feature-words",
+                                      &cpuEnabled) < 0)
+         return -1;
+ 
+     if (disabled &&
+-        qemuMonitorJSONGetCPUx86Data(mon, "filtered-features",
++        qemuMonitorJSONGetCPUx86Data(mon, cpuQOMPath, "filtered-features",
+                                      &cpuDisabled) < 0)
+         return -1;
+ 
+@@ -7142,6 +7144,7 @@ qemuMonitorJSONGetGuestCPUx86(qemuMonitor *mon,
+ 
+ static int
+ qemuMonitorJSONGetCPUProperties(qemuMonitor *mon,
++                                const char *cpuQOMPath,
+                                 char ***props)
+ {
+     g_autoptr(virJSONValue) cmd = NULL;
+@@ -7150,7 +7153,7 @@ qemuMonitorJSONGetCPUProperties(qemuMonitor *mon,
+     *props = NULL;
+ 
+     if (!(cmd = qemuMonitorJSONMakeCommand("qom-list",
+-                                           "s:path", QOM_CPU_PATH,
++                                           "s:path", cpuQOMPath,
+                                            NULL)))
+         return -1;
+ 
+@@ -7166,6 +7169,7 @@ qemuMonitorJSONGetCPUProperties(qemuMonitor *mon,
+ 
+ static int
+ qemuMonitorJSONGetCPUData(qemuMonitor *mon,
++                          const char *cpuQOMPath,
+                           qemuMonitorCPUFeatureTranslationCallback translate,
+                           void *opaque,
+                           virCPUData *data)
+@@ -7174,13 +7178,13 @@ qemuMonitorJSONGetCPUData(qemuMonitor *mon,
+     g_auto(GStrv) props = NULL;
+     char **p;
+ 
+-    if (qemuMonitorJSONGetCPUProperties(mon, &props) < 0)
++    if (qemuMonitorJSONGetCPUProperties(mon, cpuQOMPath, &props) < 0)
+         return -1;
+ 
+     for (p = props; p && *p; p++) {
+         const char *name = *p;
+ 
+-        if (qemuMonitorJSONGetObjectProperty(mon, QOM_CPU_PATH, name, &prop) < 0)
++        if (qemuMonitorJSONGetObjectProperty(mon, cpuQOMPath, name, &prop) < 0)
+             return -1;
+ 
+         if (!prop.val.b)
+@@ -7199,6 +7203,7 @@ qemuMonitorJSONGetCPUData(qemuMonitor *mon,
+ 
+ static int
+ qemuMonitorJSONGetCPUDataDisabled(qemuMonitor *mon,
++                                  const char *cpuQOMPath,
+                                   qemuMonitorCPUFeatureTranslationCallback translate,
+                                   void *opaque,
+                                   virCPUData *data)
+@@ -7206,7 +7211,7 @@ qemuMonitorJSONGetCPUDataDisabled(qemuMonitor *mon,
+     g_auto(GStrv) props = NULL;
+     char **p;
+ 
+-    if (qemuMonitorJSONGetStringListProperty(mon, QOM_CPU_PATH,
++    if (qemuMonitorJSONGetStringListProperty(mon, cpuQOMPath,
+                                              "unavailable-features", &props) < 0)
+         return -1;
+ 
+@@ -7228,6 +7233,7 @@ qemuMonitorJSONGetCPUDataDisabled(qemuMonitor *mon,
+  * qemuMonitorJSONGetGuestCPU:
+  * @mon: Pointer to the monitor
+  * @arch: CPU architecture
++ * @cpuQOMPath: QOM path of a CPU to probe
+  * @translate: callback for translating CPU feature names from QEMU to libvirt
+  * @opaque: data for @translate callback
+  * @enabled: returns the CPU data for all enabled features
+@@ -7241,6 +7247,7 @@ qemuMonitorJSONGetCPUDataDisabled(qemuMonitor *mon,
+ int
+ qemuMonitorJSONGetGuestCPU(qemuMonitor *mon,
+                            virArch arch,
++                           const char *cpuQOMPath,
+                            qemuMonitorCPUFeatureTranslationCallback translate,
+                            void *opaque,
+                            virCPUData **enabled,
+@@ -7253,11 +7260,11 @@ qemuMonitorJSONGetGuestCPU(qemuMonitor *mon,
+         !(cpuDisabled = virCPUDataNew(arch)))
+         return -1;
+ 
+-    if (qemuMonitorJSONGetCPUData(mon, translate, opaque, cpuEnabled) < 0)
++    if (qemuMonitorJSONGetCPUData(mon, cpuQOMPath, translate, opaque, cpuEnabled) < 0)
+         return -1;
+ 
+     if (disabled &&
+-        qemuMonitorJSONGetCPUDataDisabled(mon, translate, opaque, cpuDisabled) < 0)
++        qemuMonitorJSONGetCPUDataDisabled(mon, cpuQOMPath, translate, opaque, cpuDisabled) < 0)
+         return -1;
+ 
+     *enabled = g_steal_pointer(&cpuEnabled);
+@@ -8671,13 +8678,14 @@ qemuMonitorJSONGetJobInfo(qemuMonitor *mon,
+ 
+ int
+ qemuMonitorJSONGetCPUMigratable(qemuMonitor *mon,
++                                const char *cpuQOMPath,
+                                 bool *migratable)
+ {
+     g_autoptr(virJSONValue) cmd = NULL;
+     g_autoptr(virJSONValue) reply = NULL;
+ 
+     if (!(cmd = qemuMonitorJSONMakeCommand("qom-get",
+-                                           "s:path", QOM_CPU_PATH,
++                                           "s:path", cpuQOMPath,
+                                            "s:property", "migratable",
+                                            NULL)))
+         return -1;
+diff --git a/src/qemu/qemu_monitor_json.h b/src/qemu/qemu_monitor_json.h
+index be66c545c9..309d1fb409 100644
+--- a/src/qemu/qemu_monitor_json.h
++++ b/src/qemu/qemu_monitor_json.h
+@@ -648,12 +648,14 @@ qemuMonitorJSONGetDeviceAliases(qemuMonitor *mon,
+ 
+ int
+ qemuMonitorJSONGetGuestCPUx86(qemuMonitor *mon,
++                              const char *cpuQOMPath,
+                               virCPUData **data,
+                               virCPUData **disabled);
+ 
+ int
+ qemuMonitorJSONGetGuestCPU(qemuMonitor *mon,
+                            virArch arch,
++                           const char *cpuQOMPath,
+                            qemuMonitorCPUFeatureTranslationCallback translate,
+                            void *opaque,
+                            virCPUData **enabled,
+@@ -846,6 +848,7 @@ qemuMonitorJSONSetDBusVMStateIdList(qemuMonitor *mon,
+ 
+ int
+ qemuMonitorJSONGetCPUMigratable(qemuMonitor *mon,
++                                const char *cpuQOMPath,
+                                 bool *migratable);
+ 
+ int
+diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
+index d080ab1c49..10e76583cf 100644
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -4224,6 +4224,14 @@ qemuProcessTranslateCPUFeatures(const char *name,
+ }
+ 
+ 
++/* returns the QOM path to the first vcpu */
++static const char *
++qemuProcessGetVCPUQOMPath(void)
++{
++    return "/machine/unattached/device[0]";
++}
++
++
+ static int
+ qemuProcessFetchGuestCPU(virQEMUDriver *driver,
+                          virDomainObj *vm,
+@@ -4234,6 +4242,7 @@ qemuProcessFetchGuestCPU(virQEMUDriver *driver,
+     qemuDomainObjPrivate *priv = vm->privateData;
+     g_autoptr(virCPUData) dataEnabled = NULL;
+     g_autoptr(virCPUData) dataDisabled = NULL;
++    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath();
+     bool generic;
+     int rc;
+ 
+@@ -4251,10 +4260,11 @@ qemuProcessFetchGuestCPU(virQEMUDriver *driver,
+     if (generic) {
+         rc = qemuMonitorGetGuestCPU(priv->mon,
+                                     vm->def->os.arch,
++                                    cpuQOMPath,
+                                     qemuProcessTranslateCPUFeatures, priv->qemuCaps,
+                                     &dataEnabled, &dataDisabled);
+     } else {
+-        rc = qemuMonitorGetGuestCPUx86(priv->mon, &dataEnabled, &dataDisabled);
++        rc = qemuMonitorGetGuestCPUx86(priv->mon, cpuQOMPath, &dataEnabled, &dataDisabled);
+     }
+ 
+     qemuDomainObjExitMonitor(driver, vm);
+@@ -8455,6 +8465,7 @@ qemuProcessRefreshCPUMigratability(virQEMUDriver *driver,
+ {
+     qemuDomainObjPrivate *priv = vm->privateData;
+     virDomainDef *def = vm->def;
++    const char *cpuQOMPath = qemuProcessGetVCPUQOMPath();
+     bool migratable;
+     int rc;
+ 
+@@ -8473,7 +8484,7 @@ qemuProcessRefreshCPUMigratability(virQEMUDriver *driver,
+     if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+         return -1;
+ 
+-    rc = qemuMonitorGetCPUMigratable(priv->mon, &migratable);
++    rc = qemuMonitorGetCPUMigratable(priv->mon, cpuQOMPath, &migratable);
+ 
+     qemuDomainObjExitMonitor(driver, vm);
+     if (rc < 0)
+diff --git a/tests/qemumonitorjsontest.c b/tests/qemumonitorjsontest.c
+index 48e2a457ab..7987182a82 100644
+--- a/tests/qemumonitorjsontest.c
++++ b/tests/qemumonitorjsontest.c
+@@ -2186,6 +2186,7 @@ testQemuMonitorJSONGetCPUData(const void *opaque)
+         return -1;
+ 
+     if (qemuMonitorJSONGetGuestCPUx86(qemuMonitorTestGetMonitor(test),
++                                      "dummy",
+                                       &cpuData, NULL) < 0)
+         return -1;
+ 
+@@ -2221,6 +2222,7 @@ testQemuMonitorJSONGetNonExistingCPUData(const void *opaque)
+         return -1;
+ 
+     rv = qemuMonitorJSONGetGuestCPUx86(qemuMonitorTestGetMonitor(test),
++                                       "dummy",
+                                        &cpuData, NULL);
+     if (rv != -2) {
+         virReportError(VIR_ERR_INTERNAL_ERROR,

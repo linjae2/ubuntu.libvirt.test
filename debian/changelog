@@ -1,3 +1,19 @@
+libvirt (8.0.0-1ubuntu7.7) jammy; urgency=medium
+
+  * When attempting to launch a VM with SGX enabled, there is an
+    error reported that prevents VMs from being launched. Backport fix
+    that fixes the main cause of that issue, which is the
+    QOM_CPU_PATH macro and qom-get behavior (LP: #1982896).
+    - d/p/b/qemu-monitor-json-get-cpux86-data-unexport.patch
+    - d/p/b/qemu-process-update-and-verify-cpu-refactor-cleanup.patch
+    - d/p/b/qemu-monitor-do-not-hardcode-qom-path-of-first-cpu.patch
+    - d/p/b/qemu-domain-store-qompath-in-qemudomainvcpuprivate.patch
+    - d/p/b/qemu-process-move-cpu-flag-querying-after-code-probing-cpus.patch
+    - d/p/b/qemu-process-move-call-to-qemuprocessrefreshcpu-after-cpu-probe.patch
+    - d/p/b/qemu-process-do-not-use-hardcoded-qom-path-for-cpu-for-probing-flags.patch
+
+ -- Michal Maloszewski <michal.maloszewski@canonical.com>  Fri, 04 Aug 2023 10:42:25 +0200
+
 libvirt (8.0.0-1ubuntu7.6) jammy; urgency=medium
 
   * d/p/u/lp-2024114-Avoid-memleak-in-virNodeDeviceGetPCIVPDDynamicCap.patch:

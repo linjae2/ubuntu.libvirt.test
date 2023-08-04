@@ -692,7 +692,6 @@ struct _qemuMonitorCPUInfo {
     /* alias of an hotpluggable entry. Entries with alias can be hot-unplugged */
     char *alias;
 
-    /* internal for use in the matching code */
     char *qom_path;
 
     bool halted;
@@ -1348,6 +1347,7 @@ void qemuMonitorSetDomainLog(qemuMonitor *mon,
                              virFreeCallback destroy);
 
 int qemuMonitorGetGuestCPUx86(qemuMonitor *mon,
+                              const char *cpuQOMPath,
                               virCPUData **data,
                               virCPUData **disabled);
 
@@ -1356,6 +1356,7 @@ typedef const char *(*qemuMonitorCPUFeatureTranslationCallback)(const char *name
 
 int qemuMonitorGetGuestCPU(qemuMonitor *mon,
                            virArch arch,
+                           const char *cpuQOMPath,
                            qemuMonitorCPUFeatureTranslationCallback translate,
                            void *opaque,
                            virCPUData **enabled,
@@ -1489,6 +1490,7 @@ int qemuMonitorGetJobInfo(qemuMonitor *mon,
 
 int
 qemuMonitorGetCPUMigratable(qemuMonitor *mon,
+                            const char *cpuQOMPath,
                             bool *migratable);
 
 int
