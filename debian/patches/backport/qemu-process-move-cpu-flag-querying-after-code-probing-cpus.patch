@@ -1,0 +1,44 @@
+From 2f498b5980161860637524a4a2d672efe94cb8c5 Mon Sep 17 00:00:00 2001
+From: Peter Krempa <pkrempa@redhat.com>
+Date: Mon, 7 Feb 2022 10:54:43 +0100
+Subject: qemu: process: Move cpu flag querying after code probing cpus
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upcoming changes will require that we have a proper QOM path for cpus
+when querying the flags as qemu is going to change it.
+
+By moving the flag probing code later we'll already probe the QOM paths
+so no re-query will be needed.
+
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1982896
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/2f498b5980161860637524a4a2d672efe94cb8c5
+Last-Update: 2023-08-04
+---
+diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
+index 10e76583cf..f99b14b846 100644
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -7573,10 +7573,6 @@ qemuProcessLaunch(virConnectPtr conn,
+     if (qemuConnectAgent(driver, vm) < 0)
+         goto cleanup;
+ 
+-    VIR_DEBUG("Verifying and updating provided guest CPU");
+-    if (qemuProcessUpdateAndVerifyCPU(driver, vm, asyncJob) < 0)
+-        goto cleanup;
+-
+     VIR_DEBUG("setting up hotpluggable cpus");
+     if (qemuDomainHasHotpluggableStartupVcpus(vm->def)) {
+         if (qemuDomainRefreshVcpuInfo(driver, vm, asyncJob, false) < 0)
+@@ -7598,6 +7594,10 @@ qemuProcessLaunch(virConnectPtr conn,
+ 
+     qemuDomainVcpuPersistOrder(vm->def);
+ 
++    VIR_DEBUG("Verifying and updating provided guest CPU");
++    if (qemuProcessUpdateAndVerifyCPU(driver, vm, asyncJob) < 0)
++        goto cleanup;
++
+     VIR_DEBUG("Detecting IOThread PIDs");
+     if (qemuProcessDetectIOThreadPIDs(driver, vm, asyncJob) < 0)
+         goto cleanup;
