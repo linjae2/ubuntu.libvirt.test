@@ -5,6 +5,7 @@ backport/qemuDomainSetupDisk-Initialize-targetPaths.patch
 backport/apparmor-uefi-variables.patch
 backport/qemu-monitor-json-get-cpux86-data-unexport.patch
 backport/qemu-process-update-and-verify-cpu-refactor-cleanup.patch
+backport/qemu-monitor-do-not-hardcode-qom-path-of-first-cpu.patch
 forward/Skip-vircgrouptest.patch
 forward/Reduce-udevadm-settle-timeout-to-10-seconds.patch
 forward/Pass-GPG_TTY-env-var-to-the-ssh-binary.patch
