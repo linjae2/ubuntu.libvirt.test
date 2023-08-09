@@ -88,6 +88,20 @@ add_users_groups()
             usermod libvirt-dnsmasq -g libvirt-dnsmasq
         fi
     fi
+
+    # These users are usually created and owned by swtpm-tools, but that shall
+    # not become a hard dependency, therefore if swtpm-tools isn't present we
+    # need to create that user/group here to avoid issues starting the service
+    # with the new defaults since LP: 1948880 (LP: #1951975)
+    if ! getent group swtpm >/dev/null; then
+        addgroup --system swtpm
+    fi
+    if ! getent passwd swtpm >/dev/null; then
+        adduser --system --ingroup swtpm --shell /bin/false \
+            --home /var/lib/swtpm --no-create-home \
+            --gecos "virtual TPM software stack" \
+            swtpm
+    fi
 }
 
 includes_addr() {
