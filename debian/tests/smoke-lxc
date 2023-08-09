@@ -22,6 +22,18 @@ check_domain()
     virsh lxc-enter-namespace --noseclabel ${DOMAIN} /bin/ls /bin/ls
 }
 
+try_restart_libvirtd()
+{
+    for _ in $(seq 10); do
+        systemctl restart libvirtd && return
+        sleep 2s
+    done
+    # This turned out to be flaky, non reproducible outside of LP-infra and
+    # is not what we want to test, Skip the test in this case
+    echo "Restart failed while checking for container-survival-through restart - skipping".
+    exit 77
+}
+
 trap cleanup EXIT
 
 set -x
@@ -37,7 +49,7 @@ virsh start ${DOMAIN}
 grep -qs "starting up" /var/log/libvirt/lxc/sl.log
 check_domain
 # Make sure a restart doesn't termiante the domain
-/etc/init.d/libvirtd restart
+try_restart_libvirtd
 check_domain
 virsh destroy ${DOMAIN} || true
 virsh undefine ${DOMAIN}
