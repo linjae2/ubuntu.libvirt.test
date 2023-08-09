@@ -169,7 +169,7 @@ DEB_CONFIGURE_EXTRA_ARGS := \
     -Dtls_priority=NORMAL \
     $(WITH_OPENVZ) \
     -Dsasl=enabled \
-    -Dlibssh2=enabled \
+    -Dlibssh2=disabled \
     -Dlibssh=enabled \
     -Dreadline=enabled \
     -Dbash_completion=enabled \

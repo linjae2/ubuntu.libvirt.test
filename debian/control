@@ -39,7 +39,6 @@ Build-Depends:
  libsasl2-dev,
  libselinux1-dev [linux-any],
  libssh-dev,
- libssh2-1-dev,
  libtasn1-6-dev,
  libtirpc-dev,
  libudev-dev [linux-any],
