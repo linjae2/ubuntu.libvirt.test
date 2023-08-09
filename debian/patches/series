@@ -13,3 +13,4 @@ ubuntu/ovmf_paths.patch
 ubuntu/wait-for-qemu-kvm.patch
 
 # Ubuntu Apparmor Changes
+ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
