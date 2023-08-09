@@ -5,4 +5,5 @@ debian/Use-sensible-editor-by-default.patch
 
 ubuntu/Allow-libvirt-group-to-access-the-socket.patch
 ubuntu/daemon-augeas-fix-expected.patch
+ubuntu/ubuntu_machine_type.patch
 ubuntu/ovmf_paths.patch
