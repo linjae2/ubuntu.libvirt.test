@@ -6,4 +6,5 @@ debian/apparmor_profiles_local_include.patch
 debian/Use-sensible-editor-by-default.patch
 
 ubuntu/Allow-libvirt-group-to-access-the-socket.patch
+ubuntu/daemon-augeas-fix-expected.patch
 ubuntu/ovmf_paths.patch
