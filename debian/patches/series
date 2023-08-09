@@ -11,6 +11,7 @@ ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu/dnsmasq-as-priv-user
 ubuntu/ovmf_paths.patch
 ubuntu/wait-for-qemu-kvm.patch
+ubuntu/swtpm-by-swtpm-user.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
