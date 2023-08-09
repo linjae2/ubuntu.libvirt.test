@@ -46,6 +46,7 @@ Build-Depends:
  libxml2-dev,
  libxml2-utils,
  libyajl-dev [linux-any],
+ libzfslinux-dev [linux-amd64 linux-arm64 linux-armhf linux-i386 linux-ppc64el linux-s390x],
  lvm2 [linux-any],
  meson,
  mount [linux-any],
