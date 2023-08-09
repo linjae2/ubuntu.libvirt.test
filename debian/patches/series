@@ -4,3 +4,5 @@ forward/Pass-GPG_TTY-env-var-to-the-ssh-binary.patch
 debian/Debianize-libvirt-guests.patch
 debian/apparmor_profiles_local_include.patch
 debian/Use-sensible-editor-by-default.patch
+
+ubuntu/ovmf_paths.patch
