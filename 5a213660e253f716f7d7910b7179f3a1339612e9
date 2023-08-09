@@ -1,0 +1,5 @@
+  * [74213a2] New upstream version 9.6.0
+    - Fixes CVE-2023-3750 (Closes: #1041811)
+  * [cc3a788] control: Require AppArmor 3
+  * [54d65bd] patches: Add backports
+    - backport/src-fix-max-file-limits-in-systemd-services.patch
