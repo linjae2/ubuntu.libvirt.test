@@ -68,6 +68,16 @@ NWFILTERS="
 "
 
 case "$1" in
+    remove)
+        if [ -L /etc/dnsmasq.d/libvirt-daemon ]; then
+            echo "Removing libvirt-daemon dnsmasq configuration"
+            rm -f /etc/dnsmasq.d/libvirt-daemon 2>/dev/null || true
+
+            # Try to restart a potential system wide dnsmasq
+            invoke-rc.d dnsmasq restart 2>/dev/null || true
+        fi
+    ;;
+
     purge)
         if getent group libvirt >/dev/null; then
             delgroup libvirt >/dev/null || true

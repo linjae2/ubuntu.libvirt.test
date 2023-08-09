@@ -255,4 +255,21 @@ db_stop
 
 #DEBHELPER#
 
+# We need this after the debhelper generated code so that dpkg-maintscript
+# can do its renamming first.
+if [ "$1" = "configure" ]; then
+    # Configure dnsmasq
+    if [ -f /etc/dnsmasq.d-available/libvirt-daemon ]; then
+        echo "Setting up libvirt-daemon dnsmasq configuration."
+        mkdir -p /etc/dnsmasq.d
+        if [ ! -e /etc/dnsmasq.d/libvirt-daemon ]; then
+            ln -s /etc/dnsmasq.d-available/libvirt-daemon \
+                  /etc/dnsmasq.d/libvirt-daemon
+        fi
+
+        # Try to restart a potential system wide dnsmasq
+        invoke-rc.d dnsmasq restart 2>/dev/null || true
+    fi
+fi
+
 exit 0
