@@ -220,6 +220,12 @@ override_dh_auto_test:
 	    exit 1; \
 	fi
 
+override_dh_auto_install:
+	mkdir -p debian/tmp/usr/share/apport/package-hooks
+	cp -f debian/libvirt-daemon.apport \
+	      debian/tmp/usr/share/apport/package-hooks/source_libvirt.py
+	dh_auto_install
+
 # After the upstream build system has installed libvirt into $(DEB_DESTDIR),
 # we need to make some tweaks (add a few extra files, delete some contents
 # we're not interested in, move things around) so that later calls to the
