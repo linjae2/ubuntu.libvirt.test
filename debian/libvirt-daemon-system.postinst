@@ -61,6 +61,11 @@ add_users_groups()
         addgroup --quiet --system $PARAMETER_GID libvirt-qemu
         adduser --quiet libvirt-qemu libvirt-qemu
     fi
+
+    # Add each sudo user to the libvirt group
+    for u in $(getent group sudo | sed -e "s/^.*://" -e "s/,/ /g"); do
+        adduser "$u" libvirt >/dev/null || true
+    done
 }
 
 includes_addr() {
