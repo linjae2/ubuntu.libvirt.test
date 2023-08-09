@@ -6,7 +6,7 @@ Restrictions: allow-stderr
 Tests: smoke-qemu-session
 Depends:
  libvirt-clients,
- libvirt-daemon,
+ libvirt-daemon-system,
  libxml2-utils,
  linux-image-amd64 [amd64] | linux-generic [amd64],
  qemu-kvm,
