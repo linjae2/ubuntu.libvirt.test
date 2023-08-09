@@ -66,6 +66,21 @@ add_users_groups()
     for u in $(getent group sudo | sed -e "s/^.*://" -e "s/,/ /g"); do
         adduser "$u" libvirt >/dev/null || true
     done
+
+    if ! getent group libvirt-dnsmasq >/dev/null; then
+        addgroup --quiet --system libvirt-dnsmasq
+    fi
+    if ! getent passwd libvirt-dnsmasq >/dev/null; then
+        adduser --quiet \
+                --system \
+                --ingroup libvirt-dnsmasq \
+                --disabled-login \
+                --disabled-password \
+                --home /var/lib/libvirt/dnsmasq \
+                --no-create-home \
+                --gecos "Libvirt Dnsmasq" \
+                libvirt-dnsmasq
+    fi
 }
 
 includes_addr() {
