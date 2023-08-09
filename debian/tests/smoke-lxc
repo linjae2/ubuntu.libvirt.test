@@ -39,7 +39,7 @@ check_domain
 # Make sure a restart doesn't termiante the domain
 /etc/init.d/libvirtd restart
 check_domain
-virsh destroy ${DOMAIN}
+virsh destroy ${DOMAIN} || true
 virsh undefine ${DOMAIN}
 CLEANED_UP=1
 set +x
