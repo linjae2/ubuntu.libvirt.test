@@ -13,3 +13,5 @@ ubuntu/lp-1861125-ubuntu-models.patch
 ubuntu/dnsmasq-as-priv-user
 ubuntu/ovmf_paths.patch
 ubuntu/wait-for-qemu-kvm.patch
+
+# Ubuntu Apparmor Changes
