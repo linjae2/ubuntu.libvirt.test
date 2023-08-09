@@ -140,9 +140,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
- libvirt-daemon-driver-lxc (= ${binary:Version}) [${ARCHES_LXC}],
- libvirt-daemon-driver-vbox (= ${binary:Version}) [${ARCHES_VBOX}],
- libvirt-daemon-driver-xen (= ${binary:Version}) [${ARCHES_XEN}],
  libxml2-utils,
  lvm2,
  mount,
@@ -153,6 +150,9 @@ Suggests:
  libvirt-daemon-driver-storage-iscsi-direct (= ${binary:Version}),
  libvirt-daemon-driver-storage-rbd (= ${binary:Version}) [${ARCHES_CEPH}],
  libvirt-daemon-driver-storage-zfs (= ${binary:Version}),
+ libvirt-daemon-driver-lxc (= ${binary:Version}) [${ARCHES_LXC}],
+ libvirt-daemon-driver-vbox (= ${binary:Version}) [${ARCHES_VBOX}],
+ libvirt-daemon-driver-xen (= ${binary:Version}) [${ARCHES_XEN}],
  libvirt-daemon-system (= ${binary:Version}),
  numad,
 Enhances:
