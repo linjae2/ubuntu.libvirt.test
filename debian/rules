@@ -239,6 +239,9 @@ execute_after_dh_auto_install:
 	mkdir -p debian/tmp/etc/dnsmasq.d-available
 	cp debian/libvirt-daemon.dnsmasq \
 	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
 
 	# Copy the release notes where dh_installdocs can find them
 	cp NEWS.rst \
