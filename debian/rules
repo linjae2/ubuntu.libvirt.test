@@ -308,6 +308,9 @@ ifeq ($(DEB_HOST_ARCH_OS), linux)
 	mkdir -p debian/tmp/etc/dnsmasq.d-available
 	cp debian/libvirt-daemon.dnsmasq \
 	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
+	# Add profile script to automatically set default URI
+	mkdir -p debian/tmp/etc/profile.d
+	cp -f debian/libvirt-uri.sh debian/tmp/etc/profile.d/
 
 	# Disable network autostart
 	rm -rf $(DEB_DESTDIR)/etc/libvirt/qemu/networks/autostart/
