@@ -1,3 +1,4 @@
+etc/dnsmasq.d-available
 etc/libvirt/hooks
 etc/libvirt/nwfilter
 etc/libvirt/qemu/networks
