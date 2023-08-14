@@ -4,6 +4,7 @@ etc/apparmor.d/libvirt/TEMPLATE.lxc
 etc/apparmor.d/libvirt/TEMPLATE.qemu
 etc/apparmor.d/usr.lib.libvirt.virt-aa-helper
 etc/apparmor.d/usr.sbin.libvirtd
+etc/dnsmasq.d-available/libvirt-daemon
 etc/libvirt/libvirtd.conf
 [${ARCHES_XEN}] etc/libvirt/libxl-lockd.conf
 [${ARCHES_XEN}] etc/libvirt/libxl-sanlock.conf

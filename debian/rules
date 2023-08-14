@@ -306,6 +306,11 @@ ifeq ($(DEB_HOST_ARCH_OS), linux)
 	mkdir -p $(DEB_DESTDIR)/usr/share/apport/package-hooks/
 	cp -f debian/libvirt-daemon.apport \
 	      $(DEB_DESTDIR)/usr/share/apport/package-hooks/source_libvirt.py
+
+	# Copy dnsmasq configuration
+	mkdir -p $(DEB_DESTDIR)/etc/dnsmasq.d-available/
+	cp debian/libvirt-daemon.dnsmasq \
+	   $(DEB_DESTDIR)/etc/dnsmasq.d-available/libvirt-daemon
 endif
 
 	# Copy the release notes where dh_installdocs can find them
