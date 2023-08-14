@@ -303,7 +303,11 @@ execute_after_dh_auto_install:
 ifeq ($(DEB_HOST_ARCH_OS), linux)
 	# Move upstream files where dh_* can find them
 	mv $(DEB_DESTDIR)/usr/lib/sysctl.d/ \
-	   $(DEB_DESTDIR)/usr/share/doc/libvirt/examples/sysctl;
+	  $(DEB_DESTDIR)/usr/share/doc/libvirt/examples/sysctl;
+	# copy dnsmasq configuration
+	mkdir -p debian/tmp/etc/dnsmasq.d-available
+	cp debian/libvirt-daemon.dnsmasq \
+	   debian/tmp/etc/dnsmasq.d-available/libvirt-daemon
 
 	# Disable network autostart
 	rm -rf $(DEB_DESTDIR)/etc/libvirt/qemu/networks/autostart/
