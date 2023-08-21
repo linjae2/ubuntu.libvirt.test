@@ -1,0 +1,5 @@
+  * [6456ab6] control: Drop Build-Depends on qemu-system-common
+    - No longer needed
+  * [cd2ed06] rules: Introduce ARCHES_QEMU
+    - Only build the QEMU hypervisor driver on architectures where
+      QEMU system emulator binaries are available
