@@ -1,0 +1,36 @@
+From 43869b91788cd3ceb0672e0735a06b06a358655c Mon Sep 17 00:00:00 2001
+From: Tim Wiederhake <twiederh@redhat.com>
+Date: Thu, 9 Mar 2023 14:18:18 +0100
+Subject: [PATCH] cpu_map: Add missing feature "fzrm"
+
+Introduced in qemu 58794f644e.
+
+Signed-off-by: Tim Wiederhake <twiederh@redhat.com>
+Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/43869b91788cd3ceb0672e0735a06b06a358655c
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/2028057
+Last-Update: 2023-10-27
+
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -416,6 +416,9 @@
+   <feature name='avx512-bf16'>
+     <cpuid eax_in='0x07' ecx_in='0x01' eax='0x00000020'/>
+   </feature>
++  <feature name='fzrm'>
++    <cpuid eax_in='0x07' ecx_in='0x01' eax='0x00000400'/>
++  </feature>
+ 
+   <!-- Processor Extended State Enumeration sub leaf 1 -->
+   <feature name='xsaveopt'>
+--- a/tests/domaincapsdata/qemu_8.0.0-tcg.x86_64.xml
++++ b/tests/domaincapsdata/qemu_8.0.0-tcg.x86_64.xml
+@@ -52,6 +52,7 @@
+       <feature policy='require' name='la57'/>
+       <feature policy='require' name='pks'/>
+       <feature policy='require' name='fsrm'/>
++      <feature policy='require' name='fzrm'/>
+       <feature policy='require' name='3dnowext'/>
+       <feature policy='require' name='3dnow'/>
+       <feature policy='require' name='npt'/>

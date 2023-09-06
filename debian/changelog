@@ -1,3 +1,10 @@
+libvirt (9.0.0-2ubuntu1.3) lunar; urgency=medium
+
+  * d/p/u/lp-2028057-*, d/libvirt0.install: Add named types and definitions for
+    Intel SapphireRapids (LP: #2028057)
+
+ -- Lena Voytek <lena.voytek@canonical.com>  Wed, 06 Sep 2023 12:58:15 -0700
+
 libvirt (9.0.0-2ubuntu1.2) lunar-security; urgency=medium
 
   * SECURITY UPDATE: denial of service via improper locking

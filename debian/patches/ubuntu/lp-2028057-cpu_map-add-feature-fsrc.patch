@@ -1,0 +1,36 @@
+From 62dd68ef18ff964bd3c388f5d08f5289e5b99dc6 Mon Sep 17 00:00:00 2001
+From: Tim Wiederhake <twiederh@redhat.com>
+Date: Thu, 9 Mar 2023 14:18:18 +0100
+Subject: [PATCH] cpu_map: Add missing feature "fsrc"
+
+Introduced in qemu 58794f644e.
+
+Signed-off-by: Tim Wiederhake <twiederh@redhat.com>
+Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
+
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/62dd68ef18ff964bd3c388f5d08f5289e5b99dc6
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/2028057
+Last-Update: 2023-10-27
+
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -422,6 +422,9 @@
+   <feature name='fsrs'>
+     <cpuid eax_in='0x07' ecx_in='0x01' eax='0x00000800'/>
+   </feature>
++  <feature name='fsrc'>
++    <cpuid eax_in='0x07' ecx_in='0x01' eax='0x00001000'/>
++  </feature>
+ 
+   <!-- Processor Extended State Enumeration sub leaf 1 -->
+   <feature name='xsaveopt'>
+--- a/tests/domaincapsdata/qemu_8.0.0-tcg.x86_64.xml
++++ b/tests/domaincapsdata/qemu_8.0.0-tcg.x86_64.xml
+@@ -54,6 +54,7 @@
+       <feature policy='require' name='fsrm'/>
+       <feature policy='require' name='fzrm'/>
+       <feature policy='require' name='fsrs'/>
++      <feature policy='require' name='fsrc'/>
+       <feature policy='require' name='3dnowext'/>
+       <feature policy='require' name='3dnow'/>
+       <feature policy='require' name='npt'/>
