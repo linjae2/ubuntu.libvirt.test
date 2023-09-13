@@ -19,7 +19,6 @@
 sysconfdir="@sysconfdir@"
 localstatedir="@localstatedir@"
 initconfdir="@initconfdir@"
-libvirtd="@sbindir@"/libvirtd
 
 # Source gettext library.
 # Make sure this file is recognized as having translations: _("dummy")
