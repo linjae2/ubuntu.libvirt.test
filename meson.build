@@ -1,6 +1,6 @@
 project(
   'libvirt', 'c',
-  version: '9.7.0',
+  version: '9.8.0',
   license: 'LGPLv2+',
   meson_version: '>= 0.56.0',
   default_options: [
@@ -247,8 +247,17 @@ alloc_max = run_command(
   check: true,
 )
 
+stack_frame_size = 2048
+
+# clang without optimization enlarges stack frames in certain corner cases
+if cc.get_id() == 'clang' and get_option('optimization') == '0'
+    stack_frame_size = 4096
+endif
+
 # sanitizer instrumentation may enlarge stack frames
-stack_frame_size = get_option('b_sanitize') == 'none' ? 4096 : 32768
+if get_option('b_sanitize') != 'none'
+  stack_frame_size = 32768
+endif
 
 # array_bounds=2 check triggers false positive on some GCC
 # versions when using sanitizers. Seen on Fedora 34 with
@@ -682,6 +691,13 @@ symbols = [
   [ 'sched.h', 'cpu_set_t' ],
 ]
 
+if host_machine.system() == 'linux'
+  symbols += [
+    # process management
+    [ 'sys/syscall.h', 'SYS_pidfd_open' ],
+  ]
+endif
+
 foreach symbol : symbols
   if cc.has_header_symbol(symbol[0], symbol[1], args: '-D_GNU_SOURCE', prefix: symbol.get(2, ''))
     conf.set('WITH_DECL_@0@'.format(symbol[1].to_upper()), 1)
@@ -994,6 +1010,29 @@ endif
 
 libiscsi_version = '1.18.0'
 libiscsi_dep = dependency('libiscsi', version: '>=' + libiscsi_version, required: get_option('libiscsi'))
+
+if not get_option('nbdkit').disabled()
+  libnbd_version = '1.0'
+  libnbd_dep = dependency('libnbd', version: '>=' + libnbd_version, required: false)
+
+  nbdkit_requested = get_option('nbdkit').enabled()
+  nbdkit_syscall_ok = conf.has('WITH_DECL_SYS_PIDFD_OPEN')
+  nbdkit_libnbd_ok = libnbd_dep.found()
+
+  if not nbdkit_syscall_ok and nbdkit_requested
+    error('nbdkit support requires pidfd_open(2)')
+  endif
+  if not nbdkit_libnbd_ok and nbdkit_requested
+    error('nbdkit support requires libnbd')
+  endif
+
+  if nbdkit_syscall_ok and nbdkit_libnbd_ok
+    conf.set('WITH_NBDKIT', 1)
+  endif
+endif
+if not conf.has('WITH_NBDKIT')
+  libnbd_dep = dependency('', required: false)
+endif
 
 libnl_version = '3.0'
 if not get_option('libnl').disabled() and host_machine.system() == 'linux'
@@ -2002,7 +2041,6 @@ endif
 
 conf.set_quoted('TLS_PRIORITY', get_option('tls_priority'))
 
-
 # Various definitions
 
 # Python3 < 3.7 treats the C locale as 7-bit only. We must force env vars so
@@ -2209,6 +2247,7 @@ libs_summary = {
   'glusterfs': glusterfs_dep.found(),
   'libiscsi': libiscsi_dep.found(),
   'libkvm': libkvm_dep.found(),
+  'libnbd': libnbd_dep.found(),
   'libnl': libnl_dep.found(),
   'libparted': libparted_dep.found(),
   'libpcap': libpcap_dep.found(),
@@ -2259,6 +2298,7 @@ misc_summary = {
   'firewalld-zone': conf.has('WITH_FIREWALLD_ZONE'),
   'nss': conf.has('WITH_NSS'),
   'numad': conf.has('WITH_NUMAD'),
+  'nbdkit': conf.has('WITH_NBDKIT'),
   'Init script': init_script,
   'Char device locks': chrdev_lock_files,
   'Loader/NVRAM': loader_res,
