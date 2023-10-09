@@ -1,0 +1,9 @@
+  [ Pino Toscano ]
+  * [a3a1f2e] Enable the rbd/ceph storage driver only on 64bit architectures
+    - Closes: #1053168
+  [ Andrea Bolognani ]
+  * [c52c885] New upstream version 9.8.0
+  * [9c190ce] patches: Add backports
+    - backport/meson-Improve-nbdkit-configurability.patch
+  * [c24237a] rules: Temporarily disable nbdkit support
+    - AppArmor support is not ready yet
