@@ -6,7 +6,7 @@ Uploaders:
  Guido Günther <agx@sigxcpu.org>,
  Andrea Bolognani <eof@kiyuko.org>,
 Build-Depends:
- augeas-tools,
+ augeas-tools [linux-any],
  bash-completion,
  debhelper-compat (= 13),
  dh-apparmor [linux-any],
@@ -16,10 +16,10 @@ Build-Depends:
  libapparmor-dev (>= 3.0.0) [linux-any],
  libattr1-dev [linux-any],
  libaudit-dev [linux-any],
- libblkid-dev,
+ libblkid-dev [linux-any],
  libc-dev (>= 2.31-14~),
  libcap-ng-dev [linux-any],
- libcurl4-gnutls-dev,
+ libcurl4-gnutls-dev [linux-any],
  libdevmapper-dev [linux-any],
  libfuse3-dev [linux-any],
  libglib2.0-dev,
@@ -29,9 +29,9 @@ Build-Depends:
  libnl-3-dev [linux-any],
  libnl-route-3-dev [linux-any],
  libnuma-dev [linux-any],
- libparted-dev,
- libpcap0.8-dev,
- libpciaccess-dev,
+ libparted-dev [linux-any],
+ libpcap0.8-dev [linux-any],
+ libpciaccess-dev [linux-any],
  librados-dev [amd64 arm64 mips64el ppc64el riscv64 s390x],
  librbd-dev [amd64 arm64 mips64el ppc64el riscv64 s390x],
  libreadline-dev,
@@ -43,15 +43,15 @@ Build-Depends:
  libtasn1-6-dev,
  libtirpc-dev,
  libudev-dev [linux-any],
- libwireshark-dev,
+ libwireshark-dev [linux-any],
  libxen-dev [amd64 arm64 armhf],
  libxml2-dev,
  libxml2-utils,
- libyajl-dev,
+ libyajl-dev [linux-any],
  lvm2 [linux-any],
  meson,
- mount,
- nfs-common:native,
+ mount [linux-any],
+ nfs-common:native [linux-any],
  numad:native [linux-any],
  open-iscsi [linux-any],
  po-debconf,
@@ -134,7 +134,7 @@ Description: Isolate user sessions using LXC containers
 
 Package: libvirt-daemon
 Section: admin
-Architecture: any
+Architecture: linux-any
 Depends:
  libvirt-daemon-driver-qemu (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
@@ -145,7 +145,7 @@ Recommends:
  libvirt-daemon-driver-vbox (= ${binary:Version}),
  libvirt-daemon-driver-xen (= ${binary:Version}),
  libxml2-utils,
- lvm2 [linux-any],
+ lvm2,
  mount,
  netcat-openbsd,
  qemu-kvm | qemu-system,
@@ -326,11 +326,11 @@ Description: Virtualization daemon ZFS storage driver
 
 Package: libvirt-daemon-system
 Section: admin
-Architecture: any
+Architecture: linux-any
 Depends:
  adduser,
  gettext-base,
- iptables [linux-any] | firewalld,
+ iptables | firewalld,
  libvirt-clients (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
  libvirt-daemon-config-network (= ${source:Version}),
@@ -339,7 +339,7 @@ Depends:
  libvirt0 (<< ${source:Version}.1~),
  libvirt0 (>= ${source:Version}),
  logrotate,
- polkitd (>= 121+compat0.1-2) [linux-any],
+ polkitd (>= 121+compat0.1-2),
  ${misc:Depends},
 Recommends:
  dmidecode,
@@ -351,7 +351,7 @@ Suggests:
  apparmor,
  auditd,
  nfs-common,
- open-iscsi [linux-any],
+ open-iscsi,
  pm-utils,
  systemd,
  systemtap,
@@ -550,7 +550,7 @@ Description: nss plugins providing IP address resolution for virtual machines
 
 Package: libvirt-wireshark
 Section: admin
-Architecture: any
+Architecture: linux-any
 Multi-Arch: same
 Depends:
  libvirt0 (= ${binary:Version}),
