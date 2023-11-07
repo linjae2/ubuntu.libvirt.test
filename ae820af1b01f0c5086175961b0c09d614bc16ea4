@@ -1,0 +1,4 @@
+  * [df62dc1] New upstream version 9.9.0
+  * [80870c1] patches: Drop obsolete patches
+    - backport/meson-Improve-nbdkit-configurability.patch
+    - forward/meson-Fix-XDR-check-for-GNU-Hurd.patch
