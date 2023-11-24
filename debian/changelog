@@ -1,3 +1,9 @@
+libvirt (9.6.0-1ubuntu2) noble; urgency=medium
+
+  * Rebuild against 'new libwireshark17'.
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Fri, 24 Nov 2023 15:27:16 +0100
+
 libvirt (9.6.0-1ubuntu1) mantic; urgency=medium
 
   * Merge with Debian unstable (LP: #2018082). Remaining changes:
