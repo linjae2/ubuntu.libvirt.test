@@ -1,0 +1,20 @@
+Description: Add cpu feature avx512-fp16.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/18ebce7c5320e200a2b2c4a256d02ab087d2bac5
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -375,6 +375,9 @@
+   <feature name='amx-bf16'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00400000'/>
+   </feature>
++  <feature name='avx512-fp16'>
++    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00800000'/>
++  </feature>
+   <feature name='amx-tile'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x01000000'/>
+   </feature>

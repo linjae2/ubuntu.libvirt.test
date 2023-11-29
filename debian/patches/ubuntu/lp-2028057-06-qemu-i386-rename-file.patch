@@ -1,0 +1,15 @@
+Description: Rename sync_qemu_i386.py to sync_qemu_models_i386.py.
+ The QEMU sync script was renamed upstream to make naming more consistent. This
+ patch is included to make the script work alongside the other patches for
+ Sapphire Rapids.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/84080aabc0f9959b16e60cffeb634f420f86df0f
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+diff --git a/src/cpu_map/sync_qemu_i386.py b/src/cpu_map/sync_qemu_models_i386.py
+similarity index 100%
+rename from src/cpu_map/sync_qemu_i386.py
+rename to src/cpu_map/sync_qemu_models_i386.py

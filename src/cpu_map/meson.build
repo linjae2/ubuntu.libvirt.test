@@ -67,6 +67,8 @@ cpumap_data = [
   'x86_qemu64.xml',
   'x86_SandyBridge-IBRS.xml',
   'x86_SandyBridge.xml',
+  'x86_SapphireRapids.xml',
+  'x86_SapphireRapids-noTSX.xml',
   'x86_Skylake-Client-IBRS.xml',
   'x86_Skylake-Client-noTSX-IBRS.xml',
   'x86_Skylake-Client.xml',

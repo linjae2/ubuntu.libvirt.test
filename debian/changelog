@@ -1,3 +1,10 @@
+libvirt (8.0.0-1ubuntu7.8) jammy; urgency=medium
+
+  * d/p/u/lp-2028057-*, d/libvirt0.install: Add named types and definitions,
+    along with QEMU alias syncing for Intel SapphireRapids (LP: #2028057)
+
+ -- Lena Voytek <lena.voytek@canonical.com>  Wed, 29 Nov 2023 14:52:52 -0700
+
 libvirt (8.0.0-1ubuntu7.7) jammy; urgency=medium
 
   * When attempting to launch a VM with SGX enabled, there is an

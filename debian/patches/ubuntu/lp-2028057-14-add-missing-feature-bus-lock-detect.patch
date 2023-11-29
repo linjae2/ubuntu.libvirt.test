@@ -1,0 +1,20 @@
+Description: Add cpu feature bus-lock-detect.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/1f3cd74e4a8770ed69af0241c600c62a3f3ddb22
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -334,6 +334,9 @@
+   <feature name='rdpid'>
+     <cpuid eax_in='0x07' ecx_in='0x00' ecx='0x00400000'/>
+   </feature>
++  <feature name='bus-lock-detect'>
++    <cpuid eax_in='0x07' ecx_in='0x00' ecx='0x01000000'/>
++  </feature>
+   <feature name='cldemote'>
+     <cpuid eax_in='0x07' ecx_in='0x00' ecx='0x02000000'/>
+   </feature>

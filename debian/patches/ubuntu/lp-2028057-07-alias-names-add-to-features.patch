@@ -1,0 +1,39 @@
+Description: Add alias names for some features.
+ Add alias names for features with names that have '_' instead of '-' in QEMU.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/eb9912b4877b526f254af05f20c15a63fc633320
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -563,15 +563,19 @@
+     <cpuid eax_in='0x8000000a' edx='0x00000002'/>
+   </feature>
+   <feature name='svm-lock'>
++    <alias name='svm_lock' source='qemu'/>
+     <cpuid eax_in='0x8000000a' edx='0x00000004'/>
+   </feature>
+   <feature name='nrip-save'>
++    <alias name='nrip_save' source='qemu'/>
+     <cpuid eax_in='0x8000000a' edx='0x00000008'/>
+   </feature>
+   <feature name='tsc-scale'>
++    <alias name='tsc_scale' source='qemu'/>
+     <cpuid eax_in='0x8000000a' edx='0x00000010'/>
+   </feature>
+   <feature name='vmcb-clean'>
++    <alias name='vmcb_clean' source='qemu'/>
+     <cpuid eax_in='0x8000000a' edx='0x00000020'/>
+   </feature>
+   <feature name='flushbyasid'>
+@@ -581,6 +585,7 @@
+     <cpuid eax_in='0x8000000a' edx='0x00000080'/>
+   </feature>
+   <feature name='pause-filter'>
++    <alias name='pause_filter' source='qemu'/>
+     <cpuid eax_in='0x8000000a' edx='0x00000400'/>
+   </feature>
+   <feature name='pfthreshold'>

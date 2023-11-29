@@ -1,0 +1,20 @@
+Description: Add cpu feature tsx-ldtrk.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/1e309109677f192a1dc47ef0a2fc16b31450f129
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -372,6 +372,9 @@
+   <feature name='serialize'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00004000'/>
+   </feature>
++  <feature name='tsx-ldtrk'>
++    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00010000'/>
++  </feature>
+   <feature name='pconfig'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00040000'/>
+   </feature>

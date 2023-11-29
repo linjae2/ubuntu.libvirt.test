@@ -1,0 +1,45 @@
+Description: Ignore alias names in feature maps when parsing in cpu_x86.
+ This patch makes sure cpu_x86 skips over feature map alias names which will
+ be added in this series as they are meant only for QEMU synchronization.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/7b0c01db75b0c11ba6f80999b822cfadff4d28da
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu/cpu_x86.c
++++ b/src/cpu/cpu_x86.c
+@@ -1089,7 +1089,7 @@
+ x86ParseDataItemList(virCPUx86Data *cpudata,
+                      xmlNodePtr node)
+ {
+-    size_t i;
++    size_t i = 0;
+ 
+     if (xmlChildElementCount(node) <= 0) {
+         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("no x86 CPU data found"));
+@@ -1097,9 +1097,14 @@
+     }
+ 
+     node = xmlFirstElementChild(node);
+-    for (i = 0; node; ++i) {
++    while (node) {
+         virCPUx86DataItem item;
+ 
++        if (virXMLNodeNameEqual(node, "alias")) {
++            node = xmlNextElementSibling(node);
++            continue;
++        }
++
+         if (virXMLNodeNameEqual(node, "cpuid")) {
+             if (x86ParseCPUID(node, &item) < 0) {
+                 virReportError(VIR_ERR_INTERNAL_ERROR,
+@@ -1116,6 +1121,7 @@
+ 
+         if (virCPUx86DataAddItem(cpudata, &item) < 0)
+             return -1;
++        ++i;
+ 
+         node = xmlNextElementSibling(node);
+     }

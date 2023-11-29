@@ -1,0 +1,83 @@
+Description: Add cpu feature sgxlc.
+ This patch adds the feature definition for SGX LC, and adds the feature to the
+ relevant existing processors - i7-8700 and IceLake Server.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/6e84509cde99bfa2e9854e0d2c38bfe2b13340c0
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -343,6 +343,9 @@
+   <feature name='movdir64b'>
+     <cpuid eax_in='0x07' ecx_in='0x00' ecx='0x10000000'/>
+   </feature>
++  <feature name='sgxlc'>
++    <cpuid eax_in='0x07' ecx_in='0x00' ecx='0x40000000'/>
++  </feature>
+ 
+   <feature name='avx512-4vnniw'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00000004'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8700-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8700-disabled.xml
+@@ -1,6 +1,6 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0800c1fc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x00000000' edx='0x08000000'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x40000000' edx='0x08000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8700-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8700-guest.xml
+@@ -21,6 +21,7 @@
+   <feature policy='require' name='sgx'/>
+   <feature policy='require' name='clflushopt'/>
+   <feature policy='require' name='intel-pt'/>
++  <feature policy='require' name='sgxlc'/>
+   <feature policy='require' name='stibp'/>
+   <feature policy='require' name='ssbd'/>
+   <feature policy='require' name='xsaves'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8700-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8700-host.xml
+@@ -23,6 +23,7 @@
+   <feature name='sgx'/>
+   <feature name='clflushopt'/>
+   <feature name='intel-pt'/>
++  <feature name='sgxlc'/>
+   <feature name='stibp'/>
+   <feature name='ssbd'/>
+   <feature name='xsaves'/>
+--- a/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-disabled.xml
+@@ -1,7 +1,7 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0804c1fc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02001004' ecx='0x00400010' edx='0x00000010'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02001004' ecx='0x40400010' edx='0x00000010'/>
+   <cpuid eax_in='0x0000000f' ecx_in='0x01' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000006'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-guest.xml
+@@ -26,6 +26,7 @@
+   <feature policy='require' name='sha-ni'/>
+   <feature policy='require' name='ospke'/>
+   <feature policy='require' name='rdpid'/>
++  <feature policy='require' name='sgxlc'/>
+   <feature policy='require' name='fsrm'/>
+   <feature policy='require' name='stibp'/>
+   <feature policy='require' name='arch-capabilities'/>
+--- a/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-host.xml
+@@ -28,6 +28,7 @@
+   <feature name='sha-ni'/>
+   <feature name='ospke'/>
+   <feature name='rdpid'/>
++  <feature name='sgxlc'/>
+   <feature name='fsrm'/>
+   <feature name='stibp'/>
+   <feature name='arch-capabilities'/>
