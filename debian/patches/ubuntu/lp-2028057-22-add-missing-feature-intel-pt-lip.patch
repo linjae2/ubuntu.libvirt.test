@@ -1,0 +1,54 @@
+Description: Add cpu feature intel-pt-lip.
+ This patch adds the feature definition for Intel pt-lip, and adds the feature
+ to the Intel Atom P5362 processor.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/501e7c780bbec6eddd8bc7bcb13fdafba94c5358
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -471,6 +471,11 @@
+     <cpuid eax_in='0x12' ecx_in='0x01' eax='0x00000080'/>
+   </feature>
+ 
++  <!-- cpuid level 0x00000014 ecx 0x0 features -->
++  <feature name='intel-pt-lip'>
++    <cpuid eax_in='0x14' ecx_in='0x00' ecx='0x80000000'/>
++  </feature>
++
+   <!-- extended features, EDX -->
+   <feature name='syscall'>
+     <cpuid eax_in='0x80000001' edx='0x00000800'/>
+--- a/tests/cputestdata/x86_64-cpuid-Atom-P5362-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Atom-P5362-disabled.xml
+@@ -3,6 +3,7 @@
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x080041dc' edx='0xb0600000'/>
+   <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02001000' ecx='0x00000020' edx='0x40000000'/>
+   <cpuid eax_in='0x0000000f' ecx_in='0x01' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000006'/>
++  <cpuid eax_in='0x00000014' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x80000000' edx='0x00000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+   <msr index='0xcf' edx='0x00000000' eax='0x00000020'/>
+   <msr index='0x10a' edx='0x00000000' eax='0x00000100'/>
+--- a/tests/cputestdata/x86_64-cpuid-Atom-P5362-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Atom-P5362-guest.xml
+@@ -27,6 +27,7 @@
+   <feature policy='require' name='xsaves'/>
+   <feature policy='require' name='mbm_total'/>
+   <feature policy='require' name='mbm_local'/>
++  <feature policy='require' name='intel-pt-lip'/>
+   <feature policy='require' name='invtsc'/>
+   <feature policy='require' name='rdctl-no'/>
+   <feature policy='require' name='ibrs-all'/>
+--- a/tests/cputestdata/x86_64-cpuid-Atom-P5362-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Atom-P5362-host.xml
+@@ -56,6 +56,7 @@
+   <feature name='xsaves'/>
+   <feature name='mbm_total'/>
+   <feature name='mbm_local'/>
++  <feature name='intel-pt-lip'/>
+   <feature name='rdtscp'/>
+   <feature name='3dnowprefetch'/>
+   <feature name='invtsc'/>

@@ -1,0 +1,20 @@
+Description: Add cpu feature arch-lbr.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/4ba1e382f7d5aeb650a9bf367cd760ac824e2171
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -378,6 +378,9 @@
+   <feature name='pconfig'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00040000'/>
+   </feature>
++  <feature name='arch-lbr'>
++    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00080000'/>
++  </feature>
+   <feature name='amx-bf16'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00400000'/>
+   </feature>

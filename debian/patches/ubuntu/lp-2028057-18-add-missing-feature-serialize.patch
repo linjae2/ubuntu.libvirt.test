@@ -1,0 +1,20 @@
+Description: Add cpu feature serialize.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/3f73c3c4fbcd81f3a7e29f3bffa9e3b55f39f041
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -369,6 +369,9 @@
+     <alias name='md_clear' source='linux'/>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00000400'/>
+   </feature>
++  <feature name='serialize'>
++    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00004000'/>
++  </feature>
+   <feature name='pconfig'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00040000'/>
+   </feature>

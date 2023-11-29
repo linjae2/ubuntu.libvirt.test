@@ -1,0 +1,33 @@
+Description: Allow for more than one child in feature nodes in cpu-data.py.
+ cpu-data.py assumes that all "feature" nodes have exactly one child. This
+ assumption is no longer true when the cpumap includes alias-names for
+ features.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/10a41a8cbdf4bcaba0039e97704afda8220cd8e0
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/tests/cputestdata/cpu-data.py
++++ b/tests/cputestdata/cpu-data.py
+@@ -445,12 +445,15 @@
+ 
+     cpuMap = dict()
+     for f in xml.etree.ElementTree.parse(path).getroot().iter("feature"):
+-        if f[0].tag not in ("cpuid", "msr"):
++        data = f.find("cpuid")
++        if data is None:
++            data = f.find("msr")
++        if data is None:
+             continue
+ 
+-        feature = {"type": f[0].tag}
+-        for reg in _KEYS[f[0].tag] + _REGS[f[0].tag]:
+-            feature[reg] = int(f[0].attrib.get(reg, "0"), 0)
++        feature = {"type": data.tag}
++        for reg in _KEYS[data.tag] + _REGS[data.tag]:
++            feature[reg] = int(data.attrib.get(reg, "0"), 0)
+         cpuMap[f.attrib["name"]] = feature
+     return cpuMap
+ 

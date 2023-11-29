@@ -29,6 +29,30 @@ ubuntu/dnsmasq-as-priv-user
 ubuntu/ovmf_paths.patch
 ubuntu/wait-for-qemu-kvm.patch
 
+ubuntu/lp-2028057-01-alias-names-allow-additional-feature-node-children.patch
+ubuntu/lp-2028057-02-alias-names-ignore.patch
+ubuntu/lp-2028057-03-alias-names-make-machine-readable.patch
+ubuntu/lp-2028057-04-qemu-i386-sync-cpu-features.patch
+ubuntu/lp-2028057-05-add-missing-feature-amx.patch
+ubuntu/lp-2028057-06-qemu-i386-rename-file.patch
+ubuntu/lp-2028057-07-alias-names-add-to-features.patch
+ubuntu/lp-2028057-08-add-missing-feature-sgx.patch
+ubuntu/lp-2028057-09-add-missing-feature-sgxlc.patch
+ubuntu/lp-2028057-10-add-missing-feature-sgx-exinfo.patch
+ubuntu/lp-2028057-11-add-missing-feature-sgx1.patch
+ubuntu/lp-2028057-12-add-missing-feature-sgx2.patch
+ubuntu/lp-2028057-13-add-missing-feature-sgx-additional.patch
+ubuntu/lp-2028057-14-add-missing-feature-bus-lock-detect.patch
+ubuntu/lp-2028057-15-add-missing-feature-pks.patch
+ubuntu/lp-2028057-16-add-missing-feature-avx512-vp2intersect.patch
+ubuntu/lp-2028057-17-add-missing-feature-avx512-fp16.patch
+ubuntu/lp-2028057-18-add-missing-feature-serialize.patch
+ubuntu/lp-2028057-19-add-missing-feature-tsx-ldtrk.patch
+ubuntu/lp-2028057-20-add-missing-feature-arch-lbr.patch
+ubuntu/lp-2028057-21-add-missing-feature-xfd.patch
+ubuntu/lp-2028057-22-add-missing-feature-intel-pt-lip.patch
+ubuntu/lp-2028057-23-add-new-CPU-model-Intel-SapphireRapids.patch
+
 # Ubuntu Apparmor Changes
 ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
 ubuntu-aa/0029-appmor-libvirt-qemu-Add-9p-support.patch

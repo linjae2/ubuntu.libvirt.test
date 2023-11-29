@@ -1,0 +1,41 @@
+Description: Add cpu feature amx.
+ AMX is one of the features used in Sapphire Rapids CPUs. This patch adds
+ feature definitions for amx-bf16, amx-tile, and amx-int8, and syncs them
+ with QEMU using the script added in the previous patch.
+Author: Lin Yang <lin.a.yang@intel.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/e528717d9039e1f571c6546f2ea9c6ba55e2507a
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/sync_qemu_i386.py
++++ b/src/cpu_map/sync_qemu_i386.py
+@@ -72,6 +72,9 @@
+         "CPUID_7_0_EDX_SPEC_CTRL": "spec-ctrl",
+         "CPUID_7_0_EDX_SPEC_CTRL_SSBD": "ssbd",
+         "CPUID_7_0_EDX_STIBP": "stibp",
++        "CPUID_7_0_EDX_AMX_BF16": "amx-bf16",
++        "CPUID_7_0_EDX_AMX_TILE": "amx-tile",
++        "CPUID_7_0_EDX_AMX_INT8": "amx-int8",
+         "CPUID_7_1_EAX_AVX512_BF16": "avx512-bf16",
+         "CPUID_7_1_EAX_AVX_VNNI": "avx-vnni",
+         "CPUID_8000_0008_EBX_AMD_SSBD": "amd-ssbd",
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -347,6 +347,15 @@
+   <feature name='pconfig'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00040000'/>
+   </feature>
++  <feature name='amx-bf16'>
++    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x00400000'/>
++  </feature>
++  <feature name='amx-tile'>
++    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x01000000'/>
++  </feature>
++  <feature name='amx-int8'>
++    <cpuid eax_in='0x07' ecx_in='0x00' edx='0x02000000'/>
++  </feature>
+   <feature name='spec-ctrl'>
+     <cpuid eax_in='0x07' ecx_in='0x00' edx='0x04000000'/>
+   </feature>

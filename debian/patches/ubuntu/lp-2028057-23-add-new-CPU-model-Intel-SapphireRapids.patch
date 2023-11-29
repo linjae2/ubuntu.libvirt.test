@@ -1,0 +1,310 @@
+Description: Add new CPU model SapphireRapids
+ The new CPU model mostly inherits features from Icelake-Server, while
+ adding new features:
+ - AMX (Advance Matrix eXtensions)
+ - Bus Lock Debug Exception
+ and new instructions:
+ - AVX VNNI (Vector Neural Network Instruction):
+    - VPDPBUS: Multiply and Add Unsigned and Signed Bytes
+    - VPDPBUSDS: Multiply and Add Unsigned and Signed Bytes with Saturation
+    - VPDPWSSD: Multiply and Add Signed Word Integers
+    - VPDPWSSDS: Multiply and Add Signed Integers with Saturation
+ - FP16: Replicates existing AVX512 computational SP (FP32) instructions
+   using FP16 instead of FP32 for ~2X performance gain
+ - SERIALIZE: Provide software with a simple way to force the processor to
+   complete all modifications, faster, allowed in all privilege levels and
+   not causing an unconditional VM exit
+ - TSX Suspend Load Address Tracking: Allows programmers to choose which
+   memory accesses do not need to be tracked in the TSX read set
+ - AVX512_BF16: Vector Neural Network Instructions supporting BFLOAT16
+   inputs and conversion instructions from IEEE single precision
+Author: Wang, Lei <lei4.wang@intel.com>
+Origin: other, https://lore.kernel.org/all/20220812055751.14553-1-lei4.wang@intel.com/
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/index.xml
++++ b/src/cpu_map/index.xml
+@@ -56,6 +56,8 @@
+     <include filename='x86_Icelake-Server-noTSX.xml'/>
+     <include filename='x86_Cooperlake.xml'/>
+     <include filename='x86_Snowridge.xml'/>
++    <include filename='x86_SapphireRapids.xml'/>
++    <include filename='x86_SapphireRapids-noTSX.xml'/>
+ 
+     <!-- AMD CPUs -->
+     <include filename='x86_athlon.xml'/>
+--- a/src/cpu_map/meson.build
++++ b/src/cpu_map/meson.build
+@@ -67,6 +67,8 @@
+   'x86_qemu64.xml',
+   'x86_SandyBridge-IBRS.xml',
+   'x86_SandyBridge.xml',
++  'x86_SapphireRapids.xml',
++  'x86_SapphireRapids-noTSX.xml',
+   'x86_Skylake-Client-IBRS.xml',
+   'x86_Skylake-Client-noTSX-IBRS.xml',
+   'x86_Skylake-Client.xml',
+--- a/src/cpu_map/sync_qemu_models_i386.py
++++ b/src/cpu_map/sync_qemu_models_i386.py
+@@ -54,6 +54,7 @@
+         "CPUID_7_0_ECX_AVX512_VBMI": "avx512vbmi",
+         "CPUID_7_0_ECX_AVX512VNNI": "avx512vnni",
+         "CPUID_7_0_ECX_AVX512_VPOPCNTDQ": "avx512-vpopcntdq",
++        "CPUID_7_0_ECX_BUS_LOCK_DETECT": "bus-lock-detect",
+         "CPUID_7_0_ECX_CLDEMOTE": "cldemote",
+         "CPUID_7_0_ECX_GFNI": "gfni",
+         "CPUID_7_0_ECX_LA57": "la57",
+@@ -67,16 +68,20 @@
+         "CPUID_7_0_EDX_ARCH_CAPABILITIES": "arch-capabilities",
+         "CPUID_7_0_EDX_AVX512_4FMAPS": "avx512-4fmaps",
+         "CPUID_7_0_EDX_AVX512_4VNNIW": "avx512-4vnniw",
++        "CPUID_7_0_EDX_AVX512_FP16": "avx512-fp16",
+         "CPUID_7_0_EDX_CORE_CAPABILITY": "core-capability",
+         "CPUID_7_0_EDX_FSRM": "fsrm",
++        "CPUID_7_0_EDX_SERIALIZE": "serialize",
+         "CPUID_7_0_EDX_SPEC_CTRL": "spec-ctrl",
+         "CPUID_7_0_EDX_SPEC_CTRL_SSBD": "ssbd",
+         "CPUID_7_0_EDX_STIBP": "stibp",
++        "CPUID_7_0_EDX_TSX_LDTRK": "tsx-ldtrk",
+         "CPUID_7_0_EDX_AMX_BF16": "amx-bf16",
+         "CPUID_7_0_EDX_AMX_TILE": "amx-tile",
+         "CPUID_7_0_EDX_AMX_INT8": "amx-int8",
+         "CPUID_7_1_EAX_AVX512_BF16": "avx512-bf16",
+         "CPUID_7_1_EAX_AVX_VNNI": "avx-vnni",
++        "CPUID_D_1_EAX_XFD": "xfd",
+         "CPUID_8000_0008_EBX_AMD_SSBD": "amd-ssbd",
+         "CPUID_8000_0008_EBX_CLZERO": "clzero",
+         "CPUID_8000_0008_EBX_IBPB": "ibpb",
+--- /dev/null
++++ b/src/cpu_map/x86_SapphireRapids-noTSX.xml
+@@ -0,0 +1,111 @@
++<cpus>
++  <model name='SapphireRapids-noTSX'>
++    <decode host='on' guest='off'/>
++    <signature family='6' model='143'/>
++    <vendor name='Intel'/>
++    <feature name='3dnowprefetch'/>
++    <feature name='abm'/>
++    <feature name='adx'/>
++    <feature name='aes'/>
++    <feature name='amx-bf16'/>
++    <feature name='amx-int8'/>
++    <feature name='amx-tile'/>
++    <feature name='apic'/>
++    <feature name='arat'/>
++    <feature name='arch-capabilities'/>
++    <feature name='avx'/>
++    <feature name='avx-vnni'/>
++    <feature name='avx2'/>
++    <feature name='avx512-bf16'/>
++    <feature name='avx512-fp16'/>
++    <feature name='avx512-vpopcntdq'/>
++    <feature name='avx512bitalg'/>
++    <feature name='avx512bw'/>
++    <feature name='avx512cd'/>
++    <feature name='avx512dq'/>
++    <feature name='avx512f'/>
++    <feature name='avx512ifma'/>
++    <feature name='avx512vbmi'/>
++    <feature name='avx512vbmi2'/>
++    <feature name='avx512vl'/>
++    <feature name='avx512vnni'/>
++    <feature name='bmi1'/>
++    <feature name='bmi2'/>
++    <feature name='bus-lock-detect'/>
++    <feature name='clflush'/>
++    <feature name='clflushopt'/>
++    <feature name='clwb'/>
++    <feature name='cmov'/>
++    <feature name='cx16'/>
++    <feature name='cx8'/>
++    <feature name='de'/>
++    <feature name='erms'/>
++    <feature name='f16c'/>
++    <feature name='fma'/>
++    <feature name='fpu'/>
++    <feature name='fsgsbase'/>
++    <feature name='fsrm'/>
++    <feature name='fxsr'/>
++    <feature name='gfni'/>
++    <feature name='ibrs-all'/>
++    <feature name='invpcid'/>
++    <feature name='la57'/>
++    <feature name='lahf_lm'/>
++    <feature name='lm'/>
++    <feature name='mca'/>
++    <feature name='mce'/>
++    <feature name='mds-no'/>
++    <feature name='mmx'/>
++    <feature name='movbe'/>
++    <feature name='msr'/>
++    <feature name='mtrr'/>
++    <feature name='nx'/>
++    <feature name='pae'/>
++    <feature name='pat'/>
++    <feature name='pcid'/>
++    <feature name='pclmuldq'/>
++    <feature name='pdpe1gb'/>
++    <feature name='pge'/>
++    <feature name='pku'/>
++    <feature name='pni'/>
++    <feature name='popcnt'/>
++    <feature name='pschange-mc-no'/>
++    <feature name='pse'/>
++    <feature name='pse36'/>
++    <feature name='rdctl-no'/>
++    <feature name='rdpid'/>
++    <feature name='rdrand'/>
++    <feature name='rdseed'/>
++    <feature name='rdtscp'/>
++    <feature name='sep'/>
++    <feature name='serialize'/>
++    <feature name='sha-ni'/>
++    <feature name='skip-l1dfl-vmentry'/>
++    <feature name='smap'/>
++    <feature name='smep'/>
++    <feature name='spec-ctrl'/>
++    <feature name='ssbd'/>
++    <feature name='sse'/>
++    <feature name='sse2'/>
++    <feature name='sse4.1'/>
++    <feature name='sse4.2'/>
++    <feature name='ssse3'/>
++    <feature name='syscall'/>
++    <feature name='taa-no'/>
++    <feature name='tsc'/>
++    <feature name='tsc-deadline'/>
++    <feature name='tsx-ldtrk'/>
++    <feature name='umip'/>
++    <feature name='vaes'/>
++    <feature name='vme'/>
++    <feature name='vpclmulqdq'/>
++    <feature name='wbnoinvd'/>
++    <feature name='x2apic'/>
++    <feature name='xfd'/>
++    <feature name='xgetbv1'/>
++    <feature name='xsave'/>
++    <feature name='xsavec'/>
++    <feature name='xsaveopt'/>
++    <feature name='xsaves'/>
++  </model>
++</cpus>
+--- /dev/null
++++ b/src/cpu_map/x86_SapphireRapids.xml
+@@ -0,0 +1,113 @@
++<cpus>
++  <model name='SapphireRapids'>
++    <decode host='on' guest='on'/>
++    <signature family='6' model='143'/>
++    <vendor name='Intel'/>
++    <feature name='3dnowprefetch'/>
++    <feature name='abm'/>
++    <feature name='adx'/>
++    <feature name='aes'/>
++    <feature name='amx-bf16'/>
++    <feature name='amx-int8'/>
++    <feature name='amx-tile'/>
++    <feature name='apic'/>
++    <feature name='arat'/>
++    <feature name='arch-capabilities'/>
++    <feature name='avx'/>
++    <feature name='avx-vnni'/>
++    <feature name='avx2'/>
++    <feature name='avx512-bf16'/>
++    <feature name='avx512-fp16'/>
++    <feature name='avx512-vpopcntdq'/>
++    <feature name='avx512bitalg'/>
++    <feature name='avx512bw'/>
++    <feature name='avx512cd'/>
++    <feature name='avx512dq'/>
++    <feature name='avx512f'/>
++    <feature name='avx512ifma'/>
++    <feature name='avx512vbmi'/>
++    <feature name='avx512vbmi2'/>
++    <feature name='avx512vl'/>
++    <feature name='avx512vnni'/>
++    <feature name='bmi1'/>
++    <feature name='bmi2'/>
++    <feature name='bus-lock-detect'/>
++    <feature name='clflush'/>
++    <feature name='clflushopt'/>
++    <feature name='clwb'/>
++    <feature name='cmov'/>
++    <feature name='cx16'/>
++    <feature name='cx8'/>
++    <feature name='de'/>
++    <feature name='erms'/>
++    <feature name='f16c'/>
++    <feature name='fma'/>
++    <feature name='fpu'/>
++    <feature name='fsgsbase'/>
++    <feature name='fsrm'/>
++    <feature name='fxsr'/>
++    <feature name='gfni'/>
++    <feature name='hle'/>
++    <feature name='ibrs-all'/>
++    <feature name='invpcid'/>
++    <feature name='la57'/>
++    <feature name='lahf_lm'/>
++    <feature name='lm'/>
++    <feature name='mca'/>
++    <feature name='mce'/>
++    <feature name='mds-no'/>
++    <feature name='mmx'/>
++    <feature name='movbe'/>
++    <feature name='msr'/>
++    <feature name='mtrr'/>
++    <feature name='nx'/>
++    <feature name='pae'/>
++    <feature name='pat'/>
++    <feature name='pcid'/>
++    <feature name='pclmuldq'/>
++    <feature name='pdpe1gb'/>
++    <feature name='pge'/>
++    <feature name='pku'/>
++    <feature name='pni'/>
++    <feature name='popcnt'/>
++    <feature name='pschange-mc-no'/>
++    <feature name='pse'/>
++    <feature name='pse36'/>
++    <feature name='rdctl-no'/>
++    <feature name='rdpid'/>
++    <feature name='rdrand'/>
++    <feature name='rdseed'/>
++    <feature name='rdtscp'/>
++    <feature name='rtm'/>
++    <feature name='sep'/>
++    <feature name='serialize'/>
++    <feature name='sha-ni'/>
++    <feature name='skip-l1dfl-vmentry'/>
++    <feature name='smap'/>
++    <feature name='smep'/>
++    <feature name='spec-ctrl'/>
++    <feature name='ssbd'/>
++    <feature name='sse'/>
++    <feature name='sse2'/>
++    <feature name='sse4.1'/>
++    <feature name='sse4.2'/>
++    <feature name='ssse3'/>
++    <feature name='syscall'/>
++    <feature name='taa-no'/>
++    <feature name='tsc'/>
++    <feature name='tsc-deadline'/>
++    <feature name='tsx-ldtrk'/>
++    <feature name='umip'/>
++    <feature name='vaes'/>
++    <feature name='vme'/>
++    <feature name='vpclmulqdq'/>
++    <feature name='wbnoinvd'/>
++    <feature name='x2apic'/>
++    <feature name='xfd'/>
++    <feature name='xgetbv1'/>
++    <feature name='xsave'/>
++    <feature name='xsavec'/>
++    <feature name='xsaveopt'/>
++    <feature name='xsaves'/>
++  </model>
++</cpus>

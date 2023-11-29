@@ -1,0 +1,236 @@
+Description: Add cpu feature sgx.
+ This patch adds the feature definition for SGX, and adds the feature to the
+ relevant existing processors - i7-7700, i7-8550U, i7-8700, IceLake Server,
+ Xeon E3-1225-v5, and Xeon E3-1245-v5.
+Author: Tim Wiederhake <twiederh@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/24b95e07d27d73576eca5d2852a10103b4e4d3d1
+Bug-Ubuntu: https://launchpad.net/bugs/2028057
+Forwarded: not-needed
+Last-Update: 2023-11-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/src/cpu_map/x86_features.xml
++++ b/src/cpu_map/x86_features.xml
+@@ -209,6 +209,9 @@
+     <alias name='tsc-adjust' source='qemu'/>
+     <cpuid eax_in='0x07' ecx_in='0x00' ebx='0x00000002'/>
+   </feature>
++  <feature name='sgx'>
++    <cpuid eax_in='0x07' ecx_in='0x00' ebx='0x00000004'/>
++  </feature>
+   <feature name='bmi1'>
+     <cpuid eax_in='0x07' ecx_in='0x00' ebx='0x00000008'/>
+   </feature>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-disabled.xml
+@@ -1,6 +1,6 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0800c1dc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000000' ecx='0x00000000' edx='0x08000000'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x00000000' edx='0x08000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-guest.xml
+@@ -18,6 +18,7 @@
+   <feature policy='require' name='pdcm'/>
+   <feature policy='require' name='osxsave'/>
+   <feature policy='require' name='tsc_adjust'/>
++  <feature policy='require' name='sgx'/>
+   <feature policy='require' name='clflushopt'/>
+   <feature policy='require' name='intel-pt'/>
+   <feature policy='require' name='stibp'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7600U-host.xml
+@@ -20,6 +20,7 @@
+   <feature name='pdcm'/>
+   <feature name='osxsave'/>
+   <feature name='tsc_adjust'/>
++  <feature name='sgx'/>
+   <feature name='clflushopt'/>
+   <feature name='intel-pt'/>
+   <feature name='stibp'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7700-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7700-disabled.xml
+@@ -1,7 +1,7 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0800c1fc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000000' ecx='0x00000000' edx='0x00000000'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x0000000d' ecx_in='0x01' eax='0x00000008' ebx='0x00000000' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7700-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7700-guest.xml
+@@ -18,6 +18,7 @@
+   <feature policy='require' name='pdcm'/>
+   <feature policy='require' name='osxsave'/>
+   <feature policy='require' name='tsc_adjust'/>
++  <feature policy='require' name='sgx'/>
+   <feature policy='require' name='clflushopt'/>
+   <feature policy='require' name='intel-pt'/>
+   <feature policy='require' name='xsaves'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-7700-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-7700-host.xml
+@@ -20,6 +20,7 @@
+   <feature name='pdcm'/>
+   <feature name='osxsave'/>
+   <feature name='tsc_adjust'/>
++  <feature name='sgx'/>
+   <feature name='clflushopt'/>
+   <feature name='intel-pt'/>
+   <feature name='xsaves'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8550U-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8550U-disabled.xml
+@@ -1,6 +1,6 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0800c19c' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000000' ecx='0x00000000' edx='0x00000000'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8550U-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8550U-guest.xml
+@@ -17,6 +17,7 @@
+   <feature policy='require' name='pdcm'/>
+   <feature policy='require' name='osxsave'/>
+   <feature policy='require' name='tsc_adjust'/>
++  <feature policy='require' name='sgx'/>
+   <feature policy='require' name='clflushopt'/>
+   <feature policy='require' name='intel-pt'/>
+   <feature policy='require' name='md-clear'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8550U-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8550U-host.xml
+@@ -19,6 +19,7 @@
+   <feature name='pdcm'/>
+   <feature name='osxsave'/>
+   <feature name='tsc_adjust'/>
++  <feature name='sgx'/>
+   <feature name='clflushopt'/>
+   <feature name='intel-pt'/>
+   <feature name='md-clear'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8700-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8700-disabled.xml
+@@ -1,6 +1,6 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0800c1fc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000000' ecx='0x00000000' edx='0x08000000'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x00000000' edx='0x08000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8700-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8700-guest.xml
+@@ -18,6 +18,7 @@
+   <feature policy='require' name='pdcm'/>
+   <feature policy='require' name='osxsave'/>
+   <feature policy='require' name='tsc_adjust'/>
++  <feature policy='require' name='sgx'/>
+   <feature policy='require' name='clflushopt'/>
+   <feature policy='require' name='intel-pt'/>
+   <feature policy='require' name='stibp'/>
+--- a/tests/cputestdata/x86_64-cpuid-Core-i7-8700-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Core-i7-8700-host.xml
+@@ -20,6 +20,7 @@
+   <feature name='pdcm'/>
+   <feature name='osxsave'/>
+   <feature name='tsc_adjust'/>
++  <feature name='sgx'/>
+   <feature name='clflushopt'/>
+   <feature name='intel-pt'/>
+   <feature name='stibp'/>
+--- a/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-disabled.xml
+@@ -1,7 +1,7 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0804c1fc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02001000' ecx='0x00400010' edx='0x00000010'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02001004' ecx='0x00400010' edx='0x00000010'/>
+   <cpuid eax_in='0x0000000f' ecx_in='0x01' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000006'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-guest.xml
+@@ -19,6 +19,7 @@
+   <feature policy='require' name='dca'/>
+   <feature policy='require' name='osxsave'/>
+   <feature policy='require' name='tsc_adjust'/>
++  <feature policy='require' name='sgx'/>
+   <feature policy='require' name='cmt'/>
+   <feature policy='require' name='avx512ifma'/>
+   <feature policy='require' name='intel-pt'/>
+--- a/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Ice-Lake-Server-host.xml
+@@ -21,6 +21,7 @@
+   <feature name='dca'/>
+   <feature name='osxsave'/>
+   <feature name='tsc_adjust'/>
++  <feature name='sgx'/>
+   <feature name='cmt'/>
+   <feature name='avx512ifma'/>
+   <feature name='intel-pt'/>
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-E3-1225-v5-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-E3-1225-v5-disabled.xml
+@@ -1,7 +1,7 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0800c1fc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000000' ecx='0x00000000' edx='0x00000000'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x0000000d' ecx_in='0x01' eax='0x00000008' ebx='0x00000000' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-E3-1225-v5-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-E3-1225-v5-guest.xml
+@@ -18,6 +18,7 @@
+   <feature policy='require' name='pdcm'/>
+   <feature policy='require' name='osxsave'/>
+   <feature policy='require' name='tsc_adjust'/>
++  <feature policy='require' name='sgx'/>
+   <feature policy='require' name='clflushopt'/>
+   <feature policy='require' name='intel-pt'/>
+   <feature policy='require' name='md-clear'/>
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-E3-1225-v5-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-E3-1225-v5-host.xml
+@@ -20,6 +20,7 @@
+   <feature name='pdcm'/>
+   <feature name='osxsave'/>
+   <feature name='tsc_adjust'/>
++  <feature name='sgx'/>
+   <feature name='clflushopt'/>
+   <feature name='intel-pt'/>
+   <feature name='md-clear'/>
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-E3-1245-v5-disabled.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-E3-1245-v5-disabled.xml
+@@ -1,6 +1,6 @@
+ <!-- Features disabled by QEMU -->
+ <cpudata arch='x86'>
+   <cpuid eax_in='0x00000001' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x0800c1dc' edx='0xb0600000'/>
+-  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000000' ecx='0x00000000' edx='0x00000000'/>
++  <cpuid eax_in='0x00000007' ecx_in='0x00' eax='0x00000000' ebx='0x02000004' ecx='0x00000000' edx='0x00000000'/>
+   <cpuid eax_in='0x80000007' ecx_in='0x00' eax='0x00000000' ebx='0x00000000' ecx='0x00000000' edx='0x00000100'/>
+ </cpudata>
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-E3-1245-v5-guest.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-E3-1245-v5-guest.xml
+@@ -18,6 +18,7 @@
+   <feature policy='require' name='pdcm'/>
+   <feature policy='require' name='osxsave'/>
+   <feature policy='require' name='tsc_adjust'/>
++  <feature policy='require' name='sgx'/>
+   <feature policy='require' name='clflushopt'/>
+   <feature policy='require' name='intel-pt'/>
+   <feature policy='require' name='xsaves'/>
+--- a/tests/cputestdata/x86_64-cpuid-Xeon-E3-1245-v5-host.xml
++++ b/tests/cputestdata/x86_64-cpuid-Xeon-E3-1245-v5-host.xml
+@@ -20,6 +20,7 @@
+   <feature name='pdcm'/>
+   <feature name='osxsave'/>
+   <feature name='tsc_adjust'/>
++  <feature name='sgx'/>
+   <feature name='clflushopt'/>
+   <feature name='intel-pt'/>
+   <feature name='xsaves'/>
