@@ -1090,7 +1090,7 @@ static int
 x86ParseDataItemList(virCPUx86Data *cpudata,
                      xmlNodePtr node)
 {
-    size_t i;
+    size_t i = 0;
 
     if (xmlChildElementCount(node) <= 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("no x86 CPU data found"));
@@ -1098,8 +1098,13 @@ x86ParseDataItemList(virCPUx86Data *cpudata,
     }
 
     node = xmlFirstElementChild(node);
-    for (i = 0; node; ++i) {
+    while (node) {
         virCPUx86DataItem item;
+
+        if (virXMLNodeNameEqual(node, "alias")) {
+            node = xmlNextElementSibling(node);
+            continue;
+        }
 
         if (virXMLNodeNameEqual(node, "cpuid")) {
             if (x86ParseCPUID(node, &item) < 0) {
@@ -1117,6 +1122,7 @@ x86ParseDataItemList(virCPUx86Data *cpudata,
 
         if (virCPUx86DataAddItem(cpudata, &item) < 0)
             return -1;
+        ++i;
 
         node = xmlNextElementSibling(node);
     }
