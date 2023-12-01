@@ -840,11 +840,14 @@ int virNetSocketNewConnectSSH(const char *nodename,
     virCommandAddEnvPass(cmd, "KRB5CCNAME");
     virCommandAddEnvPass(cmd, "SSH_AUTH_SOCK");
     virCommandAddEnvPass(cmd, "SSH_ASKPASS");
-    virCommandAddEnvPass(cmd, "GPG_TTY");
-    virCommandAddEnvPass(cmd, "TERM");
     virCommandAddEnvPass(cmd, "OPENSSL_CONF");
     virCommandAddEnvPass(cmd, "DISPLAY");
     virCommandAddEnvPass(cmd, "XAUTHORITY");
+    if (!noTTY) {
+        /* Needed for gpg-agent's curses-based authentication prompt */
+        virCommandAddEnvPass(cmd, "GPG_TTY");
+        virCommandAddEnvPass(cmd, "TERM");
+    }
     virCommandClearCaps(cmd);
 
     if (service)
