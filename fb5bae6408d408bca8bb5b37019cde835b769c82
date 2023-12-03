@@ -1,0 +1,4 @@
+  * [520e93f] New upstream version 9.10.0
+  * [59b48a9] patches: Drop obsolete patches
+    - forward/Pass-GPG_TTY-env-var-to-the-ssh-binary.patch
+  * [1aa8420] control: Recommend passt with QEMU driver
