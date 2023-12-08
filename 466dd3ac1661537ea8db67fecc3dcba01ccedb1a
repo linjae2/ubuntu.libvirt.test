@@ -1,0 +1,2 @@
+  * d/p/u/lp-2028057-*, d/libvirt0.install: Add named types and definitions,
+    along with QEMU alias syncing for Intel SapphireRapids (LP: #2028057)
