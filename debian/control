@@ -183,9 +183,10 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
- passt,
  swtpm,
  swtpm-tools,
+Suggests:
+ passt,
 Breaks:
  libvirt-clients (<< 6.9.0-2~),
 Replaces:
