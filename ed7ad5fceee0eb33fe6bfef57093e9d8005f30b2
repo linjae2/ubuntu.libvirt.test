@@ -1,0 +1,7 @@
+  * [9a4ad47] patches: Add backport/scripts-Make-check-symfile[...]
+    - Fixes compilation on alpha
+  * [aa930a3] patches: Add backport/apparmor-Add-user-session-path[...]
+    - Fixes use of passt with qemu:///session and AppArmor enabled
+    - Closes: #1061678
+  * [8810281] rules: Don't attempt to update git submodules
+  * [bf4fab1] rules: Don't run syntax-check tests
