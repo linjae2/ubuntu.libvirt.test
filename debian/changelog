@@ -1,3 +1,91 @@
+libvirt (10.0.0-2ubuntu1) noble; urgency=medium
+
+  * Merge with Debian unstable (LP: #2054479). Remaining changes:
+    - Disable libssh2 support (universe dependency)
+    - d/control: add libzfslinux-dev to build-deps
+    - d/control: drop libvirt-lxc, vbox and xen drivers to suggest
+    - debian/patches/ubuntu/ovmf_paths.patch: adjust paths to secboot.fd UEFI
+      Secure Boot enabled variants of the OVMF firmware and variable store for
+      the paths where we ship these files in Ubuntu.
+    - Set qemu-group to kvm (for compat with older ubuntu)
+    - Additional apport package-hook
+    - Autostart default bridged network (As upstream does, but not Debian).
+      In addition to just enabling it our solution provides:
+      + do not autostart if subnet is already taken (e.g. in guests).
+      + iterate some alternative subnets before giving up
+    - d/p/ubuntu/Allow-libvirt-group-to-access-the-socket.patch: This is
+      the group based access to libvirt functions as it was used in Ubuntu
+      for quite a long time.
+      + d/p/ubuntu/daemon-augeas-fix-expected.patch fix some related tests
+        due to the group access change.
+      + d/libvirt-daemon-system.postinst: add users in sudo to the libvirt
+        group.
+    - Update README.Debian with Ubuntu changes
+    - d/p/ubuntu/ubuntu_machine_type.patch: accept ubuntu types as pci440fx
+    - fix autopkgtests (LP 1899180)
+      + d/t/control, d/t/smoke-qemu-session: fixup smoke-qemu-session by making
+        vmlinuz available and accessible (Debian bug 848314)
+      + d/t/control: fix smoke-qemu-session by ensuring the service will run
+        installing libvirt-daemon-system
+      + d/t/smoke-lxc: fix smoke-lxc by ignoring potential issues on destroy as
+        long as the following undefine succeeds
+      + d/t/smoke-lxc: use systemd instead of sysV to restart the service
+      + d/t/control, d/t/smoke-lxc: retry service restart and skip test if
+        failing; This was flaky on some release/architectures
+      + d/t/smoke-lxc: retry check_domain being flaky on arm64
+    - dnsmasq related enhancements
+      + run dnsmasq as libvirt-dnsmasq (LP 1743718)
+      + d/libvirt-daemon-system.postinst: add libvirt-dnsmasq user and group
+      + d/libvirt-daemon-system.postrm: remove libvirt-dnsmasq user and group
+        on purge
+      + d/p/ubuntu/dnsmasq-as-priv-user: write dnsmasq config with user
+        libvirt-dnsmasq and adapt the self tests to expect that config
+      + d/libvirt-daemon-system.postinst: fix old libvirt-dnsmasq users group
+      + Add dnsmasq configuration to work with system wide dnsmasq-base
+    - d/p/ubuntu/set-default-machine-to-ubuntu.patch: to select default
+      machine type correctly with newer qemu/libvirt
+    - d/p/ubuntu/lp-1861125-ubuntu-models: recognize Ubuntu models for
+      (LP 1861125) fixups
+    - d/p/ubuntu/wait-for-qemu-kvm.patch - avoid hangs on startup (LP 1887592)
+    - d/libvirt-daemon-system.libvirt-guests.default: shut guests down
+      in parallel
+    - Apparmor Delta that is Ubuntu specific or yet to be upstreamed
+      split into logical pieces. File names in debian/patches/ubuntu-aa/:
+      + 0020-virt-aa-helper-ubuntu-storage-paths.patch:
+        apparmor, virt-aa-helper: Allow various storage pools and image
+        locations
+      + 0029-appmor-libvirt-qemu-Add-9p-support.patch: appmor,
+        libvirt-qemu: Add 9p support
+      + 0031-virt-aa-helper-Ask-for-no-deny-rule-for-readonly-dis.patch:
+        virt-aa-helper: Ask for no deny rule for readonly disk
+      + 0032-apparmor-libvirt-qemu-Allow-reading-charm-specific-c.patch:
+        apparmor, libvirt-qemu: Allow reading charm-specific ceph config
+      + 0033-UBUNTU-only-apparmor-for-kvm.powerpc-LP-1680384.patch: allow
+        commands executed by ubuntu only kvm wrapper on ppc64el
+        (LP 1686621 LP 1680384 LP 1784023)
+      + 0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch:
+        apparmor, virt-aa-helper: access for snapped nova
+      + lp-1815910-allow-vhost-hotplug.patch: avoid apparmor issues
+        with vhost-net/vhost-vsock/vhost-scsi hotplug (LP 1815910)
+    - libvirt should not use user/group tss for swtpm (LP 1948880)
+      + d/libvirt-daemon-system.postinst: own swtpm logdir by user swtpm
+      + d/p/u/swtpm-by-swtpm-user.patch: change default spawned swtpm processes
+        to user swtpm and adapt expected self test result changes triggered by
+        this
+      + d/libvirt-daemon-system.postinst: create user/group swtpm if not present
+        due to swtpm-tools (LP 1951975)
+    - d/control: Use libc6-dev instead of libc-dev as a build dependency
+    - d/libvirt-clients.lintian-overrides: Add script-not-executable lintian
+      override
+    - libvirt-uri.sh, d/rules: Automatically switch default libvirt URI
+      for users via user profile (xen URI on dom0, qemu:///system otherwise)
+      + Update: Set LIBVIRT_DEFAULT_URI to "qemu:///system" in all
+        cases, do not set to "xen:///" (LP #2027838)
+    - d/control: Demote passt to Suggests (from Recommends) for
+      libvirt-daemon-driver-qemu, because passt is in universe.
+
+ -- Sergio Durigan Junior <sergio.durigan@canonical.com>  Tue, 20 Feb 2024 17:42:01 -0500
+
 libvirt (10.0.0-2) unstable; urgency=medium
 
   * [9a4ad47] patches: Add backport/scripts-Make-check-symfile[...]
