@@ -16,15 +16,7 @@ include /usr/share/dpkg/default.mk
 DPKG_GENSYMBOLS_CHECK_LEVEL = 4
 export DPKG_GENSYMBOLS_CHECK_LEVEL
 
-ARCHES_CEPH = amd64 arm64 mips64el ppc64el riscv64 s390x
-ARCHES_GLUSTER = amd64 arm64 ia64 mips64el ppc64 ppc64el riscv64 s390x sparc64
-ARCHES_QEMU = amd64 arm64 armel armhf i386 mips64el mipsel powerpc ppc64 ppc64el riscv64 s390x sparc64 x32
-ARCHES_LXC  = alpha amd64 arm64 armel armhf hppa i386 m68k mips64el mipsel powerpc ppc64 ppc64el riscv64 s390x sh4 sparc64 x32
-ARCHES_XEN  = amd64 arm64 armhf
-ARCHES_VBOX = amd64 i386
-
-# Keep this list empty until we have AppArmor support
-ARCHES_NBDKIT =
+include debian/arches.mk
 
 ifeq ($(DEB_HOST_ARCH_OS), linux)
     WITH_DAEMONS              = -Ddriver_libvirtd=enabled -Dhost_validate=enabled
@@ -234,43 +226,9 @@ LIBVIRT_UNITS = \
     virtlockd-admin.socket \
     $(NULL)
 
-APPARMOR_ABSTRACTIONS = \
-    libvirt-lxc \
-    libvirt-qemu \
-    $(NULL)
-
-APPARMOR_TEMPLATES = \
-    TEMPLATE.lxc \
-    TEMPLATE.qemu \
-    $(NULL)
-
-APPARMOR_SERVICES = \
-    usr.lib.libvirt.virt-aa-helper \
-    usr.sbin.libvirtd \
-    $(NULL)
-
-NSS_PLUGINS = \
-    libvirt \
-    libvirt_guest \
-    $(NULL)
-
-SYSTEMTAP_TAPSETS = \
-    libvirt_functions \
-    libvirt_probes \
-    $(NULL)
-
-ifneq (,$(filter $(DEB_HOST_ARCH), $(ARCHES_QEMU)))
-    SYSTEMTAP_TAPSETS += \
-        libvirt_qemu_probes \
-        $(NULL)
-endif
-
 
 DEB_BUILDDIR := $(CURDIR)/debian/build
 DEB_DESTDIR := $(CURDIR)/debian/tmp
-SRV_MONOLITHIC = libvirt-guests virtlogd virtlockd libvirtd libvirtd-tcp libvirtd-tls virt-guest-shutdown
-# For split daemons later, as of 6.0 the remaining elments are
-#SRV_SPLIT = virtnwfilterd virtinterfaced virtlxcd virtnetworkd virtnodedevd virtproxyd virtqemud virtsecretd virtstoraged virtvboxd virtxend virtproxyd-tcp virtproxyd-tls
 
 %:
 	dh $@ --builddirectory=$(DEB_BUILDDIR)
@@ -302,22 +260,43 @@ override_dh_auto_test:
 # to perform such operations
 execute_after_dh_auto_install:
 ifeq ($(DEB_HOST_ARCH_OS), linux)
-	# Move upstream files where dh_* can find them
-	mv $(DEB_DESTDIR)/usr/lib/sysctl.d/ \
-	   $(DEB_DESTDIR)/usr/share/doc/libvirt/examples/sysctl;
-
 	# Disable network autostart
 	rm -rf $(DEB_DESTDIR)/etc/libvirt/qemu/networks/autostart/
 
-	mkdir -p $(DEB_DESTDIR)/usr/share/libvirt/
-	mv $(DEB_DESTDIR)/etc/libvirt/qemu/networks/ \
-	   $(DEB_DESTDIR)/etc/libvirt/nwfilter/ \
-	   $(DEB_DESTDIR)/usr/share/libvirt/
+	# Move systemd units
+	mkdir -p $(DEB_DESTDIR)/lib/systemd/system/
+	mv $(DEB_DESTDIR)/usr/lib/systemd/system/* \
+	   $(DEB_DESTDIR)/lib/systemd/system/
+
+	# Move systcl files (we consider them examples)
+	mkdir -p $(DEB_DESTDIR)/usr/share/doc/libvirt/examples/sysctl/
+	mv $(DEB_DESTDIR)/usr/lib/sysctl.d/* \
+	   $(DEB_DESTDIR)/usr/share/doc/libvirt/examples/sysctl/
+
+	# Move networks (installed in /etc/ via maintscripts)
+	mkdir -p $(DEB_DESTDIR)/usr/share/libvirt/networks/
+	mv $(DEB_DESTDIR)/etc/libvirt/qemu/networks/* \
+	   $(DEB_DESTDIR)/usr/share/libvirt/networks/
+
+	# Move nwfilters (installed in /etc/ via maintscripts)
+	mkdir -p $(DEB_DESTDIR)/usr/share/libvirt/nwfilter/
+	mv $(DEB_DESTDIR)/etc/libvirt/nwfilter/* \
+	   $(DEB_DESTDIR)/usr/share/libvirt/nwfilter/
+
+	# Move NSS modules
+	mkdir -p $(DEB_DESTDIR)/lib/$(DEB_HOST_MULTIARCH)/
+	mv $(DEB_DESTDIR)/usr/lib/$(DEB_HOST_MULTIARCH)/libnss_* \
+	   $(DEB_DESTDIR)/lib/$(DEB_HOST_MULTIARCH)/
 
 	# Rename the upstream polkit rule so that it matches the name used
 	# historically in Debian
 	mv $(DEB_DESTDIR)/usr/share/polkit-1/rules.d/50-libvirt.rules \
 	   $(DEB_DESTDIR)/usr/share/polkit-1/rules.d/60-libvirt.rules
+
+	# Prepare Debian-specific configuration files to be installed
+	mkdir -p $(DEB_DESTDIR)/etc/apt/apt.conf.d/
+	cp debian/apt/* \
+	   $(DEB_DESTDIR)/etc/apt/apt.conf.d/
 endif
 
 	# Copy the release notes where dh_installdocs can find them
@@ -330,52 +309,8 @@ endif
 
 execute_after_dh_install:
 ifeq ($(DEB_HOST_ARCH_OS), linux)
-	# Linux supports more nice things:
-	set -e; for f in $(SRV_MONOLITHIC); do \
-	    dh_install -p libvirt-daemon-system \
-	               usr/lib/systemd/system/$${f}* \
-	               lib/systemd/system/; \
-	done
-	dh_install -p libvirt-daemon usr/lib/libvirt/virt-aa-helper
-	set -e; for f in $(APPARMOR_ABSTRACTIONS); do \
-	    dh_install -p libvirt-daemon-system etc/apparmor.d/abstractions/$${f}; \
-	done
-	set -e; for f in $(APPARMOR_TEMPLATES); do \
-	    dh_install -p libvirt-daemon-system etc/apparmor.d/libvirt/$${f}; \
-	done
-	set -e; for f in $(APPARMOR_SERVICES); do \
-	    dh_install -p libvirt-daemon-system etc/apparmor.d/$${f}; \
-	    dh_apparmor -p libvirt-daemon-system --profile-name=$${f}; \
-	done
-	# Not all linux arches have systemtap yet
-	if test -d $(DEB_DESTDIR)/usr/share/systemtap; then \
-	    set -e; for f in $(SYSTEMTAP_TAPSETS); do \
-	        dh_install -p libvirt-daemon-system \
-	                   usr/share/systemtap/tapset/$${f}.stp; \
-	    done; \
-	fi
-	set -e; for f in $(NSS_PLUGINS); do \
-	    dh_install -p libnss-libvirt \
-	               usr/lib/$(DEB_HOST_MULTIARCH)/libnss_$${f}.so.2 \
-	               lib/$(DEB_HOST_MULTIARCH)/; \
-	done
-	dh_install -p libvirt-clients usr/bin/virt-host-validate
-	dh_install -p libvirt-clients usr/share/man/man1/virt-host-validate.1
-endif
-ifneq (,$(filter $(DEB_HOST_ARCH), $(ARCHES_QEMU)))
-	dh_install -p libvirt-daemon-system etc/libvirt/qemu.conf
-	dh_install -p libvirt-daemon-system etc/libvirt/qemu-lockd.conf
-	dh_install -p libvirt-daemon-system etc/libvirt/qemu-sanlock.conf
-	dh_install -p libvirt-daemon usr/share/augeas/lenses/tests/test_libvirt_lockd.aug
-	dh_install -p libvirt-daemon usr/share/augeas/lenses/tests/test_libvirt_sanlock.aug
-endif
-ifneq (,$(filter $(DEB_HOST_ARCH), $(ARCHES_LXC)))
-	dh_install -p libvirt-daemon-system etc/libvirt/lxc.conf
-endif
-ifneq (,$(filter $(DEB_HOST_ARCH), $(ARCHES_XEN)))
-	dh_install -p libvirt-daemon-system etc/libvirt/libxl.conf
-	dh_install -p libvirt-daemon-system etc/libvirt/libxl-lockd.conf
-	dh_install -p libvirt-daemon-system etc/libvirt/libxl-sanlock.conf
+	dh_apparmor -p libvirt-daemon-system --profile-name=usr.lib.libvirt.virt-aa-helper
+	dh_apparmor -p libvirt-daemon-system --profile-name=usr.sbin.libvirtd
 endif
 
 ifeq ($(DEB_HOST_ARCH_OS), linux)
@@ -410,3 +345,11 @@ override_dh_installdocs:
 # is enabled and whether the corresponding files are installed
 override_dh_missing-indep:
 	dh_missing --list-missing
+
+execute_before_dh_auto_clean:
+	if test "$(DEB_LIBVIRT_MAINTAINER)"; then \
+	    debian/scripts/process-templates.py --mode verify; \
+	fi
+	debian/scripts/process-templates.py --mode build \
+	                                    --arch $(DEB_HOST_ARCH) \
+	                                    --os $(DEB_HOST_ARCH_OS)
