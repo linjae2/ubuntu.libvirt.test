@@ -1,0 +1,8 @@
+  * [e31fc9e] control: Recommend pkgconf instead of pkg-config
+  * [fd2edf5] templates: Convert some files to templates
+    - Some of the packaging files are now maintained as templates,
+      where values are dynamically injected at build time. See
+      debian/README.source for additional information
+  * [ff0974e] control: Improve driver-specific package relationships
+    - Ensure installability on architectures where the QEMU
+      driver has been intentionally disabled
