@@ -4,7 +4,9 @@ Description=libvirt legacy monolithic daemon socket
 [Socket]
 ListenStream=@runstatedir@/libvirt/libvirt-sock
 Service=libvirtd.service
-SocketMode=@sockmode@
+SocketMode=0660
+SocketUser=root
+SocketGroup=libvirt
 RemoveOnStop=yes
 
 [Install]
