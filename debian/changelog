@@ -1,3 +1,9 @@
+libvirt (10.0.0-2ubuntu2) noble; urgency=medium
+
+  * No-change rebuild against libtirpc3t64
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Thu, 29 Feb 2024 09:26:53 +0000
+
 libvirt (10.0.0-2ubuntu1) noble; urgency=medium
 
   * Merge with Debian unstable (LP: #2054479). Remaining changes:
