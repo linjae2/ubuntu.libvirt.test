@@ -1,3 +1,9 @@
+libvirt (10.0.0-2ubuntu4) noble; urgency=medium
+
+  * No-change rebuild against libglib2.0-0t64
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Mon, 11 Mar 2024 23:06:29 +0000
+
 libvirt (10.0.0-2ubuntu3) noble; urgency=medium
 
   * No-change rebuild against libgnutls30t64
