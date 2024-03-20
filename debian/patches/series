@@ -14,6 +14,27 @@ ubuntu/dnsmasq-as-priv-user
 ubuntu/ovmf_paths.patch
 ubuntu/wait-for-qemu-kvm.patch
 ubuntu/swtpm-by-swtpm-user.patch
+ubuntu/lp-2051754-cpu-x86-Add-support-for-adding-features-to-existing-.patch
+ubuntu/lp-2051754-qemu-domain-Check-arch-in-qemuDomainMakeCPUMigratabl.patch
+ubuntu/lp-2051754-conf-cpu-Introduce-virCPUDefListFeatures.patch
+ubuntu/lp-2051754-qemu-domain-Drop-added-features-from-migratable-CPU.patch
+ubuntu/lp-2051754-cpu_map-Do-not-ignore-VMX-features-in-sync_qemu_mode.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Broadwell.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Cascadelake.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Conroe.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Cooperlake.patch
+ubuntu/lp-2051754-Add-vmx-features-to-core-2-duo.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Haswell.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Icelake.patch
+ubuntu/lp-2051754-Add-vmx-features-to-IvyBridge.patch
+ubuntu/lp-2051754-Add-vmx-features-to-kvm.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Nehalem.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Penryn.patch
+ubuntu/lp-2051754-Add-vmx-features-to-SandyBridge.patch
+ubuntu/lp-2051754-Add-vmx-features-to-SapphireRapids.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Skylake.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Snowridge.patch
+ubuntu/lp-2051754-Add-vmx-features-to-Westmere.patch
 
 # Ubuntu Apparmor Changes
 ubuntu-aa/0020-virt-aa-helper-ubuntu-storage-paths.patch
