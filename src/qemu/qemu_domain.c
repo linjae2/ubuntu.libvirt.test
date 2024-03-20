@@ -66,6 +66,7 @@
 #include "backup_conf.h"
 #include "virutil.h"
 #include "virsecureerase.h"
+#include "cpu/cpu_x86.h"
 
 #include <sys/time.h>
 #include <fcntl.h>
@@ -6596,11 +6597,42 @@ qemuDomainDefCopy(virQEMUDriver *driver,
 }
 
 
-int
-qemuDomainMakeCPUMigratable(virCPUDef *cpu)
+typedef struct {
+    const char * const *added;
+    GStrv keep;
+} qemuDomainDropAddedCPUFeaturesData;
+
+
+static bool
+qemuDomainDropAddedCPUFeatures(const char *name,
+                               virCPUFeaturePolicy policy G_GNUC_UNUSED,
+                               void *opaque)
 {
-    if (cpu->mode == VIR_CPU_MODE_CUSTOM &&
-        STREQ_NULLABLE(cpu->model, "Icelake-Server")) {
+    qemuDomainDropAddedCPUFeaturesData *data = opaque;
+
+    if (!g_strv_contains(data->added, name))
+        return true;
+
+    if (data->keep && g_strv_contains((const char **) data->keep, name))
+        return true;
+
+    return false;
+}
+
+
+int
+qemuDomainMakeCPUMigratable(virArch arch,
+                            virCPUDef *cpu,
+                            virCPUDef *origCPU)
+{
+    qemuDomainDropAddedCPUFeaturesData data = { 0 };
+
+    if (cpu->mode != VIR_CPU_MODE_CUSTOM ||
+        !cpu->model ||
+        !ARCH_IS_X86(arch))
+        return 0;
+
+    if (STREQ(cpu->model, "Icelake-Server")) {
         /* Originally Icelake-Server CPU model contained pconfig CPU feature.
          * It was never actually enabled and thus it was removed. To enable
          * migration to QEMU 3.1.0 (with both new and old libvirt), we
@@ -6609,6 +6641,25 @@ qemuDomainMakeCPUMigratable(virCPUDef *cpu)
          * will drop it from the XML before starting the domain on new QEMU.
          */
         if (virCPUDefUpdateFeature(cpu, "pconfig", VIR_CPU_FEATURE_DISABLE) < 0)
+            return -1;
+    }
+
+    if (virCPUx86GetAddedFeatures(cpu->model, &data.added) < 0)
+        return -1;
+
+    /* Drop features marked as added in a cpu model, but only
+     * when they are not mentioned in origCPU, i.e., when they were not
+     * explicitly mentioned by the user.
+     */
+    if (data.added) {
+        g_auto(GStrv) keep = NULL;
+
+        if (origCPU) {
+            keep = virCPUDefListFeatures(origCPU);
+            data.keep = keep;
+        }
+
+        if (virCPUDefFilterFeatures(cpu, qemuDomainDropAddedCPUFeatures, &data) < 0)
             return -1;
     }
 
@@ -6790,7 +6841,8 @@ qemuDomainDefFormatBufInternal(virQEMUDriver *driver,
                 return -1;
         }
 
-        if (def->cpu && qemuDomainMakeCPUMigratable(def->cpu) < 0)
+        if (def->cpu &&
+            qemuDomainMakeCPUMigratable(def->os.arch, def->cpu, origCPU) < 0)
             return -1;
 
         /* Old libvirt doesn't understand <audio> elements so
