@@ -1,0 +1,3 @@
+  * [517918e] New upstream version 10.1.0
+    - Fixes CVE-2024-1441 (Closes: #1066058)
+  * [84128fe] patches: Drop backports
