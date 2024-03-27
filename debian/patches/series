@@ -71,3 +71,4 @@ ubuntu/lp-1993304-apparmor-allow-getattr-on-usb-devices.patch
 CVE-2022-0897.patch
 CVE-2023-2700.patch
 ubuntu/lp-2024114-Avoid-memleak-in-virNodeDeviceGetPCIVPDDynamicCap.patch
+ubuntu/lp2059272-qemu-Fix-potential-crash-during-driver-cleanup.patch
