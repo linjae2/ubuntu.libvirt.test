@@ -184,7 +184,7 @@
   audit deny /{var/,}run/qemu/*/*.so w,
 
   # swtpm
-  /{usr/,}bin/swtpm rmix,
+  /{usr/,}bin/swtpm rmpix,
   /usr/{lib,lib64}/libswtpm_libtpms.so mr,
   /usr/lib/@{multiarch}/libswtpm_libtpms.so mr,
 
@@ -230,6 +230,7 @@
   unix (send, receive) type=stream addr=none peer=(label=libvirtd),
   unix (send, receive) type=stream addr=none peer=(label=/usr/sbin/libvirtd),
   unix (send, receive) type=stream addr=none peer=(label=virtqemud),
+  unix (send, receive) type=stream addr=none peer=(label=swtpm),
 
   # allow access to charm-specific ceph config (LP: #1403648).
   # No more silencing spurious denials as it can more critically hide other issues (LP: #1719579)
