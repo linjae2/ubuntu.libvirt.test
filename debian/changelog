@@ -1,3 +1,11 @@
+libvirt (8.0.0-1ubuntu7.9) jammy; urgency=medium
+
+  * d/p/u/lp2059272-qemu-Fix-potential-crash-during-driver-cleanup.patch:
+    On QEMU driver cleanup, release (stop) the worker thread pool _first_,
+    before other data used by possibly running worker threads (LP: #2059272)
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Wed, 27 Mar 2024 12:47:46 -0300
+
 libvirt (8.0.0-1ubuntu7.8) jammy; urgency=medium
 
   * d/p/u/lp-2028057-*, d/libvirt0.install: Add named types and definitions,
