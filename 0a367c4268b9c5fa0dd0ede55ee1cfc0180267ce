@@ -1,0 +1,3 @@
+  * d/p/u/lp2059272-qemu-Fix-potential-crash-during-driver-cleanup.patch:
+    On QEMU driver cleanup, release (stop) the worker thread pool _first_,
+    before other data used by possibly running worker threads (LP: #2059272)
