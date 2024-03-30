@@ -311,6 +311,9 @@ struct _virQEMUDriver {
 
     /* Immutable pointer, self-locking APIs */
     virHashAtomicPtr migrationErrors;
+
+    /* Atomic inc/dec only */
+    int qemuProcessReconnectThreads;
 };
 
 virQEMUDriverConfigPtr virQEMUDriverConfigNew(bool privileged);

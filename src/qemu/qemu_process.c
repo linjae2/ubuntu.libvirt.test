@@ -58,6 +58,7 @@
 #include "qemu_extdevice.h"
 #include "qemu_firmware.h"
 #include "qemu_backup.h"
+#include "qemu_driver.h"
 
 #include "cpu/cpu.h"
 #include "cpu/cpu_x86.h"
@@ -8152,6 +8153,15 @@ qemuProcessReconnect(void *opaque)
         if (!virDomainObjIsActive(obj))
             qemuDomainRemoveInactiveJob(driver, obj);
     }
+
+    if (!__qemuDriverIsNull()) {
+        VIR_DEBUG("Decrementing qemuProcessReconnect() threads.");
+        virAtomicIntDecAndTest(&driver->qemuProcessReconnectThreads);
+    } else {
+        VIR_DEBUG("Not decrementing qemuProcessReconnect() threads "
+                  "as the QEMU driver is already deallocated/freed.");
+    }
+
     virDomainObjEndAPI(&obj);
     virNWFilterUnlockFilterUpdates();
     virIdentitySetCurrent(NULL);
@@ -8211,6 +8221,9 @@ qemuProcessReconnectHelper(virDomainObjPtr obj,
     virObjectLock(obj);
     virObjectRef(obj);
 
+    VIR_DEBUG("Incrementing qemuProcessReconnect() threads.");
+    virAtomicIntInc(&src->driver->qemuProcessReconnectThreads);
+
     if (virThreadCreate(&thread, false, qemuProcessReconnect, data) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
                        _("Could not create thread. QEMU initialization "
@@ -8223,6 +8236,9 @@ qemuProcessReconnectHelper(virDomainObjPtr obj,
         qemuProcessStop(src->driver, obj, VIR_DOMAIN_SHUTOFF_FAILED,
                         QEMU_ASYNC_JOB_NONE, 0);
         qemuDomainRemoveInactiveJobLocked(src->driver, obj);
+
+        VIR_DEBUG("Decrementing qemuProcessReconnect() threads.");
+        virAtomicIntDecAndTest(&src->driver->qemuProcessReconnectThreads);
 
         virDomainObjEndAPI(&obj);
         virNWFilterUnlockFilterUpdates();
