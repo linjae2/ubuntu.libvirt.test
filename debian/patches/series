@@ -188,3 +188,5 @@ CVE-2021-4147-6.patch
 CVE-2022-0897.patch
 ubuntu/lp-1989078-apparmor-Fix-QEMU-access-for-UEFI-variable-files.patch
 ubuntu/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch
+ubuntu/lp2059272-1-qemu-Fix-potential-crash-during-driver-cleanup.patch
+ubuntu/lp2059272-2-qemu-Wait-qemuProcessReconnect-threads-in-cleanup.patch

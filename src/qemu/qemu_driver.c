@@ -104,6 +104,7 @@
 #include "virdomainsnapshotobjlist.h"
 #include "virenum.h"
 #include "virdomaincheckpointobjlist.h"
+#include "viratomic.h"
 
 #define VIR_FROM_THIS VIR_FROM_QEMU
 
@@ -152,6 +153,16 @@ static int qemuOpenFileAs(uid_t fallback_uid, gid_t fallback_gid,
                           bool *needUnlink);
 
 static virQEMUDriverPtr qemu_driver;
+
+/**
+ * __qemuDriverIsNull()
+ *
+ * Check whether `qemu_driver` is NULL, without exporting its symbol.
+ */
+int
+__qemuDriverIsNull(void) {
+    return (qemu_driver == NULL);
+}
 
 /* Looks up the domain object from snapshot and unlocks the
  * driver. The returned domain object is locked and ref'd and the
@@ -1109,6 +1120,57 @@ qemuStateStop(void)
 }
 
 /**
+ * qemuStateCleanupWait()
+ *
+ * Wait for qemuProcessReconnect() threads to finish (LP: #2059272).
+ *
+ * The timeout can be set with LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT
+ * (30 seconds by default):
+ *  -1: wait indefinitely
+ *   0: do not wait
+ *   N: wait up to N seconds
+ */
+static void
+qemuStateCleanupWait(void)
+{
+    int threads, timeout = 30, seconds = 0;
+    char *timeout_env;
+
+    /* Set timeout */
+    if ((timeout_env = getenv("LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT")) &&
+        virStrToLong_i(timeout_env, NULL, 10, &timeout) < 0)
+        VIR_ERROR("Failed to parse LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT");
+
+    VIR_DEBUG("timeout %i, timeout_env '%s'", timeout, timeout_env);
+
+    /* Maybe wait */
+    while ((threads = virAtomicIntGet(&qemu_driver->qemuProcessReconnectThreads))
+           && (threads > 0) && (timeout < 0 || seconds < timeout)) {
+
+        VIR_DEBUG("threads %i, seconds %i", threads, seconds);
+
+        if (seconds == 0)
+            VIR_WARN("Waiting for qemuProcessReconnect() threads (%i) to end. "
+                     "Configure with LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT "
+                     "(-1 = wait; 0 = do not wait; N = wait up to N seconds; "
+                     "current = %i)", threads, timeout);
+
+        seconds++;
+        g_usleep(1 * G_USEC_PER_SEC);
+    }
+
+    /* Last check */
+    if (threads > 0)
+        VIR_WARN("Leaving qemuProcessReconnect() threads (%i) per timeout (%i)",
+                 threads, timeout);
+    else if (threads < 0)
+        VIR_ERROR("Negative qemuProcessReconnect() threads (%i); timeout (%i)",
+                 threads, timeout);
+    else
+        VIR_DEBUG("All qemuProcessReconnect() threads finished");
+}
+
+/**
  * qemuStateCleanup:
  *
  * Release resources allocated by QEMU driver (no domain is shut off though)
@@ -1119,6 +1181,9 @@ qemuStateCleanup(void)
     if (!qemu_driver)
         return -1;
 
+    qemuStateCleanupWait();
+
+    virThreadPoolFree(qemu_driver->workerPool);
     virObjectUnref(qemu_driver->migrationErrors);
     virObjectUnref(qemu_driver->closeCallbacks);
     virLockManagerPluginUnref(qemu_driver->lockManager);
@@ -1138,7 +1203,6 @@ qemuStateCleanup(void)
     ebtablesContextFree(qemu_driver->ebtables);
     VIR_FREE(qemu_driver->qemuImgBinary);
     virObjectUnref(qemu_driver->domains);
-    virThreadPoolFree(qemu_driver->workerPool);
 
     if (qemu_driver->lockFD != -1)
         virPidFileRelease(qemu_driver->config->stateDir, "driver", qemu_driver->lockFD);

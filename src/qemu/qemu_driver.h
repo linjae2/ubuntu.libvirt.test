@@ -22,3 +22,5 @@
 #pragma once
 
 int qemuRegister(void);
+
+int __qemuDriverIsNull(void);
