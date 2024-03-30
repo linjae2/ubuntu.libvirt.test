@@ -2395,6 +2395,7 @@ qemuAgentGetInterfaces(qemuAgentPtr mon,
 
         /* Has to be freed for each interface. */
         virStringListFree(ifname);
+        ifname = NULL;
 
         /* as well as IP address which - moreover -
          * can be presented multiple times */
