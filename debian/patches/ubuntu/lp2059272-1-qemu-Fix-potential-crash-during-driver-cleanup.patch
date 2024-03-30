@@ -1,0 +1,60 @@
+Bug-Ubuntu: http://bugs.launchpad.net/bugs/2059272
+Origin: backport, https://gitlab.com/libvirt/libvirt/-/commit/152770333449cd3b78b4f5a9f1148fc1f482d842
+[mfo: backport: hunk 1: refresh one context line: closeCallbacks]
+
+From 152770333449cd3b78b4f5a9f1148fc1f482d842 Mon Sep 17 00:00:00 2001
+From: Jim Fehlig <jfehlig@suse.com>
+Date: Tue, 11 Apr 2023 09:15:43 -0600
+Subject: [PATCH] qemu: Fix potential crash during driver cleanup
+
+During qemu driver shutdown, objects are freed in qemuStateCleanup that
+could still be used by active worker threads, resulting in crashes. E.g.
+a worker thread could be processing a monitor EOF event after the
+security manager is already disposed
+
+Program terminated with signal SIGSEGV, Segmentation fault.
+#0  0x00007fd9a9a1e1fe in virSecurityManagerMoveImageMetadata (mgr=0x7fd948012160, pid=-1, src=src@entry=0x7fd98c072c90, dst=dst@entry=0x0)
+    at ../../src/security/security_manager.c:468
+#1  0x00007fd9646ff0f0 in qemuSecurityMoveImageMetadata (driver=driver@entry=0x7fd948043830, vm=vm@entry=0x7fd98c066db0, src=src@entry=0x7fd98c072c90,
+    dst=dst@entry=0x0) at ../../src/qemu/qemu_security.c:182
+#2  0x00007fd96462c7b0 in qemuBlockRemoveImageMetadata (driver=driver@entry=0x7fd948043830, vm=vm@entry=0x7fd98c066db0, diskTarget=0x7fd98c072530 "vda",
+    src=<optimized out>) at ../../src/qemu/qemu_block.c:2628
+#3  0x00007fd9646929d6 in qemuProcessStop (driver=driver@entry=0x7fd948043830, vm=vm@entry=0x7fd98c066db0, reason=reason@entry=VIR_DOMAIN_SHUTOFF_SHUTDOWN,
+    asyncJob=asyncJob@entry=QEMU_ASYNC_JOB_NONE, flags=<optimized out>) at ../../src/qemu/qemu_process.c:7585
+#4  0x00007fd9646fc842 in processMonitorEOFEvent (vm=0x7fd98c066db0, driver=0x7fd948043830) at ../../src/qemu/qemu_driver.c:4794
+#5  qemuProcessEventHandler (data=0x561a93febb60, opaque=0x7fd948043830) at ../../src/qemu/qemu_driver.c:4900
+#6  0x00007fd9a9971a31 in virThreadPoolWorker (opaque=opaque@entry=0x561a93fb58e0) at ../../src/util/virthreadpool.c:163
+(gdb) p mgr->drv
+$2 = (virSecurityDriverPtr) 0x0
+
+Prior to commit 7cf76d4e3ab, the worker thread pool was freed before
+disposing any driver objects. Let's return to that pattern, but leave
+the other changes made by 7cf76d4e3ab.
+
+Signed-off-by: Tamara Schmitz <tamara.schmitz@suse.com>
+Signed-off-by: Jim Fehlig <jfehlig@suse.com>
+Reviewed-by: Martin Kletzander <mkletzan@redhat.com>
+---
+ src/qemu/qemu_driver.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: libvirt-6.0.0/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/qemu_driver.c
++++ libvirt-6.0.0/src/qemu/qemu_driver.c
+@@ -1119,6 +1119,7 @@ qemuStateCleanup(void)
+     if (!qemu_driver)
+         return -1;
+ 
++    virThreadPoolFree(qemu_driver->workerPool);
+     virObjectUnref(qemu_driver->migrationErrors);
+     virObjectUnref(qemu_driver->closeCallbacks);
+     virLockManagerPluginUnref(qemu_driver->lockManager);
+@@ -1138,7 +1139,6 @@ qemuStateCleanup(void)
+     ebtablesContextFree(qemu_driver->ebtables);
+     VIR_FREE(qemu_driver->qemuImgBinary);
+     virObjectUnref(qemu_driver->domains);
+-    virThreadPoolFree(qemu_driver->workerPool);
+ 
+     if (qemu_driver->lockFD != -1)
+         virPidFileRelease(qemu_driver->config->stateDir, "driver", qemu_driver->lockFD);

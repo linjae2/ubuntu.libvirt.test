@@ -1,3 +1,18 @@
+libvirt (6.0.0-0ubuntu8.18) focal; urgency=medium
+
+  * d/p/u/lp2059272-1-qemu-Fix-potential-crash-during-driver-cleanup.patch:
+    On QEMU driver cleanup, release (stop) the worker thread pool _first_,
+    before other data used by possibly running worker threads (LP: #2059272)
+
+  * d/p/u/lp2059272-2-qemu-Wait-qemuProcessReconnect-threads-in-cleanup.patch:
+    On QEMU driver cleanup, also wait for qemuProcessReconnect() threads,
+    as they are independent of the worker thread pool. (LP: #2059272) 
+    Focal needs this as it has no .stateShutdownWait() callback yet.
+    (The wait timeout is set in LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT:
+     -1 = wait indefinitely; 0 = do not wait; N = wait up to N seconds.)
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Sat, 30 Mar 2024 17:05:56 -0300
+
 libvirt (6.0.0-0ubuntu8.17) focal; urgency=medium
 
   * d/p/u/lp-1989078-*.patch: allow arm64 to lock its OVMF/AAVMF resources

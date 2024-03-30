@@ -1,0 +1,221 @@
+Bug-Ubuntu: http://bugs.launchpad.net/bugs/2059272
+Forwarded: not-needed
+
+From: Mauricio Faria de Oliveira <mfo@canonical.com>
+Date: Thu, 28 Mar 2024 14:36:20 -0300
+Subject: [PATCH] qemu: wait for qemuProcessReconnect() threads in
+ qemuStateCleanup()
+
+If libvirt is shutdown during initialization (which is unlikely,
+but it might happen), the QEMU driver's qemuProcessReconnect()
+threads (used to reconnect to running domains' QEMU processes)
+may be still running, and access QEMU driver's memory released
+in qemuStateCleanup() (ie, use-after-free).
+
+It is not sufficient to release (stop) the worker thread pool
+in order to wait for the threads running qemuProcessReconnect(),
+as they are created independently of the worker thread pool,
+with individual/direct calls to virThreadCreate().
+
+In Jammy and later there is the .stateShutdownWait() callback
+(called before .stateCleanup()), which indirectly synchronizes
+with them due to virObjectLock/Unlock() on the domain objects.
+
+However, that callback is not available in Focal, and it is a
+big change to be SRUed (10 patches with significant changes).
+
+So, this patch adopts a simple approach, based on an atomic
+counter for the number of threads running qemuProcessReconnect(),
+and wait for it to become zero in qemuStateCleanup() (i.e., all
+created threads finished running):
+
+ - The counter is incremented _before_ creating the thread (and also
+   before qemuStateCleanup() may be called if shutdown handler fires).
+
+ - The counter is decremented in case of _error_ creating the thread,
+   and in case the thread function _returns_ (only one return point).
+
+The wait timeout is set in LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT:
+-1 = wait indefinitely; 0 = do not wait; N = wait up to N seconds.
+
+The default is to wait up to 30 seconds, an educated trade-off:
+
+ - Usually, the _right_ thing is to wait indefinitely until all
+   such threads finish, so that released memory is not used.
+ - But that is a behavior change with a big impact to regular
+   operations in case of regressions (i.e., libvirt stop/restart
+   would not finish).
+ - So, providing a bounded timeout is good on that front.
+ - And also based on the fact that newer versions do it similarly
+   (forceful shutdown timer, once the signal to shutdown arrives).
+ - And in practice such threads do not take long, so even though
+   the timeout is bounded, all threads should finish within it.
+
+Index: libvirt-6.0.0/src/qemu/qemu_conf.h
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/qemu_conf.h
++++ libvirt-6.0.0/src/qemu/qemu_conf.h
+@@ -311,6 +311,9 @@ struct _virQEMUDriver {
+ 
+     /* Immutable pointer, self-locking APIs */
+     virHashAtomicPtr migrationErrors;
++
++    /* Atomic inc/dec only */
++    int qemuProcessReconnectThreads;
+ };
+ 
+ virQEMUDriverConfigPtr virQEMUDriverConfigNew(bool privileged);
+Index: libvirt-6.0.0/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/qemu_driver.c
++++ libvirt-6.0.0/src/qemu/qemu_driver.c
+@@ -104,6 +104,7 @@
+ #include "virdomainsnapshotobjlist.h"
+ #include "virenum.h"
+ #include "virdomaincheckpointobjlist.h"
++#include "viratomic.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_QEMU
+ 
+@@ -153,6 +154,16 @@ static int qemuOpenFileAs(uid_t fallback
+ 
+ static virQEMUDriverPtr qemu_driver;
+ 
++/**
++ * __qemuDriverIsNull()
++ *
++ * Check whether `qemu_driver` is NULL, without exporting its symbol.
++ */
++int
++__qemuDriverIsNull(void) {
++    return (qemu_driver == NULL);
++}
++
+ /* Looks up the domain object from snapshot and unlocks the
+  * driver. The returned domain object is locked and ref'd and the
+  * caller must call virDomainObjEndAPI() on it. */
+@@ -1109,6 +1120,57 @@ qemuStateStop(void)
+ }
+ 
+ /**
++ * qemuStateCleanupWait()
++ *
++ * Wait for qemuProcessReconnect() threads to finish (LP: #2059272).
++ *
++ * The timeout can be set with LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT
++ * (30 seconds by default):
++ *  -1: wait indefinitely
++ *   0: do not wait
++ *   N: wait up to N seconds
++ */
++static void
++qemuStateCleanupWait(void)
++{
++    int threads, timeout = 30, seconds = 0;
++    char *timeout_env;
++
++    /* Set timeout */
++    if ((timeout_env = getenv("LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT")) &&
++        virStrToLong_i(timeout_env, NULL, 10, &timeout) < 0)
++        VIR_ERROR("Failed to parse LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT");
++
++    VIR_DEBUG("timeout %i, timeout_env '%s'", timeout, timeout_env);
++
++    /* Maybe wait */
++    while ((threads = virAtomicIntGet(&qemu_driver->qemuProcessReconnectThreads))
++           && (threads > 0) && (timeout < 0 || seconds < timeout)) {
++
++        VIR_DEBUG("threads %i, seconds %i", threads, seconds);
++
++        if (seconds == 0)
++            VIR_WARN("Waiting for qemuProcessReconnect() threads (%i) to end. "
++                     "Configure with LIBVIRT_QEMU_STATE_CLEANUP_WAIT_TIMEOUT "
++                     "(-1 = wait; 0 = do not wait; N = wait up to N seconds; "
++                     "current = %i)", threads, timeout);
++
++        seconds++;
++        g_usleep(1 * G_USEC_PER_SEC);
++    }
++
++    /* Last check */
++    if (threads > 0)
++        VIR_WARN("Leaving qemuProcessReconnect() threads (%i) per timeout (%i)",
++                 threads, timeout);
++    else if (threads < 0)
++        VIR_ERROR("Negative qemuProcessReconnect() threads (%i); timeout (%i)",
++                 threads, timeout);
++    else
++        VIR_DEBUG("All qemuProcessReconnect() threads finished");
++}
++
++/**
+  * qemuStateCleanup:
+  *
+  * Release resources allocated by QEMU driver (no domain is shut off though)
+@@ -1119,6 +1181,8 @@ qemuStateCleanup(void)
+     if (!qemu_driver)
+         return -1;
+ 
++    qemuStateCleanupWait();
++
+     virThreadPoolFree(qemu_driver->workerPool);
+     virObjectUnref(qemu_driver->migrationErrors);
+     virObjectUnref(qemu_driver->closeCallbacks);
+Index: libvirt-6.0.0/src/qemu/qemu_process.c
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/qemu_process.c
++++ libvirt-6.0.0/src/qemu/qemu_process.c
+@@ -58,6 +58,7 @@
+ #include "qemu_extdevice.h"
+ #include "qemu_firmware.h"
+ #include "qemu_backup.h"
++#include "qemu_driver.h"
+ 
+ #include "cpu/cpu.h"
+ #include "cpu/cpu_x86.h"
+@@ -8152,6 +8153,15 @@ qemuProcessReconnect(void *opaque)
+         if (!virDomainObjIsActive(obj))
+             qemuDomainRemoveInactiveJob(driver, obj);
+     }
++
++    if (!__qemuDriverIsNull()) {
++        VIR_DEBUG("Decrementing qemuProcessReconnect() threads.");
++        virAtomicIntDecAndTest(&driver->qemuProcessReconnectThreads);
++    } else {
++        VIR_DEBUG("Not decrementing qemuProcessReconnect() threads "
++                  "as the QEMU driver is already deallocated/freed.");
++    }
++
+     virDomainObjEndAPI(&obj);
+     virNWFilterUnlockFilterUpdates();
+     virIdentitySetCurrent(NULL);
+@@ -8211,6 +8221,9 @@ qemuProcessReconnectHelper(virDomainObjP
+     virObjectLock(obj);
+     virObjectRef(obj);
+ 
++    VIR_DEBUG("Incrementing qemuProcessReconnect() threads.");
++    virAtomicIntInc(&src->driver->qemuProcessReconnectThreads);
++
+     if (virThreadCreate(&thread, false, qemuProcessReconnect, data) < 0) {
+         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+                        _("Could not create thread. QEMU initialization "
+@@ -8224,6 +8237,9 @@ qemuProcessReconnectHelper(virDomainObjP
+                         QEMU_ASYNC_JOB_NONE, 0);
+         qemuDomainRemoveInactiveJobLocked(src->driver, obj);
+ 
++        VIR_DEBUG("Decrementing qemuProcessReconnect() threads.");
++        virAtomicIntDecAndTest(&src->driver->qemuProcessReconnectThreads);
++
+         virDomainObjEndAPI(&obj);
+         virNWFilterUnlockFilterUpdates();
+         g_clear_object(&data->identity);
+Index: libvirt-6.0.0/src/qemu/qemu_driver.h
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/qemu_driver.h
++++ libvirt-6.0.0/src/qemu/qemu_driver.h
+@@ -22,3 +22,5 @@
+ #pragma once
+ 
+ int qemuRegister(void);
++
++int __qemuDriverIsNull(void);
