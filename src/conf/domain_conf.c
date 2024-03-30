@@ -2373,6 +2373,7 @@ virDomainVsockDefFree(virDomainVsockDefPtr vsock)
 
     virObjectUnref(vsock->privateData);
     virDomainDeviceInfoClear(&vsock->info);
+    VIR_FREE(vsock->virtio);
     VIR_FREE(vsock);
 }
 
@@ -5203,6 +5204,15 @@ virDomainNetDefPostParse(virDomainNetDefPtr net)
 }
 
 
+static bool
+virDomainVsockIsVirtioModel(const virDomainVsockDef *vsock)
+{
+    return (vsock->model == VIR_DOMAIN_VSOCK_MODEL_VIRTIO ||
+            vsock->model == VIR_DOMAIN_VSOCK_MODEL_VIRTIO_TRANSITIONAL ||
+            vsock->model == VIR_DOMAIN_VSOCK_MODEL_VIRTIO_NON_TRANSITIONAL);
+}
+
+
 static int
 virDomainVsockDefPostParse(virDomainVsockDefPtr vsock)
 {
@@ -5212,6 +5222,10 @@ virDomainVsockDefPostParse(virDomainVsockDefPtr vsock)
         else
             vsock->auto_cid = VIR_TRISTATE_BOOL_YES;
     }
+
+    if (!virDomainVsockIsVirtioModel(vsock) &&
+        virDomainCheckVirtioOptions(vsock->virtio) < 0)
+        return -1;
 
     return 0;
 }
@@ -16448,6 +16462,10 @@ virDomainVsockDefParseXML(virDomainXMLOptionPtr xmlopt,
     if (virDomainDeviceInfoParseXML(xmlopt, node, &vsock->info, flags) < 0)
         return NULL;
 
+    if (virDomainVirtioOptionsParseXML(virXPathNode("./driver", ctxt),
+                                       &vsock->virtio) < 0)
+        return NULL;
+
     return g_steal_pointer(&vsock);
 }
 
@@ -23128,6 +23146,10 @@ virDomainVsockDefCheckABIStability(virDomainVsockDefPtr src,
         return false;
     }
 
+    if (src->virtio && dst->virtio &&
+        !virDomainVirtioOptionsCheckABIStability(src->virtio, dst->virtio))
+        return false;
+
     if (!virDomainDeviceInfoCheckABIStability(&src->info, &dst->info))
         return false;
 
@@ -28027,6 +28049,7 @@ virDomainVsockDefFormat(virBufferPtr buf,
     g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
     g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
     g_auto(virBuffer) cidAttrBuf = VIR_BUFFER_INITIALIZER;
+    g_auto(virBuffer) drvAttrBuf = VIR_BUFFER_INITIALIZER;
 
     if (vsock->model) {
         virBufferAsprintf(&attrBuf, " model='%s'",
@@ -28044,6 +28067,9 @@ virDomainVsockDefFormat(virBufferPtr buf,
     if (virDomainDeviceInfoFormat(&childBuf, &vsock->info, 0) < 0)
         return -1;
 
+    virDomainVirtioOptionsFormat(&drvAttrBuf, vsock->virtio);
+
+    virXMLFormatElement(&childBuf, "driver", &drvAttrBuf, NULL);
     virXMLFormatElement(buf, "vsock", &attrBuf, &childBuf);
 
     return 0;
