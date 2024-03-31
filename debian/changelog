@@ -1,3 +1,9 @@
+libvirt (10.0.0-2ubuntu7) noble; urgency=medium
+
+  * No-change rebuild for CVE-2024-3094
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Sun, 31 Mar 2024 02:19:57 +0000
+
 libvirt (10.0.0-2ubuntu6) noble; urgency=medium
 
   * d/p/u/lp-2051754-*.patch: Backport upstream fix for LP: #2051754.
