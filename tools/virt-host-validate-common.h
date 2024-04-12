@@ -38,6 +38,7 @@ typedef enum {
     VIR_HOST_VALIDATE_CPU_FLAG_VMX = 0,
     VIR_HOST_VALIDATE_CPU_FLAG_SVM,
     VIR_HOST_VALIDATE_CPU_FLAG_SIE,
+    VIR_HOST_VALIDATE_CPU_FLAG_FACILITY_158,
 
     VIR_HOST_VALIDATE_CPU_FLAG_LAST,
 } virHostValidateCPUFlag;
@@ -83,3 +84,6 @@ int virHostValidateCGroupControllers(const char *hvname,
 
 int virHostValidateIOMMU(const char *hvname,
                          virHostValidateLevel level);
+
+int virHostValidateSecureGuests(const char *hvname,
+                                virHostValidateLevel level);
