@@ -2307,6 +2307,10 @@ remoteDispatchDomainGetSchedulerParameters(virNetServerPtr server G_GNUC_UNUSED,
     if (!conn)
         goto cleanup;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_SCHEDULER_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -2355,6 +2359,10 @@ remoteDispatchDomainGetSchedulerParametersFlags(virNetServerPtr server G_GNUC_UN
     if (!conn)
         goto cleanup;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_SCHEDULER_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -2516,6 +2524,10 @@ remoteDispatchDomainBlockStatsFlags(virNetServerPtr server G_GNUC_UNUSED,
         goto cleanup;
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_BLOCK_STATS_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -2750,6 +2762,14 @@ remoteDispatchDomainGetVcpuPinInfo(virNetServerPtr server G_GNUC_UNUSED,
     if (!(dom = get_nonnull_domain(conn, args->dom)))
         goto cleanup;
 
+    if (args->ncpumaps < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("ncpumaps must be non-negative"));
+        goto cleanup;
+    }
+    if (args->maplen < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("maplen must be non-negative"));
+        goto cleanup;
+    }
     if (args->ncpumaps > REMOTE_VCPUINFO_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("ncpumaps > REMOTE_VCPUINFO_MAX"));
         goto cleanup;
@@ -2845,6 +2865,11 @@ remoteDispatchDomainGetEmulatorPinInfo(virNetServerPtr server G_GNUC_UNUSED,
     if (!(dom = get_nonnull_domain(conn, args->dom)))
         goto cleanup;
 
+    if (args->maplen < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("maplen must be non-negative"));
+        goto cleanup;
+    }
+
     /* Allocate buffers to take the results */
     if (args->maplen > 0 &&
         VIR_ALLOC_N(cpumaps, args->maplen) < 0)
@@ -2893,6 +2918,14 @@ remoteDispatchDomainGetVcpus(virNetServerPtr server G_GNUC_UNUSED,
     if (!(dom = get_nonnull_domain(conn, args->dom)))
         goto cleanup;
 
+    if (args->maxinfo < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("maxinfo must be non-negative"));
+        goto cleanup;
+    }
+    if (args->maplen < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("maxinfo must be non-negative"));
+        goto cleanup;
+    }
     if (args->maxinfo > REMOTE_VCPUINFO_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("maxinfo > REMOTE_VCPUINFO_MAX"));
         goto cleanup;
@@ -3140,6 +3173,10 @@ remoteDispatchDomainGetMemoryParameters(virNetServerPtr server G_GNUC_UNUSED,
 
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_MEMORY_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -3200,6 +3237,10 @@ remoteDispatchDomainGetNumaParameters(virNetServerPtr server G_GNUC_UNUSED,
 
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_NUMA_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -3260,6 +3301,10 @@ remoteDispatchDomainGetBlkioParameters(virNetServerPtr server G_GNUC_UNUSED,
 
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_BLKIO_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -3321,6 +3366,10 @@ remoteDispatchNodeGetCPUStats(virNetServerPtr server G_GNUC_UNUSED,
 
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_NODE_CPU_STATS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -3389,6 +3438,10 @@ remoteDispatchNodeGetMemoryStats(virNetServerPtr server G_GNUC_UNUSED,
 
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_NODE_MEMORY_STATS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -3570,6 +3623,10 @@ remoteDispatchDomainGetBlockIoTune(virNetServerPtr server G_GNUC_UNUSED,
     if (!conn)
         goto cleanup;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_BLOCK_IO_TUNE_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -5128,6 +5185,10 @@ remoteDispatchDomainGetInterfaceParameters(virNetServerPtr server G_GNUC_UNUSED,
 
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_DOMAIN_INTERFACE_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
@@ -5350,6 +5411,10 @@ remoteDispatchNodeGetMemoryParameters(virNetServerPtr server G_GNUC_UNUSED,
 
     flags = args->flags;
 
+    if (args->nparams < 0) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams must be non-negative"));
+        goto cleanup;
+    }
     if (args->nparams > REMOTE_NODE_MEMORY_PARAMETERS_MAX) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("nparams too large"));
         goto cleanup;
