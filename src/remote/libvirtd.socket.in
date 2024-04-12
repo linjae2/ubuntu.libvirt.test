@@ -8,7 +8,9 @@ Before=@service@.service
 # when using systemd version < 227
 ListenStream=@runstatedir@/libvirt/@sockprefix@-sock
 Service=@service@.service
-SocketMode=0666
+SocketMode=0660
+SocketUser=root
+SocketGroup=libvirt
 
 [Install]
 WantedBy=sockets.target
