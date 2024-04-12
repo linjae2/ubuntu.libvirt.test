@@ -72,3 +72,6 @@ CVE-2022-0897.patch
 CVE-2023-2700.patch
 ubuntu/lp-2024114-Avoid-memleak-in-virNodeDeviceGetPCIVPDDynamicCap.patch
 ubuntu/lp2059272-qemu-Fix-potential-crash-during-driver-cleanup.patch
+CVE-2024-1441.patch
+CVE-2024-2494.patch
+CVE-2024-2496.patch
