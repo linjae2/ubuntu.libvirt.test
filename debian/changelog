@@ -1,3 +1,9 @@
+libvirt (10.0.0-2ubuntu8) noble; urgency=medium
+
+  * Rebuild against new libpcap0.8t64.
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Mon, 15 Apr 2024 10:17:16 +0200
+
 libvirt (10.0.0-2ubuntu7) noble; urgency=medium
 
   * No-change rebuild for CVE-2024-3094
