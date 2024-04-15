@@ -1,0 +1,12 @@
+  * SECURITY UPDATE: off-by-one in udevListInterfacesByStatus()
+    - debian/patches/CVE-2024-1441.patch: properly check count in
+      src/interface/interface_backend_udev.c.
+    - CVE-2024-1441
+  * SECURITY UPDATE: crash in RPC library
+    - debian/patches/CVE-2024-2494.patch: check values in
+      src/remote/remote_daemon_dispatch.c, src/rpc/gendispatch.pl.
+    - CVE-2024-2494
+  * SECURITY UPDATE: null pointer deref in udevConnectListAllInterfaces()
+    - debian/patches/CVE-2024-2496.patch: fix udev_device_get_sysattr_value
+      return value check in src/interface/interface_backend_udev.c.
+    - CVE-2024-2496
