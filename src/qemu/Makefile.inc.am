@@ -99,6 +99,8 @@ libvirt_driver_qemu_impl_la_CFLAGS = \
 	-I$(builddir)/access \
 	-I$(srcdir)/conf \
 	-I$(srcdir)/secret \
+	-I$(srcdir)/rpc \
+	-I$(builddir)/rpc \
 	$(AM_CFLAGS) \
 	$(NULL)
 libvirt_driver_qemu_impl_la_LDFLAGS = $(AM_LDFLAGS)
@@ -108,10 +110,13 @@ libvirt_driver_qemu_impl_la_LIBADD = \
 	$(LIBNL_LIBS) \
 	$(SELINUX_LIBS) \
 	$(LIBXML_LIBS) \
+	libvirt-net-rpc.la \
+	libvirt-net-rpc-server.la \
 	$(NULL)
 libvirt_driver_qemu_impl_la_SOURCES = $(QEMU_DRIVER_SOURCES)
 
 if WITH_DTRACE_PROBES
+libvirt_driver_qemu_la_LIBADD += libvirt_probes.lo
 libvirt_driver_qemu_la_LIBADD += libvirt_qemu_probes.lo
 nodist_libvirt_driver_qemu_la_SOURCES = libvirt_qemu_probes.h
 BUILT_SOURCES += libvirt_qemu_probes.h

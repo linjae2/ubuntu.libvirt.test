@@ -859,6 +859,12 @@ virNetDaemonQuit(virNetDaemonPtr dmn)
     virObjectUnlock(dmn);
 }
 
+bool
+virNetDaemonQuitRequested(virNetDaemonPtr dmn)
+{
+    return dmn->quit;
+}
+
 static int
 daemonServerClose(void *payload,
                   const void *key G_GNUC_UNUSED,

@@ -68,6 +68,7 @@ void virNetDaemonUpdateServices(virNetDaemonPtr dmn,
 void virNetDaemonRun(virNetDaemonPtr dmn);
 
 void virNetDaemonQuit(virNetDaemonPtr dmn);
+bool virNetDaemonQuitRequested(virNetDaemonPtr dmn);
 
 void virNetDaemonClose(virNetDaemonPtr dmn);
 

@@ -1,0 +1,48 @@
+From 7aec69b7fb9d0cfe8b7203473764c205b28d2905 Mon Sep 17 00:00:00 2001
+From: Martin Pitt <mpitt@debian.org>
+Date: Fri, 25 Feb 2022 14:07:30 +0000
+Subject: [PATCH] apparmor: Fix QEMU access for UEFI variable files
+
+QEMU needs to read, write, and lock the NVRAM *.fd files with UEFI
+firmware.
+
+Fixes: https://bugs.debian.org/1006324
+Fixes: https://launchpad.net/bugs/1962035
+
+Signed-off-by: Martin Pitt <mpitt@debian.org>
+Reviewed-by: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+
+X-Backport-Note: 07af71ad has not landed yet and since it sorted all entries
+                 there is some non-functional noise
+Origin: backport, https://gitlab.com/libvirt/libvirt/-/commit/7aec69b7f
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1989078
+Bug-Debian: https://bugs.debian.org/1006324
+Last-Update: 2023-01-09
+
+---
+ src/security/apparmor/libvirt-qemu | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+--- a/src/security/apparmor/libvirt-qemu
++++ b/src/security/apparmor/libvirt-qemu
+@@ -89,8 +89,8 @@
+   /usr/share/vgabios/** r,
+   /usr/share/seabios/** r,
+   /usr/share/misc/sgabios.bin r,
+-  /usr/share/ovmf/** r,
+-  /usr/share/OVMF/** r,
++  /usr/share/ovmf/** rk,
++  /usr/share/OVMF/** rk,
+   /usr/share/AAVMF/** r,
+   /usr/share/qemu-efi/** r,
+   /usr/share/slof/** r,
+@@ -264,5 +264,9 @@
+   / r, # harmless on any lsb compliant system
+   /sys/bus/nd/devices/{,**/} r,
+ 
++  # required for QEMU accessing UEFI nvram variables
++  owner /var/lib/libvirt/qemu/nvram/*_VARS.fd rwk,
++  owner /var/lib/libvirt/qemu/nvram/*_VARS.ms.fd rwk,
++
+   # Site-specific additions and overrides. See local/README for details.
+   #include <local/abstractions/libvirt-qemu>
