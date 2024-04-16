@@ -189,3 +189,7 @@ CVE-2022-0897.patch
 CVE-2024-1441.patch
 CVE-2024-2494.patch
 CVE-2024-2496.patch
+ubuntu/lp-1989078-apparmor-Fix-QEMU-access-for-UEFI-variable-files.patch
+ubuntu/lp-1989078-apparmor-Allow-locking-AAVMF-firmware.patch
+ubuntu/lp2059272-1-qemu-Fix-potential-crash-during-driver-cleanup.patch
+ubuntu/lp2059272-2-qemu-Do-not-save-XML-in-shutdown-on-init.patch

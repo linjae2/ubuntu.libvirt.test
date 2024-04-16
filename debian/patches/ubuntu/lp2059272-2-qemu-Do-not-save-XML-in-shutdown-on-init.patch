@@ -1,0 +1,290 @@
+Bug-Ubuntu: http://bugs.launchpad.net/bugs/2059272
+Forwarded: not-needed
+
+From: Mauricio Faria de Oliveira <mfo@canonical.com>
+Date: Fri, 05 Apr 2024 14:36:20 -0300
+Subject: [PATCH] qemu: Do not save domain status XML in 
+ qemuProcessReconnect() if shutdown is requested
+
+Problem:
+
+If libvirt is shutdown during initialization (that is unlikely, but may happen),
+the QEMU driver's qemuProcessReconnect() threads (used to reconnect to the QEMU
+process/monitor of running domains and update the domain status XML accordingly)
+may still be running after qemuStateCleanup() freed & zeroed QEMU driver memory.
+
+This makes the QEMU driver's function pointer/callback to format XML to be NULL,
+thus qemuProcessReconnect() -> virDomainObjSave() -> virDomainObjFormat() writes
+an incomplete domain status XML file, lacking the QEMU driver specific section,
+for example, without the path to the QEMU monitor socket ("<monitor path=...>").
+
+The next time libvirtd initializes the QEMU driver, which looks for the domain
+status XML files in order to identify the running domains so as to manage them,
+there is a parsing error for such XML file, which aborts the identification of
+that domain, thus libvirt is not even aware of it, and cannot manage it (e.g.,
+the domain is not present in `virsh list` nor recognized in `virsh` commands).
+
+- main()
+  - daemonStateInit()
+    - new thread: daemonRunStateInit()
+                  - virStateInitialize() 
+                    - qemuStateInitialize()
+                      - driver.xmlopt = virQEMUDriverCreateXMLConf()
+                      - qemuProcessReconnectAll()
+                        - new threads: qemuProcessReconnect()
+                                       - virDomainObjSave()
+                                         - virDomainObjFormat()
+                                           - driver.xmlopt.privateData.format()
+  - daemonSetupSignals() 
+  - virNetDaemonRun()
+    - dmn->quit = false
+    - while (!dmn->quit)
+      - virEventRunDefaultImpl()
+  - virStateCleanup()
+    - qemuStateCleanup()
+      - unref/free/zero(driver.xmlopt)
+
+SIG{INT,QUIT,TERM}
+- daemonShutdownHandler()
+  - dmn->quit = true
+
+Solution in Jammy/upstream:
+
+It is not sufficient to release (stop) the worker thread pool in order to wait
+for the qemuProcessReconnect() threads as they are created independently of the
+worker thread pool, with individual/direct calls to virThreadCreate().
+
+In Jammy and later there is the .stateShutdownWait() callback (called before the
+.stateCleanup() callback, ie, qemuStateCleanup()), which indirectly synchronizes
+with qemuProcessReconnect() threads due to virObjectLock() on domain objects.
+
+However, that callback is not available in Focal, and it is a big change that is
+not SRU material (10 patches with significant changes).
+
+Solution in Focal:
+
+In theory, the entire qemuProcessReconnect() function should synchronize with
+the event loop as 1. shutdown stops it then proceeds to qemuStateCleanup(), and
+ 2. its calls to QEMU monitor depend on the event loop to get the monitor reply.
+(And the QEMU driver memory might be used after release in qemuStateCleanup().)
+
+In practice, only the call to update XML should synchronize with the event loop,
+because it is the actual "commit" of the result of the QEMU monitor calls above.
+(This doesn't address the usage of QEMU driver memory after release, admittedly,
+but there are no bugs for that yet; and impact is at shutdown time 'only'.)
+
+Note that, if any of the QEMU monitor calls above block waiting command replies
+because the event loop has stopped, the update XML call is not reached. That is
+actually OK (since it prevents an incomplete XML) and is what happens currently.
+
+*But*, if it *is* reached, then it *must* either run with QEMU driver in place
+all the way through (so it can write a complete XML file), or *not run* at all.
+
+So, we can just check whether libvirtd shutdown is set and skip the XML update.
+
+It is OK to skip the XML update, which runs at libvirtd initialization, because
+if a libvirtd shutdown is happening (i.e., an early shutdown) the resulting XML
+*is not going to be used anyway* this time / this libvirtd run, and it
+*is going to run again anyway* next time / next libvirtd initialization.
+
+Implementation:
+
+The libvirtd _daemon_ runs the QEMU _driver_.
+
+The shutdown handler sets the 'quit' flag in the _daemon_ (stops the event loop)
+and this is not accessible by the _driver_, originally.
+
+However, the daemon passes itself to the driver as an opaque pointer on init, so
+the driver can tell it not to shutdown due to timeout, if there are running VMs.
+
+So, let's use that existing pointer, plus a new function at the daemon level, to
+check whether the daemon's 'quit' flag is set (ie, the daemon is shutting down),
+and not update the XML in that case.
+
+The daemon object lock is convenient, as it is used by both the shutdown handler
+and the event loop, so if we lock it and 'quit' is not set, the shutdown is not
+going to start until we unlock it. Thus, we update the XML with that lock held.
+
+We also make sure the daemon reference count is correctly (inc/dec)remented in
+the qemuProcessReconnect() threads, so that it is not freed/zeroed at shutdown
+before we lock it, since we access its memory to take the daemon object lock.
+
+Details for Makefile.inc.am:
+
+The plumbing of `virNetDaemonQuitRequested()` from daemon-level to driver-level
+needs the RPC include headers and static linking archives/objects, that in turn
+need the probes linked (since RPC code has probes). 
+
+(The probes link with `libvirt_driver_qemu_la` not `libvirt_driver_qemu_IMPL_la`
+as RPC does because a _test_ already links the probes *and* IMPLementation, thus
+would build-fail per duplicate definitions of the probes if IMPL had those too.)
+
+Index: libvirt-6.0.0/src/qemu/Makefile.inc.am
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/Makefile.inc.am
++++ libvirt-6.0.0/src/qemu/Makefile.inc.am
+@@ -99,6 +99,8 @@ libvirt_driver_qemu_impl_la_CFLAGS = \
+ 	-I$(builddir)/access \
+ 	-I$(srcdir)/conf \
+ 	-I$(srcdir)/secret \
++	-I$(srcdir)/rpc \
++	-I$(builddir)/rpc \
+ 	$(AM_CFLAGS) \
+ 	$(NULL)
+ libvirt_driver_qemu_impl_la_LDFLAGS = $(AM_LDFLAGS)
+@@ -108,10 +110,13 @@ libvirt_driver_qemu_impl_la_LIBADD = \
+ 	$(LIBNL_LIBS) \
+ 	$(SELINUX_LIBS) \
+ 	$(LIBXML_LIBS) \
++	libvirt-net-rpc.la \
++	libvirt-net-rpc-server.la \
+ 	$(NULL)
+ libvirt_driver_qemu_impl_la_SOURCES = $(QEMU_DRIVER_SOURCES)
+ 
+ if WITH_DTRACE_PROBES
++libvirt_driver_qemu_la_LIBADD += libvirt_probes.lo
+ libvirt_driver_qemu_la_LIBADD += libvirt_qemu_probes.lo
+ nodist_libvirt_driver_qemu_la_SOURCES = libvirt_qemu_probes.h
+ BUILT_SOURCES += libvirt_qemu_probes.h
+Index: libvirt-6.0.0/src/qemu/qemu_driver.c
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/qemu_driver.c
++++ libvirt-6.0.0/src/qemu/qemu_driver.c
+@@ -153,6 +153,14 @@ static int qemuOpenFileAs(uid_t fallback
+ 
+ static virQEMUDriverPtr qemu_driver;
+ 
++/* Store a pointer to the daemon running the QEMU driver.
++ *
++ * Note: that is already in 'qemu_driver->inhibitOpaque',
++ * but it is released and cleared during daemon shutdown.
++ *
++ * This remains in place during shutdown with references. */
++void *qemu_driver_dmn;
++
+ /* Looks up the domain object from snapshot and unlocks the
+  * driver. The returned domain object is locked and ref'd and the
+  * caller must call virDomainObjEndAPI() on it. */
+@@ -658,6 +666,7 @@ qemuStateInitialize(bool privileged,
+ 
+     qemu_driver->inhibitCallback = callback;
+     qemu_driver->inhibitOpaque = opaque;
++    qemu_driver_dmn = opaque;
+ 
+     qemu_driver->privileged = privileged;
+     qemu_driver->hostarch = virArchFromHost();
+Index: libvirt-6.0.0/src/qemu/qemu_process.c
+===================================================================
+--- libvirt-6.0.0.orig/src/qemu/qemu_process.c
++++ libvirt-6.0.0/src/qemu/qemu_process.c
+@@ -96,6 +96,28 @@
+ 
+ VIR_LOG_INIT("qemu.qemu_process");
+ 
++/* Use the pointer to the daemon running the QEMU driver.
++ *
++ * It is (un)referenced in qemuProcessReconnect{Helper}()
++ * so it has references while qemuProcessReconnect() runs.
++ *
++ * Thus, it can be safely used there even during shutdown. */
++extern void *qemu_driver_dmn;
++
++/* Function virNetDaemonQuitRequested() exports whether
++ * a daemon has been requested to shut down (dmn->quit).
++ *
++ * It must be called with the daemon's object lock held
++ * as 'dmn->quit' is set asynchronously under that lock
++ * by signal handlers and it is checked under that lock
++ * for the event loop to continue (or not, if it is set).
++ *
++ * So, it is guaranteed that, if the function return is
++ * false under the daemon lock, the event loop will not
++ * continue or break to shutdown while the lock is held.
++ */
++#include "rpc/virnetdaemon.h"
++
+ /**
+  * qemuProcessRemoveDomainStatus
+  *
+@@ -8119,8 +8141,27 @@ qemuProcessReconnect(void *opaque)
+     }
+ 
+     /* update domain state XML with possibly updated state in virDomainObj */
+-    if (virDomainObjSave(obj, driver->xmlopt, cfg->stateDir) < 0)
++
++    /*
++     * But *not* if shutdown is detected during this initialization
++     * as the QEMU driver XML formatter may have been freed already,
++     * which effectively removes the QEMU information from the file,
++     * causing an error to parse this domain on next initialization.
++     *
++     * The same update will just happen again on next initialization,
++     * and it isn't useful on this initialization as we are shutting
++     * down anyway; so just skip it, do it next time. (LP: #2059272)
++     */
++    virObjectLock(qemu_driver_dmn);
++    if (virNetDaemonQuitRequested(qemu_driver_dmn)) {
++        VIR_INFO("Leaving the update of '%s' domain status XML for the next "
++                 "initialization (shutdown detected on this initialization).",
++                  obj->def->name);
++    } else if (virDomainObjSave(obj, driver->xmlopt, cfg->stateDir) < 0) {
++        virObjectUnlock(qemu_driver_dmn);
+         goto error;
++    }
++    virObjectUnlock(qemu_driver_dmn);
+ 
+     /* Run an hook to allow admins to do some magic */
+     if (virHookPresent(VIR_HOOK_DRIVER_QEMU)) {
+@@ -8152,6 +8193,7 @@ qemuProcessReconnect(void *opaque)
+         if (!virDomainObjIsActive(obj))
+             qemuDomainRemoveInactiveJob(driver, obj);
+     }
++    virObjectUnref(qemu_driver_dmn);
+     virDomainObjEndAPI(&obj);
+     virNWFilterUnlockFilterUpdates();
+     virIdentitySetCurrent(NULL);
+@@ -8210,6 +8252,7 @@ qemuProcessReconnectHelper(virDomainObjP
+      * that handles the reconnect */
+     virObjectLock(obj);
+     virObjectRef(obj);
++    virObjectRef(qemu_driver_dmn);
+ 
+     if (virThreadCreate(&thread, false, qemuProcessReconnect, data) < 0) {
+         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
+@@ -8224,6 +8267,7 @@ qemuProcessReconnectHelper(virDomainObjP
+                         QEMU_ASYNC_JOB_NONE, 0);
+         qemuDomainRemoveInactiveJobLocked(src->driver, obj);
+ 
++        virObjectUnref(qemu_driver_dmn);
+         virDomainObjEndAPI(&obj);
+         virNWFilterUnlockFilterUpdates();
+         g_clear_object(&data->identity);
+Index: libvirt-6.0.0/src/rpc/virnetdaemon.c
+===================================================================
+--- libvirt-6.0.0.orig/src/rpc/virnetdaemon.c
++++ libvirt-6.0.0/src/rpc/virnetdaemon.c
+@@ -859,6 +859,12 @@ virNetDaemonQuit(virNetDaemonPtr dmn)
+     virObjectUnlock(dmn);
+ }
+ 
++bool
++virNetDaemonQuitRequested(virNetDaemonPtr dmn)
++{
++    return dmn->quit;
++}
++
+ static int
+ daemonServerClose(void *payload,
+                   const void *key G_GNUC_UNUSED,
+Index: libvirt-6.0.0/src/rpc/virnetdaemon.h
+===================================================================
+--- libvirt-6.0.0.orig/src/rpc/virnetdaemon.h
++++ libvirt-6.0.0/src/rpc/virnetdaemon.h
+@@ -68,6 +68,7 @@ void virNetDaemonUpdateServices(virNetDa
+ void virNetDaemonRun(virNetDaemonPtr dmn);
+ 
+ void virNetDaemonQuit(virNetDaemonPtr dmn);
++bool virNetDaemonQuitRequested(virNetDaemonPtr dmn);
+ 
+ void virNetDaemonClose(virNetDaemonPtr dmn);
+ 
