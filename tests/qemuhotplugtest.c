@@ -335,6 +335,8 @@ testQemuHotplug(const void *data)
         ret = testQemuHotplugUpdate(vm, dev);
     }
 
+    virObjectLock(priv->mon);
+
  cleanup:
     VIR_FREE(domain_filename);
     VIR_FREE(device_filename);
@@ -376,6 +378,7 @@ static void
 testQemuHotplugCpuDataFree(struct testQemuHotplugCpuData *data)
 {
     qemuDomainObjPrivatePtr priv;
+    qemuMonitorPtr mon;
 
     if (!data)
         return;
@@ -394,6 +397,8 @@ testQemuHotplugCpuDataFree(struct testQemuHotplugCpuData *data)
         virObjectUnref(data->vm);
     }
 
+    mon = qemuMonitorTestGetMonitor(data->mon);
+    virObjectLock(mon);
     qemuMonitorTestFree(data->mon);
     VIR_FREE(data);
 }
