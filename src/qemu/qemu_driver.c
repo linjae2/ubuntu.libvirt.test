@@ -153,6 +153,14 @@ static int qemuOpenFileAs(uid_t fallback_uid, gid_t fallback_gid,
 
 static virQEMUDriverPtr qemu_driver;
 
+/* Store a pointer to the daemon running the QEMU driver.
+ *
+ * Note: that is already in 'qemu_driver->inhibitOpaque',
+ * but it is released and cleared during daemon shutdown.
+ *
+ * This remains in place during shutdown with references. */
+void *qemu_driver_dmn;
+
 /* Looks up the domain object from snapshot and unlocks the
  * driver. The returned domain object is locked and ref'd and the
  * caller must call virDomainObjEndAPI() on it. */
@@ -658,6 +666,7 @@ qemuStateInitialize(bool privileged,
 
     qemu_driver->inhibitCallback = callback;
     qemu_driver->inhibitOpaque = opaque;
+    qemu_driver_dmn = opaque;
 
     qemu_driver->privileged = privileged;
     qemu_driver->hostarch = virArchFromHost();

@@ -96,6 +96,28 @@
 
 VIR_LOG_INIT("qemu.qemu_process");
 
+/* Use the pointer to the daemon running the QEMU driver.
+ *
+ * It is (un)referenced in qemuProcessReconnect{Helper}()
+ * so it has references while qemuProcessReconnect() runs.
+ *
+ * Thus, it can be safely used there even during shutdown. */
+extern void *qemu_driver_dmn;
+
+/* Function virNetDaemonQuitRequested() exports whether
+ * a daemon has been requested to shut down (dmn->quit).
+ *
+ * It must be called with the daemon's object lock held
+ * as 'dmn->quit' is set asynchronously under that lock
+ * by signal handlers and it is checked under that lock
+ * for the event loop to continue (or not, if it is set).
+ *
+ * So, it is guaranteed that, if the function return is
+ * false under the daemon lock, the event loop will not
+ * continue or break to shutdown while the lock is held.
+ */
+#include "rpc/virnetdaemon.h"
+
 /**
  * qemuProcessRemoveDomainStatus
  *
@@ -8119,8 +8141,27 @@ qemuProcessReconnect(void *opaque)
     }
 
     /* update domain state XML with possibly updated state in virDomainObj */
-    if (virDomainObjSave(obj, driver->xmlopt, cfg->stateDir) < 0)
+
+    /*
+     * But *not* if shutdown is detected during this initialization
+     * as the QEMU driver XML formatter may have been freed already,
+     * which effectively removes the QEMU information from the file,
+     * causing an error to parse this domain on next initialization.
+     *
+     * The same update will just happen again on next initialization,
+     * and it isn't useful on this initialization as we are shutting
+     * down anyway; so just skip it, do it next time. (LP: #2059272)
+     */
+    virObjectLock(qemu_driver_dmn);
+    if (virNetDaemonQuitRequested(qemu_driver_dmn)) {
+        VIR_INFO("Leaving the update of '%s' domain status XML for the next "
+                 "initialization (shutdown detected on this initialization).",
+                  obj->def->name);
+    } else if (virDomainObjSave(obj, driver->xmlopt, cfg->stateDir) < 0) {
+        virObjectUnlock(qemu_driver_dmn);
         goto error;
+    }
+    virObjectUnlock(qemu_driver_dmn);
 
     /* Run an hook to allow admins to do some magic */
     if (virHookPresent(VIR_HOOK_DRIVER_QEMU)) {
@@ -8152,6 +8193,7 @@ qemuProcessReconnect(void *opaque)
         if (!virDomainObjIsActive(obj))
             qemuDomainRemoveInactiveJob(driver, obj);
     }
+    virObjectUnref(qemu_driver_dmn);
     virDomainObjEndAPI(&obj);
     virNWFilterUnlockFilterUpdates();
     virIdentitySetCurrent(NULL);
@@ -8210,6 +8252,7 @@ qemuProcessReconnectHelper(virDomainObjPtr obj,
      * that handles the reconnect */
     virObjectLock(obj);
     virObjectRef(obj);
+    virObjectRef(qemu_driver_dmn);
 
     if (virThreadCreate(&thread, false, qemuProcessReconnect, data) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR, "%s",
@@ -8224,6 +8267,7 @@ qemuProcessReconnectHelper(virDomainObjPtr obj,
                         QEMU_ASYNC_JOB_NONE, 0);
         qemuDomainRemoveInactiveJobLocked(src->driver, obj);
 
+        virObjectUnref(qemu_driver_dmn);
         virDomainObjEndAPI(&obj);
         virNWFilterUnlockFilterUpdates();
         g_clear_object(&data->identity);
