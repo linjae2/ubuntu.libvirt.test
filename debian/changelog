@@ -1,3 +1,16 @@
+libvirt (10.0.0-2ubuntu8.1) noble-security; urgency=medium
+
+  * SECURITY UPDATE: off-by-one in udevListInterfacesByStatus()
+    - debian/patches/CVE-2024-1441.patch: properly check count in
+      src/interface/interface_backend_udev.c.
+    - CVE-2024-1441
+  * SECURITY UPDATE: crash in RPC library
+    - debian/patches/CVE-2024-2494.patch: check values in
+      src/remote/remote_daemon_dispatch.c, src/rpc/gendispatch.pl.
+    - CVE-2024-2494
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Thu, 18 Apr 2024 11:42:32 -0400
+
 libvirt (10.0.0-2ubuntu8) noble; urgency=medium
 
   * Rebuild against new libpcap0.8t64.
