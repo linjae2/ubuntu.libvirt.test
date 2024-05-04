@@ -1,0 +1,3 @@
+  * [7845089] New upstream version 10.3.0
+  * [be65bee] patches: Add backport/rpc-ensure-temporary-GSource[...]
+    - Fixes CVE-2024-4418 (Closes: #1070330)
