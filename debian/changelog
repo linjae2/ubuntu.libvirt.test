@@ -1,3 +1,12 @@
+libvirt (10.0.0-2ubuntu8.2) noble-security; urgency=medium
+
+  * SECURITY UPDATE: stack use-after-free in virNetClientIOEventLoop()
+    - debian/patches/CVE-2024-4418.patch: ensure temporary GSource is
+      removed from client event loop in src/rpc/virnetclient.c.
+    - CVE-2024-4418
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Mon, 06 May 2024 09:12:37 -0400
+
 libvirt (10.0.0-2ubuntu8.1) noble-security; urgency=medium
 
   * SECURITY UPDATE: off-by-one in udevListInterfacesByStatus()

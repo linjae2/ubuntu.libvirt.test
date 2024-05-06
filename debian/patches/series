@@ -46,3 +46,4 @@ ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 CVE-2024-1441.patch
 CVE-2024-2494.patch
+CVE-2024-4418.patch
