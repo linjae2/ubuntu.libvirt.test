@@ -1,0 +1,2 @@
+  * [13f1f61] patches: Add backport/vsh-Don-t-init-history[...]
+    - Fixes FTBFS (Closes: #1070498)
