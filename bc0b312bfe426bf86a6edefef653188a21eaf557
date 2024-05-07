@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: stack use-after-free in virNetClientIOEventLoop()
+    - debian/patches/CVE-2024-4418.patch: ensure temporary GSource is
+      removed from client event loop in src/rpc/virnetclient.c.
+    - CVE-2024-4418
