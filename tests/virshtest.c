@@ -151,9 +151,9 @@ testPipeFeeder(void *opaque)
     }
 
     memset(doc, ' ', emptyspace);
-    virStrcpy(doc + emptyspace, xml, xmlsize);
+    g_assert(virStrcpy(doc + emptyspace, xml, xmlsize + 1) == 0);
 
-    if (safewrite(fd, doc, emptyspace + xmlsize + 1) < 0) {
+    if (safewrite(fd, doc, emptyspace + xmlsize) < 0) {
         fprintf(stderr, "\nfailed to write to pipe '%s': %s\n", pipepath, g_strerror(errno));
         return;
     }
@@ -308,6 +308,9 @@ mymain(void)
     DO_TEST("echo a \\# b");
     DO_TEST("#unbalanced; 'quotes\"\necho a # b");
     DO_TEST("\\# ignored;echo a\n'#also' ignored");
+
+    /* test of the --help option handling */
+    DO_TEST_SCRIPT("help-option", NULL, VIRSH_DEFAULT, "-q");
 
     /* test of splitting in vshStringToArray */
     DO_TEST_SCRIPT("echo-split", NULL, VIRSH_DEFAULT, "-q");

@@ -9,6 +9,7 @@ etc/libvirt/libxl-lockd.conf
 etc/libvirt/libxl-sanlock.conf
 etc/libvirt/libxl.conf
 etc/libvirt/lxc.conf
+etc/libvirt/network.conf
 etc/libvirt/qemu-lockd.conf
 etc/libvirt/qemu-sanlock.conf
 etc/libvirt/qemu.conf
