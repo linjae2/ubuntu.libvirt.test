@@ -1,3 +1,10 @@
+libvirt (10.0.0-2ubuntu8.3) noble; urgency=medium
+
+  * d/p/u/lp-2071848-fix-migration-with-disabled-vmx-features.patch:
+    Fix migration issues with disabled vmx-* CPU features. (LP: #2071848)
+
+ -- Sergio Durigan Junior <sergio.durigan@canonical.com>  Fri, 05 Jul 2024 14:48:04 -0400
+
 libvirt (10.0.0-2ubuntu8.2) noble-security; urgency=medium
 
   * SECURITY UPDATE: stack use-after-free in virNetClientIOEventLoop()
