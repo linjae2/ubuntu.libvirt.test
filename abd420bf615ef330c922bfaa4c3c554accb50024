@@ -1,0 +1,2 @@
+  * [a8c62f5] New upstream version 10.5.0
+    - Fixes qemu:///session (Closes: #1072723, #1072769)
