@@ -1,3 +1,11 @@
+libvirt (10.0.0-2ubuntu8.4) noble; urgency=medium
+
+  * d/p/u/lp-2072647-log_cleaner-Detect-rotated-filenames-properly.patch:
+    Fix virtlogd bug "internal error: Failed to parse rotated index", this
+    happens when max_age_days parameter is enabled. (LP: #2072647)
+
+ -- David Negreira <david.negreira@canonical.com>  Wed, 10 Jul 2024 13:23:06 +0000
+
 libvirt (10.0.0-2ubuntu8.3) noble; urgency=medium
 
   * d/p/u/lp-2071848-fix-migration-with-disabled-vmx-features.patch:
