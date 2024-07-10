@@ -1044,7 +1044,8 @@ qemuDomainSupportsCheckpointsBlockjobs(virDomainObj *vm)
 
 int
 qemuDomainMakeCPUMigratable(virArch arch,
-                            virCPUDef *cpu);
+                            virCPUDef *cpu,
+                            virCPUDef *origCPU);
 
 int
 qemuDomainInitializePflashStorageSource(virDomainObj *vm,
