@@ -23,6 +23,7 @@ After=apparmor.service
 After=remote-fs.target
 After=systemd-machined.service
 After=xencommons.service
+After=qemu-kvm.service
 Conflicts=xendomains.service
 
 [Service]
