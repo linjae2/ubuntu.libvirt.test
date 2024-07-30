@@ -23,6 +23,7 @@
 #include <dirent.h>
 #include <libudev.h>
 
+#include "virlog.h"
 #include "virerror.h"
 #include "virfile.h"
 #include "datatypes.h"
@@ -40,6 +41,8 @@
 #include "configmake.h"
 
 #define VIR_FROM_THIS VIR_FROM_INTERFACE
+
+VIR_LOG_INIT("interface.interface_backend_udev");
 
 struct udev_iface_driver {
     struct udev *udev;
@@ -357,11 +360,20 @@ udevConnectListAllInterfaces(virConnectPtr conn,
         const char *macaddr;
         virInterfaceDefPtr def;
 
-        path = udev_list_entry_get_name(dev_entry);
-        dev = udev_device_new_from_syspath(udev, path);
-        name = udev_device_get_sysname(dev);
+        if (!(path = udev_list_entry_get_name(dev_entry))) {
+            VIR_DEBUG("Skipping interface, path == NULL");
+            continue;
+        }
+        if (!(dev = udev_device_new_from_syspath(udev, path))) {
+            VIR_DEBUG("Skipping interface '%s', dev == NULL", path);
+            continue;
+        }
+        if (!(name = udev_device_get_sysname(dev))) {
+            VIR_DEBUG("Skipping interface '%s', name == NULL", path);
+            continue;
+        }
         macaddr = udev_device_get_sysattr_value(dev, "address");
-        status = STREQ(udev_device_get_sysattr_value(dev, "operstate"), "up");
+        status = STREQ_NULLABLE(udev_device_get_sysattr_value(dev, "operstate"), "up");
 
         def = udevGetMinimalDefForDevice(dev);
         if (!virConnectListAllInterfacesCheckACL(conn, def)) {
@@ -976,9 +988,9 @@ udevGetIfaceDef(struct udev *udev, const char *name)
 
     /* MTU */
     mtu_str = udev_device_get_sysattr_value(dev, "mtu");
-    if (virStrToLong_ui(mtu_str, NULL, 10, &mtu) < 0) {
+    if (!mtu_str || virStrToLong_ui(mtu_str, NULL, 10, &mtu) < 0) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
-                _("Could not parse MTU value '%s'"), mtu_str);
+                _("Could not parse MTU value '%s'"), NULLSTR(mtu_str));
         goto error;
     }
     ifacedef->mtu = mtu;
@@ -1105,7 +1117,7 @@ udevInterfaceIsActive(virInterfacePtr ifinfo)
        goto cleanup;
 
     /* Check if it's active or not */
-    status = STREQ(udev_device_get_sysattr_value(dev, "operstate"), "up");
+    status = STREQ_NULLABLE(udev_device_get_sysattr_value(dev, "operstate"), "up");
 
     udev_device_unref(dev);
 
