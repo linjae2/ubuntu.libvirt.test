@@ -221,7 +221,7 @@ udevListInterfacesByStatus(virConnectPtr conn,
         virInterfaceDefPtr def;
 
         /* Ensure we won't exceed the size of our array */
-        if (count > names_len)
+        if (count >= names_len)
             break;
 
         path = udev_list_entry_get_name(dev_entry);
