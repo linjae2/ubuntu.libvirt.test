@@ -15,3 +15,17 @@ debian/Use-sensible-editor-by-default.patch
 backport/vircgroup-Fix-virCgroupKillRecursive-wrt-nested-controlle.patch
 backport/tests-Fix-libxlxml2domconfigtest-with-latest-xen.patch
 backport/tests-Fix-libxlxml2domconfigtest.patch
+CVE-2021-3631.patch
+CVE-2021-3667.patch
+CVE-2021-3975.patch
+libxl-Fix-domain-shutdown.patch
+CVE-2021-4147_1.patch
+CVE-2021-4147_2.patch
+CVE-2021-4147_3.patch
+CVE-2021-4147_4.patch
+CVE-2021-4147_5.patch
+CVE-2021-4147_6.patch
+CVE-2022-0897.patch
+CVE-2024-1441.patch
+CVE-2024-2496.patch
+CVE-2024-2494.patch

@@ -1,0 +1,226 @@
+From: Jim Fehlig <jfehlig@suse.com>
+Date: Fri, 19 Feb 2021 16:29:10 -0700
+Subject: libxl: Fix domain shutdown
+
+Commit fa30ee04a2 caused a regression in normal domain shutown.
+Initiating a shutdown from within the domain or via 'virsh shutdown'
+does cause the guest OS running in the domain to shutdown, but libvirt
+never reaps the domain so it is always shown in a running state until
+calling 'virsh destroy'.
+
+The shutdown thread is also an internal user of the driver shutdown
+machinery and eventually calls libxlDomainDestroyInternal where
+the ignoreDeathEvent inhibitor is set, but running in a thread
+introduces the possibility of racing with the death event from
+libxl. This can be prevented by setting ignoreDeathEvent before
+running the shutdown thread.
+
+An additional improvement is to handle the destroy event synchronously
+instead of spawning a thread. The time consuming aspects of destroying
+a domain have been completed when the destroy event is delivered.
+
+Signed-off-by: Jim Fehlig <jfehlig@suse.com>
+Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/87a9d3a6b01baebdca33d95ad0e79781b6a46ca8
+Bug: https://bugzilla.redhat.com/show_bug.cgi?id=2034195
+Bug-Debian: https://security-tracker.debian.org/tracker/CVE-2021-4147
+Bug-Debian: https://bugs.debian.org/1002535
+---
+ src/libxl/libxl_domain.c | 120 ++++++++++++++++++++++-------------------------
+ 1 file changed, 57 insertions(+), 63 deletions(-)
+
+diff --git a/src/libxl/libxl_domain.c b/src/libxl/libxl_domain.c
+index afa21bf..63938d5 100644
+--- a/src/libxl/libxl_domain.c
++++ b/src/libxl/libxl_domain.c
+@@ -476,6 +476,7 @@ libxlDomainShutdownHandleRestart(libxlDriverPrivatePtr driver,
+ struct libxlShutdownThreadInfo
+ {
+     libxlDriverPrivatePtr driver;
++    virDomainObjPtr vm;
+     libxl_event *event;
+ };
+ 
+@@ -484,7 +485,7 @@ static void
+ libxlDomainShutdownThread(void *opaque)
+ {
+     struct libxlShutdownThreadInfo *shutdown_info = opaque;
+-    virDomainObjPtr vm = NULL;
++    virDomainObjPtr vm = shutdown_info->vm;
+     libxl_event *ev = shutdown_info->event;
+     libxlDriverPrivatePtr driver = shutdown_info->driver;
+     virObjectEventPtr dom_event = NULL;
+@@ -494,12 +495,6 @@ libxlDomainShutdownThread(void *opaque)
+ 
+     libxl_domain_config_init(&d_config);
+ 
+-    vm = virDomainObjListFindByID(driver->domains, ev->domid);
+-    if (!vm) {
+-        VIR_INFO("Received event for unknown domain ID %d", ev->domid);
+-        goto cleanup;
+-    }
+-
+     if (libxlDomainObjBeginJob(driver, vm, LIBXL_JOB_MODIFY) < 0)
+         goto cleanup;
+ 
+@@ -616,32 +611,18 @@ libxlDomainShutdownThread(void *opaque)
+ }
+ 
+ static void
+-libxlDomainDeathThread(void *opaque)
++libxlDomainHandleDeath(libxlDriverPrivatePtr driver, virDomainObjPtr vm)
+ {
+-    struct libxlShutdownThreadInfo *shutdown_info = opaque;
+-    virDomainObjPtr vm = NULL;
+-    libxl_event *ev = shutdown_info->event;
+-    libxlDriverPrivatePtr driver = shutdown_info->driver;
+     virObjectEventPtr dom_event = NULL;
+-    g_autoptr(libxlDriverConfig) cfg = libxlDriverConfigGet(driver);
+-    libxlDomainObjPrivatePtr priv;
+-
+-    vm = virDomainObjListFindByID(driver->domains, ev->domid);
+-    if (!vm) {
+-        /* vm->def->id already cleared, means the death was handled by the
+-         * driver already */
+-        goto cleanup;
+-    }
+-
+-    priv = vm->privateData;
++    libxlDomainObjPrivatePtr priv = vm->privateData;
+ 
+     if (priv->ignoreDeathEvent) {
+         priv->ignoreDeathEvent = false;
+-        goto cleanup;
++        return;
+     }
+ 
+     if (libxlDomainObjBeginJob(driver, vm, LIBXL_JOB_MODIFY) < 0)
+-        goto cleanup;
++        return;
+ 
+     virDomainObjSetState(vm, VIR_DOMAIN_SHUTOFF, VIR_DOMAIN_SHUTOFF_DESTROYED);
+     dom_event = virDomainEventLifecycleNewFromObj(vm,
+@@ -651,12 +632,7 @@ libxlDomainDeathThread(void *opaque)
+     if (!vm->persistent)
+         virDomainObjListRemove(driver->domains, vm);
+     libxlDomainObjEndJob(driver, vm);
+-
+- cleanup:
+-    virDomainObjEndAPI(&vm);
+     virObjectEventStateQueue(driver->domainEventState, dom_event);
+-    libxl_event_free(cfg->ctx, ev);
+-    VIR_FREE(shutdown_info);
+ }
+ 
+ 
+@@ -668,16 +644,13 @@ libxlDomainEventHandler(void *data, VIR_LIBXL_EVENT_CONST libxl_event *event)
+ {
+     libxlDriverPrivatePtr driver = data;
+     libxl_shutdown_reason xl_reason = event->u.domain_shutdown.shutdown_reason;
+-    struct libxlShutdownThreadInfo *shutdown_info = NULL;
+-    virThread thread;
++    virDomainObjPtr vm = NULL;
+     g_autoptr(libxlDriverConfig) cfg = NULL;
+-    int ret = -1;
+-    g_autofree char *name = NULL;
+ 
+     if (event->type != LIBXL_EVENT_TYPE_DOMAIN_SHUTDOWN &&
+             event->type != LIBXL_EVENT_TYPE_DOMAIN_DEATH) {
+         VIR_INFO("Unhandled event type %d", event->type);
+-        goto error;
++        goto cleanup;
+     }
+ 
+     /*
+@@ -685,42 +658,63 @@ libxlDomainEventHandler(void *data, VIR_LIBXL_EVENT_CONST libxl_event *event)
+      * after calling libxl_domain_suspend() are handled by its callers.
+      */
+     if (xl_reason == LIBXL_SHUTDOWN_REASON_SUSPEND)
+-        goto error;
++        goto cleanup;
++
++    vm = virDomainObjListFindByID(driver->domains, event->domid);
++    if (!vm) {
++        /* Nothing to do if we can't find the virDomainObj */
++        goto cleanup;
++    }
++
++    if (event->type == LIBXL_EVENT_TYPE_DOMAIN_SHUTDOWN) {
++        libxlDomainObjPrivatePtr priv = vm->privateData;
++        struct libxlShutdownThreadInfo *shutdown_info = NULL;
++        virThread thread;
++        g_autofree char *name = NULL;
+ 
+-    /*
+-     * Start a thread to handle shutdown.  We don't want to be tying up
+-     * libxl's event machinery by doing a potentially lengthy shutdown.
+-     */
+-    shutdown_info = g_new0(struct libxlShutdownThreadInfo, 1);
+-
+-    shutdown_info->driver = driver;
+-    shutdown_info->event = (libxl_event *)event;
+-    name = g_strdup_printf("ev-%d", event->domid);
+-    if (event->type == LIBXL_EVENT_TYPE_DOMAIN_SHUTDOWN)
+-        ret = virThreadCreateFull(&thread, false, libxlDomainShutdownThread,
+-                                  name, false, shutdown_info);
+-    else if (event->type == LIBXL_EVENT_TYPE_DOMAIN_DEATH)
+-        ret = virThreadCreateFull(&thread, false, libxlDomainDeathThread,
+-                                  name, false, shutdown_info);
+-
+-    if (ret < 0) {
+         /*
+-         * Not much we can do on error here except log it.
++         * Start a thread to handle shutdown.  We don't want to be tying up
++         * libxl's event machinery by doing a potentially lengthy shutdown.
+          */
+-        VIR_ERROR(_("Failed to create thread to handle domain shutdown"));
+-        goto error;
+-    }
++        shutdown_info = g_new0(struct libxlShutdownThreadInfo, 1);
+ 
+-    /*
+-     * libxlShutdownThreadInfo and libxl_event are freed in shutdown thread
+-     */
+-    return;
++        shutdown_info->driver = driver;
++        shutdown_info->vm = vm;
++        shutdown_info->event = (libxl_event *)event;
++        name = g_strdup_printf("ev-%d", event->domid);
++        /*
++         * Cleanup will be handled by the shutdown thread.
++         * Ignore the forthcoming death event from libxl
++         */
++        priv->ignoreDeathEvent = true;
++        if (virThreadCreateFull(&thread, false, libxlDomainShutdownThread,
++                                name, false, shutdown_info) < 0) {
++             priv->ignoreDeathEvent = false;
++            /*
++             * Not much we can do on error here except log it.
++             */
++            VIR_ERROR(_("Failed to create thread to handle domain shutdown"));
++            VIR_FREE(shutdown_info);
++            goto cleanup;
++        }
++        /*
++         * virDomainObjEndAPI is called in the shutdown thread, where
++         * libxlShutdownThreadInfo and libxl_event are also freed.
++         */
++        return;
++    } else if (event->type == LIBXL_EVENT_TYPE_DOMAIN_DEATH) {
++        /*
++         * On death the domain is cleaned up from Xen's perspective.
++         * Cleanup on the libvirt side can be done synchronously.
++         */
++        libxlDomainHandleDeath(driver, vm);
++    }
+ 
+- error:
++ cleanup:
++    virDomainObjEndAPI(&vm);
+     cfg = libxlDriverConfigGet(driver);
+     /* Cast away any const */
+     libxl_event_free(cfg->ctx, (libxl_event *)event);
+-    VIR_FREE(shutdown_info);
+ }
+ 
+ char *
