@@ -75,7 +75,7 @@ Depends:
  ${shlibs:Depends},
 Suggests:
  libvirt-clients-qemu (= ${binary:Version}) [${ARCHES_QEMU}],
- libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon (= ${binary:Version}) [linux-any],
  libvirt-login-shell (= ${binary:Version}) [${ARCHES_LXC}],
 Breaks:
  libvirt-daemon (<< 6.9.0-2~),
@@ -182,14 +182,14 @@ Depends:
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
-Breaks:
- libvirt-clients (<< 6.9.0-2~),
-Replaces:
- libvirt-clients (<< 6.9.0-2~),
 Recommends:
  passt,
  swtpm,
  swtpm-tools,
+Breaks:
+ libvirt-clients (<< 6.9.0-2~),
+Replaces:
+ libvirt-clients (<< 6.9.0-2~),
 Description: Virtualization daemon QEMU connection driver
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -352,8 +352,6 @@ Suggests:
  auditd,
  nfs-common,
  open-iscsi,
- pm-utils,
- systemd,
  systemtap,
  zfsutils,
 Description: Libvirt daemon configuration files
