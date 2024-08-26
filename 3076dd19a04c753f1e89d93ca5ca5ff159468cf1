@@ -1,0 +1,10 @@
+  * [9333950] control: Introduce daemon-common package
+    + As well as a bunch more. In general, every single driver and
+      storage backend comes with its own binary package now, which
+      makes it possible to decide exactly what gets installed
+  * [d776368] control: Mark daemon-system-* packages as dummy
+    + Configuration for the daemon is now shipped in libvirt-daemon
+  * [0ac1f2c] control: Mark sanlock package as dummy
+    + Replaced by libvirt-daemon-plugin-sanlock
+  * [cf64ba3] install: Perform usr-merge transition
+    - Thanks to Michael Biebl, Helmut Grohne (Closes: #1064126)
