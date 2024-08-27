@@ -48,3 +48,4 @@ CVE-2024-1441.patch
 CVE-2024-2494.patch
 CVE-2024-4418.patch
 ubuntu/lp-2071848-fix-migration-with-disabled-vmx-features.patch
+ubuntu/lp-2072647-log_cleaner-Detect-rotated-filenames-properly.patch
