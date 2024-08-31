@@ -1,0 +1,19 @@
+  * Non-maintainer upload.
+  * Fix CVE-2021-3631: SELinux MCS may be accessed by another machine.
+    (Closes: #990709)
+  * Fix CVE-2021-3667: Improper locking in the
+    virStoragePoolLookupByTargetPath API. (Closes: #991594)
+  * Fix CVE-2021-3975: Use-after-free vulnerability. The
+    qemuMonitorUnregister() function in qemuProcessHandleMonitorEOF is called
+    using multiple threads without being adequately protected by a monitor
+    lock.
+  * Fix CVE-2021-4147: Deadlock and crash in libxl driver. (Closes: #1002535)
+  * libxl: Fix regression in domain shutdown.
+  * Fix CVE-2022-0897: Missing locking in nwfilterConnectNumOfNWFilters.
+    (Closes: #1009075)
+  * Fix CVE-2024-1441: Off-by-one error in the udevListInterfacesByStatus()
+    function. (Closes: #1066058)
+  * Fix CVE-2024-2494: Missing check for negative array lengths in RPC server
+    de-serialization routines. (Closes: #1067461)
+  * Fix CVE-2024-2496: NULL pointer dereference in the
+    udevConnectListAllInterfaces() function.
