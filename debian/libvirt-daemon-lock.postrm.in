@@ -18,23 +18,15 @@ set -e
 
 #DELETE_PROTECTIVE_DIVERSION#
 
-DAEMON_COMMON_UNITS="
-    libvirt-guests.service
-    virt-guest-shutdown.target
+DAEMON_LOCK_UNITS="
+    virtlockd-admin.socket
+    virtlockd.service
+    virtlockd.socket
 "
 
 case "$1" in
-    purge)
-        if getent group libvirt >/dev/null; then
-            delgroup libvirt >/dev/null || true
-        fi
-
-        # Clean up logs
-        rm -rf /var/log/libvirt
-    ;;
-
     failed-upgrade|abort-install|abort-upgrade)
-        for unit in $DAEMON_COMMON_UNITS; do
+        for unit in $DAEMON_LOCK_UNITS; do
             delete_protective_diversion \
                 "/lib/systemd/system/$unit" \
                 "10.6.0-3~" \
@@ -43,7 +35,7 @@ case "$1" in
         done
     ;;
 
-    remove|upgrade|disappear)
+    remove|purge|upgrade|disappear)
     ;;
 
     *)

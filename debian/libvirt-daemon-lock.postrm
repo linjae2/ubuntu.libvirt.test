@@ -16,25 +16,38 @@ set -e
 # for details, see https://www.debian.org/doc/debian-policy/ or
 # the debian-policy package
 
-#DELETE_PROTECTIVE_DIVERSION#
+delete_protective_diversion() {
+    local usrfile="$1"
+    local firstver="$2"
 
-DAEMON_COMMON_UNITS="
-    libvirt-guests.service
-    virt-guest-shutdown.target
+    if [ "$3" != "--" ]; then
+        echo "delete_protective_diversion called with the wrong number of arguments" >&2
+        return 1
+    fi
+    for _ in $(seq 1 3); do
+        shift
+    done
+
+    # If the diversion doesn't exist there's nothing to clean up
+    if [ -z "$(dpkg-divert --list "$usrfile")" ]; then
+        return 0
+    fi
+
+    dpkg-divert \
+        --no-rename \
+        --divert "$usrfile.usr-is-merged" \
+        --remove "$usrfile"
+}
+
+DAEMON_LOCK_UNITS="
+    virtlockd-admin.socket
+    virtlockd.service
+    virtlockd.socket
 "
 
 case "$1" in
-    purge)
-        if getent group libvirt >/dev/null; then
-            delgroup libvirt >/dev/null || true
-        fi
-
-        # Clean up logs
-        rm -rf /var/log/libvirt
-    ;;
-
     failed-upgrade|abort-install|abort-upgrade)
-        for unit in $DAEMON_COMMON_UNITS; do
+        for unit in $DAEMON_LOCK_UNITS; do
             delete_protective_diversion \
                 "/lib/systemd/system/$unit" \
                 "10.6.0-3~" \
@@ -43,7 +56,7 @@ case "$1" in
         done
     ;;
 
-    remove|upgrade|disappear)
+    remove|purge|upgrade|disappear)
     ;;
 
     *)

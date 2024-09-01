@@ -50,6 +50,28 @@ finish_conffile_transfer() {
         return 0
     fi
 }
+delete_protective_diversion() {
+    local usrfile="$1"
+    local firstver="$2"
+
+    if [ "$3" != "--" ]; then
+        echo "delete_protective_diversion called with the wrong number of arguments" >&2
+        return 1
+    fi
+    for _ in $(seq 1 3); do
+        shift
+    done
+
+    # If the diversion doesn't exist there's nothing to clean up
+    if [ -z "$(dpkg-divert --list "$usrfile")" ]; then
+        return 0
+    fi
+
+    dpkg-divert \
+        --no-rename \
+        --divert "$usrfile.usr-is-merged" \
+        --remove "$usrfile"
+}
 
 add_users_groups()
 {
@@ -83,6 +105,11 @@ DAEMON_SYSTEM_SYSV_TO_DAEMON_COMMON="
     /etc/init.d/libvirt-guests
 "
 
+DAEMON_COMMON_UNITS="
+    libvirt-guests.service
+    virt-guest-shutdown.target
+"
+
 case "$1" in
     configure)
         add_users_groups
@@ -111,6 +138,14 @@ case "$1" in
                 "10.6.0-2~" \
                 "libvirt-daemon-system-sysv" \
                 "libvirt-daemon-common" \
+                -- \
+                "$@"
+        done
+
+        for unit in $DAEMON_COMMON_UNITS; do
+            delete_protective_diversion \
+                "/lib/systemd/system/$unit" \
+                "10.6.0-3~" \
                 -- \
                 "$@"
         done
