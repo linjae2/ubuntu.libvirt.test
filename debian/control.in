@@ -62,7 +62,7 @@ Build-Depends:
 Vcs-Git: https://salsa.debian.org/libvirt-team/libvirt.git
 Vcs-Browser: https://salsa.debian.org/libvirt-team/libvirt
 Homepage: https://libvirt.org/
-Standards-Version: 4.6.2
+Standards-Version: 4.7.0
 Rules-Requires-Root: no
 
 Package: libvirt-clients
@@ -172,14 +172,14 @@ Suggests:
  libvirt-daemon-driver-storage-rbd (= ${binary:Version}) [${ARCHES_CEPH}],
  libvirt-daemon-driver-storage-zfs (= ${binary:Version}),
  libvirt-daemon-system (= ${binary:Version}),
+Conflicts:
+ libvirt-daemon-system (<< 10.6.0-2~),
 Breaks:
  libvirt-clients (<< 6.9.0-2~),
  libvirt-daemon-driver-lxc (<< 6.9.0-2~),
- libvirt-daemon-system (<< 10.6.0-2~),
  libvirt-daemon-system-sysv (<< 10.6.0-2~),
  libvirt-sanlock (<< 6.9.0-2~),
 Replaces:
- libvirt-daemon-system (<< 10.6.0-2~),
  libvirt-daemon-system-sysv (<< 10.6.0-2~),
 Description: Virtualization daemon
  Libvirt is a C toolkit to interact with the virtualization capabilities
@@ -210,15 +210,15 @@ Suggests:
  apparmor,
  auditd,
  systemtap,
+Conflicts:
+ libvirt-daemon-system (<< 10.6.0-2~),
 Breaks:
  libvirt-clients (<< 10.6.0-2~),
  libvirt-daemon (<< 10.6.0-2~),
- libvirt-daemon-system (<< 10.6.0-2~),
  libvirt-daemon-system-sysv (<< 10.6.0-2~),
 Replaces:
  libvirt-clients (<< 10.6.0-2~),
  libvirt-daemon (<< 10.6.0-2~),
- libvirt-daemon-system (<< 10.6.0-2~),
  libvirt-daemon-system-sysv (<< 10.6.0-2~),
 Description: Virtualization daemon common files
  Libvirt is a C toolkit to interact with the virtualization capabilities
@@ -236,13 +236,13 @@ Depends:
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
+Conflicts:
+ libvirt-daemon-system (<< 10.6.0-2~),
 Breaks:
  libvirt-daemon (<< 10.6.0-2~),
- libvirt-daemon-system (<< 10.6.0-2~),
  libvirt-daemon-system-sysv (<< 10.6.0-2~),
 Replaces:
  libvirt-daemon (<< 10.6.0-2~),
- libvirt-daemon-system (<< 10.6.0-2~),
  libvirt-daemon-system-sysv (<< 10.6.0-2~),
 Description: Virtualization log daemon
  Libvirt is a C toolkit to interact with the virtualization capabilities
@@ -260,12 +260,12 @@ Depends:
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
+Conflicts:
+ libvirt-daemon-system (<< 10.6.0-2~),
 Breaks:
  libvirt-daemon (<< 10.6.0-2~),
- libvirt-daemon-system (<< 10.6.0-2~),
 Replaces:
  libvirt-daemon (<< 10.6.0-2~),
- libvirt-daemon-system (<< 10.6.0-2~),
 Description: Virtualization lock daemon
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
@@ -772,14 +772,18 @@ Depends:
  libvirt-daemon-config-network (= ${source:Version}),
  libvirt-daemon-config-nwfilter (= ${source:Version}),
  libvirt-daemon-driver-network (= ${binary:Version}),
+ libvirt-daemon-driver-nodedev (= ${binary:Version}),
+ libvirt-daemon-driver-nwfilter (= ${binary:Version}),
  libvirt-daemon-driver-qemu (= ${binary:Version}) [${ARCHES_QEMU}],
- libvirt-daemon-lock (= ${binary:Version}),
+ libvirt-daemon-driver-secret (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt-daemon-log (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
 Recommends:
  libvirt-daemon-driver-lxc (= ${binary:Version}) [${ARCHES_LXC}],
  libvirt-daemon-driver-xen (= ${binary:Version}) [${ARCHES_XEN}],
+ libvirt-daemon-lock (= ${binary:Version}),
 Description: Virtualization daemon typical deployment
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing

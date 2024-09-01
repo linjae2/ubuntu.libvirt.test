@@ -50,6 +50,28 @@ finish_conffile_transfer() {
         return 0
     fi
 }
+delete_protective_diversion() {
+    local usrfile="$1"
+    local firstver="$2"
+
+    if [ "$3" != "--" ]; then
+        echo "delete_protective_diversion called with the wrong number of arguments" >&2
+        return 1
+    fi
+    for _ in $(seq 1 3); do
+        shift
+    done
+
+    # If the diversion doesn't exist there's nothing to clean up
+    if [ -z "$(dpkg-divert --list "$usrfile")" ]; then
+        return 0
+    fi
+
+    dpkg-divert \
+        --no-rename \
+        --divert "$usrfile.usr-is-merged" \
+        --remove "$usrfile"
+}
 
 DAEMON_SYSTEM_TO_DAEMON="
     /etc/apparmor.d/usr.sbin.libvirtd
@@ -59,6 +81,15 @@ DAEMON_SYSTEM_TO_DAEMON="
 "
 DAEMON_SYSTEM_SYSV_TO_DAEMON="
     /etc/init.d/libvirtd
+"
+
+DAEMON_UNITS="
+    libvirtd-admin.socket
+    libvirtd-ro.socket
+    libvirtd-tcp.socket
+    libvirtd-tls.socket
+    libvirtd.service
+    libvirtd.socket
 "
 
 case "$1" in
@@ -80,6 +111,14 @@ case "$1" in
                 "10.6.0-2~" \
                 "libvirt-daemon-system-sysv" \
                 "libvirt-daemon" \
+                -- \
+                "$@"
+        done
+
+        for unit in $DAEMON_UNITS; do
+            delete_protective_diversion \
+                "/lib/systemd/system/$unit" \
+                "10.6.0-3~" \
                 -- \
                 "$@"
         done
