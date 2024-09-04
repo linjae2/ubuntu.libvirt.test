@@ -1,0 +1,8 @@
+  * [01e7456] control: Bump Standards-Version to 4.7.0
+    - No changes needed.
+  * [b172fde] control: Change some Breaks+Replaces to Conflicts
+    - Prevents file loss scenarios during upgrade (DEP17 M7)
+    - Thanks to Helmut Grohne
+  * [4f20e64] snippets: Create protective diversions
+    - Prevents file loss scenarios during upgrade (DEP17 M8)
+    - Thanks to Helmut Grohne
