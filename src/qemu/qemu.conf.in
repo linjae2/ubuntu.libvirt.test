@@ -916,11 +916,14 @@
 
 # User for the swtpm TPM Emulator
 #
-# Default is 'tss'; this is the same user that tcsd (TrouSerS) installs
-# and uses; alternative is 'root'
+# Default is 'swtpm' as established by the swtpm-tools package.
 #
-#swtpm_user = "tss"
-#swtpm_group = "tss"
+# In the past this was 'tss' and that still would be the built-in default
+# if nothing was configured here, but the 'tss' user also has TPM device
+# access in the host which isn't needed for swtpm.
+#
+swtpm_user = "swtpm"
+swtpm_group = "swtpm"
 
 # For debugging and testing purposes it's sometimes useful to be able to disable
 # libvirt behaviour based on the capabilities of the qemu process. This option
