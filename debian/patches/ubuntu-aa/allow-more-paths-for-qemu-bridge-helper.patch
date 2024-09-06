@@ -1,0 +1,64 @@
+Description: Allow more paths for qemu-bridge-helper
+ The QEMU package in Debian has recently moved the
+ qemu-bridge-helper binary under /usr/libexec/qemu. Update the
+ AppArmor profile accordingly.
+ .
+ https://bugs.debian.org/1077915
+ .
+ Signed-off-by: Andrea Bolognani <abologna@redhat.com>
+ Reviewed-by: Jim Fehlig <jfehlig@suse.com>
+Author: Andrea Bolognani <abologna@redhat.com>
+Origin: upstream, https://gitlab.com/libvirt/libvirt/-/commit/0caacf47d7b423db9126660fb0382ed56cd077c1
+Bug-Debian: https://bugs.debian.org/1077915
+Bug-Ubuntu: https://launchpad.net/bugs/2079806
+Applied-Upstream: https://gitlab.com/libvirt/libvirt/-/commit/0caacf47d7b423db9126660fb0382ed56cd077c1
+Last-Update: 2024-09-06
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+diff --git a/src/security/apparmor/usr.sbin.libvirtd.in b/src/security/apparmor/usr.sbin.libvirtd.in
+index 47292d6c64..70e586895f 100644
+--- a/src/security/apparmor/usr.sbin.libvirtd.in
++++ b/src/security/apparmor/usr.sbin.libvirtd.in
+@@ -117,7 +117,7 @@ profile libvirtd @sbindir@/libvirtd flags=(attach_disconnected) {
+   # allow changing to our UUID-based named profiles
+   change_profile -> @{LIBVIRT}-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*,
+ 
+-  /usr/{lib,lib64,lib/qemu,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
++  /usr/{lib,lib64,lib/qemu,libexec,libexec/qemu}/qemu-bridge-helper Cx -> qemu_bridge_helper,
+   # child profile for bridge helper process
+   profile qemu_bridge_helper {
+    #include <abstractions/base>
+@@ -138,7 +138,7 @@ profile libvirtd @sbindir@/libvirtd flags=(attach_disconnected) {
+    /etc/qemu/** r,
+    owner @{PROC}/*/status r,
+ 
+-   /usr/{lib,lib64,lib/qemu,libexec}/qemu-bridge-helper rmix,
++   /usr/{lib,lib64,lib/qemu,libexec,libexec/qemu}/qemu-bridge-helper rmix,
+   }
+ 
+ @BEGIN_APPARMOR_3@
+diff --git a/src/security/apparmor/usr.sbin.virtqemud.in b/src/security/apparmor/usr.sbin.virtqemud.in
+index bbc6513146..42fa4813da 100644
+--- a/src/security/apparmor/usr.sbin.virtqemud.in
++++ b/src/security/apparmor/usr.sbin.virtqemud.in
+@@ -111,7 +111,7 @@ profile virtqemud @sbindir@/virtqemud flags=(attach_disconnected) {
+   # allow changing to our UUID-based named profiles
+   change_profile -> @{LIBVIRT}-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*,
+ 
+-  /usr/{lib,lib64,lib/qemu,libexec}/qemu-bridge-helper Cx -> qemu_bridge_helper,
++  /usr/{lib,lib64,lib/qemu,libexec,libexec/qemu}/qemu-bridge-helper Cx -> qemu_bridge_helper,
+   # child profile for bridge helper process
+   profile qemu_bridge_helper {
+    #include <abstractions/base>
+@@ -131,7 +131,7 @@ profile virtqemud @sbindir@/virtqemud flags=(attach_disconnected) {
+    /etc/qemu/** r,
+    owner @{PROC}/*/status r,
+ 
+-   /usr/{lib,lib64,lib/qemu,libexec}/qemu-bridge-helper rmix,
++   /usr/{lib,lib64,lib/qemu,libexec,libexec/qemu}/qemu-bridge-helper rmix,
+   }
+ 
+ @BEGIN_APPARMOR_3@
+-- 
+GitLab
+

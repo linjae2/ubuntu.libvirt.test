@@ -1,3 +1,11 @@
+libvirt (10.6.0-1ubuntu2) oracular; urgency=medium
+
+  * Apply upstream patch to allow access to
+    /usr/libexec/qemu/qemu-bridge-helper in apparmor profile (LP: #2079806)
+    - d/p/ubuntu-aa/allow-more-paths-for-qemu-bridge-helper.patch
+
+ -- Olivier Gayot <olivier.gayot@canonical.com>  Fri, 06 Sep 2024 12:04:29 +0200
+
 libvirt (10.6.0-1ubuntu1) oracular; urgency=medium
 
   * Merge with Debian unstable (LP: #2076676). Remaining changes:
