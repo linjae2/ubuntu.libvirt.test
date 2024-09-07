@@ -1,0 +1,3 @@
+  * [a84ccbd] New upstream version 10.7.0
+    - Update for qemu-bridge-helper's new location (Closes: #1077915)
+    - Fixes CVE-2024-8235 (Closes: #1080218)
