@@ -1,0 +1,4 @@
+  * [6fb4103] control: Turn dmidecode back into a Recommends
+    - It was accidentally made it into a Depends in 10.6.0-2,
+      which has resulted in libvirt-daemon being uninstallable on
+      architectures that don't have dmidecode (e.g. ppc64el)
