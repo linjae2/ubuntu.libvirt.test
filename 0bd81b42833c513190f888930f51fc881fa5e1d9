@@ -1,0 +1,4 @@
+  * SECURITY UPDATE: virtinterfaced null pointer DoS
+    - debian/patches/CVE-2024-8235.patch: honour array length for
+      zero-length NULL arrays in src/interface/interface_backend_udev.c.
+    - CVE-2024-8235
