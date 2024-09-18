@@ -1,0 +1,3 @@
+  * [70a5d8d] patches: Add backport/apparmor-Don-t-check-for[...]
+    - Ensures that AppArmor doesn't get disabled for QEMU domains
+      just because the LXC driver is not installed (Closes: #1081396)
