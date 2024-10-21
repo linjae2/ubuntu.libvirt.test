@@ -257,3 +257,6 @@
   # required for QEMU accessing UEFI nvram variables
   owner /var/lib/libvirt/qemu/nvram/*_VARS.fd rwk,
   owner /var/lib/libvirt/qemu/nvram/*_VARS.ms.fd rwk,
+
+  # Site-specific additions and overrides. See local/README for details.
+  #include <local/abstractions/libvirt-qemu>
