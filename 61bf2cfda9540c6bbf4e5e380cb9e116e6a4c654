@@ -1,0 +1,6 @@
+  * [275099d] patches: Add backports
+    - backport/apparmor-Allow-running-i686-VMs-on-Debian-12.patch
+      - Closes: #1030926
+    - backport/qemu_process-Skip-over-non-virtio-non-TAP-NIC-[...]
+      - Prevents certain guests from becoming unbootable or
+        disappearing during upgrade
