@@ -1332,7 +1332,7 @@ void virWaitForDevices(void)
     if (!(udev = virFindFileInPath(UDEVADM)))
         return;
 
-    if (!(cmd = virCommandNewArgList(udev, "settle", "--timeout=10", NULL)))
+    if (!(cmd = virCommandNewArgList(udev, "settle", NULL)))
         return;
 
     /*
