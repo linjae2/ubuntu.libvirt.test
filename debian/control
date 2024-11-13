@@ -76,7 +76,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Suggests:
- libvirt-clients-qemu (= ${binary:Version}) [amd64 arm64 armel armhf i386 loong64 mips64el mipsel powerpc ppc64 ppc64el riscv64 s390x sparc64 x32],
+ libvirt-clients-qemu (= ${source:Version}) [amd64 arm64 armel armhf i386 loong64 mips64el mipsel powerpc ppc64 ppc64el riscv64 s390x sparc64 x32],
  libvirt-daemon (= ${binary:Version}) [linux-any],
  libvirt-login-shell (= ${binary:Version}) [alpha amd64 arm64 armel armhf hppa i386 loong64 m68k mips64el mipsel powerpc ppc64 ppc64el riscv64 s390x sh4 sparc64 x32],
 Breaks:
@@ -142,6 +142,7 @@ Architecture: linux-any
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon-common (= ${binary:Version}),
+ libvirt-daemon-log (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  logrotate,
  ${misc:Depends},
@@ -163,7 +164,6 @@ Recommends:
  libvirt-daemon-driver-vbox (= ${binary:Version}) [amd64 i386],
  libvirt-daemon-driver-xen (= ${binary:Version}) [amd64 arm64 armhf],
  libvirt-daemon-lock (= ${binary:Version}),
- libvirt-daemon-log (= ${binary:Version}),
  libvirt-daemon-plugin-lockd (= ${binary:Version}),
  libvirt-daemon-plugin-sanlock (= ${binary:Version}),
 Suggests:
@@ -194,6 +194,7 @@ Section: admin
 Architecture: linux-any
 Depends:
  adduser,
+ dmidecode [amd64 arm64 armhf i386 riscv64 loong64 x32],
  gettext-base,
  iproute2,
  libvirt-common (= ${binary:Version}),
@@ -203,9 +204,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
- dmidecode,
  netcat-openbsd,
- systemd-sysv | sysvinit-core,
 Suggests:
  apparmor,
  auditd,
@@ -284,14 +283,14 @@ Depends:
  libvirt-daemon-log (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  logrotate,
+ qemu-kvm | qemu-system,
+ systemd-container | sysvinit-core,
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
  passt,
- qemu-kvm | qemu-system,
  swtpm,
  swtpm-tools,
- systemd-container | sysvinit-core,
 Suggests:
  numad,
 Enhances:
@@ -318,8 +317,10 @@ Multi-Arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-network (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  logrotate,
+ systemd-container | sysvinit-core,
  ${misc:Depends},
  ${shlibs:Depends},
 Breaks:
@@ -388,9 +389,10 @@ Depends:
  libvirt-daemon (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  mount,
- nfs-common,
  ${misc:Depends},
  ${shlibs:Depends},
+Suggests:
+ nfs-common,
 Breaks:
  libvirt-daemon (<< 10.6.0-2~),
 Replaces:
@@ -410,6 +412,7 @@ Multi-arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  parted,
  ${misc:Depends},
@@ -434,6 +437,7 @@ Multi-Arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -452,6 +456,7 @@ Multi-arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  open-iscsi,
  ${misc:Depends},
@@ -475,6 +480,7 @@ Multi-Arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -496,6 +502,7 @@ Multi-arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  lvm2,
  ${misc:Depends},
@@ -520,6 +527,7 @@ Multi-arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -542,6 +550,7 @@ Multi-Arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -560,6 +569,7 @@ Multi-arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -582,6 +592,7 @@ Multi-Arch: no
 Depends:
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
+ libvirt-daemon-driver-storage (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -601,7 +612,7 @@ Architecture: linux-any
 Multi-arch: no
 Depends:
  dnsmasq-base,
- iptables | firewalld,
+ iptables,
  libvirt-common (= ${binary:Version}),
  libvirt-daemon (= ${binary:Version}),
  libvirt0 (= ${binary:Version}),
@@ -883,7 +894,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
- libvirt-l10n (= ${binary:Version}),
+ libvirt-l10n (= ${source:Version}),
 Description: library for interfacing with different virtualization systems
  Libvirt is a C toolkit to interact with the virtualization capabilities
  of recent versions of Linux (and other OSes). The library aims at providing
