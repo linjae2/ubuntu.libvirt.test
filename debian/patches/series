@@ -23,3 +23,4 @@ ubuntu-aa/0034-apparmor-virt-aa-helper-access-for-snapped-nova.patch
 ubuntu-aa/lp-1815910-allow-vhost-hotplug.patch
 ubuntu-aa/allow-more-paths-for-qemu-bridge-helper.patch
 CVE-2024-8235.patch
+ubuntu/lp-2083986-drop-vmx-from-migratable-cpu-when-origCPU-set.patch
