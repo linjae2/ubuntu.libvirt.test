@@ -8843,6 +8843,7 @@ qemuDomainMachineIsI440FX(const char *machine,
         STRPREFIX(machine, "pc-0.") ||
         STRPREFIX(machine, "pc-1.") ||
         STRPREFIX(machine, "pc-i440fx-") ||
+        STREQ(machine, "ubuntu") ||
         STRPREFIX(machine, "rhel")) {
         return true;
     }
