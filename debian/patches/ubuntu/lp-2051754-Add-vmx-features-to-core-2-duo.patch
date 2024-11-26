@@ -1,13 +1,11 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Thu, 7 Mar 2024 14:06:13 +0100
 Subject: Add vmx-* features to core{,2}duo
 
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:50 +0100 (1 day, 4 hours, 2 minutes ago)
-Message-ID: <6dcd574cc66842b2029c27356d5e68e5ab1d2c18.1710262622.git.jdenemar@redhat.com>
-
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/B5IR4HYMRJGC7WXZMVVSBRT3RIRLOFNS/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/823c7005a3b0d5275b30ca811479995bfa5820e9
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---

@@ -1,13 +1,11 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Thu, 7 Mar 2024 14:06:37 +0100
 Subject: Add vmx-* features to kvm*
 
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:54 +0100 (1 day, 4 hours, 2 minutes ago)
-Message-ID: <4477b50c6949e97aeb7fd403c479127a7197d07c.1710262622.git.jdenemar@redhat.com>
-
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/L4VCBAIAGPX4YTFTD2YEYJCEKYVPUZ6A/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/1d03f78c5d0fa2d3422e76bef4c9369ab623bd52
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---

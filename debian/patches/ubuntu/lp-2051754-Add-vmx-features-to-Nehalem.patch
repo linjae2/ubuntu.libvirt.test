@@ -1,13 +1,11 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Thu, 7 Mar 2024 14:04:21 +0100
 Subject: Add vmx-* features to Nehalem*
 
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:55 +0100 (1 day, 4 hours, 2 minutes ago)
-Message-ID: <1d1680ebed83c5115733ba4d086e76efc936c1d4.1710262622.git.jdenemar@redhat.com>
-
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/HYDF5BE346BJZYIM2BXJD253M7W2XG2A/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/a539910c942f5993b967f8265756e3a10363e4f4
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---

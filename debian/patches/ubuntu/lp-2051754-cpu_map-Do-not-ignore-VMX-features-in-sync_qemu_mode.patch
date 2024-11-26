@@ -1,13 +1,11 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Thu, 7 Mar 2024 13:21:31 +0100
 Subject: cpu_map: Do not ignore VMX features in sync_qemu_models script
 
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:45 +0100 (1 day, 4 hours, 2 minutes ago)
-Message-ID: <5c54df50449bb537a751f23628647b986f4aed04.1710262622.git.jdenemar@redhat.com>
-
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/UGR57NRXFY5GLKMGZ3Y2DQI3V5UC2V7M/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/f9d2531516f7a768a41b6495e09af912e074e067
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---
