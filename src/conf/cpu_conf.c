@@ -975,16 +975,16 @@ virCPUDefFindFeature(const virCPUDef *def,
 
 
 /**
- * virCPUDefListFeatures:
+ * virCPUDefListExplicitFeatures:
  * @def: CPU definition
  *
  * Provides a list of feature names explicitly mentioned in the CPU definition
- * regardless on the policy. The caller is responsible for freeing the list.
+ * regardless of the policy. The caller is responsible for freeing the list.
  *
  * Returns a NULL-terminated list of feature names.
  */
 char **
-virCPUDefListFeatures(const virCPUDef *def)
+virCPUDefListExplicitFeatures(const virCPUDef *def)
 {
     char **list;
     size_t i;

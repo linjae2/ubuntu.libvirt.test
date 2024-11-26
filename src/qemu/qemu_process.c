@@ -4402,8 +4402,6 @@ qemuProcessUpdateLiveGuestCPU(virDomainObj *vm,
                               virCPUData *disabled)
 {
     virDomainDef *def = vm->def;
-    qemuDomainObjPrivate *priv = vm->privateData;
-    g_autoptr(virCPUDef) orig = NULL;
     int rc;
 
     if (!enabled)
@@ -4414,19 +4412,11 @@ qemuProcessUpdateLiveGuestCPU(virDomainObj *vm,
          !def->cpu->model))
         return 0;
 
-    orig = virCPUDefCopy(def->cpu);
-
-    if ((rc = virCPUUpdateLive(def->os.arch, def->cpu, enabled, disabled)) < 0) {
+    if ((rc = virCPUUpdateLive(def->os.arch, def->cpu, enabled, disabled)) < 0)
         return -1;
-    } else if (rc == 0) {
-        /* Store the original CPU in priv if QEMU changed it and we didn't
-         * get the original CPU via migration, restore, or snapshot revert.
-         */
-        if (!priv->origCPU && !virCPUDefIsEqual(def->cpu, orig, false))
-            priv->origCPU = g_steal_pointer(&orig);
 
+    if (rc == 0)
         def->cpu->check = VIR_CPU_CHECK_FULL;
-    }
 
     return 0;
 }
@@ -5650,8 +5640,7 @@ qemuProcessInit(virQEMUDriver *driver,
     if (qemuProcessPrepareQEMUCaps(vm, driver->qemuCapsCache) < 0)
         goto cleanup;
 
-    if (qemuDomainUpdateCPU(vm, updatedCPU, &origCPU) < 0)
-        goto cleanup;
+    qemuDomainUpdateCPU(vm, updatedCPU, &origCPU);
 
     if (qemuProcessStartValidate(driver, vm, priv->qemuCaps, flags) < 0)
         goto cleanup;
@@ -8227,9 +8216,8 @@ qemuProcessStartWithMemoryState(virConnectPtr conn,
     /* No cookie means libvirt which saved the domain was too old to mess up
      * the CPU definitions.
      */
-    if (cookie &&
-        qemuDomainFixupCPUs(vm, &cookie->cpu) < 0)
-        return -1;
+    if (cookie)
+        qemuDomainFixupCPUs(vm, &cookie->cpu);
 
     if (cookie && !cookie->slirpHelper)
         priv->disableSlirp = true;
@@ -8934,8 +8922,7 @@ qemuProcessRefreshCPU(virQEMUDriver *driver,
          * case the host-model is known to not contain features which QEMU
          * doesn't know about.
          */
-        if (qemuDomainFixupCPUs(vm, &priv->origCPU) < 0)
-            return -1;
+        qemuDomainFixupCPUs(vm, &priv->origCPU);
     }
 
     return 0;
@@ -9143,6 +9130,10 @@ qemuProcessReconnect(void *opaque)
         goto error;
 
     qemuDomainVcpuPersistOrder(obj->def);
+
+    /* Make sure the original CPU is always preserved in priv->origCPU. */
+    if (!priv->origCPU)
+        qemuDomainUpdateCPU(obj, NULL, &priv->origCPU);
 
     if (qemuProcessRefreshCPU(driver, obj) < 0)
         goto error;

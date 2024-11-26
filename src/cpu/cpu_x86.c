@@ -3071,6 +3071,10 @@ virCPUx86UpdateLive(virCPUDef *cpu,
             x86DataIsSubset(&enabled, &feature->data)) {
             VIR_DEBUG("Feature '%s' enabled by the hypervisor", feature->name);
 
+            /* Extra features enabled by the hypervisor are ignored by
+             * check='full' in case they were added to the model later for
+             * backward compatibility with the older definition of the model.
+             */
             if (cpu->check == VIR_CPU_CHECK_FULL && !ignore)
                 virBufferAsprintf(&bufAdded, "%s,", feature->name);
             else
@@ -3565,7 +3569,7 @@ virCPUx86GetAddedFeatures(const char *modelName,
         return -1;
 
     if (!(model = x86ModelFind(map, modelName))) {
-        virReportError(VIR_ERR_INTERNAL_ERROR,
+        virReportError(VIR_ERR_INVALID_ARG,
                        _("unknown CPU model %1$s"), modelName);
         return -1;
     }

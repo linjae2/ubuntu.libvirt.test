@@ -1,13 +1,11 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Thu, 7 Mar 2024 14:00:53 +0100
 Subject: Add vmx-* features to Skylake*
 
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:59 +0100 (1 day, 4 hours, 1 minute ago)
-Message-ID: <e7b7a21d7efaa65a23acc86719d611dc82860707.1710262622.git.jdenemar@redhat.com>
-
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/ZTAE6RR7ZEV7GJH2QSWCHILWHK3TFLWY/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/aa064b38fdbafd39d296a0933b7d1b8987eb4cb5
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---

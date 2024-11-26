@@ -49,3 +49,7 @@ CVE-2024-2494.patch
 CVE-2024-4418.patch
 ubuntu/lp-2071848-fix-migration-with-disabled-vmx-features.patch
 ubuntu/lp-2072647-log_cleaner-Detect-rotated-filenames-properly.patch
+ubuntu/lp-2083986-fix-migration-custom-xml.patch
+ubuntu/lp-2083986-change-return-type-qemuDomainUpdateCPU-to-void.patch
+ubuntu/lp-2083986-change-return-type-qemuDomainFixupCPUs-to-void.patch
+ubuntu/lp-2083986-drop-vmx-from-migratable-cpu-when-origCPU-set.patch

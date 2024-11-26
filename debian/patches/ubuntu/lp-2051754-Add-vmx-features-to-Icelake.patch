@@ -1,13 +1,11 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Thu, 7 Mar 2024 14:02:47 +0100
 Subject: Add vmx-* features to Icelake*
 
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:52 +0100 (1 day, 4 hours, 2 minutes ago)
-Message-ID: <157e3cb4f81285fb2ef9ed8de23271ea847168ee.1710262622.git.jdenemar@redhat.com>
-
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/MDPBYUCO7KM5YA3JH75GTF25VCUHDBE7/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/a6f3eafc402fbaf18b2e23e93c8c7339317c7d97
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---

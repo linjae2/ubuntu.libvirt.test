@@ -1,10 +1,6 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Mon, 11 Mar 2024 17:04:48 +0100
 Subject: qemu: domain: Drop added features from migratable CPU
-
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:44 +0100 (1 day, 4 hours, 2 minutes ago)
-Message-ID: <2a42ad12a0de0d16b59351821cda203e1c36e86b.1710262622.git.jdenemar@redhat.com>
 
 Features marked with added='yes' in CPU model definitions have to be
 removed before migration, otherwise older libvirt would complain about
@@ -19,7 +15,10 @@ effectively the same thing we did before the affected features were
 added: we ignored them completely on both sides of migration.
 
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/3KK4WM4CZXV7M5PYQHTJVJONCZBB34UA/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+Reviewed-by: Peter Krempa <pkrempa@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/14d3517410021d59cb53fb4c841a5d9922e814d1
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---
@@ -29,7 +28,7 @@ Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
  3 files changed, 54 insertions(+), 4 deletions(-)
 
 diff --git a/src/qemu/qemu_domain.c b/src/qemu/qemu_domain.c
-index 1074191..03e258e 100644
+index 1074191..4dbde4b 100644
 --- a/src/qemu/qemu_domain.c
 +++ b/src/qemu/qemu_domain.c
 @@ -66,6 +66,7 @@
@@ -93,7 +92,7 @@ index 1074191..03e258e 100644
 +        g_auto(GStrv) keep = NULL;
 +
 +        if (origCPU) {
-+            keep = virCPUDefListFeatures(origCPU);
++            keep = virCPUDefListExplicitFeatures(origCPU);
 +            data.keep = keep;
 +        }
 +

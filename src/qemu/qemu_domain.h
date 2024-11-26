@@ -974,12 +974,12 @@ virStorageSource *qemuDomainGetStorageSourceByDevstr(const char *devstr,
                                                        virDomainDef *def,
                                                        virDomainBackupDef *backupdef);
 
-int
+void
 qemuDomainUpdateCPU(virDomainObj *vm,
                     virCPUDef *cpu,
                     virCPUDef **origCPU);
 
-int
+void
 qemuDomainFixupCPUs(virDomainObj *vm,
                     virCPUDef **origCPU);
 

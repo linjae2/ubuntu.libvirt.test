@@ -1,3 +1,15 @@
+libvirt (10.0.0-2ubuntu8.5) noble; urgency=medium
+
+  - d/p/u/lp-2051754-*.patch: Refresh patches against accepted
+    upstream version.  This should not have any visible user changes.
+  - d/p/u/lp-2071848-fix-migration-with-disabled-vmx-features.patch:
+    Refresh patch.
+  - d/p/u/lp-2083986-*.patch: Backport upstream patches to fix issues
+    with domain migrations between two nested VMs due to mismatched
+    check of CPU features. (LP: #2083986)
+
+ -- Sergio Durigan Junior <sergio.durigan@canonical.com>  Mon, 25 Nov 2024 21:02:52 -0500
+
 libvirt (10.0.0-2ubuntu8.4) noble; urgency=medium
 
   * d/p/u/lp-2072647-log_cleaner-Detect-rotated-filenames-properly.patch:

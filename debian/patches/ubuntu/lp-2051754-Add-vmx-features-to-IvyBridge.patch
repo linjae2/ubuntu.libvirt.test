@@ -1,13 +1,11 @@
 From: Jiri Denemark <jdenemar@redhat.com>
-Date: Wed, 13 Mar 2024 17:14:12 -0400
+Date: Thu, 7 Mar 2024 14:04:01 +0100
 Subject: Add vmx-* features to IvyBridge*
 
-To: devel@lists.libvirt.org
-Date: Tue, 12 Mar 2024 18:06:53 +0100 (1 day, 4 hours, 2 minutes ago)
-Message-ID: <f4170f6ebde7ab07d8dda0b85009e00fa5c09ec4.1710262622.git.jdenemar@redhat.com>
-
 Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
-Origin: https://lists.libvirt.org/archives/list/devel@lists.libvirt.org/message/HK3QGQSGRHO3MRNHVHRDPQFQVVKS3V73/
+Reviewed-by: Tim Wiederhake <twiederh@redhat.com>
+
+Origin: https://gitlab.com/libvirt/libvirt/-/commit/4b707f8bb0003b87f67474bfac02a2feac26c96f
 Bug: https://gitlab.com/libvirt/libvirt/-/issues/568
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2051754
 ---
