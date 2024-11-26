@@ -24,11 +24,11 @@ Origin: backport, https://gitlab.com/libvirt/libvirt/-/commit/e622970c8785ec1f7e
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/2071848
 Bug-RHEL: https://issues.redhat.com/browse/RHEL-40899
 ---
- src/cpu/cpu_x86.c | 55 ++++++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 38 insertions(+), 17 deletions(-)
+ src/cpu/cpu_x86.c | 54 +++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 37 insertions(+), 17 deletions(-)
 
 diff --git a/src/cpu/cpu_x86.c b/src/cpu/cpu_x86.c
-index debd455..b38c6f5 100644
+index f31ff22..31f384e 100644
 --- a/src/cpu/cpu_x86.c
 +++ b/src/cpu/cpu_x86.c
 @@ -3023,10 +3023,7 @@ virCPUx86UpdateLive(virCPUDef *cpu,
@@ -43,7 +43,7 @@ index debd455..b38c6f5 100644
          !(modelDisabled = x86ModelFromCPU(cpu, map, VIR_CPU_FEATURE_DISABLE)))
          return -1;
  
-@@ -3039,34 +3036,58 @@ virCPUx86UpdateLive(virCPUDef *cpu,
+@@ -3039,12 +3036,36 @@ virCPUx86UpdateLive(virCPUDef *cpu,
      for (i = 0; i < map->nfeatures; i++) {
          virCPUx86Feature *feature = map->features[i];
          virCPUFeaturePolicy expected = VIR_CPU_FEATURE_LAST;
@@ -83,10 +83,12 @@ index debd455..b38c6f5 100644
  
          if (expected == VIR_CPU_FEATURE_DISABLE &&
              x86DataIsSubset(&enabled, &feature->data)) {
-             VIR_DEBUG("Feature '%s' enabled by the hypervisor", feature->name);
+@@ -3054,24 +3075,23 @@ virCPUx86UpdateLive(virCPUDef *cpu,
+              * check='full' in case they were added to the model later for
+              * backward compatibility with the older definition of the model.
+              */
 -            if (cpu->check == VIR_CPU_CHECK_FULL &&
 -                !g_strv_contains((const char **) model->addedFeatures, feature->name)) {
-+
 +            if (cpu->check == VIR_CPU_CHECK_FULL && !ignore)
                  virBufferAsprintf(&bufAdded, "%s,", feature->name);
 -            } else if (virCPUDefUpdateFeature(cpu, feature->name,
