@@ -5640,8 +5640,7 @@ qemuProcessInit(virQEMUDriver *driver,
     if (qemuProcessPrepareQEMUCaps(vm, driver->qemuCapsCache) < 0)
         goto cleanup;
 
-    if (qemuDomainUpdateCPU(vm, updatedCPU, &origCPU) < 0)
-        goto cleanup;
+    qemuDomainUpdateCPU(vm, updatedCPU, &origCPU);
 
     if (qemuProcessStartValidate(driver, vm, priv->qemuCaps, flags) < 0)
         goto cleanup;
@@ -9135,9 +9134,8 @@ qemuProcessReconnect(void *opaque)
     qemuDomainVcpuPersistOrder(obj->def);
 
     /* Make sure the original CPU is always preserved in priv->origCPU. */
-    if (!priv->origCPU &&
-        qemuDomainUpdateCPU(obj, NULL, &priv->origCPU) < 0)
-        goto error;
+    if (!priv->origCPU)
+        qemuDomainUpdateCPU(obj, NULL, &priv->origCPU);
 
     if (qemuProcessRefreshCPU(driver, obj) < 0)
         goto error;
