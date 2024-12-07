@@ -1,0 +1,6 @@
+  [ Carles Pina i Estany ]
+  * [571578c] debconf: Add Catalan translation
+  [ Andrea Bolognani ]
+  * [4a7c66d] control: Prefer nftables for the network driver
+    - Closes: #938929
+  * [065cbe9] control: Introduce ssh-proxy package
